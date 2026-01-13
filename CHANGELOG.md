@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All 10 agents (oracle, librarian, explore, frontend-engineer, document-writer, multimodal-looker, momus, metis, sisyphus-junior, prometheus) now have required frontmatter per Claude Code sub-agent spec
   - Fixes issue #33: Agents failed to load due to missing required fields
 
+- **Windows Support** - Fixed hook scripts and cross-platform compatibility (closes #30)
+  - `hooks.json` now uses Node.js scripts (.mjs) instead of Bash for cross-platform support
+  - Created Node.js versions of all hook scripts: `keyword-detector.mjs`, `pre-tool-enforcer.mjs`, `post-tool-verifier.mjs`, `persistent-mode.mjs`
+  - Fixed `which` command usage to use `where` on Windows in `plugin-patterns/index.ts` and `lsp/servers.ts`
+  - Windows paths are now properly handled with quoted paths in hook commands
+
+### Changed
+- **Hook Configuration** - All plugin hooks now use `node` command instead of `bash` for universal compatibility
+- Default hook scripts changed from `.sh` to `.mjs` in `hooks/hooks.json`
+
+### Technical Details
+- Added `isWindows()` and `whichCommand()` helpers for cross-platform binary detection
+- Node.js hook scripts maintain feature parity with Bash versions
+- Plugin installation now works correctly on Windows without WSL
+
 ## [1.11.0] - 2026-01-13
 
 ### Added

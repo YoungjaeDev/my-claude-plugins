@@ -1,7 +1,6 @@
 ---
 name: ralph
 description: Self-referential loop until task completion with architect verification
-user-invocable: true
 ---
 
 # Ralph Skill
@@ -9,6 +8,71 @@ user-invocable: true
 [RALPH + ULTRAWORK - ITERATION {{ITERATION}}/{{MAX}}]
 
 Your previous attempt did not output the completion promise. Continue working on the task.
+
+## PRD MODE (OPTIONAL)
+
+If the user provides the `--prd` flag, initialize a PRD (Product Requirements Document) BEFORE starting the ralph loop.
+
+### Detecting PRD Mode
+
+Check if `{{PROMPT}}` contains the flag pattern: `--prd` or `--PRD`
+
+### PRD Initialization Workflow
+
+When `--prd` flag detected:
+
+1. **Create PRD File Structure** (`.omc/prd.json` and `.omc/progress.txt`)
+2. **Parse the task** (everything after `--prd` flag)
+3. **Break down into user stories** with this structure:
+
+```json
+{
+  "project": "[Project Name]",
+  "branchName": "ralph/[feature-name]",
+  "description": "[Feature description]",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "[Short title]",
+      "description": "As a [user], I want to [action] so that [benefit].",
+      "acceptanceCriteria": ["Criterion 1", "Typecheck passes"],
+      "priority": 1,
+      "passes": false
+    }
+  ]
+}
+```
+
+4. **Create progress.txt**:
+
+```
+# Ralph Progress Log
+Started: [ISO timestamp]
+
+## Codebase Patterns
+(No patterns discovered yet)
+
+---
+```
+
+5. **Guidelines for PRD creation**:
+   - Right-sized stories: Each completable in one focused session
+   - Verifiable criteria: Include "Typecheck passes", "Tests pass"
+   - Independent stories: Minimize dependencies
+   - Priority order: Foundational work (DB, types) before UI
+
+6. **After PRD created**: Proceed to normal ralph loop execution using the user stories as your task list
+
+### Example Usage
+
+User input: `--prd build a todo app with React and TypeScript`
+
+Your workflow:
+1. Detect `--prd` flag
+2. Extract task: "build a todo app with React and TypeScript"
+3. Create `.omc/prd.json` with user stories
+4. Create `.omc/progress.txt`
+5. Begin ralph loop using user stories as task breakdown
 
 ## ULTRAWORK MODE (AUTO-ACTIVATED)
 

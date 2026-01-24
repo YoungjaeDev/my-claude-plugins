@@ -1,7 +1,6 @@
 ---
 name: mcp-setup
 description: Configure popular MCP servers for enhanced agent capabilities
-user-invocable: true
 ---
 
 # MCP Setup
@@ -66,7 +65,7 @@ Read the current `~/.claude/settings.json` and add/update the `mcpServers` secti
   "mcpServers": {
     "context7": {
       "command": "npx",
-      "args": ["-y", "@context7/mcp"]
+      "args": ["-y", "@upstash/context7-mcp"]
     }
   }
 }
@@ -78,7 +77,7 @@ Read the current `~/.claude/settings.json` and add/update the `mcpServers` secti
   "mcpServers": {
     "exa": {
       "command": "npx",
-      "args": ["-y", "@anthropic/exa-mcp-server"],
+      "args": ["-y", "exa-mcp-server"],
       "env": {
         "EXA_API_KEY": "<user-provided-key>"
       }
@@ -93,7 +92,7 @@ Read the current `~/.claude/settings.json` and add/update the `mcpServers` secti
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-filesystem", "<allowed-directories>"]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "<allowed-directories>"]
     }
   }
 }
@@ -104,15 +103,17 @@ Read the current `~/.claude/settings.json` and add/update the `mcpServers` secti
 {
   "mcpServers": {
     "github": {
-      "command": "npx",
-      "args": ["-y", "@anthropic/github-mcp-server"],
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"],
       "env": {
-        "GITHUB_TOKEN": "<user-provided-token>"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "<user-provided-token>"
       }
     }
   }
 }
 ```
+
+> Note: GitHub MCP requires Docker. Alternatively, configure as a remote URL: https://api.githubcopilot.com/mcp/
 
 ## Step 4: Merge Configuration
 

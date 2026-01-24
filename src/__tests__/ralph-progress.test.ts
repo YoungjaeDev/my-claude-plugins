@@ -17,7 +17,7 @@ import {
   PROGRESS_FILENAME,
   PATTERNS_HEADER,
   ENTRY_SEPARATOR
-} from '../hooks/ralph-progress/index.js';
+} from '../hooks/ralph/index.js';
 
 describe('Ralph Progress Module', () => {
   let testDir: string;

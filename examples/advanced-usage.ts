@@ -86,7 +86,6 @@ Always validate user input with Zod schemas.
     enableExa: true,
     exaApiKey: process.env.EXA_API_KEY,
     enableContext7: true,
-    enableGrepApp: true,
     enablePlaywright: false, // Disable browser automation
     enableMemory: true // Enable persistent memory
   });

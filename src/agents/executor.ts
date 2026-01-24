@@ -93,5 +93,6 @@ export const executorAgent: AgentConfig = {
   prompt: SISYPHUS_JUNIOR_PROMPT,
   tools: ['Read', 'Write', 'Edit', 'Grep', 'Glob', 'Bash'],
   model: 'sonnet',
+  defaultModel: 'sonnet',
   metadata: SISYPHUS_JUNIOR_PROMPT_METADATA
 };

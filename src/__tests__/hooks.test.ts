@@ -23,12 +23,12 @@ import {
   startUltraQA,
   clearUltraQAState,
   isRalphLoopActive
-} from '../hooks/ultraqa-loop/index.js';
+} from '../hooks/ultraqa/index.js';
 import {
   createRalphLoopHook,
   clearRalphState,
   isUltraQAActive
-} from '../hooks/ralph-loop/index.js';
+} from '../hooks/ralph/index.js';
 
 describe('Keyword Detector', () => {
   describe('extractPromptText', () => {

@@ -1,7 +1,6 @@
 ---
 name: ralplan
 description: Iterative planning with Planner, Architect, and Critic until consensus
-user-invocable: true
 ---
 
 # Ralplan Skill

@@ -1,7 +1,6 @@
 ---
 name: omc-default
 description: Configure OMC in local project (.claude/CLAUDE.md)
-user-invocable: true
 ---
 
 # OMC Default (Project-Scoped)

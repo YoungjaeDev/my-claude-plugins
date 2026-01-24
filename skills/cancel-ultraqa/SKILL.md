@@ -1,7 +1,6 @@
 ---
 name: cancel-ultraqa
 description: Cancel active UltraQA cycling workflow
-user-invocable: true
 ---
 
 # Cancel UltraQA

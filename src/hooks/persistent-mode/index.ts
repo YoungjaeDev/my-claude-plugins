@@ -18,16 +18,14 @@ import {
   incrementReinforcement,
   deactivateUltrawork,
   getUltraworkPersistenceMessage
-} from '../ultrawork-state/index.js';
+} from '../ultrawork/index.js';
 import {
   readRalphState,
   incrementRalphIteration,
   clearRalphState,
   detectCompletionPromise,
   getPrdCompletionStatus,
-  getRalphContext
-} from '../ralph-loop/index.js';
-import {
+  getRalphContext,
   readVerificationState,
   startVerification,
   recordArchitectFeedback,
@@ -36,7 +34,7 @@ import {
   detectArchitectApproval,
   detectArchitectRejection,
   clearVerificationState
-} from '../ralph-verifier/index.js';
+} from '../ralph/index.js';
 import { checkIncompleteTodos, getNextPendingTodo, StopContext, isUserAbort } from '../todo-continuation/index.js';
 import { TODO_CONTINUATION_PROMPT } from '../../installer/hooks.js';
 import {

@@ -1,6 +1,20 @@
-# Migration Guide: 2.x to 3.0
+# Migration Guide
 
-## TL;DR
+This guide covers all migration paths for oh-my-claudecode. Find your current version below.
+
+---
+
+## Table of Contents
+
+- [v2.x → v3.0: Package Rename & Auto-Activation](#v2x--v30-package-rename--auto-activation)
+- [v3.0 → v3.1: Notepad Wisdom & Enhanced Features](#v30--v31-notepad-wisdom--enhanced-features)
+- [v3.x → v4.0: Major Architecture Overhaul](#v3x--v40-major-architecture-overhaul)
+
+---
+
+## v2.x → v3.0: Package Rename & Auto-Activation
+
+### TL;DR
 
 Your old commands still work! But now you don't need them.
 
@@ -8,11 +22,26 @@ Your old commands still work! But now you don't need them.
 
 **After 3.0:** Just work naturally - Claude auto-activates the right behaviors. One-time setup: just say "setup omc"
 
----
+### Package Rename
 
-## What Changed
+The package has been renamed to better reflect its purpose and improve discoverability.
 
-### Before (2.x): Explicit Commands
+- **Old**: `oh-my-claude-sisyphus`
+- **New**: `oh-my-claudecode`
+
+#### NPM Commands
+
+```bash
+# Old
+npm install -g oh-my-claude-sisyphus
+
+# New
+npm install -g oh-my-claudecode
+```
+
+### What Changed
+
+#### Before (2.x): Explicit Commands
 
 You had to remember and explicitly invoke specific commands for each mode:
 
@@ -27,7 +56,7 @@ You had to remember and explicitly invoke specific commands for each mode:
 /oh-my-claudecode:analyze "why is this test failing?"         # Deep analysis
 ```
 
-### After (3.0): Auto-Activation + Keywords
+#### After (3.0): Auto-Activation + Keywords
 
 Work naturally. Claude detects intent and activates behaviors automatically:
 
@@ -41,9 +70,63 @@ Work naturally. Claude detects intent and activates behaviors automatically:
 "commit these changes properly"                     # Auto-activates git expertise
 ```
 
----
+### Agent Name Mapping
 
-## Command Mapping
+All agent names have been updated from Greek mythology references to intuitive, descriptive names:
+
+| Old Name (Greek) | New Name (Intuitive) |
+|------------------|----------------------|
+| prometheus | planner |
+| momus | critic |
+| oracle | architect |
+| metis | analyst |
+| mnemosyne | learner |
+| sisyphus-junior | executor |
+| orchestrator-sisyphus | coordinator |
+| librarian | researcher |
+| frontend-engineer | designer |
+| document-writer | writer |
+| multimodal-looker | vision |
+| explore | explore (unchanged) |
+| qa-tester | qa-tester (unchanged) |
+
+### Directory Migration
+
+Directory structures have been renamed for consistency with the new package name:
+
+#### Local Project Directories
+- **Old**: `.sisyphus/`
+- **New**: `.omc/`
+
+#### Global Directories
+- **Old**: `~/.sisyphus/`
+- **New**: `~/.omc/`
+
+#### Skills Directory
+- **Old**: `~/.claude/skills/sisyphus-learned/`
+- **New**: `~/.claude/skills/omc-learned/`
+
+#### Config Files
+- **Old**: `~/.claude/sisyphus/mnemosyne.json`
+- **New**: `~/.claude/omc/learner.json`
+
+### Environment Variables
+
+All environment variables have been renamed from `SISYPHUS_*` to `OMC_*`:
+
+| Old | New |
+|-----|-----|
+| SISYPHUS_USE_NODE_HOOKS | OMC_USE_NODE_HOOKS |
+| SISYPHUS_USE_BASH_HOOKS | OMC_USE_BASH_HOOKS |
+| SISYPHUS_PARALLEL_EXECUTION | OMC_PARALLEL_EXECUTION |
+| SISYPHUS_LSP_TOOLS | OMC_LSP_TOOLS |
+| SISYPHUS_MAX_BACKGROUND_TASKS | OMC_MAX_BACKGROUND_TASKS |
+| SISYPHUS_ROUTING_ENABLED | OMC_ROUTING_ENABLED |
+| SISYPHUS_ROUTING_DEFAULT_TIER | OMC_ROUTING_DEFAULT_TIER |
+| SISYPHUS_ESCALATION_ENABLED | OMC_ESCALATION_ENABLED |
+| SISYPHUS_DEBUG | OMC_DEBUG |
+
+### Command Mapping
 
 All 2.x commands continue to work. Here's what changed:
 
@@ -65,9 +148,7 @@ All 2.x commands continue to work. Here's what changed:
 | `/oh-my-claudecode:doctor` | Invoke normally | ✅ YES (unchanged) |
 | All other commands | Work exactly as before | ✅ YES |
 
----
-
-## Magic Keywords
+### Magic Keywords
 
 Include these anywhere in your message to explicitly activate behaviors. Use keywords when you want explicit control (optional):
 
@@ -92,9 +173,7 @@ Persistence (won't stop) + Ultrawork (maximum parallelism)
 "help me design the dashboard"     # Triggers planning
 ```
 
----
-
-## Natural Cancellation
+### Natural Cancellation
 
 Say any of these to stop:
 - "stop"
@@ -115,59 +194,95 @@ If multiple active   → Stop the most recent
 
 No more `/oh-my-claudecode:cancel-ralph` - just say "cancel"!
 
----
+### Migration Steps
 
-## Backward Compatibility: All 2.x Commands Still Work
+Follow these steps to migrate your existing setup:
 
-**Zero breaking changes.** Your existing workflows don't break.
-
-### Explicit Command Invocation Still Works
-
-You can still use explicit commands if you prefer:
+#### 1. Uninstall Old Package
 
 ```bash
-/oh-my-claudecode:ralph "implement OAuth"           # Still works ✅
-/oh-my-claudecode:ultrawork "refactor everything"   # Still works ✅
-/oh-my-claudecode:planner "plan the feature"        # Still works ✅
-/oh-my-claudecode:cancel-ralph                      # Still works ✅
+npm uninstall -g oh-my-claude-sisyphus
 ```
 
-These are now **optional** - use them if you like, but you don't have to.
+#### 2. Install New Package
 
-### Skill Composition
-
-Skills now compose automatically based on context:
-
-```
-Natural request: "Help me refactor the API quickly"
-    ↓
-Auto-detects: Need orchestration + speed
-    ↓
-Activates: orchestrate + ultrawork + git-master skills
-    ↓
-Result: Parallel agents, atomic commits, fast implementation
+```bash
+npm install -g oh-my-claudecode
 ```
 
-You don't need to invoke multiple commands manually - Claude figures it out.
+#### 3. Rename Local Project Directories
 
----
+If you have existing projects using the old directory structure:
 
-## Breaking Changes
+```bash
+# In each project directory
+mv .sisyphus .omc
+```
 
-**None!** Version 3.0 is purely additive:
+#### 4. Rename Global Directories
 
-- All 2.x commands continue to work
-- All agents renamed but function identically (oracle → architect, etc.)
-- Directory structure changed (.sisyphus → .omc) but handled automatically
-- Environment variables renamed (SISYPHUS_* → OMC_*) but old ones still recognized
+```bash
+# Global configuration directory
+mv ~/.sisyphus ~/.omc
 
-See [MIGRATION-v3.md](MIGRATION-v3.md) for detailed 2.x → 3.0 naming changes.
+# Skills directory
+mv ~/.claude/skills/sisyphus-learned ~/.claude/skills/omc-learned
 
----
+# Config directory
+mv ~/.claude/sisyphus ~/.claude/omc
+```
 
-## New Features in 3.0
+#### 5. Update Environment Variables
 
-### 1. Zero-Learning-Curve Operation
+Update your shell configuration files (`.bashrc`, `.zshrc`, etc.):
+
+```bash
+# Replace all SISYPHUS_* variables with OMC_*
+# Example:
+# OLD: export SISYPHUS_ROUTING_ENABLED=true
+# NEW: export OMC_ROUTING_ENABLED=true
+```
+
+#### 6. Update Scripts and Configurations
+
+Search for and update any references to:
+- Package name: `oh-my-claude-sisyphus` → `oh-my-claudecode`
+- Agent names: Use the mapping table above
+- Commands: Use the new slash commands
+- Directory paths: Update `.sisyphus` → `.omc`
+
+#### 7. Run One-Time Setup
+
+In Claude Code, just say "setup omc", "omc setup", or any natural language equivalent.
+
+This:
+- Downloads latest CLAUDE.md
+- Configures 32 agents
+- Enables auto-behavior detection
+- Activates continuation enforcement
+- Sets up skill composition
+
+### Verification
+
+After migration, verify your setup:
+
+1. **Check installation**:
+   ```bash
+   npm list -g oh-my-claudecode
+   ```
+
+2. **Verify directories exist**:
+   ```bash
+   ls -la .omc/  # In project directory
+   ls -la ~/.omc/  # Global directory
+   ```
+
+3. **Test a simple command**:
+   Run `/oh-my-claudecode:help` in Claude Code to ensure the plugin is loaded correctly.
+
+### New Features in 3.0
+
+#### 1. Zero-Learning-Curve Operation
 
 **No commands to memorize.** Work naturally:
 
@@ -178,7 +293,7 @@ After:  "I'm in a hurry, go fast!"
         Claude: "I'm activating ultrawork mode..."
 ```
 
-### 2. Delegate Always (Automatic)
+#### 2. Delegate Always (Automatic)
 
 Complex work auto-routes to specialist agents:
 
@@ -194,7 +309,7 @@ Your request              Claude's action
 
 You don't ask for delegation - it happens automatically.
 
-### 3. Learned Skills (`/oh-my-claudecode:learner`)
+#### 3. Learned Skills (`/oh-my-claudecode:learner`)
 
 Extract reusable insights from problem-solving:
 
@@ -211,7 +326,7 @@ Storage:
 - **Project-level**: `.omc/skills/` (version-controlled)
 - **User-level**: `~/.claude/skills/omc-learned/` (portable)
 
-### 4. HUD Statusline (Real-Time Orchestration)
+#### 4. HUD Statusline (Real-Time Orchestration)
 
 See what Claude is doing in the status bar:
 
@@ -221,7 +336,7 @@ See what Claude is doing in the status bar:
 
 Run `/oh-my-claudecode:hud setup` to install. Presets: minimal, focused, full.
 
-### 5. Three-Tier Memory System
+#### 5. Three-Tier Memory System
 
 Critical knowledge survives context compaction:
 
@@ -239,7 +354,7 @@ Or use `/oh-my-claudecode:note` to save discoveries manually:
 /oh-my-claudecode:note Project uses PostgreSQL with Prisma ORM
 ```
 
-### 6. Structured Task Tracking (PRD Support)
+#### 6. Structured Task Tracking (PRD Support)
 
 **Ralph Loop now uses Product Requirements Documents:**
 
@@ -253,7 +368,7 @@ Each story: description + acceptance criteria + pass/fail
 Ralph loops until ALL stories pass
 ```
 
-### 7. Intelligent Continuation
+#### 7. Intelligent Continuation
 
 **Tasks complete before Claude stops:**
 
@@ -267,41 +382,422 @@ Creates todo list, works through each item
 Only stops when EVERYTHING is verified complete
 ```
 
+### Backward Compatibility Note
+
+**Note**: v3.0 does not maintain backward compatibility with v2.x naming. You must complete the migration steps above for the new version to work correctly.
+
 ---
 
-## Getting Started with 3.0
+## v3.0 → v3.1: Notepad Wisdom & Enhanced Features
 
-### Step 1: Update Your Plugin
+### Overview
+
+Version 3.1 is a minor release adding powerful new features while maintaining full backward compatibility with v3.0.
+
+### What's New
+
+#### 1. Notepad Wisdom System
+
+Plan-scoped wisdom capture for learnings, decisions, issues, and problems.
+
+**Location:** `.omc/notepads/{plan-name}/`
+
+| File | Purpose |
+|------|---------|
+| `learnings.md` | Technical discoveries and patterns |
+| `decisions.md` | Architectural and design decisions |
+| `issues.md` | Known issues and workarounds |
+| `problems.md` | Blockers and challenges |
+
+**API:**
+- `initPlanNotepad()` - Initialize notepad for a plan
+- `addLearning()` - Record technical discoveries
+- `addDecision()` - Record architectural choices
+- `addIssue()` - Record known issues
+- `addProblem()` - Record blockers
+- `getWisdomSummary()` - Get summary of all wisdom
+- `readPlanWisdom()` - Read full wisdom for context
+
+#### 2. Delegation Categories
+
+Semantic task categorization that auto-maps to model tier, temperature, and thinking budget.
+
+| Category | Tier | Temperature | Thinking | Use For |
+|----------|------|-------------|----------|---------|
+| `visual-engineering` | HIGH | 0.7 | high | UI/UX, frontend, design systems |
+| `ultrabrain` | HIGH | 0.3 | max | Complex reasoning, architecture, deep debugging |
+| `artistry` | MEDIUM | 0.9 | medium | Creative solutions, brainstorming |
+| `quick` | LOW | 0.1 | low | Simple lookups, basic operations |
+| `writing` | MEDIUM | 0.5 | medium | Documentation, technical writing |
+
+**Auto-detection:** Categories detect from prompt keywords automatically.
+
+#### 3. Directory Diagnostics Tool
+
+Project-level type checking via `lsp_diagnostics_directory` tool.
+
+**Strategies:**
+- `auto` (default) - Auto-selects best strategy, prefers tsc when tsconfig.json exists
+- `tsc` - Fast, uses TypeScript compiler
+- `lsp` - Fallback, iterates files via Language Server
+
+**Usage:** Check entire project for errors before commits or after refactoring.
+
+#### 4. Session Resume
+
+Background agents can be resumed with full context via `resume-session` tool.
+
+### Migration Steps
+
+Version 3.1 is a drop-in upgrade. No migration required!
 
 ```bash
-# Plugin auto-updates, but you can manually update:
 npm update -g oh-my-claudecode
 ```
 
-### Step 2: Run One-Time Setup
+All existing configurations, plans, and workflows continue working unchanged.
 
-In Claude Code, just say "setup omc", "omc setup", or any natural language equivalent.
+### New Tools Available
 
-This:
-- Downloads latest CLAUDE.md
-- Configures 19 agents
-- Enables auto-behavior detection
-- Activates continuation enforcement
-- Sets up skill composition
+Once upgraded, agents automatically gain access to:
+- Notepad wisdom APIs (read/write wisdom during execution)
+- Delegation categories (automatic categorization)
+- Directory diagnostics (project-level type checking)
+- Session resume (recover background agent state)
 
-### Step 3: Use Naturally
+---
 
-**Just work.** Everything is automatic.
+## v3.3.x → v3.4.0: Parallel Execution & Advanced Workflows
+
+### Overview
+
+Version 3.4.0 introduces powerful parallel execution modes and advanced workflow orchestration while maintaining full backward compatibility with v3.3.x.
+
+### What's New
+
+#### 1. Ultrapilot: Parallel Autopilot
+
+Execute complex tasks with up to 5 concurrent workers for 3-5x speedup:
 
 ```bash
-"refactor the authentication system"
-    ↓
-Claude auto-detects: complex task, multi-file changes
-    ↓
-Activates: orchestrate + git-master skills
-    ↓
-You're done - Claude handles the rest
+/oh-my-claudecode:ultrapilot "build a fullstack todo app"
 ```
+
+**Key Features:**
+- Automatic task decomposition into parallelizable subtasks
+- File ownership coordination to prevent conflicts
+- Parallel execution with intelligent coordination
+- State files: `.omc/state/ultrapilot-state.json`, `.omc/state/ultrapilot-ownership.json`
+
+**Best for:** Multi-component systems, fullstack apps, large refactoring
+
+#### 2. Swarm: Coordinated Agent Teams
+
+N coordinated agents with atomic task claiming:
+
+```bash
+/oh-my-claudecode:swarm 5:executor "fix all TypeScript errors"
+```
+
+**Key Features:**
+- Shared task pool with atomic claiming (prevents duplicate work)
+- 5-minute timeout per task with auto-release
+- Scales from 2 to 10 workers
+- Clean completion when all tasks done
+
+#### 3. Pipeline: Sequential Agent Chaining
+
+Chain agents with data passing between stages:
+
+```bash
+/oh-my-claudecode:pipeline explore:haiku -> architect:opus -> executor:sonnet
+```
+
+**Built-in Presets:**
+- `review` - explore → architect → critic → executor
+- `implement` - planner → executor → tdd-guide
+- `debug` - explore → architect → build-fixer
+- `research` - parallel(researcher, explore) → architect → writer
+- `refactor` - explore → architect-medium → executor-high → qa-tester
+- `security` - explore → security-reviewer → executor → security-reviewer-low
+
+#### 4. Ecomode: Token-Efficient Execution
+
+Maximum parallelism with 30-50% token savings:
+
+```bash
+/oh-my-claudecode:ecomode "refactor the authentication system"
+```
+
+**Smart model routing:**
+- Simple tasks → Haiku (ultra-cheap)
+- Standard work → Sonnet (balanced)
+- Complex reasoning → Opus (when needed)
+
+#### 5. Unified Cancel Command
+
+Smart cancellation that auto-detects active mode:
+
+```bash
+/oh-my-claudecode:cancel
+# Or just say: "stop", "cancel", "abort"
+```
+
+**Auto-detects and cancels:** autopilot, ultrapilot, ralph, ultrawork, ultraqa, ecomode, swarm, pipeline
+
+**Deprecation Notice:**
+Individual cancel commands are deprecated but still work:
+- `/oh-my-claudecode:cancel-ralph` (deprecated)
+- `/oh-my-claudecode:cancel-ultraqa` (deprecated)
+- `/oh-my-claudecode:cancel-ultrawork` (deprecated)
+- `/oh-my-claudecode:cancel-ecomode` (deprecated)
+- `/oh-my-claudecode:cancel-autopilot` (deprecated)
+
+Use `/oh-my-claudecode:cancel` instead.
+
+#### 6. Explore-High Agent
+
+Opus-powered architectural search for complex codebase exploration:
+
+```typescript
+Task(subagent_type="oh-my-claudecode:explore-high",
+     model="opus",
+     prompt="Find all authentication-related code patterns...")
+```
+
+**Best for:** Architectural analysis, cross-cutting concerns, complex refactoring planning
+
+#### 7. State Management Standardization
+
+State files now use standardized paths:
+
+**Standard paths:**
+- Local: `.omc/state/{name}.json`
+- Global: `~/.omc/state/{name}.json`
+
+Legacy locations are auto-migrated on read.
+
+#### 8. Keyword Conflict Resolution
+
+When multiple execution mode keywords are present:
+
+**Conflict Resolution Priority:**
+| Priority | Condition | Result |
+|----------|-----------|--------|
+| 1 (highest) | Both explicit keywords present (e.g., "ulw eco fix errors") | `ecomode` wins (more token-restrictive) |
+| 2 | Single explicit keyword | That mode wins |
+| 3 | Generic "fast"/"parallel" only | Read from config (`defaultExecutionMode`) |
+| 4 (lowest) | No config file | Default to `ultrawork` |
+
+**Explicit mode keywords:** `ulw`, `ultrawork`, `eco`, `ecomode`
+**Generic keywords:** `fast`, `parallel`
+
+Users set their default mode preference via `/oh-my-claudecode:omc-setup`.
+
+### Migration Steps
+
+Version 3.4.0 is a drop-in upgrade. No migration required!
+
+```bash
+npm update -g oh-my-claudecode
+```
+
+All existing configurations, plans, and workflows continue working unchanged.
+
+### New Configuration Options
+
+#### Default Execution Mode
+
+Set your preferred execution mode in `~/.claude/.omc-config.json`:
+
+```json
+{
+  "defaultExecutionMode": "ultrawork"  // or "ecomode"
+}
+```
+
+When you use generic keywords like "fast" or "parallel" without explicit mode keywords, this setting determines which mode activates.
+
+### Breaking Changes
+
+None. All v3.3.x features and commands continue to work in v3.4.0.
+
+### New Tools Available
+
+Once upgraded, you automatically gain access to:
+- Ultrapilot (parallel autopilot)
+- Swarm coordination
+- Pipeline workflows
+- Ecomode execution
+- Unified cancel command
+- Explore-high agent
+
+### Best Practices for v3.4.0
+
+#### When to Use Each Mode
+
+| Scenario | Recommended Mode | Why |
+|----------|------------------|-----|
+| Multi-component systems | `ultrapilot` | Parallel workers handle independent components |
+| Many small fixes | `swarm` | Atomic task claiming prevents duplicate work |
+| Sequential dependencies | `pipeline` | Data passes between stages |
+| Budget-conscious | `ecomode` | 30-50% token savings with smart routing |
+| Single complex task | `autopilot` | Full autonomous execution |
+| Must complete | `ralph` | Persistence guarantee |
+
+#### Keyword Usage
+
+**Explicit mode control (v3.4.0):**
+```bash
+"ulw: fix all errors"           # ultrawork (explicit)
+"eco: refactor auth system"     # ecomode (explicit)
+"ulw eco: migrate database"     # ecomode wins (conflict resolution)
+"fast: implement feature"       # reads defaultExecutionMode config
+```
+
+**Natural language (still works):**
+```bash
+"don't stop until done"         # ralph
+"parallel execution"            # reads defaultExecutionMode
+"build me a todo app"           # autopilot
+```
+
+### Verification
+
+After upgrading, verify new features:
+
+1. **Check installation**:
+   ```bash
+   npm list -g oh-my-claudecode
+   ```
+
+2. **Test ultrapilot**:
+   ```bash
+   /oh-my-claudecode:ultrapilot "create a simple React component"
+   ```
+
+3. **Test unified cancel**:
+   ```bash
+   /oh-my-claudecode:cancel
+   ```
+
+4. **Check state directory**:
+   ```bash
+   ls -la .omc/state/  # Should see ultrapilot-state.json after running ultrapilot
+   ```
+
+---
+
+## v3.x → v4.0: Major Architecture Overhaul
+
+### Overview
+
+Version 4.0 is a complete architectural redesign focusing on scalability, maintainability, and developer experience.
+
+### What's Coming
+
+⚠️ **This section is under active development as v4.0 is being built.**
+
+#### Planned Changes
+
+1. **Modular Architecture**
+   - Plugin system for extensibility
+   - Core/extension separation
+   - Better dependency management
+
+2. **Enhanced Agent System**
+   - Improved agent lifecycle management
+   - Better error recovery
+   - Performance optimizations
+
+3. **Improved Configuration**
+   - Unified config schema
+   - Better validation
+   - Migration tooling
+
+4. **Breaking Changes**
+   - TBD based on development progress
+   - Full migration guide will be provided
+
+### Migration Path (Coming Soon)
+
+Detailed migration instructions will be provided when v4.0 reaches release candidate status.
+
+Expected timeline: Q1 2026
+
+### Stay Updated
+
+- Watch the [GitHub repository](https://github.com/Yeachan-Heo/oh-my-claude-sisyphus) for announcements
+- Check [CHANGELOG.md](../CHANGELOG.md) for detailed release notes
+- Join discussions in GitHub Issues
+
+---
+
+## Common Scenarios Across Versions
+
+### Scenario 1: Quick Implementation Task
+
+**2.x Workflow:**
+```
+/oh-my-claudecode:ultrawork "implement the todo list feature"
+```
+
+**3.0+ Workflow:**
+```
+"implement the todo list feature quickly"
+    ↓
+Claude: "I'm activating ultrawork for maximum parallelism"
+```
+
+**Result:** Same outcome, more natural interaction.
+
+### Scenario 2: Complex Debugging
+
+**2.x Workflow:**
+```
+/oh-my-claudecode:ralph "debug the memory leak"
+```
+
+**3.0+ Workflow:**
+```
+"there's a memory leak in the worker process - don't stop until we fix it"
+    ↓
+Claude: "I'm activating ralph-loop to ensure completion"
+```
+
+**Result:** Ralph-loop with more context from your natural language.
+
+### Scenario 3: Strategic Planning
+
+**2.x Workflow:**
+```
+/oh-my-claudecode:planner "design the new authentication system"
+```
+
+**3.0+ Workflow:**
+```
+"plan the new authentication system"
+    ↓
+Claude: "I'm starting a planning session"
+    ↓
+Interview begins automatically
+```
+
+**Result:** Planning interview triggered by natural language.
+
+### Scenario 4: Stopping Work
+
+**2.x Workflow:**
+```
+/oh-my-claudecode:cancel-ralph
+```
+
+**3.0+ Workflow:**
+```
+"stop"
+```
+
+**Result:** Claude intelligently cancels the active operation.
 
 ---
 
@@ -331,94 +827,13 @@ Creates: `~/.claude/CLAUDE.md`
 
 ---
 
-## Common Scenarios: 2.x vs 3.0
-
-### Scenario 1: Quick Implementation Task
-
-**2.x Workflow:**
-```
-/oh-my-claudecode:ultrawork "implement the todo list feature"
-```
-
-**3.0 Workflow:**
-```
-"implement the todo list feature quickly"
-    ↓
-Claude: "I'm activating ultrawork for maximum parallelism"
-```
-
-**Result:** Same outcome, more natural interaction.
-
-### Scenario 2: Complex Debugging
-
-**2.x Workflow:**
-```
-/oh-my-claudecode:ralph "debug the memory leak"
-```
-
-**3.0 Workflow:**
-```
-"there's a memory leak in the worker process - don't stop until we fix it"
-    ↓
-Claude: "I'm activating ralph-loop to ensure completion"
-```
-
-**Result:** Ralph-loop with more context from your natural language.
-
-### Scenario 3: Strategic Planning
-
-**2.x Workflow:**
-```
-/oh-my-claudecode:planner "design the new authentication system"
-```
-
-**3.0 Workflow:**
-```
-"plan the new authentication system"
-    ↓
-Claude: "I'm starting a planning session"
-    ↓
-Interview begins automatically
-```
-
-**Result:** Planning interview triggered by natural language.
-
-### Scenario 4: Stopping Work
-
-**2.x Workflow:**
-```
-/oh-my-claudecode:cancel-ralph
-```
-
-**3.0 Workflow:**
-```
-"stop"
-```
-
-**Result:** Claude intelligently cancels the active operation.
-
----
-
-## Migration Checklist
-
-If you're upgrading from 2.x:
-
-- [ ] Install/Update plugin: `claude plugin install oh-my-claude-sisyphus`
-- [ ] Run setup: say "setup omc"
-- [ ] Test natural language: Say "don't stop until done" (should activate ralph)
-- [ ] Test keyword: Use `ralph` keyword in a request (should activate ralph-loop)
-- [ ] Test cancellation: Say "stop" (should cancel active operation)
-- [ ] Review existing scripts: Update references to old command names (optional - old commands still work)
-
----
-
 ## FAQ
 
 **Q: Do I have to use keywords?**
 A: No. Keywords are optional shortcuts. Claude auto-detects intent without them.
 
 **Q: Will my old commands break?**
-A: No. All 2.x commands continue to work exactly as before.
+A: No. All commands continue to work across minor versions (3.0 → 3.1). Major version changes (3.x → 4.0) will provide migration paths.
 
 **Q: What if I like explicit commands?**
 A: Keep using them! `/oh-my-claudecode:ralph`, `/oh-my-claudecode:ultrawork`, `/oh-my-claudecode:planner` all still work.
@@ -426,7 +841,7 @@ A: Keep using them! `/oh-my-claudecode:ralph`, `/oh-my-claudecode:ultrawork`, `/
 **Q: How do I know what Claude is doing?**
 A: Claude announces major behaviors: "I'm activating ralph-loop..." or set up `/oh-my-claudecode:hud` for real-time status.
 
-**Q: Where's the old command list?**
+**Q: Where's the full command list?**
 A: See [README.md](../README.md) for full command reference. All commands still work.
 
 **Q: What's the difference between keywords and natural language?**
@@ -453,4 +868,4 @@ Now that you understand the migration:
 3. **For advanced usage**: Check [docs/ARCHITECTURE.md](ARCHITECTURE.md) for deep dives
 4. **For team onboarding**: Share this guide with teammates
 
-Welcome to 3.0!
+Welcome to oh-my-claudecode!

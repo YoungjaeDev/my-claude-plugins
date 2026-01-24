@@ -1,7 +1,6 @@
 ---
 name: autopilot
 description: Full autonomous execution from idea to working code
-user-invocable: true
 ---
 
 # Autopilot Skill

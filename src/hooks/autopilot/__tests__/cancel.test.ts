@@ -18,20 +18,20 @@ import {
 } from '../state.js';
 
 // Mock the ralph and ultraqa modules
-vi.mock('../../ralph-loop/index.js', () => ({
+vi.mock('../../ralph/index.js', () => ({
   clearRalphState: vi.fn(() => true),
   clearLinkedUltraworkState: vi.fn(() => true),
   readRalphState: vi.fn(() => null)
 }));
 
-vi.mock('../../ultraqa-loop/index.js', () => ({
+vi.mock('../../ultraqa/index.js', () => ({
   clearUltraQAState: vi.fn(() => true),
   readUltraQAState: vi.fn(() => null)
 }));
 
 // Import mocked functions after vi.mock
-import * as ralphLoop from '../../ralph-loop/index.js';
-import * as ultraqaLoop from '../../ultraqa-loop/index.js';
+import * as ralphLoop from '../../ralph/index.js';
+import * as ultraqaLoop from '../../ultraqa/index.js';
 
 describe('AutopilotCancel', () => {
   let testDir: string;

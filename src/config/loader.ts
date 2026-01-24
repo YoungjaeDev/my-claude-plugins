@@ -41,8 +41,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   },
   mcpServers: {
     exa: { enabled: true },
-    context7: { enabled: true },
-    grepApp: { enabled: true }
+    context7: { enabled: true }
   },
   permissions: {
     allowBash: true,
@@ -385,10 +384,6 @@ export function generateConfigSchema(): object {
             }
           },
           context7: {
-            type: 'object',
-            properties: { enabled: { type: 'boolean' } }
-          },
-          grepApp: {
             type: 'object',
             properties: { enabled: { type: 'boolean' } }
           }

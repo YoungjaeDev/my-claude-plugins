@@ -1,5 +1,6 @@
 ---
 description: Activate maximum performance mode with parallel agent orchestration for high-throughput task completion
+aliases: [ulw, uw, turbo]
 ---
 
 # Ultrawork Skill

@@ -89,7 +89,8 @@ export const architectMediumAgent: AgentConfig = {
   description: 'Architecture & Debugging Advisor - Medium complexity (Sonnet). Use for moderate analysis.',
   prompt: loadAgentPrompt('architect-medium'),
   tools: ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch'],
-  model: 'sonnet'
+  model: 'sonnet',
+  defaultModel: 'sonnet'
 };
 
 /**
@@ -100,7 +101,8 @@ export const architectLowAgent: AgentConfig = {
   description: 'Quick code questions & simple lookups (Haiku). Use for simple questions that need fast answers.',
   prompt: loadAgentPrompt('architect-low'),
   tools: ['Read', 'Glob', 'Grep'],
-  model: 'haiku'
+  model: 'haiku',
+  defaultModel: 'haiku'
 };
 
 /**
@@ -111,7 +113,8 @@ export const executorHighAgent: AgentConfig = {
   description: 'Complex task executor for multi-file changes (Opus). Use for tasks requiring deep reasoning.',
   prompt: loadAgentPrompt('executor-high'),
   tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash', 'TodoWrite'],
-  model: 'opus'
+  model: 'opus',
+  defaultModel: 'opus'
 };
 
 /**
@@ -122,7 +125,8 @@ export const executorLowAgent: AgentConfig = {
   description: 'Simple single-file task executor (Haiku). Use for trivial tasks.',
   prompt: loadAgentPrompt('executor-low'),
   tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash', 'TodoWrite'],
-  model: 'haiku'
+  model: 'haiku',
+  defaultModel: 'haiku'
 };
 
 /**
@@ -133,7 +137,8 @@ export const researcherLowAgent: AgentConfig = {
   description: 'Quick documentation lookups (Haiku). Use for simple documentation queries.',
   prompt: loadAgentPrompt('researcher-low'),
   tools: ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch'],
-  model: 'haiku'
+  model: 'haiku',
+  defaultModel: 'haiku'
 };
 
 /**
@@ -144,7 +149,20 @@ export const exploreMediumAgent: AgentConfig = {
   description: 'Thorough codebase search with reasoning (Sonnet). Use when search requires more reasoning.',
   prompt: loadAgentPrompt('explore-medium'),
   tools: ['Read', 'Glob', 'Grep'],
-  model: 'sonnet'
+  model: 'sonnet',
+  defaultModel: 'sonnet'
+};
+
+/**
+ * Explore-High Agent - Complex Architectural Search (Opus)
+ */
+export const exploreHighAgent: AgentConfig = {
+  name: 'explore-high',
+  description: 'Complex architectural search for deep system understanding (Opus). Use for architectural mapping and design pattern discovery.',
+  prompt: loadAgentPrompt('explore-high'),
+  tools: ['Read', 'Glob', 'Grep'],
+  model: 'opus',
+  defaultModel: 'opus'
 };
 
 /**
@@ -155,7 +173,8 @@ export const designerLowAgent: AgentConfig = {
   description: 'Simple styling and minor UI tweaks (Haiku). Use for trivial frontend work.',
   prompt: loadAgentPrompt('designer-low'),
   tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'],
-  model: 'haiku'
+  model: 'haiku',
+  defaultModel: 'haiku'
 };
 
 /**
@@ -166,152 +185,20 @@ export const designerHighAgent: AgentConfig = {
   description: 'Complex UI architecture and design systems (Opus). Use for sophisticated frontend work.',
   prompt: loadAgentPrompt('designer-high'),
   tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'],
-  model: 'opus'
+  model: 'opus',
+  defaultModel: 'opus'
 };
 
 /**
  * QA-Tester-High Agent - Comprehensive Production QA (Opus)
- * Note: No .md file exists yet, prompt defined inline
  */
 export const qaTesterHighAgent: AgentConfig = {
   name: 'qa-tester-high',
   description: 'Comprehensive production-ready QA testing with Opus. Use for thorough verification, edge case detection, security testing, and high-stakes releases.',
-  prompt: `<Role>
-QA-Tester (High Tier) - Comprehensive Production QA Specialist
-
-You are a SENIOR QA ENGINEER specialized in production-readiness verification.
-Use this agent for:
-- High-stakes releases and production deployments
-- Comprehensive edge case and boundary testing
-- Security-focused verification
-- Performance regression detection
-- Complex integration testing scenarios
-</Role>
-
-<Critical_Identity>
-You TEST applications with COMPREHENSIVE coverage. You don't just verify happy paths - you actively hunt for:
-- Edge cases and boundary conditions
-- Security vulnerabilities (injection, auth bypass, data exposure)
-- Performance regressions
-- Race conditions and concurrency issues
-- Error handling gaps
-</Critical_Identity>
-
-<Prerequisites_Check>
-## MANDATORY: Check Prerequisites Before Testing
-
-### 1. Verify tmux is available
-\`\`\`bash
-command -v tmux &>/dev/null || { echo "FAIL: tmux not installed"; exit 1; }
-\`\`\`
-
-### 2. Check port availability
-\`\`\`bash
-PORT=<your-port>
-nc -z localhost $PORT 2>/dev/null && { echo "FAIL: Port $PORT in use"; exit 1; }
-\`\`\`
-
-### 3. Verify working directory
-\`\`\`bash
-[ -d "<project-dir>" ] || { echo "FAIL: Project not found"; exit 1; }
-\`\`\`
-</Prerequisites_Check>
-
-<Comprehensive_Testing>
-## Testing Strategy (MANDATORY for High-Tier)
-
-### 1. Happy Path Testing
-- Core functionality works as expected
-- All primary use cases verified
-
-### 2. Edge Case Testing
-- Empty inputs, null values
-- Maximum/minimum boundaries
-- Unicode and special characters
-- Concurrent access patterns
-
-### 3. Error Handling Testing
-- Invalid inputs produce clear errors
-- Graceful degradation under failure
-- No stack traces exposed to users
-
-### 4. Security Testing
-- Input validation (no injection)
-- Authentication/authorization checks
-- Sensitive data handling
-- Session management
-
-### 5. Performance Testing
-- Response time within acceptable limits
-- No memory leaks during operation
-- Handles expected load
-</Comprehensive_Testing>
-
-<Tmux_Commands>
-## Session Management
-\`\`\`bash
-tmux new-session -d -s <name>
-tmux send-keys -t <name> '<command>' Enter
-tmux capture-pane -t <name> -p -S -100
-tmux kill-session -t <name>
-\`\`\`
-
-## Waiting for Output
-\`\`\`bash
-for i in {1..30}; do
-  tmux capture-pane -t <name> -p | grep -q '<pattern>' && break
-  sleep 1
-done
-\`\`\`
-</Tmux_Commands>
-
-<Report_Format>
-## Comprehensive QA Report
-
-\`\`\`
-## QA Report: [Test Name]
-### Environment
-- Session: [tmux session name]
-- Service: [what was tested]
-- Test Level: COMPREHENSIVE (High-Tier)
-
-### Test Categories
-
-#### Happy Path Tests
-| Test | Status | Notes |
-|------|--------|-------|
-| [test] | PASS/FAIL | [details] |
-
-#### Edge Case Tests
-| Test | Status | Notes |
-|------|--------|-------|
-| [test] | PASS/FAIL | [details] |
-
-#### Security Tests
-| Test | Status | Notes |
-|------|--------|-------|
-| [test] | PASS/FAIL | [details] |
-
-### Summary
-- Total: N tests
-- Passed: X
-- Failed: Y
-- Security Issues: Z
-
-### Verdict
-[PRODUCTION-READY / NOT READY - reasons]
-\`\`\`
-</Report_Format>
-
-<Critical_Rules>
-1. **ALWAYS test edge cases** - Happy paths are not enough for production
-2. **ALWAYS clean up sessions** - Never leave orphan tmux sessions
-3. **Security is NON-NEGOTIABLE** - Flag any security concerns immediately
-4. **Report actual vs expected** - On failure, show what was received
-5. **PRODUCTION-READY verdict** - Only give if ALL categories pass
-</Critical_Rules>`,
+  prompt: loadAgentPrompt('qa-tester-high'),
   tools: ['Bash', 'Read', 'Grep', 'Glob', 'TodoWrite'],
-  model: 'opus'
+  model: 'opus',
+  defaultModel: 'opus'
 };
 
 /**
@@ -322,7 +209,8 @@ export const scientistLowAgent: AgentConfig = {
   description: 'Quick data inspection and simple statistics (Haiku). Use for fast, simple queries.',
   prompt: loadAgentPrompt('scientist-low'),
   tools: ['Read', 'Glob', 'Grep', 'Bash', 'python_repl'],
-  model: 'haiku'
+  model: 'haiku',
+  defaultModel: 'haiku'
 };
 
 /**
@@ -333,7 +221,8 @@ export const scientistHighAgent: AgentConfig = {
   description: 'Complex research, hypothesis testing, and ML specialist (Opus). Use for deep analysis.',
   prompt: loadAgentPrompt('scientist-high'),
   tools: ['Read', 'Glob', 'Grep', 'Bash', 'python_repl'],
-  model: 'opus'
+  model: 'opus',
+  defaultModel: 'opus'
 };
 
 // ============================================================
@@ -348,7 +237,8 @@ export const securityReviewerAgent: AgentConfig = {
   description: 'Security vulnerability detection specialist (Opus). Use for security audits and code review.',
   prompt: loadAgentPrompt('security-reviewer'),
   tools: ['Read', 'Grep', 'Glob', 'Bash'],
-  model: 'opus'
+  model: 'opus',
+  defaultModel: 'opus'
 };
 
 /**
@@ -359,7 +249,8 @@ export const securityReviewerLowAgent: AgentConfig = {
   description: 'Quick security scan specialist (Haiku). Use for fast security checks on small code changes.',
   prompt: loadAgentPrompt('security-reviewer-low'),
   tools: ['Read', 'Grep', 'Glob', 'Bash'],
-  model: 'haiku'
+  model: 'haiku',
+  defaultModel: 'haiku'
 };
 
 /**
@@ -370,7 +261,8 @@ export const buildFixerAgent: AgentConfig = {
   description: 'Build and TypeScript error resolution specialist (Sonnet). Use for fixing build errors.',
   prompt: loadAgentPrompt('build-fixer'),
   tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
-  model: 'sonnet'
+  model: 'sonnet',
+  defaultModel: 'sonnet'
 };
 
 /**
@@ -381,7 +273,8 @@ export const buildFixerLowAgent: AgentConfig = {
   description: 'Simple build error fixer (Haiku). Use for trivial type errors and single-line fixes.',
   prompt: loadAgentPrompt('build-fixer-low'),
   tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
-  model: 'haiku'
+  model: 'haiku',
+  defaultModel: 'haiku'
 };
 
 /**
@@ -392,7 +285,8 @@ export const tddGuideAgent: AgentConfig = {
   description: 'Test-Driven Development specialist (Sonnet). Use for TDD workflows and test coverage.',
   prompt: loadAgentPrompt('tdd-guide'),
   tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
-  model: 'sonnet'
+  model: 'sonnet',
+  defaultModel: 'sonnet'
 };
 
 /**
@@ -403,7 +297,8 @@ export const tddGuideLowAgent: AgentConfig = {
   description: 'Quick test suggestion specialist (Haiku). Use for simple test case ideas.',
   prompt: loadAgentPrompt('tdd-guide-low'),
   tools: ['Read', 'Grep', 'Glob', 'Bash'],
-  model: 'haiku'
+  model: 'haiku',
+  defaultModel: 'haiku'
 };
 
 /**
@@ -414,7 +309,8 @@ export const codeReviewerAgent: AgentConfig = {
   description: 'Expert code review specialist (Opus). Use for comprehensive code quality review.',
   prompt: loadAgentPrompt('code-reviewer'),
   tools: ['Read', 'Grep', 'Glob', 'Bash'],
-  model: 'opus'
+  model: 'opus',
+  defaultModel: 'opus'
 };
 
 /**
@@ -425,7 +321,8 @@ export const codeReviewerLowAgent: AgentConfig = {
   description: 'Quick code quality checker (Haiku). Use for fast review of small changes.',
   prompt: loadAgentPrompt('code-reviewer-low'),
   tools: ['Read', 'Grep', 'Glob', 'Bash'],
-  model: 'haiku'
+  model: 'haiku',
+  defaultModel: 'haiku'
 };
 
 // ============================================================
@@ -440,6 +337,7 @@ export function getAgentDefinitions(overrides?: Partial<Record<string, Partial<A
   prompt: string;
   tools: string[];
   model?: ModelType;
+  defaultModel?: ModelType;
 }> {
   const agents = {
     // Base agents (from individual files)
@@ -462,6 +360,7 @@ export function getAgentDefinitions(overrides?: Partial<Record<string, Partial<A
     'executor-low': executorLowAgent,
     'researcher-low': researcherLowAgent,
     'explore-medium': exploreMediumAgent,
+    'explore-high': exploreHighAgent,
     'designer-low': designerLowAgent,
     'designer-high': designerHighAgent,
     'qa-tester-high': qaTesterHighAgent,
@@ -478,7 +377,7 @@ export function getAgentDefinitions(overrides?: Partial<Record<string, Partial<A
     'code-reviewer-low': codeReviewerLowAgent
   };
 
-  const result: Record<string, { description: string; prompt: string; tools: string[]; model?: ModelType }> = {};
+  const result: Record<string, { description: string; prompt: string; tools: string[]; model?: ModelType; defaultModel?: ModelType }> = {};
 
   for (const [name, config] of Object.entries(agents)) {
     const override = overrides?.[name];
@@ -486,7 +385,8 @@ export function getAgentDefinitions(overrides?: Partial<Record<string, Partial<A
       description: override?.description ?? config.description,
       prompt: override?.prompt ?? config.prompt,
       tools: override?.tools ?? config.tools,
-      model: (override?.model ?? config.model) as ModelType | undefined
+      model: (override?.model ?? config.model) as ModelType | undefined,
+      defaultModel: (override?.defaultModel ?? config.defaultModel) as ModelType | undefined
     };
   }
 

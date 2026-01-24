@@ -2,13 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { initAutopilot, transitionPhase, readAutopilotState } from '../state.js';
 import {
+  initAutopilot,
+  transitionPhase,
+  readAutopilotState,
   transitionRalphToUltraQA,
   transitionUltraQAToValidation,
   transitionToComplete,
   getTransitionPrompt
-} from '../transition.js';
+} from '../state.js';
 
 describe('Phase Transitions', () => {
   let testDir: string;

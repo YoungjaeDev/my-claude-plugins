@@ -8,13 +8,13 @@ describe('Builtin Skills', () => {
   });
 
   describe('createBuiltinSkills()', () => {
-    it('should return correct number of skills (30)', () => {
+    it('should return correct number of skills (37)', () => {
       const skills = createBuiltinSkills();
-      // 30 skills: analyze, autopilot, cancel-autopilot, cancel-ralph, cancel-ultraqa, cancel-ultrawork, deepinit,
-      // deepsearch, doctor, frontend-ui-ux, git-master, help, hud, learner, note,
-      // omc-default, omc-default-global, omc-setup, plan, planner, ralplan, ralph-init, ralph,
-      // release, research, review, orchestrate, tdd, ultraqa, ultrawork
-      expect(skills).toHaveLength(30);
+      // 37 skills: analyze, autopilot, cancel, cancel-autopilot, cancel-ecomode, cancel-ralph, cancel-ultraqa, cancel-ultrawork,
+      // deepinit, deepsearch, doctor, ecomode, frontend-ui-ux, git-master, help, hud, learner, mcp-setup, note,
+      // omc-default, omc-default-global, omc-setup, orchestrate, pipeline, plan, planner, ralph, ralph-init,
+      // ralplan, release, research, review, swarm, tdd, ultrapilot, ultraqa, ultrawork
+      expect(skills).toHaveLength(37);
     });
 
     it('should return an array of BuiltinSkill objects', () => {
@@ -64,36 +64,43 @@ describe('Builtin Skills', () => {
     it('should have valid skill names', () => {
       const skills = createBuiltinSkills();
       const expectedSkills = [
-        'orchestrate',
-        'ralph',
-        'ralph-init',
-        'frontend-ui-ux',
-        'git-master',
-        'ultrawork',
         'analyze',
-        'deepsearch',
-        'planner',
-        'review',
-        'deepinit',
-        'release',
+        'autopilot',
+        'cancel',
+        'cancel-autopilot',
+        'cancel-ecomode',
         'cancel-ralph',
         'cancel-ultraqa',
         'cancel-ultrawork',
-        'cancel-autopilot',
-        'autopilot',
-        'learner',
-        'plan',
-        'ralplan',
-        'ultraqa',
+        'deepinit',
+        'deepsearch',
         'doctor',
+        'ecomode',
+        'frontend-ui-ux',
+        'git-master',
         'help',
         'hud',
+        'learner',
+        'mcp-setup',
         'note',
         'omc-default',
         'omc-default-global',
         'omc-setup',
+        'orchestrate',
+        'pipeline',
+        'plan',
+        'planner',
+        'ralph',
+        'ralph-init',
+        'ralplan',
+        'release',
         'research',
+        'review',
+        'swarm',
         'tdd',
+        'ultrapilot',
+        'ultraqa',
+        'ultrawork',
       ];
 
       const actualSkillNames = skills.map((s) => s.name);
@@ -137,7 +144,7 @@ describe('Builtin Skills', () => {
   describe('listBuiltinSkillNames()', () => {
     it('should return all skill names', () => {
       const names = listBuiltinSkillNames();
-      expect(names).toHaveLength(30);
+      expect(names).toHaveLength(37);
       expect(names).toContain('orchestrate');
       expect(names).toContain('autopilot');
       expect(names).toContain('cancel-autopilot');

@@ -1,7 +1,6 @@
 ---
 name: planner
 description: Strategic planning with interview workflow
-user-invocable: true
 ---
 
 # Planner - Strategic Planning Agent

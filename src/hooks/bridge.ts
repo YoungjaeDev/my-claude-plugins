@@ -14,17 +14,17 @@
  */
 
 import { detectKeywordsWithType, removeCodeBlocks } from './keyword-detector/index.js';
-import { readRalphState, incrementRalphIteration, clearRalphState, detectCompletionPromise, createRalphLoopHook } from './ralph-loop/index.js';
+import { readRalphState, incrementRalphIteration, clearRalphState, detectCompletionPromise, createRalphLoopHook } from './ralph/index.js';
 import { addBackgroundTask, completeBackgroundTask } from '../hud/background-tasks.js';
 import {
   readVerificationState,
   startVerification,
   getArchitectVerificationPrompt,
   clearVerificationState
-} from './ralph-verifier/index.js';
+} from './ralph/index.js';
 import { checkIncompleteTodos, StopContext } from './todo-continuation/index.js';
 import { checkPersistentModes, createHookOutput } from './persistent-mode/index.js';
-import { activateUltrawork, readUltraworkState } from './ultrawork-state/index.js';
+import { activateUltrawork, readUltraworkState } from './ultrawork/index.js';
 import {
   readAutopilotState,
   isAutopilotActive,

@@ -1,7 +1,6 @@
 ---
 name: omc-default-global
 description: Configure OMC globally in ~/.claude/CLAUDE.md
-user-invocable: true
 ---
 
 # OMC Default Global

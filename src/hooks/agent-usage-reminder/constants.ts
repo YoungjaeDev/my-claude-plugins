@@ -27,7 +27,6 @@ export const TARGET_TOOLS = new Set([
   'context7_query-docs',
   'websearch_web_search_exa',
   'context7_get-library-docs',
-  'grep_app_searchgithub',
 ]);
 
 /** Agent tools that indicate agent usage */

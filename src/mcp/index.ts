@@ -5,12 +5,9 @@
 export {
   createExaServer,
   createContext7Server,
-  createGrepAppServer,
   createPlaywrightServer,
   createFilesystemServer,
-  createGitServer,
   createMemoryServer,
-  createFetchServer,
   getDefaultMcpServers,
   toSdkMcpFormat
 } from './servers.js';

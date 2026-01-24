@@ -1,7 +1,6 @@
 ---
 name: ultrawork
 description: Activate maximum performance mode with parallel agent orchestration for high-throughput task completion
-user-invocable: true
 ---
 
 # Ultrawork Skill

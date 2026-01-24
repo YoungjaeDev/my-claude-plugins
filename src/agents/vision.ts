@@ -69,5 +69,6 @@ Response rules:
 Your output goes straight to the main agent for continued work.`,
   tools: ['Read', 'WebFetch'],
   model: 'sonnet',
+  defaultModel: 'sonnet',
   metadata: MULTIMODAL_LOOKER_PROMPT_METADATA,
 };

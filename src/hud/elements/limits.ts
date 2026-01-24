@@ -101,3 +101,45 @@ export function renderRateLimitsCompact(limits: RateLimits | null): string | nul
 
   return `${fiveHourColor}${fiveHour}%${RESET}/${weeklyColor}${weekly}%${RESET}`;
 }
+
+/**
+ * Render rate limits with visual progress bars.
+ *
+ * Format: 5h:[████░░░░░░]45%(3h42m) wk:[█░░░░░░░░░]12%(2d5h)
+ */
+export function renderRateLimitsWithBar(
+  limits: RateLimits | null,
+  barWidth: number = 8
+): string | null {
+  if (!limits) return null;
+
+  const fiveHour = Math.min(100, Math.max(0, Math.round(limits.fiveHourPercent)));
+  const weekly = Math.min(100, Math.max(0, Math.round(limits.weeklyPercent)));
+
+  const fiveHourColor = getColor(fiveHour);
+  const weeklyColor = getColor(weekly);
+
+  // Build bars
+  const fiveHourFilled = Math.round((fiveHour / 100) * barWidth);
+  const fiveHourEmpty = barWidth - fiveHourFilled;
+  const fiveHourBar = `${fiveHourColor}${'█'.repeat(fiveHourFilled)}${DIM}${'░'.repeat(fiveHourEmpty)}${RESET}`;
+
+  const weeklyFilled = Math.round((weekly / 100) * barWidth);
+  const weeklyEmpty = barWidth - weeklyFilled;
+  const weeklyBar = `${weeklyColor}${'█'.repeat(weeklyFilled)}${DIM}${'░'.repeat(weeklyEmpty)}${RESET}`;
+
+  // Format reset times
+  const fiveHourReset = formatResetTime(limits.fiveHourResetsAt);
+  const weeklyReset = formatResetTime(limits.weeklyResetsAt);
+
+  // Build parts with bars
+  const fiveHourPart = fiveHourReset
+    ? `5h:[${fiveHourBar}]${fiveHourColor}${fiveHour}%${RESET}${DIM}(${fiveHourReset})${RESET}`
+    : `5h:[${fiveHourBar}]${fiveHourColor}${fiveHour}%${RESET}`;
+
+  const weeklyPart = weeklyReset
+    ? `${DIM}wk:${RESET}[${weeklyBar}]${weeklyColor}${weekly}%${RESET}${DIM}(${weeklyReset})${RESET}`
+    : `${DIM}wk:${RESET}[${weeklyBar}]${weeklyColor}${weekly}%${RESET}`;
+
+  return `${fiveHourPart} ${weeklyPart}`;
+}

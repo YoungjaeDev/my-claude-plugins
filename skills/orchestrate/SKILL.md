@@ -1,7 +1,6 @@
 ---
 name: orchestrate
 description: Activate multi-agent orchestration mode
-user-invocable: true
 ---
 
 # Orchestrate Skill

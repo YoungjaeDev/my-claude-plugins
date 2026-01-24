@@ -1,7 +1,6 @@
 ---
 name: doctor
 description: Diagnose and fix oh-my-claudecode installation issues
-user-invocable: true
 ---
 
 # Doctor Skill

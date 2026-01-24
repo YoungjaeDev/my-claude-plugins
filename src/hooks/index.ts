@@ -20,11 +20,16 @@ export {
 } from './keyword-detector/index.js';
 
 export {
-  // Ralph Loop (persistence)
+  // Ralph Hook (consolidated: loop, PRD, progress, verifier)
+  // Loop
   createRalphLoopHook,
   readRalphState,
   writeRalphState,
   clearRalphState,
+  clearLinkedUltraworkState,
+  incrementRalphIteration,
+  detectCompletionPromise,
+  isUltraQAActive,
   // PRD Integration
   hasPrd,
   getPrdCompletionStatus,
@@ -34,18 +39,12 @@ export {
   recordStoryProgress,
   recordPattern,
   shouldCompleteByPrd,
-  type RalphLoopState,
-  type RalphLoopHook,
-  type PRD,
-  type PRDStatus,
-  type UserStory
-} from './ralph-loop/index.js';
-
-export {
-  // Ralph PRD (Structured Task Tracking)
+  // PRD (Structured Task Tracking)
   readPrd,
   writePrd,
   findPrdPath,
+  getPrdPath,
+  getOmcPrdPath,
   getPrdStatus,
   markStoryComplete,
   markStoryIncomplete,
@@ -59,14 +58,14 @@ export {
   formatPrd,
   formatNextStoryPrompt,
   PRD_FILENAME,
-  type UserStory as PrdUserStory
-} from './ralph-prd/index.js';
-
-export {
-  // Ralph Progress (Memory Persistence)
+  PRD_EXAMPLE_FILENAME,
+  // Progress (Memory Persistence)
   readProgress,
   readProgressRaw,
   parseProgress,
+  findProgressPath,
+  getProgressPath,
+  getOmcProgressPath,
   initProgress,
   appendProgress,
   addPattern,
@@ -77,10 +76,31 @@ export {
   formatLearningsForContext,
   getProgressContext,
   PROGRESS_FILENAME,
+  PATTERNS_HEADER,
+  ENTRY_SEPARATOR,
+  // Verifier (Architect Verification)
+  readVerificationState,
+  writeVerificationState,
+  clearVerificationState,
+  startVerification,
+  recordArchitectFeedback,
+  getArchitectVerificationPrompt,
+  getArchitectRejectionContinuationPrompt,
+  detectArchitectApproval,
+  detectArchitectRejection,
+  // Types
+  type RalphLoopState,
+  type RalphLoopOptions,
+  type RalphLoopHook,
+  type PRD,
+  type PRDStatus,
+  type UserStory,
+  type UserStoryInput,
   type ProgressEntry,
   type CodebasePattern,
-  type ProgressLog
-} from './ralph-progress/index.js';
+  type ProgressLog,
+  type VerificationState
+} from './ralph/index.js';
 
 export {
   // Todo Continuation
@@ -96,17 +116,8 @@ export {
   type HookOutput
 } from './bridge.js';
 
-export {
-  // Edit Error Recovery
-  createEditErrorRecoveryHook,
-  detectEditError,
-  injectEditErrorRecovery,
-  processEditOutput,
-  EDIT_ERROR_PATTERNS,
-  EDIT_ERROR_REMINDER,
-  type ToolExecuteInput,
-  type ToolExecuteOutput
-} from './edit-error-recovery/index.js';
+// Edit Error Recovery - now part of unified recovery module
+// See exports from './recovery/index.js' above
 
 export {
   // Think Mode
@@ -234,12 +245,39 @@ export {
 } from './comment-checker/index.js';
 
 export {
+  // Unified Recovery Module
+  createRecoveryHook,
+  handleRecovery,
+  detectRecoverableError,
   // Context Window Limit Recovery
-  createContextLimitRecoveryHook,
+  handleContextWindowRecovery,
   detectContextLimitError,
+  detectContextLimitErrorInText,
   parseContextLimitError,
   parseTokenLimitError,
   containsTokenLimitError,
+  // Edit Error Recovery
+  handleEditErrorRecovery,
+  detectEditError,
+  detectEditErrorInOutput,
+  detectEditErrorInText,
+  processEditOutput,
+  // Session Recovery
+  handleSessionRecovery,
+  detectSessionErrorType,
+  isRecoverableError,
+  isSessionRecoverable,
+  // Storage utilities
+  readMessages as readRecoveryMessages,
+  readParts as readRecoveryParts,
+  findEmptyMessages as findRecoveryEmptyMessages,
+  findMessagesWithThinkingBlocks as findRecoveryThinkingBlocks,
+  findMessagesWithOrphanThinking as findRecoveryOrphanThinking,
+  injectTextPart as injectRecoveryTextPart,
+  prependThinkingPart as prependRecoveryThinkingPart,
+  stripThinkingParts as stripRecoveryThinkingParts,
+  replaceEmptyTextParts as replaceRecoveryEmptyTextParts,
+  // Constants
   TOKEN_LIMIT_PATTERNS,
   TOKEN_LIMIT_KEYWORDS,
   CONTEXT_LIMIT_RECOVERY_MESSAGE,
@@ -247,14 +285,26 @@ export {
   NON_EMPTY_CONTENT_RECOVERY_MESSAGE,
   TRUNCATION_APPLIED_MESSAGE,
   RECOVERY_FAILED_MESSAGE,
+  EDIT_ERROR_PATTERNS,
+  EDIT_ERROR_REMINDER,
   RETRY_CONFIG,
   TRUNCATE_CONFIG,
+  RECOVERY_MESSAGES,
+  PLACEHOLDER_TEXT as RECOVERY_PLACEHOLDER_TEXT,
+  // Types
   type ParsedTokenLimitError,
   type RetryState,
   type TruncateState,
   type RecoveryResult,
-  type ContextLimitRecoveryConfig
-} from './context-window-limit-recovery/index.js';
+  type RecoveryConfig,
+  type RecoveryErrorType,
+  type MessageData as RecoveryMessageData,
+  type StoredMessageMeta as RecoveryStoredMessageMeta,
+  type StoredPart as RecoveryStoredPart,
+  type StoredTextPart as RecoveryStoredTextPart,
+  type StoredToolPart as RecoveryStoredToolPart,
+  type StoredReasoningPart as RecoveryStoredReasoningPart
+} from './recovery/index.js';
 
 export {
   // Preemptive Compaction
@@ -361,28 +411,8 @@ export {
   type ShellHook
 } from './non-interactive-env/index.js';
 
-export {
-  // Session Recovery
-  createSessionRecoveryHook,
-  handleSessionRecovery,
-  detectErrorType,
-  isRecoverableError,
-  findEmptyMessages as findRecoveryEmptyMessages,
-  findMessagesWithThinkingBlocks as findRecoveryThinkingBlocks,
-  findMessagesWithOrphanThinking as findRecoveryOrphanThinking,
-  readMessages as readRecoveryMessages,
-  readParts as readRecoveryParts,
-  RECOVERY_MESSAGES,
-  PLACEHOLDER_TEXT as RECOVERY_PLACEHOLDER_TEXT,
-  type MessageData,
-  type RecoveryErrorType,
-  type RecoveryResult as SessionRecoveryResult,
-  type SessionRecoveryConfig,
-  type StoredMessageMeta,
-  type StoredPart,
-  type StoredTextPart,
-  type StoredToolPart
-} from './session-recovery/index.js';
+// Session Recovery - now part of unified recovery module
+// See exports from './recovery/index.js' above
 
 export {
   // Agent Usage Reminder
@@ -407,7 +437,7 @@ export {
   getUltraworkPersistenceMessage,
   createUltraworkStateHook,
   type UltraworkState
-} from './ultrawork-state/index.js';
+} from './ultrawork/index.js';
 
 export {
   // Persistent Mode (Unified Stop Handler)
@@ -435,19 +465,7 @@ export {
   type PreCommitResult
 } from './plugin-patterns/index.js';
 
-export {
-  // Ralph Verifier (Architect-verified completion)
-  readVerificationState,
-  writeVerificationState,
-  clearVerificationState,
-  startVerification,
-  recordArchitectFeedback,
-  getArchitectVerificationPrompt,
-  getArchitectRejectionContinuationPrompt,
-  detectArchitectApproval,
-  detectArchitectRejection,
-  type VerificationState
-} from './ralph-verifier/index.js';
+// Ralph Verifier is now exported from ./ralph/index.js above
 
 export {
   // UltraQA Loop (QA cycling workflow)
@@ -465,7 +483,7 @@ export {
   type UltraQAGoalType,
   type UltraQAOptions,
   type UltraQAResult
-} from './ultraqa-loop/index.js';
+} from './ultraqa/index.js';
 
 export {
   // Notepad (Compaction-Resilient Memory)
@@ -615,3 +633,34 @@ export {
   type ValidationCoordinatorResult,
   type CancelResult
 } from './autopilot/index.js';
+
+export {
+  // Ultrapilot Coordinator
+  startUltrapilot,
+  decomposeTask,
+  spawnWorkers,
+  trackProgress,
+  integrateResults,
+  handleSharedFiles,
+  isFileOwnedByWorker,
+  isSharedFile,
+  assignFileToWorker,
+  readUltrapilotState,
+  writeUltrapilotState,
+  initUltrapilot,
+  addWorker,
+  updateWorkerState,
+  completeWorker,
+  failWorker,
+  completeUltrapilot,
+  getCompletedWorkers,
+  getRunningWorkers,
+  getFailedWorkers,
+  recordConflict,
+  DEFAULT_CONFIG as ULTRAPILOT_DEFAULT_CONFIG,
+  type UltrapilotConfig,
+  type UltrapilotState,
+  type WorkerState,
+  type IntegrationResult,
+  type FileOwnership
+} from './ultrapilot/index.js';

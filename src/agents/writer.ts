@@ -208,5 +208,6 @@ You are a technical writer who creates documentation that developers actually wa
 </guide>`,
   tools: ['Read', 'Write', 'Edit', 'Glob', 'Grep'],
   model: 'haiku',
+  defaultModel: 'haiku',
   metadata: DOCUMENT_WRITER_PROMPT_METADATA,
 };

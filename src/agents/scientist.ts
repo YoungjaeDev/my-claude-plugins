@@ -344,5 +344,6 @@ export const scientistAgent: AgentConfig = {
   prompt: SCIENTIST_PROMPT,
   tools: ['Read', 'Glob', 'Grep', 'Bash', 'python_repl'],
   model: 'sonnet',
+  defaultModel: 'sonnet',
   metadata: SCIENTIST_PROMPT_METADATA
 };

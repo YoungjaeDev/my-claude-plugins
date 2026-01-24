@@ -10,8 +10,8 @@ import {
   clearAutopilotState,
   writeAutopilotState
 } from './state.js';
-import { clearRalphState, clearLinkedUltraworkState, readRalphState } from '../ralph-loop/index.js';
-import { clearUltraQAState, readUltraQAState } from '../ultraqa-loop/index.js';
+import { clearRalphState, clearLinkedUltraworkState, readRalphState } from '../ralph/index.js';
+import { clearUltraQAState, readUltraQAState } from '../ultraqa/index.js';
 import type { AutopilotState } from './types.js';
 
 export interface CancelResult {

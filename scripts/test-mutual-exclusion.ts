@@ -6,7 +6,7 @@ import { tmpdir } from 'os';
 import { mkdirSync } from 'fs';
 
 // Import the hooks
-import { startUltraQA, clearUltraQAState, isRalphLoopActive } from '../src/hooks/ultraqa-loop/index.js';
+import { startUltraQA, clearUltraQAState, isRalphLoopActive } from '../src/hooks/ultraqa/index.js';
 import { createRalphLoopHook, clearRalphState, isUltraQAActive } from '../src/hooks/ralph-loop/index.js';
 
 // Test utilities

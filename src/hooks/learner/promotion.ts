@@ -4,7 +4,7 @@
  * Promotes learnings from ralph-progress to full skills.
  */
 
-import { readProgress } from '../ralph-progress/index.js';
+import { readProgress } from '../ralph/index.js';
 import { writeSkill } from './writer.js';
 import type { SkillExtractionRequest } from './types.js';
 import type { WriteSkillResult } from './writer.js';

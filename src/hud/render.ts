@@ -10,22 +10,46 @@ import { renderRalph } from './elements/ralph.js';
 import { renderAgentsByFormat, renderAgentsMultiLine } from './elements/agents.js';
 import { renderTodosWithCurrent } from './elements/todos.js';
 import { renderSkills, renderLastSkill } from './elements/skills.js';
-import { renderContext } from './elements/context.js';
+import { renderContext, renderContextWithBar } from './elements/context.js';
 import { renderBackground } from './elements/background.js';
 import { renderPrd } from './elements/prd.js';
-import { renderRateLimits } from './elements/limits.js';
+import { renderRateLimits, renderRateLimitsWithBar } from './elements/limits.js';
 import { renderPermission } from './elements/permission.js';
 import { renderThinking } from './elements/thinking.js';
 import { renderSession } from './elements/session.js';
 import { renderAutopilot } from './elements/autopilot.js';
+import { getAnalyticsDisplay, renderAnalyticsLine, getSessionInfo } from './analytics-display.js';
 
 /**
  * Render the complete statusline (single or multi-line)
  */
-export function render(context: HudRenderContext, config: HudConfig): string {
+export async function render(context: HudRenderContext, config: HudConfig): Promise<string> {
   const elements: string[] = [];
   const detailLines: string[] = [];
   const { elements: enabledElements } = config;
+
+  // Check if analytics preset is active
+  if (config.preset === 'analytics') {
+    const analytics = await getAnalyticsDisplay();
+    const sessionInfo = await getSessionInfo();
+
+    // Render analytics-focused layout
+    const lines = [sessionInfo, renderAnalyticsLine(analytics)];
+
+    // Add agents if available
+    if (context.activeAgents.length > 0) {
+      const agents = renderAgentsByFormat(context.activeAgents, enabledElements.agentsFormat || 'codes');
+      if (agents) lines.push(agents);
+    }
+
+    // Add todos if available
+    if (enabledElements.todos) {
+      const todos = renderTodosWithCurrent(context.todos);
+      if (todos) lines.push(todos);
+    }
+
+    return lines.join('\n');
+  }
 
   // [OMC] label
   if (enabledElements.omcLabel) {
@@ -34,7 +58,9 @@ export function render(context: HudRenderContext, config: HudConfig): string {
 
   // Rate limits (5h and weekly)
   if (enabledElements.rateLimits && context.rateLimits) {
-    const limits = renderRateLimits(context.rateLimits);
+    const limits = enabledElements.useBars
+      ? renderRateLimitsWithBar(context.rateLimits)
+      : renderRateLimits(context.rateLimits);
     if (limits) elements.push(limits);
   }
 
@@ -92,7 +118,9 @@ export function render(context: HudRenderContext, config: HudConfig): string {
 
   // Context window
   if (enabledElements.contextBar) {
-    const ctx = renderContext(context.contextPercent, config.thresholds);
+    const ctx = enabledElements.useBars
+      ? renderContextWithBar(context.contextPercent, config.thresholds)
+      : renderContext(context.contextPercent, config.thresholds);
     if (ctx) elements.push(ctx);
   }
 
@@ -126,6 +154,16 @@ export function render(context: HudRenderContext, config: HudConfig): string {
   if (enabledElements.todos) {
     const todos = renderTodosWithCurrent(context.todos);
     if (todos) detailLines.push(todos);
+  }
+
+  // Optionally add analytics line for full/dense presets
+  if (config.preset === 'full' || config.preset === 'dense') {
+    try {
+      const analytics = await getAnalyticsDisplay();
+      detailLines.push(renderAnalyticsLine(analytics));
+    } catch {
+      // Analytics not available, skip
+    }
   }
 
   // If we have detail lines, output multi-line

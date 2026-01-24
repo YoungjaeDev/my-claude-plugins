@@ -1,7 +1,6 @@
 ---
 name: research
 description: Orchestrate parallel scientist agents for comprehensive research with AUTO mode
-user-invocable: true
 argument-hint: <research goal>
 ---
 

@@ -103,5 +103,6 @@ export const researcherAgent: AgentConfig = {
   prompt: RESEARCHER_PROMPT,
   tools: ['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch'],
   model: 'sonnet',
+  defaultModel: 'sonnet',
   metadata: RESEARCHER_PROMPT_METADATA
 };

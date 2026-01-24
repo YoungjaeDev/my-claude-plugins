@@ -1,8 +1,15 @@
 ---
 description: Iterative planning with Planner, Architect, and Critic until consensus
+aliases: [rp, planloop]
 ---
 
-# Ralplan Skill
+# Ralplan Command
+
+[RALPLAN ACTIVATED - ITERATIVE PLANNING CONSENSUS MODE]
+
+## User's Task
+
+{{ARGUMENTS}}
 
 ## Overview
 

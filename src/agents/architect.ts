@@ -189,5 +189,6 @@ export const architectAgent: AgentConfig = {
   prompt: ARCHITECT_PROMPT,
   tools: ['Read', 'Grep', 'Glob', 'Bash', 'WebSearch'],
   model: 'opus',
+  defaultModel: 'opus',
   metadata: ARCHITECT_PROMPT_METADATA
 };

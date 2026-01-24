@@ -5,6 +5,233 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.2] - 2026-01-24
+
+### Fixed
+
+- **Critical**: Updated `.claude-plugin/plugin.json` version to 3.4.2
+  - Required for Claude Code plugin system to recognize the latest version
+  - Ensures proper plugin version detection and updates
+
+- **Website**: Updated to v3.4.2
+  - Version badge updated
+  - Skills count updated to 40
+
+## [3.4.1] - 2026-01-24
+
+### Added
+
+#### New Features
+- **Metadata Sync System**: Automated documentation synchronization tool
+  - `scripts/sync-metadata.ts` - Syncs version, agent count, skill count across all docs
+  - npm scripts: `sync-metadata`, `sync-metadata:verify`, `sync-metadata:dry-run`
+  - `docs/SYNC-SYSTEM.md` - Comprehensive documentation (528 lines)
+  - Dynamically counts agents (32) and skills (40) from filesystem
+  - Single source of truth: package.json
+
+- **New Skills** (3):
+  - `build-fix` - Fix build and TypeScript errors with minimal changes
+  - `code-review` - Comprehensive code review with severity ratings
+  - `security-review` - OWASP Top 10 security vulnerability detection
+
+- **New Commands** (5):
+  - `cancel` - Unified cancellation for all modes
+  - `cancel-ecomode` - Cancel ecomode (deprecated, use unified cancel)
+  - `pipeline` - Sequential agent chaining with built-in presets
+  - `planner` - Strategic planning with interview workflow
+  - `swarm` - N coordinated agents with atomic task claiming
+
+### Fixed
+
+- **Documentation Consistency** (33 issues):
+  - Updated all agent counts from 19/28 to 32 across all documentation
+  - Updated skill counts from 21/31/37 to 40 across all documentation
+  - Added v3.4.0 features section to docs/FULL-README.md
+  - Added v3.3.x → v3.4.0 migration guide (220 lines)
+  - Fixed section titles ("The Twelve Agents" → "The 32 Specialized Agents")
+  - Documented unified cancel command with deprecation notices
+  - Fixed cross-reference inconsistencies
+
+- **Skill/Command Discrepancies**:
+  - Fixed 13 mismatches between skills/ and commands/ directories
+  - All user-invocable skills now have matching command files
+  - Documented 5 internal/silent skills (frontend-ui-ux, git-master, orchestrate, omc-default, omc-default-global)
+
+- **GitHub Metadata**:
+  - Updated repository description to highlight all 5 execution modes
+  - Added topics: multi-agent-systems, parallel-execution, automation
+  - Updated counts: 32 agents, 31+ skills → 40 skills
+
+- **Website Repository**:
+  - Updated oh-my-claudecode-website to v3.4.0
+  - Added ultrapilot, swarm, pipeline, ecomode features
+  - Updated agent count from 28 to 32
+
+### Changed
+
+- Total skill count: 37 → 40 (build-fix, code-review, security-review added)
+- Total command count: 32 → 35 (cancel, cancel-ecomode, pipeline, planner, swarm added)
+- Package.json: Added sync-metadata scripts and tsx dependency
+
+## [3.4.0] - 2026-01-23
+
+### Added
+
+#### New Features
+- **Ultrapilot**: Parallel autopilot with up to 5 concurrent workers
+  - Task decomposition engine for breaking complex tasks into parallelizable subtasks
+  - File ownership coordination to prevent worker conflicts
+  - Coordinator hook for managing shared files (package.json, tsconfig.json, etc.)
+  - Auto-fallback to regular autopilot for non-parallelizable tasks
+  - State tracking in `.omc/state/ultrapilot-state.json` and `.omc/state/ultrapilot-ownership.json`
+
+- **Swarm Skill**: N coordinated agents with atomic task claiming
+  - Shared task list with pending/claimed/done status tracking
+  - 5-minute timeout per task with auto-release
+  - Usage: `/swarm 5:executor "fix all TypeScript errors"`
+
+- **Pipeline Skill**: Sequential agent chaining with data passing
+  - Built-in presets: review, implement, debug, research, refactor, security
+  - Branching logic based on output conditions
+  - Parallel-then-merge execution patterns
+  - Custom pipeline syntax with model specification
+
+- **Unified Cancel Skill**: Smart cancellation for all modes
+  - Auto-detects active mode (autopilot, ralph, ultrawork, ecomode, ultraqa, swarm, ultrapilot, pipeline)
+  - Handles dependency-aware cancellation order
+  - `--force` flag to clear ALL states
+
+- **Ecomode**: Token-efficient parallel execution mode
+  - Uses Haiku for simple tasks, Sonnet for standard work
+  - Automatic model tier selection based on task complexity
+  - Usage: `/ecomode "task"` or say "ecomode" keyword
+  - State tracking in `.omc/ecomode-state.json`
+
+- **Verification Module** (`src/features/verification/`)
+  - Reusable verification protocol for ralph, ultrawork, and autopilot
+  - 7 standard checks: BUILD, TEST, LINT, FUNCTIONALITY, ARCHITECT, TODO, ERROR_FREE
+  - Evidence validation with 5-minute freshness detection
+  - Multiple report formats: markdown, text, JSON
+  - Parallel/sequential execution with fail-fast support
+
+- **State Management Module** (`src/features/state-manager/`)
+  - Standardized state locations: `.omc/state/{name}.json` (local), `~/.omc/state/{name}.json` (global)
+  - `StateManager` class and function-based API
+  - Legacy location support with auto-migration
+  - Orphaned state cleanup utility
+
+- **Task Decomposition Engine** (`src/features/task-decomposer/`)
+  - Strategies: fullstack-app, refactoring, bug-fixes, features
+  - Automatic agent type selection (designer for frontend, executor for backend)
+  - File ownership assignment with non-overlapping patterns
+  - Execution order calculation with dependency tracking
+
+- **Explore-High Agent**: Opus-powered architectural search
+  - Deep system understanding and pattern analysis
+  - Complex architectural mapping capabilities
+
+- **Agent Prompt Template System** (`agents/templates/`)
+  - Base template with injection points
+  - Tier-specific instructions (LOW/MEDIUM/HIGH)
+  - Shared verification protocols
+
+- **Delegation Enforcer Middleware**
+  - Automatic model injection from agent definitions
+  - Explicit model preservation (user-specified models never overwritten)
+  - Debug mode warnings when `OMC_DEBUG=true`
+
+### Changed
+
+#### Consolidation
+- **Ralph Hooks**: Consolidated from 4 directories into single `src/hooks/ralph/`
+  - Merged: ralph-loop, ralph-prd, ralph-progress, ralph-verifier
+  - Clean facade via `src/hooks/ralph/index.ts`
+
+- **Recovery Module**: Unified from 3 modules into `src/hooks/recovery/`
+  - Merged: context-window-limit-recovery, edit-error-recovery, session-recovery
+  - Priority-based handling: Context Window → Session → Edit
+  - Single `handleRecovery()` entry point
+
+- **Autopilot Hooks**: Refactored from 10 to 7 files
+  - Merged: signals.ts → enforcement.ts
+  - Merged: transition.ts → state.ts
+  - Merged: summary.ts → validation.ts
+
+- **Ultra* Hooks**: Renamed for consistency
+  - `ultrawork-state/` → `ultrawork/`
+  - `ultraqa-loop/` → `ultraqa/`
+
+- **Plan/Planner Skills**: Merged planner interview logic into plan skill
+  - Dual mode: interview (broad requests) and direct planning (detailed requirements)
+  - Auto-detection of when to use interview vs direct planning
+
+- **Setup Skills**: Consolidated into omc-setup
+  - `--local` flag for direct local configuration
+  - `--global` flag for direct global configuration
+  - Integrated omc-default and omc-default-global functionality
+
+- **Ralph-Init**: Merged into ralph skill with `--init` flag support
+
+- **Migration Docs**: Consolidated MIGRATION.md and MIGRATION-v3.md into single file
+  - Version-organized sections: v2.x→v3.0, v3.0→v3.1, v3.x→v4.0
+
+#### Bug Fixes
+- **Agent defaultModel Property**: All 30 agents now have explicit `defaultModel` property
+  - LOW tier: haiku
+  - MEDIUM tier: sonnet
+  - HIGH tier: opus
+  - Enables proper model routing via delegation middleware
+
+- **QA-Tester-High Prompt**: Extracted inline prompt to `agents/qa-tester-high.md`
+  - Follows same pattern as other agents with external prompts
+
+#### Test Fixes
+- Updated skills.test.ts count from 35 to 37 (added cancel-ecomode, ecomode)
+- Updated installer.test.ts to check for Migration section instead of inline compatibility text
+- All 612 tests passing
+
+### Skills (37 total, 7 new)
+| New Skill | Description |
+|-----------|-------------|
+| `cancel` | Unified cancellation for all modes |
+| `pipeline` | Sequential agent chaining |
+| `swarm` | N coordinated agents with task claiming |
+| `ultrapilot` | Parallel autopilot (3-5x faster) |
+| `mcp-setup` | MCP server configuration |
+| `ecomode` | Token-efficient parallel execution |
+| `cancel-ecomode` | Cancel ecomode mode |
+
+### Agents (30 total, 1 new)
+| New Agent | Model | Description |
+|-----------|-------|-------------|
+| `explore-high` | opus | Complex architectural search |
+
+### New Modules
+| Module | Location | Purpose |
+|--------|----------|---------|
+| Verification | `src/features/verification/` | Reusable verification protocols |
+| State Manager | `src/features/state-manager/` | Standardized state management |
+| Task Decomposer | `src/features/task-decomposer/` | Task decomposition for parallel execution |
+| Ultrapilot | `src/hooks/ultrapilot/` | Parallel autopilot coordinator |
+| Delegation Enforcer | `src/features/delegation-enforcer.ts` | Model injection middleware |
+
+### Files Changed Summary
+- **New files**: 50+
+- **Modified files**: 35+
+- **Deleted files**: 15+ (consolidated into unified modules)
+- **Tests**: 612 passing (all green)
+
+## [3.3.10] - 2026-01-23
+
+### Added
+- **omc-setup**: GitHub star prompt after setup completion (#82)
+  - Uses AskUserQuestion for clickable UI
+  - Falls back to URL display if `gh` CLI unavailable
+- **HUD**: Optional visual progress bars for context and rate limits (#81)
+  - New `useBars` config option in HudElementConfig
+  - Enabled by default in focused/full/dense presets
+  - Format: `ctx:[████░░░░░░]67%` and `5h:[████░░░░░░]45%`
+
 ## [3.3.8] - 2026-01-23
 
 ### Added

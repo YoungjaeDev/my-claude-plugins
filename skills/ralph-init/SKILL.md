@@ -1,7 +1,6 @@
 ---
 name: ralph-init
 description: Initialize a PRD (Product Requirements Document) for structured ralph-loop execution
-user-invocable: true
 ---
 
 # Ralph Init Skill

@@ -367,5 +367,6 @@ export const qaTesterAgent: AgentConfig = {
   prompt: QA_TESTER_PROMPT,
   tools: ['Bash', 'Read', 'Grep', 'Glob', 'TodoWrite'],
   model: 'sonnet',
+  defaultModel: 'sonnet',
   metadata: QA_TESTER_PROMPT_METADATA
 };

@@ -1,7 +1,6 @@
 ---
 name: analyze
 description: Deep analysis and investigation
-user-invocable: true
 ---
 
 # Deep Analysis Mode

@@ -19,7 +19,7 @@ import {
   PRD_FILENAME,
   type PRD,
   type UserStory
-} from '../hooks/ralph-prd/index.js';
+} from '../hooks/ralph/index.js';
 
 describe('Ralph PRD Module', () => {
   let testDir: string;

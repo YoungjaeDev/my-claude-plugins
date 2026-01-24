@@ -10,6 +10,7 @@ export interface AgentConfig {
   prompt: string;
   tools: string[];
   model?: ModelType;
+  defaultModel?: ModelType;
 }
 
 export interface PluginConfig {
@@ -43,7 +44,6 @@ export interface PluginConfig {
   mcpServers?: {
     exa?: { enabled?: boolean; apiKey?: string };
     context7?: { enabled?: boolean };
-    grepApp?: { enabled?: boolean };
   };
 
   // Permission settings

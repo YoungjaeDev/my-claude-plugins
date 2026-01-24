@@ -193,5 +193,6 @@ Include:
 5. **Clear Handoff** - Tell user the plan is ready to implement`,
   tools: ['Read', 'Write', 'Edit', 'Grep', 'Glob'],
   model: 'opus',
+  defaultModel: 'opus',
   metadata: PLANNER_PROMPT_METADATA,
 };

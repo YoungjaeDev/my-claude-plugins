@@ -137,9 +137,6 @@ program
     },
     "context7": {
       "enabled": true
-    },
-    "grepApp": {
-      "enabled": true
     }
   },
 

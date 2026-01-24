@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
 **Project:** oh-my-claudecode
-**Version:** 3.0.11
+**Version:** 3.4.0
 **Purpose:** Multi-agent orchestration system for Claude Code CLI
 **Inspired by:** oh-my-opencode
 

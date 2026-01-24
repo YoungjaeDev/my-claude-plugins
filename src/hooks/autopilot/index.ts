@@ -26,7 +26,7 @@ export type {
 
 export { DEFAULT_CONFIG } from './types.js';
 
-// State management
+// State management & phase transitions
 export {
   readAutopilotState,
   writeAutopilotState,
@@ -42,18 +42,14 @@ export {
   updateValidation,
   ensureAutopilotDir,
   getSpecPath,
-  getPlanPath
-} from './state.js';
-
-// Phase transitions
-export {
+  getPlanPath,
   transitionRalphToUltraQA,
   transitionUltraQAToValidation,
   transitionToComplete,
   transitionToFailed,
   getTransitionPrompt,
   type TransitionResult
-} from './transition.js';
+} from './state.js';
 
 // Prompt generation
 export {
@@ -65,7 +61,7 @@ export {
   getPhasePrompt
 } from './prompts.js';
 
-// Validation coordination
+// Validation coordination & summary generation
 export {
   recordValidationVerdict,
   getValidationStatus,
@@ -74,17 +70,13 @@ export {
   getIssuesToFix,
   getValidationSpawnPrompt,
   formatValidationResults,
-  type ValidationCoordinatorResult
-} from './validation.js';
-
-// Summary generation
-export {
   generateSummary,
   formatSummary,
   formatCompactSummary,
   formatFailureSummary,
-  formatFileList
-} from './summary.js';
+  formatFileList,
+  type ValidationCoordinatorResult
+} from './validation.js';
 
 // Cancellation
 export {
@@ -96,15 +88,11 @@ export {
   type CancelResult
 } from './cancel.js';
 
-// Signal detection
+// Signal detection & enforcement
 export {
   detectSignal,
   getExpectedSignalForPhase,
-  detectAnySignal
-} from './signals.js';
-
-// Enforcement
-export {
+  detectAnySignal,
   checkAutopilot,
   type AutopilotEnforcementResult
 } from './enforcement.js';

@@ -103,5 +103,6 @@ export const exploreAgent: AgentConfig = {
   prompt: EXPLORE_PROMPT,
   tools: ['Glob', 'Grep', 'Read'],
   model: 'haiku',
+  defaultModel: 'haiku',
   metadata: EXPLORE_PROMPT_METADATA
 };

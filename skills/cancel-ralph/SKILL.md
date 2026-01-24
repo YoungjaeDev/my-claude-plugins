@@ -1,7 +1,6 @@
 ---
 name: cancel-ralph
 description: Cancel active Ralph (and linked ultrawork if auto-activated)
-user-invocable: true
 ---
 
 # Cancel Ralph

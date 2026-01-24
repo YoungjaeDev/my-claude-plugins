@@ -1,7 +1,6 @@
 ---
 name: release
 description: Automated release workflow for oh-my-claudecode
-user-invocable: true
 ---
 
 # Release Skill

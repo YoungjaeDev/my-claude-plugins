@@ -20,6 +20,8 @@ export interface BackgroundTask {
   startedAt: string;
   completedAt?: string;
   status: 'running' | 'completed' | 'failed';
+  startTime?: string; // Alias for compatibility
+  exitCode?: number; // For tracking abnormal termination
 }
 
 export interface OmcHudState {
@@ -97,6 +99,12 @@ export interface SessionHealth {
   durationMinutes: number;
   messageCount: number;
   health: 'healthy' | 'warning' | 'critical';
+
+  // Analytics fields
+  sessionCost?: number;
+  totalTokens?: number;
+  cacheHitRate?: number;
+  topAgents?: Array<{ agent: string; cost: number }>;
 }
 
 export interface TranscriptData {
@@ -198,7 +206,7 @@ export interface HudRenderContext {
 // Configuration
 // ============================================================================
 
-export type HudPreset = 'minimal' | 'focused' | 'full' | 'opencode' | 'dense';
+export type HudPreset = 'minimal' | 'focused' | 'full' | 'opencode' | 'dense' | 'analytics';
 
 /**
  * Agent display format options:
@@ -229,6 +237,7 @@ export interface HudElementConfig {
   permissionStatus: boolean;  // Show pending permission indicator
   thinking: boolean;          // Show extended thinking indicator
   sessionHealth: boolean;     // Show session health/duration
+  useBars: boolean;           // Show visual progress bars instead of/alongside percentages
 }
 
 export interface HudThresholds {
@@ -246,6 +255,7 @@ export interface HudConfig {
   preset: HudPreset;
   elements: HudElementConfig;
   thresholds: HudThresholds;
+  staleTaskThresholdMinutes?: number; // Default 30
 }
 
 export const DEFAULT_HUD_CONFIG: HudConfig = {
@@ -267,6 +277,7 @@ export const DEFAULT_HUD_CONFIG: HudConfig = {
     permissionStatus: false,  // Disabled: heuristic-based, causes false positives
     thinking: true,
     sessionHealth: true,
+    useBars: false,  // Disabled by default for backwards compatibility
   },
   thresholds: {
     contextWarning: 70,
@@ -294,6 +305,26 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     permissionStatus: false,
     thinking: false,
     sessionHealth: false,
+    useBars: false,
+  },
+  analytics: {
+    omcLabel: false,
+    rateLimits: false,
+    ralph: false,
+    autopilot: false,
+    prdStory: false,
+    activeSkills: false,
+    lastSkill: false,
+    contextBar: false,
+    agents: true,
+    agentsFormat: 'codes',
+    agentsMaxLines: 0,
+    backgroundTasks: false,
+    todos: true,
+    permissionStatus: false,
+    thinking: false,
+    sessionHealth: false,
+    useBars: false,
   },
   focused: {
     omcLabel: true,
@@ -312,6 +343,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     permissionStatus: false,  // Disabled: heuristic unreliable
     thinking: true,
     sessionHealth: true,
+    useBars: true,
   },
   full: {
     omcLabel: true,
@@ -330,6 +362,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     permissionStatus: false,  // Disabled: heuristic unreliable
     thinking: true,
     sessionHealth: true,
+    useBars: true,
   },
   opencode: {
     omcLabel: true,
@@ -348,6 +381,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     permissionStatus: false,  // Disabled: heuristic unreliable
     thinking: true,
     sessionHealth: true,
+    useBars: false,
   },
   dense: {
     omcLabel: true,
@@ -366,5 +400,6 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     permissionStatus: false,  // Disabled: heuristic unreliable
     thinking: true,
     sessionHealth: true,
+    useBars: true,
   },
 };

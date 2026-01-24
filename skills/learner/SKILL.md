@@ -1,7 +1,6 @@
 ---
 name: learner
 description: Extract a learned skill from the current conversation
-user-invocable: true
 ---
 
 # Learner Skill

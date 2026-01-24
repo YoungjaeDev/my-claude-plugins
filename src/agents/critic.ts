@@ -126,5 +126,6 @@ For 2-3 representative tasks, simulate execution using actual files.
 [If REJECT, provide top 3-5 critical improvements needed]`,
   tools: ['Read', 'Grep', 'Glob'],
   model: 'opus',
+  defaultModel: 'opus',
   metadata: CRITIC_PROMPT_METADATA,
 };

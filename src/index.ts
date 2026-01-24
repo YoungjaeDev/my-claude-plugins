@@ -299,8 +299,7 @@ export function createSisyphusSession(options?: SisyphusOptions): SisyphusSessio
   const mcpServers = getDefaultMcpServers({
     exaApiKey: config.mcpServers?.exa?.apiKey,
     enableExa: config.mcpServers?.exa?.enabled,
-    enableContext7: config.mcpServers?.context7?.enabled,
-    enableGrepApp: config.mcpServers?.grepApp?.enabled
+    enableContext7: config.mcpServers?.context7?.enabled
   });
 
   // Build allowed tools list

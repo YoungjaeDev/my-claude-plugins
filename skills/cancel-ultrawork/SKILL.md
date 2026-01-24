@@ -1,7 +1,6 @@
 ---
 name: cancel-ultrawork
 description: Cancel active Ultrawork mode
-user-invocable: true
 ---
 
 # Cancel Ultrawork

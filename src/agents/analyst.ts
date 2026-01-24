@@ -114,5 +114,6 @@ Examine planning sessions and identify:
 </Output_Format>`,
   tools: ['Read', 'Grep', 'Glob', 'WebSearch'],
   model: 'opus',
+  defaultModel: 'opus',
   metadata: ANALYST_PROMPT_METADATA,
 };

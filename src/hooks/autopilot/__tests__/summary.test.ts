@@ -8,7 +8,7 @@ import {
   formatCompactSummary,
   formatFailureSummary,
   formatFileList
-} from '../summary.js';
+} from '../validation.js';
 import {
   initAutopilot,
   updateExecution,

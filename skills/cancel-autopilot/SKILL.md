@@ -1,7 +1,6 @@
 ---
 name: cancel-autopilot
 description: Cancel active autopilot session
-user-invocable: true
 ---
 
 # Cancel Autopilot Skill

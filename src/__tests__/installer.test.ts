@@ -303,11 +303,9 @@ describe('Installer Constants', () => {
         expect(CLAUDE_MD_CONTENT).toContain(keyword);
       }
 
-      // Verify backward compatibility section exists
-      expect(CLAUDE_MD_CONTENT).toContain('All old commands still work');
-      expect(CLAUDE_MD_CONTENT).toContain('/ralph');
-      expect(CLAUDE_MD_CONTENT).toContain('/ultrawork');
-      expect(CLAUDE_MD_CONTENT).toContain('/planner');
+      // Verify migration section exists (points to MIGRATION.md)
+      expect(CLAUDE_MD_CONTENT).toContain('Migration');
+      expect(CLAUDE_MD_CONTENT).toContain('MIGRATION.md');
     });
 
     it('should contain markdown tables', () => {
@@ -326,7 +324,7 @@ describe('Installer Constants', () => {
 
     it('should match package.json version', () => {
       // This is a runtime check - VERSION should match the package.json
-      expect(VERSION).toBe('3.3.8');
+      expect(VERSION).toBe('3.4.0');
     });
   });
 

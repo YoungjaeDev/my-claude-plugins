@@ -114,5 +114,6 @@ Match implementation complexity to aesthetic vision:
 Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. You are capable of extraordinary creative work—don't hold back.`,
   tools: ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash'],
   model: 'sonnet',
+  defaultModel: 'sonnet',
   metadata: FRONTEND_ENGINEER_PROMPT_METADATA,
 };

@@ -6,8 +6,10 @@
 
 [![npm version](https://img.shields.io/npm/v/oh-my-claude-sisyphus?color=cb3837)](https://www.npmjs.com/package/oh-my-claude-sisyphus)
 [![npm downloads](https://img.shields.io/npm/dm/oh-my-claude-sisyphus?color=blue)](https://www.npmjs.com/package/oh-my-claude-sisyphus)
-[![GitHub stars](https://img.shields.io/github/stars/Yeachan-Heo/oh-my-claudecode?style=flat&color=yellow)](https://github.com/Yeachan-Heo/oh-my-claudecode/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/YoungjaeDev/oh-my-claudecode?style=flat&color=yellow)](https://github.com/YoungjaeDev/oh-my-claudecode/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![한국어](https://img.shields.io/badge/lang-한국어-red.svg)](README-KO.md)
+[![DeepWiki](https://img.shields.io/badge/docs-DeepWiki-blue)](https://deepwiki.com/YoungjaeDev/oh-my-claudecode)
 
 **Multi-agent orchestration for Claude Code. Zero learning curve.**
 
@@ -396,7 +398,7 @@ See the [Migration Guide](docs/MIGRATION.md) for details.
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Yeachan-Heo/oh-my-claudecode&type=Date)](https://star-history.com/#Yeachan-Heo/oh-my-claudecode&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=YoungjaeDev/oh-my-claudecode&type=Date)](https://star-history.com/#YoungjaeDev/oh-my-claudecode&Date)
 
 ---
 

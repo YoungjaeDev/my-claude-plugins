@@ -75,7 +75,7 @@ Before starting the workflow:
    - **File edits**: For non-code files or complex multi-line changes
    - **Sub-agents**: For large-scale parallel modifications
    - **If TDD enabled** (marker detected in Step 1):
-     - **Reference**: See `feature-planner` skill for detailed TDD methodology
+     - **Reference**: See `/oh-my-claudecode:tdd` skill for TDD enforcement
      1. 🔴 RED: Write failing tests first based on requirements
      2. 🟢 GREEN: Implement minimal code to pass tests
      3. 🔵 REFACTOR: Clean up while keeping tests green

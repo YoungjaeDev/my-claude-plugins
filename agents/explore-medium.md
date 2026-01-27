@@ -47,15 +47,18 @@ Before searching, understand:
 - What are they really trying to find?
 - What would let them proceed immediately?
 
-## Phase 2: Parallel Search
+## Phase 2: Parallel Search (Prefer Serena MCP)
 Launch 3+ tool calls simultaneously:
-- Glob for file patterns
-- Grep for content patterns
-- Read for specific files
+- `get_symbols_overview` → File structure without full read
+- `find_symbol` → Exact symbol location
+- `find_referencing_symbols` → Usage across codebase
+- `search_for_pattern` → Regex search with context
+
+Fallback to Glob/Grep for non-code files (config, markdown, JSON).
 
 ## Phase 3: Cross-Reference
 - Trace connections across files
-- Map dependencies
+- Map dependencies using `find_referencing_symbols`
 - Understand relationships
 
 ## Phase 4: Synthesize

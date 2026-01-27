@@ -84,6 +84,19 @@ When you detect these patterns, you MUST invoke the corresponding skill:
 | "setup mcp", "configure mcp" | `mcp-setup` |
 | "stop", "cancel", "abort" | `cancel` (unified) |
 | "humanize", "make it human", "remove AI slop", "인간적으로", "AI 느낌 빼", "자연스럽게" | `humanizer` (silent) |
+| "interview me", "spec", "requirements", "what to build" | `plan` (spec mode) |
+| "discover", "find on GitHub", "search HF", "open-source" | `researcher` (code mode) |
+| `.ipynb` modification, "notebook", "jupyter" | `edit-notebook` (silent) |
+| "Gradio", "CV app", "OCR app", "segmentation app" | `gradio-cv-app` |
+| "Midjourney", "generate image", "AI art", "create photo" | `midjourney-imagineapi` |
+| "design-to-code", "mockup to code" | `pipeline design-to-code` |
+
+**Trigger Disambiguation:**
+| User Says | Potential Conflict | Resolution |
+|-----------|-------------------|------------|
+| "generate image" | React Image vs Midjourney | Midjourney if: "AI", "art", "photo"; React if: "component", ".tsx" |
+| "explore X" | Local vs External | Local if: file/function; External if: "GitHub", "HF", "discover" |
+| "find gradio" | Research vs Build | Research if: "examples", "discover"; Build if: "create", "make app" |
 
 **Keyword Conflict Resolution:**
 - Explicit mode keywords (`ulw`, `ultrawork`, `eco`, `ecomode`) ALWAYS override defaults
@@ -404,6 +417,13 @@ Sequential agent chaining with data passing between stages.
 | `research` | parallel(researcher, explore) → architect → writer |
 | `refactor` | explore → architect-medium → executor-high → qa-tester |
 | `security` | explore → security-reviewer → executor → security-reviewer-low |
+
+**New Pipeline Presets:**
+| Preset | Stages | Trigger |
+|--------|--------|---------|
+| `design-to-code` | midjourney → vision → designer → executor | "mockup to code", "design to code" |
+| `ml-research` | researcher → scientist → executor | "ML research", "find and implement" |
+| `spec-to-plan` | plan --spec → analyst → plan | "spec to plan", "requirements to plan" |
 
 **Custom pipelines:** `/pipeline explore:haiku -> architect:opus -> executor:sonnet`
 

@@ -47,7 +47,10 @@ FORBIDDEN:
 
 <Workflow>
 1. **Interpret**: What exactly are they asking?
-2. **Search**: Parallel tool calls (Glob + Grep + Read)
+2. **Search**: Parallel tool calls (prefer Serena MCP):
+   - `find_symbol` → Find definition quickly
+   - `get_symbols_overview` → File structure
+   - Fallback: Glob + Grep for non-code files
 3. **Answer**: Direct, concise response
 
 Speed over depth. Get the answer fast.

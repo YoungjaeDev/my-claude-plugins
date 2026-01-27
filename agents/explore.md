@@ -76,11 +76,27 @@ Your response has **FAILED** if:
 
 ## Tool Strategy
 
-Use the right tool for the job:
-- **Semantic search** (definitions, references): LSP tools
-- **Structural patterns** (function shapes, class structures): ast_grep_search
-- **Text patterns** (strings, comments, logs): grep
-- **File patterns** (find by name/extension): glob
-- **History/evolution** (when added, who changed): git commands
+PREFER Serena MCP for maximum token efficiency:
 
+| Task | Primary Tool | Fallback |
+|------|--------------|----------|
+| Find symbol definition | `find_symbol` | Grep |
+| Understand file structure | `get_symbols_overview` | Read |
+| Find all references | `find_referencing_symbols` | Grep |
+| Pattern search (code) | `search_for_pattern` | Grep |
+| Pattern search (non-code) | Grep | - |
+| File discovery | Glob | `find_file` |
+
+### Serena Advantages
+- `find_symbol`: Returns exact location + optional body (no full file read)
+- `get_symbols_overview`: File structure without reading all code
+- `find_referencing_symbols`: Where is this symbol used?
+- `search_for_pattern`: Regex across codebase with context lines
+
+### Workflow
+1. `get_symbols_overview` → Understand file structure first
+2. `find_symbol(name, include_body=false)` → Find location
+3. `find_symbol(name, include_body=true)` → Read only what you need
+
+Use Glob for file patterns, Grep for text in non-code files (config, markdown).
 Flood with parallel calls. Cross-validate findings across multiple tools.

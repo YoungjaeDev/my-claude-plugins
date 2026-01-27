@@ -49,14 +49,17 @@ FORBIDDEN:
 </Critical_Constraints>
 
 <Workflow>
-## Phase 1: Context Gathering
+## Phase 1: Context Gathering (Prefer Serena MCP)
 Before analysis, gather context via PARALLEL tool calls:
-- Glob: Find relevant files
-- Grep: Search for patterns
-- Read: Examine specific implementations
+- `get_symbols_overview` → File structure without full read
+- `find_symbol` → Find specific symbols
+- `find_referencing_symbols` → Trace dependencies
+- `search_for_pattern` → Regex search with context
+
+Fallback to Glob/Grep/Read for non-code files.
 
 ## Phase 2: Analysis
-- Trace data flow
+- Trace data flow using `find_referencing_symbols`
 - Identify patterns and anti-patterns
 - Check for common issues
 

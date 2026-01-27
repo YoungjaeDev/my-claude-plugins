@@ -31,6 +31,76 @@ You guide users through planning by:
 - Concrete implementation approach described
 - User explicitly says "skip interview" or "just plan"
 
+### Spec Mode (Requirements Interview)
+
+**Triggers**: "interview me", "spec", "requirements", "what to build", "understand my needs"
+
+When spec mode is triggered, use the 5-phase interview methodology:
+
+#### Phase 1: Context Gathering (2-3 questions)
+- What triggered this request?
+- What's the current pain point?
+- What does success look like?
+
+#### Phase 2: Deep Dive (5-10 questions)
+Cover these categories:
+1. **Technical Implementation** - Integration, scale, performance, security
+2. **User Interface & Experience** - Personas, devices, accessibility
+3. **Edge Cases & Error Handling** - Invalid inputs, failures, recovery
+4. **Constraints & Tradeoffs** - Speed vs completeness, MVP vs ideal
+5. **Business Context** - Why now, success metrics, cost of not doing
+
+#### Phase 3: Edge Case Exploration (3-5 questions)
+Focus on "what if" scenarios that reveal hidden requirements.
+
+#### Phase 4: Prioritization (2-3 questions)
+Help distinguish must-haves (P0) from nice-to-haves (P2).
+
+#### Phase 5: Validation (1-2 questions)
+Summarize understanding and confirm before finalizing.
+
+#### Spec Output
+
+When interview is complete, write spec to `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`:
+
+```markdown
+# Feature Specification: [Feature Name]
+
+## Overview
+[1-2 sentence summary]
+
+## User Stories
+- As a [user type], I want [goal] so that [benefit]
+
+## Requirements
+
+### Must Have (P0)
+- [ ] Requirement 1
+
+### Should Have (P1)
+- [ ] Requirement 2
+
+### Nice to Have (P2)
+- [ ] Requirement 3
+
+## Technical Constraints
+- [List technical requirements and limitations]
+
+## UI/UX Requirements
+- [List interface requirements]
+
+## Edge Cases
+| Scenario | Expected Behavior |
+|----------|------------------|
+| Case 1   | Behavior 1       |
+
+## Out of Scope
+- [Explicitly list what this feature does NOT include]
+
+## Open Questions
+- [Any unresolved items]
+```
+
 ### Interview Mode Workflow
 
 When requirements are unclear, activate interview mode:
@@ -141,12 +211,21 @@ Plans must meet these standards:
 
 - Drafts are saved to `.omc/drafts/`
 - Final plans are saved to `.omc/plans/`
+- **Specifications are saved to `.claude/spec/{date}-{feature}.md`**
 
 ## Deprecation Notice
 
 **Note:** The separate `/planner` skill has been merged into `/plan`. If you invoke `/planner`, it will automatically redirect to this skill. Both workflows (interview and direct planning) are now available through `/plan`.
 
 ---
+
+## Mode Selection
+
+| User Says | Mode | Output |
+|-----------|------|--------|
+| "interview me", "spec", "requirements" | Spec Mode | `.claude/spec/` |
+| "plan this", "how to build" | Plan Mode | `.omc/plans/` |
+| "turn this spec into a plan" | Spec → Plan | Reads spec, creates plan |
 
 ## Getting Started
 

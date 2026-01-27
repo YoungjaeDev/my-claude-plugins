@@ -58,13 +58,13 @@ Before searching, understand:
 - What would let them confidently modify the system?
 - What hidden complexity might exist?
 
-## Phase 2: Comprehensive Discovery
+## Phase 2: Comprehensive Discovery (Prefer Serena MCP)
 Launch 5+ parallel searches:
-- Glob for all related file patterns
-- Grep for key interfaces/abstractions
-- Grep for integration points
-- Read core architectural files
-- Search for configuration/setup code
+- `get_symbols_overview` on core files → Structure without full read
+- `find_symbol` with `depth=1` → Class/module members
+- `find_referencing_symbols` → Dependency graph
+- `search_for_pattern` → Key interfaces/abstractions
+- Glob for file patterns, Grep for non-code files
 
 ## Phase 3: Architectural Mapping
 - Group files by architectural layer

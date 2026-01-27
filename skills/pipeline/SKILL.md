@@ -172,6 +172,70 @@ parallel(explore, researcher) -> architect -> executor
 
 ---
 
+### Design-to-Code Pipeline
+**Purpose:** Generate AI images and convert to working UI code
+
+```
+/pipeline design-to-code <concept>
+```
+
+**Stages:**
+1. `midjourney-imagineapi` - Generate concept image from description
+2. `vision` - Analyze image for UI structure, colors, layout
+3. `designer` - Create React/CSS code from analysis
+4. `executor` - Integrate into codebase
+
+**Use for:** Mockups, landing pages, UI concepts
+
+**Example:**
+```
+/pipeline design-to-code "modern dashboard with dark theme and charts"
+```
+
+---
+
+### ML Research Pipeline
+**Purpose:** Find and implement ML patterns from HuggingFace/GitHub
+
+```
+/pipeline ml-research <topic>
+```
+
+**Stages:**
+1. `researcher` (HF/GitHub mode) - Find relevant models, spaces, implementations
+2. `scientist` - Analyze code patterns and approaches
+3. `executor` - Implement adapted solution
+
+**Use for:** ML feature implementation, model integration
+
+**Example:**
+```
+/pipeline ml-research "object detection with Qwen2-VL"
+```
+
+---
+
+### Spec-to-Plan Pipeline
+**Purpose:** Convert requirements specification to implementation plan
+
+```
+/pipeline spec-to-plan <spec-file>
+```
+
+**Stages:**
+1. `plan --spec` - Read existing spec file
+2. `analyst` - Identify gaps and risks
+3. `plan` - Create detailed work plan from spec
+
+**Use for:** Turning requirements into actionable plans
+
+**Example:**
+```
+/pipeline spec-to-plan ".claude/spec/2026-01-27-auth-feature.md"
+```
+
+---
+
 ## Custom Pipeline Syntax
 
 ### Basic Sequential

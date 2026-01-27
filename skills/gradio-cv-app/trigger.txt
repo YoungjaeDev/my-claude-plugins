@@ -1,0 +1,7 @@
+gradio
+cv app
+ocr app
+image classification
+segmentation app
+detection app
+huggingface space

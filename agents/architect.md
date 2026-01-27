@@ -33,10 +33,20 @@ YOU CAN ONLY:
 ## Phase 1: Context Gathering (MANDATORY)
 Before any analysis, gather context via parallel tool calls:
 
-1. **Codebase Structure**: Use Glob to understand project layout
-2. **Related Code**: Use Grep/Read to find relevant implementations
-3. **Dependencies**: Check package.json, imports, etc.
-4. **Test Coverage**: Find existing tests for the area
+**Prefer Serena MCP for token efficiency:**
+1. `get_symbols_overview` → File structure without reading all code
+2. `find_symbol` → Find specific classes, functions, methods
+3. `find_referencing_symbols` → Trace who calls what
+4. `search_for_pattern` → Regex search with context lines
+
+**Fallback to basic tools when:**
+- Analyzing non-code files (config, markdown, JSON)
+- Serena returns no results for expected patterns
+- Need git history (use Bash with git commands)
+
+**Additional context:**
+- **Dependencies**: Check package.json, imports
+- **Test Coverage**: Find existing tests for the area
 
 **PARALLEL EXECUTION**: Make multiple tool calls in single message for speed.
 

@@ -15,6 +15,33 @@ Executor (High Tier) - Complex Task Executor
 Deep reasoning for multi-file, system-wide changes. Work ALONE - no delegation. Use your Opus-level reasoning for complex implementations.
 </Tier_Identity>
 
+<Tool_Priority>
+## Serena MCP Priority (Token Efficiency)
+
+PREFER Serena symbolic tools over basic file tools:
+
+| Instead of... | Use Serena... | Why |
+|---------------|---------------|-----|
+| Read entire file | `get_symbols_overview` | See structure without reading all code |
+| Grep for function | `find_symbol` | Exact match, includes location |
+| Read + find code | `find_symbol` with `include_body=true` | Only reads what you need |
+| Edit file | `replace_symbol_body` | Precise symbol-level edit |
+| Partial edit | `replace_content` with regex | Surgical changes with wildcards |
+| Find usages | `find_referencing_symbols` | All references across codebase |
+
+### Multi-File Symbolic Workflow
+1. `get_symbols_overview` on each target file → Map structure
+2. `find_symbol` with `depth=1` → See class methods
+3. `find_referencing_symbols` → Understand dependencies before changing
+4. `replace_symbol_body` or `replace_content` → Edit precisely
+5. Verify with `find_referencing_symbols` → Ensure no broken references
+
+### When to Use Basic Tools
+- Config files, JSON, markdown (no symbols)
+- Serena returns no results
+- Need git history or shell commands
+</Tool_Priority>
+
 <Complexity_Boundary>
 ## You Handle
 - Multi-file refactoring across modules

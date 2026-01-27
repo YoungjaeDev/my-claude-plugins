@@ -70,7 +70,7 @@ Perform branch cleanup and CLAUDE.md updates after a PR has been merged. Follow 
      | New module references | Modular Rules section |
 
    - **Content Removal**:
-     - Temporary instructions (e.g., `TODO: remove after #N`)
+     - Temporary instructions (e.g., "TODO REMOVE: this after #N is resolved")
      - Resolved known issues
      - Workaround descriptions for fixed bugs
 
@@ -120,7 +120,7 @@ Role description (1-2 lines)
 ```
 
 ### Examples of Content to Remove
-- Temporary notes like `TODO: remove after #123 is resolved`
+- Temporary notes like "TODO REMOVE: this after #123 is resolved"
 - Temporary workaround descriptions for specific issues
 - Known issues lists that have been resolved
 

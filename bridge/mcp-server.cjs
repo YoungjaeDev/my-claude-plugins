@@ -3,9 +3,11 @@
 // Resolve global npm modules for native package imports
 try {
   var _cp = require('child_process');
-  var _globalRoot = _cp.execSync('npm root -g', { encoding: 'utf8' }).trim();
-  if (_globalRoot && !require('module').globalPaths.includes(_globalRoot)) {
-    require('module').globalPaths.push(_globalRoot);
+  var _Module = require('module');
+  var _globalRoot = _cp.execSync('npm root -g', { encoding: 'utf8', timeout: 5000 }).trim();
+  if (_globalRoot) {
+    process.env.NODE_PATH = _globalRoot + (process.env.NODE_PATH ? ':' + process.env.NODE_PATH : '');
+    _Module._initPaths();
   }
 } catch (_e) { /* npm not available - native modules will gracefully degrade */ }
 
@@ -20167,10 +20169,29 @@ var BRIDGE_SPAWN_TIMEOUT_MS = 3e4;
 var DEFAULT_GRACE_PERIOD_MS = 5e3;
 var SIGTERM_GRACE_MS = 2500;
 function getBridgeScriptPath() {
-  const __filename = (0, import_url.fileURLToPath)(import_meta.url);
-  const __dirname = path5.dirname(__filename);
-  const packageRoot = path5.resolve(__dirname, "..", "..", "..");
-  return path5.join(packageRoot, "bridge", "gyoshu_bridge.py");
+  if (process.env.OMC_BRIDGE_SCRIPT) {
+    return process.env.OMC_BRIDGE_SCRIPT;
+  }
+  let moduleDir;
+  try {
+    if (import_meta.url) {
+      const __filename = (0, import_url.fileURLToPath)(import_meta.url);
+      moduleDir = path5.dirname(__filename);
+    } else {
+      throw new Error("import.meta.url is empty");
+    }
+  } catch {
+    moduleDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
+  }
+  const packageRoot = path5.resolve(moduleDir, "..", "..", "..");
+  const bridgePath = path5.join(packageRoot, "bridge", "gyoshu_bridge.py");
+  if (!fs4.existsSync(bridgePath)) {
+    const bundledBridgePath = path5.join(moduleDir, "gyoshu_bridge.py");
+    if (fs4.existsSync(bundledBridgePath)) {
+      return bundledBridgePath;
+    }
+  }
+  return bridgePath;
 }
 function detectExistingPythonEnv(projectRoot) {
   const isWindows = process.platform === "win32";

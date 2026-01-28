@@ -1,5 +1,9 @@
 ---
 description: Resolve GitHub Issue
+args:
+  - name: --no-ralph
+    required: false
+    description: Disable ralph mode (default: ralph enabled for implementation phase)
 ---
 
 # Resolve GitHub Issue
@@ -70,7 +74,19 @@ Before starting the workflow:
 
 6. **Plan Resolution**: Based on analysis results, develop a concrete resolution plan and define work steps.
 
-7. **Resolve Issue**: Implement the solution using appropriate tools:
+7. **Implementation Phase (Ralph Mode by Default)**:
+
+   > **Ralph Mode**: By default, Steps 7a-7c run under `/oh-my-claudecode:ralph` for persistent execution until Architect verification passes. Use `--no-ralph` argument to disable.
+
+   **Ralph Mode Verification Criteria:**
+   | Check | Description |
+   |-------|-------------|
+   | BUILD | Build succeeds without errors |
+   | TEST | All tests pass |
+   | LINT | No lint errors |
+   | ARCHITECT | Architect agent approval |
+
+   **7a. Resolve Issue**: Implement the solution using appropriate tools:
    - **Symbolic edits** (Serena): `replace_symbol_body`, `insert_after_symbol` for precise modifications
    - **File edits**: For non-code files or complex multi-line changes
    - **Sub-agents**: For large-scale parallel modifications
@@ -82,16 +98,21 @@ Before starting the workflow:
    - **If TDD not enabled**: Implement features directly according to the plan
    - **Execution verification required**: For Python scripts, executables, or any runnable code, always execute to verify correct behavior. Do not rely solely on file existence or previous results.
 
-8. **Write Tests**:
-   - **If TDD enabled**: Verify test coverage meets target (tests already written in Step 7), add missing edge cases if needed
+   **7b. Write Tests**:
+   - **If TDD enabled**: Verify test coverage meets target (tests already written in Step 7a), add missing edge cases if needed
    - **If TDD not enabled**: Spawn independent sub-agents per file to write unit tests in parallel, achieving at least 80% coverage
 
-9. **Validate**: Run tests, lint checks, and build verification in parallel using independent sub-agents to validate code quality.
+   **7c. Validate**: Run tests, lint checks, and build verification in parallel using independent sub-agents to validate code quality.
 
-10. **Create PR**: Create a pull request for the resolved issue.
+   **Ralph Loop Behavior:**
+   - On failure: Auto-retry with fixes until all checks pass
+   - On success: Proceed to PR creation only after Architect approval
+   - `--no-ralph`: Execute 7a → 7b → 7c sequentially without retry loop
+
+8. **Create PR**: Create a pull request for the resolved issue.
     - **Commit only issue-relevant files**: Never use `git add -A`. Stage only files directly related to the issue.
 
-11. **Update Issue Checkboxes**: Mark completed checkbox items in the issue as done.
+9. **Update Issue Checkboxes**: Mark completed checkbox items in the issue as done.
 
 > See [Work Guidelines](../guidelines/work-guidelines.md)
 

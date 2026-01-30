@@ -1,6 +1,6 @@
 {
   "name": "oh-my-claudecode",
-  "version": "3.7.0-youngjaedev.2",
+  "version": "3.7.0-youngjaedev.4",
   "description": "Multi-agent orchestration system for Claude Code",
   "skills": "./skills/",
   "commands": "./commands/"

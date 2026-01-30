@@ -18,6 +18,16 @@ export interface Todo {
   id?: string;
 }
 
+export interface TaskItem {
+  id: string;
+  subject: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  description?: string;
+  blockedBy?: string[];
+  blocks?: string[];
+  owner?: string;
+}
+
 export interface IncompleteTodosResult {
   count: number;
   todos: Todo[];
@@ -246,4 +256,176 @@ export function getNextPendingTodo(result: IncompleteTodosResult): Todo | null {
 
   // Otherwise return first pending
   return result.todos.find(t => t.status === 'pending') ?? null;
+}
+
+/**
+ * Parse TaskList output from conversation context
+ * Note: This parses the transcript for TaskList tool results
+ */
+export function parseTaskListFromTranscript(transcript: string): TaskItem[] {
+  const tasks: TaskItem[] = [];
+
+  try {
+    // Look for TaskList tool_result blocks in transcript
+    // Pattern: <tool_result>...</tool_result> containing JSON with tasks array
+    const toolResultRegex = /<tool_result[^>]*>[\s\S]*?<\/tool_result>/g;
+    const matches = transcript.match(toolResultRegex);
+
+    if (!matches) {
+      return tasks;
+    }
+
+    for (const match of matches) {
+      // Extract content between tags
+      const contentMatch = match.match(/<tool_result[^>]*>([\s\S]*?)<\/tool_result>/);
+      if (!contentMatch) continue;
+
+      const content = contentMatch[1].trim();
+
+      // Try to parse as JSON
+      try {
+        const parsed = JSON.parse(content);
+
+        // Check if it has a tasks array (TaskList format)
+        if (parsed.tasks && Array.isArray(parsed.tasks)) {
+          for (const task of parsed.tasks) {
+            if (
+              task &&
+              typeof task.id === 'string' &&
+              typeof task.subject === 'string' &&
+              typeof task.status === 'string' &&
+              ['pending', 'in_progress', 'completed'].includes(task.status)
+            ) {
+              tasks.push({
+                id: task.id,
+                subject: task.subject,
+                status: task.status as 'pending' | 'in_progress' | 'completed',
+                description: task.description,
+                blockedBy: task.blockedBy,
+                blocks: task.blocks,
+                owner: task.owner
+              });
+            }
+          }
+        }
+      } catch {
+        // Not JSON or invalid format, skip
+        continue;
+      }
+    }
+  } catch {
+    // Parsing error, return empty array
+    return [];
+  }
+
+  return tasks;
+}
+
+/**
+ * Check for incomplete tasks from TaskList
+ * Returns tasks that are pending or in_progress (not completed)
+ */
+export async function checkIncompleteTasks(
+  taskListOutput?: string
+): Promise<IncompleteTodosResult> {
+  if (!taskListOutput) {
+    return { count: 0, todos: [], total: 0 };
+  }
+
+  try {
+    // Parse TaskList JSON output directly
+    const parsed = JSON.parse(taskListOutput);
+
+    if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
+      return { count: 0, todos: [], total: 0 };
+    }
+
+    const allTasks: Todo[] = [];
+    const incompleteTasks: Todo[] = [];
+
+    for (const task of parsed.tasks) {
+      if (
+        !task ||
+        typeof task.id !== 'string' ||
+        typeof task.subject !== 'string' ||
+        typeof task.status !== 'string'
+      ) {
+        continue;
+      }
+
+      // Convert TaskItem to Todo format
+      const todo: Todo = {
+        content: task.subject,
+        status: task.status === 'completed' ? 'completed' :
+                task.status === 'in_progress' ? 'in_progress' : 'pending',
+        id: task.id
+      };
+
+      allTasks.push(todo);
+
+      if (todo.status !== 'completed') {
+        incompleteTasks.push(todo);
+      }
+    }
+
+    return {
+      count: incompleteTasks.length,
+      todos: incompleteTasks,
+      total: allTasks.length
+    };
+  } catch {
+    return { count: 0, todos: [], total: 0 };
+  }
+}
+
+/**
+ * Combined check for both TodoWrite and TaskList items
+ * Provides backward compatibility while supporting new Task system
+ */
+export async function checkAllIncompleteWork(
+  sessionId?: string,
+  directory?: string,
+  stopContext?: StopContext,
+  taskListOutput?: string
+): Promise<IncompleteTodosResult> {
+  // Get todos from existing system
+  const todoResult = await checkIncompleteTodos(sessionId, directory, stopContext);
+
+  // Get tasks from TaskList
+  const taskResult = await checkIncompleteTasks(taskListOutput);
+
+  // Combine and deduplicate by content
+  const seenContents = new Set<string>();
+  const allTodos: Todo[] = [];
+  const incompleteTodos: Todo[] = [];
+
+  // Add todos from TodoWrite system
+  for (const todo of todoResult.todos) {
+    const key = `${todo.content}:${todo.status}`;
+    if (!seenContents.has(key)) {
+      seenContents.add(key);
+      allTodos.push(todo);
+      if (isIncomplete(todo)) {
+        incompleteTodos.push(todo);
+      }
+    }
+  }
+
+  // Add tasks from TaskList system
+  for (const task of taskResult.todos) {
+    const key = `${task.content}:${task.status}`;
+    if (!seenContents.has(key)) {
+      seenContents.add(key);
+      allTodos.push(task);
+      if (isIncomplete(task)) {
+        incompleteTodos.push(task);
+      }
+    }
+  }
+
+  return {
+    count: incompleteTodos.length,
+    todos: incompleteTodos,
+    total: allTodos.length
+  };
 }

@@ -33,6 +33,18 @@ function isStateFileStale(filePath: string): boolean {
   }
 }
 
+/**
+ * Resolve state file path with fallback from .omc/state/ to .omc/
+ * Returns null if file doesn't exist in either location.
+ */
+function resolveStatePath(directory: string, filename: string): string | null {
+  const newPath = join(directory, '.omc', 'state', filename);
+  const legacyPath = join(directory, '.omc', filename);
+  if (existsSync(newPath)) return newPath;
+  if (existsSync(legacyPath)) return legacyPath;
+  return null;
+}
+
 // ============================================================================
 // Ralph State
 // ============================================================================
@@ -50,9 +62,9 @@ interface RalphLoopState {
  * Returns null if no state file exists or on error.
  */
 export function readRalphStateForHud(directory: string): RalphStateForHud | null {
-  const stateFile = join(directory, '.omc', 'ralph-state.json');
+  const stateFile = resolveStatePath(directory, 'ralph-state.json');
 
-  if (!existsSync(stateFile)) {
+  if (!stateFile) {
     return null;
   }
 
@@ -97,12 +109,12 @@ interface UltraworkState {
 export function readUltraworkStateForHud(
   directory: string
 ): UltraworkStateForHud | null {
-  // Check local state first
-  const localFile = join(directory, '.omc', 'ultrawork-state.json');
+  // Check local state first (with new path fallback)
+  const localFile = resolveStatePath(directory, 'ultrawork-state.json');
   let state: UltraworkState | null = null;
   let stateFile: string | null = null;
 
-  if (existsSync(localFile) && !isStateFileStale(localFile)) {
+  if (localFile && !isStateFileStale(localFile)) {
     try {
       const content = readFileSync(localFile, 'utf-8');
       state = JSON.parse(content) as UltraworkState;
@@ -217,9 +229,9 @@ interface AutopilotStateFile {
  * Returns shape matching AutopilotStateForHud from elements/autopilot.ts.
  */
 export function readAutopilotStateForHud(directory: string): AutopilotStateForHud | null {
-  const stateFile = join(directory, '.omc', 'autopilot-state.json');
+  const stateFile = resolveStatePath(directory, 'autopilot-state.json');
 
-  if (!existsSync(stateFile)) {
+  if (!stateFile) {
     return null;
   }
 

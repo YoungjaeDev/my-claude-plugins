@@ -242,109 +242,109 @@ World`);
       });
 
       it('should detect think keyword', () => {
-        const result = detectKeywordsWithType('think about this problem');
+        const result = detectKeywordsWithType('think hard about this problem');
         const ultrathinkMatch = result.find((r) => r.type === 'ultrathink');
         expect(ultrathinkMatch).toBeDefined();
       });
     });
 
-    describe('search keyword', () => {
-      it('should detect search keyword', () => {
-        const result = detectKeywordsWithType('search for files');
-        const searchMatch = result.find((r) => r.type === 'search');
+    describe('deepsearch keyword', () => {
+      it('should detect deepsearch keyword', () => {
+        const result = detectKeywordsWithType('deepsearch for files');
+        const searchMatch = result.find((r) => r.type === 'deepsearch');
         expect(searchMatch).toBeDefined();
       });
 
-      it('should detect find keyword', () => {
+      it('should detect search the codebase', () => {
+        const result = detectKeywordsWithType('search the codebase');
+        const searchMatch = result.find((r) => r.type === 'deepsearch');
+        expect(searchMatch).toBeDefined();
+      });
+
+      it('should detect find in codebase', () => {
+        const result = detectKeywordsWithType('find in codebase');
+        const searchMatch = result.find((r) => r.type === 'deepsearch');
+        expect(searchMatch).toBeDefined();
+      });
+
+      it('should NOT detect generic find', () => {
         const result = detectKeywordsWithType('find the bug');
-        const searchMatch = result.find((r) => r.type === 'search');
+        const searchMatch = result.find((r) => r.type === 'deepsearch');
+        expect(searchMatch).toBeUndefined();
+      });
+
+      it('should detect search code pattern', () => {
+        const result = detectKeywordsWithType('search code for errors');
+        const searchMatch = result.find((r) => r.type === 'deepsearch');
         expect(searchMatch).toBeDefined();
       });
 
-      it('should detect locate keyword', () => {
-        const result = detectKeywordsWithType('locate the function');
-        const searchMatch = result.find((r) => r.type === 'search');
+      it('should detect find in all files', () => {
+        const result = detectKeywordsWithType('find in all files');
+        const searchMatch = result.find((r) => r.type === 'deepsearch');
         expect(searchMatch).toBeDefined();
       });
 
-      it('should detect "where is" phrase', () => {
-        const result = detectKeywordsWithType('where is the config');
-        const searchMatch = result.find((r) => r.type === 'search');
-        expect(searchMatch).toBeDefined();
-      });
-
-      it('should detect "show me" phrase', () => {
-        const result = detectKeywordsWithType('show me the files');
-        const searchMatch = result.find((r) => r.type === 'search');
-        expect(searchMatch).toBeDefined();
-      });
-
-      it('should detect "list all" phrase', () => {
-        const result = detectKeywordsWithType('list all components');
-        const searchMatch = result.find((r) => r.type === 'search');
-        expect(searchMatch).toBeDefined();
-      });
-
-      it('should detect grep keyword', () => {
-        const result = detectKeywordsWithType('grep for errors');
-        const searchMatch = result.find((r) => r.type === 'search');
+      it('should detect search project', () => {
+        const result = detectKeywordsWithType('search the project');
+        const searchMatch = result.find((r) => r.type === 'deepsearch');
         expect(searchMatch).toBeDefined();
       });
     });
 
     describe('analyze keyword', () => {
-      it('should detect analyze keyword', () => {
-        const result = detectKeywordsWithType('analyze this code');
+      it('should detect deep analyze keyword', () => {
+        const result = detectKeywordsWithType('deep analyze this code');
         const analyzeMatch = result.find((r) => r.type === 'analyze');
         expect(analyzeMatch).toBeDefined();
       });
 
-      it('should detect analyse (British spelling) keyword', () => {
-        const result = detectKeywordsWithType('analyse this code');
-        const analyzeMatch = result.find((r) => r.type === 'analyze');
-        expect(analyzeMatch).toBeDefined();
-      });
-
-      it('should detect investigate keyword', () => {
+      it('should detect investigate with context', () => {
         const result = detectKeywordsWithType('investigate the issue');
         const analyzeMatch = result.find((r) => r.type === 'analyze');
         expect(analyzeMatch).toBeDefined();
       });
 
-      it('should detect debug keyword', () => {
-        const result = detectKeywordsWithType('debug this function');
+      it('should detect investigate this', () => {
+        const result = detectKeywordsWithType('investigate this bug');
         const analyzeMatch = result.find((r) => r.type === 'analyze');
         expect(analyzeMatch).toBeDefined();
       });
 
-      it('should detect "why is" phrase', () => {
-        const result = detectKeywordsWithType('why is this failing');
+      it('should detect investigate why', () => {
+        const result = detectKeywordsWithType('investigate why this fails');
         const analyzeMatch = result.find((r) => r.type === 'analyze');
         expect(analyzeMatch).toBeDefined();
       });
 
-      it('should detect "how does" phrase', () => {
-        const result = detectKeywordsWithType('how does this work');
+      it('should detect debug the', () => {
+        const result = detectKeywordsWithType('debug the function');
         const analyzeMatch = result.find((r) => r.type === 'analyze');
         expect(analyzeMatch).toBeDefined();
       });
 
-      it('should detect "how to" phrase', () => {
-        const result = detectKeywordsWithType('how to fix this bug');
+      it('should detect debug this', () => {
+        const result = detectKeywordsWithType('debug this issue');
         const analyzeMatch = result.find((r) => r.type === 'analyze');
         expect(analyzeMatch).toBeDefined();
       });
 
-      it('should detect deep-dive keyword', () => {
-        const result = detectKeywordsWithType('deep-dive into the module');
+      it('should detect debug why', () => {
+        const result = detectKeywordsWithType('debug why this breaks');
         const analyzeMatch = result.find((r) => r.type === 'analyze');
         expect(analyzeMatch).toBeDefined();
       });
 
-      it('should detect deepdive keyword', () => {
-        const result = detectKeywordsWithType('deepdive the architecture');
+      it('should NOT detect generic analyze', () => {
+        const result = detectKeywordsWithType('analyze without context');
         const analyzeMatch = result.find((r) => r.type === 'analyze');
-        expect(analyzeMatch).toBeDefined();
+        expect(analyzeMatch).toBeUndefined();
+      });
+
+      it('should NOT detect generic how/why phrases', () => {
+        const result = detectKeywordsWithType('how to do this');
+        const analyzeMatch = result.find((r) => r.type === 'analyze');
+        expect(analyzeMatch).toBeUndefined();
       });
     });
 
@@ -413,7 +413,7 @@ World`);
       });
 
       it('should detect multiple different keyword types', () => {
-        const text = 'autopilot and analyze this';
+        const text = 'autopilot and investigate the bug';
         const result = detectKeywordsWithType(text);
         const types = result.map((r) => r.type);
         expect(types).toContain('autopilot');
@@ -465,18 +465,18 @@ World`);
         expect(result?.type).toBe('ultrawork');
       });
 
-      it('should return ultrathink over search', () => {
-        const result = getPrimaryKeyword('think and search');
+      it('should return ultrathink over deepsearch', () => {
+        const result = getPrimaryKeyword('think hard and search the codebase');
         expect(result?.type).toBe('ultrathink');
       });
 
-      it('should return search over analyze', () => {
-        const result = getPrimaryKeyword('find and debug');
-        expect(result?.type).toBe('search');
+      it('should return deepsearch over analyze', () => {
+        const result = getPrimaryKeyword('find in codebase and debug the issue');
+        expect(result?.type).toBe('deepsearch');
       });
 
       it('should return analyze when it is the only keyword', () => {
-        const result = getPrimaryKeyword('analyze this code');
+        const result = getPrimaryKeyword('investigate the issue');
         expect(result?.type).toBe('analyze');
       });
     });

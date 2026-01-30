@@ -1,6 +1,6 @@
 {
   "name": "oh-my-claudecode-youngjaedev",
-  "version": "3.7.0-youngjaedev.3",
+  "version": "3.8.10-youngjaedev.1",
   "description": "Multi-agent orchestration system for Claude Code - Inspired by oh-my-opencode",
   "type": "module",
   "main": "dist/index.js",
@@ -27,12 +27,13 @@
     "skills",
     "templates",
     "docs",
-    "plugin.json",
+    ".claude-plugin",
+    ".mcp.json",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && node scripts/build-skill-bridge.mjs",
+    "build": "tsc && node scripts/build-skill-bridge.mjs && node scripts/build-mcp-server.mjs",
     "build:bridge": "node scripts/build-skill-bridge.mjs",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
@@ -51,12 +52,15 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.0",
     "@ast-grep/napi": "^0.31.0",
+    "@modelcontextprotocol/sdk": "^1.25.3",
     "@tokscale/core": "^1.0.25",
     "@types/better-sqlite3": "^7.6.13",
+    "ajv": "^8.17.1",
     "better-sqlite3": "^12.6.2",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "jsonc-parser": "^3.3.1",
+    "safe-regex": "^2.1.1",
     "vscode-languageserver-protocol": "^3.17.5",
     "zod": "^3.23.8"
   },

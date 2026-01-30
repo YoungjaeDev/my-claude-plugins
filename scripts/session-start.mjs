@@ -131,8 +131,8 @@ ${coreGuidelines}
     }
 
     // Check for ultrawork state
-    const ultraworkState = readJsonFile(join(directory, '.omc', 'ultrawork-state.json'))
-      || readJsonFile(join(homedir(), '.claude', 'ultrawork-state.json'));
+    const ultraworkState = readJsonFile(join(directory, '.omc', 'state', 'ultrawork-state.json'))
+      || readJsonFile(join(homedir(), '.omc', 'state', 'ultrawork-state.json'));
 
     if (ultraworkState?.active) {
       messages.push(`<session-restore>
@@ -151,7 +151,7 @@ Continue working in ultrawork mode until all tasks are complete.
     }
 
     // Check for ralph loop state
-    const ralphState = readJsonFile(join(directory, '.omc', 'ralph-state.json'));
+    const ralphState = readJsonFile(join(directory, '.omc', 'state', 'ralph-state.json'));
     if (ralphState?.active) {
       messages.push(`<session-restore>
 
@@ -210,7 +210,13 @@ ${cleanContent}
     }
 
     if (messages.length > 0) {
-      console.log(JSON.stringify({ continue: true, message: messages.join('\n') }));
+      console.log(JSON.stringify({
+        continue: true,
+        hookSpecificOutput: {
+          hookEventName: 'SessionStart',
+          additionalContext: messages.join('\n')
+        }
+      }));
     } else {
       console.log(JSON.stringify({ continue: true }));
     }

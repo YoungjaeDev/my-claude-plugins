@@ -88,7 +88,7 @@ export const architectMediumAgent: AgentConfig = {
   name: 'architect-medium',
   description: 'Architecture & Debugging Advisor - Medium complexity (Sonnet). Use for moderate analysis.',
   prompt: loadAgentPrompt('architect-medium'),
-  tools: ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch'],
+  tools: ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'lsp_diagnostics', 'lsp_diagnostics_directory', 'ast_grep_search'],
   model: 'sonnet',
   defaultModel: 'sonnet'
 };
@@ -100,7 +100,7 @@ export const architectLowAgent: AgentConfig = {
   name: 'architect-low',
   description: 'Quick code questions & simple lookups (Haiku). Use for simple questions that need fast answers.',
   prompt: loadAgentPrompt('architect-low'),
-  tools: ['Read', 'Glob', 'Grep'],
+  tools: ['Read', 'Glob', 'Grep', 'lsp_diagnostics'],
   model: 'haiku',
   defaultModel: 'haiku'
 };
@@ -112,7 +112,7 @@ export const executorHighAgent: AgentConfig = {
   name: 'executor-high',
   description: 'Complex task executor for multi-file changes (Opus). Use for tasks requiring deep reasoning.',
   prompt: loadAgentPrompt('executor-high'),
-  tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash', 'TodoWrite'],
+  tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash', 'TodoWrite', 'lsp_diagnostics', 'lsp_diagnostics_directory', 'ast_grep_search', 'ast_grep_replace'],
   model: 'opus',
   defaultModel: 'opus'
 };
@@ -124,7 +124,7 @@ export const executorLowAgent: AgentConfig = {
   name: 'executor-low',
   description: 'Simple single-file task executor (Haiku). Use for trivial tasks.',
   prompt: loadAgentPrompt('executor-low'),
-  tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash', 'TodoWrite'],
+  tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash', 'TodoWrite', 'lsp_diagnostics'],
   model: 'haiku',
   defaultModel: 'haiku'
 };
@@ -148,7 +148,7 @@ export const exploreMediumAgent: AgentConfig = {
   name: 'explore-medium',
   description: 'Thorough codebase search with reasoning (Sonnet). Use when search requires more reasoning.',
   prompt: loadAgentPrompt('explore-medium'),
-  tools: ['Read', 'Glob', 'Grep'],
+  tools: ['Read', 'Glob', 'Grep', 'ast_grep_search', 'lsp_document_symbols', 'lsp_workspace_symbols'],
   model: 'sonnet',
   defaultModel: 'sonnet'
 };
@@ -160,7 +160,7 @@ export const exploreHighAgent: AgentConfig = {
   name: 'explore-high',
   description: 'Complex architectural search for deep system understanding (Opus). Use for architectural mapping and design pattern discovery.',
   prompt: loadAgentPrompt('explore-high'),
-  tools: ['Read', 'Glob', 'Grep'],
+  tools: ['Read', 'Glob', 'Grep', 'ast_grep_search', 'lsp_document_symbols', 'lsp_workspace_symbols', 'lsp_find_references'],
   model: 'opus',
   defaultModel: 'opus'
 };
@@ -196,7 +196,7 @@ export const qaTesterHighAgent: AgentConfig = {
   name: 'qa-tester-high',
   description: 'Comprehensive production-ready QA testing with Opus. Use for thorough verification, edge case detection, security testing, and high-stakes releases.',
   prompt: loadAgentPrompt('qa-tester-high'),
-  tools: ['Bash', 'Read', 'Grep', 'Glob', 'TodoWrite'],
+  tools: ['Bash', 'Read', 'Grep', 'Glob', 'TodoWrite', 'lsp_diagnostics'],
   model: 'opus',
   defaultModel: 'opus'
 };
@@ -258,9 +258,9 @@ export const securityReviewerLowAgent: AgentConfig = {
  */
 export const buildFixerAgent: AgentConfig = {
   name: 'build-fixer',
-  description: 'Build and TypeScript error resolution specialist (Sonnet). Use for fixing build errors.',
+  description: 'Build and compilation error resolution specialist (Sonnet). Use for fixing build/type errors in any language.',
   prompt: loadAgentPrompt('build-fixer'),
-  tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
+  tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash', 'lsp_diagnostics', 'lsp_diagnostics_directory'],
   model: 'sonnet',
   defaultModel: 'sonnet'
 };
@@ -272,7 +272,7 @@ export const buildFixerLowAgent: AgentConfig = {
   name: 'build-fixer-low',
   description: 'Simple build error fixer (Haiku). Use for trivial type errors and single-line fixes.',
   prompt: loadAgentPrompt('build-fixer-low'),
-  tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
+  tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash', 'lsp_diagnostics', 'lsp_diagnostics_directory'],
   model: 'haiku',
   defaultModel: 'haiku'
 };
@@ -284,7 +284,7 @@ export const tddGuideAgent: AgentConfig = {
   name: 'tdd-guide',
   description: 'Test-Driven Development specialist (Sonnet). Use for TDD workflows and test coverage.',
   prompt: loadAgentPrompt('tdd-guide'),
-  tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
+  tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash', 'lsp_diagnostics'],
   model: 'sonnet',
   defaultModel: 'sonnet'
 };
@@ -296,7 +296,7 @@ export const tddGuideLowAgent: AgentConfig = {
   name: 'tdd-guide-low',
   description: 'Quick test suggestion specialist (Haiku). Use for simple test case ideas.',
   prompt: loadAgentPrompt('tdd-guide-low'),
-  tools: ['Read', 'Grep', 'Glob', 'Bash'],
+  tools: ['Read', 'Grep', 'Glob', 'Bash', 'lsp_diagnostics'],
   model: 'haiku',
   defaultModel: 'haiku'
 };
@@ -308,7 +308,7 @@ export const codeReviewerAgent: AgentConfig = {
   name: 'code-reviewer',
   description: 'Expert code review specialist (Opus). Use for comprehensive code quality review.',
   prompt: loadAgentPrompt('code-reviewer'),
-  tools: ['Read', 'Grep', 'Glob', 'Bash'],
+  tools: ['Read', 'Grep', 'Glob', 'Bash', 'lsp_diagnostics', 'ast_grep_search'],
   model: 'opus',
   defaultModel: 'opus'
 };
@@ -320,7 +320,7 @@ export const codeReviewerLowAgent: AgentConfig = {
   name: 'code-reviewer-low',
   description: 'Quick code quality checker (Haiku). Use for fast review of small changes.',
   prompt: loadAgentPrompt('code-reviewer-low'),
-  tools: ['Read', 'Grep', 'Glob', 'Bash'],
+  tools: ['Read', 'Grep', 'Glob', 'Bash', 'lsp_diagnostics'],
   model: 'haiku',
   defaultModel: 'haiku'
 };

@@ -1,7 +1,6 @@
 ---
 name: tdd-guide-low
 description: Quick test suggestion specialist (Haiku). Use for simple test case ideas.
-tools: Read, Grep, Glob, Bash
 model: haiku
 ---
 

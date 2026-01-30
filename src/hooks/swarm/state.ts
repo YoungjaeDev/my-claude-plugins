@@ -6,7 +6,7 @@
  * All state is stored in .omc/state/swarm.db
  */
 
-import { existsSync, mkdirSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import type BetterSqlite3 from 'better-sqlite3';
 import type {
@@ -16,6 +16,20 @@ import type {
   SwarmStats
 } from './types.js';
 import { DB_SCHEMA_VERSION } from './types.js';
+
+/**
+ * SwarmSummary interface for the JSON sidecar
+ */
+export interface SwarmSummary {
+  session_id: string;
+  started_at: string;
+  updated_at: string;
+  task_count: number;
+  tasks_pending: number;
+  tasks_claimed: number;
+  tasks_done: number;
+  active: boolean;
+}
 
 // Type alias for the Database constructor
 type DatabaseConstructor = typeof BetterSqlite3;
@@ -616,4 +630,41 @@ export function runTransaction<T>(fn: () => T): T | null {
  */
 export function getDb(): BetterSqlite3.Database | null {
   return db;
+}
+
+/**
+ * Write swarm summary to .omc/state/swarm-summary.json
+ * This provides a lightweight JSON sidecar for external monitoring
+ */
+export function writeSwarmSummary(cwd: string): boolean {
+  if (!db) return false;
+
+  try {
+    const state = loadState();
+    const stats = getStats();
+
+    if (!state || !stats) return false;
+
+    const summary: SwarmSummary = {
+      session_id: state.sessionId,
+      started_at: new Date(state.startedAt).toISOString(),
+      updated_at: new Date().toISOString(),
+      task_count: stats.totalTasks,
+      tasks_pending: stats.pendingTasks,
+      tasks_claimed: stats.claimedTasks,
+      tasks_done: stats.doneTasks,
+      active: state.active
+    };
+
+    const stateDir = join(cwd, '.omc', 'state');
+    mkdirSync(stateDir, { recursive: true });
+
+    const summaryPath = join(stateDir, 'swarm-summary.json');
+    writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf-8');
+
+    return true;
+  } catch (error) {
+    console.error('Failed to write swarm summary:', error);
+    return false;
+  }
 }

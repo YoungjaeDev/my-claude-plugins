@@ -5,6 +5,261 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.10] - 2026-01-28
+
+### Fixed
+
+#### MCP Server Plugin Distribution (Hotfix)
+Fixed MCP server not working in Claude Code plugin cache.
+
+- **Bundled MCP Server** (`bridge/mcp-server.cjs`)
+  - Pre-bundled with esbuild for plugin distribution
+  - No longer requires node_modules in plugin cache
+  - Committed to repo (bridge/ is not gitignored)
+
+- **LSP Tools Only**
+  - Exposes 12 LSP tools (no native dependencies)
+  - AST tools and python_repl excluded (require native modules)
+  - Works out-of-the-box in plugin cache
+
+### Changed
+
+- `.mcp.json` now points to `bridge/mcp-server.cjs`
+- Added `scripts/build-mcp-server.mjs` for bundling
+
+---
+
+## [3.7.9] - 2026-01-28
+
+### Added
+
+#### Plugin-Scoped MCP Server Discovery
+Standalone MCP server for Claude Code plugin discovery, making omc-tools visible in the `/mcp` management UI.
+
+- **Standalone MCP Server** (`src/mcp/standalone-server.ts`)
+  - Stdio-based MCP server using `@modelcontextprotocol/sdk`
+  - Exposes 12 LSP tools
+  - Proper JSON Schema conversion from Zod schemas
+  - Compatible with Claude Code's plugin MCP discovery
+
+- **Plugin MCP Configuration** (`.mcp.json`)
+  - Declares `omc-tools` server for plugin-scoped discovery
+  - Uses `${CLAUDE_PLUGIN_ROOT}` for portable paths
+  - Server auto-starts when plugin is enabled
+
+- **Updated Plugin Manifest** (`.claude-plugin/plugin.json`)
+  - Added `mcpServers` reference to `.mcp.json`
+
+### Changed
+
+- Added `@modelcontextprotocol/sdk` as dependency
+- Updated `package.json` files array to include `.claude-plugin` and `.mcp.json`
+
+---
+
+## [3.7.8] - 2026-01-28
+
+### Added
+
+#### SDK MCP Server for Custom Tools (Major Feature)
+In-process MCP server exposing 15 custom tools to Claude Code subagents via the Claude Agent SDK.
+
+- **OMC Tools Server** (`src/mcp/omc-tools-server.ts`)
+  - Uses `createSdkMcpServer` and `tool` helpers from `@anthropic-ai/claude-agent-sdk`
+  - Exposes tools in MCP format as `mcp__omc-tools__<tool_name>`
+  - Zero external process overhead - runs in-process
+  - Configurable tool filtering via `getOmcToolNames()`
+
+- **15 Custom Tools Exposed**
+  - **12 LSP Tools**: `lsp_hover`, `lsp_definition`, `lsp_references`, `lsp_completion`, `lsp_signature_help`, `lsp_rename`, `lsp_code_actions`, `lsp_formatting`, `lsp_symbols`, `lsp_diagnostics`, `lsp_diagnostics_directory`, `lsp_semantic_tokens`
+  - **2 AST Tools**: `ast_query`, `ast_query_multi`
+  - **1 Python Tool**: `python_repl` (persistent REPL with session management)
+
+- **Session Integration**
+  - Tools automatically added to session's `allowedTools`
+  - MCP server registered in session's `mcpServers` config
+  - Feature flags for LSP/AST/Python tool inclusion
+
+### Changed
+
+- **Agent Definitions** (`src/agents/definitions.ts`)
+  - Relevant agents (architect, executor, explore, qa-tester) now have LSP/AST tools in their tool arrays
+  - Enables IDE-like capabilities for agent analysis and modification tasks
+
+### Technical Details
+
+**New Files:**
+- `src/mcp/omc-tools-server.ts` - SDK MCP server implementation
+- `src/__tests__/omc-tools-server.test.ts` - 10 tests for tool exposure
+
+**Usage:**
+```typescript
+// Tools available to subagents as:
+mcp__omc-tools__lsp_hover
+mcp__omc-tools__lsp_definition
+mcp__omc-tools__ast_query
+mcp__omc-tools__python_repl
+// ... etc
+```
+
+---
+
+## [3.7.7] - 2026-01-28
+
+### Changed
+
+- **LSP/AST Tools Wired into Agent Definitions**
+  - Architect, executor, explore, and qa-tester agents now have LSP/AST tools in their tool arrays
+  - Enables IDE-like code intelligence for relevant agent tasks
+
+---
+
+## [3.7.4] - 2026-01-28
+
+### Changed
+
+- **Language-Agnostic Agent Prompts** (#174)
+  - build-fixer: Multi-language build/type check commands (TypeScript, Python, Go, Rust, Java)
+  - tdd-guide: Framework-agnostic test examples and coverage commands
+  - security-reviewer: Multi-language vulnerability patterns and dependency audit commands
+  - designer: Framework detection for React, Vue, Angular, Svelte, Solid
+  - code-reviewer: Language-neutral terminology for logging, docs, and patterns
+  - autopilot prompts: Multi-language build/lint/test commands
+  - All agents now detect project type from manifest files and adapt accordingly
+
+## [3.7.3] - 2026-01-28
+
+### Added
+
+#### MCP/Plugin Compatibility Layer (Major Feature)
+
+A comprehensive compatibility layer enabling OMC to discover, register, and use external plugins, MCP servers, and tools. This makes OMC a good citizen in the Claude ecosystem by resolving inter-plugin conflicts.
+
+- **Plugin Discovery** (`src/compatibility/discovery.ts`)
+  - Auto-discovery of installed plugins and MCP servers
+  - JSON Schema validation of plugin manifests using ajv
+  - Path traversal protection with `isPathWithinDirectory()` validation
+  - Symlink resolution and directory containment checks
+
+- **Tool Registry** (`src/compatibility/registry.ts`)
+  - Central registry for all discovered tools
+  - Conflict resolution when multiple plugins provide the same tool
+  - Priority-based tool selection
+
+- **Permission Adapter** (`src/compatibility/permission-adapter.ts`)
+  - Safe external tool usage with permission integration
+  - ReDoS prevention using safe-regex library for pattern validation
+
+- **MCP Bridge** (`src/compatibility/mcp-bridge.ts`)
+  - Server connection management and tool invocation
+  - Command whitelist enforcement (node, npx, python, python3, ruby, go)
+  - Environment variable filtering to block dangerous vars (LD_PRELOAD, NODE_OPTIONS, etc.)
+  - Proper child process error handlers and cleanup on spawn failure
+
+- **Documentation** (`docs/COMPATIBILITY.md`)
+  - 1,000+ line comprehensive documentation covering architecture, usage, and security
+
+- **CLI Tools**
+  - `omc tools list` - List all discovered tools
+  - `omc tools enable/disable` - Manage tool availability
+
+### Fixed
+
+#### Security Fixes (6 Vulnerabilities) (#170)
+
+In response to security review by @shaun0927:
+
+1. **Arbitrary Code Execution** - Added command whitelist to MCP bridge; only allowed executables can be spawned
+2. **Environment Variable Injection** - Block 10 dangerous environment variables (LD_PRELOAD, NODE_OPTIONS, etc.)
+3. **ReDoS Vulnerability** - Validate regex patterns with safe-regex library before compilation
+4. **No Schema Validation** - Added ajv-based JSON Schema validation for plugin manifests
+5. **Missing Error Handlers** - Added child process error handlers with proper cleanup on spawn failure
+6. **Path Traversal** - Added `isPathWithinDirectory()` with symlink resolution to prevent directory escape
+
+#### Other Fixes
+- **fix(hud):** Address code review feedback for cache toggle feature (#164)
+- **fix(rate-limit-wait):** Add ESM compatibility for `__filename` in daemon (#169, #172)
+
+### Testing
+
+- **64 new tests** (all passing)
+  - 30 compatibility layer tests (`src/__tests__/compatibility.test.ts`)
+  - 34 security vulnerability tests (`src/__tests__/compatibility-security.test.ts`)
+
+### Dependencies Added
+
+- `ajv` ^8.17.1 - JSON Schema validation
+- `safe-regex` ^2.1.1 - ReDoS prevention
+
+### Technical Details
+
+**New Files:**
+- `src/compatibility/` - Complete compatibility layer (6 source files)
+  - `index.ts` - Main exports and initialization
+  - `types.ts` - TypeScript interfaces (276 lines)
+  - `discovery.ts` - Plugin/MCP discovery with schema validation
+  - `registry.ts` - Tool registry with conflict resolution
+  - `permission-adapter.ts` - Permission integration with ReDoS protection
+  - `mcp-bridge.ts` - MCP server bridge with security hardening
+  - `safe-regex.d.ts` - Type declarations for safe-regex
+- `docs/COMPATIBILITY.md` - Architecture documentation (1,051 lines)
+- `src/__tests__/compatibility.test.ts` - Feature tests (612 lines)
+- `src/__tests__/compatibility-security.test.ts` - Security tests (549 lines)
+
+**Lines Added:** ~5,000+
+
+---
+
+## [3.7.2] - 2026-01-27
+
+### Fixed
+
+#### Security Hardening
+- **fix(security):** Extend DANGEROUS_SHELL_CHARS regex for complete injection prevention (#146)
+  - Added `\r`, `\t`, `\0`, `{}`, `[]`, `*`, `?`, `~`, `!`, `#` to blocked characters
+  - Intentionally excludes quotes (`"'`) for paths with spaces
+  - 20 new test cases covering brace expansion, CRLF, null bytes, globs, tilde, history, comment injection
+
+- **fix(plugin-patterns):** Add path traversal prevention with `isValidFilePath()` (#148)
+  - Blocks shell metacharacters in file paths
+  - Blocks `..` path traversal and absolute paths
+  - Applied to `formatFile()` and `lintFile()` functions
+
+---
+
+## [3.7.1] - 2026-01-27
+
+### Fixed
+
+#### Security & Stability Fixes
+- **fix(daemon):** Filter environment variables to prevent credential leakage (#155)
+  - New `createMinimalDaemonEnv()` function with allowlist approach
+  - Blocks `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, AWS credentials from daemon subprocess
+  - Adds proxy variable support (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`)
+
+- **fix(permission-handler):** Remove dead code and add swarm marker support (#157)
+  - Removed unreachable `isActiveModeRunning && isSafeCommand` code block
+  - Added `swarm-active.marker` detection for swarm mode auto-approval
+  - Generic `.marker` suffix support for future marker-based state files
+
+- **fix(subagent-tracker):** Replace CPU busy-wait loops with syncSleep (#159)
+  - `Atomics.wait`-based sleep instead of spinning loops
+  - Fixed race condition in `cleanupStaleAgents` with proper lock acquisition
+  - Complete state path migration to `.omc/state/` across all hooks and templates
+
+- **fix(session-end):** Simplify HookOutput to avoid JSON validation errors (#161)
+  - Removed `hookSpecificOutput` with unrecognized `SessionEnd` event
+  - Metrics still persist to disk, cleanup still runs
+
+- **fix(omc-setup):** Use cross-platform date conversion for state age check (#151)
+  - New `iso_to_epoch()` function with GNU/BSD fallback chain
+  - Safer jq usage with `// empty` for missing timestamps
+
+### Removed
+- Closed PR #153 in favor of PR #158 (superset with better design decisions)
+
+---
+
 ## [3.7.0] - 2026-01-27
 
 ### Added

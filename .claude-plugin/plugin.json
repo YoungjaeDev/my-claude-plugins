@@ -1,7 +1,21 @@
 {
   "name": "oh-my-claudecode",
-  "version": "3.7.0-youngjaedev.4",
+  "version": "3.8.10-youngjaedev.1",
   "description": "Multi-agent orchestration system for Claude Code",
+  "author": {
+    "name": "oh-my-claudecode contributors"
+  },
+  "repository": "https://github.com/YoungjaeDev/oh-my-claudecode",
+  "homepage": "https://github.com/YoungjaeDev/oh-my-claudecode",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "multi-agent",
+    "orchestration",
+    "automation"
+  ],
   "skills": "./skills/",
-  "commands": "./commands/"
+  "commands": "./commands/",
+  "mcpServers": "./.mcp.json"
 }

@@ -81,6 +81,16 @@ const MAX_COMPLETED_AGENTS = 100;
 const LOCK_TIMEOUT_MS = 5000; // 5 second lock timeout
 const LOCK_RETRY_MS = 50; // Retry every 50ms
 
+/**
+ * Synchronous sleep using Atomics.wait
+ * Avoids CPU-spinning busy-wait loops
+ */
+function syncSleep(ms: number): void {
+  const buffer = new SharedArrayBuffer(4);
+  const view = new Int32Array(buffer);
+  Atomics.wait(view, 0, 0, ms);
+}
+
 // ============================================================================
 // State Management
 // ============================================================================
@@ -109,8 +119,7 @@ function acquireLock(directory: string): boolean {
           try { unlinkSync(lockPath); } catch {}
         } else {
           // Lock is held, wait and retry
-          const waitUntil = Date.now() + LOCK_RETRY_MS;
-          while (Date.now() < waitUntil) {} // Busy wait (sync context)
+          syncSleep(LOCK_RETRY_MS);
           continue;
         }
       }
@@ -121,8 +130,7 @@ function acquireLock(directory: string): boolean {
     } catch (e: any) {
       if (e.code === 'EEXIST') {
         // Lock exists, retry
-        const waitUntil = Date.now() + LOCK_RETRY_MS;
-        while (Date.now() < waitUntil) {}
+        syncSleep(LOCK_RETRY_MS);
         continue;
       }
       return false;
@@ -388,26 +396,34 @@ export function processSubagentStop(input: SubagentStopInput): HookOutput {
  * Cleanup stale agents (mark as failed)
  */
 export function cleanupStaleAgents(directory: string): number {
-  const state = readTrackingState(directory);
-  const staleAgents = getStaleAgents(state);
-
-  if (staleAgents.length === 0) {
-    return 0;
+  if (!acquireLock(directory)) {
+    return 0; // Could not acquire lock
   }
 
-  for (const stale of staleAgents) {
-    const agentIndex = state.agents.findIndex((a) => a.agent_id === stale.agent_id);
-    if (agentIndex !== -1) {
-      state.agents[agentIndex].status = 'failed';
-      state.agents[agentIndex].completed_at = new Date().toISOString();
-      state.agents[agentIndex].output_summary = 'Marked as stale - exceeded timeout';
-      state.total_failed++;
+  try {
+    const state = readTrackingState(directory);
+    const staleAgents = getStaleAgents(state);
+
+    if (staleAgents.length === 0) {
+      return 0;
     }
+
+    for (const stale of staleAgents) {
+      const agentIndex = state.agents.findIndex((a) => a.agent_id === stale.agent_id);
+      if (agentIndex !== -1) {
+        state.agents[agentIndex].status = 'failed';
+        state.agents[agentIndex].completed_at = new Date().toISOString();
+        state.agents[agentIndex].output_summary = 'Marked as stale - exceeded timeout';
+        state.total_failed++;
+      }
+    }
+
+    writeTrackingState(directory, state);
+
+    return staleAgents.length;
+  } finally {
+    releaseLock(directory);
   }
-
-  writeTrackingState(directory, state);
-
-  return staleAgents.length;
 }
 
 // ============================================================================

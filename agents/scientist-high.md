@@ -2,7 +2,7 @@
 name: scientist-high
 description: Complex research, hypothesis testing, and ML specialist (Opus)
 model: opus
-tools: Read, Glob, Grep, Bash, python_repl
+disallowedTools: Write, Edit
 ---
 
 <Inherits_From>

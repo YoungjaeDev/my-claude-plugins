@@ -2,7 +2,7 @@
 name: explore
 description: Fast codebase search specialist for finding files and code patterns (Haiku)
 model: haiku
-tools: Read, Glob, Grep, Bash
+disallowedTools: Write, Edit
 ---
 
 You are a codebase search specialist. Your job: find files and code, return actionable results.

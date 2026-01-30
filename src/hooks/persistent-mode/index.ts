@@ -35,7 +35,7 @@ import {
   detectArchitectRejection,
   clearVerificationState
 } from '../ralph/index.js';
-import { checkIncompleteTodos, getNextPendingTodo, StopContext, isUserAbort } from '../todo-continuation/index.js';
+import { checkIncompleteTodos, getNextPendingTodo, StopContext, isUserAbort, isContextLimitStop } from '../todo-continuation/index.js';
 import { TODO_CONTINUATION_PROMPT } from '../../installer/hooks.js';
 import {
   isAutopilotActive
@@ -335,17 +335,8 @@ async function checkUltrawork(
     return null;
   }
 
-  // If no incomplete todos, ultrawork can complete
-  if (!hasIncompleteTodos) {
-    deactivateUltrawork(directory);
-    return {
-      shouldBlock: false,
-      message: `[ULTRAWORK COMPLETE] All tasks finished. Ultrawork mode deactivated. Well done!`,
-      mode: 'none'
-    };
-  }
-
-  // Reinforce ultrawork mode
+  // Reinforce ultrawork mode - ALWAYS continue while active.
+  // This prevents false stops from bash errors, transient failures, etc.
   const newState = incrementReinforcement(directory);
   if (!newState) {
     return null;
@@ -384,11 +375,15 @@ async function checkTodoContinuation(
   // Track continuation attempts to prevent infinite loops
   const attemptCount = sessionId ? trackTodoContinuationAttempt(sessionId) : 1;
 
+  // Use dynamic label based on source (Tasks vs todos)
+  const sourceLabel = result.source === 'task' ? 'Tasks' : 'todos';
+  const sourceLabelLower = result.source === 'task' ? 'tasks' : 'todos';
+
   if (attemptCount > MAX_TODO_CONTINUATION_ATTEMPTS) {
     // Too many attempts - agent appears stuck, allow stop but warn
     return {
       shouldBlock: false,
-      message: `[TODO CONTINUATION LIMIT] Attempted ${MAX_TODO_CONTINUATION_ATTEMPTS} continuations without progress. ${result.count} tasks remain incomplete. Consider reviewing the stuck tasks or asking the user for guidance.`,
+      message: `[TODO CONTINUATION LIMIT] Attempted ${MAX_TODO_CONTINUATION_ATTEMPTS} continuations without progress. ${result.count} ${sourceLabelLower} remain incomplete. Consider reviewing the stuck ${sourceLabelLower} or asking the user for guidance.`,
       mode: 'none',
       metadata: {
         todoCount: result.count,
@@ -399,7 +394,7 @@ async function checkTodoContinuation(
 
   const nextTodo = getNextPendingTodo(result);
   const nextTaskInfo = nextTodo
-    ? `\n\nNext task: "${nextTodo.content}" (${nextTodo.status})`
+    ? `\n\nNext ${result.source === 'task' ? 'Task' : 'todo'}: "${nextTodo.content}" (${nextTodo.status})`
     : '';
 
   const attemptInfo = attemptCount > 1
@@ -410,7 +405,7 @@ async function checkTodoContinuation(
 
 ${TODO_CONTINUATION_PROMPT}
 
-[Status: ${result.count} of ${result.total} tasks remaining]${nextTaskInfo}${attemptInfo}
+[Status: ${result.count} of ${result.total} ${sourceLabelLower} remaining]${nextTaskInfo}${attemptInfo}
 
 </todo-continuation>
 
@@ -440,7 +435,18 @@ export async function checkPersistentModes(
 ): Promise<PersistentModeResult> {
   const workingDir = directory || process.cwd();
 
-  // Check for user abort first - skip all continuation enforcement
+  // CRITICAL: Never block context-limit stops.
+  // Blocking these causes a deadlock where Claude Code cannot compact.
+  // See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/213
+  if (isContextLimitStop(stopContext)) {
+    return {
+      shouldBlock: false,
+      message: '',
+      mode: 'none'
+    };
+  }
+
+  // Check for user abort - skip all continuation enforcement
   if (isUserAbort(stopContext)) {
     return {
       shouldBlock: false,

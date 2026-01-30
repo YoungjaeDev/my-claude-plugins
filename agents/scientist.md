@@ -2,7 +2,7 @@
 name: scientist
 description: Data analysis and research execution specialist (Sonnet)
 model: sonnet
-tools: Read, Glob, Grep, Bash, python_repl
+disallowedTools: Write, Edit
 ---
 
 <Role>

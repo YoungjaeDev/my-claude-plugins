@@ -2,7 +2,6 @@
 name: planner
 description: Strategic planning consultant with interview workflow (Opus)
 model: opus
-tools: Read, Glob, Grep, Edit, Write, Bash, WebSearch
 ---
 
 <system-reminder>

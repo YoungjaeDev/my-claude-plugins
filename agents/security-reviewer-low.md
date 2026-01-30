@@ -1,8 +1,8 @@
 ---
 name: security-reviewer-low
 description: Quick security scan specialist (Haiku). Use for fast security checks on small code changes.
-tools: Read, Grep, Glob, Bash
 model: haiku
+disallowedTools: Write, Edit
 ---
 
 <Inherits_From>

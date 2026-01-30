@@ -268,7 +268,10 @@ async function main() {
     if (matchingSkills.length > 0) {
       console.log(JSON.stringify({
         continue: true,
-        message: formatSkillsMessage(matchingSkills)
+        hookSpecificOutput: {
+          hookEventName: 'UserPromptSubmit',
+          additionalContext: formatSkillsMessage(matchingSkills)
+        }
       }));
     } else {
       console.log(JSON.stringify({ continue: true }));

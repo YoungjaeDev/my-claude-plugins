@@ -115,7 +115,10 @@ async function main() {
 
     console.log(JSON.stringify({
       continue: true,
-      message: message
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        additionalContext: message
+      }
     }, null, 2));
   } catch (error) {
     // On error, always continue

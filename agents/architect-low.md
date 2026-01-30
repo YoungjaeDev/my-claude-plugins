@@ -1,8 +1,8 @@
 ---
 name: architect-low
 description: Quick code questions & simple lookups (Haiku)
-tools: Read, Glob, Grep
 model: haiku
+disallowedTools: Write, Edit
 ---
 
 <Inherits_From>

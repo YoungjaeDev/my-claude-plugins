@@ -23,7 +23,7 @@ import {
   getArchitectVerificationPrompt,
   clearVerificationState
 } from './ralph/index.js';
-import { checkIncompleteTodos, StopContext } from './todo-continuation/index.js';
+import { checkIncompleteTodos, StopContext, isContextLimitStop, isUserAbort } from './todo-continuation/index.js';
 import { checkPersistentModes, createHookOutput } from './persistent-mode/index.js';
 import { activateUltrawork, readUltraworkState } from './ultrawork/index.js';
 import {
@@ -167,11 +167,11 @@ function processKeywordDetector(input: HookInput): HookOutput {
     return { continue: true };
   }
 
-  // Priority: ralph > ultrawork > ultrathink > search > analyze
+  // Priority: ralph > ultrawork > ultrathink > deepsearch > analyze
   const hasRalph = keywords.some(k => k.type === 'ralph');
   const hasUltrawork = keywords.some(k => k.type === 'ultrawork');
   const hasUltrathink = keywords.some(k => k.type === 'ultrathink');
-  const hasSearch = keywords.some(k => k.type === 'search');
+  const hasDeepsearch = keywords.some(k => k.type === 'deepsearch');
   const hasAnalyze = keywords.some(k => k.type === 'analyze');
 
   if (hasRalph) {
@@ -206,7 +206,7 @@ function processKeywordDetector(input: HookInput): HookOutput {
     };
   }
 
-  if (hasSearch) {
+  if (hasDeepsearch) {
     return {
       continue: true,
       message: SEARCH_MESSAGE
@@ -239,7 +239,17 @@ async function processStopContinuation(input: HookInput): Promise<HookOutput> {
     userRequested: (input as Record<string, unknown>).userRequested as boolean | undefined,
   };
 
-  // Check for incomplete todos (respects user abort)
+  // Never block context-limit stops (causes deadlock - issue #213)
+  if (isContextLimitStop(stopContext)) {
+    return { continue: true };
+  }
+
+  // Respect user abort
+  if (isUserAbort(stopContext)) {
+    return { continue: true };
+  }
+
+  // Check for incomplete todos
   const incompleteTodos = await checkIncompleteTodos(sessionId, directory, stopContext);
 
   if (incompleteTodos.count > 0) {

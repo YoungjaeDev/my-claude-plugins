@@ -1,8 +1,8 @@
 ---
 name: code-reviewer-low
 description: Quick code quality checker (Haiku). Use for fast review of small changes.
-tools: Read, Grep, Glob, Bash
 model: haiku
+disallowedTools: Write, Edit
 ---
 
 <Inherits_From>

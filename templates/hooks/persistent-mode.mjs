@@ -1,9 +1,14 @@
 #!/usr/bin/env node
-// OMC Persistent Mode Hook (Node.js)
-// Unified handler for ultrawork, ralph-loop, and todo continuation
-// Cross-platform: Windows, macOS, Linux
 
-import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
+/**
+ * OMC Persistent Mode Hook (Node.js)
+ * Minimal continuation enforcer for all OMC modes.
+ * Stripped down for reliability — no optional imports, no PRD, no notepad pruning.
+ *
+ * Supported modes: ralph, autopilot, ultrapilot, swarm, ultrawork, ecomode, ultraqa, pipeline
+ */
+
+import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
@@ -26,6 +31,11 @@ function readJsonFile(path) {
 
 function writeJsonFile(path, data) {
   try {
+    // Ensure directory exists
+    const dir = path.substring(0, path.lastIndexOf('/'));
+    if (dir && !existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
     writeFileSync(path, JSON.stringify(data, null, 2));
     return true;
   } catch {
@@ -33,34 +43,124 @@ function writeJsonFile(path, data) {
   }
 }
 
+/**
+ * Read state file from local or global location, tracking the source.
+ */
+function readStateFile(stateDir, globalStateDir, filename) {
+  const localPath = join(stateDir, filename);
+  const globalPath = join(globalStateDir, filename);
+
+  let state = readJsonFile(localPath);
+  if (state) return { state, path: localPath };
+
+  state = readJsonFile(globalPath);
+  if (state) return { state, path: globalPath };
+
+  return { state: null, path: localPath }; // Default to local for new writes
+}
+
+/**
+ * Count incomplete Tasks from Claude Code's native Task system.
+ */
+function countIncompleteTasks(sessionId) {
+  if (!sessionId || typeof sessionId !== 'string') return 0;
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/.test(sessionId)) return 0;
+
+  const taskDir = join(homedir(), '.claude', 'tasks', sessionId);
+  if (!existsSync(taskDir)) return 0;
+
+  let count = 0;
+  try {
+    const files = readdirSync(taskDir).filter(f => f.endsWith('.json') && f !== '.lock');
+    for (const file of files) {
+      try {
+        const content = readFileSync(join(taskDir, file), 'utf-8');
+        const task = JSON.parse(content);
+        if (task.status === 'pending' || task.status === 'in_progress') count++;
+      } catch { /* skip */ }
+    }
+  } catch { /* skip */ }
+  return count;
+}
+
 function countIncompleteTodos(todosDir, projectDir) {
   let count = 0;
 
-  // Check global todos
   if (existsSync(todosDir)) {
     try {
       const files = readdirSync(todosDir).filter(f => f.endsWith('.json'));
       for (const file of files) {
-        const todos = readJsonFile(join(todosDir, file));
-        if (Array.isArray(todos)) {
+        try {
+          const content = readFileSync(join(todosDir, file), 'utf-8');
+          const data = JSON.parse(content);
+          const todos = Array.isArray(data) ? data : (Array.isArray(data?.todos) ? data.todos : []);
           count += todos.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length;
-        }
+        } catch { /* skip */ }
       }
-    } catch {}
+    } catch { /* skip */ }
   }
 
-  // Check project todos
   for (const path of [
     join(projectDir, '.omc', 'todos.json'),
     join(projectDir, '.claude', 'todos.json')
   ]) {
-    const todos = readJsonFile(path);
-    if (Array.isArray(todos)) {
+    try {
+      const data = readJsonFile(path);
+      const todos = Array.isArray(data) ? data : (Array.isArray(data?.todos) ? data.todos : []);
       count += todos.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length;
-    }
+    } catch { /* skip */ }
   }
 
   return count;
+}
+
+/**
+ * Detect if stop was triggered by context-limit related reasons.
+ * When context is exhausted, Claude Code needs to stop so it can compact.
+ * Blocking these stops causes a deadlock: can't compact because can't stop,
+ * can't continue because context is full.
+ *
+ * See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/213
+ */
+function isContextLimitStop(data) {
+  const reason = (data.stop_reason || data.stopReason || '').toLowerCase();
+
+  const contextPatterns = [
+    'context_limit',
+    'context_window',
+    'context_exceeded',
+    'context_full',
+    'max_context',
+    'token_limit',
+    'max_tokens',
+    'conversation_too_long',
+    'input_too_long',
+  ];
+
+  if (contextPatterns.some(p => reason.includes(p))) {
+    return true;
+  }
+
+  const endTurnReason = (data.end_turn_reason || data.endTurnReason || '').toLowerCase();
+  if (endTurnReason && contextPatterns.some(p => endTurnReason.includes(p))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Detect if stop was triggered by user abort (Ctrl+C, cancel button, etc.)
+ */
+function isUserAbort(data) {
+  if (data.user_requested || data.userRequested) return true;
+
+  const reason = (data.stop_reason || data.stopReason || '').toLowerCase();
+  const abortPatterns = [
+    'user_cancel', 'user_interrupt', 'ctrl_c', 'manual_stop',
+    'aborted', 'abort', 'cancel', 'interrupt',
+  ];
+  return abortPatterns.some(p => reason.includes(p));
 }
 
 async function main() {
@@ -69,172 +169,233 @@ async function main() {
     let data = {};
     try { data = JSON.parse(input); } catch {}
 
-    const stopReason = data.stop_reason || data.stopReason || '';
-    const userRequested = data.user_requested || data.userRequested || false;
+    const directory = data.directory || process.cwd();
+    const sessionId = data.sessionId || data.session_id || '';
+    const todosDir = join(homedir(), '.claude', 'todos');
+    const stateDir = join(directory, '.omc', 'state');
+    const globalStateDir = join(homedir(), '.omc', 'state');
 
-    // Check for user abort - skip all continuation enforcement
-    // NOTE: Abort patterns are assumed - verify against actual Claude Code API values
-    if (userRequested || /abort|cancel|interrupt|ctrl_c|manual_stop/i.test(stopReason)) {
+    // CRITICAL: Never block context-limit stops.
+    // Blocking these causes a deadlock where Claude Code cannot compact.
+    // See: https://github.com/Yeachan-Heo/oh-my-claudecode/issues/213
+    if (isContextLimitStop(data)) {
       console.log(JSON.stringify({ continue: true }));
       return;
     }
 
-    const directory = data.directory || process.cwd();
-    const todosDir = join(homedir(), '.claude', 'todos');
+    // Respect user abort (Ctrl+C, cancel)
+    if (isUserAbort(data)) {
+      console.log(JSON.stringify({ continue: true }));
+      return;
+    }
 
-    // Check for ultrawork state
-    let ultraworkState = readJsonFile(join(directory, '.omc', 'ultrawork-state.json'))
-      || readJsonFile(join(homedir(), '.claude', 'ultrawork-state.json'));
+    // Read all mode states (local-first with fallback to global)
+    const ralph = readStateFile(stateDir, globalStateDir, 'ralph-state.json');
+    const autopilot = readStateFile(stateDir, globalStateDir, 'autopilot-state.json');
+    const ultrapilot = readStateFile(stateDir, globalStateDir, 'ultrapilot-state.json');
+    const ultrawork = readStateFile(stateDir, globalStateDir, 'ultrawork-state.json');
+    const ecomode = readStateFile(stateDir, globalStateDir, 'ecomode-state.json');
+    const ultraqa = readStateFile(stateDir, globalStateDir, 'ultraqa-state.json');
+    const pipeline = readStateFile(stateDir, globalStateDir, 'pipeline-state.json');
 
-    // Check for ralph loop state
-    const ralphState = readJsonFile(join(directory, '.omc', 'ralph-state.json'));
+    // Swarm uses swarm-summary.json (not swarm-state.json) + marker file
+    const swarmMarker = existsSync(join(stateDir, 'swarm-active.marker'));
+    const swarmSummary = readJsonFile(join(stateDir, 'swarm-summary.json'));
 
-    // Check for verification state (oracle verification)
-    const verificationState = readJsonFile(join(directory, '.omc', 'ralph-verification.json'));
+    // Count incomplete items
+    const taskCount = countIncompleteTasks(sessionId);
+    const todoCount = countIncompleteTodos(todosDir, directory);
+    const totalIncomplete = taskCount + todoCount;
 
-    // Count incomplete todos
-    const incompleteCount = countIncompleteTodos(todosDir, directory);
-
-    // Priority 1: Ralph Loop with Oracle Verification
-    if (ralphState?.active) {
-      const iteration = ralphState.iteration || 1;
-      const maxIter = ralphState.max_iterations || 10;
-
-      // Check if oracle verification is pending
-      if (verificationState?.pending) {
-        const attempt = (verificationState.verification_attempts || 0) + 1;
-        const maxAttempts = verificationState.max_verification_attempts || 3;
-
-        console.log(JSON.stringify({
-          continue: false,
-          reason: `<ralph-verification>
-
-[ORACLE VERIFICATION REQUIRED - Attempt ${attempt}/${maxAttempts}]
-
-The agent claims the task is complete. Before accepting, YOU MUST verify with Oracle.
-
-**Original Task:**
-${verificationState.original_task || ralphState.prompt || 'No task specified'}
-
-**Completion Claim:**
-${verificationState.completion_claim || 'Task marked complete'}
-
-${verificationState.oracle_feedback ? `**Previous Oracle Feedback (rejected):**
-${verificationState.oracle_feedback}
-` : ''}
-
-## MANDATORY VERIFICATION STEPS
-
-1. **Spawn Oracle Agent** for verification:
-   \`\`\`
-   Task(subagent_type="oracle", prompt="Verify this task completion claim...")
-   \`\`\`
-
-2. **Oracle must check:**
-   - Are ALL requirements from the original task met?
-   - Is the implementation complete, not partial?
-   - Are there any obvious bugs or issues?
-   - Does the code compile/run without errors?
-   - Are tests passing (if applicable)?
-
-3. **Based on Oracle's response:**
-   - If APPROVED: Output \`<oracle-approved>VERIFIED_COMPLETE</oracle-approved>\`
-   - If REJECTED: Continue working on the identified issues
-
-DO NOT output the completion promise again until Oracle approves.
-
-</ralph-verification>
-
----
-`
-        }));
-        return;
-      }
+    // Priority 1: Ralph Loop (explicit persistence mode)
+    if (ralph.state?.active) {
+      const iteration = ralph.state.iteration || 1;
+      const maxIter = ralph.state.max_iterations || 100;
 
       if (iteration < maxIter) {
-        const newIter = iteration + 1;
-        ralphState.iteration = newIter;
-        writeJsonFile(join(directory, '.omc', 'ralph-state.json'), ralphState);
+        ralph.state.iteration = iteration + 1;
+        writeJsonFile(ralph.path, ralph.state);
 
         console.log(JSON.stringify({
           continue: false,
-          reason: `<ralph-loop-continuation>
-
-[RALPH LOOP - ITERATION ${newIter}/${maxIter}]
-
-Your previous attempt did not output the completion promise. The work is NOT done yet.
-
-CRITICAL INSTRUCTIONS:
-1. Review your progress and the original task
-2. Check your todo list - are ALL items marked complete?
-3. Continue from where you left off
-4. When FULLY complete, output: <promise>${ralphState.completion_promise || 'TASK_COMPLETE'}</promise>
-5. Do NOT stop until the task is truly done
-
-${ralphState.prompt ? `Original task: ${ralphState.prompt}` : ''}
-
-</ralph-loop-continuation>
-
----
-`
+          reason: `[RALPH LOOP - ITERATION ${iteration + 1}/${maxIter}] Work is NOT done. Continue. When complete, output: <promise>${ralph.state.completion_promise || 'DONE'}</promise>\n${ralph.state.prompt ? `Task: ${ralph.state.prompt}` : ''}`
         }));
         return;
       }
     }
 
-    // Priority 2: Ultrawork with incomplete todos
-    if (ultraworkState?.active && incompleteCount > 0) {
-      const newCount = (ultraworkState.reinforcement_count || 0) + 1;
-      ultraworkState.reinforcement_count = newCount;
-      ultraworkState.last_checked_at = new Date().toISOString();
+    // Priority 2: Autopilot (high-level orchestration)
+    if (autopilot.state?.active) {
+      const phase = autopilot.state.phase || 'unknown';
+      if (phase !== 'complete') {
+        const newCount = (autopilot.state.reinforcement_count || 0) + 1;
+        if (newCount <= 20) {
+          autopilot.state.reinforcement_count = newCount;
+          writeJsonFile(autopilot.path, autopilot.state);
 
-      writeJsonFile(join(directory, '.omc', 'ultrawork-state.json'), ultraworkState);
+          console.log(JSON.stringify({
+            continue: false,
+            reason: `[AUTOPILOT - Phase: ${phase}] Autopilot not complete. Continue working.`
+          }));
+          return;
+        }
+      }
+    }
+
+    // Priority 3: Ultrapilot (parallel autopilot)
+    if (ultrapilot.state?.active) {
+      const workers = ultrapilot.state.workers || [];
+      const incomplete = workers.filter(w => w.status !== 'complete' && w.status !== 'failed').length;
+      if (incomplete > 0) {
+        const newCount = (ultrapilot.state.reinforcement_count || 0) + 1;
+        if (newCount <= 20) {
+          ultrapilot.state.reinforcement_count = newCount;
+          writeJsonFile(ultrapilot.path, ultrapilot.state);
+
+          console.log(JSON.stringify({
+            continue: false,
+            reason: `[ULTRAPILOT] ${incomplete} workers still running. Continue.`
+          }));
+          return;
+        }
+      }
+    }
+
+    // Priority 4: Swarm (coordinated agents with SQLite)
+    if (swarmMarker && swarmSummary?.active) {
+      const pending = (swarmSummary.tasks_pending || 0) + (swarmSummary.tasks_claimed || 0);
+      if (pending > 0) {
+        const newCount = (swarmSummary.reinforcement_count || 0) + 1;
+        if (newCount <= 15) {
+          swarmSummary.reinforcement_count = newCount;
+          writeJsonFile(join(stateDir, 'swarm-summary.json'), swarmSummary);
+
+          console.log(JSON.stringify({
+            continue: false,
+            reason: `[SWARM ACTIVE] ${pending} tasks remain. Continue working.`
+          }));
+          return;
+        }
+      }
+    }
+
+    // Priority 5: Pipeline (sequential stages)
+    if (pipeline.state?.active) {
+      const currentStage = pipeline.state.current_stage || 0;
+      const totalStages = pipeline.state.stages?.length || 0;
+      if (currentStage < totalStages) {
+        const newCount = (pipeline.state.reinforcement_count || 0) + 1;
+        if (newCount <= 15) {
+          pipeline.state.reinforcement_count = newCount;
+          writeJsonFile(pipeline.path, pipeline.state);
+
+          console.log(JSON.stringify({
+            continue: false,
+            reason: `[PIPELINE - Stage ${currentStage + 1}/${totalStages}] Pipeline not complete. Continue.`
+          }));
+          return;
+        }
+      }
+    }
+
+    // Priority 6: UltraQA (QA cycling)
+    if (ultraqa.state?.active) {
+      const cycle = ultraqa.state.cycle || 1;
+      const maxCycles = ultraqa.state.max_cycles || 10;
+      if (cycle < maxCycles && !ultraqa.state.all_passing) {
+        ultraqa.state.cycle = cycle + 1;
+        writeJsonFile(ultraqa.path, ultraqa.state);
+
+        console.log(JSON.stringify({
+          continue: false,
+          reason: `[ULTRAQA - Cycle ${cycle + 1}/${maxCycles}] Tests not all passing. Continue fixing.`
+        }));
+        return;
+      }
+    }
+
+    // Priority 7: Ultrawork - ALWAYS continue while active (not just when tasks exist)
+    // This prevents false stops from bash errors, transient failures, etc.
+    if (ultrawork.state?.active) {
+      const newCount = (ultrawork.state.reinforcement_count || 0) + 1;
+      const maxReinforcements = ultrawork.state.max_reinforcements || 50;
+
+      if (newCount > maxReinforcements) {
+        console.log(JSON.stringify({
+          continue: true,
+          reason: `[ULTRAWORK ESCAPE] Max reinforcements (${maxReinforcements}) reached. Allowing stop.`
+        }));
+        return;
+      }
+
+      ultrawork.state.reinforcement_count = newCount;
+      ultrawork.state.last_checked_at = new Date().toISOString();
+      writeJsonFile(ultrawork.path, ultrawork.state);
+
+      let reason = `[ULTRAWORK #${newCount}] Mode active - continue working.`;
+      if (totalIncomplete > 0) {
+        const itemType = taskCount > 0 ? 'Tasks' : 'todos';
+        reason = `[ULTRAWORK #${newCount}] ${totalIncomplete} incomplete ${itemType}. Continue working.`;
+      }
+      if (ultrawork.state.original_prompt) {
+        reason += `\nTask: ${ultrawork.state.original_prompt}`;
+      }
 
       console.log(JSON.stringify({
         continue: false,
-        reason: `<ultrawork-persistence>
-
-[ULTRAWORK MODE STILL ACTIVE - Reinforcement #${newCount}]
-
-Your ultrawork session is NOT complete. ${incompleteCount} incomplete todos remain.
-
-REMEMBER THE ULTRAWORK RULES:
-- **PARALLEL**: Fire independent calls simultaneously - NEVER wait sequentially
-- **BACKGROUND FIRST**: Use Task(run_in_background=true) for exploration (10+ concurrent)
-- **TODO**: Track EVERY step. Mark complete IMMEDIATELY after each
-- **VERIFY**: Check ALL requirements met before done
-- **NO Premature Stopping**: ALL TODOs must be complete
-
-Continue working on the next pending task. DO NOT STOP until all tasks are marked complete.
-
-${ultraworkState.original_prompt ? `Original task: ${ultraworkState.original_prompt}` : ''}
-
-</ultrawork-persistence>
-
----
-`
+        reason
       }));
       return;
     }
 
-    // Priority 3: Todo Continuation
-    if (incompleteCount > 0) {
+    // Priority 8: Ecomode - ALWAYS continue while active
+    if (ecomode.state?.active) {
+      const newCount = (ecomode.state.reinforcement_count || 0) + 1;
+      const maxReinforcements = ecomode.state.max_reinforcements || 50;
+
+      if (newCount > maxReinforcements) {
+        console.log(JSON.stringify({
+          continue: true,
+          reason: `[ECOMODE ESCAPE] Max reinforcements (${maxReinforcements}) reached. Allowing stop.`
+        }));
+        return;
+      }
+
+      ecomode.state.reinforcement_count = newCount;
+      writeJsonFile(ecomode.path, ecomode.state);
+
+      let reason = `[ECOMODE #${newCount}] Mode active - continue working.`;
+      if (totalIncomplete > 0) {
+        const itemType = taskCount > 0 ? 'Tasks' : 'todos';
+        reason = `[ECOMODE #${newCount}] ${totalIncomplete} incomplete ${itemType}. Continue working.`;
+      }
+
       console.log(JSON.stringify({
         continue: false,
-        reason: `<todo-continuation>
+        reason
+      }));
+      return;
+    }
 
-[SYSTEM REMINDER - TODO CONTINUATION]
+    // Priority 9: Generic Task/Todo continuation (no specific mode)
+    if (totalIncomplete > 0) {
+      const contFile = join(stateDir, 'continuation-count.json');
+      let contState = readJsonFile(contFile) || { count: 0 };
+      contState.count = (contState.count || 0) + 1;
+      writeJsonFile(contFile, contState);
 
-Incomplete tasks remain in your todo list (${incompleteCount} remaining). Continue working on the next pending task.
+      if (contState.count > 15) {
+        console.log(JSON.stringify({
+          continue: true,
+          reason: `[CONTINUATION ESCAPE] Max continuations reached. Allowing stop.`
+        }));
+        return;
+      }
 
-- Proceed without asking for permission
-- Mark each task complete when finished
-- Do not stop until all tasks are done
-
-</todo-continuation>
-
----
-`
+      const itemType = taskCount > 0 ? 'Tasks' : 'todos';
+      console.log(JSON.stringify({
+        continue: false,
+        reason: `[CONTINUATION ${contState.count}/15] ${totalIncomplete} incomplete ${itemType}. Continue working.`
       }));
       return;
     }
@@ -242,6 +403,8 @@ Incomplete tasks remain in your todo list (${incompleteCount} remaining). Contin
     // No blocking needed
     console.log(JSON.stringify({ continue: true }));
   } catch (error) {
+    // On any error, allow stop rather than blocking forever
+    console.error(`[persistent-mode] Error: ${error.message}`);
     console.log(JSON.stringify({ continue: true }));
   }
 }

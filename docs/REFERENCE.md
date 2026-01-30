@@ -21,44 +21,21 @@ Complete reference for oh-my-claudecode. For quick start, see the main [README.m
 
 ## Installation
 
-Choose **ONE** installation method. Do not mix methods.
+**Only the Claude Code Plugin method is supported.** Other installation methods (npm, bun, curl) are deprecated and may not work correctly.
 
-### Option A: Claude Code Plugin (Recommended)
-
-```bash
-# From terminal:
-claude plugin install oh-my-claude-sisyphus
-
-# Or from within Claude Code:
-/oh-my-claudecode:plugin oh-my-claude-sisyphus
-```
-
-Uses Node.js hooks from the plugin directory. Integrates directly with Claude Code's plugin system.
-
-### Option B: Via npm (Windows & Cross-Platform)
+### Claude Code Plugin (Required)
 
 ```bash
-npm install -g oh-my-claude-sisyphus
+# Step 1: Add the marketplace
+/plugin marketplace add https://github.com/Yeachan-Heo/oh-my-claudecode
+
+# Step 2: Install the plugin
+/plugin install oh-my-claudecode
 ```
 
-> **Windows Users**: This is the recommended installation method. Requires Node.js 20+.
+This integrates directly with Claude Code's plugin system and uses Node.js hooks.
 
-### Option C: Curl One-Liner (Deprecated)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Yeachan-Heo/oh-my-claudecode/main/scripts/install.sh | bash
-```
-
-> **Deprecated**: This method installs bash hooks to `~/.claude/` which can conflict with plugin installations. Use the plugin method above instead.
-
-### Manual Install (macOS/Linux)
-
-```bash
-git clone https://github.com/Yeachan-Heo/oh-my-claude-sisyphus.git
-cd oh-my-claude-sisyphus
-chmod +x scripts/install.sh
-./scripts/install.sh
-```
+> **Note**: Direct npm/bun global installs are **not supported**. The plugin system handles all installation and hook setup automatically.
 
 ### Requirements
 
@@ -66,8 +43,6 @@ chmod +x scripts/install.sh
 - One of:
   - **Claude Max/Pro subscription** (recommended for individuals)
   - **Anthropic API key** (`ANTHROPIC_API_KEY` environment variable)
-- **Windows**: Node.js 20+ (for npm installation)
-- **macOS/Linux**: Bash shell (default) or Node.js 20+ (optional)
 
 ---
 

@@ -1,7 +1,6 @@
 ---
 name: executor-low
 description: Simple single-file task executor (Haiku)
-tools: Read, Glob, Grep, Edit, Write, Bash, TodoWrite
 model: haiku
 ---
 

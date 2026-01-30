@@ -16,8 +16,27 @@ import {
   recordHeartbeat,
   getHeartbeats,
   removeHeartbeat,
-  runTransaction
+  runTransaction,
+  writeSwarmSummary
 } from './state.js';
+
+// Store current working directory for summary writes
+let currentCwd: string | null = null;
+
+/**
+ * Set the current working directory for summary writes
+ * Called by the main swarm module when starting/connecting
+ */
+export function setSwarmCwd(cwd: string): void {
+  currentCwd = cwd;
+}
+
+/**
+ * Get the current working directory
+ */
+export function getSwarmCwd(): string | null {
+  return currentCwd;
+}
 
 /**
  * Atomically claim the next available task
@@ -89,7 +108,14 @@ export function claimTask(agentId: string): ClaimResult {
       } as ClaimResult;
     });
 
-    return claimTransaction.immediate();
+    const result = claimTransaction.immediate();
+
+    // Write summary after successful claim
+    if (result.success && currentCwd) {
+      writeSwarmSummary(currentCwd);
+    }
+
+    return result;
   } catch (error) {
     return {
       success: false,
@@ -189,7 +215,14 @@ export function completeTask(agentId: string, taskId: string, result?: string): 
       return true;
     });
 
-    return completeTransaction.immediate();
+    const result = completeTransaction.immediate();
+
+    // Write summary after completion
+    if (result && currentCwd) {
+      writeSwarmSummary(currentCwd);
+    }
+
+    return result;
   } catch (error) {
     console.error('Failed to complete task:', error);
     return false;

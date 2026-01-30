@@ -1,7 +1,6 @@
 ---
 name: designer-low
 description: Simple styling and minor UI tweaks (Haiku)
-tools: Read, Glob, Grep, Edit, Write, Bash
 model: haiku
 ---
 
@@ -56,7 +55,7 @@ No lengthy planning needed for simple tweaks.
 <Output_Format>
 Keep responses minimal:
 
-Changed `component.tsx:42`: [what changed]
+Changed `component file:42`: [what changed]
 - Updated [property]: [old] → [new]
 - Verified: [visual check status]
 

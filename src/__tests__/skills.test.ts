@@ -8,14 +8,14 @@ describe('Builtin Skills', () => {
   });
 
   describe('createBuiltinSkills()', () => {
-    it('should return correct number of skills (44)', () => {
+    it('should return correct number of skills (45)', () => {
       const skills = createBuiltinSkills();
-      // 44 skills: analyze, ask-codex, ask-gemini, autopilot, build-fix, cancel, code-review, council, deepinit,
+      // 45 skills: analyze, ask-codex, ask-gemini, autopilot, build-fix, cancel, code-review, council, deepinit,
       // deepsearch, doctor, ecomode, edit-notebook, frontend-ui-ux, git-master, gradio-cv-app, help, hud,
       // humanizer, learn-about-omc, learner, local-skills-setup, mcp-setup, midjourney-imagineapi, note,
       // omc-setup, orchestrate, pipeline, plan, project-session-manager, ralph, ralph-init, ralplan, release,
-      // research, review, security-review, sisyphus-core, skill, swarm, tdd, ultrapilot, ultraqa, ultrawork
-      expect(skills).toHaveLength(44);
+      // research, review, security-review, sisyphus-core, skill, swarm, tdd, ultrapilot, ultraqa, ultrawork, writer-memory
+      expect(skills).toHaveLength(45);
     });
 
     it('should return an array of BuiltinSkill objects', () => {
@@ -109,6 +109,7 @@ describe('Builtin Skills', () => {
         'ultrapilot',
         'ultraqa',
         'ultrawork',
+        'writer-memory',
       ];
 
       const actualSkillNames = skills.map((s) => s.name);
@@ -152,7 +153,7 @@ describe('Builtin Skills', () => {
   describe('listBuiltinSkillNames()', () => {
     it('should return all skill names', () => {
       const names = listBuiltinSkillNames();
-      expect(names).toHaveLength(44);
+      expect(names).toHaveLength(45);
       expect(names).toContain('orchestrate');
       expect(names).toContain('autopilot');
       expect(names).toContain('cancel');

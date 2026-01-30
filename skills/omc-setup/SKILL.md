@@ -21,9 +21,37 @@ Before starting any step, check for existing state:
 ```bash
 # Check for existing setup state
 STATE_FILE=".omc/state/setup-state.json"
+
+# Cross-platform ISO date to epoch conversion
+iso_to_epoch() {
+  local iso_date="$1"
+  local epoch=""
+  # Try GNU date first (Linux)
+  epoch=$(date -d "$iso_date" +%s 2>/dev/null)
+  if [ $? -eq 0 ] && [ -n "$epoch" ]; then
+    echo "$epoch"
+    return 0
+  fi
+  # Try BSD/macOS date
+  local clean_date=$(echo "$iso_date" | sed 's/[+-][0-9][0-9]:[0-9][0-9]$//' | sed 's/Z$//' | sed 's/T/ /')
+  epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$clean_date" +%s 2>/dev/null)
+  if [ $? -eq 0 ] && [ -n "$epoch" ]; then
+    echo "$epoch"
+    return 0
+  fi
+  echo "0"
+}
+
 if [ -f "$STATE_FILE" ]; then
   # Check if state is stale (older than 24 hours)
-  STATE_AGE=$(($(date +%s) - $(date -d "$(jq -r .timestamp "$STATE_FILE" 2>/dev/null || echo "1970-01-01")" +%s 2>/dev/null || echo 0)))
+  TIMESTAMP_RAW=$(jq -r '.timestamp // empty' "$STATE_FILE" 2>/dev/null)
+  if [ -n "$TIMESTAMP_RAW" ]; then
+    TIMESTAMP_EPOCH=$(iso_to_epoch "$TIMESTAMP_RAW")
+    NOW_EPOCH=$(date +%s)
+    STATE_AGE=$((NOW_EPOCH - TIMESTAMP_EPOCH))
+  else
+    STATE_AGE=999999  # Force fresh start if no timestamp
+  fi
   if [ "$STATE_AGE" -gt 86400 ]; then
     echo "Previous setup state is more than 24 hours old. Starting fresh."
     rm -f "$STATE_FILE"
@@ -418,34 +446,15 @@ Ask user: "Would you like to install the OMC CLI for standalone analytics? (Reco
 1. **Yes (Recommended)** - Install CLI tools globally for `omc stats`, `omc agents`, etc.
 2. **No** - Skip CLI installation, use only plugin skills
 
-### If User Chooses YES:
+### CLI Installation Note
 
-```bash
-# Check for bun (preferred) or npm
-if command -v bun &> /dev/null; then
-  echo "Installing OMC CLI via bun..."
-  bun install -g oh-my-claude-sisyphus
-elif command -v npm &> /dev/null; then
-  echo "Installing OMC CLI via npm..."
-  npm install -g oh-my-claude-sisyphus
-else
-  echo "ERROR: Neither bun nor npm found. Please install Node.js or Bun first."
-  exit 1
-fi
+The CLI (`omc` command) is **no longer supported** via npm/bun global install.
 
-# Verify installation
-if command -v omc &> /dev/null; then
-  echo "✓ OMC CLI installed successfully!"
-  echo "  Try: omc stats, omc agents, omc tui"
-else
-  echo "⚠ CLI installed but 'omc' not in PATH."
-  echo "  You may need to restart your terminal or add npm/bun global bin to PATH."
-fi
-```
+All functionality is available through the plugin system:
+- Use `/oh-my-claudecode:help` for guidance
+- Use `/oh-my-claudecode:doctor` for diagnostics
 
-### If User Chooses NO:
-
-Skip this step. User can install later with `npm install -g oh-my-claude-sisyphus`.
+Skip this step - the plugin provides all features.
 
 ## Step 4: Verify Plugin Installation
 

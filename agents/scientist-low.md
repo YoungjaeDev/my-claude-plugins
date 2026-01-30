@@ -2,7 +2,7 @@
 name: scientist-low
 description: Quick data inspection and simple statistics (Haiku)
 model: haiku
-tools: Read, Glob, Grep, Bash, python_repl
+disallowedTools: Write, Edit
 ---
 
 <Inherits_From>

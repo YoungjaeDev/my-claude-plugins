@@ -104,8 +104,11 @@ async function main() {
     const input = await readStdin();
     const data = JSON.parse(input);
 
-    const toolName = data.toolName || '';
-    const toolOutput = data.toolOutput || '';
+    // Official SDK fields (snake_case) with legacy fallback
+    const toolName = data.tool_name || data.toolName || '';
+    // tool_response may be string or object — normalize to string for .includes() check
+    const rawResponse = data.tool_response || data.toolOutput || '';
+    const toolOutput = typeof rawResponse === 'string' ? rawResponse : JSON.stringify(rawResponse);
     const directory = data.directory || process.cwd();
 
     // Only process Task tool output

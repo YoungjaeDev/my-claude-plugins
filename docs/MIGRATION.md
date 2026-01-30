@@ -293,17 +293,21 @@ No more `/oh-my-claudecode:cancel-ralph` - just say "cancel"!
 
 Follow these steps to migrate your existing setup:
 
-#### 1. Uninstall Old Package
+#### 1. Uninstall Old Package (if installed via npm)
 
 ```bash
 npm uninstall -g oh-my-claude-sisyphus
 ```
 
-#### 2. Install New Package
+#### 2. Install via Plugin System (Required)
 
 ```bash
-npm install -g oh-my-claude-sisyphus
+# In Claude Code:
+/plugin marketplace add https://github.com/Yeachan-Heo/oh-my-claudecode
+/plugin install oh-my-claudecode
 ```
+
+> **Note**: npm/bun global installs are no longer supported. Use the plugin system.
 
 #### 3. Rename Local Project Directories
 

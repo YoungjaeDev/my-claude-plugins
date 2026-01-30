@@ -22,7 +22,6 @@ import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { execSync } from 'child_process';
 import {
-  HOOK_SCRIPTS,
   getHookScripts,
   getHooksSettingsConfig,
   isWindows,
@@ -48,7 +47,7 @@ export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omc-version.json');
 export const CORE_COMMANDS: string[] = [];
 
 /** Current version */
-export const VERSION = '3.7.0';
+export const VERSION = '3.8.6';
 
 /** Installation result */
 export interface InstallResult {
@@ -531,7 +530,7 @@ export function install(options: InstallOptions = {}): InstallResult {
     log('Saved version metadata');
 
     result.success = true;
-    const hookCount = Object.keys(HOOK_SCRIPTS).length;
+    const hookCount = Object.keys(getHookScripts()).length;
     result.message = `Successfully installed ${result.installedAgents.length} agents, ${result.installedCommands.length} commands, ${result.installedSkills.length} skills, and ${hookCount} hooks`;
 
   } catch (error) {

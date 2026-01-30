@@ -30,6 +30,10 @@ describe('permission-handler', () => {
         'python -m pytest',
         'ls',
         'ls -la',
+        // Quoted paths are allowed (needed for paths with spaces)
+        'ls "my folder"',
+        'ls \'my folder\'',
+        'git diff "src/file with spaces.ts"',
       ];
 
       safeCases.forEach((cmd) => {
@@ -74,12 +78,53 @@ describe('permission-handler', () => {
         'git status\nrm -rf /',
         'git status\n\nrm -rf /',
 
+        // Tab character injection
+        'git status\tmalicious_command',
+
         // Backslash escapes
         'git status\\nrm -rf /',
       ];
 
       dangerousCases.forEach((cmd) => {
         it(`should reject shell metacharacter injection: ${cmd}`, () => {
+          expect(isSafeCommand(cmd)).toBe(false);
+        });
+      });
+    });
+
+    describe('additional dangerous characters (Issue #146)', () => {
+      const additionalDangerousCases = [
+        // Brace expansion
+        { cmd: 'echo {a,b}', desc: 'brace expansion' },
+        { cmd: 'ls {src,test}', desc: 'brace expansion in ls' },
+        { cmd: 'git status{,;malicious}', desc: 'brace expansion attack' },
+        // Bracket glob patterns
+        { cmd: 'ls [a-z]*', desc: 'bracket glob pattern' },
+        { cmd: 'git status [abc]', desc: 'bracket character class' },
+        // Carriage return and null byte
+        { cmd: 'git status\rmalicious', desc: 'carriage return injection' },
+        { cmd: 'npm test\r\nrm -rf /', desc: 'CRLF injection' },
+        { cmd: 'git status\0malicious', desc: 'null byte injection' },
+        // Command substitution (caught by $ not quotes)
+        { cmd: 'git status "$(whoami)"', desc: 'command substitution in double quotes' },
+        { cmd: "git status '$(whoami)'", desc: 'command substitution in single quotes' },
+        // Wildcard characters
+        { cmd: 'ls *.txt', desc: 'asterisk wildcard' },
+        { cmd: 'ls file?.txt', desc: 'question mark wildcard' },
+        { cmd: 'rm -rf *', desc: 'dangerous wildcard deletion' },
+        // Tilde expansion
+        { cmd: 'ls ~/secrets', desc: 'tilde home expansion' },
+        { cmd: 'cat ~/.ssh/id_rsa', desc: 'tilde to sensitive file' },
+        // History expansion
+        { cmd: '!ls', desc: 'history expansion' },
+        { cmd: 'git status !previous', desc: 'history expansion in command' },
+        // Comment injection
+        { cmd: 'git status #ignore rest', desc: 'comment injection' },
+        { cmd: 'npm test # malicious', desc: 'comment to hide code' },
+      ];
+
+      additionalDangerousCases.forEach(({ cmd, desc }) => {
+        it(`should reject ${desc}: ${cmd}`, () => {
           expect(isSafeCommand(cmd)).toBe(false);
         });
       });
@@ -184,6 +229,12 @@ describe('permission-handler', () => {
         'invalid json {'
       );
       expect(isActiveModeRunning(testDir)).toBe(false);
+    });
+
+    it('should return true when swarm marker exists', () => {
+      fs.mkdirSync(stateDir, { recursive: true });
+      fs.writeFileSync(path.join(stateDir, 'swarm-active.marker'), '');
+      expect(isActiveModeRunning(testDir)).toBe(true);
     });
   });
 

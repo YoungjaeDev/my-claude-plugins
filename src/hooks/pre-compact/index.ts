@@ -34,6 +34,10 @@ export interface CompactCheckpoint {
     ralph?: { iteration: number; prompt: string };
     ultrawork?: { original_prompt: string };
     swarm?: { session_id: string; task_count: number };
+    ultrapilot?: { session_id: string; worker_count: number };
+    ecomode?: { original_prompt: string };
+    pipeline?: { preset: string; current_stage: number };
+    ultraqa?: { cycle: number; prompt: string };
   };
   todo_summary: {
     pending: number;
@@ -170,23 +174,98 @@ export function saveModeSummary(directory: string): Record<string, unknown> {
     }
   }
 
-  // Check swarm (SQLite database)
-  const swarmPath = join(stateDir, 'swarm.db');
-  if (existsSync(swarmPath)) {
+  // Check swarm (JSON sidecar)
+  const swarmSummaryPath = join(stateDir, 'swarm-summary.json');
+  if (existsSync(swarmSummaryPath)) {
     try {
-      const stats = statSync(swarmPath);
-      if (stats.size > 0) {
+      const swarmSummary = JSON.parse(readFileSync(swarmSummaryPath, 'utf-8'));
+      if (swarmSummary.active) {
         modes.swarm = {
-          session_id: 'active',
-          task_count: 0 // Can't read SQLite without a library
+          session_id: swarmSummary.session_id || 'active',
+          task_count: swarmSummary.task_count || 0
         };
       }
     } catch (error) {
-      console.error('[PreCompact] Error checking swarm state:', error);
+      console.error('[PreCompact] Error reading swarm summary:', error);
     }
   }
 
+  // Check ultrapilot
+  const ultrapilotPath = join(stateDir, 'ultrapilot-state.json');
+  if (existsSync(ultrapilotPath)) {
+    try {
+      const state = JSON.parse(readFileSync(ultrapilotPath, 'utf-8'));
+      if (state.active) {
+        modes.ultrapilot = { session_id: state.session_id || '', worker_count: state.worker_count || 0 };
+      }
+    } catch (error) { console.error('[PreCompact] Error reading ultrapilot state:', error); }
+  }
+
+  // Check ecomode
+  const ecomodePath = join(stateDir, 'ecomode-state.json');
+  if (existsSync(ecomodePath)) {
+    try {
+      const state = JSON.parse(readFileSync(ecomodePath, 'utf-8'));
+      if (state.active) {
+        modes.ecomode = { original_prompt: state.original_prompt || state.prompt || '' };
+      }
+    } catch (error) { console.error('[PreCompact] Error reading ecomode state:', error); }
+  }
+
+  // Check pipeline
+  const pipelinePath = join(stateDir, 'pipeline-state.json');
+  if (existsSync(pipelinePath)) {
+    try {
+      const state = JSON.parse(readFileSync(pipelinePath, 'utf-8'));
+      if (state.active) {
+        modes.pipeline = { preset: state.preset || 'custom', current_stage: state.current_stage || 0 };
+      }
+    } catch (error) { console.error('[PreCompact] Error reading pipeline state:', error); }
+  }
+
+  // Check ultraqa
+  const ultraqaPath = join(stateDir, 'ultraqa-state.json');
+  if (existsSync(ultraqaPath)) {
+    try {
+      const state = JSON.parse(readFileSync(ultraqaPath, 'utf-8'));
+      if (state.active) {
+        modes.ultraqa = { cycle: state.cycle || 0, prompt: state.original_prompt || state.prompt || '' };
+      }
+    } catch (error) { console.error('[PreCompact] Error reading ultraqa state:', error); }
+  }
+
   return modes;
+}
+
+/**
+ * Read TODO counts from todos.json
+ */
+function readTodoSummary(directory: string): { pending: number; in_progress: number; completed: number } {
+  const todoPaths = [
+    join(directory, '.claude', 'todos.json'),
+    join(directory, '.omc', 'state', 'todos.json'),
+  ];
+
+  for (const todoPath of todoPaths) {
+    if (existsSync(todoPath)) {
+      try {
+        const content = readFileSync(todoPath, 'utf-8');
+        const todos = JSON.parse(content);
+
+        if (Array.isArray(todos)) {
+          return {
+            pending: todos.filter((t: any) => t.status === 'pending').length,
+            in_progress: todos.filter((t: any) => t.status === 'in_progress').length,
+            completed: todos.filter((t: any) => t.status === 'completed').length,
+          };
+        }
+      } catch {
+        // Continue to next path
+      }
+    }
+  }
+
+  return { pending: 0, in_progress: 0, completed: 0 };
 }
 
 /**
@@ -194,14 +273,7 @@ export function saveModeSummary(directory: string): Record<string, unknown> {
  */
 export function createCompactCheckpoint(directory: string, trigger: 'manual' | 'auto'): CompactCheckpoint {
   const activeModes = saveModeSummary(directory);
-
-  // TODO summary - basic implementation
-  // In a real implementation, this would read from TodoWrite state
-  const todoSummary = {
-    pending: 0,
-    in_progress: 0,
-    completed: 0
-  };
+  const todoSummary = readTodoSummary(directory);
 
   return {
     created_at: new Date().toISOString(),
@@ -251,6 +323,28 @@ export function formatCompactSummary(checkpoint: CompactCheckpoint): string {
     if (checkpoint.active_modes.swarm) {
       const swarm = checkpoint.active_modes.swarm;
       lines.push(`- **Swarm** (Session: ${swarm.session_id}, Tasks: ${swarm.task_count})`);
+    }
+
+    if (checkpoint.active_modes.ultrapilot) {
+      const up = checkpoint.active_modes.ultrapilot;
+      lines.push(`- **Ultrapilot** (Workers: ${up.worker_count})`);
+    }
+
+    if (checkpoint.active_modes.ecomode) {
+      const eco = checkpoint.active_modes.ecomode;
+      lines.push(`- **Ecomode**`);
+      lines.push(`  Prompt: ${eco.original_prompt.substring(0, 50)}...`);
+    }
+
+    if (checkpoint.active_modes.pipeline) {
+      const pipe = checkpoint.active_modes.pipeline;
+      lines.push(`- **Pipeline** (Preset: ${pipe.preset}, Stage: ${pipe.current_stage})`);
+    }
+
+    if (checkpoint.active_modes.ultraqa) {
+      const qa = checkpoint.active_modes.ultraqa;
+      lines.push(`- **UltraQA** (Cycle: ${qa.cycle})`);
+      lines.push(`  Prompt: ${qa.prompt}`);
     }
 
     lines.push('');

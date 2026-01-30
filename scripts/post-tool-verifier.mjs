@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const distDir = join(__dirname, '..', 'dist', 'hooks', 'notepad');
+const clearSuggestionsDistDir = join(__dirname, '..', 'dist', 'hooks', 'clear-suggestions');
 
 // Try to import notepad functions (may fail if not built)
 let setPriorityContext = null;
@@ -25,6 +26,15 @@ try {
   addWorkingMemoryEntry = notepadModule.addWorkingMemoryEntry;
 } catch {
   // Notepad module not available - remember tags will be silently ignored
+}
+
+// Try to import clear suggestions functions (may fail if not built)
+let checkClearSuggestion = null;
+try {
+  const clearSuggestionsModule = await import(join(clearSuggestionsDistDir, 'index.js'));
+  checkClearSuggestion = clearSuggestionsModule.checkClearSuggestion;
+} catch {
+  // Clear suggestions module not available - will be silently skipped
 }
 
 // State file for session tracking
@@ -262,10 +272,39 @@ async function main() {
     // Generate contextual message
     const message = generateMessage(toolName, toolOutput, sessionId, toolCount);
 
-    // Build response
+    // Check for clear suggestions (complements /compact suggestions)
+    let clearSuggestionMessage = null;
+    if (checkClearSuggestion) {
+      try {
+        const stats = loadStats();
+        const session = stats.sessions[sessionId];
+        // Estimate context usage from total tool calls (rough heuristic)
+        const estimatedContextRatio = session ? Math.min(session.total_calls / 200, 1.0) : 0;
+
+        const clearResult = checkClearSuggestion({
+          sessionId,
+          directory,
+          toolName,
+          toolOutput,
+          contextUsageRatio: estimatedContextRatio,
+        });
+
+        if (clearResult.shouldSuggest && clearResult.message) {
+          clearSuggestionMessage = clearResult.message;
+        }
+      } catch {
+        // Clear suggestion check failed - continue without it
+      }
+    }
+
+    // Build response - use hookSpecificOutput.additionalContext for PostToolUse
     const response = { continue: true };
-    if (message) {
-      response.message = message;
+    const contextMessage = clearSuggestionMessage || message;
+    if (contextMessage) {
+      response.hookSpecificOutput = {
+        hookEventName: 'PostToolUse',
+        additionalContext: contextMessage
+      };
     }
 
     console.log(JSON.stringify(response, null, 2));

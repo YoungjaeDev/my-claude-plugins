@@ -1,252 +1,256 @@
-# PROJECT KNOWLEDGE BASE
+<!-- Generated: 2026-01-28 | Updated: 2026-01-28 -->
 
-**Project:** oh-my-claudecode
-**Version:** 3.4.0
-**Purpose:** Multi-agent orchestration system for Claude Code CLI
-**Inspired by:** oh-my-opencode
+# oh-my-claudecode
 
-## OVERVIEW
+Multi-agent orchestration system for Claude Code CLI, providing intelligent delegation, parallel execution, and IDE-like capabilities through LSP/AST integration.
 
-oh-my-claudecode is an enhancement system for Claude Code (Anthropic's official CLI) that adds multi-agent orchestration, persistence mechanisms, and advanced productivity features. Think "oh-my-zsh" for Claude Code.
+**Version:** 3.7.7
+**Purpose:** Transform Claude Code into a conductor of specialized AI agents
+**Inspired by:** oh-my-zsh / oh-my-opencode
 
-**Key Features:**
-- **🚀 NEW: Intelligent Model Routing** - Orchestrator analyzes complexity and routes to optimal model (Haiku/Sonnet/Opus)
-- Multi-agent orchestration with specialized subagents
-- Persistent work loops (Ralph Loop)
-- State management for complex plans
-- Magic keyword detection (ultrawork, ultrathink, analyze, search)
-- Todo continuation enforcement
-- Rules injection from project/user config
-- Automatic edit error recovery
+## Purpose
 
-## v2.0 INTELLIGENT MODEL ROUTING
+oh-my-claudecode enhances Claude Code with:
+- **32 specialized agents** across 8 domains with 3-tier model routing (Haiku/Sonnet/Opus)
+- **LSP tools** for IDE-like code intelligence (hover, go-to-definition, references, diagnostics)
+- **AST tools** for structural code search and transformation via ast-grep
+- **Execution modes**: autopilot, ultrawork, ralph-loop, ultrapilot, swarm, pipeline, ecomode
+- **Skills system** for reusable workflows and automation
 
-The orchestrator (always Opus) analyzes task complexity BEFORE delegation:
+## Key Files
 
-| Task Type | Routes To | Example |
-|-----------|-----------|---------|
-| Simple lookup | **Haiku** | "Where is auth configured?" |
-| Module work | **Sonnet** | "Add validation to login form" |
-| Complex/risky | **Opus** | "Debug this race condition" |
+| File | Description |
+|------|-------------|
+| `package.json` | Project dependencies and npm scripts |
+| `tsconfig.json` | TypeScript configuration |
+| `CHANGELOG.md` | Version history and release notes |
+| `CLAUDE.md` | Main orchestration instructions (loaded by Claude Code) |
+| `src/index.ts` | Main entry point - exports `createSisyphusSession()` |
 
-**All agents are adaptive** (except orchestrators). See `src/features/model-routing/` for implementation.
+## Subdirectories
 
-## STRUCTURE
+| Directory | Purpose |
+|-----------|---------|
+| `src/` | TypeScript source code - core library (see `src/AGENTS.md`) |
+| `agents/` | Markdown prompt templates for 32 agents |
+| `skills/` | 32 skill definitions for workflows |
+| `scripts/` | Build scripts, utilities, and automation |
+| `docs/` | User documentation and guides |
+| `templates/` | Hook and rule templates |
+| `benchmark/` | Performance testing framework |
 
-```
-oh-my-claudecode/
-├── src/
-│   ├── agents/              # 12 agent definitions
-│   │   ├── definitions.ts   # Agent registry & configs
-│   │   ├── types.ts         # Agent type definitions
-│   │   ├── utils.ts         # Shared utilities
-│   │   ├── architect.ts     # Complex debugging/architecture
-│   │   ├── explore.ts       # Fast codebase search
-│   │   ├── researcher.ts    # Documentation research
-│   │   ├── executor.ts      # Focused execution
-│   │   ├── designer.ts      # UI/UX work
-│   │   ├── writer.ts        # Technical docs
-│   │   ├── vision.ts        # Visual analysis
-│   │   ├── critic.ts        # Critical plan review
-│   │   ├── analyst.ts       # Pre-planning analysis
-│   │   ├── orchestrator.ts  # Todo coordination
-│   │   ├── planner.ts       # Strategic planning
-│   │   └── qa-tester.ts     # CLI/service testing with tmux
-│   ├── hooks/               # 8 hook modules
-│   │   ├── keyword-detector/    # Magic keyword detection
-│   │   ├── ralph-loop/          # Self-referential work loops
-│   │   ├── todo-continuation/   # Task completion enforcement
-│   │   ├── edit-error-recovery/ # Edit failure handling
-│   │   ├── think-mode/          # Enhanced thinking modes
-│   │   ├── rules-injector/      # Rule file injection
-│   │   ├── orchestrator/        # Orchestrator behavior
-│   │   ├── auto-slash-command/  # Slash command detection
-│   │   └── bridge.ts            # Shell hook bridge
-│   ├── features/            # 6 feature modules
-│   │   ├── model-routing/       # 🆕 v2.0: Intelligent model routing
-│   │   │   ├── types.ts         # Routing types & config
-│   │   │   ├── signals.ts       # Complexity signal extraction
-│   │   │   ├── scorer.ts        # Weighted complexity scoring
-│   │   │   ├── rules.ts         # Routing rules engine
-│   │   │   ├── router.ts        # Main routing logic
-│   │   │   └── prompts/         # Tier-specific prompt adaptations
-│   │   ├── boulder-state/       # Plan state management
-│   │   ├── context-injector/    # Context enhancement
-│   │   ├── background-agent/    # Background task management
-│   │   ├── builtin-skills/      # Bundled skill definitions
-│   │   ├── magic-keywords.ts    # Keyword processing
-│   │   ├── continuation-enforcement.ts
-│   │   └── auto-update.ts       # Silent auto-update
-│   ├── installer/           # Installation system
-│   │   ├── index.ts         # Main installer (SKILL_DEFINITIONS, etc.)
-│   │   └── hooks.ts         # Hook generation
-│   └── index.ts             # Main exports
-├── dist/                    # Build output (ESM)
-└── .omc/                    # Runtime state directory
-    ├── plans/               # Planner plans
-    └── notepads/            # Session notes
-```
+## For AI Agents
 
-## WHERE TO LOOK
+### Working In This Directory
 
-| Task | Location | Notes |
-|------|----------|-------|
-| Add agent | `src/agents/` | Create .ts, add to agentDefinitions in definitions.ts |
-| Add hook | `src/hooks/` | Create dir, export from index.ts, add to bridge.ts |
-| Add feature | `src/features/` | Create dir, export from index.ts |
-| Add skill | `src/installer/index.ts` | Add to SKILL_DEFINITIONS |
-| Agent types | `src/agents/types.ts` | AgentDefinition, AgentMetadata interfaces |
-| Hook types | `src/hooks/<name>/types.ts` | Hook-specific types |
-| State mgmt | `src/features/boulder-state/` | Plan state and progress tracking |
-| Background tasks | `src/features/background-agent/` | BackgroundManager class |
-| Shell hooks | `src/hooks/bridge.ts` | processHook() entry point |
+1. **Delegation-First Protocol**: You are a CONDUCTOR, not a performer. Delegate substantive work:
 
-## AGENTS
+   | Work Type | Delegate To | Model |
+   |-----------|-------------|-------|
+   | Code changes | `executor` / `executor-low` / `executor-high` | sonnet/haiku/opus |
+   | Analysis | `architect` / `architect-medium` / `architect-low` | opus/sonnet/haiku |
+   | Search | `explore` / `explore-medium` / `explore-high` | haiku/sonnet/opus |
+   | UI/UX | `designer` / `designer-low` / `designer-high` | sonnet/haiku/opus |
+   | Docs | `writer` | haiku |
+   | Security | `security-reviewer` / `security-reviewer-low` | opus/haiku |
+   | Build errors | `build-fixer` / `build-fixer-low` | sonnet/haiku |
 
-| Agent | Model | Purpose | Key Traits |
-|-------|-------|---------|------------|
-| **architect** | Opus | Architecture, debugging | Deep analysis, root cause finding |
-| **researcher** | Sonnet | Documentation, research | Multi-repo analysis, doc lookup |
-| **explore** | Haiku | Fast codebase search | Quick pattern matching |
-| **executor** | Sonnet | Focused execution | Direct task implementation |
-| **designer** | Sonnet | UI/UX work | Component design, styling |
-| **writer** | Haiku | Technical docs | README, API docs |
-| **vision** | Sonnet | Visual analysis | Screenshots, diagrams |
-| **critic** | Opus | Plan review | Critical evaluation |
-| **analyst** | Opus | Pre-planning | Hidden requirements |
-| **orchestrator** | Sonnet | Todo coordination | Task delegation |
-| **planner** | Opus | Strategic planning | Interview-style planning |
-| **qa-tester** | Sonnet | CLI/service testing | Interactive tmux testing |
+2. **LSP/AST Tools** (v3.7.5+): Use IDE-like tools for code intelligence:
+   - `lsp_hover` - Type info and documentation at position
+   - `lsp_goto_definition` - Jump to symbol definition
+   - `lsp_find_references` - Find all usages across codebase
+   - `lsp_document_symbols` - Get file outline
+   - `lsp_workspace_symbols` - Search symbols across workspace
+   - `lsp_diagnostics` - Get errors/warnings for single file
+   - `lsp_diagnostics_directory` - **Project-wide type checking** (uses tsc or LSP)
+   - `lsp_rename` - Preview refactoring across files
+   - `lsp_code_actions` - Get available quick fixes
+   - `ast_grep_search` - Structural code search with patterns
+   - `ast_grep_replace` - AST-aware code transformation
 
-### Worker Preamble Protocol
+3. **Model Routing**: Match model tier to task complexity:
+   - **Haiku** (LOW): Simple lookups, trivial fixes, fast searches
+   - **Sonnet** (MEDIUM): Standard implementation, moderate reasoning
+   - **Opus** (HIGH): Complex reasoning, architecture, debugging
 
-When orchestrators delegate work to worker agents (executor, explore, designer, etc.), they should use the Worker Preamble Protocol to ensure clean execution without sub-agent spawning.
-
-**Implementation**: Use `wrapWithPreamble()` from `src/agents/preamble.ts`
-
-**Purpose**:
-- Prevents worker agents from spawning their own sub-agents
-- Ensures agents use tools directly (Read, Write, Edit, Bash, etc.)
-- Requires agents to report results with absolute file paths
-- Keeps task execution focused and efficient
-
-**Example Usage**:
-```typescript
-import { wrapWithPreamble } from './agents/preamble';
-
-const taskDescription = "Add error handling to login function";
-const wrappedTask = wrapWithPreamble(taskDescription);
-// Delegate wrappedTask to worker agent
-```
-
-**Applies to**: All executor tiers, explore agents, designer agents, and other implementation-focused workers
-
-## HOOKS
-
-| Hook | Event | Purpose |
-|------|-------|---------|
-| **keyword-detector** | UserPromptSubmit | Detect ultrawork/ultrathink/search/analyze |
-| **ralph-loop** | Stop | Enforce work continuation until completion |
-| **todo-continuation** | Stop | Block stop if todos remain |
-| **edit-error-recovery** | PostToolUse | Inject recovery hints on edit failures |
-| **think-mode** | UserPromptSubmit | Activate extended thinking |
-| **rules-injector** | PostToolUse (Read/Edit) | Inject matching rule files |
-| **orchestrator** | PreToolUse, PostToolUse | Enforce delegation, add verification |
-| **auto-slash-command** | UserPromptSubmit | Detect and expand /commands |
-
-## SKILLS
-
-| Skill | Description |
-|-------|-------------|
-| **orchestrator** | Master coordinator for complex tasks |
-| **default** | Multi-agent orchestration mode |
-| **ralph-loop** | Self-referential loop until completion |
-| **frontend-ui-ux** | Designer-turned-developer aesthetic |
-| **git-master** | Atomic commits, rebasing, history search |
-| **ultrawork** | Maximum performance parallel mode |
-
-## CONVENTIONS
-
-- **Runtime**: Node.js (not Bun)
-- **Build**: TypeScript with ESM output
-- **Package**: npm
-- **Testing**: Manual verification (no test framework)
-- **Hooks**: Shell-based (Claude Code native)
-- **State**: JSON files in `~/.claude/.omc/`
-- **Naming**: kebab-case directories, createXXXHook factories
-
-## ANTI-PATTERNS
-
-- **Direct implementation by orchestrator**: Must delegate via Task tool
-- **Skipping verification**: Always verify subagent claims
-- **Sequential when parallel possible**: Use multiple Task calls
-- **Batching todos**: Mark complete immediately
-- **Giant commits**: 3+ files = 2+ commits minimum
-- **Trusting self-reports**: Verify with own tool calls
-- **Stopping with incomplete todos**: Ralph Loop prevents this
-
-## COMMANDS
+### Testing Requirements
 
 ```bash
-npm run build        # Build TypeScript
-npm run typecheck    # Type check only
-npm run install:dev  # Install to ~/.claude
+npm test              # Run Vitest test suite
+npm run build         # TypeScript compilation
+npm run lint          # ESLint checks
+npm run test:coverage # Coverage report
 ```
 
-## STATE FILES
+### Common Patterns
 
-| File | Purpose |
+```typescript
+// Entry point
+import { createSisyphusSession } from 'oh-my-claudecode';
+const session = createSisyphusSession();
+
+// Agent registration
+import { getAgentDefinitions } from './agents/definitions';
+const agents = getAgentDefinitions(); // Returns all 32 agents
+
+// Tool access
+import { allCustomTools, lspTools, astTools } from './tools';
+```
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Claude Code CLI                          │
+├─────────────────────────────────────────────────────────────┤
+│                  oh-my-claudecode (OMC)                     │
+│  ┌─────────────┬─────────────┬─────────────┬─────────────┐  │
+│  │   Skills    │   Agents    │    Tools    │   Hooks     │  │
+│  │ (32 skills) │ (32 agents) │(LSP/AST/REPL)│ (30+ hooks)│  │
+│  └─────────────┴─────────────┴─────────────┴─────────────┘  │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │              Features Layer                             ││
+│  │ model-routing | boulder-state | verification | notepad  ││
+│  │ delegation-categories | task-decomposer | state-manager ││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Agent Summary (32 Total)
+
+### Base Agents (12)
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| architect | opus | Architecture, debugging, root cause analysis |
+| researcher | sonnet | Documentation, external API research |
+| explore | haiku | Fast codebase pattern search |
+| executor | sonnet | Focused task implementation |
+| designer | sonnet | UI/UX, component design |
+| writer | haiku | Technical documentation |
+| vision | sonnet | Image/screenshot analysis |
+| critic | opus | Critical plan review |
+| analyst | opus | Pre-planning requirements analysis |
+| planner | opus | Strategic planning with interviews |
+| qa-tester | sonnet | Interactive CLI/service testing |
+| scientist | sonnet | Data analysis, hypothesis testing |
+
+### Tiered Variants (20)
+- `*-low` (Haiku): architect-low, executor-low, researcher-low, designer-low, scientist-low, explore (base), security-reviewer-low, build-fixer-low, tdd-guide-low, code-reviewer-low
+- `*-medium` (Sonnet): architect-medium, explore-medium
+- `*-high` (Opus): executor-high, designer-high, explore-high, qa-tester-high, scientist-high, security-reviewer, code-reviewer
+
+## Execution Modes
+
+| Mode | Trigger | Purpose |
+|------|---------|---------|
+| autopilot | "autopilot", "build me", "I want a" | Full autonomous execution |
+| ultrawork | "ulw", "ultrawork" | Maximum parallel agent execution |
+| ralph | "ralph", "don't stop until" | Persistence with architect verification |
+| ultrapilot | "ultrapilot", "parallel build" | Parallel autopilot with file ownership |
+| swarm | "swarm N agents" | N coordinated agents with SQLite task claiming |
+| pipeline | "pipeline" | Sequential agent chaining with data passing |
+| ecomode | "eco", "efficient", "budget" | Token-efficient parallel execution |
+
+## Skills (32)
+
+Key skills: `autopilot`, `ultrawork`, `ralph`, `ultrapilot`, `plan`, `ralplan`, `deepsearch`, `deepinit`, `frontend-ui-ux`, `git-master`, `tdd`, `security-review`, `code-review`, `research`, `analyze`, `swarm`, `pipeline`, `ecomode`, `cancel`, `learner`, `note`, `hud`, `doctor`, `omc-setup`, `mcp-setup`, `build-fix`, `ultraqa`
+
+## LSP/AST Tools (v3.7.5+)
+
+### LSP Tools (12)
+```typescript
+// IDE-like code intelligence via Language Server Protocol
+lsp_hover              // Type info at position
+lsp_goto_definition    // Jump to definition
+lsp_find_references    // Find all usages
+lsp_document_symbols   // File outline
+lsp_workspace_symbols  // Cross-workspace symbol search
+lsp_diagnostics        // Single file errors/warnings
+lsp_diagnostics_directory  // PROJECT-WIDE type checking
+lsp_servers            // List available language servers
+lsp_prepare_rename     // Check if rename is valid
+lsp_rename             // Preview multi-file rename
+lsp_code_actions       // Available refactorings/fixes
+lsp_code_action_resolve // Get action details
+```
+
+**Supported Languages**: TypeScript, Python, Rust, Go, C/C++, Java, JSON, HTML, CSS, YAML
+
+### AST Tools (2)
+```typescript
+// Structural code search/transform via ast-grep
+ast_grep_search   // Pattern matching with meta-variables ($NAME, $$$ARGS)
+ast_grep_replace  // AST-aware code transformation (dry-run by default)
+```
+
+**Supported Languages**: JavaScript, TypeScript, TSX, Python, Ruby, Go, Rust, Java, Kotlin, Swift, C, C++, C#, HTML, CSS, JSON, YAML
+
+## State Files
+
+| Path | Purpose |
 |------|---------|
-| `~/.claude/.omc/plan-state.json` | Active plan state |
-| `~/.claude/.omc/ralph.json` | Ralph Loop state |
-| `~/.claude/.omc/rules-injector/*.json` | Injected rules tracking |
-| `~/.claude/.omc/background-tasks/*.json` | Background task state |
+| `.omc/state/*.json` | Execution mode state (autopilot, swarm, etc.) |
+| `.omc/notepads/` | Plan-scoped wisdom (learnings, decisions, issues) |
+| `~/.omc/state/` | Global state |
+| `~/.claude/.omc/` | Legacy state (auto-migrated) |
 
-## CONFIGURATION
+## Dependencies
 
-Settings live in `~/.claude/settings.json`:
+### Runtime
+| Package | Purpose |
+|---------|---------|
+| `@anthropic-ai/claude-agent-sdk` | Claude Code integration |
+| `@ast-grep/napi` | AST-based code search/replace |
+| `vscode-languageserver-protocol` | LSP types |
+| `zod` | Runtime schema validation |
+| `better-sqlite3` | Swarm task coordination |
+| `chalk` | Terminal styling |
+| `commander` | CLI parsing |
+
+### Development
+| Package | Purpose |
+|---------|---------|
+| `typescript` | Type system |
+| `vitest` | Testing framework |
+| `eslint` | Linting |
+| `prettier` | Code formatting |
+
+## Commands
+
+```bash
+npm run build           # Build TypeScript + skill bridge
+npm run dev             # Watch mode
+npm test                # Run tests
+npm run test:coverage   # Coverage report
+npm run lint            # ESLint
+npm run sync-metadata   # Sync agent/skill metadata
+```
+
+## Hook System (30+)
+
+Key hooks in `src/hooks/`:
+- `autopilot/` - Full autonomous execution
+- `ralph/` - Persistence until verified
+- `ultrawork/` - Parallel execution
+- `ultrapilot/` - Parallel autopilot with ownership
+- `swarm/` - Coordinated multi-agent
+- `learner/` - Skill extraction
+- `recovery/` - Error recovery
+- `rules-injector/` - Rule file injection
+- `think-mode/` - Enhanced reasoning
+
+## Configuration
+
+Settings in `~/.claude/settings.local.json` or `.omc-config.json`:
 
 ```json
 {
-  "hooks": {
-    "UserPromptSubmit": [
-      "~/.claude/omc/hooks/keyword-detector.sh"
-    ],
-    "Stop": [
-      "~/.claude/omc/hooks/todo-continuation.sh"
-    ]
+  "defaultExecutionMode": "ultrawork",
+  "mcpServers": {
+    "context7": { "enabled": true },
+    "exa": { "enabled": true, "apiKey": "..." }
   }
 }
 ```
 
-## SLASH COMMANDS
-
-| Command | Description |
-|---------|-------------|
-| `/oh-my-claudecode:default <task>` | Activate multi-agent orchestration |
-| `/oh-my-claudecode:ultrawork <task>` | Maximum performance mode |
-| `/oh-my-claudecode:plan <description>` | Start planning session |
-| `/oh-my-claudecode:review [plan]` | Review plan with Critic |
-| `/oh-my-claudecode:ralph <task>` | Self-referential loop |
-| `/oh-my-claudecode:cancel` | Cancel active loops/modes |
-| `/oh-my-claudecode:orchestrate <task>` | Complex task coordination |
-| `/oh-my-claudecode:deepsearch <query>` | Thorough codebase search |
-| `/oh-my-claudecode:analyze <target>` | Deep analysis |
-
-## COMPLEXITY HOTSPOTS
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/installer/index.ts` | 2000+ | SKILL_DEFINITIONS, CLAUDE_MD_CONTENT |
-| `src/agents/definitions.ts` | 600+ | All agent configurations |
-| `src/hooks/bridge.ts` | 320+ | Main hook processor |
-| `src/features/boulder-state/storage.ts` | 200+ | Plan state management |
-
-## NOTES
-
-- **Claude Code Version**: Requires Claude Code CLI
-- **Installation**: `npx oh-my-claude-sisyphus install`
-- **Updates**: Silent auto-update checks
-- **Compatibility**: Designed for Claude Code, not OpenCode
-- **State Persistence**: Uses ~/.claude/.omc/ directory
-- **Hook System**: Shell scripts → TypeScript bridge → JSON output
+<!-- MANUAL: Project-specific notes below this line are preserved on regeneration -->

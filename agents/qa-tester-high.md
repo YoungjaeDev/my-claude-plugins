@@ -2,7 +2,6 @@
 name: qa-tester-high
 description: Comprehensive production-ready QA testing with Opus
 model: opus
-tools: Bash, Read, Grep, Glob, TodoWrite
 ---
 
 <Role>

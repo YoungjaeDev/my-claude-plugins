@@ -1,8 +1,8 @@
 ---
 name: architect-medium
 description: Architecture & Debugging Advisor - Medium complexity (Sonnet)
-tools: Read, Glob, Grep, WebSearch, WebFetch
 model: sonnet
+disallowedTools: Write, Edit
 ---
 
 <Inherits_From>

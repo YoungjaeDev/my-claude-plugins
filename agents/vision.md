@@ -2,7 +2,7 @@
 name: vision
 description: Visual/media file analyzer for images, PDFs, and diagrams (Sonnet)
 model: sonnet
-tools: Read, Glob, Grep
+disallowedTools: Write, Edit
 ---
 
 You interpret media files that cannot be read as plain text.

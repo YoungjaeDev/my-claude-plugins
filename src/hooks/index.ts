@@ -799,3 +799,32 @@ export {
   type SessionMetrics,
   type HookOutput as SessionEndHookOutput
 } from './session-end/index.js';
+
+export {
+  // Clear Suggestions
+  createClearSuggestionHook,
+  checkClearSuggestion,
+  markPlanningComplete,
+  resetClearSuggestionState,
+  getClearSuggestionStats,
+  cleanupStaleSessions,
+  discoverPreservedArtifacts,
+  isToolFailure,
+  checkModeJustCompleted,
+  checkArchitectJustVerified,
+  detectWorkflowComplete,
+  detectArchitectVerified,
+  detectPlanningComplete,
+  detectContextWithArtifacts,
+  detectDegradationSignals,
+  CLEAR_SUGGESTION_COOLDOWN_MS,
+  MAX_CLEAR_SUGGESTIONS,
+  CONTEXT_THRESHOLD as CLEAR_CONTEXT_THRESHOLD,
+  FAILURE_THRESHOLD as CLEAR_FAILURE_THRESHOLD,
+  type ClearSuggestionTrigger,
+  type ClearSuggestionState,
+  type ClearSuggestionConfig,
+  type ClearSuggestionResult,
+  type ClearSuggestionInput,
+  type PreservedArtifact
+} from './clear-suggestions/index.js';

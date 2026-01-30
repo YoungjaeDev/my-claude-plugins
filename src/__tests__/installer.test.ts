@@ -124,7 +124,10 @@ describe('Installer Constants', () => {
     });
 
     it('should have valid frontmatter for each agent', () => {
-      for (const [_filename, content] of Object.entries(AGENT_DEFINITIONS)) {
+      for (const [filename, content] of Object.entries(AGENT_DEFINITIONS)) {
+        // Skip non-agent files (AGENTS.md is documentation, not an agent)
+        if (filename === 'AGENTS.md') continue;
+
         // Check for frontmatter delimiters
         expect(content).toMatch(/^---\n/);
         expect(content).toMatch(/\n---\n/);
@@ -135,10 +138,10 @@ describe('Installer Constants', () => {
 
         const frontmatter = frontmatterMatch![1];
 
-        // Check required fields
+        // Check required fields (name, description, model are required; tools is optional)
         expect(frontmatter).toMatch(/^name:\s+\S+/m);
         expect(frontmatter).toMatch(/^description:\s+.+/m);
-        expect(frontmatter).toMatch(/^tools:\s+.+/m);
+        // Note: tools field removed - agents use disallowedTools or have all tools by default
         expect(frontmatter).toMatch(/^model:\s+(haiku|sonnet|opus)/m);
       }
     });
@@ -324,7 +327,7 @@ describe('Installer Constants', () => {
 
     it('should match package.json version', () => {
       // This is a runtime check - VERSION should match the package.json
-      expect(VERSION).toBe('3.7.0');
+      expect(VERSION).toBe('3.8.6');
     });
   });
 
@@ -390,6 +393,9 @@ describe('Installer Constants', () => {
       const alternateFormatAgents = ['qa-tester.md'];
 
       for (const [filename, content] of Object.entries(AGENT_DEFINITIONS)) {
+        // Skip non-agent files
+        if (filename === 'AGENTS.md') continue;
+
         // Skip tiered variants and agents with alternate formats
         if (!filename.includes('-low') && !filename.includes('-medium') && !filename.includes('-high') && !alternateFormatAgents.includes(filename)) {
           // Check for either <Role> tags or role description in various forms
@@ -408,12 +414,13 @@ describe('Installer Constants', () => {
 
       for (const agent of readOnlyAgents) {
         const content = AGENT_DEFINITIONS[agent];
-        const toolsMatch = content.match(/^tools:\s+(.+)/m);
-        expect(toolsMatch).toBeTruthy();
+        // Read-only agents use disallowedTools: to block Edit/Write
+        const disallowedMatch = content.match(/^disallowedTools:\s+(.+)/m);
+        expect(disallowedMatch).toBeTruthy();
 
-        const tools = toolsMatch![1];
-        expect(tools).not.toMatch(/\bEdit\b/);
-        expect(tools).not.toMatch(/\bWrite\b/);
+        const disallowed = disallowedMatch![1];
+        expect(disallowed).toMatch(/\bEdit\b/);
+        expect(disallowed).toMatch(/\bWrite\b/);
       }
     });
 
@@ -428,11 +435,16 @@ describe('Installer Constants', () => {
 
       for (const agent of implementationAgents) {
         const content = AGENT_DEFINITIONS[agent];
-        const toolsMatch = content.match(/^tools:\s+(.+)/m);
-        expect(toolsMatch).toBeTruthy();
-
-        const tools = toolsMatch![1];
-        expect(tools).toMatch(/\b(Edit|Write)\b/);
+        // Implementation agents should NOT have Edit/Write in disallowedTools
+        // (If no disallowedTools field exists, all tools are available by default)
+        const disallowedMatch = content.match(/^disallowedTools:\s+(.+)/m);
+        if (disallowedMatch) {
+          const disallowed = disallowedMatch[1];
+          // If disallowedTools exists, Edit and Write should NOT be in it
+          expect(disallowed).not.toMatch(/\bEdit\b/);
+          expect(disallowed).not.toMatch(/\bWrite\b/);
+        }
+        // If no disallowedTools, all tools including Edit/Write are available - test passes
       }
     });
   });
@@ -508,16 +520,19 @@ describe('Installer Constants', () => {
     });
 
     it('should have proper markdown formatting in frontmatter', () => {
-      for (const content of Object.values(AGENT_DEFINITIONS)) {
+      for (const [filename, content] of Object.entries(AGENT_DEFINITIONS)) {
+        // Skip non-agent files
+        if (filename === 'AGENTS.md') continue;
+
         const frontmatterMatch = (content as string).match(/^---\n([\s\S]*?)\n---/);
         expect(frontmatterMatch).toBeTruthy();
 
         const frontmatter = frontmatterMatch![1];
 
-        // Each line should be key: value format
+        // Each line should be key: value format (allow camelCase keys like disallowedTools)
         const lines = frontmatter.split('\n').filter((line: string) => line.trim());
         for (const line of lines) {
-          expect(line).toMatch(/^[a-z]+:\s+.+/);
+          expect(line).toMatch(/^[a-zA-Z]+:\s+.+/);
         }
       }
     });

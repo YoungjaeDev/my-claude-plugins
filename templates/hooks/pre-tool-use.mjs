@@ -94,7 +94,13 @@ async function main() {
     const command = toolInput.command || '';
     const warning = checkBashCommand(command);
     if (warning) {
-      console.log(JSON.stringify({ continue: true, message: warning }));
+      console.log(JSON.stringify({
+        continue: true,
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          additionalContext: warning
+        }
+      }));
     } else {
       console.log(JSON.stringify({ continue: true }));
     }
@@ -132,7 +138,13 @@ Recommended: Delegate to executor agent instead:
 
 This is a soft warning. Operation will proceed.`;
 
-    console.log(JSON.stringify({ continue: true, message: warning }));
+    console.log(JSON.stringify({
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        additionalContext: warning
+      }
+    }));
     return;
   }
 

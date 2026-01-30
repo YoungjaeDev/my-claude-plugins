@@ -16,6 +16,7 @@
 import { loadConfig, findContextFiles, loadContextFromFiles } from './config/loader.js';
 import { getAgentDefinitions, omcSystemPrompt } from './agents/definitions.js';
 import { getDefaultMcpServers, toSdkMcpFormat } from './mcp/servers.js';
+import { omcToolsServer, getOmcToolNames } from './mcp/omc-tools-server.js';
 import { createMagicKeywordProcessor, detectMagicKeywords } from './features/magic-keywords.js';
 import { continuationSystemPromptAddition } from './features/continuation-enforcement.js';
 import {
@@ -29,6 +30,7 @@ import type { PluginConfig, SessionState } from './shared/types.js';
 export { loadConfig, getAgentDefinitions, omcSystemPrompt };
 export { getDefaultMcpServers, toSdkMcpFormat } from './mcp/servers.js';
 export { lspTools, astTools, allCustomTools } from './tools/index.js';
+export { omcToolsServer, omcToolNames, getOmcToolNames } from './mcp/omc-tools-server.js';
 export { createMagicKeywordProcessor, detectMagicKeywords } from './features/magic-keywords.js';
 export {
   createBackgroundTaskManager,
@@ -296,7 +298,7 @@ export function createSisyphusSession(options?: SisyphusOptions): SisyphusSessio
   const agents = getAgentDefinitions();
 
   // Build MCP servers configuration
-  const mcpServers = getDefaultMcpServers({
+  const externalMcpServers = getDefaultMcpServers({
     exaApiKey: config.mcpServers?.exa?.apiKey,
     enableExa: config.mcpServers?.exa?.enabled,
     enableContext7: config.mcpServers?.context7?.enabled
@@ -320,9 +322,17 @@ export function createSisyphusSession(options?: SisyphusOptions): SisyphusSessio
   }
 
   // Add MCP tool names
-  for (const serverName of Object.keys(mcpServers)) {
+  for (const serverName of Object.keys(externalMcpServers)) {
     allowedTools.push(`mcp__${serverName}__*`);
   }
+
+  // Add OMC custom tools in MCP format (LSP, AST, python_repl)
+  const omcTools = getOmcToolNames({
+    includeLsp: config.features?.lspTools !== false,
+    includeAst: config.features?.astTools !== false,
+    includePython: true
+  });
+  allowedTools.push(...omcTools);
 
   // Create magic keyword processor
   const processPrompt = createMagicKeywordProcessor(config.magicKeywords);
@@ -342,7 +352,10 @@ export function createSisyphusSession(options?: SisyphusOptions): SisyphusSessio
       options: {
         systemPrompt,
         agents,
-        mcpServers: toSdkMcpFormat(mcpServers),
+        mcpServers: {
+          ...toSdkMcpFormat(externalMcpServers),
+          'omc-tools': omcToolsServer as any
+        },
         allowedTools,
         permissionMode: 'acceptEdits'
       }

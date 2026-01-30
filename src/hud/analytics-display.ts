@@ -101,12 +101,33 @@ function formatTokenCount(tokens: number): string {
 }
 
 /**
+ * Get color indicator emoji for cost color.
+ */
+function getCostColorIndicator(color: 'green' | 'yellow' | 'red'): string {
+  switch (color) {
+    case 'green': return '🟢';
+    case 'yellow': return '🟡';
+    case 'red': return '🔴';
+  }
+}
+
+/**
+ * Get indicator emoji for health status.
+ */
+function getHealthIndicator(health: 'healthy' | 'warning' | 'critical'): string {
+  switch (health) {
+    case 'healthy': return '🟢';
+    case 'warning': return '🟡';
+    case 'critical': return '🔴';
+  }
+}
+
+/**
  * Render analytics as a single-line string for HUD display.
- * @deprecated Use renderSessionHealthAnalytics instead
+ * @deprecated Use renderAnalyticsLineWithConfig() for config-aware rendering
  */
 export function renderAnalyticsLine(analytics: AnalyticsDisplay): string {
-  const costIndicator = analytics.costColor === 'green' ? '🟢' :
-                        analytics.costColor === 'yellow' ? '🟡' : '🔴';
+  const costIndicator = getCostColorIndicator(analytics.costColor);
 
   return `${costIndicator} Cost: ${analytics.sessionCost} | Tokens: ${analytics.sessionTokens} | Cache: ${analytics.cacheEfficiency} | Top: ${analytics.topAgents}`;
 }
@@ -122,12 +143,9 @@ export function renderAnalyticsLineWithConfig(
   const parts: string[] = [];
 
   if (showCost) {
-    const costIndicator = analytics.costColor === 'green' ? '🟢' :
-                          analytics.costColor === 'yellow' ? '🟡' : '🔴';
+    const costIndicator = getCostColorIndicator(analytics.costColor);
     parts.push(`${costIndicator} Cost: ${analytics.sessionCost}`);
   }
-
-  parts.push(`Tokens: ${analytics.sessionTokens}`);
 
   if (showCache) {
     parts.push(`Cache: ${analytics.cacheEfficiency}`);
@@ -165,8 +183,7 @@ export async function getSessionInfo(): Promise<string> {
  * Extract structured analytics data from SessionHealth
  */
 export function getSessionHealthAnalyticsData(sessionHealth: SessionHealth): SessionHealthAnalyticsData {
-  const costIndicator = sessionHealth.health === 'critical' ? '🔴' :
-                        sessionHealth.health === 'warning' ? '🟡' : '🟢';
+  const costIndicator = getHealthIndicator(sessionHealth.health);
 
   const costPrefix = sessionHealth.isEstimated ? '~' : '';
   const cost = `${costPrefix}$${(sessionHealth.sessionCost ?? 0).toFixed(4)}`;

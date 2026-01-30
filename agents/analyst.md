@@ -2,7 +2,7 @@
 name: analyst
 description: Pre-planning consultant for requirements analysis (Opus)
 model: opus
-tools: Read, Glob, Grep, WebSearch
+disallowedTools: Write, Edit
 ---
 
 <Role>

@@ -1,10 +1,6 @@
-# Oh-My-ClaudeCode
-
-[![npm version](https://img.shields.io/npm/v/oh-my-claude-sisyphus.svg)](https://www.npmjs.com/package/oh-my-claude-sisyphus)
-[![Sponsor](https://img.shields.io/badge/Sponsor-❤️-red?style=flat&logo=github)](https://github.com/sponsors/Yeachan-Heo)
 
 
-![oh-my-claudecode](https://raw.githubusercontent.com/Yeachan-Heo/oh-my-claudecode-website/main/social-preview.png)
+
 
 # oh-my-claudecode
 
@@ -14,6 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![한국어](https://img.shields.io/badge/lang-한국어-red.svg)](README-KO.md)
 [![DeepWiki](https://img.shields.io/badge/docs-DeepWiki-blue)](https://deepwiki.com/YoungjaeDev/oh-my-claudecode)
+[![Sponsor](https://img.shields.io/badge/Sponsor-❤️-red?style=flat&logo=github)](https://github.com/sponsors/Yeachan-Heo)
 
 **Multi-agent orchestration for Claude Code. Zero learning curve.**
 
@@ -44,6 +41,14 @@ autopilot: build a REST API for managing tasks
 ```
 
 That's it. Everything else is automatic.
+
+
+<h1 align="center">Your Claude Just Have been Steroided.</h1>
+
+<p align="center">
+  <img src="assets/omc-character.jpg" alt="oh-my-claudecode" width="400" />
+</p>
+
 
 ---
 

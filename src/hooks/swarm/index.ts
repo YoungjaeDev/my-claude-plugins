@@ -57,7 +57,8 @@ import {
   getTask,
   getStats,
   getHeartbeats,
-  clearAllData
+  clearAllData,
+  writeSwarmSummary
 } from './state.js';
 import {
   claimTask as claimTaskInternal,
@@ -70,7 +71,8 @@ import {
   hasPendingTasks,
   allTasksComplete,
   getActiveAgentCount,
-  reclaimFailedTask
+  reclaimFailedTask,
+  setSwarmCwd
 } from './claiming.js';
 import { canStartMode, createModeMarker, removeModeMarker } from '../mode-registry/index.js';
 
@@ -147,6 +149,9 @@ export async function startSwarm(config: SwarmConfig): Promise<boolean> {
 
   currentCwd = cwd;
 
+  // Set cwd in claiming module for summary writes
+  setSwarmCwd(cwd);
+
   // Clear any existing data
   clearAllData();
 
@@ -175,6 +180,9 @@ export async function startSwarm(config: SwarmConfig): Promise<boolean> {
     cleanupStaleClaimsInternal(leaseTimeout);
   }, 60 * 1000);
 
+  // Write initial summary
+  writeSwarmSummary(cwd);
+
   return true;
 }
 
@@ -195,6 +203,11 @@ export function stopSwarm(deleteDatabase: boolean = false): boolean {
 
   // Mark session as inactive
   saveState({ active: false, completedAt: Date.now() });
+
+  // Write final summary
+  if (currentCwd) {
+    writeSwarmSummary(currentCwd);
+  }
 
   // Close database
   closeDb();
@@ -418,6 +431,7 @@ export async function connectToSwarm(cwd: string): Promise<boolean> {
   const success = await initDb(cwd);
   if (success) {
     currentCwd = cwd;
+    setSwarmCwd(cwd);
   }
   return success;
 }

@@ -2,7 +2,7 @@
 name: researcher-low
 description: Quick External Search for docs and code (Haiku)
 model: haiku
-tools: Read, Glob, Grep, WebSearch, WebFetch
+disallowedTools: Write, Edit
 ---
 
 <Role>

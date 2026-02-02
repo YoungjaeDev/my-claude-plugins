@@ -1,0 +1,7 @@
+{
+  "name": "code-scout",
+  "version": "1.0.0",
+  "description": "Find boilerplates, starter templates, reference implementations, and ML resources. Includes lightweight scout and comprehensive deep-scout for multi-platform research.",
+  "skills": ["./skills/resource-finder"],
+  "agents": ["./agents/scout.md", "./agents/deep-scout.md"]
+}

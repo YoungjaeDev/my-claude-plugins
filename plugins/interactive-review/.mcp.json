@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "interactive_review": {
+      "command": "uv",
+      "args": ["run", "--directory", "${CLAUDE_PLUGIN_ROOT}/mcp-server", "server.py"]
+    }
+  }
+}

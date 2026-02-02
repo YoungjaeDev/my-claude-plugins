@@ -1,0 +1,7 @@
+{
+  "name": "council",
+  "version": "1.0.0",
+  "description": "LLM Council - Query multiple AI models and synthesize collective wisdom through multi-round deliberation.",
+  "skills": ["./skills/council-setup"],
+  "commands": ["./commands/council.md"]
+}

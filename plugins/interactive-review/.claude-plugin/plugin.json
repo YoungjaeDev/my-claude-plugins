@@ -1,0 +1,16 @@
+{
+  "name": "interactive-review",
+  "version": "1.0.0",
+  "description": "Web UI-based interactive code review system",
+  "author": "YoungjaeDev",
+  "repository": "https://github.com/YoungjaeDev/plugins-for-claude-natives",
+  "skills": [
+    "skills/review/SKILL.md"
+  ],
+  "mcpServers": {
+    "interactive_review": {
+      "command": "uv",
+      "args": ["run", "--directory", "${CLAUDE_PLUGIN_ROOT}/mcp-server", "server.py"]
+    }
+  }
+}

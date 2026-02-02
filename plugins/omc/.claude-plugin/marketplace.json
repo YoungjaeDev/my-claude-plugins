@@ -1,0 +1,18 @@
+{
+  "name": "omc-wrapper",
+  "owner": {
+    "name": "YoungjaeDev"
+  },
+  "plugins": [
+    {
+      "name": "oh-my-claudecode",
+      "source": {
+        "source": "github",
+        "repo": "Yeachan-Heo/oh-my-claudecode"
+      },
+      "strict": false,
+      "description": "Multi-agent orchestration for Claude Code. Zero learning curve.",
+      "version": "3.9.3"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "github-dev",
+  "version": "1.0.0",
+  "description": "GitHub workflow automation commands for Claude Code",
+  "author": "oh-my-claudecode",
+  "repository": "https://github.com/YoungjaeDev/oh-my-claudecode",
+  "commands": [
+    "commands/create-issue-label.md",
+    "commands/decompose-issue.md",
+    "commands/post-merge.md",
+    "commands/resolve-issue.md"
+  ],
+  "dependencies": {
+    "cli": ["gh"]
+  }
+}

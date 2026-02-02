@@ -1,0 +1,103 @@
+{
+  "name": "my-claude-plugins",
+  "owner": {
+    "name": "YoungjaeDev"
+  },
+  "metadata": {
+    "description": "Personal Claude Code plugin collection with 13 specialized plugins",
+    "version": "1.1.0"
+  },
+  "plugins": [
+    {
+      "name": "core-config",
+      "source": "./plugins/core-config",
+      "description": "Guidelines auto-injection, Python formatting, notifications",
+      "version": "1.1.0",
+      "category": "core"
+    },
+    {
+      "name": "github-dev",
+      "source": "./plugins/github-dev",
+      "description": "GitHub workflow: commit, PR, issue, code review",
+      "version": "1.0.0",
+      "category": "github"
+    },
+    {
+      "name": "interactive-review",
+      "source": "./plugins/interactive-review",
+      "description": "Web UI code review with MCP server",
+      "version": "1.0.0",
+      "category": "code-review"
+    },
+    {
+      "name": "omc",
+      "source": "./plugins/omc",
+      "description": "oh-my-claudecode wrapper for multi-agent orchestration",
+      "version": "1.0.0",
+      "category": "orchestration"
+    },
+    {
+      "name": "code-scout",
+      "source": "./plugins/code-scout",
+      "description": "Boilerplate and ML resource discovery",
+      "version": "1.0.0",
+      "category": "research"
+    },
+    {
+      "name": "council",
+      "source": "./plugins/council",
+      "description": "Multi-model deliberation: Claude, Codex, Gemini",
+      "version": "1.0.0",
+      "category": "ai-models"
+    },
+    {
+      "name": "deepwiki",
+      "source": "./plugins/deepwiki",
+      "description": "AI-powered GitHub repo documentation",
+      "version": "1.0.0",
+      "category": "documentation"
+    },
+    {
+      "name": "notebook",
+      "source": "./plugins/notebook",
+      "description": "Safe Jupyter notebook editing",
+      "version": "1.0.0",
+      "category": "development"
+    },
+    {
+      "name": "ml-toolkit",
+      "source": "./plugins/ml-toolkit",
+      "description": "GPU parallel processing, Gradio CV apps",
+      "version": "1.0.0",
+      "category": "development"
+    },
+    {
+      "name": "translator",
+      "source": "./plugins/translator",
+      "description": "Web article translation to Korean",
+      "version": "1.0.0",
+      "category": "content"
+    },
+    {
+      "name": "midjourney",
+      "source": "./plugins/midjourney",
+      "description": "Midjourney V7 image generation",
+      "version": "1.0.0",
+      "category": "ai-models"
+    },
+    {
+      "name": "interview",
+      "source": "./plugins/interview",
+      "description": "Structured requirements gathering",
+      "version": "1.0.0",
+      "category": "planning"
+    },
+    {
+      "name": "notion",
+      "source": "./plugins/notion",
+      "description": "Markdown to Notion upload",
+      "version": "1.0.0",
+      "category": "integration"
+    }
+  ]
+}

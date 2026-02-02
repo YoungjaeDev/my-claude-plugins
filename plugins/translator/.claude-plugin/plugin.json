@@ -1,0 +1,5 @@
+{
+  "name": "translator",
+  "version": "1.0.0",
+  "description": "Web article translation to Korean with VLM image analysis"
+}

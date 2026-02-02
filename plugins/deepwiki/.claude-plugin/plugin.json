@@ -1,0 +1,6 @@
+{
+  "name": "deepwiki",
+  "version": "1.0.0",
+  "description": "Deep query GitHub repositories using DeepWiki AI-powered documentation.",
+  "commands": ["./commands/ask.md"]
+}

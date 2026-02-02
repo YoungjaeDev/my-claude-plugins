@@ -1,0 +1,5 @@
+{
+  "name": "notion",
+  "version": "1.0.0",
+  "description": "Upload Markdown to Notion with full formatting and automatic image uploads"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "interactive-review",
+  "version": "1.0.0",
+  "description": "Web UI-based interactive code review system",
+  "skills": ["./skills/review"],
+  "mcpServers": {
+    "interactive_review": {
+      "command": "uv",
+      "args": ["run", "--directory", "${CLAUDE_PLUGIN_ROOT}/mcp-server", "server.py"]
+    }
+  }
+}

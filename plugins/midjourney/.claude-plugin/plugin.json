@@ -1,0 +1,5 @@
+{
+  "name": "midjourney",
+  "version": "1.0.0",
+  "description": "Midjourney V7 prompt optimization and image generation via ImagineAPI"
+}

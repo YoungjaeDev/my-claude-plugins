@@ -1,0 +1,5 @@
+{
+  "name": "notebook",
+  "version": "1.0.0",
+  "description": "Jupyter Notebook editing skill for safe .ipynb file manipulation"
+}

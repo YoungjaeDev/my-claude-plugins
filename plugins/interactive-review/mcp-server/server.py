@@ -155,7 +155,7 @@ async def start_review_impl(content: str, title: str = "Review") -> dict[str, An
         )
 
         # Start HTTP server in a thread
-        server = HTTPServer(("localhost", port), make_handler(str(review_dir)))
+        server = HTTPServer(("0.0.0.0", port), make_handler(str(review_dir)))
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.daemon = True
         server_thread.start()

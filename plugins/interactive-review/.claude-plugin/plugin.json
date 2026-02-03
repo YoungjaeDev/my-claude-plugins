@@ -1,6 +1,6 @@
 {
   "name": "interactive-review",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Web UI-based interactive code review system",
   "skills": ["./skills/review"],
   "mcpServers": {

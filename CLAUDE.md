@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (13)
+## Plugins (14)
 
 ### Core
 | Plugin | Description |
@@ -39,6 +39,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 |--------|-------------|
 | `translator` | Web article translation to Korean |
 | `notion` | Markdown to Notion upload |
+| `humanizer` | Remove AI writing patterns from text |
 
 ### Planning
 | Plugin | Description |
@@ -64,7 +65,8 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── translator/         # Translation
 │   ├── midjourney/         # Image gen
 │   ├── interview/          # Requirements
-│   └── notion/             # Notion
+│   ├── notion/             # Notion
+│   └── humanizer/          # AI text humanizer
 ├── CLAUDE.md               # This file
 └── README.md               # Full documentation
 ```

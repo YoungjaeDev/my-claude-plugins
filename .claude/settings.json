@@ -12,7 +12,8 @@
       "./plugins/translator",
       "./plugins/midjourney",
       "./plugins/interview",
-      "./plugins/notion"
+      "./plugins/notion",
+      "./plugins/humanizer"
     ]
   }
 }

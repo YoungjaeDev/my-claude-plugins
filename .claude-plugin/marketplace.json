@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 13 specialized plugins",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "plugins": [
     {
       "name": "core-config",
       "source": "./plugins/core-config",
-      "description": "Guidelines auto-injection, Python formatting, notifications",
-      "version": "1.1.0",
+      "description": "Guidelines auto-injection, Python formatting, notifications (cross-platform)",
+      "version": "1.2.0",
       "category": "core"
     },
     {
@@ -28,13 +28,6 @@
       "description": "Web UI code review with MCP server",
       "version": "1.0.0",
       "category": "code-review"
-    },
-    {
-      "name": "omc",
-      "source": "./plugins/omc",
-      "description": "oh-my-claudecode wrapper for multi-agent orchestration",
-      "version": "1.0.0",
-      "category": "orchestration"
     },
     {
       "name": "code-scout",
@@ -98,6 +91,13 @@
       "description": "Markdown to Notion upload",
       "version": "1.0.0",
       "category": "integration"
+    },
+    {
+      "name": "humanizer",
+      "source": "./plugins/humanizer",
+      "description": "Remove AI writing patterns from text",
+      "version": "1.0.0",
+      "category": "content"
     }
   ]
 }

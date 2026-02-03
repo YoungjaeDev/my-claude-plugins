@@ -74,3 +74,23 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 ## Usage
 
 Plugins auto-load from `settings.json`. See README.md for detailed usage of each plugin.
+
+## Plugin Versioning
+
+플러그인 버전 업데이트 시 두 파일을 동기화해야 함:
+
+| 파일 | 역할 |
+|------|------|
+| `plugins/<name>/.claude-plugin/plugin.json` | 실제 캐시 갱신 기준 (필수) |
+| `.claude-plugin/marketplace.json` | UI 표시/메타데이터 (권장) |
+
+릴리스 워크플로우:
+1. `plugin.json` 버전 업데이트
+2. `marketplace.json` 버전 동기화
+3. 커밋 및 푸시
+
+사용자 측 업데이트:
+```bash
+/plugin marketplace update my-claude-plugins
+/plugin update <plugin-name>@my-claude-plugins
+```

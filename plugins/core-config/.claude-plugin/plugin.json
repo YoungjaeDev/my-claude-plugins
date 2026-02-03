@@ -1,7 +1,7 @@
 {
   "name": "core-config",
-  "version": "1.1.0",
-  "description": "Core development configuration: guidelines, hooks, and workflow automation",
+  "version": "1.2.0",
+  "description": "Core development configuration: guidelines, hooks, and workflow automation (cross-platform)",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/inject-guidelines.sh",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/inject-guidelines.py",
             "timeout": 5000
           }
         ]
@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/notify_osc.sh 'Claude' 'Task completed'",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/notify_osc.py Claude \"Task completed\"",
             "timeout": 5000
           }
         ]
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/notify_osc.sh",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/notify_osc.py",
             "timeout": 5000
           }
         ]

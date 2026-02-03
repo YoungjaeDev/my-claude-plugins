@@ -47,7 +47,13 @@ Add marketplace and install plugins in Claude Code:
 
 ## Plugins
 
-13 plugins organized by functionality.
+12 plugins organized by functionality.
+
+> **oh-my-claudecode**: For multi-agent orchestration, install separately:
+> ```bash
+> /plugin marketplace add Yeachan-Heo/oh-my-claudecode
+> /plugin install oh-my-claudecode@omc
+> ```
 
 ### Core
 
@@ -75,23 +81,6 @@ Auto-injected guidelines and workflow hooks.
 
 </details>
 
-<details>
-<summary><strong>omc</strong> - Multi-Agent Orchestration (Marketplace)</summary>
-
-Wrapper for [Yeachan-Heo/oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode).
-
-**Features:**
-- 32 specialized agents (explore, executor, architect, etc.)
-- Smart model routing (haiku/sonnet/opus)
-- Autopilot, Ralph, Ultrawork modes
-- Task delegation and verification
-
-**Install:**
-```bash
-/plugin marketplace add Yeachan-Heo/oh-my-claudecode
-```
-
-</details>
 
 ### GitHub & Code Review
 
@@ -288,17 +277,11 @@ Structured interview for spec-based development.
 
 ```json
 {
-  "extraKnownMarketplaces": {
-    "omc": {
-      "source": { "source": "github", "repo": "Yeachan-Heo/oh-my-claudecode" }
-    }
-  },
   "plugins": {
     "local": [
       "./plugins/core-config",
       "./plugins/github-dev",
       "./plugins/interactive-review",
-      "./plugins/omc",
       "./plugins/code-scout",
       "./plugins/council",
       "./plugins/deepwiki",
@@ -323,7 +306,6 @@ Structured interview for spec-based development.
 │   ├── core-config/           # Guidelines + hooks
 │   ├── github-dev/            # GitHub workflow
 │   ├── interactive-review/    # Web UI review
-│   ├── omc/                   # oh-my-claudecode wrapper
 │   ├── code-scout/            # Resource discovery
 │   ├── council/               # LLM Council
 │   ├── deepwiki/              # Repo documentation

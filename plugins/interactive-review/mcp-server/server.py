@@ -16,7 +16,6 @@ Provides the start_review tool that:
 
 import asyncio
 import json
-import os
 import signal
 import socket
 import sys
@@ -44,7 +43,7 @@ _result_event = threading.Event()
 def find_free_port() -> int:
     """Find a free port on localhost."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
+        s.bind(("", 0))
         s.listen(1)
         return s.getsockname()[1]
 
@@ -60,22 +59,22 @@ class ReviewHTTPHandler(SimpleHTTPRequestHandler):
         """Handle POST request for submitting review results."""
         global _review_result
 
-        if self.path == '/submit':
-            content_length = int(self.headers['Content-Length'])
+        if self.path == "/submit":
+            content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
 
             try:
-                _review_result = json.loads(post_data.decode('utf-8'))
+                _review_result = json.loads(post_data.decode("utf-8"))
                 _result_event.set()
 
                 self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(b'{"status": "ok"}')
             except Exception as e:
                 self.send_response(500)
-                self.send_header('Content-Type', 'application/json')
+                self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
         else:
@@ -85,9 +84,9 @@ class ReviewHTTPHandler(SimpleHTTPRequestHandler):
     def do_OPTIONS(self):
         """Handle CORS preflight requests."""
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
     def log_message(self, format, *args):
@@ -97,8 +96,10 @@ class ReviewHTTPHandler(SimpleHTTPRequestHandler):
 
 def make_handler(review_dir: str):
     """Factory to create handler with review_dir bound."""
+
     def handler(*args, **kwargs):
         return ReviewHTTPHandler(*args, review_dir=review_dir, **kwargs)
+
     return handler
 
 
@@ -131,7 +132,7 @@ async def start_review_impl(content: str, title: str = "Review") -> dict[str, An
         if not blocks:
             return {
                 "status": "error",
-                "message": "No reviewable content found in the markdown"
+                "message": "No reviewable content found in the markdown",
             }
 
         # Find a free port
@@ -140,22 +141,21 @@ async def start_review_impl(content: str, title: str = "Review") -> dict[str, An
         # Generate HTML
         html_content = generate_html(title, content, blocks, port)
         html_path = review_dir / "index.html"
-        html_path.write_text(html_content, encoding='utf-8')
+        html_path.write_text(html_content, encoding="utf-8")
 
         # Save input for reference
         input_data = {
             "version": "1.0",
             "title": title,
             "content": content,
-            "blocks": [asdict(b) for b in blocks]
+            "blocks": [asdict(b) for b in blocks],
         }
         (review_dir / "input.json").write_text(
-            json.dumps(input_data, indent=2, ensure_ascii=False),
-            encoding='utf-8'
+            json.dumps(input_data, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
         # Start HTTP server in a thread
-        server = HTTPServer(('localhost', port), make_handler(str(review_dir)))
+        server = HTTPServer(("0.0.0.0", port), make_handler(str(review_dir)))
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.daemon = True
         server_thread.start()
@@ -174,16 +174,10 @@ async def start_review_impl(content: str, title: str = "Review") -> dict[str, An
         server.shutdown()
 
         if not result_received:
-            return {
-                "status": "timeout",
-                "message": "Review timed out after 5 minutes"
-            }
+            return {"status": "timeout", "message": "Review timed out after 5 minutes"}
 
         if _review_result is None:
-            return {
-                "status": "error",
-                "message": "No result received"
-            }
+            return {"status": "error", "message": "No result received"}
 
         # Enrich result with summary
         items = _review_result.get("items", [])
@@ -198,14 +192,15 @@ async def start_review_impl(content: str, title: str = "Review") -> dict[str, An
                 "total": len(items),
                 "approved": approved,
                 "rejected": rejected,
-                "has_comments": has_comments
-            }
+                "has_comments": has_comments,
+            },
         }
 
     finally:
         # Cleanup
         try:
             import shutil
+
             shutil.rmtree(review_dir, ignore_errors=True)
         except Exception:
             pass
@@ -234,16 +229,16 @@ Returns structured feedback with approval status and comments for each item.""",
                 "properties": {
                     "content": {
                         "type": "string",
-                        "description": "Markdown content to review (plans, documents, etc.)"
+                        "description": "Markdown content to review (plans, documents, etc.)",
                     },
                     "title": {
                         "type": "string",
                         "description": "Title for the review UI",
-                        "default": "Review"
-                    }
+                        "default": "Review",
+                    },
                 },
-                "required": ["content"]
-            }
+                "required": ["content"],
+            },
         )
     ]
 
@@ -257,25 +252,29 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
         result = await start_review_impl(content, title)
 
-        return [TextContent(
-            type="text",
-            text=json.dumps(result, indent=2, ensure_ascii=False)
-        )]
+        return [
+            TextContent(
+                type="text", text=json.dumps(result, indent=2, ensure_ascii=False)
+            )
+        ]
 
-    return [TextContent(
-        type="text",
-        text=json.dumps({"error": f"Unknown tool: {name}"})
-    )]
+    return [
+        TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))
+    ]
 
 
 def setup_signal_handlers():
     """Set up signal handlers for graceful shutdown."""
+
     def handle_shutdown(signum, frame):
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, handle_shutdown)
-    signal.signal(signal.SIGHUP, handle_shutdown)
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+    # SIGHUP and SIGPIPE are Unix-only signals
+    if sys.platform != "win32":
+        signal.signal(signal.SIGHUP, handle_shutdown)
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
 async def main():
@@ -285,9 +284,7 @@ async def main():
     try:
         async with stdio_server() as (read_stream, write_stream):
             await app.run(
-                read_stream,
-                write_stream,
-                app.create_initialization_options()
+                read_stream, write_stream, app.create_initialization_options()
             )
     except (BrokenPipeError, ConnectionResetError, EOFError):
         # Parent process closed the pipe - exit gracefully

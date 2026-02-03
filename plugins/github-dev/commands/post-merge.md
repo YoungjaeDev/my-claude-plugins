@@ -54,16 +54,37 @@ Perform branch cleanup and CLAUDE.md updates after a PR has been merged. Follow 
 6. **Analyze and Update Configuration Files**
    - Check which configuration files exist:
      - `CLAUDE.md` - Claude Code specific instructions
-     - `AGENTS.md` - Cross-tool AI coding agent instructions (Codex, Cursor, Gemini, etc.)
+     - `AGENTS.md` - Cross-tool AI coding agent instructions
      - `GEMINI.md` - Google Gemini CLI specific instructions
-   - For each existing file, analyze:
-     - Find temporary instructions related to resolved issue (e.g., mentions of `#<issue_number>`, `issue-<number>`)
-     - Identify outdated or inaccurate information
-     - Identify redundant or unnecessary content
-   - Prepare update proposal for each file:
-     - **To remove**: Temporary notes/instructions related to resolved issue
-     - **To add**: New patterns/conventions discovered during issue resolution
-     - **To modify**: Outdated or inaccurate information
+     - `.claude/rules/*.md` - Modular rule files
+
+   - **Placement Rules** (applies to all config files):
+
+     | Content Type | Placement |
+     |--------------|-----------|
+     | Project-wide constraints | Golden Rules > Immutable |
+     | Project-wide recommendations | Golden Rules > Do's |
+     | Project-wide prohibitions | Golden Rules > Don'ts |
+     | Module-specific rules | Delegate to `.claude/rules/[module].md` |
+     | New commands | Commands section |
+     | New module references | Modular Rules section |
+
+   - **Content Removal**:
+     - Temporary instructions (e.g., `TODO: remove after #N`)
+     - Resolved known issues
+     - Workaround descriptions for fixed bugs
+
+   - **Content Addition**:
+     - Module-specific rule -> propose `.claude/rules/[module].md` creation/update
+     - Project-wide rule -> add to appropriate Golden Rules subsection
+     - New module documented -> add `See @.claude/rules/[module].md` reference
+
+   - **Modular Rule Files** (.claude/rules/*.md):
+     - Check if relevant module file exists
+     - Propose path-specific rules with frontmatter: `paths: src/[module]/**/*.py`
+     - Follow structure: Role, Key Components, Do's, Don'ts
+     - **Always confirm with user before creating new rule files**
+
    - Present proposal to user for confirmation before applying
 
 7. **Commit Changes (Optional)**
@@ -75,7 +96,28 @@ Perform branch cleanup and CLAUDE.md updates after a PR has been merged. Follow 
 
 ## Configuration File Update Guide
 
-The following guidelines apply to CLAUDE.md, AGENTS.md, and GEMINI.md:
+The following guidelines apply to CLAUDE.md, AGENTS.md, GEMINI.md, and `.claude/rules/*.md`:
+
+### Expected File Structure
+
+**Root Config (CLAUDE.md, AGENTS.md, GEMINI.md)**:
+1. Project Context - Business goal + tech stack (1-2 sentences)
+2. Commands - Package manager and run commands
+3. Golden Rules - Immutable / Do's / Don'ts
+4. Modular Rules - `See @.claude/rules/[module].md` references
+5. Project-Specific - Data locations, tracking, etc.
+
+**Modular Rules (.claude/rules/*.md)**:
+```markdown
+---
+paths: src/[module]/**/*.py  # Optional: conditional loading
+---
+# [Module] Rules
+Role description (1-2 lines)
+## Key Components
+## Do's
+## Don'ts
+```
 
 ### Examples of Content to Remove
 - Temporary notes like `TODO: remove after #123 is resolved`

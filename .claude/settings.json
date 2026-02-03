@@ -1,18 +1,9 @@
 {
-  "extraKnownMarketplaces": {
-    "omc": {
-      "source": {
-        "source": "github",
-        "repo": "Yeachan-Heo/oh-my-claudecode"
-      }
-    }
-  },
   "plugins": {
     "local": [
       "./plugins/core-config",
       "./plugins/github-dev",
       "./plugins/interactive-review",
-      "./plugins/omc",
       "./plugins/code-scout",
       "./plugins/council",
       "./plugins/deepwiki",
@@ -21,7 +12,8 @@
       "./plugins/translator",
       "./plugins/midjourney",
       "./plugins/interview",
-      "./plugins/notion"
+      "./plugins/notion",
+      "./plugins/humanizer"
     ]
   }
 }

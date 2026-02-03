@@ -1,0 +1,8 @@
+{
+  "name": "humanizer",
+  "version": "2.1.1",
+  "description": "Remove signs of AI-generated writing from text based on Wikipedia's AI writing patterns guide",
+  "homepage": "https://github.com/blader/humanizer",
+  "license": "MIT",
+  "keywords": ["writing", "editing", "ai-detection", "humanize"]
+}

@@ -1,3 +1,7 @@
+---
+description: Create Issue Labels
+---
+
 ## Create Issue Labels
 
 Analyze project structure and create appropriate GitHub issue labels. Follow project guidelines in `@CLAUDE.md`.

@@ -26,7 +26,7 @@
       "name": "interactive-review",
       "source": "./plugins/interactive-review",
       "description": "Web UI code review with MCP server",
-      "version": "1.0.0",
+      "version": "1.0.2",
       "category": "code-review"
     },
     {

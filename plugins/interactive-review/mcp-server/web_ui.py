@@ -350,12 +350,11 @@ def generate_html(
         /* Source view with line numbers - performance optimized */
         .source-view {{
             display: none;
-            contain: strict;
-            content-visibility: auto;
         }}
 
         .source-view.active {{
             display: block;
+            contain: content;
         }}
 
         .rendered-view {{

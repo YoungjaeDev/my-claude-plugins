@@ -230,16 +230,16 @@ def generate_html(
 
         .add-comment-btn {{
             position: absolute;
-            left: 4px;
+            left: 8px;
             top: 50%;
             transform: translateY(-50%);
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             background: var(--accent);
             border: none;
             border-radius: 50%;
             color: white;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             opacity: 0;
@@ -247,6 +247,7 @@ def generate_html(
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 10;
         }}
 
         .line-wrapper:hover .add-comment-btn {{

@@ -16,6 +16,7 @@ Provides the start_review tool that:
 
 import asyncio
 import json
+import os
 import signal
 import socket
 import sys
@@ -37,7 +38,18 @@ from web_ui import parse_markdown, generate_html
 
 # Global state for the HTTP server
 _review_result: dict | None = None
-_result_event = threading.Event()
+_async_result_event: asyncio.Event | None = None
+_main_loop: asyncio.AbstractEventLoop | None = None  # 메인 이벤트 루프 저장
+
+
+def calculate_timeout(content: str) -> int:
+    """Calculate timeout based on document length."""
+    base_timeout = 600  # 10 minutes default
+    line_count = content.count("\n") + 1
+    if line_count > 1000:
+        extra_minutes = (line_count - 1000) // 1000 * 2
+        return min(base_timeout + extra_minutes * 60, 1800)  # max 30 minutes
+    return base_timeout
 
 
 def find_free_port() -> int:
@@ -57,7 +69,7 @@ class ReviewHTTPHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         """Handle POST request for submitting review results."""
-        global _review_result
+        global _review_result, _async_result_event
 
         if self.path == "/submit":
             content_length = int(self.headers["Content-Length"])
@@ -65,7 +77,11 @@ class ReviewHTTPHandler(SimpleHTTPRequestHandler):
 
             try:
                 _review_result = json.loads(post_data.decode("utf-8"))
-                _result_event.set()
+
+                # Signal the async event (thread-safe)
+                # HTTP 핸들러는 별도 스레드에서 실행되므로 저장된 메인 루프 사용
+                if _async_result_event and _main_loop:
+                    _main_loop.call_soon_threadsafe(_async_result_event.set)
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -114,11 +130,12 @@ async def start_review_impl(content: str, title: str = "Review") -> dict[str, An
     Returns:
         Review results with status, items, and summary
     """
-    global _review_result, _result_event
+    global _review_result, _async_result_event, _main_loop
 
     # Reset state
     _review_result = None
-    _result_event.clear()
+    _async_result_event = asyncio.Event()
+    _main_loop = asyncio.get_running_loop()  # 메인 이벤트 루프 저장
 
     # Create temp directory
     review_id = str(uuid.uuid4())[:8]
@@ -164,17 +181,32 @@ async def start_review_impl(content: str, title: str = "Review") -> dict[str, An
         url = f"http://localhost:{port}/index.html"
         webbrowser.open(url)
 
-        # Wait for result (timeout: 5 minutes)
-        timeout = 300
-        result_received = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: _result_event.wait(timeout)
-        )
+        # Calculate timeout based on content length
+        # 환경변수가 유효하지 않은 경우 안전하게 폴백
+        env_timeout = os.environ.get("REVIEW_TIMEOUT")
+        if env_timeout is not None:
+            try:
+                timeout = int(env_timeout)
+            except ValueError:
+                timeout = calculate_timeout(content)
+        else:
+            timeout = calculate_timeout(content)
+
+        # Wait for result using asyncio.Event
+        try:
+            await asyncio.wait_for(_async_result_event.wait(), timeout=timeout)
+            result_received = True
+        except asyncio.TimeoutError:
+            result_received = False
 
         # Shutdown server
         server.shutdown()
 
         if not result_received:
-            return {"status": "timeout", "message": "Review timed out after 5 minutes"}
+            return {
+                "status": "timeout",
+                "message": f"Review timed out after {timeout // 60} minutes. Set REVIEW_TIMEOUT environment variable to increase.",
+            }
 
         if _review_result is None:
             return {"status": "error", "message": "No result received"}

@@ -7,13 +7,14 @@ Uses marked.js for markdown rendering.
 """
 
 import json
-from typing import List, Dict, Any
-from dataclasses import dataclass, asdict, field
+from typing import List
+from dataclasses import dataclass, field
 
 
 @dataclass
 class Block:
     """Represents a reviewable block in the markdown content."""
+
     id: str
     type: str  # heading, list-item, paragraph, code
     text: str
@@ -24,13 +25,14 @@ class Block:
 @dataclass
 class DocumentState:
     """Memory-efficient document storage using line offsets instead of per-line objects."""
+
     raw_content: str
     _line_offsets: List[int] = field(default_factory=list)
 
     def __post_init__(self):
         self._line_offsets = [0]
         for i, char in enumerate(self.raw_content):
-            if char == '\n':
+            if char == "\n":
                 self._line_offsets.append(i + 1)
 
     def get_line(self, index: int) -> str:
@@ -54,28 +56,26 @@ def parse_markdown(content: str) -> List[Block]:
     Returns list of Block objects, one per line.
     """
     blocks = []
-    lines = content.split('\n')
+    lines = content.split("\n")
 
     for i, line in enumerate(lines):
-        blocks.append(Block(
-            id=f"line-{i}",
-            type="line",
-            text=line,
-            level=0,
-            raw=line
-        ))
+        blocks.append(Block(id=f"line-{i}", type="line", text=line, level=0, raw=line))
 
     return blocks
 
 
-def generate_html(title: str, content: str, blocks: List[Block], server_port: int) -> str:
+def generate_html(
+    title: str, content: str, blocks: List[Block], server_port: int
+) -> str:
     """Generate the complete HTML for the review UI with marked.js and line comments."""
 
     # Escape content for JSON embedding
     content_json = json.dumps(content)
-    lines_json = json.dumps([{"id": b.id, "text": b.text, "lineNum": i} for i, b in enumerate(blocks)])
+    lines_json = json.dumps(
+        [{"id": b.id, "text": b.text, "lineNum": i} for i, b in enumerate(blocks)]
+    )
 
-    return f'''<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -103,6 +103,20 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
             --highlight-bg: rgba(56, 139, 253, 0.15);
             --comment-bg: #2d333b;
             --selection-bg: rgba(56, 139, 253, 0.3);
+
+            /* Extended design system */
+            --surface-elevated: #1c2128;
+            --surface-overlay: rgba(0, 0, 0, 0.6);
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+            /* Spacing */
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-6: 1.5rem;
         }}
 
         * {{
@@ -180,6 +194,8 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
             display: flex;
             position: relative;
             border-bottom: 1px solid transparent;
+            contain: layout style;
+            will-change: background-color;
         }}
 
         .line-wrapper:hover {{
@@ -330,9 +346,11 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
             margin-bottom: 16px;
         }}
 
-        /* Source view with line numbers */
+        /* Source view with line numbers - performance optimized */
         .source-view {{
             display: none;
+            contain: strict;
+            content-visibility: auto;
         }}
 
         .source-view.active {{
@@ -647,6 +665,62 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
             color: var(--danger);
         }}
 
+        /* Accessibility: Focus styles */
+        :focus-visible {{
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }}
+
+        button:focus-visible {{
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }}
+
+        textarea:focus-visible,
+        input:focus-visible {{
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+        }}
+
+        /* Accessibility: High contrast mode */
+        @media (prefers-contrast: more) {{
+            :root {{
+                --text-primary: #ffffff;
+                --text-secondary: #d0d0d0;
+                --text-muted: #a0a0a0;
+                --accent: #0096ff;
+                --border: #555555;
+            }}
+        }}
+
+        /* Accessibility: Reduced motion */
+        @media (prefers-reduced-motion: reduce) {{
+            *,
+            *::before,
+            *::after {{
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }}
+        }}
+
+        /* Accessibility: Skip link */
+        .skip-link {{
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--accent);
+            color: white;
+            padding: 8px 16px;
+            z-index: 9999;
+            transition: top 0.2s;
+        }}
+
+        .skip-link:focus {{
+            top: 0;
+        }}
+
         /* Floating comment toolbar for text selection */
         .floating-toolbar {{
             position: fixed;
@@ -676,42 +750,6 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
             font-size: 0.8rem;
         }}
 
-        /* Inline comment popup */
-        .inline-comment-popup {{
-            position: fixed;
-            background: var(--bg-card);
-            border: 1px solid var(--accent);
-            border-radius: 8px;
-            padding: 0.5rem;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-            z-index: 1001;
-            display: none;
-            min-width: 300px;
-        }}
-
-        .inline-comment-popup.visible {{
-            display: block;
-        }}
-
-        .inline-comment-popup input {{
-            width: 100%;
-            padding: 0.5rem 0.75rem;
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-size: 0.875rem;
-            outline: none;
-        }}
-
-        .inline-comment-popup input:focus {{
-            border-color: var(--accent);
-        }}
-
-        .inline-comment-popup input::placeholder {{
-            color: var(--text-muted);
-        }}
-
         /* Highlighted text in preview */
         .commented-text {{
             background: var(--highlight-bg);
@@ -723,6 +761,131 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
 
         .commented-text:hover {{
             background: var(--selection-bg);
+        }}
+
+        /* Modal overlay and dialog */
+        .modal-overlay {{
+            position: fixed;
+            inset: 0;
+            background: var(--surface-overlay);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }}
+
+        .modal-overlay.visible {{
+            display: flex;
+        }}
+
+        .comment-modal {{
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: min(600px, 90vw);
+            max-height: 90vh;
+            box-shadow: var(--shadow-lg);
+            animation: modalFadeIn 0.2s ease-out;
+        }}
+
+        @keyframes modalFadeIn {{
+            from {{ opacity: 0; transform: scale(0.95); }}
+            to {{ opacity: 1; transform: scale(1); }}
+        }}
+
+        .modal-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-4) var(--space-6);
+            border-bottom: 1px solid var(--border);
+        }}
+
+        .modal-header h3 {{
+            font-size: 1.125rem;
+            font-weight: 600;
+        }}
+
+        .modal-close {{
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: var(--space-1);
+            line-height: 1;
+        }}
+
+        .modal-close:hover {{
+            color: var(--text-primary);
+        }}
+
+        .modal-body {{
+            padding: var(--space-6);
+        }}
+
+        .selected-text-preview {{
+            margin-bottom: var(--space-4);
+        }}
+
+        .selected-text-preview label {{
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-2);
+        }}
+
+        .selected-text-preview pre {{
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: var(--space-3);
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.8125rem;
+            max-height: 120px;
+            overflow: auto;
+            white-space: pre-wrap;
+            color: var(--text-muted);
+        }}
+
+        .comment-input-area label {{
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-2);
+        }}
+
+        .comment-input-area textarea {{
+            width: 100%;
+            min-height: 120px;
+            padding: var(--space-3);
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            resize: vertical;
+            font-family: inherit;
+        }}
+
+        .comment-input-area textarea:focus {{
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+        }}
+
+        .modal-hint {{
+            margin-top: var(--space-3);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }}
+
+        .modal-footer {{
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-3);
+            padding: var(--space-4) var(--space-6);
+            border-top: 1px solid var(--border);
         }}
 
         /* Responsive */
@@ -748,8 +911,9 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="layout">
-        <div class="main-content">
+        <div class="main-content" id="main-content">
             <header>
                 <h1>{title}</h1>
                 <div class="summary">
@@ -783,9 +947,9 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
         <div class="comments-sidebar">
             <div class="sidebar-header">
                 <span>Comments</span>
-                <button class="btn-sm btn-secondary" onclick="clearAllComments()">Clear All</button>
+                <button class="btn-sm btn-secondary" onclick="clearAllComments()" aria-label="Clear all comments">Clear All</button>
             </div>
-            <div id="comments-list">
+            <div id="comments-list" role="region" aria-live="polite" aria-label="Comments list">
                 <div class="no-comments">
                     Click on a line number or select text to add comments
                 </div>
@@ -801,11 +965,36 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
 
     <div class="floating-toolbar" id="floating-toolbar">
         <span style="color: var(--text-secondary); font-size: 0.75rem; margin-right: 0.5rem;">💬</span>
-        <button class="btn-sm btn-primary" onclick="showInlineCommentInput()">Comment</button>
+        <button class="btn-sm btn-primary" onclick="openCommentModalForTextSelection()">Comment</button>
     </div>
 
-    <div class="inline-comment-popup" id="inline-comment-popup">
-        <input type="text" id="inline-comment-input" placeholder="Add comment... (Enter to save, Esc to cancel)">
+    <!-- Comment Modal Dialog -->
+    <div class="modal-overlay" id="comment-modal-overlay">
+        <div class="comment-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <div class="modal-header">
+                <h3 id="modal-title">Add Comment</h3>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="selected-text-preview">
+                    <label>Selected Text:</label>
+                    <pre id="modal-preview-text"></pre>
+                </div>
+                <div class="comment-input-area">
+                    <label for="modal-comment-textarea">Your Comment:</label>
+                    <textarea id="modal-comment-textarea"
+                              placeholder="Enter your comment..."
+                              rows="5"></textarea>
+                </div>
+                <div class="modal-hint">
+                    <kbd>Cmd</kbd>+<kbd>Enter</kbd> to save, <kbd>Esc</kbd> to cancel
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="modal-cancel-btn">Cancel</button>
+                <button class="btn-primary" id="modal-save-btn">Save Comment</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -821,6 +1010,45 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
         let commentIdCounter = 0;
         let selectedText = '';
         let selectionRange = null;
+        let isSelecting = false;
+
+        // Modal state
+        let modalContext = null; // {{ type: 'line'|'text', startLine, endLine, selectedText, range, preview }}
+
+        // Comment index for O(1) lookup
+        class CommentIndex {{
+            constructor() {{
+                this.lineToComments = new Map();
+            }}
+
+            rebuild(commentsList) {{
+                this.lineToComments.clear();
+                commentsList.forEach(comment => {{
+                    if (comment.type !== 'line') return;
+                    for (let i = comment.startLine; i <= comment.endLine; i++) {{
+                        if (!this.lineToComments.has(i)) {{
+                            this.lineToComments.set(i, new Set());
+                        }}
+                        this.lineToComments.get(i).add(comment.id);
+                    }}
+                }});
+            }}
+
+            hasCommentOnLine(lineIndex) {{
+                return this.lineToComments.has(lineIndex);
+            }}
+        }}
+
+        const commentIndex = new CommentIndex();
+
+        // Debounce utility
+        function debounce(fn, delay) {{
+            let timer = null;
+            return function(...args) {{
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            }};
+        }}
 
         // Initialize marked
         marked.setOptions({{
@@ -846,51 +1074,50 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
                 hljs.highlightElement(block);
             }});
 
-            // Setup text selection handler for preview
+            // Setup text selection handler for preview (with debouncing)
             setupTextSelectionHandler();
 
             // Setup event delegation for source view (performance optimization)
             setupSourceViewEventDelegation();
+
+            // Setup modal event listeners
+            setupModalEventListeners();
+
+            // Setup sidebar event delegation
+            setupSidebarEventDelegation();
         }}
 
-        // Text selection in Preview view
+        // Text selection in Preview view (with debouncing)
         function setupTextSelectionHandler() {{
             const renderedContent = document.getElementById('rendered-content');
             const floatingToolbar = document.getElementById('floating-toolbar');
 
-            // console.log('Setting up text selection handler...', {{ renderedContent: !!renderedContent, floatingToolbar: !!floatingToolbar }});
+            const handleSelection = debounce(() => {{
+                const selection = window.getSelection();
+                const text = selection.toString().trim();
 
-            renderedContent.addEventListener('mouseup', (e) => {{
-                // Delay to let selection finalize
-                setTimeout(() => {{
-                    const selection = window.getSelection();
-                    const text = selection.toString().trim();
+                if (text && text.length > 0) {{
+                    selectedText = text;
+                    try {{
+                        selectionRange = selection.getRangeAt(0).cloneRange();
 
-                    // console.log('Selection detected:', text ? `"${{text.substring(0, 30)}}..."` : '(empty)');
+                        // Position floating toolbar near selection (fixed positioning)
+                        const rect = selection.getRangeAt(0).getBoundingClientRect();
+                        const top = rect.bottom + 8;
+                        const left = Math.max(10, rect.left + (rect.width / 2) - 50);
 
-                    if (text && text.length > 0) {{
-                        selectedText = text;
-                        try {{
-                            selectionRange = selection.getRangeAt(0).cloneRange();
-
-                            // Position floating toolbar near selection (fixed positioning)
-                            const rect = selection.getRangeAt(0).getBoundingClientRect();
-                            const top = rect.bottom + 8;
-                            const left = Math.max(10, rect.left + (rect.width / 2) - 50);
-
-                            // console.log('Showing toolbar at:', top, left);
-
-                            floatingToolbar.style.top = `${{top}}px`;
-                            floatingToolbar.style.left = `${{left}}px`;
-                            floatingToolbar.classList.add('visible');
-                        }} catch (err) {{
-                            console.log('Selection error:', err);
-                        }}
-                    }} else {{
-                        hideFloatingToolbar();
+                        floatingToolbar.style.top = `${{top}}px`;
+                        floatingToolbar.style.left = `${{left}}px`;
+                        floatingToolbar.classList.add('visible');
+                    }} catch (err) {{
+                        console.log('Selection error:', err);
                     }}
-                }}, 50);
-            }});
+                }} else {{
+                    hideFloatingToolbar();
+                }}
+            }}, 100);
+
+            renderedContent.addEventListener('mouseup', handleSelection);
 
             // Hide toolbar when clicking elsewhere
             document.addEventListener('mousedown', (e) => {{
@@ -931,91 +1158,145 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
             }}, true);
         }}
 
-        function hideFloatingToolbar() {{
-            const floatingToolbar = document.getElementById('floating-toolbar');
-            floatingToolbar.classList.remove('visible');
+        // Sidebar event delegation (remove inline onclick handlers)
+        function setupSidebarEventDelegation() {{
+            const commentsList = document.getElementById('comments-list');
+
+            commentsList.addEventListener('click', (e) => {{
+                const deleteBtn = e.target.closest('.delete-comment');
+                if (deleteBtn) {{
+                    const card = deleteBtn.closest('.comment-card');
+                    if (card) {{
+                        const commentId = card.dataset.commentId;
+                        deleteComment(commentId);
+                    }}
+                }}
+            }});
         }}
 
-        function hideInlineCommentPopup() {{
-            const popup = document.getElementById('inline-comment-popup');
-            popup.classList.remove('visible');
-            document.getElementById('inline-comment-input').value = '';
+        // Modal functions
+        function openCommentModal(context) {{
+            modalContext = context;
+            const overlay = document.getElementById('comment-modal-overlay');
+            const previewEl = document.getElementById('modal-preview-text');
+            const textarea = document.getElementById('modal-comment-textarea');
+
+            // Set preview text
+            previewEl.textContent = context.preview || context.selectedText || '';
+            textarea.value = '';
+
+            // Show modal
+            overlay.classList.add('visible');
+
+            // Focus trap setup - delay focus for animation
+            setTimeout(() => textarea.focus(), 50);
         }}
 
-        function showInlineCommentInput() {{
-            if (!selectedText) return;
-
-            const floatingToolbar = document.getElementById('floating-toolbar');
-            const popup = document.getElementById('inline-comment-popup');
-            const input = document.getElementById('inline-comment-input');
-
-            // Position popup below the floating toolbar
-            const toolbarRect = floatingToolbar.getBoundingClientRect();
-            popup.style.top = `${{toolbarRect.bottom + 8}}px`;
-            popup.style.left = `${{Math.max(10, toolbarRect.left)}}px`;
-
-            // Hide toolbar, show popup
-            hideFloatingToolbar();
-            popup.classList.add('visible');
-            input.value = '';
-            input.focus();
+        function closeCommentModal() {{
+            const overlay = document.getElementById('comment-modal-overlay');
+            overlay.classList.remove('visible');
+            modalContext = null;
         }}
 
-        function confirmInlineComment() {{
-            const input = document.getElementById('inline-comment-input');
-            const commentText = input.value.trim();
+        function saveModalComment() {{
+            if (!modalContext) return;
 
-            if (!selectedText) {{
-                hideInlineCommentPopup();
-                return;
-            }}
-
-            const preview = selectedText.length > 100 ? selectedText.substring(0, 100) + '...' : selectedText;
+            const textarea = document.getElementById('modal-comment-textarea');
+            const commentText = textarea.value.trim();
 
             const comment = {{
                 id: `comment-${{commentIdCounter++}}`,
-                type: 'text',
-                startLine: null,
-                endLine: null,
+                type: modalContext.type,
+                startLine: modalContext.startLine,
+                endLine: modalContext.endLine,
                 text: commentText,
-                linePreview: preview,
-                selectedText: selectedText
+                linePreview: modalContext.preview,
+                selectedText: modalContext.selectedText
             }};
 
             comments.push(comment);
 
-            // Highlight the selected text in the preview
-            highlightTextInPreview(selectionRange, comment.id);
+            // Highlight text in preview (text type only)
+            if (modalContext.type === 'text' && modalContext.range) {{
+                highlightTextInPreview(modalContext.range, comment.id);
+            }}
 
-            // Clear state
-            hideInlineCommentPopup();
+            closeCommentModal();
+            clearSelection();
             window.getSelection().removeAllRanges();
             selectedText = '';
             selectionRange = null;
-
             renderComments();
-
-            // console.log('Comment added:', comment);
+            renderSourceView();
         }}
 
-        // Setup inline comment input handlers
-        document.getElementById('inline-comment-input').addEventListener('keydown', (e) => {{
-            if (e.key === 'Enter') {{
-                e.preventDefault();
-                e.stopPropagation();
-                confirmInlineComment();
-            }} else if (e.key === 'Escape') {{
-                e.preventDefault();
-                e.stopPropagation();
-                hideInlineCommentPopup();
-                selectedText = '';
-                selectionRange = null;
-            }}
-        }});
+        function setupModalEventListeners() {{
+            const overlay = document.getElementById('comment-modal-overlay');
+            const closeBtn = overlay.querySelector('.modal-close');
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            const saveBtn = document.getElementById('modal-save-btn');
+            const textarea = document.getElementById('modal-comment-textarea');
 
-        function addCommentForTextSelection() {{
-            // Legacy function - now uses inline input
-            showInlineCommentInput();
+            // Close buttons
+            closeBtn.addEventListener('click', closeCommentModal);
+            cancelBtn.addEventListener('click', closeCommentModal);
+            saveBtn.addEventListener('click', saveModalComment);
+
+            // Close on overlay click
+            overlay.addEventListener('click', (e) => {{
+                if (e.target === overlay) closeCommentModal();
+            }});
+
+            // Keyboard shortcuts
+            textarea.addEventListener('keydown', (e) => {{
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {{
+                    e.preventDefault();
+                    saveModalComment();
+                }} else if (e.key === 'Escape') {{
+                    e.preventDefault();
+                    closeCommentModal();
+                }}
+            }});
+
+            // Focus trap
+            overlay.addEventListener('keydown', (e) => {{
+                if (e.key === 'Tab') {{
+                    const focusables = overlay.querySelectorAll('button, textarea');
+                    const first = focusables[0];
+                    const last = focusables[focusables.length - 1];
+
+                    if (e.shiftKey && document.activeElement === first) {{
+                        e.preventDefault();
+                        last.focus();
+                    }} else if (!e.shiftKey && document.activeElement === last) {{
+                        e.preventDefault();
+                        first.focus();
+                    }}
+                }}
+            }});
+        }}
+
+        // Open modal for text selection (from floating toolbar)
+        function openCommentModalForTextSelection() {{
+            if (!selectedText) return;
+
+            const preview = selectedText.length > 100 ? selectedText.substring(0, 100) + '...' : selectedText;
+
+            openCommentModal({{
+                type: 'text',
+                startLine: null,
+                endLine: null,
+                selectedText: selectedText,
+                range: selectionRange,
+                preview: preview
+            }});
+
+            hideFloatingToolbar();
+        }}
+
+        function hideFloatingToolbar() {{
+            const floatingToolbar = document.getElementById('floating-toolbar');
+            floatingToolbar.classList.remove('visible');
         }}
 
         function highlightTextInPreview(range, commentId) {{
@@ -1128,21 +1409,38 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
 
         function renderSourceView() {{
             const container = document.getElementById('source-view');
+            commentIndex.rebuild(comments);
+
             container.innerHTML = lines.map((line, index) => {{
-                const hasComment = comments.some(c => c.type === 'line' && index >= c.startLine && index <= c.endLine);
-                const isSelecting = selectionStart !== null &&
+                const hasComment = commentIndex.hasCommentOnLine(index);
+                const isSelectingLine = selectionStart !== null &&
                     index >= Math.min(selectionStart, selectionEnd || selectionStart) &&
                     index <= Math.max(selectionStart, selectionEnd || selectionStart);
 
                 return `
-                    <div class="line-wrapper ${{hasComment ? 'has-comment' : ''}} ${{isSelecting ? 'selecting' : ''}}"
+                    <div class="line-wrapper ${{hasComment ? 'has-comment' : ''}} ${{isSelectingLine ? 'selecting' : ''}}"
                          data-line-index="${{index}}">
-                        <button class="add-comment-btn" data-action="add-comment" title="Add comment">+</button>
+                        <button class="add-comment-btn" data-action="add-comment" title="Add comment" aria-label="Add comment to line ${{index + 1}}">+</button>
                         <div class="line-number">${{index + 1}}</div>
                         <div class="line-content">${{escapeHtml(line.text) || '&nbsp;'}}</div>
                     </div>
                 `;
             }}).join('');
+        }}
+
+        // Targeted DOM update (avoids full re-render)
+        function updateLineStates() {{
+            commentIndex.rebuild(comments);
+            document.querySelectorAll('.line-wrapper').forEach(wrapper => {{
+                const index = parseInt(wrapper.dataset.lineIndex, 10);
+                const hasComment = commentIndex.hasCommentOnLine(index);
+                const isSelectingLine = selectionStart !== null &&
+                    index >= Math.min(selectionStart, selectionEnd || selectionStart) &&
+                    index <= Math.max(selectionStart, selectionEnd || selectionStart);
+
+                wrapper.classList.toggle('has-comment', hasComment);
+                wrapper.classList.toggle('selecting', isSelectingLine);
+            }});
         }}
 
         function escapeHtml(text) {{
@@ -1166,19 +1464,17 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
         }}
 
         // Line selection
-        let isSelecting = false;
-
         function startLineSelection(lineNum) {{
             isSelecting = true;
             selectionStart = lineNum;
             selectionEnd = lineNum;
-            renderSourceView();
+            updateLineStates();
         }}
 
         function extendLineSelection(lineNum) {{
             if (isSelecting && selectionStart !== null) {{
                 selectionEnd = lineNum;
-                renderSourceView();
+                updateLineStates();
                 updateSelectionIndicator();
             }}
         }}
@@ -1208,7 +1504,7 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
             selectionStart = null;
             selectionEnd = null;
             document.getElementById('selection-indicator').classList.remove('visible');
-            renderSourceView();
+            updateLineStates();
         }}
 
         function quickAddComment(lineNum) {{
@@ -1227,25 +1523,15 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
             const previewLines = lines.slice(start, end + 1).map(l => l.text);
             const preview = previewLines.join('\\n').substring(0, 100) + (previewLines.join('\\n').length > 100 ? '...' : '');
 
-            const comment = {{
-                id: `comment-${{commentIdCounter++}}`,
+            // Open modal instead of directly adding comment
+            openCommentModal({{
                 type: 'line',
                 startLine: start,
                 endLine: end,
-                text: '',
-                linePreview: preview
-            }};
-
-            comments.push(comment);
-            clearSelection();
-            renderComments();
-            renderSourceView();
-
-            // Focus the new comment textarea
-            setTimeout(() => {{
-                const textarea = document.querySelector(`[data-comment-id="${{comment.id}}"] textarea`);
-                if (textarea) textarea.focus();
-            }}, 50);
+                selectedText: null,
+                range: null,
+                preview: preview
+            }});
         }}
 
         function renderComments() {{
@@ -1265,7 +1551,7 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
                         <div class="comment-card" data-comment-id="${{comment.id}}">
                             <div class="comment-header">
                                 <span class="comment-lines">${{headerLabel}}</span>
-                                <button class="delete-comment" onclick="deleteComment('${{comment.id}}')" title="Delete comment">&times;</button>
+                                <button class="delete-comment" title="Delete comment" aria-label="Delete comment">&times;</button>
                             </div>
                             <div class="comment-preview">${{escapeHtml(comment.linePreview)}}</div>
                             <div class="comment-body">
@@ -1289,29 +1575,6 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
             }}
         }}
 
-        let saveTimeout = null;
-        function handleCommentInput(commentId, textarea) {{
-            updateCommentText(commentId, textarea.value);
-
-            // Show "Saved" indicator with debounce
-            clearTimeout(saveTimeout);
-            const indicator = document.getElementById(`save-${{commentId}}`);
-            if (indicator && textarea.value.trim()) {{
-                saveTimeout = setTimeout(() => {{
-                    indicator.classList.add('visible');
-                    setTimeout(() => indicator.classList.remove('visible'), 1500);
-                }}, 500);
-            }}
-        }}
-
-        function handleCommentKeydown(e, commentId) {{
-            // Cmd/Ctrl + Enter to submit
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {{
-                e.preventDefault();
-                submitReview();
-            }}
-        }}
-
         function deleteComment(commentId) {{
             // Remove all highlight spans from preview if it's a text comment
             const highlightedSpans = document.querySelectorAll(`.commented-text[data-comment-id="${{commentId}}"]`);
@@ -1325,7 +1588,7 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
 
             comments = comments.filter(c => c.id !== commentId);
             renderComments();
-            renderSourceView();
+            updateLineStates();
         }}
 
         function clearAllComments() {{
@@ -1341,7 +1604,7 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
 
                 comments = [];
                 renderComments();
-                renderSourceView();
+                updateLineStates();
             }}
         }}
 
@@ -1402,17 +1665,18 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {{
+            // Check if modal is open
+            const modalOverlay = document.getElementById('comment-modal-overlay');
+            if (modalOverlay && modalOverlay.classList.contains('visible')) {{
+                // Let modal handle its own keyboard events
+                return;
+            }}
+
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {{
                 e.preventDefault();
                 submitReview();
             }}
             if (e.key === 'Escape') {{
-                // Don't cancel review if inline comment popup is open
-                const inlinePopup = document.getElementById('inline-comment-popup');
-                if (inlinePopup && inlinePopup.classList.contains('visible')) {{
-                    return; // Let the inline input handler deal with it
-                }}
-
                 if (selectionStart !== null) {{
                     clearSelection();
                 }} else {{
@@ -1425,4 +1689,4 @@ def generate_html(title: str, content: str, blocks: List[Block], server_port: in
         init();
     </script>
 </body>
-</html>'''
+</html>"""

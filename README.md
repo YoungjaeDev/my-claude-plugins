@@ -90,12 +90,15 @@ Auto-injected guidelines and workflow hooks.
 **Commands:**
 | Command | Description |
 |---------|-------------|
-| `/gh:commit-and-push` | Analyze, commit, push |
-| `/gh:code-review` | Process CodeRabbit feedback |
-| `/gh:create-issue-label` | Create standardized labels |
-| `/gh:decompose-issue` | Break down issues |
-| `/gh:post-merge` | Post-merge cleanup |
-| `/gh:resolve-issue` | End-to-end issue resolution |
+| `/github-dev:commit-and-push` | Analyze, commit, push |
+| `/github-dev:code-review` | Process CodeRabbit feedback |
+| `/github-dev:create-issue-label` | Create standardized labels |
+| `/github-dev:decompose-issue` | Break down issues |
+| `/github-dev:parallel-resolve` | Resolve multiple issues in parallel |
+| `/github-dev:post-merge` | Post-merge cleanup |
+| `/github-dev:resolve-issue` | End-to-end issue resolution (worktree, review, verification) |
+
+**Flags (resolve-issue):** `--worktree`, `--skip-review`, `--strict`
 
 **Requirements:** `gh` CLI installed and authenticated
 

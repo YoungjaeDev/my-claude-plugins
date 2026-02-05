@@ -4,7 +4,7 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 13 specialized plugins",
+    "description": "Personal Claude Code plugin collection with 14 specialized plugins",
     "version": "1.2.0"
   },
   "plugins": [
@@ -98,6 +98,13 @@
       "description": "Remove AI writing patterns from text",
       "version": "1.0.0",
       "category": "content"
+    },
+    {
+      "name": "paper-search-tools",
+      "source": "./plugins/paper-search-tools",
+      "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
+      "version": "1.0.0",
+      "category": "research"
     }
   ]
 }

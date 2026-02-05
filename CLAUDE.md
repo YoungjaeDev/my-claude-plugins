@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (14)
+## Plugins (15)
 
 ### Core
 | Plugin | Description |
@@ -21,6 +21,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 |--------|-------------|
 | `code-scout` | Boilerplate/ML resource discovery (GitHub, HuggingFace, 10+ platforms) |
 | `deepwiki` | AI-powered GitHub repo documentation |
+| `paper-search-tools` | Academic paper search (arXiv, PubMed, Semantic Scholar, etc.) |
 
 ### AI Models
 | Plugin | Description |
@@ -60,6 +61,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── code-scout/         # Resource discovery
 │   ├── council/            # LLM Council
 │   ├── deepwiki/           # Repo docs
+│   ├── paper-search-tools/ # Academic papers
 │   ├── notebook/           # Jupyter
 │   ├── ml-toolkit/         # ML tools
 │   ├── translator/         # Translation
@@ -77,19 +79,19 @@ Plugins auto-load from `settings.json`. See README.md for detailed usage of each
 
 ## Plugin Versioning
 
-플러그인 버전 업데이트 시 두 파일을 동기화해야 함:
+When updating plugin versions, synchronize these two files:
 
-| 파일 | 역할 |
-|------|------|
-| `plugins/<name>/.claude-plugin/plugin.json` | 실제 캐시 갱신 기준 (필수) |
-| `.claude-plugin/marketplace.json` | UI 표시/메타데이터 (권장) |
+| File | Purpose |
+|------|---------|
+| `plugins/<name>/.claude-plugin/plugin.json` | Cache refresh trigger (required) |
+| `.claude-plugin/marketplace.json` | UI display/metadata (recommended) |
 
-릴리스 워크플로우:
-1. `plugin.json` 버전 업데이트
-2. `marketplace.json` 버전 동기화
-3. 커밋 및 푸시
+Release workflow:
+1. Update version in `plugin.json`
+2. Sync version in `marketplace.json`
+3. Commit and push
 
-사용자 측 업데이트:
+User-side update:
 ```bash
 /plugin marketplace update my-claude-plugins
 /plugin update <plugin-name>@my-claude-plugins

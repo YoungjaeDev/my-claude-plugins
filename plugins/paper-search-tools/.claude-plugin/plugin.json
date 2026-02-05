@@ -1,0 +1,6 @@
+{
+  "name": "paper-search-tools",
+  "version": "1.0.0",
+  "description": "Academic paper search MCP for arXiv, PubMed, bioRxiv, medRxiv, Google Scholar, IACR, Semantic Scholar, and CrossRef. Requires Docker.",
+  "license": "Apache-2.0"
+}

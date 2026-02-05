@@ -1087,38 +1087,38 @@ def generate_html(
             setupSidebarEventDelegation();
         }}
 
-        // Text selection in Preview view
+        // Text selection in Preview view (supports both mouse and keyboard selection)
         function setupTextSelectionHandler() {{
             const renderedContent = document.getElementById('rendered-content');
             const floatingToolbar = document.getElementById('floating-toolbar');
 
-            renderedContent.addEventListener('mouseup', (e) => {{
-                // Delay to let selection finalize
-                setTimeout(() => {{
-                    const selection = window.getSelection();
-                    const text = selection.toString().trim();
+            const updateToolbar = () => {{
+                const selection = window.getSelection();
+                const text = selection.toString().trim();
 
-                    if (text && text.length > 0) {{
-                        selectedText = text;
-                        try {{
-                            selectionRange = selection.getRangeAt(0).cloneRange();
+                if (text && text.length > 0 && renderedContent.contains(selection.anchorNode)) {{
+                    selectedText = text;
+                    try {{
+                        selectionRange = selection.getRangeAt(0).cloneRange();
 
-                            // Position floating toolbar near selection (fixed positioning)
-                            const rect = selection.getRangeAt(0).getBoundingClientRect();
-                            const top = rect.bottom + 8;
-                            const left = Math.max(10, rect.left + (rect.width / 2) - 50);
+                        // Position floating toolbar near selection (fixed positioning)
+                        const rect = selection.getRangeAt(0).getBoundingClientRect();
+                        const top = rect.bottom + 8;
+                        const left = Math.max(10, rect.left + (rect.width / 2) - 50);
 
-                            floatingToolbar.style.top = `${{top}}px`;
-                            floatingToolbar.style.left = `${{left}}px`;
-                            floatingToolbar.classList.add('visible');
-                        }} catch (err) {{
-                            console.log('Selection error:', err);
-                        }}
-                    }} else {{
-                        hideFloatingToolbar();
+                        floatingToolbar.style.top = `${{top}}px`;
+                        floatingToolbar.style.left = `${{left}}px`;
+                        floatingToolbar.classList.add('visible');
+                    }} catch (err) {{
+                        console.log('Selection error:', err);
                     }}
-                }}, 50);
-            }});
+                }} else {{
+                    hideFloatingToolbar();
+                }}
+            }};
+
+            // Use selectionchange for both mouse and keyboard selection
+            document.addEventListener('selectionchange', updateToolbar);
 
             // Hide toolbar when clicking elsewhere
             document.addEventListener('mousedown', (e) => {{
@@ -1138,10 +1138,9 @@ def generate_html(
 
                 const index = parseInt(wrapper.dataset.lineIndex, 10);
 
-                // Handle add-comment button click
+                // Handle add-comment button click (only stop propagation, onclick handles the action)
                 if (e.target.matches('.add-comment-btn') || e.target.closest('.add-comment-btn')) {{
                     e.stopPropagation();
-                    quickAddComment(index);
                     return;
                 }}
 

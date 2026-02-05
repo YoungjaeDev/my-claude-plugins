@@ -230,16 +230,16 @@ def generate_html(
 
         .add-comment-btn {{
             position: absolute;
-            left: 4px;
+            left: 8px;
             top: 50%;
             transform: translateY(-50%);
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             background: var(--accent);
             border: none;
             border-radius: 50%;
             color: white;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             opacity: 0;
@@ -247,6 +247,7 @@ def generate_html(
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 10;
         }}
 
         .line-wrapper:hover .add-comment-btn {{
@@ -349,12 +350,11 @@ def generate_html(
         /* Source view with line numbers - performance optimized */
         .source-view {{
             display: none;
-            contain: strict;
-            content-visibility: auto;
         }}
 
         .source-view.active {{
             display: block;
+            contain: content;
         }}
 
         .rendered-view {{
@@ -1087,16 +1087,16 @@ def generate_html(
             setupSidebarEventDelegation();
         }}
 
-        // Text selection in Preview view (with debouncing)
+        // Text selection in Preview view (supports both mouse and keyboard selection)
         function setupTextSelectionHandler() {{
             const renderedContent = document.getElementById('rendered-content');
             const floatingToolbar = document.getElementById('floating-toolbar');
 
-            const handleSelection = debounce(() => {{
+            const updateToolbar = () => {{
                 const selection = window.getSelection();
                 const text = selection.toString().trim();
 
-                if (text && text.length > 0) {{
+                if (text && text.length > 0 && renderedContent.contains(selection.anchorNode)) {{
                     selectedText = text;
                     try {{
                         selectionRange = selection.getRangeAt(0).cloneRange();
@@ -1115,9 +1115,10 @@ def generate_html(
                 }} else {{
                     hideFloatingToolbar();
                 }}
-            }}, 100);
+            }};
 
-            renderedContent.addEventListener('mouseup', handleSelection);
+            // Use selectionchange for both mouse and keyboard selection
+            document.addEventListener('selectionchange', updateToolbar);
 
             // Hide toolbar when clicking elsewhere
             document.addEventListener('mousedown', (e) => {{
@@ -1137,10 +1138,9 @@ def generate_html(
 
                 const index = parseInt(wrapper.dataset.lineIndex, 10);
 
-                // Handle add-comment button click
+                // Handle add-comment button click (only stop propagation, onclick handles the action)
                 if (e.target.matches('.add-comment-btn') || e.target.closest('.add-comment-btn')) {{
                     e.stopPropagation();
-                    quickAddComment(index);
                     return;
                 }}
 
@@ -1420,7 +1420,7 @@ def generate_html(
                 return `
                     <div class="line-wrapper ${{hasComment ? 'has-comment' : ''}} ${{isSelectingLine ? 'selecting' : ''}}"
                          data-line-index="${{index}}">
-                        <button class="add-comment-btn" data-action="add-comment" title="Add comment" aria-label="Add comment to line ${{index + 1}}">+</button>
+                        <button class="add-comment-btn" onclick="event.stopPropagation(); quickAddComment(${{index}})" title="Add comment" aria-label="Add comment to line ${{index + 1}}">+</button>
                         <div class="line-number">${{index + 1}}</div>
                         <div class="line-content">${{escapeHtml(line.text) || '&nbsp;'}}</div>
                     </div>

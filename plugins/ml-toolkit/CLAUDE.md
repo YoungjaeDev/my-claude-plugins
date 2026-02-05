@@ -42,3 +42,7 @@ Skills auto-activate based on trigger keywords.
 # Gradio CV app
 "Create a Gradio app for document OCR"
 ```
+
+## Related
+
+기본 ML 실수 방지 가이드 (BGR/RGB, batch inference 안티패턴, YOLO 특수 케이스): `core-config/guidelines/ml-guidelines.md` 참조

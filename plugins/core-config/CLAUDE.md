@@ -18,8 +18,6 @@ Guidelines are auto-injected via hook. Available references:
 |------|---------|
 | `work-guidelines.md` | Core development workflow (auto-injected) |
 | `ml-guidelines.md` | ML/CV best practices |
-| `id-reference.md` | GitHub/TaskMaster ID formats |
-| `prd-guide.md` | PRD template |
 
 ## Requirements
 

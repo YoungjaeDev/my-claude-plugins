@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "paper-search": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-v", "/tmp/paper-search-downloads:/downloads", "-e", "SEMANTIC_SCHOLAR_API_KEY", "mcp/paper-search"]
+    }
+  }
+}

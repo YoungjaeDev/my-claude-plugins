@@ -69,7 +69,7 @@ Replace `<username>` with your actual Windows username.
   "mcpServers": {
     "paper-search": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-v", "/mnt/c/Users/JohnDoe/paper-search-downloads:/downloads", "-e", "SEMANTIC_SCHOLAR_API_KEY", "mcp/paper-search"]
+      "args": ["run", "-i", "--rm", "-v", "/mnt/c/Users/<username>/paper-search-downloads:/downloads", "-e", "SEMANTIC_SCHOLAR_API_KEY", "mcp/paper-search"]
     }
   }
 }

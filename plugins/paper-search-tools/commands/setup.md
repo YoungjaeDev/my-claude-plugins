@@ -47,7 +47,33 @@ mkdir -p /tmp/paper-search-downloads
 mkdir -Force $env:TEMP\paper-search-downloads
 ```
 
-Note: Windows users need to update `.mcp.json` volume mount path accordingly.
+### Windows Volume Mount Configuration
+
+Windows users must update the `.mcp.json` volume mount path. The path format depends on your Docker Desktop backend:
+
+**WSL2 Backend (Default):**
+```json
+"-v", "/mnt/c/Users/<username>/paper-search-downloads:/downloads"
+```
+
+**Hyper-V Backend:**
+```json
+"-v", "C:/Users/<username>/paper-search-downloads:/downloads"
+```
+
+Replace `<username>` with your actual Windows username.
+
+**Full `.mcp.json` example (WSL2):**
+```json
+{
+  "mcpServers": {
+    "paper-search": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-v", "/mnt/c/Users/<username>/paper-search-downloads:/downloads", "-e", "SEMANTIC_SCHOLAR_API_KEY", "mcp/paper-search"]
+    }
+  }
+}
+```
 
 ### 5. (Optional) Configure Semantic Scholar API Key
 

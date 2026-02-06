@@ -16,9 +16,10 @@ Before starting the workflow:
 
 | Flag | Description |
 |------|-------------|
-| `--worktree` | Use isolated git worktree for implementation |
 | `--skip-review` | Skip 2-stage review (for trusted changes) |
 | `--strict` | Treat lint failures as blocking errors |
+
+> **Note**: For parallel development, create worktrees manually before starting Claude sessions. See CLAUDE.md for the recommended worktree workflow.
 
 ## Workflow
 
@@ -46,13 +47,7 @@ Before starting the workflow:
      - `type`: Infer from issue labels (`bug` -> `fix`, `enhancement`/`feature` -> `feat`) or title prefix. Default to `feat` if unclear.
      - `short-description`: Slugify issue title (lowercase, spaces to hyphens, max 50 chars, remove special chars)
      - Examples: `fix/42-login-validation-error`, `feat/15-add-dark-mode`, `refactor/8-cleanup-auth`
-   - **Initialize submodules**: When using worktree, run `git submodule update --init --recursive`
    - **[NEW] Save checkpoint**: phase="branch"
-
-3.5. **[NEW] Create Worktree (if --worktree flag)**:
-   - See "Worktree Isolation" section below for details
-   - Creates isolated workspace at `../worktrees/{type}-{issue}-{slug}`
-   - Installs dependencies automatically
 
 4. **Update GitHub Project Status (Optional)**
    - Run `gh project list --owner <owner> --format json` to check for projects
@@ -178,8 +173,7 @@ Before starting the workflow:
 
 11. **Update Issue Checkboxes**: Mark completed checkbox items in the issue as done.
 
-12. **[NEW] Cleanup (if --worktree)**:
-    - Remove worktree directory
+12. **[NEW] Cleanup**:
     - Archive state file to `.omc/state/archive/`
 
 > See [Work Guidelines](../guidelines/work-guidelines.md)
@@ -215,7 +209,6 @@ Sessions are saved to: `.omc/state/github-dev-{issue-number}.json`
   "command": "resolve-issue",
   "issueNumber": 123,
   "phase": "analyze|branch|implement|test|review|commit|pr",
-  "worktreePath": "/path/to/worktree or null",
   "branchName": "feat/123-add-dark-mode",
   "branchType": "feat|fix|refactor|docs|chore",
   "startedAt": "ISO timestamp",
@@ -282,58 +275,6 @@ Task(
 - BUILD failure: Block commit, report errors
 - TEST failure: Block commit, report failures
 - LINT failure: Warn but allow commit (unless `--strict`)
-
----
-
-## Worktree Isolation (--worktree flag)
-
-### When to Use
-- Large refactoring that could damage main workspace
-- Parallel issue resolution (each issue gets its own worktree)
-- Safely test destructive changes
-
-### Worktree Lifecycle
-
-**1. Pre-check**
-```bash
-grep -q "worktrees/" .gitignore || echo "worktrees/" >> .gitignore
-```
-
-**2. Create Worktree**
-```bash
-# Branch naming follows existing convention
-# TYPE: Inferred from issue labels (bug->fix, enhancement->feat, default feat)
-# SLUG: Slugified issue title (lowercase, spaces to hyphens, max 50 chars)
-BRANCH_NAME="${TYPE}/${ISSUE_NUMBER}-${SLUG}"
-WORKTREE_PATH="../worktrees/${TYPE}-${ISSUE_NUMBER}-${SLUG}"
-
-git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME"
-cd "$WORKTREE_PATH"
-git submodule update --init --recursive
-```
-
-**3. Install Dependencies**
-| Project | Command |
-|---------|---------|
-| Node.js | `npm ci` or `npm install` |
-| Python | `pip install -e .` or `poetry install` |
-| Rust | `cargo fetch` |
-| Go | `go mod download` |
-
-**4. Cleanup on Completion**
-```bash
-cd "$ORIGINAL_DIR"
-git worktree remove "$WORKTREE_PATH" --force
-```
-
-### State Update
-```json
-{
-  "worktreePath": "../worktrees/feat-123-add-dark-mode",
-  "branchName": "feat/123-add-dark-mode",
-  "originalDir": "/path/to/main/repo"
-}
-```
 
 ---
 

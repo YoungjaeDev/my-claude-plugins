@@ -8,6 +8,7 @@ Machine Learning and AI development skills.
 |-------|-------------|
 | `gpu-parallel-pipeline` | Design PyTorch GPU parallel processing pipelines |
 | `gradio-cv-app` | Create professional Gradio computer vision apps |
+| `cv-notebook` | Generate production-quality Computer Vision Jupyter notebooks |
 
 ## gpu-parallel-pipeline
 
@@ -31,6 +32,18 @@ Create professional Gradio computer vision applications with Editorial design.
 - OCR, classification, generation, segmentation, editing, captioning, detection
 - Professional UI/UX for CV demos
 
+## cv-notebook
+
+Generate production-quality Computer Vision Jupyter notebooks.
+
+**Triggers**: "CV notebook", "detection notebook", "segmentation notebook", "classification notebook", "VLM notebook", "train YOLO notebook", "fine-tune notebook"
+
+**Capabilities**:
+- Detection (YOLO, RT-DETR), Segmentation (SAM, YOLO-Seg), Classification (DINOv2), VLM (Florence-2, PaliGemma, Qwen2.5-VL)
+- Roboflow dataset integration and supervision visualization
+- Level-based Korean insights (beginner/intermediate/expert)
+- Environment-specific setup (Colab/Kaggle/Local)
+
 ## Usage
 
 Skills auto-activate based on trigger keywords.
@@ -41,6 +54,10 @@ Skills auto-activate based on trigger keywords.
 
 # Gradio CV app
 "Create a Gradio app for document OCR"
+
+# CV notebook
+"Create a YOLO detection notebook for Colab with beginner explanations"
+"Generate a segmentation notebook with SAM and Roboflow dataset"
 ```
 
 ## Related

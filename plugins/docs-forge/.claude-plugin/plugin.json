@@ -1,0 +1,8 @@
+{
+  "name": "docs-forge",
+  "version": "0.2.0",
+  "description": "README and CHANGELOG generation with CRO best practices",
+  "author": {
+    "name": "oh-my-claudecode"
+  }
+}

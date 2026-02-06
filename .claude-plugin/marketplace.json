@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 16 specialized plugins",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "plugins": [
     {
@@ -19,14 +19,14 @@
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, code review",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "category": "github"
     },
     {
       "name": "interactive-review",
       "source": "./plugins/interactive-review",
       "description": "Web UI code review with MCP server",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "category": "code-review"
     },
     {
@@ -60,8 +60,8 @@
     {
       "name": "ml-toolkit",
       "source": "./plugins/ml-toolkit",
-      "description": "GPU parallel processing, Gradio CV apps",
-      "version": "1.0.0",
+      "description": "GPU parallel processing, Gradio CV apps, CV notebook generation",
+      "version": "1.1.0",
       "category": "development"
     },
     {
@@ -103,7 +103,7 @@
       "name": "paper-search-tools",
       "source": "./plugins/paper-search-tools",
       "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "research"
     },
     {
@@ -117,7 +117,7 @@
       "name": "docs-forge",
       "source": "./plugins/docs-forge",
       "description": "README/CHANGELOG generation with CRO best practices",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "documentation"
     }
   ]

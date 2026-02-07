@@ -42,6 +42,7 @@ A skill for generating professional Computer Vision Jupyter notebooks following 
 | environment | enum | colab | colab/kaggle/local |
 | include_training | bool | true | Include fine-tuning section |
 | include_roboflow | bool | true | Include Roboflow dataset integration |
+| dataset_format | enum | yolov8 | yolov8/coco/voc/pascal - Roboflow export format |
 | language | enum | hybrid | en/ko/hybrid (Korean insights) |
 
 ## Notebook Structure
@@ -135,8 +136,9 @@ NotebookEdit(notebook_path="notebook.ipynb", edit_mode="insert", cell_id="<previ
 
 ### Cell ID Strategy
 - Generate cells sequentially (top to bottom)
-- Track cell IDs for insertion points
+- Track cell IDs returned from NotebookEdit responses
 - Use `edit_mode="insert"` with previous cell_id
+- **IMPORTANT**: Cell IDs are returned in the NotebookEdit response and must be tracked for subsequent insertions
 
 ## Additional Resources
 

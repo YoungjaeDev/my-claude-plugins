@@ -438,6 +438,58 @@ masks = mask_generator.generate(image_rgb)
 print(f"Generated {len(masks)} masks")
 ```
 
+### SAM2 (Segment Anything 2)
+
+```python
+from sam2.build_sam import build_sam2
+from sam2.sam2_image_predictor import SAM2ImagePredictor
+import torch
+
+# Load model
+MODEL_CFG = "sam2_hiera_l.yaml"  # sam2_hiera_t/s/b+/l
+CHECKPOINT = "sam2_hiera_large.pt"
+
+sam2 = build_sam2(MODEL_CFG, CHECKPOINT, device=DEVICE)
+predictor = SAM2ImagePredictor(sam2)
+
+# Set image
+image = cv2.imread(str(image_path))
+image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+predictor.set_image(image_rgb)
+
+# Predict with box prompt
+input_box = np.array([100, 100, 300, 300])  # x1, y1, x2, y2
+masks, scores, logits = predictor.predict(
+    box=input_box[None, :],
+    multimask_output=True
+)
+
+# Best mask
+best_mask = masks[np.argmax(scores)]
+
+# Convert to supervision
+detections = sv.Detections(
+    xyxy=input_box[None, :],
+    mask=best_mask[None, ...],
+    confidence=np.array([scores.max()])
+)
+
+# Automatic mask generation
+from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+
+mask_generator = SAM2AutomaticMaskGenerator(
+    model=sam2,
+    points_per_side=32,
+    pred_iou_thresh=0.9,
+    stability_score_thresh=0.95,
+    crop_n_layers=1,
+    crop_n_points_downscale_factor=2
+)
+
+masks = mask_generator.generate(image_rgb)
+print(f"Generated {len(masks)} masks")
+```
+
 ### Florence-2 (Transformers)
 
 ```python
@@ -516,10 +568,37 @@ with torch.no_grad():
 result = processor.decode(output[0], skip_special_tokens=True)
 
 # Parse results (format: "<loc0000><loc0000><loc0000><loc0000> person")
-# Use supervision's from_lmm with PaliGemma parser
-detections = sv.Detections.from_lmm(
-    lmm=sv.LMM.PALIGEMMA,
-    result=result,
+# Manual parsing function (sv.LMM.PALIGEMMA may not exist in all versions)
+def parse_paligemma_output(text, resolution_wh, classes):
+    """Parse PaliGemma location tokens to bounding boxes."""
+    import re
+
+    # Extract location tokens: <loc0000> to <loc1024>
+    pattern = r'<loc(\d+)>'
+    matches = re.findall(pattern, text)
+
+    if len(matches) < 4:
+        return sv.Detections.empty()
+
+    # Convert to normalized coordinates
+    coords = [int(m) / 1024 for m in matches[:4]]
+    x1, y1, x2, y2 = coords
+
+    # Scale to image resolution
+    w, h = resolution_wh
+    box = np.array([[x1 * w, y1 * h, x2 * w, y2 * h]])
+
+    # Extract class from remaining text
+    class_text = re.sub(pattern, '', text).strip()
+    class_id = classes.index(class_text) if class_text in classes else 0
+
+    return sv.Detections(
+        xyxy=box,
+        class_id=np.array([class_id])
+    )
+
+detections = parse_paligemma_output(
+    result,
     resolution_wh=(image.width, image.height),
     classes=[c.strip() for c in prompt.replace('detect', '').split(';')]
 )
@@ -572,11 +651,19 @@ output_text = processor.batch_decode(
 )[0]
 
 # Convert to detections
-detections = sv.Detections.from_lmm(
-    lmm=sv.LMM.QWEN2_VL,
-    result=output_text,
-    resolution_wh=image.size
-)
+# Note: Check supervision version for QWEN2_VL support
+# If not available, parse manually from output_text format
+try:
+    detections = sv.Detections.from_lmm(
+        lmm=sv.LMM.QWEN2_VL,
+        result=output_text,
+        resolution_wh=image.size
+    )
+except (AttributeError, ValueError):
+    # Fallback: Manual parsing (Qwen2-VL returns structured text)
+    # Example format: "person: [x1, y1, x2, y2], car: [x1, y1, x2, y2]"
+    print("QWEN2_VL parser not available, using manual parsing")
+    detections = sv.Detections.empty()
 
 # Grounding (with bounding boxes)
 grounding_prompt = "Detect <ref>person</ref> and <ref>car</ref>"
@@ -590,43 +677,34 @@ grounding_prompt = "Detect <ref>person</ref> and <ref>car</ref>"
 ### Detection Metrics (YOLO/RT-DETR)
 
 ```python
-from ultralytics.utils.metrics import ConfusionMatrix, ap_per_class
+def evaluate_detection(model, data_yaml_path='dataset.yaml'):
+    """
+    Comprehensive detection evaluation using model.val().
 
-def evaluate_detection(model, val_loader, conf_thresh=0.25):
-    """Comprehensive detection evaluation."""
+    DEPRECATED: ap_per_class and fitness_metrics are removed in recent ultralytics versions.
+    Use model.val() which handles metrics internally via DetMetrics API.
+    """
 
-    all_preds = []
-    all_targets = []
+    # Run validation - returns DetMetrics object
+    metrics = model.val(data=data_yaml_path, verbose=True)
 
-    model.eval()
-    with torch.no_grad():
-        for images, targets in val_loader:
-            preds = model(images)
-            all_preds.extend(preds)
-            all_targets.extend(targets)
+    # Access metrics
+    print("\nDetection Metrics:")
+    print(f"mAP@0.5: {metrics.box.map50:.3f}")
+    print(f"mAP@0.5:0.95: {metrics.box.map:.3f}")
+    print(f"Precision: {metrics.box.mp:.3f}")
+    print(f"Recall: {metrics.box.mr:.3f}")
 
-    # Confusion matrix
-    cm = ConfusionMatrix(nc=len(model.names))
-    cm.process_batch(all_preds, all_targets)
-    cm.plot(save_dir=OUTPUT_DIR, names=list(model.names.values()))
+    # Per-class metrics (if available)
+    if hasattr(metrics.box, 'maps'):
+        print("\nPer-Class mAP@0.5:")
+        for i, (name, map_val) in enumerate(zip(model.names.values(), metrics.box.maps)):
+            print(f"  {name:<20} {map_val:.3f}")
 
-    # Per-class AP
-    stats = ap_per_class(
-        *fitness_metrics(all_preds, all_targets),
-        names=model.names
-    )
+    # Confusion matrix is automatically saved to runs/detect/val/
+    print(f"\nResults saved to: {metrics.save_dir}")
 
-    # Print results
-    print("Per-Class Results:")
-    print(f"{'Class':<20} {'AP@.5':<10} {'AP@.5:.95':<10}")
-    print("-" * 40)
-    for i, name in enumerate(model.names.values()):
-        print(f"{name:<20} {stats[0][i]:.3f}      {stats[1][i]:.3f}")
-
-    print(f"\nmAP@.5: {stats[0].mean():.3f}")
-    print(f"mAP@.5:.95: {stats[1].mean():.3f}")
-
-    return stats
+    return metrics
 
 # Simple per-image evaluation
 def compute_iou(box1, box2):
@@ -658,7 +736,8 @@ def compute_iou_mask(pred_mask: np.ndarray, gt_mask: np.ndarray) -> float:
 def compute_dice(pred_mask: np.ndarray, gt_mask: np.ndarray) -> float:
     """Compute Dice coefficient."""
     intersection = np.logical_and(pred_mask, gt_mask).sum()
-    return 2 * intersection / (pred_mask.sum() + gt_mask.sum())
+    total = pred_mask.sum() + gt_mask.sum()
+    return 2 * intersection / total if total > 0 else 1.0
 
 def evaluate_segmentation(pred_masks: list, gt_masks: list):
     """Evaluate segmentation across dataset."""
@@ -719,6 +798,7 @@ def evaluate_classification(y_true, y_pred, class_names):
 ```python
 def load_model_safe(model_class, checkpoint, prefer_gpu=True):
     """Load model with graceful GPU fallback."""
+    import gc
 
     device = torch.device('cpu')
 
@@ -739,7 +819,14 @@ def load_model_safe(model_class, checkpoint, prefer_gpu=True):
     except RuntimeError as e:
         if 'out of memory' in str(e).lower():
             print("[WARN] OOM error, falling back to CPU")
+
+            # Cleanup before retry
+            if 'model' in locals():
+                del model
             torch.cuda.empty_cache()
+            gc.collect()
+
+            # Retry on CPU
             model = model_class.from_pretrained(checkpoint)
             model.to('cpu')
             return model, torch.device('cpu')

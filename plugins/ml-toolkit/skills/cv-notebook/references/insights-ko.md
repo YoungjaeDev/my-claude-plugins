@@ -96,10 +96,10 @@ dataloader = DataLoader(dataset, num_workers=4, multiprocessing_context='spawn')
 ```python
 """
 [Note] [개념]
-pretrained=True는 ImageNet 데이터셋으로 사전학습된 가중치를 로드합니다.
-처음부터 학습하는 것보다 10-100배 빠르게 수렴합니다.
+weights 파라미터로 사전학습된 가중치를 로드합니다 (PyTorch 2.0+에서 pretrained=True는 deprecated).
+ImageNet 데이터셋으로 사전학습된 모델은 처음부터 학습하는 것보다 10-100배 빠르게 수렴합니다.
 """
-model = models.resnet50(pretrained=True)
+model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
 
 # # [주의] model.eval()을 호출해야 Dropout/BatchNorm이 추론 모드로 전환됩니다
 model.eval()
@@ -350,13 +350,21 @@ for transform in tta_transforms:
 
 ## Injection Points Matrix
 
+**Per-Notebook Totals** (all sections combined):
+- 초급: 15-20 insights total
+- 중급: 8-12 insights total
+- 고급: 3-5 insights total
+
 | Section | 초급 Density | 중급 Density | 고급 Density | Priority Locations |
 |---------|-------------|-------------|-------------|-------------------|
-| Setup | 15-20 | 8-12 | 3-5 | DataLoader, transforms, device |
-| Model Loading | 15-20 | 8-12 | 3-5 | pretrained weights, .to(device), layer replacement |
-| Inference | 15-20 | 8-12 | 3-5 | torch.no_grad(), softmax, argmax |
-| Training | 15-20 | 8-12 | 3-5 | zero_grad(), backward(), step(), learning rate |
-| Evaluation | 15-20 | 8-12 | 3-5 | model.eval(), metrics calculation |
+| Setup | 4-5 | 2-3 | 1 | DataLoader, transforms, device |
+| Model Loading | 4-5 | 2-3 | 1 | weights parameter, .to(device), layer replacement |
+| Inference | 3-4 | 2 | 1 | torch.no_grad(), softmax, argmax |
+| Training | 4-5 | 2-3 | 1 | zero_grad(), backward(), step(), learning rate |
+| Evaluation | 3-4 | 2 | 1 | model.eval(), metrics calculation |
+| Detection | 4-5 | 2-3 | 1 | YOLO/RT-DETR NMS, anchors, supervision |
+| Segmentation | 4-5 | 2-3 | 1 | SAM prompts, YOLO-Seg masks, supervision |
+| VLM | 4-5 | 2-3 | 1 | Florence-2/PaliGemma/Qwen prompts, multimodal |
 
 ## Usage Guidelines
 
@@ -384,6 +392,195 @@ for transform in tta_transforms:
 초급 → Explain everything, use analogies, show alternatives
 중급 → Assume basic knowledge, focus on best practices
 고급 → Edge cases, performance tuning, research-level insights
+```
+
+### 6. Detection (객체 탐지)
+
+#### 초급 (Beginner)
+```python
+"""
+[Note] [개념]
+YOLO는 이미지를 그리드로 나누어 각 셀에서 객체를 동시에 탐지합니다.
+- Bounding Box: 객체의 위치 (x, y, width, height)
+- Confidence: 탐지 확신도 (0-1)
+- Class: 객체 클래스 (person, car, dog, ...)
+"""
+from ultralytics import YOLO
+model = YOLO('yolov8n.pt')
+
+# # [개념] conf는 confidence threshold로 낮은 확신도 탐지를 필터링합니다
+results = model.predict(image, conf=0.25)
+
+"""
+[Note] [실무]
+NMS(Non-Maximum Suppression)는 중복 박스를 제거합니다.
+iou_threshold=0.5는 IoU 50% 이상인 박스를 중복으로 간주합니다.
+"""
+results = model.predict(image, iou=0.5)
+
+# # [팁] supervision 라이브러리로 탐지 결과를 시각화할 수 있습니다
+import supervision as sv
+detections = sv.Detections.from_ultralytics(results[0])
+```
+
+#### 중급 (Intermediate)
+```python
+"""
+[Note] [실무]
+RT-DETR은 Transformer 기반 탐지 모델로 YOLO보다 작은 객체 탐지에 강합니다.
+- YOLO: 속도 우선 (실시간 영상)
+- RT-DETR: 정확도 우선 (정밀 탐지)
+"""
+from ultralytics import RTDETR
+model = RTDETR('rtdetr-l.pt')
+
+# # [성능] imgsz를 늘리면 작은 객체 탐지 성능 향상 (속도 감소)
+results = model.predict(image, imgsz=1280)  # 기본값 640
+
+"""
+[Note] [팁]
+supervision의 BoxAnnotator로 커스텀 시각화 가능
+- 색상, 두께, 레이블 위치 조정
+- 다중 탐지 결과 병합
+"""
+box_annotator = sv.BoxAnnotator(thickness=2, color=sv.Color.RED)
+annotated = box_annotator.annotate(scene=image, detections=detections)
+```
+
+#### 고급 (Advanced)
+```python
+# # [성능] SAHI(Slicing Aided Hyper Inference)로 고해상도 이미지 탐지 정확도 30% 향상
+from sahi import AutoDetectionModel
+from sahi.predict import get_sliced_prediction
+
+# # [실무] tracker='botsort.yaml'로 동영상 객체 추적 (ID 유지)
+results = model.track(source='video.mp4', tracker='botsort.yaml', persist=True)
+```
+
+### 7. Segmentation (분할)
+
+#### 초급 (Beginner)
+```python
+"""
+[Note] [개념]
+SAM(Segment Anything Model)은 프롬프트 기반 세그멘테이션 모델입니다.
+- Point Prompt: 클릭한 위치의 객체 분할
+- Box Prompt: 박스 영역의 객체 분할
+- Mask Prompt: 기존 마스크 개선
+"""
+from segment_anything import SamPredictor, sam_model_registry
+sam = sam_model_registry["vit_h"](checkpoint="sam_vit_h.pth")
+predictor = SamPredictor(sam)
+
+# # [개념] 이미지를 먼저 set_image로 인코딩해야 빠른 추론 가능
+predictor.set_image(image)
+
+"""
+[Note] [실무]
+YOLO-Seg는 YOLO + 세그멘테이션으로 실시간 인스턴스 분할 가능
+- SAM: 프롬프트 기반, 정밀도 높음
+- YOLO-Seg: 자동 탐지 + 분할, 속도 빠름
+"""
+from ultralytics import YOLO
+model = YOLO('yolov8n-seg.pt')
+results = model.predict(image)
+```
+
+#### 중급 (Intermediate)
+```python
+"""
+[Note] [팁]
+SAM의 multimask_output=True는 3개의 마스크 후보를 반환합니다.
+uncertainty가 높은 경우 여러 옵션을 제공하여 best mask 선택 가능
+"""
+masks, scores, logits = predictor.predict(
+    point_coords=points,
+    point_labels=labels,
+    multimask_output=True
+)
+
+# # [실무] supervision으로 세그멘테이션 마스크 시각화 및 병합
+mask_annotator = sv.MaskAnnotator(color=sv.Color.GREEN, opacity=0.5)
+annotated = mask_annotator.annotate(scene=image, detections=detections)
+
+"""
+[Note] [성능]
+SAM의 vit_b < vit_l < vit_h 순으로 정확도 증가, 속도 감소
+- vit_b: 실시간 처리 필요 시
+- vit_h: 최고 정밀도 필요 시
+"""
+```
+
+#### 고급 (Advanced)
+```python
+# # [성능] SAM2는 동영상 세그멘테이션 지원, temporal consistency 유지
+from sam2.build_sam import build_sam2_video_predictor
+
+# # [실무] FastSAM으로 SAM 속도 50배 향상 (YOLOv8 기반)
+from ultralytics import FastSAM
+model = FastSAM('FastSAM-x.pt')
+```
+
+### 8. Vision-Language Models (비전-언어 모델)
+
+#### 초급 (Beginner)
+```python
+"""
+[Note] [개념]
+Florence-2는 Microsoft의 멀티태스크 비전 모델로 하나의 모델로 여러 작업 수행
+- 캡셔닝: 이미지 설명 생성
+- 객체 탐지: <OD> 태스크로 bounding box 추출
+- OCR: <OCR> 태스크로 텍스트 인식
+"""
+from transformers import AutoProcessor, AutoModelForCausalLM
+model = AutoModelForCausalLM.from_pretrained("microsoft/Florence-2-large")
+processor = AutoProcessor.from_pretrained("microsoft/Florence-2-large")
+
+# # [개념] task_prompt로 수행할 작업을 지정합니다
+inputs = processor(text="<CAPTION>", images=image, return_tensors="pt")
+
+"""
+[Note] [실무]
+PaliGemma는 Google의 VLM으로 자연어 질문에 답변합니다.
+"What is in this image?"와 같은 open-ended question 처리 가능
+"""
+from transformers import PaliGemmaForConditionalGeneration
+model = PaliGemmaForConditionalGeneration.from_pretrained("google/paligemma-3b-pt-224")
+```
+
+#### 중급 (Intermediate)
+```python
+"""
+[Note] [팁]
+Qwen2.5-VL은 다국어 지원 VLM으로 한국어 질문/답변 가능
+- 이미지 이해도가 Florence-2/PaliGemma보다 높음
+- 복잡한 시각적 추론 문제 해결
+"""
+from transformers import Qwen2VLForConditionalGeneration
+model = Qwen2VLForConditionalGeneration.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
+
+# # [실무] VLM 프롬프트 엔지니어링: 구체적인 질문일수록 정확도 향상
+prompt = "이 이미지에서 빨간색 차량의 개수를 세어주세요."
+
+"""
+[Note] [성능]
+Florence-2의 task prompt 최적화:
+- <CAPTION>: 일반 설명
+- <DETAILED_CAPTION>: 상세 설명
+- <MORE_DETAILED_CAPTION>: 초상세 설명
+task에 맞게 선택하여 추론 시간 단축
+"""
+inputs = processor(text="<DETAILED_CAPTION>", images=image, return_tensors="pt")
+```
+
+#### 고급 (Advanced)
+```python
+# # [성능] VLM의 batch inference로 다중 이미지 처리 속도 5-10배 향상
+inputs = processor(text=prompts, images=images, return_tensors="pt", padding=True)
+
+# # [실무] LLaVA-NeXT는 고해상도 이미지 처리에 특화 (최대 4096px)
+from transformers import LlavaNextForConditionalGeneration
+model = LlavaNextForConditionalGeneration.from_pretrained("llava-hf/llava-v1.6-mistral-7b-hf")
 ```
 
 ## Additional Insights Pool
@@ -447,7 +644,7 @@ Vision Transformer(ViT)는 ResNet보다 큰 데이터셋에서 성능이 좋지�
 
 ---
 
-**Total Insights**: 50+ Korean insights across all sections and levels
+**Total Insights**: 80+ Korean insights across all sections and levels (including Detection, Segmentation, VLM)
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-06
+**Version**: 1.1.0
+**Last Updated**: 2026-02-07

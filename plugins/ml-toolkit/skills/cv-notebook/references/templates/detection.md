@@ -19,7 +19,7 @@ model = YOLO('yolov8n.pt')  # nano
 # Load custom trained model
 # model = YOLO('path/to/best.pt')
 
-print(f"Model: {model.model_name}")
+print(f"Model loaded successfully")
 print(f"Classes: {model.names}")
 ```
 
@@ -35,7 +35,7 @@ model = RTDETR('rtdetr-l.pt')  # large
 # Load custom trained model
 # model = RTDETR('path/to/best.pt')
 
-print(f"Model: {model.model_name}")
+print(f"Model loaded successfully")
 print(f"Classes: {model.names}")
 ```
 

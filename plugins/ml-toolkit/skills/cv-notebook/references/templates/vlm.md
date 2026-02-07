@@ -18,6 +18,9 @@ import supervision as sv
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model_name = "microsoft/Florence-2-large"  # or Florence-2-base
 
+# NOTE: Florence-2 post-processing compatibility
+# - Recommended: pip install transformers>=4.38.0
+# - For stable post_process_generation API
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
@@ -69,6 +72,11 @@ def run_florence_task(image_path: str, task: str, text_input: str = None):
     )
 
     generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
+
+    # NOTE: Florence-2 post-processing API changes
+    # - transformers<4.38: Different API signature
+    # - If errors occur, check version and docs at:
+    #   https://huggingface.co/microsoft/Florence-2-large
     parsed_answer = processor.post_process_generation(
         generated_text,
         task=prompt,
@@ -438,6 +446,7 @@ result = run_paligemma("image.jpg", "your custom prompt")
 
 ```python
 from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+# Install: pip install qwen-vl-utils
 from qwen_vl_utils import process_vision_info
 import torch
 
@@ -473,6 +482,10 @@ def run_qwen_vl(image_path: str, prompt: str, max_new_tokens: int = 512):
     ]
 
     # Apply chat template
+    # NOTE: Qwen2.5-VL processor compatibility
+    # - Requires: transformers>=4.37.0, qwen-vl-utils
+    # - If apply_chat_template errors, verify versions
+    # - Docs: https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct
     text = processor.apply_chat_template(
         messages,
         tokenize=False,

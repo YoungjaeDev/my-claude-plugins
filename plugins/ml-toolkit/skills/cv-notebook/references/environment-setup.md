@@ -25,13 +25,22 @@ else:
 from google.colab import userdata
 
 # Get API keys and secrets
-api_key = userdata.get('API_KEY')
-hf_token = userdata.get('HF_TOKEN')
-wandb_key = userdata.get('WANDB_API_KEY')
+try:
+    api_key = userdata.get('API_KEY')
+    hf_token = userdata.get('HF_TOKEN')
+    wandb_key = userdata.get('WANDB_API_KEY')
+except Exception as e:
+    print(f"[WARN] Secret not found: {e}")
+    print("Set secrets in Colab: Tools -> Secrets")
+    hf_token = None
+    wandb_key = None
 
 # Use in environment
 import os
-os.environ['HUGGING_FACE_TOKEN'] = hf_token
+if hf_token:
+    os.environ['HUGGING_FACE_TOKEN'] = hf_token
+if wandb_key:
+    os.environ['WANDB_API_KEY'] = wandb_key
 ```
 
 ### Drive Mount
@@ -59,6 +68,9 @@ model_dir = '/content/drive/MyDrive/models/checkpoints'
 
 # With extras
 !pip install -q "diffusers[torch]"
+
+# [!] IMPORTANT: Restart runtime after installing packages
+# Runtime -> Restart runtime (Colab) or Session -> Restart (Kaggle)
 ```
 
 ### Complete Colab Setup Cell
@@ -76,6 +88,13 @@ if torch.cuda.is_available():
 # 2. Install packages
 !pip install -q transformers datasets accelerate wandb pillow opencv-python
 
+# PyTorch Installation (choose based on your CUDA version):
+# CUDA 11.8: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# CUDA 12.1: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# [!] IMPORTANT: Restart runtime after installing packages
+# Runtime -> Restart runtime (Colab) or Session -> Restart (Kaggle)
+
 # 3. Mount Drive
 from google.colab import drive
 drive.mount('/content/drive')
@@ -83,8 +102,11 @@ drive.mount('/content/drive')
 # 4. Load secrets
 from google.colab import userdata
 import os
-os.environ['HUGGING_FACE_TOKEN'] = userdata.get('HF_TOKEN')
-os.environ['WANDB_API_KEY'] = userdata.get('WANDB_API_KEY')
+try:
+    os.environ['HUGGING_FACE_TOKEN'] = userdata.get('HF_TOKEN')
+    os.environ['WANDB_API_KEY'] = userdata.get('WANDB_API_KEY')
+except Exception as e:
+    print(f"[WARN] Secret not found: {e}")
 
 print("[OK] Colab environment ready")
 ```
@@ -125,13 +147,24 @@ from kaggle_secrets import UserSecretsClient
 user_secrets = UserSecretsClient()
 
 # Get secrets (set in Kaggle Notebook Settings > Add-ons)
-hf_token = user_secrets.get_secret("HF_TOKEN")
-wandb_key = user_secrets.get_secret("WANDB_API_KEY")
+try:
+    hf_token = user_secrets.get_secret("HF_TOKEN")
+except Exception as e:
+    print(f"[WARN] HF_TOKEN not found: {e}")
+    hf_token = None
+
+try:
+    wandb_key = user_secrets.get_secret("WANDB_API_KEY")
+except Exception as e:
+    print(f"[WARN] WANDB_API_KEY not found: {e}")
+    wandb_key = None
 
 # Use in environment
 import os
-os.environ['HUGGING_FACE_TOKEN'] = hf_token
-os.environ['WANDB_API_KEY'] = wandb_key
+if hf_token:
+    os.environ['HUGGING_FACE_TOKEN'] = hf_token
+if wandb_key:
+    os.environ['WANDB_API_KEY'] = wandb_key
 ```
 
 ### Offline Package Installation
@@ -188,8 +221,14 @@ if torch.cuda.is_available():
 # 2. Load secrets
 from kaggle_secrets import UserSecretsClient
 user_secrets = UserSecretsClient()
-os.environ['HUGGING_FACE_TOKEN'] = user_secrets.get_secret("HF_TOKEN")
-os.environ['WANDB_API_KEY'] = user_secrets.get_secret("WANDB_API_KEY")
+try:
+    os.environ['HUGGING_FACE_TOKEN'] = user_secrets.get_secret("HF_TOKEN")
+except Exception as e:
+    print(f"[WARN] HF_TOKEN not found: {e}")
+try:
+    os.environ['WANDB_API_KEY'] = user_secrets.get_secret("WANDB_API_KEY")
+except Exception as e:
+    print(f"[WARN] WANDB_API_KEY not found: {e}")
 
 # 3. Setup paths
 from pathlib import Path
@@ -238,7 +277,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load from .env file
-env_path = Path(__file__).parent / '.env'
+try:
+    PROJECT_ROOT = Path(__file__).parent
+except NameError:
+    PROJECT_ROOT = Path.cwd()
+
+env_path = PROJECT_ROOT / '.env'
 load_dotenv(env_path)
 
 # Get secrets
@@ -349,7 +393,12 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-env_path = Path(__file__).parent / '.env'
+try:
+    PROJECT_ROOT = Path(__file__).parent
+except NameError:
+    PROJECT_ROOT = Path.cwd()
+
+env_path = PROJECT_ROOT / '.env'
 load_dotenv(env_path)
 
 # 2. GPU Detection (fail fast)
@@ -373,7 +422,11 @@ assert HF_TOKEN is not None, "HUGGING_FACE_TOKEN not found in .env"
 assert WANDB_API_KEY is not None, "WANDB_API_KEY not found in .env"
 
 # 5. Setup project paths
-PROJECT_ROOT = Path(__file__).parent
+try:
+    PROJECT_ROOT = Path(__file__).parent
+except NameError:
+    PROJECT_ROOT = Path.cwd()
+
 DATA_DIR = PROJECT_ROOT / 'data'
 OUTPUT_DIR = PROJECT_ROOT / 'outputs'
 CHECKPOINT_DIR = PROJECT_ROOT / 'checkpoints'

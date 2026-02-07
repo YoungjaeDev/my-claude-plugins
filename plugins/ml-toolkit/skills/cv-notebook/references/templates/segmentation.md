@@ -46,18 +46,23 @@ print(f"SAM model loaded on {device}")
 
 import torch
 import numpy as np
+# NOTE: SAM2 package structure (check installed version)
+# - sam2>=1.0: use imports below
+# - For older versions, check GitHub for correct import paths
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 from PIL import Image
 import cv2
 import matplotlib.pyplot as plt
 
-# Download checkpoint
+# Download checkpoint and config
 # !wget https://dl.fbaipublicfiles.com/segment_anything_2/sam2_hiera_large.pt
+# !wget https://raw.githubusercontent.com/facebookresearch/segment-anything-2/main/sam2/configs/sam2/sam2_hiera_l.yaml
+# Or download from: https://github.com/facebookresearch/segment-anything-2/tree/main/checkpoints
 
 # Load SAM 2 model
 sam2_checkpoint = "sam2_hiera_large.pt"
-model_cfg = "sam2_hiera_l.yaml"
+model_cfg = "sam2_hiera_l.yaml"  # Ensure config file is in working directory or provide full path
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
@@ -307,6 +312,9 @@ detections = sv.Detections(
 )
 
 # Annotate image
+# NOTE: supervision 0.22.0+ uses different API
+# - Old: sv.MaskAnnotator()
+# - New: sv.MaskAnnotator(color=..., opacity=...)
 mask_annotator = sv.MaskAnnotator()
 label_annotator = sv.LabelAnnotator()
 
@@ -741,6 +749,10 @@ results = model.train(
 # Validate model
 metrics = model.val(data="dataset/data.yaml")
 
+# NOTE: Ultralytics metrics API
+# - Box metrics: metrics.box.map50, metrics.box.map
+# - Seg metrics: metrics.seg.map50, metrics.seg.map (verify with ultralytics version)
+# - Some versions may use different attribute names - check ultralytics docs
 print(f"mAP50: {metrics.box.map50:.4f}")
 print(f"mAP50-95: {metrics.box.map:.4f}")
 print(f"Mask mAP50: {metrics.seg.map50:.4f}")

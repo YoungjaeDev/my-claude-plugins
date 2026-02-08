@@ -72,4 +72,4 @@ Write for users, not developers:
 ## References
 
 For detailed patterns, see:
-- `references/CHANGELOG_PATTERNS.md` - Full format documentation
+- `../../references/CHANGELOG_PATTERNS.md` - Full format documentation

@@ -50,6 +50,20 @@ Claude Code의 기본 기능만으로는 부족한 영역들이 있습니다:
 > /plugin install oh-my-claudecode@omc
 > ```
 
+## 플러그인 업데이트
+
+플러그인 캐시 버그로 인해 업데이트 시 캐시 삭제가 필요합니다 ([#17361](https://github.com/anthropics/claude-code/issues/17361), [#19197](https://github.com/anthropics/claude-code/issues/19197)):
+
+```bash
+# 1. 캐시 삭제
+rm -rf ~/.claude/plugins/cache/my-claude-plugins/
+
+# 2. Marketplace 업데이트 후 Claude Code 재시작
+/plugin marketplace update my-claude-plugins
+```
+
+> **Note**: Auto-update 활성화해도 플러그인 파일은 자동 갱신되지 않습니다. 수동 캐시 삭제가 유일한 해결책입니다.
+
 ## 플러그인 목록
 
 | 카테고리 | 플러그인 | 설명 |

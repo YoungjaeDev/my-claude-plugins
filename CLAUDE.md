@@ -92,15 +92,25 @@ When updating plugin versions, synchronize these two files:
 | File | Purpose |
 |------|---------|
 | `plugins/<name>/.claude-plugin/plugin.json` | Cache refresh trigger (required) |
-| `.claude-plugin/marketplace.json` | UI display/metadata (recommended) |
+| `.claude-plugin/marketplace.json` | UI display/metadata (required) |
 
-Release workflow:
+### Developer Workflow
+
 1. Update version in `plugin.json`
 2. Sync version in `marketplace.json`
-3. Commit and push
+3. Bump marketplace version in `marketplace.json` metadata
+4. Commit and push
 
-User-side update:
+### User Update (Cache Bug Workaround)
+
+Due to plugin cache bugs ([#17361](https://github.com/anthropics/claude-code/issues/17361), [#19197](https://github.com/anthropics/claude-code/issues/19197)), manual cache clearing is required:
+
 ```bash
+# 1. Delete cache (required)
+rm -rf ~/.claude/plugins/cache/my-claude-plugins/
+
+# 2. Update marketplace and restart Claude Code
 /plugin marketplace update my-claude-plugins
-/plugin update <plugin-name>@my-claude-plugins
 ```
+
+> **Warning**: `/plugin update` and auto-update do NOT refresh plugin files. Cache deletion is the only reliable method.

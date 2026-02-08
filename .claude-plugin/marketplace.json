@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 16 specialized plugins",
-    "version": "1.4.0"
+    "version": "1.5.0"
   },
   "plugins": [
     {
@@ -96,7 +96,7 @@
       "name": "humanizer",
       "source": "./plugins/humanizer",
       "description": "Remove AI writing patterns from text",
-      "version": "1.0.0",
+      "version": "2.1.1",
       "category": "content"
     },
     {

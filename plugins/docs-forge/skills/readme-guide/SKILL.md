@@ -44,10 +44,10 @@ This skill provides README writing patterns and best practices derived from awes
 ## References
 
 For detailed patterns, see:
-- `references/README_PATTERNS.md` - Full pattern documentation
-- `references/TEMPLATES.md` - Copy-paste templates
-- `references/CRO_CHECKLIST.md` - Conversion optimization
-- `references/EXAMPLES_ANALYSIS.md` - Analyzed examples
+- `../../references/README_PATTERNS.md` - Full pattern documentation
+- `../../references/TEMPLATES.md` - Copy-paste templates
+- `../../references/CRO_CHECKLIST.md` - Conversion optimization
+- `../../references/EXAMPLES_ANALYSIS.md` - Analyzed examples
 
 ## Templates Available
 

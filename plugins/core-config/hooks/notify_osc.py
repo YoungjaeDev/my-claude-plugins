@@ -1,20 +1,46 @@
 #!/usr/bin/env python3
-"""Claude Code OSC Notification Script.
+"""Claude Code Notification Script.
 
 Cross-platform compatible (Windows/Linux/macOS).
-Sends OSC 777 notifications to terminal.
+Windows: BurntToast PowerShell Toast notifications.
+Unix: OSC 777 terminal notifications.
 """
 
 import json
 import os
+import subprocess
 import sys
 
 
-def send_osc_notification(title: str, body: str):
-    """Send OSC 777 notification to terminal."""
-    notification = f"\033]777;notify;{title};{body}\007"
+def send_notification(title: str, body: str):
+    """Send platform-appropriate notification."""
+    if sys.platform == "win32":
+        _send_toast(title, body)
+    else:
+        _send_osc(title, body)
 
-    # Try /dev/tty first (Unix), then stdout
+
+def _send_toast(title: str, body: str):
+    """Send Windows Toast notification via BurntToast."""
+    safe_title = title.replace("'", "''")
+    safe_body = body.replace("'", "''")
+    cmd = (
+        f"Import-Module BurntToast; "
+        f"New-BurntToastNotification -Text '{safe_title}', '{safe_body}'"
+    )
+    try:
+        subprocess.run(
+            ["powershell", "-ExecutionPolicy", "Bypass", "-Command", cmd],
+            capture_output=True,
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
+def _send_osc(title: str, body: str):
+    """Send OSC 777 notification to terminal (Unix)."""
+    notification = f"\033]777;notify;{title};{body}\007"
     try:
         if os.path.exists("/dev/tty"):
             with open("/dev/tty", "w") as tty:
@@ -23,8 +49,6 @@ def send_osc_notification(title: str, body: str):
                 return
     except Exception:
         pass
-
-    # Fallback to stdout (works on Windows too)
     try:
         sys.stdout.write(notification)
         sys.stdout.flush()
@@ -37,22 +61,16 @@ def main():
     title = "Claude"
     body = "Task completed"
 
-    # Try to read JSON from stdin (with timeout simulation via non-blocking)
+    # Try to read JSON from stdin
     try:
-        # Check if stdin has data
         if not sys.stdin.isatty():
-            import select
-
-            # Unix: use select for timeout
-            if hasattr(select, "select"):
-                readable, _, _ = select.select([sys.stdin], [], [], 1.0)
-                if readable:
-                    input_data = sys.stdin.read()
-                else:
-                    input_data = ""
-            else:
-                # Windows: just try to read
+            if sys.platform == "win32":
                 input_data = sys.stdin.read()
+            else:
+                import select
+
+                readable, _, _ = select.select([sys.stdin], [], [], 1.0)
+                input_data = sys.stdin.read() if readable else ""
         else:
             input_data = ""
     except Exception:
@@ -98,7 +116,7 @@ def main():
     if len(sys.argv) >= 3:
         body = sys.argv[2]
 
-    send_osc_notification(title, body)
+    send_notification(title, body)
     sys.exit(0)
 
 

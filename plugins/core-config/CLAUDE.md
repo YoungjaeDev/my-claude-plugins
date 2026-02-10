@@ -22,4 +22,8 @@ Guidelines are auto-injected via hook. Available references:
 ## Requirements
 
 - `uv` and `ruff` for Python auto-formatting
-- Terminal with OSC 777 support for notifications
+- **Unix**: Terminal with OSC 777 support for notifications
+- **Windows**: BurntToast PowerShell module for toast notifications
+  ```powershell
+  Install-Module -Name BurntToast -Scope CurrentUser
+  ```

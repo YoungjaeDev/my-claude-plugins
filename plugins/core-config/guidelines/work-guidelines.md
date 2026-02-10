@@ -109,6 +109,12 @@ When adding features, consider disable/delete scenarios.
 
 Run independent tasks in parallel via Task tool. See OMC CLAUDE.md "Parallelization Rules" for details.
 
+**Result Collection (MANDATORY):**
+- MUST wait for ALL parallel agents to complete before proceeding
+- Extend timeout if needed rather than skipping slow agents
+- Review and synthesize ALL results before making decisions
+- Never proceed based on partial results from fastest agents only
+
 ### Dependency Version Policy
 
 - Prefer widely adopted stable releases over bleeding-edge

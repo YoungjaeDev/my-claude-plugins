@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 16 specialized plugins",
-    "version": "1.5.1"
+    "version": "1.5.2"
   },
   "plugins": [
     {
       "name": "core-config",
       "source": "./plugins/core-config",
       "description": "Guidelines auto-injection, Python formatting, notifications (cross-platform)",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "category": "core"
     },
     {

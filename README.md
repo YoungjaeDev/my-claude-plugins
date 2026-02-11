@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 16개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 17개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-16-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-17-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -81,6 +81,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
 | | `notion` | Markdown을 Notion으로 업로드 |
 | | `humanizer` | AI 글쓰기 패턴 제거 |
+| **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | | `prd-suite` | PRD, Tech Spec, Use Case 생성 |
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
@@ -334,6 +335,26 @@ AI 생성 글의 패턴 제거.
 
 </details>
 
+### Presentation
+
+<details>
+<summary><strong>slidev</strong> - Slidev 프레젠테이션 생성</summary>
+
+인터뷰 기반 워크플로우로 Slidev 마크다운 프레젠테이션 생성.
+
+**Workflow:**
+1. Auto-detect: Slidev 프로젝트 존재 여부 확인
+2. Setup: `npm init slidev@latest` (필요 시)
+3. Interview: 주제, 대상, 시간, 구조, 테마 수집
+4. Generate: slides.md 생성
+5. Review: 슬라이드 구조 요약 + 실행 커맨드
+
+**Themes:** apple-basic, seriph, geist, purplin, academic, bricks
+
+**Triggers:** "PT 만들어줘", "create a slide", "make a presentation"
+
+</details>
+
 ### Documentation
 
 <details>
@@ -377,7 +398,8 @@ CRO 베스트 프랙티스로 README/CHANGELOG 생성 및 분석.
       "./plugins/humanizer",
       "./plugins/interview",
       "./plugins/prd-suite",
-      "./plugins/docs-forge"
+      "./plugins/docs-forge",
+      "./plugins/slidev"
     ]
   }
 }
@@ -414,7 +436,8 @@ CRO 베스트 프랙티스로 README/CHANGELOG 생성 및 분석.
 │   ├── humanizer/             # AI 패턴 제거
 │   ├── interview/             # 요구사항 수집
 │   ├── prd-suite/             # PRD & spec 생성
-│   └── docs-forge/            # README/CHANGELOG 생성
+│   ├── docs-forge/            # README/CHANGELOG 생성
+│   └── slidev/                # 프레젠테이션 생성
 ├── CLAUDE.md
 └── README.md
 ```

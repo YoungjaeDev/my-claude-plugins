@@ -182,9 +182,24 @@ info: |
   {Brief description}
 author: "{Presenter}"
 keywords: "{Keywords}"
+fonts:
+  sans: Pretendard
+  mono: Fira Code
 layout: intro
 ---
 ```
+
+### Default Font Setup
+
+Pretendard is the default sans-serif font. Since it's not on Google Fonts, a CDN import is required.
+
+Create `styles/index.css` in the project root:
+
+```css
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css');
+```
+
+This file is automatically loaded by Slidev. The `fonts.sans: Pretendard` in headmatter then applies it globally.
 
 ### Layout Selection Guide
 
@@ -249,13 +264,27 @@ console.log('edit me')
 
 ### Mermaid Diagrams
 
+When a diagram has 7 or more nodes, switch to horizontal direction (`LR`) and reduce scale to prevent overflow:
+
 ```markdown
-# Flowchart
+# Small diagram (< 7 nodes) - vertical is fine
 ```mermaid
 flowchart TD
     A[Start] --> B{Condition}
     B -->|Yes| C[Process]
     B -->|No| D[End]
+```
+
+# Large diagram (7+ nodes) - use LR direction + scale down
+```mermaid {scale: 0.7}
+flowchart LR
+    A[Input] --> B[Validate]
+    B --> C{Valid?}
+    C -->|Yes| D[Process]
+    C -->|No| E[Error]
+    D --> F[Transform]
+    F --> G[Save]
+    G --> H[Response]
 ```
 
 # Sequence diagram

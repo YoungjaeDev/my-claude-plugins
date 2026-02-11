@@ -113,7 +113,24 @@ This command MUST be run from the **main worktree** (the original clone director
    git worktree prune
    ```
 
-9. **Output Summary**
+9. **Update Configuration and Memory (per branch)**
+   - Look up associated PR:
+     ```bash
+     gh pr list --head "$BRANCH_NAME" --state all --json number,title,body,state --limit 1
+     ```
+   - If no PR found, skip this step
+   - If PR found, run `gh pr view <number> --json number,title,body,baseRefName,headRefName,files` to get full details
+   - **Analyze PR for documentation updates** (same as post-merge Step 6):
+     - Check which configuration files exist: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.claude/rules/*.md`
+     - Content to remove: temporary instructions (`TODO: remove after #N`), resolved known issues
+     - Content to add: new patterns, conventions, module-specific rules
+     - Present proposal to user for confirmation before applying
+   - **Update Serena memory** (if Serena MCP available):
+     - Write learnings from PR to relevant memory files
+     - Include architectural decisions, new patterns, or resolved issues
+   - If any files were modified, commit with: `docs: update config after cleanup of <branch>`
+
+10. **Output Summary**
    ```
    Worktree cleanup complete!
 

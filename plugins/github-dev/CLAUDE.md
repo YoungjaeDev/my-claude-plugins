@@ -6,11 +6,12 @@ GitHub workflow automation commands for Claude Code.
 
 | Command | Description |
 |---------|-------------|
+| `/github-dev:cleanup-worktree` | Remove worktrees with optional branch and remote deletion |
 | `/github-dev:commit-and-push` | Analyze changes, commit with conventional message, push |
 | `/github-dev:create-issue-label` | Create standardized issue labels |
 | `/github-dev:create-worktree` | Create worktree with proper branch naming for an issue |
 | `/github-dev:decompose-issue` | Break down large issues into sub-tasks |
-| `/github-dev:post-merge` | Clean up after PR merge (auto-detects worktree) |
+| `/github-dev:post-merge` | Clean up local branch and update CLAUDE.md after PR merge |
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
 | `/github-dev:code-review` | Process CodeRabbit review feedback with auto-fix |
 
@@ -45,10 +46,11 @@ This keeps the starting directory and working directory the same, avoiding path 
 
 **Worktree Lifecycle:**
 ```
-create-worktree #42  →  work  →  PR merge  →  post-merge (auto cleanup)
-       ↓                                            ↓
-  create worktree                           if worktree detected
-  auto branch naming                        prompt for removal
+create-worktree #42  →  work  →  PR merge  →  post-merge (branch cleanup)
+       ↓                              ↓
+  create worktree              cleanup-worktree (worktree removal)
+  auto branch naming           can also be used independently for
+                               abandoned/experimental worktrees
 ```
 
 **Limitations:**

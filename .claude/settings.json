@@ -13,7 +13,8 @@
       "./plugins/midjourney",
       "./plugins/interview",
       "./plugins/notion",
-      "./plugins/humanizer"
+      "./plugins/humanizer",
+      "./plugins/slidev"
     ]
   }
 }

@@ -4,7 +4,7 @@ description: Clean up branch and update CLAUDE.md after PR merge
 
 # Post-Merge Cleanup
 
-Perform branch cleanup and CLAUDE.md updates after a PR has been merged. Follow project guidelines in `@CLAUDE.md`.
+Perform local branch cleanup and CLAUDE.md updates after a PR has been merged. For worktree removal, use `/github-dev:cleanup-worktree`. Follow project guidelines in `@CLAUDE.md`.
 
 ## Arguments
 
@@ -37,29 +37,12 @@ Perform branch cleanup and CLAUDE.md updates after a PR has been merged. Follow 
    - `git checkout <baseRefName>`
    - `git pull origin <baseRefName>`
 
-4. **Clean Up Branch and Worktree (Auto-detect)**
-
-   **4.1. Check for Worktree**
-   ```bash
-   # Auto-detect if merged branch has a worktree
-   WORKTREE_PATH=$(git worktree list | grep "\[${headRefName}\]" | awk '{print $1}')
-   ```
-
-   **4.2. If Worktree Exists**
-   - Inform user: "Worktree detected at `$WORKTREE_PATH` for branch `$headRefName`"
-   - Prompt for cleanup:
-     - **Remove worktree + branch** (recommended):
-       ```bash
-       git worktree remove "$WORKTREE_PATH"
-       git branch -d "$headRefName"
-       ```
-     - **Keep worktree**: Skip cleanup, user handles manually
-   - Run `git worktree prune` to clean dangling references
-
-   **4.3. If No Worktree (regular branch)**
+4. **Clean Up Local Branch**
    - Check if branch exists locally: `git branch --list "$headRefName"`
    - If exists, prompt user to confirm deletion
-   - If confirmed: `git branch -d <headRefName>`
+   - If confirmed: `git branch -d "$headRefName"`
+   - If any worktrees remain for this branch, inform user:
+     > "Worktree detected for `$headRefName`. Run `/github-dev:cleanup-worktree` to remove it."
 
 5. **Update GitHub Project Status (Optional)**
    - Extract related issue numbers from PR body: search for `Closes #N`, `Fixes #N`, `Resolves #N` patterns

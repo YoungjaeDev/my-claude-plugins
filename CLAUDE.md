@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (17)
+## Plugins (18)
 
 ### Core
 | Plugin | Description |
@@ -48,6 +48,11 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 | `interview` | Structured requirements gathering |
 | `prd-suite` | PRD, Tech Spec, Use Case, IA document generation |
 
+### Presentation
+| Plugin | Description |
+|--------|-------------|
+| `slidev` | Slidev markdown presentation generator with interview workflow |
+
 ### Documentation
 | Plugin | Description |
 |--------|-------------|
@@ -76,7 +81,8 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── prd-suite/          # PRD & spec docs
 │   ├── notion/             # Notion
 │   ├── humanizer/          # AI text humanizer
-│   └── docs-forge/         # README/CHANGELOG
+│   ├── docs-forge/         # README/CHANGELOG
+│   └── slidev/             # Presentation generator
 ├── CLAUDE.md               # This file
 └── README.md               # Full documentation
 ```

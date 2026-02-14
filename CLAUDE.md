@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (18)
+## Plugins (20)
 
 ### Core
 | Plugin | Description |
@@ -57,6 +57,12 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 | Plugin | Description |
 |--------|-------------|
 | `docs-forge` | README/CHANGELOG generation with CRO best practices |
+| `rules-forge` | CLAUDE.md generation and .claude/rules/ modular structure |
+
+### Visualization
+| Plugin | Description |
+|--------|-------------|
+| `workflow-viz` | System workflow Mermaid diagrams and ASCII progress tracking |
 
 ## Structure
 
@@ -82,7 +88,9 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── notion/             # Notion
 │   ├── humanizer/          # AI text humanizer
 │   ├── docs-forge/         # README/CHANGELOG
-│   └── slidev/             # Presentation generator
+│   ├── rules-forge/        # CLAUDE.md rules
+│   ├── slidev/             # Presentation generator
+│   └── workflow-viz/       # Workflow visualization
 ├── CLAUDE.md               # This file
 └── README.md               # Full documentation
 ```

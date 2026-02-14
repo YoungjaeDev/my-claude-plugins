@@ -1,0 +1,5 @@
+{
+  "name": "rules-forge",
+  "version": "1.0.0",
+  "description": "Generate and restructure CLAUDE.md systems with modular .claude/rules/ delegation"
+}

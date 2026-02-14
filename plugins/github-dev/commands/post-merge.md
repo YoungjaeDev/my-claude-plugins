@@ -90,10 +90,33 @@ Perform local branch cleanup and CLAUDE.md updates after a PR has been merged. F
 
    - Present proposal to user for confirmation before applying
 
-7. **Commit Changes (Optional)**
+7. **Update Serena Memory (if Serena MCP available)**
+   - Run `list_memories` to find existing memory files
+   - Analyze PR for learnings worth preserving:
+     - Architectural decisions made
+     - New patterns introduced
+     - Issues resolved and how
+     - Module-specific knowledge
+   - Identify the most relevant existing memory file
+   - Use `edit_memory` to append learnings to the existing file
+   - **NEVER create new memory files** - always update existing ones
+   - Skip if no significant learnings or Serena unavailable
+
+8. **Update README.md (Optional)**
+   - Check if PR introduced changes that affect README:
+     - New features or commands
+     - Changed installation steps
+     - Updated dependencies
+     - Modified usage examples
+   - If README exists and updates are needed:
+     - Propose specific changes to user
+     - Apply only after user confirmation
+   - Skip if no README-relevant changes
+
+9. **Commit Changes (Optional)**
    - If any configuration files were modified, prompt user to confirm commit
    - If confirmed: Commit using Conventional Commits format
-   - Example: `git add CLAUDE.md AGENTS.md GEMINI.md 2>/dev/null || true`
+   - Example: `git add CLAUDE.md AGENTS.md GEMINI.md README.md 2>/dev/null || true`
 
 > See [Work Guidelines](../guidelines/work-guidelines.md)
 

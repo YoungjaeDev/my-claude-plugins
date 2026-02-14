@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 17 specialized plugins",
-    "version": "1.5.4"
+    "description": "Personal Claude Code plugin collection with 19 specialized plugins",
+    "version": "1.5.5"
   },
   "plugins": [
     {
@@ -126,6 +126,20 @@
       "description": "Slidev markdown presentation generator with interview workflow",
       "version": "1.1.0",
       "category": "content"
+    },
+    {
+      "name": "workflow-viz",
+      "source": "./plugins/workflow-viz",
+      "description": "System workflow Mermaid diagrams and ASCII progress tracking",
+      "version": "1.0.0",
+      "category": "visualization"
+    },
+    {
+      "name": "rules-forge",
+      "source": "./plugins/rules-forge",
+      "description": "CLAUDE.md generation and .claude/rules/ modular structure",
+      "version": "1.0.0",
+      "category": "documentation"
     }
   ]
 }

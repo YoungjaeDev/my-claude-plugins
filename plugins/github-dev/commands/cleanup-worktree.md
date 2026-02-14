@@ -126,8 +126,11 @@ This command MUST be run from the **main worktree** (the original clone director
      - Content to add: new patterns, conventions, module-specific rules
      - Present proposal to user for confirmation before applying
    - **Update Serena memory** (if Serena MCP available):
-     - Write learnings from PR to relevant memory files
-     - Include architectural decisions, new patterns, or resolved issues
+     - Run `list_memories` to find existing memory files
+     - Identify the most relevant existing file for the PR content
+     - Use `edit_memory` to append learnings to the existing file
+     - **NEVER create new memory files** - always update existing ones
+     - Content to add: architectural decisions, new patterns, resolved issues
    - If any files were modified, commit with: `docs: update config after cleanup of <branch>`
 
 10. **Output Summary**

@@ -1,0 +1,5 @@
+{
+  "name": "tcrei-prompt",
+  "version": "1.0.0",
+  "description": "Rewrite prompts using Google's TCREI structure (Task, Context, References, Evaluate, Iterate) for next-session reuse"
+}

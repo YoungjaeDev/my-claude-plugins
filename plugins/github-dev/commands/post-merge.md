@@ -1,10 +1,10 @@
 ---
-description: Clean up branch and update CLAUDE.md after PR merge
+description: Clean up branch and integrate PR learnings into config files
 ---
 
 # Post-Merge Cleanup
 
-Perform local branch cleanup and CLAUDE.md updates after a PR has been merged. For worktree removal, use `/github-dev:cleanup-worktree`. Follow project guidelines in `@CLAUDE.md`.
+Perform local branch cleanup and configuration updates after a PR has been merged. For worktree removal, use `/github-dev:cleanup-worktree`. Follow project guidelines in `@CLAUDE.md`.
 
 ## Arguments
 
@@ -17,7 +17,7 @@ Perform local branch cleanup and CLAUDE.md updates after a PR has been merged. F
    - Otherwise, attempt to infer related PR/issue number from conversation context
    - If unable to determine, run `gh pr list --state merged --limit 5` to show recent merged PRs and prompt user to select
 
-   - Run `gh pr view <PR_NUMBER> --json number,title,baseRefName,headRefName,body,state` to get PR details
+   - Run `gh pr view <PR_NUMBER> --json number,title,baseRefName,headRefName,body,state,files` to get PR details
    - Verify `state` is MERGED
 
 2. **Check Local Changes**
@@ -54,73 +54,143 @@ Perform local branch cleanup and CLAUDE.md updates after a PR has been merged. F
      - Run `gh project item-edit` to set Status to "Done"
      - Skip if issue is not in project or Status field does not exist
 
-6. **Analyze and Update Configuration Files**
+6. **Integrate Learnings into Configuration Files**
+
+   Read the PR diff (`gh pr diff <PR_NUMBER>`) and PR body to extract learnings. Then integrate each learning into the **appropriate existing section** of configuration files.
+
+   **CRITICAL: Never append "Post-Merge Notes" sections.** All learnings must be woven into the existing document structure as if they were always there.
+
    - Check which configuration files exist:
      - `CLAUDE.md` - Claude Code specific instructions
      - `AGENTS.md` - Cross-tool AI coding agent instructions
      - `GEMINI.md` - Google Gemini CLI specific instructions
      - `.claude/rules/*.md` - Modular rule files
 
-   - **Placement Rules** (applies to all config files):
+   - **Classification and Placement** (applies to all config files):
 
-     | Content Type | Placement |
-     |--------------|-----------|
-     | Project-wide constraints | Golden Rules > Immutable |
-     | Project-wide recommendations | Golden Rules > Do's |
-     | Project-wide prohibitions | Golden Rules > Don'ts |
-     | Module-specific rules | Delegate to `.claude/rules/[module].md` |
-     | New commands | Commands section |
-     | New module references | Modular Rules section |
+     | Learning Type | Target Section | Action |
+     |---------------|----------------|--------|
+     | New constraint / invariant | Golden Rules > Immutable | Add as a new bullet |
+     | New convention / best practice | Golden Rules > Do's | Add as a new bullet |
+     | New prohibition / anti-pattern | Golden Rules > Don'ts | Add as a new bullet |
+     | New/changed command or script | Commands | Add or update the command block |
+     | Module added/removed/changed | Key Modules table | Update the row description |
+     | New data file or location | Data Locations table | Add or update the row |
+     | New module rule reference | Modular Rules | Add `See @path` reference |
+     | Module-specific rule | `.claude/rules/[module].md` | Update or propose creation |
+     | Tech stack change | Project Context | Update the tech description |
+     | Test count change | Commands or relevant section | Update the count |
+
+   - **Integration Process**:
+     1. Read the current config file to understand existing structure and content
+     2. For each learning, find the most specific existing section it belongs to
+     3. Merge the new information naturally -- update existing descriptions rather than adding footnotes
+     4. If an existing bullet or row already covers the topic, **update it in place** rather than adding a new entry
+     5. Remove any outdated information that the PR supersedes (e.g., old module descriptions, removed features)
 
    - **Content Removal**:
      - Temporary instructions (e.g., `TODO: remove after #N`)
      - Resolved known issues
      - Workaround descriptions for fixed bugs
-
-   - **Content Addition**:
-     - Module-specific rule -> propose `.claude/rules/[module].md` creation/update
-     - Project-wide rule -> add to appropriate Golden Rules subsection
-     - New module documented -> add `See @.claude/rules/[module].md` reference
+     - **Existing "Post-Merge Notes" sections** -- migrate their content into proper sections, then delete the notes
 
    - **Modular Rule Files** (.claude/rules/*.md):
      - Check if relevant module file exists
-     - Propose path-specific rules with frontmatter: `paths: src/[module]/**/*.py`
+     - Propose path-specific rules with frontmatter: `paths: src/[module]/**`
      - Follow structure: Role, Key Components, Do's, Don'ts
      - **Always confirm with user before creating new rule files**
 
-   - Present proposal to user for confirmation before applying
+   - Present the integration proposal to user as a diff-style summary before applying:
+     ```
+     CLAUDE.md changes:
+       Golden Rules > Don'ts: + "Never reintroduce preview branching (Dispatcher is direct-send only)"
+       Key Modules > electron-admin: "4 nav tabs" -> "3 nav tabs: Dashboard / AI / Settings"
+       Remove: "Post-Merge Notes (PR #130)" section (content migrated above)
+     ```
 
 7. **Update Serena Memory (if Serena MCP available)**
-   - Run `list_memories` to find existing memory files
-   - Analyze PR for learnings worth preserving:
-     - Architectural decisions made
-     - New patterns introduced
-     - Issues resolved and how
-     - Module-specific knowledge
-   - Identify the most relevant existing memory file
-   - Use `edit_memory` to append learnings to the existing file
-   - **NEVER create new memory files** - always update existing ones
-   - Skip if no significant learnings or Serena unavailable
 
-8. **Update README.md (Optional)**
-   - Check if PR introduced changes that affect README:
-     - New features or commands
-     - Changed installation steps
-     - Updated dependencies
-     - Modified usage examples
-   - If README exists and updates are needed:
-     - Propose specific changes to user
-     - Apply only after user confirmation
-   - Skip if no README-relevant changes
+   Integrate PR learnings into Serena memory as native content. Learnings should read as if they were always part of the memory -- not as appended post-merge notes.
+
+   **Procedure:**
+
+   1. Run `list_memories` to discover existing memory files
+   2. Run `read_memory` on candidate files to understand their current sections and structure
+   3. Analyze PR diff and body for learnings worth preserving:
+      - Architectural decisions, new patterns, resolved issues, module-specific knowledge
+   4. For each learning, find the best-fit section in an existing memory file (use the mapping table below)
+   5. Use `edit_memory` to add or update content within that section
+
+   **Memory File Mapping:**
+
+   | Learning Category | Likely Target File | Section to Update |
+   |-------------------|--------------------|-------------------|
+   | Architecture changes, new modules, removed features | `project_overview.md` | Architecture, Key Features, Key Files |
+   | Code patterns, naming, type changes | `code_style.md` | Code Patterns, Conventions |
+   | New scripts, commands | `suggested_commands.md` | Relevant command group |
+   | Workflow insights, process notes | `task_completion.md` | Relevant section |
+
+   **Integration Rules:**
+   - **NEVER create new memory files** (especially not `post_merge_prN.md`)
+   - **NEVER add `## Post-Merge` headers** -- `## Post-Merge (date, PR #N)` creates changelog noise, not reference material
+   - Find the existing section that covers the topic and add bullets there
+   - If no matching section exists, create a **topical section** named after the subject (e.g., `## Shutdown Handling`), not after the PR
+   - Update outdated descriptions in place rather than keeping old text alongside new
+   - If content doesn't fit any existing file, append to `project_overview.md` as catch-all
+
+   **Example -- Good (PR #132: graceful shutdown fix):**
+
+   Before (`task_completion.md`):
+   ```
+   ## Process Lifecycle
+   - `start()` initializes polling loop
+   - `stopPolling()` signals shutdown
+   ```
+
+   After:
+   ```
+   ## Process Lifecycle
+   - `start()` initializes polling loop and resets `isShuttingDown` flag
+   - `gracefulShutdown()` is async; awaits shutdown handlers before exit
+   - `isShuttingDown` flag prevents double-shutdown race conditions
+   - `pollOnce` for-loop checks `isRunning` for early abort during shutdown
+   ```
+
+   **Example -- Bad (what NOT to do):**
+   ```
+   ## Post-Merge (2026-02-16, PR #132)
+   - Graceful shutdown race condition fixed (Issue #69)
+   - `Orchestrator.gracefulShutdown()` async conversion
+   - `isShuttingDown` flag for double-shutdown prevention
+   ```
+
+   Skip if no significant learnings or Serena unavailable.
+
+8. **Update README.md (if needed)**
+
+   Check if PR introduced changes that affect README:
+   - New features or commands
+   - Changed installation steps
+   - Updated dependencies
+   - Modified usage examples
+   - Removed features (update feature list)
+
+   If README exists and updates are needed:
+   1. Draft the README changes
+   2. Apply `/humanizer:humanize` to the changed sections to remove AI-generated patterns
+   3. Apply `/docs-forge:readme` guidelines (CRO best practices, structure, clarity)
+   4. Present the final proposal to user for confirmation before applying
+
+   Skip if no README-relevant changes.
 
 9. **Commit Changes (Optional)**
    - If any configuration files were modified, prompt user to confirm commit
    - If confirmed: Commit using Conventional Commits format
-   - Example: `git add CLAUDE.md AGENTS.md GEMINI.md README.md 2>/dev/null || true`
+   - Stage only modified files: `git add CLAUDE.md AGENTS.md GEMINI.md README.md .serena/memories/ 2>/dev/null || true`
 
 > See [Work Guidelines](../guidelines/work-guidelines.md)
 
-## Configuration File Update Guide
+## Configuration File Integration Guide
 
 The following guidelines apply to CLAUDE.md, AGENTS.md, GEMINI.md, and `.claude/rules/*.md`:
 
@@ -131,12 +201,12 @@ The following guidelines apply to CLAUDE.md, AGENTS.md, GEMINI.md, and `.claude/
 2. Commands - Package manager and run commands
 3. Golden Rules - Immutable / Do's / Don'ts
 4. Modular Rules - `See @.claude/rules/[module].md` references
-5. Project-Specific - Data locations, tracking, etc.
+5. Project-Specific - Data locations, key modules, tracking, etc.
 
 **Modular Rules (.claude/rules/*.md)**:
 ```markdown
 ---
-paths: src/[module]/**/*.py  # Optional: conditional loading
+paths: src/[module]/**  # Optional: conditional loading
 ---
 # [Module] Rules
 Role description (1-2 lines)
@@ -145,17 +215,42 @@ Role description (1-2 lines)
 ## Don'ts
 ```
 
+### Anti-Patterns (NEVER do these)
+
+- **Changelog-style notes**: `## Post-Merge Notes (PR #N)` sections at the bottom
+- **PR-specific Serena files**: `post_merge_prN.md` memory files
+- **Post-Merge headers in Serena memory**: `## Post-Merge (date, PR #N)` sections within memory files -- use topical section names instead
+- **Append-only updates**: Adding new sections instead of updating existing ones
+- **Footnote references**: "See PR #N for details" scattered in the document
+
+### Correct Integration Examples
+
+**Instead of**:
+```markdown
+## Post-Merge Notes (PR #130)
+- Preview Mode removed. Dispatcher is direct-send only.
+- Admin Nav changed from 4 tabs to 3 tabs.
+```
+
+**Do this**:
+```markdown
+## Golden Rules
+### Don'ts
+- Never reintroduce preview branching (Dispatcher is registerSendFunction() + direct-send only)
+
+## Key Modules
+| apps/electron-admin/ | Electron admin app (...3 nav tabs: Dashboard / AI / Settings...) |
+```
+
 ### Examples of Content to Remove
 - Temporary notes like `TODO: remove after #123 is resolved`
 - Temporary workaround descriptions for specific issues
 - Known issues lists that have been resolved
-
-### Examples of Content to Add
-- Code conventions discovered during issue resolution
-- Guidelines to prevent common mistakes
-- Newly introduced patterns or architecture decisions
+- Any existing `## Post-Merge Notes (PR #N)` sections (migrate content first)
 
 ### Examples of Content to Modify
 - Changed directory structure descriptions
 - Updated dependency information
 - Commands or configurations that are no longer valid
+- Module descriptions that no longer match reality
+- Test counts that have changed

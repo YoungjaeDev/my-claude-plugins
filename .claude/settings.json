@@ -16,7 +16,8 @@
       "./plugins/humanizer",
       "./plugins/slidev",
       "./plugins/workflow-viz",
-      "./plugins/rules-forge"
+      "./plugins/rules-forge",
+      "./plugins/tcrei-prompt"
     ]
   }
 }

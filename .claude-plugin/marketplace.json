@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 19 specialized plugins",
-    "version": "1.5.5"
+    "description": "Personal Claude Code plugin collection with 20 specialized plugins",
+    "version": "1.6.0"
   },
   "plugins": [
     {
@@ -140,6 +140,13 @@
       "description": "CLAUDE.md generation and .claude/rules/ modular structure",
       "version": "1.0.0",
       "category": "documentation"
+    },
+    {
+      "name": "tcrei-prompt",
+      "source": "./plugins/tcrei-prompt",
+      "description": "Rewrite prompts using Google's TCREI structure for next-session reuse",
+      "version": "1.0.0",
+      "category": "content"
     }
   ]
 }

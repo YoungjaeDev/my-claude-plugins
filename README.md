@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 20개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-20-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -80,6 +80,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
 | | `notion` | Markdown을 Notion으로 업로드 |
 | | `humanizer` | AI 글쓰기 패턴 제거 |
+| | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | | `prd-suite` | PRD, Tech Spec, Use Case 생성 |
@@ -87,21 +88,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `rules-forge` | CLAUDE.md 생성 및 .claude/rules/ 모듈화 |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Orchestration** | `omc` | oh-my-claudecode 멀티 에이전트 오케스트레이션 (marketplace) |
-
-## User Skills
-
-`.claude/skills/`에 플러그인과 별도로 개인용 스킬이 있습니다.
-
-| Skill | Description |
-|-------|-------------|
-| `tcrei-prompt` | 대충 쓴 프롬프트를 Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 재작성. 다음 세션에 복사해서 바로 사용 |
-
-**사용법:**
-```
-"이 프롬프트 TCREI로 만들어줘: [대충 쓴 프롬프트]"
-```
-
-**출력:** `.claude/prompts/{YYYY-MM-DD}-{name}.md`
 
 ## 설치 옵션
 
@@ -324,6 +310,24 @@ AI 생성 글의 패턴 제거.
 
 </details>
 
+<details>
+<summary><strong>tcrei-prompt</strong> - TCREI 프롬프트 구조화</summary>
+
+Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프트 재작성.
+
+**Workflow:**
+1. 원본 프롬프트에서 T/C/R/E/I 요소 진단
+2. 빠진 요소를 인터뷰로 수집
+3. 구조화된 프롬프트 생성
+4. OMC verifier로 자체 검증
+5. `.claude/prompts/{date}-{name}.md`에 저장
+
+**Triggers:** "TCREI", "structure this prompt", "prompt enhance"
+
+**5개 도메인 패턴:** 개발, 마케팅, 문서, 교육, 번역
+
+</details>
+
 ### Planning & Methodology
 
 <details>
@@ -453,7 +457,8 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
       "./plugins/slidev",
       "./plugins/docs-forge",
       "./plugins/rules-forge",
-      "./plugins/workflow-viz"
+      "./plugins/workflow-viz",
+      "./plugins/tcrei-prompt"
     ]
   }
 }
@@ -473,9 +478,7 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
 ```
 .
 ├── .claude/
-│   ├── settings.json          # 플러그인 설정
-│   └── skills/
-│       └── tcrei-prompt/      # TCREI 프롬프트 구조화
+│   └── settings.json          # 플러그인 설정
 ├── plugins/
 │   ├── core-config/           # 가이드라인 + 훅
 │   ├── github-dev/            # GitHub 워크플로우
@@ -495,7 +498,8 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
 │   ├── slidev/                # 프레젠테이션 생성
 │   ├── docs-forge/            # README/CHANGELOG 생성
 │   ├── rules-forge/           # CLAUDE.md 규칙 생성
-│   └── workflow-viz/          # 워크플로우 시각화
+│   ├── workflow-viz/          # 워크플로우 시각화
+│   └── tcrei-prompt/          # TCREI 프롬프트 구조화
 ├── CLAUDE.md
 └── README.md
 ```

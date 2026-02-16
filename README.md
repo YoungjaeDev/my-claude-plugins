@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 17개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 20개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-17-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-20-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -22,14 +22,13 @@ Claude Code를 위한 17개 플러그인 모음 - GitHub 워크플로우부터 A
 
 ## 왜 이 플러그인들인가?
 
-Claude Code의 기본 기능만으로는 부족한 영역들이 있습니다:
+Claude Code에 빠져 있는 것들을 채웁니다:
 
-- **GitHub 워크플로우** - 이슈 분해, PR 생성, 코드 리뷰 자동화
-- **리서치** - 학술 논문 검색, 코드베이스 탐색, 리소스 발견
-- **멀티모달** - 이미지 생성, 문서 번역, Notion 연동
-- **문서화** - README/CHANGELOG 생성, PRD 작성
-
-이 플러그인들은 실제 개발 워크플로우에서 반복되는 작업들을 자동화합니다.
+- **GitHub 워크플로우** - 이슈 분해, PR, 코드 리뷰, post-merge 정리까지 한 흐름으로
+- **리서치** - arXiv/PubMed 논문 검색, GitHub 레포 문서화, 보일러플레이트 탐색
+- **멀티모달** - Midjourney 이미지 생성, 웹 페이지 번역, Notion 업로드
+- **문서화** - README/CHANGELOG, CLAUDE.md 모듈화, PRD/Tech Spec 생성
+- **시각화** - Mermaid 다이어그램, Slidev 프레젠테이션
 
 ## 빠른 시작
 
@@ -85,6 +84,24 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | | `prd-suite` | PRD, Tech Spec, Use Case 생성 |
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
+| | `rules-forge` | CLAUDE.md 생성 및 .claude/rules/ 모듈화 |
+| **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
+| **Orchestration** | `omc` | oh-my-claudecode 멀티 에이전트 오케스트레이션 (marketplace) |
+
+## User Skills
+
+`.claude/skills/`에 플러그인과 별도로 개인용 스킬이 있습니다.
+
+| Skill | Description |
+|-------|-------------|
+| `tcrei-prompt` | 대충 쓴 프롬프트를 Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 재작성. 다음 세션에 복사해서 바로 사용 |
+
+**사용법:**
+```
+"이 프롬프트 TCREI로 만들어줘: [대충 쓴 프롬프트]"
+```
+
+**출력:** `.claude/prompts/{YYYY-MM-DD}-{name}.md`
 
 ## 설치 옵션
 
@@ -139,10 +156,14 @@ claude  # .claude/settings.json에서 자동 로드
 |---------|-------------|
 | `/github-dev:commit-and-push` | 분석, 커밋, 푸시 |
 | `/github-dev:resolve-issue` | 이슈 해결 E2E (worktree, 리뷰, 검증) |
-| `/github-dev:parallel-resolve` | 여러 이슈 병렬 해결 |
 | `/github-dev:code-review` | CodeRabbit 피드백 처리 |
+| `/github-dev:post-merge` | 브랜치 정리, PR 학습 내용을 설정 파일/Serena/README에 통합 |
+| `/github-dev:create-worktree` | 이슈용 worktree 자동 생성 |
+| `/github-dev:cleanup-worktree` | worktree 제거 (브랜치/리모트 삭제 옵션) |
+| `/github-dev:decompose-issue` | 이슈를 하위 작업으로 분해 |
+| `/github-dev:create-issue-label` | 표준화된 이슈 라벨 생성 |
 
-**Flags:** `--worktree`, `--skip-review`, `--strict`
+**Flags:** `--skip-review`, `--strict`
 
 **Requirements:** `gh` CLI
 
@@ -355,12 +376,12 @@ AI 생성 글의 패턴 제거.
 
 </details>
 
-### Documentation
+### Documentation & Rules
 
 <details>
 <summary><strong>docs-forge</strong> - README & CHANGELOG 생성</summary>
 
-CRO 베스트 프랙티스로 README/CHANGELOG 생성 및 분석.
+CRO 분석 기반 README/CHANGELOG 생성.
 
 **Commands:**
 | Command | Description |
@@ -371,7 +392,38 @@ CRO 베스트 프랙티스로 README/CHANGELOG 생성 및 분석.
 
 **Templates:** CLI, Library, React Component, MCP Plugin, SaaS, Desktop
 
-**Based on:** 9개 awesome-readme 프로젝트 분석
+9개 awesome-readme 프로젝트 분석 기반.
+
+</details>
+
+<details>
+<summary><strong>rules-forge</strong> - CLAUDE.md 생성 및 모듈화</summary>
+
+CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
+
+**Commands:**
+| Command | Description |
+|---------|-------------|
+| `/rules-forge generate` | 인터뷰 기반 CLAUDE.md 생성 |
+| `/rules-forge split` | 기존 CLAUDE.md를 .claude/rules/로 분리 |
+
+**Auto-triggers:** "generate claude.md", "restructure claude.md", "modularize instructions"
+
+</details>
+
+### Visualization
+
+<details>
+<summary><strong>workflow-viz</strong> - 워크플로우 시각화</summary>
+
+시스템 아키텍처 다이어그램 및 작업 진행 추적.
+
+**Features:**
+- C4 Container 다이어그램
+- 플러그인별 Flowchart
+- ASCII 진행 상황 표시
+
+**Usage:** `/workflow-viz:show-progress`
 
 </details>
 
@@ -387,19 +439,21 @@ CRO 베스트 프랙티스로 README/CHANGELOG 생성 및 분석.
       "./plugins/github-dev",
       "./plugins/interactive-review",
       "./plugins/code-scout",
+      "./plugins/council",
       "./plugins/deepwiki",
       "./plugins/paper-search-tools",
-      "./plugins/council",
-      "./plugins/midjourney",
       "./plugins/notebook",
       "./plugins/ml-toolkit",
       "./plugins/translator",
-      "./plugins/notion",
-      "./plugins/humanizer",
+      "./plugins/midjourney",
       "./plugins/interview",
       "./plugins/prd-suite",
+      "./plugins/notion",
+      "./plugins/humanizer",
+      "./plugins/slidev",
       "./plugins/docs-forge",
-      "./plugins/slidev"
+      "./plugins/rules-forge",
+      "./plugins/workflow-viz"
     ]
   }
 }
@@ -419,25 +473,29 @@ CRO 베스트 프랙티스로 README/CHANGELOG 생성 및 분석.
 ```
 .
 ├── .claude/
-│   └── settings.json          # 플러그인 설정
+│   ├── settings.json          # 플러그인 설정
+│   └── skills/
+│       └── tcrei-prompt/      # TCREI 프롬프트 구조화
 ├── plugins/
 │   ├── core-config/           # 가이드라인 + 훅
 │   ├── github-dev/            # GitHub 워크플로우
 │   ├── interactive-review/    # 웹 UI 리뷰
 │   ├── code-scout/            # 리소스 탐색
+│   ├── council/               # LLM Council
 │   ├── deepwiki/              # 레포 문서화
 │   ├── paper-search-tools/    # 논문 검색
-│   ├── council/               # LLM Council
-│   ├── midjourney/            # 이미지 생성
 │   ├── notebook/              # Jupyter 편집
 │   ├── ml-toolkit/            # ML 개발
 │   ├── translator/            # 번역
-│   ├── notion/                # Notion 연동
-│   ├── humanizer/             # AI 패턴 제거
+│   ├── midjourney/            # 이미지 생성
 │   ├── interview/             # 요구사항 수집
 │   ├── prd-suite/             # PRD & spec 생성
+│   ├── notion/                # Notion 연동
+│   ├── humanizer/             # AI 패턴 제거
+│   ├── slidev/                # 프레젠테이션 생성
 │   ├── docs-forge/            # README/CHANGELOG 생성
-│   └── slidev/                # 프레젠테이션 생성
+│   ├── rules-forge/           # CLAUDE.md 규칙 생성
+│   └── workflow-viz/          # 워크플로우 시각화
 ├── CLAUDE.md
 └── README.md
 ```

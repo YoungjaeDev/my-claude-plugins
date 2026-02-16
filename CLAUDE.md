@@ -64,12 +64,22 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 |--------|-------------|
 | `workflow-viz` | System workflow Mermaid diagrams and ASCII progress tracking |
 
+## User Skills
+
+Personal skills in `.claude/skills/` that work alongside plugins.
+
+| Skill | Description |
+|-------|-------------|
+| `tcrei-prompt` | Rewrites prompts using Google's TCREI structure (Task, Context, References, Evaluate, Iterate) for next-session reuse |
+
 ## Structure
 
 ```
 .
 ├── .claude/
-│   └── settings.json       # Plugin configuration
+│   ├── settings.json       # Plugin configuration
+│   └── skills/
+│       └── tcrei-prompt/   # TCREI prompt structuring
 ├── plugins/
 │   ├── core-config/        # Guidelines + hooks
 │   ├── github-dev/         # GitHub workflow

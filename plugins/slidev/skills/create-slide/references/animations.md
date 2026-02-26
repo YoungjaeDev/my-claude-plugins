@@ -958,3 +958,163 @@ CSS로 전역 애니메이션 속도 조절:
 clicks: 0  # 모든 클릭 애니메이션 건너뛰기
 ---
 ```
+
+---
+
+## $clicks Conditional Class Binding (Rich)
+
+The most powerful animation pattern from KubeCon presentations. Combines v-click with reactive $clicks state for entrance animations:
+
+```html
+<div
+  v-click flex flex-col gap-2 items-center transition duration-500 ease-in-out
+  :class="$clicks < 1 ? 'translate-x--20 opacity-0' : 'translate-x-0 opacity-100'"
+>
+  Content slides in from left
+</div>
+```
+
+Direction variants:
+
+| Direction | Hidden Class | Visible Class |
+|-----------|-------------|---------------|
+| Left to right | `translate-x--20 opacity-0` | `translate-x-0 opacity-100` |
+| Right to left | `translate-x-20 opacity-0` | `translate-x-0 opacity-100` |
+| Top to bottom | `translate-y--20 opacity-0` | `translate-y-0 opacity-100` |
+| Bottom to top | `translate-y-20 opacity-0` | `translate-y-0 opacity-100` |
+| Scale in | `scale-80 opacity-0` | `scale-100 opacity-100` |
+
+Multiple elements with sequential timing:
+
+```html
+<div v-click :class="$clicks < 1 ? 'translate-x--20 opacity-0' : 'translate-x-0 opacity-100'"
+  transition duration-500 ease-in-out>
+  First (appears on click 1)
+</div>
+<div v-click :class="$clicks < 2 ? 'translate-x--20 opacity-0' : 'translate-x-0 opacity-100'"
+  transition duration-500 ease-in-out>
+  Second (appears on click 2)
+</div>
+```
+
+---
+
+## v-mark with Colors and Types (Enhanced)
+
+More precise control using object syntax (from nekomeowww KubeCon):
+
+```html
+<span v-mark="{ at: 2, color: 'rgb(144, 200, 255)', type: 'underline' }">keyword</span>
+<span v-mark="{ at: 3, color: '#ef4444', type: 'circle' }">important</span>
+<span v-mark="{ at: 4, color: 'rgb(100, 255, 150)', type: 'highlight' }">solution</span>
+```
+
+Available types: `underline`, `circle`, `highlight`, `box`, `strike-through`, `crossed-off`
+
+---
+
+## Staggered Delay Animation
+
+Using v-for with computed v-click for sequential card reveals:
+
+```html
+<div v-for="(item, idx) in items" v-click="2 + idx"
+  :class="$clicks < (2 + idx) ? 'opacity-0 translate-x--10' : 'opacity-100 translate-x-0'"
+  transition duration-300 ease-in-out>
+  {{ item }}
+</div>
+```
+
+Using CSS delay classes (requires UnoCSS safelist):
+
+```html
+<div v-click transition duration-300 delay-100>First</div>
+<div v-click transition duration-300 delay-200>Second</div>
+<div v-click transition duration-300 delay-300>Third</div>
+```
+
+UnoCSS safelist for delay classes:
+
+```ts
+safelist: [
+  ...Array.from({ length: 30 }, (_, i) => `delay-${(i + 1) * 100}`),
+  'animate-pulse',
+],
+```
+
+---
+
+## v-clicks depth for Nested Lists
+
+```html
+<v-clicks depth="2">
+
+- Main topic 1
+  - Sub-point A (appears with main topic)
+  - Sub-point B (appears with main topic)
+- Main topic 2
+  - Sub-point C
+  - Sub-point D
+
+</v-clicks>
+```
+
+Without depth, only top-level items get v-click. With `depth="2"`, nested items also animate independently.
+
+---
+
+## Custom Keyframe Animations
+
+Define in scoped CSS, use with UnoCSS:
+
+```html
+<div class="animate-pulse" v-click>Pulsing element</div>
+
+<style>
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+</style>
+```
+
+---
+
+## fade-out Transition (Default)
+
+The recommended default transition (replaces slide-left):
+
+```css
+.fade-out-leave-active {
+  transition: opacity calc(var(--slidev-transition-duration) * 0.6) ease-out, filter 200ms ease;
+}
+.fade-out-enter-active {
+  transition: opacity calc(var(--slidev-transition-duration) * 0.8) ease-in, filter 200ms ease;
+  transition-delay: calc(var(--slidev-transition-duration) * 0.6);
+}
+.fade-out-enter-from, .fade-out-leave-to {
+  opacity: 0;
+  filter: blur(5px);
+}
+```
+
+Set globally in headmatter: `transition: fade-out`
+
+Override per slide: `transition: 'none'` (for slides with complex $clicks animations)
+
+---
+
+## Click Markers in Notes
+
+Always include `[click]` markers in presenter notes for v-click elements:
+
+```markdown
+<!--
+[click] First point explanation
+[click] Second point - pause here
+[click] Third point - check audience
+-->
+```

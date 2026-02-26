@@ -1022,6 +1022,97 @@ layout: default
 
 ---
 
+## Per-Slide Class Patterns
+
+From real KubeCon presentations, the most common per-slide class patterns:
+
+```yaml
+class: py-10        # Most common (18/28 slides in KubeCon talks)
+class: py-4         # Code-heavy slides (less vertical padding)
+class: px-24        # Intro layouts (extra horizontal padding)
+class: px-35        # Wide intro layouts
+class: text-center  # Center layout helper
+```
+
+## layoutClass Frontmatter
+
+`layoutClass` applies CSS classes to the layout wrapper (not the slide content):
+
+```yaml
+---
+layoutClass: gap-16
+---
+```
+
+This is useful for adjusting the gap in `two-cols` layouts.
+
+## Official Theme Layout Structure
+
+All official Slidev theme layouts follow this pattern:
+
+```html
+<div class="slidev-layout {layout-name}">
+  <div class="my-auto">
+    <slot />
+  </div>
+</div>
+```
+
+- `.slidev-layout` is the root class on all layouts
+- `my-auto` provides vertical centering
+- Named slots: `::right::`, `::left::`, `::items::`, `::bottom::`
+
+## Grid-Based Split Layouts
+
+For custom split layouts beyond two-cols:
+
+```html
+<div grid grid-cols-2 gap-8>
+  <div>
+    <!-- Left content -->
+  </div>
+  <div>
+    <!-- Right content -->
+  </div>
+</div>
+```
+
+3-column grid:
+
+```html
+<div grid grid-cols-3 gap-4>
+  <div>Column 1</div>
+  <div>Column 2</div>
+  <div>Column 3</div>
+</div>
+```
+
+## Figure Layout (Academic Theme)
+
+Available with `theme: academic`:
+
+```yaml
+---
+layout: figure
+figureCaption: "Container Lifecycle"
+figureUrl: /architecture.png
+figureFootnoteNumber: 1
+---
+```
+
+## Table of Contents Layout (Academic Theme)
+
+```yaml
+---
+layout: table-of-contents
+hideInToc: true
+---
+```
+
+Auto-generates agenda from slide headings. The `hideInToc: true` prevents recursive TOC entry.
+
+---
+
 ## 참고사항
 
 1. **테마 의존성**: `apple-basic` 전용 레이아웃은 해당 테마를 사용할 때만 작동합니다.

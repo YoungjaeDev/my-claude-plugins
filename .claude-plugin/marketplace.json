@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 20 specialized plugins",
-    "version": "1.6.0"
+    "version": "1.7.0"
   },
   "plugins": [
     {
@@ -123,8 +123,8 @@
     {
       "name": "slidev",
       "source": "./plugins/slidev",
-      "description": "Slidev markdown presentation generator with interview workflow",
-      "version": "1.1.0",
+      "description": "Slidev markdown presentation generator with interview workflow and KubeCon-level visual enhancement",
+      "version": "1.2.0",
       "category": "content"
     },
     {

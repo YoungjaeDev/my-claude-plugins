@@ -1,5 +1,5 @@
 {
   "name": "slidev",
-  "version": "1.1.0",
-  "description": "Slidev markdown presentation generator with interview-based workflow"
+  "version": "1.2.0",
+  "description": "Slidev markdown presentation generator with interview-based workflow and KubeCon-level visual enhancement"
 }

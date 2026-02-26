@@ -502,3 +502,84 @@ layout: two-cols
   </div>
 </RenderWhen>
 ```
+
+---
+
+## Arrow - Pointing to Code/Elements
+
+From KubeCon presentations, Arrow is used to connect explanations to code:
+
+```html
+<Arrow x1="400" y1="250" x2="300" y2="180" width="2" color="red" />
+```
+
+Combined with v-click for sequential reveals:
+
+```html
+<Arrow v-click x1="400" y1="250" x2="300" y2="180" width="2" color="#42b883" />
+```
+
+---
+
+## Footnotes and Footnote (Academic Theme)
+
+Available with `theme: academic`:
+
+```html
+<Footnotes separator>
+  <Footnote number=1>
+    <a href="https://example.com" rel="noopener noreferrer">Source Name</a>
+  </Footnote>
+</Footnotes>
+```
+
+The `separator` prop adds a horizontal line above the footnotes.
+
+---
+
+## Transform - Practical Usage
+
+Scale down large diagrams or code blocks:
+
+```html
+<Transform :scale="0.8">
+  <!-- Large mermaid diagram or code block -->
+</Transform>
+```
+
+Scale up for emphasis:
+
+```html
+<Transform :scale="1.5" origin="center">
+  <div text-6xl font-bold>Key Number</div>
+</Transform>
+```
+
+---
+
+## VSwitch - Click-Based Content Replacement
+
+Show different content for each click:
+
+```html
+<VSwitch>
+  <template #0>
+    <div>Initial state</div>
+  </template>
+  <template #1>
+    <div>After first click</div>
+  </template>
+  <template #2>
+    <div>After second click</div>
+  </template>
+</VSwitch>
+```
+
+With transition effect:
+
+```html
+<VSwitch transition="fade">
+  <template #0>Step 1 content</template>
+  <template #1>Step 2 content</template>
+</VSwitch>
+```

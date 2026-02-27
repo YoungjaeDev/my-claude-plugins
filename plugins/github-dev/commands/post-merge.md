@@ -54,6 +54,79 @@ Perform local branch cleanup and configuration updates after a PR has been merge
      - Run `gh project item-edit` to set Status to "Done"
      - Skip if issue is not in project or Status field does not exist
 
+5.5. **Sync Milestone Progress** (if issues have milestones):
+   - Extract related issue numbers from PR body (already found in Step 5): `Closes #N`, `Fixes #N`, `Resolves #N`
+   - For each related issue, check milestone:
+     ```bash
+     MILESTONE=$(gh issue view $ISSUE_NUM --json milestone --jq '.milestone.title // empty')
+     ```
+   - If milestone exists:
+     1. Generate slug from milestone name (lowercase, spaces to hyphens, remove special chars)
+     2. Load state file: `.omc/state/project-tracking-{slug}.json`
+     3. If state file not found: skip this issue
+     4. Update issue state to `"closed"` in the state file
+     5. Recalculate module progress:
+        ```
+        module.progress = (closed_issues / total_issues) * 100
+        module.status:
+          "complete"    -> all issues closed
+          "in_progress" -> at least 1 closed or has PR, at least 1 still open
+          "pending"     -> all open, no PR
+        ```
+     6. Regenerate **Type A ASCII diagram** (for milestone description):
+        ```
+        Architecture (auto-updated: YYYY-MM-DD)
+          [OutOfScope]    [InScopeLayer1]  <--+
+           Tech             Tech              | Milestone
+          [OutOfScope]    [InScopeLayer2]  <--+ Name
+        --- <milestoneName> (this milestone) ---
+          [Module1]           [Module2]
+           [v] #N Title       [>] #N Title
+           [ ] #N Title       [ ] #N Title
+        Tasks:
+          [v] #N  Title
+          [>] #N  Title
+          [ ] #N  Title
+        Progress: ====>                     X/Y (ZZ%)
+        ```
+     7. Regenerate **Type B-2 Mermaid diagram** (for each issue body in milestone):
+        ````markdown
+        ```mermaid
+        graph LR
+            subgraph module ["<ModuleName>"]
+                T1["#N Title"]:::done
+                T2["#N Title"]:::active
+            end
+            subgraph deps ["Dependencies"]
+                T3["#N Title"]:::pending
+            end
+            T1 --> T2
+            T2 -.-> T3
+            classDef done fill:#2da44e,color:#fff,stroke:#2da44e
+            classDef active fill:#1f6feb,color:#fff,stroke:#1f6feb
+            classDef pending fill:#6e7781,color:#fff,stroke:#6e7781
+        ```
+        ````
+     8. Update milestone description:
+        ```bash
+        MILESTONE_NUMBER=$(cat .omc/state/project-tracking-${SLUG}.json | jq -r '.milestoneId')
+        # Fallback if null:
+        # MILESTONE_NUMBER=$(gh api repos/:owner/:repo/milestones \
+        #   --jq '.[] | select(.title=="<name>") | .number')
+        gh api repos/:owner/:repo/milestones/$MILESTONE_NUMBER \
+          -X PATCH -f description="$TYPE_A_ASCII_DIAGRAM"
+        ```
+     9. Update each open issue's body tracking section (marker-based replacement):
+        ```bash
+        CURRENT_BODY=$(gh issue view $ISSUE_NUM --json body --jq '.body')
+        # If <!-- project-tracking-start --> exists: replace section between markers
+        # If not: append tracking section at end of body
+        # Tracking section contains Type B-2 Mermaid for that issue's module
+        gh issue edit $ISSUE_NUM --body "$NEW_BODY"
+        ```
+     10. Save state file with updated `lastSyncedAt`
+   - Skip silently if no milestones found on any related issues
+
 6. **Integrate Learnings into Configuration Files**
 
    Read the PR diff (`gh pr diff <PR_NUMBER>`) and PR body to extract learnings. Then integrate each learning into the **appropriate existing section** of configuration files.

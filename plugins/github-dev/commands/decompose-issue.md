@@ -24,9 +24,78 @@ Break down large work items into manageable, independent issues. Follow project 
 7. Suggest milestone name: Propose a milestone to group decomposed tasks
 8. Check related PRs (optional): Run `gh pr list --state closed --limit 20` for similar work references (skip if none)
 9. Output decomposed issues: Display issues with proposed milestone name
+
+9.5. **Define Architecture Mapping** (for project progress tracking):
+   - Analyze the decomposed issues and propose module groupings based on functional areas
+   - **Interview: Architecture Layers** -- Use AskUserQuestion:
+     > "프로젝트의 전체 아키텍처 레이어를 확인합니다. 아래 제안이 맞나요?"
+     - Present detected/proposed layers with: layer name, technology, dependencies
+     - Ask which layers are in scope for this milestone (`inScope: true`)
+     - User can add/remove/rename layers
+   - **Interview: Issue-Module Mapping** -- Use AskUserQuestion:
+     > "이슈-모듈 매핑이 맞나요?"
+     - Show each issue assigned to its proposed module
+     - User can reassign issues between modules
+   - Generate slug from milestone name: lowercase, spaces to hyphens, remove special chars
+     - Example: `"v1.0 Auth System"` -> `"v1-0-auth-system"`
+   - Save initial state file:
+     ```bash
+     mkdir -p .omc/state
+     cat > .omc/state/project-tracking-${SLUG}.json << 'STATEEOF'
+     {
+       "version": "1.0.0",
+       "milestoneId": null,
+       "milestoneName": "<milestone-name>",
+       "milestoneSlug": "<slug>",
+       "repoOwner": "<owner>",
+       "repoName": "<repo>",
+       "createdAt": "<ISO timestamp>",
+       "lastSyncedAt": null,
+       "architecture": {
+         "description": "<one-line architecture description>",
+         "layers": [
+           { "id": "<id>", "name": "<name>", "tech": "<tech>", "dependsOn": [], "inScope": false }
+         ]
+       },
+       "modules": [
+         { "id": "<id>", "name": "<name>", "layerId": "<layer-id>", "issues": [], "status": "pending", "progress": 0 }
+       ],
+       "issues": {
+         "<number>": { "title": "<title>", "state": "open", "pr": null, "moduleId": "<module-id>" }
+       },
+       "diagramMarkers": {
+         "start": "<!-- project-tracking-start -->",
+         "end": "<!-- project-tracking-end -->"
+       }
+     }
+     STATEEOF
+     ```
+
 10. Ask about GitHub creation: Use AskUserQuestion to let user decide on milestone and issue creation
-    - Create milestone: `gh api repos/:owner/:repo/milestones -f title="Milestone Name" -f description="Description"`
+    - Create milestone with **Type A ASCII diagram** in description:
+      ```bash
+      # Generate initial Type A ASCII diagram (all issues [ ] pending, progress 0%)
+      # ASCII diagram format:
+      #   Architecture (auto-updated: YYYY-MM-DD)
+      #     [Layer1]  [Layer2]  [InScopeLayer] <--+ Milestone
+      #   --- <milestoneName> (this milestone) ---
+      #     [Module1]           [Module2]
+      #      [ ] #N Title       [ ] #N Title
+      #   Progress: >                              0/N (0%)
+
+      RESPONSE=$(gh api repos/:owner/:repo/milestones \
+        -f title="<Milestone Name>" \
+        -f description="$TYPE_A_ASCII_DIAGRAM")
+      MILESTONE_NUMBER=$(echo "$RESPONSE" | jq '.number')
+      ```
+    - Update state file with milestoneId:
+      ```bash
+      # Update milestoneId in project-tracking-{slug}.json
+      # Set milestoneId to $MILESTONE_NUMBER
+      ```
     - Assign issues with `--milestone` option
+    - After issue creation, update the state file `issues` map with actual GitHub issue numbers
+
 11. **Add issues to GitHub Project (optional)**
    - Check for existing projects: `gh project list --owner <owner> --format json`
    - If no project exists: Display "No project found. You can create one with `/gh:init-project`" and skip

@@ -10,9 +10,10 @@ GitHub workflow automation commands for Claude Code.
 | `/github-dev:commit-and-push` | Analyze changes, commit with conventional message, push |
 | `/github-dev:create-issue-label` | Create standardized issue labels |
 | `/github-dev:create-worktree` | Create worktree with proper branch naming for an issue |
-| `/github-dev:decompose-issue` | Break down large issues into sub-tasks |
-| `/github-dev:post-merge` | Clean up local branch and update CLAUDE.md after PR merge |
+| `/github-dev:decompose-issue` | Break down large issues into sub-tasks, define architecture mapping |
+| `/github-dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
+| `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
 | `/github-dev:code-review` | Process CodeRabbit review feedback with auto-fix |
 
 ## resolve-issue Flags
@@ -56,6 +57,31 @@ create-worktree #42  →  work  →  PR merge  →  post-merge (branch cleanup)
 **Limitations:**
 - Cannot checkout the same branch in two worktrees simultaneously
 - Each worktree requires separate dependency installation (`npm install`, etc.)
+
+## Project Progress Tracking
+
+Tracks milestone progress with architecture diagrams synced to GitHub.
+
+**State file**: `.omc/state/project-tracking-{slug}.json` -- created by `decompose-issue`, updated by `resolve-issue` and `post-merge`
+
+**Diagram types**:
+| Type | Format | Used In |
+|------|--------|---------|
+| Type A | ASCII | Milestone description, terminal output |
+| Type B-1 | Mermaid (full architecture) | Issue/PR body |
+| Type B-2 | Mermaid (focused module) | Individual issue/PR body |
+
+**Trigger points**:
+| When | What happens |
+|------|-------------|
+| `decompose-issue` | Architecture interview, state file + initial diagram created |
+| `resolve-issue` | Local state updated (issue marked in_progress) |
+| `post-merge` | GitHub auto-sync (milestone desc + issue bodies updated) |
+| `update-progress` | Manual full sync with `--all`, `--local` flags |
+
+**Body markers**: `<!-- project-tracking-start -->` / `<!-- project-tracking-end -->` -- only the section between markers is replaced, preserving existing content.
+
+**Diagram colors** (3 only): `done=#2da44e` (green), `active=#1f6feb` (blue), `pending=#6e7781` (gray)
 
 ## Requirements
 

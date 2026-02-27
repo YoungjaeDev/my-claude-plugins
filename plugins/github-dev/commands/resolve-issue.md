@@ -173,6 +173,33 @@ Before starting the workflow:
 
 11. **Update Issue Checkboxes**: Mark completed checkbox items in the issue as done.
 
+11.5. **Update Project Tracking State** (if milestone exists):
+    - Check if issue has a milestone:
+      ```bash
+      MILESTONE=$(gh issue view $ISSUE_NUMBER --json milestone --jq '.milestone.title // empty')
+      ```
+    - If milestone exists:
+      1. Generate slug from milestone name (lowercase, spaces to hyphens, remove special chars)
+      2. Check for state file: `.omc/state/project-tracking-{slug}.json`
+      3. If state file exists:
+         - Load the state file
+         - Update issue state to `"in_progress"` (PR created during resolve)
+         - Record PR number in the issue entry:
+           ```json
+           { "state": "open", "pr": <PR_NUMBER>, "moduleId": "<existing>" }
+           ```
+         - Recalculate module progress:
+           ```
+           module.progress = (closed_issues / total_issues) * 100
+           module.status:
+             "complete"    -> all issues closed
+             "in_progress" -> at least 1 closed or has PR, at least 1 still open
+             "pending"     -> all open, no PR
+           ```
+         - Save updated state file
+      4. If no state file: skip silently (tracking not set up for this milestone)
+    - **Note**: GitHub diagram sync is NOT performed here. Diagrams are updated in `post-merge` after the PR is merged.
+
 12. **[NEW] Cleanup**:
     - Archive state file to `.omc/state/archive/`
 

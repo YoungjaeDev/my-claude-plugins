@@ -18,8 +18,8 @@
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
-      "description": "GitHub workflow: commit, PR, issue, worktree, code review",
-      "version": "1.3.0",
+      "description": "GitHub workflow: commit, PR, issue, worktree, code review, project tracking",
+      "version": "1.4.0",
       "category": "github"
     },
     {

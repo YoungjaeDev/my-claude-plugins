@@ -25,17 +25,62 @@ Break down large work items into manageable, independent issues. Follow project 
 8. Check related PRs (optional): Run `gh pr list --state closed --limit 20` for similar work references (skip if none)
 9. Output decomposed issues: Display issues with proposed milestone name
 
-9.5. **Define Architecture Mapping** (for project progress tracking):
-   - Analyze the decomposed issues and propose module groupings based on functional areas
-   - **Interview: Architecture Layers** -- Use AskUserQuestion:
-     > "프로젝트의 전체 아키텍처 레이어를 확인합니다. 아래 제안이 맞나요?"
-     - Present detected/proposed layers with: layer name, technology, dependencies
-     - Ask which layers are in scope for this milestone (`inScope: true`)
-     - User can add/remove/rename layers
-   - **Interview: Issue-Module Mapping** -- Use AskUserQuestion:
-     > "이슈-모듈 매핑이 맞나요?"
-     - Show each issue assigned to its proposed module
-     - User can reassign issues between modules
+9.5. **Define Architecture & Workflow Mapping** (for project progress tracking):
+
+   #### Step A: Capture Project Workflow (Mermaid)
+
+   Analyze the codebase and propose a **10-20 node Mermaid flowchart** of the project's core workflow. Include branches, decision nodes, and subgraphs where appropriate.
+
+   - **Interview: Project Workflow** -- Use AskUserQuestion:
+     > "프로젝트의 전체 워크플로우를 다이어그램으로 정리했습니다. 수정할 부분이 있나요?"
+     - Present the proposed Mermaid diagram as a preview
+     - The diagram should capture the main data/control flow (not just layers)
+     - Use descriptive node IDs (e.g., `SCAN`, `PIPELINE`, `PUSH`) for easy mapping
+     - User can add/remove/rename nodes and connections
+     - Target: 10-20 nodes with branches (`{decision}`) and subgraphs where logical
+
+   Example workflow diagram:
+   ```mermaid
+   flowchart TD
+       A[Bot Loop] --> B[scanChatList]
+       B --> C{new request?}
+       C -->|yes| D[Pipeline]
+       D --> D1[parse] --> D2[calculate] --> D3[send]
+       C -->|no| E{customer reply?}
+       E -->|yes| F[AI Consultation]
+       F --> F1[FAQ match] --> F2{resolved?}
+       F2 -->|no| F3[LLM escalation]
+       E -->|no| G[Push System]
+       G --> G1[targets] --> G2[filter] --> G3[send push]
+   ```
+
+   #### Step B: Select Scope Nodes
+
+   - **Interview: Milestone Scope** -- Use AskUserQuestion:
+     > "이 마일스톤이 커버하는 노드를 선택해 주세요."
+     - Present all node IDs from the workflow diagram
+     - User selects which nodes are in scope for this milestone (`scopeNodes`)
+     - These nodes will be highlighted with `:::scope` in generated diagrams
+
+   #### Step C: Module Grouping & Issue Mapping
+
+   - Analyze decomposed issues and propose module groupings based on workflow areas
+   - **Interview: Issue-Module-Node Mapping** -- Use AskUserQuestion:
+     > "이슈-모듈-노드 매핑이 맞나요?"
+     - Show each issue with: proposed module, mapped architecture node
+     - User can reassign issues between modules or change node mappings
+
+   #### Step D: Issue Dependencies
+
+   - Analyze issue order and propose dependency chains
+   - **Interview: Issue Dependencies** -- Use AskUserQuestion:
+     > "이슈 간 의존성(실행 순서)이 맞나요?"
+     - Show proposed dependency graph: `#1 -> #2 -> #3`, `#2 -> #4`
+     - User can add/remove dependencies
+     - Dependencies are stored as `dependsOn: [issueNumber]` per issue
+
+   #### Step E: Save State File
+
    - Generate slug from milestone name: lowercase, spaces to hyphens, remove special chars
      - Example: `"v1.0 Auth System"` -> `"v1-0-auth-system"`
    - Save initial state file:
@@ -43,7 +88,7 @@ Break down large work items into manageable, independent issues. Follow project 
      mkdir -p .omc/state
      cat > .omc/state/project-tracking-${SLUG}.json << 'STATEEOF'
      {
-       "version": "1.0.0",
+       "version": "2.0.0",
        "milestoneId": null,
        "milestoneName": "<milestone-name>",
        "milestoneSlug": "<slug>",
@@ -53,15 +98,28 @@ Break down large work items into manageable, independent issues. Follow project 
        "lastSyncedAt": null,
        "architecture": {
          "description": "<one-line architecture description>",
-         "layers": [
-           { "id": "<id>", "name": "<name>", "tech": "<tech>", "dependsOn": [], "inScope": false }
-         ]
+         "mermaidSource": "<full Mermaid flowchart code from Step A>",
+         "scopeNodes": ["<node-id-1>", "<node-id-2>"]
        },
        "modules": [
-         { "id": "<id>", "name": "<name>", "layerId": "<layer-id>", "issues": [], "status": "pending", "progress": 0 }
+         {
+           "id": "<id>",
+           "name": "<name>",
+           "architectureNode": "<node-id>",
+           "issues": [],
+           "status": "pending",
+           "progress": 0
+         }
        ],
        "issues": {
-         "<number>": { "title": "<title>", "state": "open", "pr": null, "moduleId": "<module-id>" }
+         "<number>": {
+           "title": "<title>",
+           "state": "open",
+           "pr": null,
+           "moduleId": "<module-id>",
+           "dependsOn": [],
+           "architectureNode": "<node-id>"
+         }
        },
        "diagramMarkers": {
          "start": "<!-- project-tracking-start -->",
@@ -72,22 +130,18 @@ Break down large work items into manageable, independent issues. Follow project 
      ```
 
 10. Ask about GitHub creation: Use AskUserQuestion to let user decide on milestone and issue creation
-    - Create milestone with **Type A ASCII diagram** in description:
+    - Create milestone with **Type M-1 Mermaid diagram** in description:
       ```bash
-      # Generate initial Type A ASCII diagram (all issues [ ] pending, progress 0%)
-      # ASCII diagram format:
-      #   Architecture (auto-updated: YYYY-MM-DD)
-      #     [Layer1]  [Layer2]  [InScopeLayer] <--+ Milestone
-      #   --- <milestoneName> (this milestone) ---
-      #     [Module1]           [Module2]
-      #      [ ] #N Title       [ ] #N Title
-      #   Progress: >                              0/N (0%)
+      # Generate initial Type M-1 diagram (all issues [ ] pending, progress 0%)
+      # Uses mermaidSource with scopeNodes highlighted + tasks subgraph
+      # See update-progress.md "Type M-1" for full format
 
       RESPONSE=$(gh api repos/:owner/:repo/milestones \
         -f title="<Milestone Name>" \
-        -f description="$TYPE_A_ASCII_DIAGRAM")
+        -f description="$TYPE_M1_MERMAID_DIAGRAM")
       MILESTONE_NUMBER=$(echo "$RESPONSE" | jq '.number')
       ```
+      If Mermaid does not render in milestone description, use the Markdown Table fallback from update-progress.md.
     - Update state file with milestoneId:
       ```bash
       # Update milestoneId in project-tracking-{slug}.json

@@ -73,40 +73,17 @@ Perform local branch cleanup and configuration updates after a PR has been merge
           "in_progress" -> at least 1 closed or has PR, at least 1 still open
           "pending"     -> all open, no PR
         ```
-     6. Regenerate **Type A ASCII diagram** (for milestone description):
-        ```
-        Architecture (auto-updated: YYYY-MM-DD)
-          [OutOfScope]    [InScopeLayer1]  <--+
-           Tech             Tech              | Milestone
-          [OutOfScope]    [InScopeLayer2]  <--+ Name
-        --- <milestoneName> (this milestone) ---
-          [Module1]           [Module2]
-           [v] #N Title       [>] #N Title
-           [ ] #N Title       [ ] #N Title
-        Tasks:
-          [v] #N  Title
-          [>] #N  Title
-          [ ] #N  Title
-        Progress: ====>                     X/Y (ZZ%)
-        ```
-     7. Regenerate **Type B-2 Mermaid diagram** (for each issue body in milestone):
-        ````markdown
-        ```mermaid
-        graph LR
-            subgraph module ["<ModuleName>"]
-                T1["#N Title"]:::done
-                T2["#N Title"]:::active
-            end
-            subgraph deps ["Dependencies"]
-                T3["#N Title"]:::pending
-            end
-            T1 --> T2
-            T2 -.-> T3
-            classDef done fill:#2da44e,color:#fff,stroke:#2da44e
-            classDef active fill:#1f6feb,color:#fff,stroke:#1f6feb
-            classDef pending fill:#6e7781,color:#fff,stroke:#6e7781
-        ```
-        ````
+     6. Regenerate **Type M-1 Mermaid diagram** (for milestone description):
+        - Read `architecture.mermaidSource` from state file
+        - Apply `:::scope` classDef to all node IDs in `architecture.scopeNodes`
+        - Add `subgraph tasks` with all issues, status classDefs, and `dependsOn` arrows
+        - See `update-progress.md` "Type M-1" for full format
+        - If Mermaid does not render in milestone description, use Markdown Table fallback
+     7. Regenerate **Type M-2 Mermaid diagram** (for each issue body in milestone):
+        - Read `architecture.mermaidSource` from state file
+        - Highlight the issue's `architectureNode` with `:::scope`
+        - Create `context` subgraph with this issue, `deps` with `dependsOn` issues, `next` with dependent issues
+        - See `update-progress.md` "Type M-2" for full format
      8. Update milestone description:
         ```bash
         MILESTONE_NUMBER=$(cat .omc/state/project-tracking-${SLUG}.json | jq -r '.milestoneId')
@@ -114,14 +91,14 @@ Perform local branch cleanup and configuration updates after a PR has been merge
         # MILESTONE_NUMBER=$(gh api repos/:owner/:repo/milestones \
         #   --jq '.[] | select(.title=="<name>") | .number')
         gh api repos/:owner/:repo/milestones/$MILESTONE_NUMBER \
-          -X PATCH -f description="$TYPE_A_ASCII_DIAGRAM"
+          -X PATCH -f description="$TYPE_M1_MERMAID_DIAGRAM"
         ```
      9. Update each open issue's body tracking section (marker-based replacement):
         ```bash
         CURRENT_BODY=$(gh issue view $ISSUE_NUM --json body --jq '.body')
         # If <!-- project-tracking-start --> exists: replace section between markers
         # If not: append tracking section at end of body
-        # Tracking section contains Type B-2 Mermaid for that issue's module
+        # Tracking section contains Type M-2 Mermaid for that issue's context
         gh issue edit $ISSUE_NUM --body "$NEW_BODY"
         ```
      10. Save state file with updated `lastSyncedAt`

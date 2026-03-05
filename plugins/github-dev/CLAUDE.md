@@ -67,9 +67,11 @@ Tracks milestone progress with architecture diagrams synced to GitHub.
 **Diagram types**:
 | Type | Format | Used In |
 |------|--------|---------|
-| Type A | ASCII | Milestone description, terminal output |
-| Type B-1 | Mermaid (full architecture) | Issue/PR body |
-| Type B-2 | Mermaid (focused module) | Individual issue/PR body |
+| Type M-1 | Mermaid (full workflow + task summary) | Milestone description, terminal output |
+| Type M-2 | Mermaid (full workflow + issue context) | Individual issue/PR body |
+| Fallback | Markdown table | Milestone description (if Mermaid unsupported) |
+
+**Architecture data**: `mermaidSource` (10-20 node workflow captured during decompose-issue) + `scopeNodes` (highlighted nodes for this milestone). Issues have `dependsOn` (execution order) and `architectureNode` (workflow position).
 
 **Trigger points**:
 | When | What happens |
@@ -81,7 +83,7 @@ Tracks milestone progress with architecture diagrams synced to GitHub.
 
 **Body markers**: `<!-- project-tracking-start -->` / `<!-- project-tracking-end -->` -- only the section between markers is replaced, preserving existing content.
 
-**Diagram colors** (3 only): `done=#2da44e` (green), `active=#1f6feb` (blue), `pending=#6e7781` (gray)
+**Diagram colors**: `scope=#ddf4ff` (light blue bg), `done=#2da44e` (green), `active=#1f6feb` (blue), `pending=#6e7781` (gray), `here` (thick active border)
 
 ## Requirements
 

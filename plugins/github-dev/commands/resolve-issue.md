@@ -184,9 +184,9 @@ Before starting the workflow:
       3. If state file exists:
          - Load the state file
          - Update issue state to `"in_progress"` (PR created during resolve)
-         - Record PR number in the issue entry:
+         - Record PR number in the issue entry (preserve existing `dependsOn` and `architectureNode`):
            ```json
-           { "state": "open", "pr": <PR_NUMBER>, "moduleId": "<existing>" }
+           { "state": "open", "pr": <PR_NUMBER>, "moduleId": "<existing>", "dependsOn": [<existing>], "architectureNode": "<existing>" }
            ```
          - Recalculate module progress:
            ```

@@ -61,127 +61,140 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
 
 5. **Generate Diagrams**
 
-   Generate three diagram types from the state file data:
+   Generate two diagram types from the state file data. Both use the stored `mermaidSource` as base.
 
-   ### Type A: ASCII (for Milestone description + Terminal output)
+   ### Diagram Generation Algorithm
 
-   ```
-   Architecture (auto-updated: YYYY-MM-DD)
+   1. Parse `architecture.mermaidSource` from state file
+   2. For each node ID in `architecture.scopeNodes`, append `:::scope` classDef
+   3. For each issue, determine status class (`done`/`active`/`pending`)
+   4. Generate task list nodes grouped by module, connected by `dependsOn` arrows
+   5. Apply classDef definitions at the end
 
-     [Layer1]         [Layer2]          [Layer3]      <--+
-      Tech1            Tech2             Tech3           |
-                                                         | Milestone
-     [Layer4]         [Layer5]          [Layer6]      <--+ Name
-                          |
-                     [Layer7]
+   ### Type M-1: Milestone Overview (for Milestone description + Terminal)
 
-   --- <milestoneName> (this milestone) ---
-
-     [Module1]              [Module2]             [Module3]
-      [v] #N Title           [>] #N Title          [ ] #N Title
-      [>] #N Title           [ ] #N Title          [ ] #N Title
-
-   Tasks:
-     [v] #N  Title (closed)
-     [>] #N  Title (in progress / has PR)
-     [ ] #N  Title (open)
-
-   Progress: ====>                              X/Y (ZZ%)
-   ```
-
-   **ASCII Symbols:**
-   | Symbol | Meaning |
-   |--------|---------|
-   | `[v]`  | Issue closed (complete) |
-   | `[>]`  | Issue has PR or in progress |
-   | `[ ]`  | Issue open (pending) |
-   | `<--`  | Milestone scope indicator |
-
-   ### Type B-1: Mermaid Full Architecture (for Issue/PR body)
+   Renders the full project workflow with scope highlighting and a task summary.
 
    ````markdown
    ```mermaid
-   graph TD
-       subgraph arch ["Full Architecture"]
-           LAYER1["LayerName<br/>Tech"]
-           LAYER2["LayerName<br/>Tech"]
+   <mermaidSource from state file, with scopeNodes highlighted>
+
+       %% Milestone scope highlight
+       classDef scope fill:#ddf4ff,stroke:#54aeff,stroke-width:3px
+
+       %% Task status appended below architecture
+       subgraph tasks ["<milestoneName> Tasks"]
+           T1["#12 Push targets"]:::done
+           T2["#13 Time window"]:::active
+           T3["#14 Template engine"]:::pending
+           T1 --> T2
+           T2 --> T3
        end
 
-       subgraph scope ["<milestoneName> -- this milestone"]
-           MOD1["ModuleName<br/>Tech"]
-           MOD2["ModuleName<br/>Tech"]
-       end
-
-       LAYER1 --> LAYER2
-       LAYER2 --> MOD1
-       MOD1 --> MOD2
-
-       subgraph tasks ["Tasks"]
-           T1["#N Title"]:::done
-           T2["#N Title"]:::active
-           T3["#N Title"]:::pending
-       end
-
-       MOD1 --- T1 & T2
-       MOD2 --- T3
+       F --- tasks
 
        classDef done fill:#2da44e,color:#fff,stroke:#2da44e
        classDef active fill:#1f6feb,color:#fff,stroke:#1f6feb
        classDef pending fill:#6e7781,color:#fff,stroke:#6e7781
-
-       style scope fill:#ddf4ff,stroke:#54aeff,stroke-width:2px
    ```
 
    **Progress: X/Y (ZZ%)**
    ````
 
-   ### Type B-2: Mermaid Focused View (for specific Issue/PR body)
+   **How to build Type M-1:**
+   1. Copy `architecture.mermaidSource` verbatim
+   2. For each node ID in `scopeNodes`: append `:::scope` to that node's definition line
+   3. Add `subgraph tasks` with all issues, applying status classDef:
+      - `:::done` for closed issues
+      - `:::active` for issues with PR or in progress
+      - `:::pending` for open issues
+   4. Add `dependsOn` arrows: if issue #13 has `dependsOn: [12]`, add `T12 --> T13`
+   5. Connect task subgraph to its `architectureNode` with `---`
+   6. Append all classDef definitions
+
+   ### Type M-2: Issue Context View (for individual Issue/PR body)
+
+   Shows the full workflow with "this issue" highlighted, plus its dependencies.
 
    ````markdown
    ```mermaid
-   graph LR
-       subgraph module ["<ModuleName>"]
-           T1["#N Title"]:::done
-           T2["#N Title<br/>-- this issue"]:::active
+   <mermaidSource from state file, with this issue's architectureNode highlighted>
+
+       %% This issue's context
+       subgraph context ["#13 Time window filter"]
+           T13["#13 Time window filter<br/>-- this issue"]:::here
        end
 
        subgraph deps ["Dependencies"]
-           T3["#N Title"]:::active
-           T4["#N Title"]:::pending
+           T12["#12 Push targets"]:::done
        end
 
-       T1 --> T2
-       T2 -.-> T3
-       T2 -.-> T4
+       subgraph next ["Blocked by this"]
+           T14["#14 Template engine"]:::pending
+       end
 
+       T12 --> T13
+       T13 --> T14
+       F --- context
+
+       classDef scope fill:#ddf4ff,stroke:#54aeff,stroke-width:3px
+       classDef here fill:#1f6feb,color:#fff,stroke:#1f6feb,stroke-width:3px
        classDef done fill:#2da44e,color:#fff,stroke:#2da44e
-       classDef active fill:#1f6feb,color:#fff,stroke:#1f6feb,stroke-width:3px
+       classDef active fill:#1f6feb,color:#fff,stroke:#1f6feb
        classDef pending fill:#6e7781,color:#fff,stroke:#6e7781
    ```
 
    **Milestone: <milestoneName> -- ZZ% (X/Y)**
    ````
 
-   **Mermaid Rules:**
-   - Colors: only 3 (`done=#2da44e`, `active=#1f6feb`, `pending=#6e7781`)
-   - Line breaks: `<br/>` only (`\n` forbidden)
+   **How to build Type M-2:**
+   1. Copy `architecture.mermaidSource` verbatim
+   2. Highlight the current issue's `architectureNode` with `:::scope`
+   3. Create `context` subgraph with just this issue node using `:::here`
+   4. Create `deps` subgraph with issues this one `dependsOn`
+   5. Create `next` subgraph with issues that have `dependsOn` pointing to this issue
+   6. Add dependency arrows between issue nodes
+   7. Connect context subgraph to its `architectureNode` with `---`
+
+   ### Mermaid Rules
+
+   - Colors: 4 classDefs (`scope=#ddf4ff`, `done=#2da44e`, `active=#1f6feb`, `pending=#6e7781`) + `here` (thick active)
+   - Line breaks: `<br/>` only (`\n` forbidden in node text)
    - Node text: wrap in `"` double quotes
-   - Max 20 nodes per diagram
-   - subgraph ID: lowercase English (`subgraph scope ["Display Name"]`)
+   - Max 20 nodes per diagram (architecture + tasks combined)
+   - subgraph ID: lowercase English (`subgraph tasks ["Display Name"]`)
+   - The `mermaidSource` is never modified -- classDef and subgraphs are appended after it
+
+   ### Fallback: Markdown Table (if Mermaid not rendered)
+
+   If milestone description does not render Mermaid (verify on first use), fall back to:
+
+   ```markdown
+   ## <milestoneName> Progress (auto-updated: YYYY-MM-DD)
+
+   | Status | Issue | Title | Depends On |
+   |--------|-------|-------|------------|
+   | [v] | #12 | Push targets | - |
+   | [>] | #13 | Time window | #12 |
+   | [ ] | #14 | Template engine | #13 |
+
+   **Progress: X/Y (ZZ%)**
+   ```
 
 6. **Update GitHub** (skip if `--local`)
 
-   a. **Milestone description** (Type A ASCII):
+   a. **Milestone description** (Type M-1 Mermaid):
       ```bash
       MILESTONE_NUMBER=$(cat .omc/state/project-tracking-{slug}.json | jq -r '.milestoneId')
       # If milestoneId is null, fetch from API:
       # MILESTONE_NUMBER=$(gh api repos/:owner/:repo/milestones --jq '.[] | select(.title=="<name>") | .number')
 
       gh api repos/:owner/:repo/milestones/$MILESTONE_NUMBER \
-        -X PATCH -f description="$TYPE_A_ASCII_DIAGRAM"
+        -X PATCH -f description="$TYPE_M1_MERMAID_DIAGRAM"
       ```
+      If Mermaid does not render in milestone description, use the Markdown Table fallback instead.
 
-   b. **Each issue body** (Type B-2 Mermaid, marker-based replacement):
+   b. **Each issue body** (Type M-2 Mermaid, marker-based replacement):
       ```bash
       # For each issue in the milestone:
       CURRENT_BODY=$(gh issue view $ISSUE_NUM --json body --jq '.body')
@@ -202,7 +215,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
       gh issue edit $ISSUE_NUM --body "$NEW_BODY"
       ```
 
-   c. **Open PRs** (Type B-2 Mermaid, same marker logic):
+   c. **Open PRs** (Type M-2 Mermaid, same marker logic):
       ```bash
       # For issues with open PRs:
       PR_NUMBER=$(gh pr list --search "head:feat/$ISSUE_NUM" --json number --jq '.[0].number')
@@ -217,7 +230,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
    <!-- project-tracking-start -->
    ## Progress (auto-updated: YYYY-MM-DD)
 
-   <Type B-2 Mermaid diagram for this issue's module>
+   <Type M-2 Mermaid diagram for this issue's context>
 
    <!-- project-tracking-end -->
    ```
@@ -228,7 +241,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
    - Save to `.omc/state/project-tracking-{slug}.json`
 
 8. **Terminal Output**
-   - Print Type A ASCII diagram to terminal
+   - Print Type M-1 Mermaid diagram to terminal (rendered as code block)
    - Show summary of changes made:
      ```
      Updated: milestone description, N issue bodies, N PR descriptions
@@ -239,7 +252,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "milestoneId": 5,
   "milestoneName": "v1.0 Auth System",
   "milestoneSlug": "v1-0-auth-system",
@@ -249,21 +262,14 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
   "lastSyncedAt": "ISO timestamp",
   "architecture": {
     "description": "Project architecture description",
-    "layers": [
-      {
-        "id": "layer-id",
-        "name": "Layer Name",
-        "tech": "Technology",
-        "dependsOn": [],
-        "inScope": false
-      }
-    ]
+    "mermaidSource": "flowchart TD\n    A[Bot Loop] --> B[scan]\n    B --> C{new?}\n    C -->|yes| D[pipeline]\n    C -->|no| E[AI]\n    E --> F[push]",
+    "scopeNodes": ["F", "G"]
   },
   "modules": [
     {
       "id": "module-id",
       "name": "Module Name",
-      "layerId": "layer-id",
+      "architectureNode": "F",
       "issues": [12, 13],
       "status": "pending|in_progress|complete",
       "progress": 0
@@ -274,7 +280,9 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
       "title": "Issue title",
       "state": "open|closed",
       "pr": null,
-      "moduleId": "module-id"
+      "moduleId": "module-id",
+      "dependsOn": [11],
+      "architectureNode": "F"
     }
   },
   "diagramMarkers": {
@@ -283,6 +291,16 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
   }
 }
 ```
+
+### Schema Field Reference
+
+| Field | Location | Description |
+|-------|----------|-------------|
+| `architecture.mermaidSource` | Root | Full project workflow as Mermaid code (10-20 nodes). Captured during decompose-issue interview. |
+| `architecture.scopeNodes` | Root | Node IDs from mermaidSource that this milestone covers. Highlighted with `:::scope` in diagrams. |
+| `modules[].architectureNode` | Module | Which mermaidSource node this module maps to. |
+| `issues[].dependsOn` | Issue | Issue numbers this issue depends on. Rendered as arrows in diagrams. |
+| `issues[].architectureNode` | Issue | Which mermaidSource node this issue maps to. Inherits from module if not set. |
 
 ## Slug Generation
 

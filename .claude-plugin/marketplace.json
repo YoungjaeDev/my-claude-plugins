@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 20 specialized plugins",
-    "version": "1.7.1"
+    "version": "1.7.2"
   },
   "plugins": [
     {
@@ -19,7 +19,7 @@
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, code review, project tracking",
-      "version": "1.5.0",
+      "version": "1.5.2",
       "category": "github"
     },
     {
@@ -60,8 +60,8 @@
     {
       "name": "ml-toolkit",
       "source": "./plugins/ml-toolkit",
-      "description": "GPU parallel processing, Gradio CV apps, CV notebook generation",
-      "version": "1.1.0",
+      "description": "GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration",
+      "version": "1.2.0",
       "category": "development"
     },
     {

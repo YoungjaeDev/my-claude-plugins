@@ -67,9 +67,9 @@ Tracks milestone progress with architecture diagrams synced to GitHub.
 **Diagram types**:
 | Type | Format | Used In |
 |------|--------|---------|
-| Type M-1 | Mermaid (full workflow + task summary) | Milestone description, terminal output |
+| Type M-1 | Mermaid (full workflow + task summary) | Terminal output |
+| Milestone | Markdown table (status + dependencies) | Milestone description |
 | Type M-2 | Mermaid (full workflow + issue context) | Individual issue/PR body |
-| Fallback | Markdown table | Milestone description (if Mermaid unsupported) |
 
 **Architecture data**: `mermaidSource` (10-20 node workflow captured during decompose-issue) + `scopeNodes` (highlighted nodes for this milestone). Issues have `dependsOn` (execution order) and `architectureNode` (workflow position).
 

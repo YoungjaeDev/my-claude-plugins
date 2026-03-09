@@ -73,12 +73,9 @@ Perform local branch cleanup and configuration updates after a PR has been merge
           "in_progress" -> at least 1 closed or has PR, at least 1 still open
           "pending"     -> all open, no PR
         ```
-     6. Regenerate **Type M-1 Mermaid diagram** (for milestone description):
-        - Read `architecture.mermaidSource` from state file
-        - Apply `:::scope` classDef to all node IDs in `architecture.scopeNodes`
-        - Add `subgraph tasks` with all issues, status classDefs, and `dependsOn` arrows
-        - See `update-progress.md` "Type M-1" for full format
-        - If Mermaid does not render in milestone description, use Markdown Table fallback
+     6. Regenerate **Milestone Table** (for milestone description):
+        - Generate Markdown Table with all issues, status indicators, and dependencies
+        - See `update-progress.md` "Milestone Format" for full format
      7. Regenerate **Type M-2 Mermaid diagram** (for each issue body in milestone):
         - Read `architecture.mermaidSource` from state file
         - Highlight the issue's `architectureNode` with `:::scope`
@@ -91,7 +88,7 @@ Perform local branch cleanup and configuration updates after a PR has been merge
         # MILESTONE_NUMBER=$(gh api repos/:owner/:repo/milestones \
         #   --jq '.[] | select(.title=="<name>") | .number')
         gh api repos/:owner/:repo/milestones/$MILESTONE_NUMBER \
-          -X PATCH -f description="$TYPE_M1_MERMAID_DIAGRAM"
+          -X PATCH -f description="$MILESTONE_TABLE"
         ```
      9. Update each open issue's body tracking section (marker-based replacement):
         ```bash

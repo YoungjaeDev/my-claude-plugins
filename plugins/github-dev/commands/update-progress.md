@@ -71,7 +71,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
    4. Generate task list nodes grouped by module, connected by `dependsOn` arrows
    5. Apply classDef definitions at the end
 
-   ### Type M-1: Milestone Overview (for Milestone description + Terminal)
+   ### Type M-1: Milestone Overview (for Terminal output)
 
    Renders the full project workflow with scope highlighting and a task summary.
 
@@ -165,9 +165,9 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
    - subgraph ID: lowercase English (`subgraph tasks ["Display Name"]`)
    - The `mermaidSource` is never modified -- classDef and subgraphs are appended after it
 
-   ### Fallback: Markdown Table (if Mermaid not rendered)
+   ### Milestone Format: Markdown Table (for Milestone description)
 
-   If milestone description does not render Mermaid (verify on first use), fall back to:
+   GitHub milestone descriptions do not render Mermaid. Use this Markdown Table format for all milestone descriptions.
 
    ```markdown
    ## <milestoneName> Progress (auto-updated: YYYY-MM-DD)
@@ -183,16 +183,15 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
 
 6. **Update GitHub** (skip if `--local`)
 
-   a. **Milestone description** (Type M-1 Mermaid):
+   a. **Milestone description** (Markdown Table):
       ```bash
       MILESTONE_NUMBER=$(cat .omc/state/project-tracking-{slug}.json | jq -r '.milestoneId')
       # If milestoneId is null, fetch from API:
       # MILESTONE_NUMBER=$(gh api repos/:owner/:repo/milestones --jq '.[] | select(.title=="<name>") | .number')
 
       gh api repos/:owner/:repo/milestones/$MILESTONE_NUMBER \
-        -X PATCH -f description="$TYPE_M1_MERMAID_DIAGRAM"
+        -X PATCH -f description="$MILESTONE_TABLE"
       ```
-      If Mermaid does not render in milestone description, use the Markdown Table fallback instead.
 
    b. **Each issue body** (Type M-2 Mermaid, marker-based replacement):
       ```bash

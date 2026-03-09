@@ -130,18 +130,16 @@ Break down large work items into manageable, independent issues. Follow project 
      ```
 
 10. Ask about GitHub creation: Use AskUserQuestion to let user decide on milestone and issue creation
-    - Create milestone with **Type M-1 Mermaid diagram** in description:
+    - Create milestone with **Markdown Table** in description:
       ```bash
-      # Generate initial Type M-1 diagram (all issues [ ] pending, progress 0%)
-      # Uses mermaidSource with scopeNodes highlighted + tasks subgraph
-      # See update-progress.md "Type M-1" for full format
+      # Generate initial progress table (all issues [ ] pending, progress 0%)
+      # See update-progress.md "Milestone Format" for full format
 
       RESPONSE=$(gh api repos/:owner/:repo/milestones \
         -f title="<Milestone Name>" \
-        -f description="$TYPE_M1_MERMAID_DIAGRAM")
+        -f description="$MILESTONE_TABLE")
       MILESTONE_NUMBER=$(echo "$RESPONSE" | jq '.number')
       ```
-      If Mermaid does not render in milestone description, use the Markdown Table fallback from update-progress.md.
     - Update state file with milestoneId:
       ```bash
       # Update milestoneId in project-tracking-{slug}.json

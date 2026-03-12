@@ -203,8 +203,8 @@ Provide corrections in the same output format.
 | Error | Response |
 |-------|----------|
 | No context | "No reviewable content found. Specify review direction." |
-| CLI not installed | "Gemini CLI not installed. Run `npm install -g @google/gemini-cli` then `gemini auth`." |
-| CLI failure | "Gemini CLI failed. Check `gemini auth` status." |
+| CLI not installed | "Gemini CLI not installed. Run `npm install -g @google/gemini-cli` then authenticate." |
+| CLI failure | "Gemini CLI failed. Check authentication status (`gemini` to verify)." |
 | Timeout | "Response timeout. Reducing prompt size and retrying." |
 
 ---

@@ -60,6 +60,14 @@ State all assumptions explicitly before implementing.
 - Use AskUserQuestion to confirm interpretation
 - Never start implementation without clarifying ambiguities
 
+**Structured Interview Escalation:**
+When requirements are complex (multi-component, unclear scope, tradeoff decisions), use `/interview-methodology` skill with these core steps only:
+1. **Non-obvious questions** — skip what the user already said; probe gaps, edge cases, failure modes
+2. **Prioritization** — distinguish P0 (must-have) from P1/P2 before implementing
+3. **Validation** — summarize back, confirm, then write spec to `.claude/spec/`
+
+Trigger conditions: new feature without spec, broad architectural decisions, council deliberation with unresolved conflicts.
+
 ### 2. Senior Engineer Test
 
 Before writing code, ask yourself:

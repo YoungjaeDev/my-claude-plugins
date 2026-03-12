@@ -26,9 +26,10 @@ Inspired by Andrej Karpathy's LLM Council: query multiple AI models with the sam
 - `--quick`: Quick mode (see below)
 
 **Default behavior (no flags):**
-- Maximum reasoning depth (Codex: reasoningEffort=xhigh, model=gpt-5.1-codex-max)
+- Maximum reasoning depth (Codex: reasoningEffort=xhigh)
 - Full multi-round deliberation (up to 3 rounds)
 - YAML schema enforced
+- All CLIs use their own default models (no hardcoded model names)
 
 **Quick mode (`--quick`):**
 - All 4 models queried (Opus, Sonnet, Codex, Gemini)
@@ -325,7 +326,7 @@ Task(subagent_type="general-purpose", run_in_background: true):
     - sandbox: "read-only"
     - workingDirectory: "{PROJECT_ROOT}"
     - reasoningEffort: "xhigh"  (or "high" with --quick)
-    - model: "gpt-5.1-codex-max"
+    (Do NOT specify model - let Codex CLI use its default for forward compatibility)
 
     ## Guidelines
     Read and follow ./AGENTS.md project guidelines.

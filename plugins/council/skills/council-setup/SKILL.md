@@ -54,7 +54,7 @@ codex --version
 
 ```bash
 # Set API key (interactive)
-codex auth
+codex login
 
 # Or set environment variable
 export OPENAI_API_KEY="sk-..."
@@ -84,27 +84,17 @@ codex "Hello, what's 2+2?"
 ## Install Gemini CLI
 
 ### Prerequisites
-- Node.js 18+ or Python 3.9+
-- Google AI API key
+- Node.js 18+
+- Google AI API key or Google account (OAuth)
 
-### Installation (Node.js)
+### Installation
 
 ```bash
 # Install globally
-npm install -g @anthropic/gemini-cli
+npm install -g @google/gemini-cli
 
 # Verify
 gemini --version
-```
-
-### Installation (Python alternative)
-
-```bash
-# Using pipx (recommended)
-pipx install gemini-cli
-
-# Or pip
-pip install gemini-cli
 ```
 
 ### Configuration

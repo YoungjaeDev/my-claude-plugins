@@ -56,7 +56,7 @@ Request code review from Codex MCP, cross-checked by Claude for consensus.
 ### 1. Invoke Codex
 
 ```
-mcp__codex__codex({
+mcp__codex-cli__codex({
   prompt: [REVIEW_PROMPT],
   sandbox: "read-only",
   workingDirectory: [PROJECT_ROOT]

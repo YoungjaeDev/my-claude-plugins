@@ -15,6 +15,7 @@ GitHub workflow automation commands for Claude Code.
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
 | `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
 | `/github-dev:code-review` | Process CodeRabbit review feedback with auto-fix |
+| `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |
 
 ## resolve-issue Flags
 

@@ -1,14 +1,13 @@
 {
   "name": "github-dev",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "GitHub workflow automation commands for Claude Code",
   "commands": [
-    "./commands/cleanup-worktree.md",
     "./commands/code-review.md",
     "./commands/commit-and-push.md",
     "./commands/create-issue-label.md",
-    "./commands/create-worktree.md",
     "./commands/decompose-issue.md",
+    "./commands/merge-worktree.md",
     "./commands/post-merge.md",
     "./commands/resolve-issue.md",
     "./commands/update-progress.md",

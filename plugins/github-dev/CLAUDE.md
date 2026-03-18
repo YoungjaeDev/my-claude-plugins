@@ -6,11 +6,10 @@ GitHub workflow automation commands for Claude Code.
 
 | Command | Description |
 |---------|-------------|
-| `/github-dev:cleanup-worktree` | Remove worktrees with optional branch and remote deletion |
 | `/github-dev:commit-and-push` | Analyze changes, commit with conventional message, push |
 | `/github-dev:create-issue-label` | Create standardized issue labels |
-| `/github-dev:create-worktree` | Create worktree with proper branch naming for an issue |
 | `/github-dev:decompose-issue` | Break down large issues into sub-tasks, define architecture mapping |
+| `/github-dev:merge-worktree` | Squash merge worktree branch to base branch with learning integration |
 | `/github-dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
 | `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
@@ -26,38 +25,37 @@ GitHub workflow automation commands for Claude Code.
 
 ## Recommended Worktree Workflow
 
-For parallel development, create worktrees before starting Claude sessions (Boris Cherny's approach):
+Use Claude Code built-in worktree support for parallel development:
 
 ```bash
-# Option 1: Use create-worktree command (auto branch naming)
-/github-dev:create-worktree #42
-# Output: cd ../fix-42-login-bug && claude
+# Create worktree (built-in)
+claude --worktree feature-auth
 
-# Option 2: Manual creation
-git worktree add ../fix-42-login-bug -b fix/42-login-bug
-cd ../fix-42-login-bug && claude
+# Work inside worktree, then merge back
+/github-dev:merge-worktree
+
+# Exit with cleanup (built-in)
+/exit  # select cleanup option
 ```
-
-**Branch Naming Convention:**
-- `fix/{issue}-{slug}` - bug fixes
-- `feat/{issue}-{slug}` - new features
-- `refactor/{issue}-{slug}` - refactoring
-- `docs/{issue}-{slug}` - documentation
-
-This keeps the starting directory and working directory the same, avoiding path confusion.
 
 **Worktree Lifecycle:**
 ```
-create-worktree #42  →  work  →  PR merge  →  post-merge (branch cleanup)
-       ↓                              ↓
-  create worktree              cleanup-worktree (worktree removal)
-  auto branch naming           can also be used independently for
-                               abandoned/experimental worktrees
+claude --worktree <name>  -->  work  -->  /merge-worktree  -->  /exit (cleanup)
+     (built-in)                          (squash merge +        (built-in)
+                                          learning integration)
 ```
+
+**Flags:**
+| Flag | Description |
+|------|-------------|
+| `--target <branch>` | Base branch (default: auto-detect main/master) |
+| `--no-squash` | Use merge --no-ff instead of squash |
+| `--skip-learning` | Skip learning integration |
 
 **Limitations:**
 - Cannot checkout the same branch in two worktrees simultaneously
 - Each worktree requires separate dependency installation (`npm install`, etc.)
+- merge-worktree checks out the target branch in the original repo (may affect other sessions)
 
 ## Project Progress Tracking
 

@@ -96,7 +96,7 @@
       "name": "humanizer",
       "source": "./plugins/humanizer",
       "description": "Remove AI writing patterns from text",
-      "version": "2.1.1",
+      "version": "2.2.0",
       "category": "content"
     },
     {

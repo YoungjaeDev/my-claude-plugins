@@ -144,10 +144,11 @@ claude  # .claude/settings.json에서 자동 로드
 | `/github-dev:resolve-issue` | 이슈 해결 E2E (worktree, 리뷰, 검증) |
 | `/github-dev:code-review` | CodeRabbit 피드백 처리 |
 | `/github-dev:post-merge` | 브랜치 정리, PR 학습 내용을 설정 파일/Serena/README에 통합 |
-| `/github-dev:create-worktree` | 이슈용 worktree 자동 생성 |
-| `/github-dev:cleanup-worktree` | worktree 제거 (브랜치/리모트 삭제 옵션) |
+| `/github-dev:merge-worktree` | worktree에서 base 브랜치로 squash merge + 학습 반영 |
 | `/github-dev:decompose-issue` | 이슈를 하위 작업으로 분해 |
 | `/github-dev:create-issue-label` | 표준화된 이슈 라벨 생성 |
+| `/github-dev:update-progress` | 마일스톤/이슈 진행 상황 동기화 |
+| `/github-dev:release` | 버전 릴리스 + 자동 CHANGELOG 생성 |
 
 **Flags:** `--skip-review`, `--strict`
 

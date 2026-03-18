@@ -4,7 +4,7 @@ description: Clean up branch and integrate PR learnings into config files
 
 # Post-Merge Cleanup
 
-Perform local branch cleanup and configuration updates after a PR has been merged. For worktree removal, use `/github-dev:cleanup-worktree`. Follow project guidelines in `@CLAUDE.md`.
+Perform local branch cleanup and configuration updates after a PR has been merged. For worktree removal, use `/exit` with cleanup option. Follow project guidelines in `@CLAUDE.md`.
 
 ## Arguments
 
@@ -42,7 +42,7 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    - If exists, prompt user to confirm deletion
    - If confirmed: `git branch -d "$headRefName"`
    - If any worktrees remain for this branch, inform user:
-     > "Worktree detected for `$headRefName`. Run `/github-dev:cleanup-worktree` to remove it."
+     > "Worktree detected for `$headRefName`. Run `/exit` with cleanup option to remove it."
 
 5. **Update GitHub Project Status (Optional)**
    - Extract related issue numbers from PR body: search for `Closes #N`, `Fixes #N`, `Resolves #N` patterns

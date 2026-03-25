@@ -27,19 +27,32 @@ Break down large work items into manageable, independent issues. Follow project 
 
 9.5. **Define Architecture & Workflow Mapping** (for project progress tracking):
 
-   #### Step A: Capture Project Workflow (Mermaid)
+   #### Step A: Capture Project Workflow
 
-   Analyze the codebase and propose a **10-20 node Mermaid flowchart** of the project's core workflow. Include branches, decision nodes, and subgraphs where appropriate.
+   Analyze the codebase and design a **10-20 node flowchart** of the project's core workflow. Store as Mermaid in the state file, but present to the user as an ASCII diagram.
 
    - **Interview: Project Workflow** -- Use AskUserQuestion:
      > "프로젝트의 전체 워크플로우를 다이어그램으로 정리했습니다. 수정할 부분이 있나요?"
-     - Present the proposed Mermaid diagram as a preview
+     - Present the proposed workflow as an **ASCII diagram** (terminal cannot render Mermaid)
      - The diagram should capture the main data/control flow (not just layers)
-     - Use descriptive node IDs (e.g., `SCAN`, `PIPELINE`, `PUSH`) for easy mapping
+     - Use descriptive node names for easy mapping
      - User can add/remove/rename nodes and connections
-     - Target: 10-20 nodes with branches (`{decision}`) and subgraphs where logical
+     - Target: 10-20 nodes with branches and subgroups where logical
 
-   Example workflow diagram:
+   Example workflow (ASCII, shown to user in terminal):
+   ```
+   [Bot Loop] --> [scanChatList] --> <new request?>
+                                       |yes --> [Pipeline]
+                                       |         +--[parse]--[calculate]--[send]
+                                       |no  --> <customer reply?>
+                                                  |yes --> [AI Consultation]
+                                                  |         +--[FAQ match]--<resolved?>
+                                                  |                           |no --> [LLM escalation]
+                                                  |no  --> [Push System]
+                                                             +--[targets]--[filter]--[send push]
+   ```
+
+   Stored as Mermaid in state file (`architecture.mermaidSource`):
    ```mermaid
    flowchart TD
        A[Bot Loop] --> B[scanChatList]

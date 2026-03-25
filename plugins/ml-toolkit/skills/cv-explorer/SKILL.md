@@ -1,3 +1,8 @@
+---
+name: cv-explorer
+description: Generate interactive CV data exploration notebooks with ipywidgets viewers. Supports detection, segmentation, tracking, classification datasets in COCO, YOLO, NPZ, CSV, ImageFolder formats. Triggers on "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "image viewer", "browse dataset", "browse annotations", "visualize dataset interactively".
+---
+
 # cv-explorer Skill
 
 Interactive Computer Vision data exploration notebook generator using ipywidgets.

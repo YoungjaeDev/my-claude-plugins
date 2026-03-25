@@ -33,7 +33,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 | Plugin | Description |
 |--------|-------------|
 | `notebook` | Safe Jupyter notebook editing |
-| `ml-toolkit` | GPU parallel processing, Gradio CV apps |
+| `ml-toolkit` | GPU parallel processing, Gradio CV apps, CV notebooks, dataset exploration |
 
 ### Content & Translation
 | Plugin | Description |

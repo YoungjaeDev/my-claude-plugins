@@ -1,5 +1,5 @@
 {
   "name": "ml-toolkit",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "ML/AI development skills: GPU parallel processing, Gradio CV apps, CV notebook generation, and interactive CV data exploration"
 }

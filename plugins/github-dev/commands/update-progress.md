@@ -73,44 +73,32 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
 
    ### Type M-1: Milestone Overview (for Terminal output)
 
-   Renders the full project workflow with scope highlighting and a task summary.
+   Renders the full project workflow with scope highlighting and a task summary as **ASCII art** (terminal cannot render Mermaid).
 
-   ````markdown
-   ```mermaid
-   <mermaidSource from state file, with scopeNodes highlighted>
+   ```
+   === Project Workflow ===
+   [Bot Loop] --> [scanChatList] --> <new request?>
+                                       |yes --> [Pipeline] *
+                                       |no  --> [Push System] *
+                                    (* = milestone scope)
 
-       %% Milestone scope highlight
-       classDef scope fill:#ddf4ff,stroke:#54aeff,stroke-width:3px
+   === <milestoneName> Tasks ===
+    [v] #12 Push targets
+    [>] #13 Time window              (depends: #12)
+    [ ] #14 Template engine          (depends: #13)
 
-       %% Task status appended below architecture
-       subgraph tasks ["<milestoneName> Tasks"]
-           T1["#12 Push targets"]:::done
-           T2["#13 Time window"]:::active
-           T3["#14 Template engine"]:::pending
-           T1 --> T2
-           T2 --> T3
-       end
-
-       F --- tasks
-
-       classDef done fill:#2da44e,color:#fff,stroke:#2da44e
-       classDef active fill:#1f6feb,color:#fff,stroke:#1f6feb
-       classDef pending fill:#6e7781,color:#fff,stroke:#6e7781
+   Progress: 1/3 (33%)
    ```
 
-   **Progress: X/Y (ZZ%)**
-   ````
-
    **How to build Type M-1:**
-   1. Copy `architecture.mermaidSource` verbatim
-   2. For each node ID in `scopeNodes`: append `:::scope` to that node's definition line
-   3. Add `subgraph tasks` with all issues, applying status classDef:
-      - `:::done` for closed issues
-      - `:::active` for issues with PR or in progress
-      - `:::pending` for open issues
-   4. Add `dependsOn` arrows: if issue #13 has `dependsOn: [12]`, add `T12 --> T13`
-   5. Connect task subgraph to its `architectureNode` with `---`
-   6. Append all classDef definitions
+   1. Parse `architecture.mermaidSource` from state file and convert to ASCII tree layout
+   2. For each node ID in `scopeNodes`: append `*` marker to that node
+   3. Add task list section with all issues, applying status markers:
+      - `[v]` for closed issues (done)
+      - `[>]` for issues with PR or in progress (active)
+      - `[ ]` for open issues (pending)
+   4. Add `dependsOn` info: if issue #13 has `dependsOn: [12]`, show `(depends: #12)`
+   5. Show progress summary line: `Progress: X/Y (ZZ%)`
 
    ### Type M-2: Issue Context View (for individual Issue/PR body)
 
@@ -240,7 +228,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
    - Save to `.omc/state/project-tracking-{slug}.json`
 
 8. **Terminal Output**
-   - Print Type M-1 Mermaid diagram to terminal (rendered as code block)
+   - Print Type M-1 ASCII diagram to terminal
    - Show summary of changes made:
      ```
      Updated: milestone description, N issue bodies, N PR descriptions

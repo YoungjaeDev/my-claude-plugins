@@ -59,6 +59,7 @@ State all assumptions explicitly before implementing.
 - Ambiguous requirements → Present 2-3 interpretations, never auto-select
 - Use AskUserQuestion to confirm interpretation
 - Never start implementation without clarifying ambiguities
+- Vague criteria ("concise", "detailed", "small") → confirm a numerical bound (word/line count, size) before producing output
 
 **Structured Interview Escalation:**
 When requirements are complex (multi-component, unclear scope, tradeoff decisions), use `/interview-methodology` skill with these core steps only:
@@ -115,13 +116,20 @@ When adding features, consider disable/delete scenarios.
 
 ### Parallel Execution
 
-Run independent tasks in parallel via Task tool. See OMC CLAUDE.md "Parallelization Rules" for details.
+Run independent tasks in parallel via the Agent tool. See OMC CLAUDE.md "Parallelization Rules" for details.
 
 **Result Collection (MANDATORY):**
 - MUST wait for ALL parallel agents to complete before proceeding
 - Extend timeout if needed rather than skipping slow agents
 - Review and synthesize ALL results before making decisions
 - Never proceed based on partial results from fastest agents only
+
+### Subagent Boundaries
+
+When dispatching subagents or background tasks:
+- Give each a self-contained brief; do not share in-progress parent state
+- Do not tail or read intermediate logs mid-task — pulling tool noise into the parent defeats the isolation
+- Consume only the final structured report; if missing, re-dispatch rather than inferring
 
 ### Dependency Version Policy
 
@@ -190,10 +198,20 @@ Always execute code after writing. See OMC CLAUDE.md "Verification-Before-Comple
 
 Write → Execute → Error? → Fix → Re-execute → Repeat until success
 
-**NEVER:**
-- Report "code written" without executing
+**NEVER** (applies to prose, bullet summary, and structured output alike):
+- Report "code written" / "fixed" / "works" without executing
+- Claim a test/check passed without running it
+- Hide, simplify, or reframe failed checks as success
+- Call partially-complete work "done"
+- Predict or assume tool output instead of running the tool
+- Assert a file / function / API / flag exists without reading or grepping it
 - Proceed to next step with errors present
 - Ask user to run code you should verify yourself
+
+**INSTEAD, when grounded evidence is missing:**
+- Say "unverified" explicitly and state the reason
+- Say "unknown" rather than guessing
+- Use `AskUserQuestion` if a decision depends on the unknown
 
 ---
 

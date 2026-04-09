@@ -33,8 +33,12 @@ def main():
             print("Result of calling the Read tool:")
             print(content)
             print("</system-reminder>")
-        except Exception:
-            pass
+        except Exception as e:
+            print(
+                f"inject-guidelines: failed to inject {primary_guideline}: "
+                f"{type(e).__name__}: {e}",
+                file=sys.stderr,
+            )
 
     sys.exit(0)
 

@@ -1,0 +1,25 @@
+{
+  "_comment": "Default config for codex-bridge. Override via --config <path>. scope=user → $HOME/.agents/skills (OpenAI USER scope). Set target.agentsHome to override (testing). CODEX_HOME has no effect on skill directory.",
+  "target": {
+    "scope": "user",
+    "agentsHome": null
+  },
+  "collisionFallbackPrefix": "omc-",
+  "exclude": [
+    "plugins/interactive-review/**",
+    "plugins/midjourney/**"
+  ],
+  "transform": {
+    "bodyOnly": true,
+    "rules": [
+      { "from": ".omc/", "to": ".omx/", "mode": "literal" },
+      { "from": "CLAUDE.md", "to": "AGENTS.md", "mode": "literal" },
+      { "from": "/oh-my-claudecode:", "to": "$", "mode": "literal" },
+      { "from": "oh-my-claudecode", "to": "oh-my-codex", "mode": "literal" },
+      { "from": "~/.claude/", "to": "~/.codex/", "mode": "literal" },
+      { "from": "omc", "to": "omx", "mode": "word-boundary" },
+      { "from": "OMC", "to": "OMX", "mode": "word-boundary" }
+    ],
+    "textExtensions": [".md", ".yml", ".yaml", ".json", ".sh", ".mjs", ".js", ".py", ".ts"]
+  }
+}

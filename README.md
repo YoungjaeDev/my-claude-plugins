@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -87,6 +87,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
 | | `rules-forge` | CLAUDE.md 생성 및 .claude/rules/ 모듈화 |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
+| **Integration** | `codex-bridge` | OMC skill을 Codex `~/.agents/skills/`로 body-only 변환 동기화 |
 | **Orchestration** | `omc` | oh-my-claudecode 멀티 에이전트 오케스트레이션 (marketplace) |
 
 ## 설치 옵션
@@ -329,6 +330,31 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 
 </details>
 
+### Integration
+
+<details>
+<summary><strong>codex-bridge</strong> - OMC → Codex skill 동기화</summary>
+
+OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네이티브로 로드하는 `~/.agents/skills/` (OpenAI 공식 USER scope) 로 idempotent 변환·복사.
+
+**핵심 원칙:**
+- **SSOT**: OMC source 는 단일 소스, `~/.agents/skills/` 는 derived artifact (양방향 sync 아님)
+- **Safety**: `bridge_source` 마커 없는 파일은 절대 건드리지 않음 (OMX / 사용자 파일 보호)
+- **Body-only transform**: frontmatter 는 불변, body 만 7개 rule 치환
+- **Orphan prune**: `bridge_source` 있고 source 없어진 skill 자동 삭제
+
+**Transform rules (body-only):** `.omc/` → `.omx/`, `CLAUDE.md` → `AGENTS.md`, `/oh-my-claudecode:` → `$`, `~/.claude/` → `~/.codex/`, word-boundary `omc` → `omx`, `OMC` → `OMX`
+
+**진입점:**
+- Claude Code: `$codex-sync [options]`
+- Direct CLI: `node plugins/codex-bridge/scripts/sync.mjs [options]`
+
+**CLI options:** `--dry-run`, `--verbose`, `--config <path>`, `--plugin <list>`, `--no-prune`, `--report <path>`
+
+**Requirements:** Node 18+, Codex CLI 0.120.0+
+
+</details>
+
 ### Planning & Methodology
 
 <details>
@@ -459,7 +485,8 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
       "./plugins/docs-forge",
       "./plugins/rules-forge",
       "./plugins/workflow-viz",
-      "./plugins/tcrei-prompt"
+      "./plugins/tcrei-prompt",
+      "./plugins/codex-bridge"
     ]
   }
 }
@@ -500,7 +527,8 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
 │   ├── docs-forge/            # README/CHANGELOG 생성
 │   ├── rules-forge/           # CLAUDE.md 규칙 생성
 │   ├── workflow-viz/          # 워크플로우 시각화
-│   └── tcrei-prompt/          # TCREI 프롬프트 구조화
+│   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
+│   └── codex-bridge/          # OMC → Codex skill 동기화
 ├── CLAUDE.md
 └── README.md
 ```

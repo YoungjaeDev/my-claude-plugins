@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 20 specialized plugins",
-    "version": "1.7.8"
+    "description": "Personal Claude Code plugin collection with 21 specialized plugins",
+    "version": "1.7.9"
   },
   "plugins": [
     {
@@ -147,6 +147,13 @@
       "description": "Rewrite prompts using Google's TCREI structure for next-session reuse",
       "version": "1.0.0",
       "category": "content"
+    },
+    {
+      "name": "codex-bridge",
+      "source": "./plugins/codex-bridge",
+      "description": "Sync OMC plugin skills to Codex ~/.agents/skills/ with body-only transform and bridge_source provenance",
+      "version": "1.0.0",
+      "category": "integration"
     }
   ]
 }

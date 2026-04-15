@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (21)
+## Plugins (22)
 
 ### Core
 | Plugin | Description |
@@ -65,6 +65,11 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 |--------|-------------|
 | `workflow-viz` | System workflow Mermaid diagrams and ASCII progress tracking |
 
+### Integration
+| Plugin | Description |
+|--------|-------------|
+| `codex-bridge` | Sync OMC plugin skills to Codex `~/.agents/skills/` with body-only transform |
+
 ## Structure
 
 ```
@@ -92,7 +97,8 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── rules-forge/        # CLAUDE.md rules
 │   ├── slidev/             # Presentation generator
 │   ├── workflow-viz/       # Workflow visualization
-│   └── tcrei-prompt/       # TCREI prompt structuring
+│   ├── tcrei-prompt/       # TCREI prompt structuring
+│   └── codex-bridge/       # OMC → Codex skill sync
 ├── CLAUDE.md               # This file
 └── README.md               # Full documentation
 ```

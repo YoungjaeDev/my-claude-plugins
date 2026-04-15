@@ -1,8 +1,14 @@
 {
-  "_comment": "Default config for codex-bridge. Override via --config <path>. scope=user → $HOME/.agents/skills (OpenAI USER scope). Set target.agentsHome to override (testing). CODEX_HOME has no effect on skill directory.",
+  "_comment": "Default config for codex-bridge. Override via --config <path>. scope=user → $HOME/.agents/skills (OpenAI USER scope). Set target.agentsHome to override (testing). target.agentsMdPath defaults to ~/.codex/AGENTS.md (where guideline blocks are injected). CODEX_HOME has no effect on skill directory but may shift AGENTS.md — override agentsMdPath if needed.",
   "target": {
     "scope": "user",
-    "agentsHome": null
+    "agentsHome": null,
+    "agentsMdPath": null
+  },
+  "agentsInject": {
+    "enabled": true,
+    "warnBytes": 32768,
+    "_comment": "warnBytes = Codex default project_doc_max_bytes. Warning emitted when AGENTS.md exceeds this. Raise Codex's project_doc_max_bytes in ~/.codex/config.toml to match."
   },
   "collisionFallbackPrefix": "omc-",
   "exclude": [

@@ -5,7 +5,10 @@ description: Sync OMC plugin skills to Codex `~/.agents/skills/` (OpenAI USER sc
 
 # codex-sync
 
-OMC 의 skill (`plugins/*/skills/**/SKILL.md`) 과 command (`plugins/*/commands/*.md`) 를 Codex CLI 가 네이티브로 로드하는 `~/.agents/skills/` 로 변환·복사한다. Commands 는 Codex 에 네이티브 대응 개념이 없어 `<plugin>-<command>` 네임스페이스로 wrap 한 skill 로 변환된다.
+OMC 의 skill (`plugins/*/skills/**/SKILL.md`), command (`plugins/*/commands/*.md`), guideline (`plugins/*/guidelines/*.md`) 을 Codex 로 이관한다.
+
+- Skills + commands → `~/.agents/skills/` (Codex USER scope, 네이티브 `$skill-name` 호출 가능). Commands 는 `<plugin>-<command>` 네임스페이스로 wrap.
+- Guidelines → `~/.codex/AGENTS.md` 의 `<!-- omc-guidelines:start/end -->` 마커 블록에 주입. OMX 가 관리하는 `<!-- omx:generated:agents-md -->` 영역은 불가침.
 
 ## 언제 쓰나
 
@@ -67,6 +70,7 @@ npx @youngjaedev/omc-codex-sync [options]
 | `--plugin <list>` | 쉼표 구분 플러그인 필터 (예: `--plugin github-dev,core-config`) |
 | `--no-prune` | auto-prune 비활성화 |
 | `--report <path>` | JSON 리포트 파일 출력 |
+| `--no-agents-inject` | `~/.codex/AGENTS.md` guideline 주입 비활성화 |
 | `-h`, `--help` | 도움말 |
 
 Exit codes: `0` 성공 · `1` 부분 실패 · `2` 치명적 (config 파싱 실패, 권한 없음, 알 수 없는 인자)

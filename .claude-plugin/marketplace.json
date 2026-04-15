@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.7.11"
+    "version": "1.7.12"
   },
   "plugins": [
     {
@@ -151,8 +151,8 @@
     {
       "name": "codex-bridge",
       "source": "./plugins/codex-bridge",
-      "description": "Sync OMC plugin skills and commands to Codex ~/.agents/skills/ with body-only transform, bridge_source provenance, and command→skill wrapping (commands use <plugin>-<command> naming)",
-      "version": "1.1.0",
+      "description": "Sync OMC plugin skills + commands + guidelines to Codex. Skills and commands land at ~/.agents/skills/ (USER scope); guidelines are injected into ~/.codex/AGENTS.md between omc-guidelines markers. Body-only transform with bridge_source provenance.",
+      "version": "1.2.0",
       "category": "integration"
     }
   ]

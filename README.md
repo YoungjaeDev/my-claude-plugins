@@ -500,6 +500,8 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
 | `gh` | GitHub 플러그인 | github-dev |
 | `uv` | Python MCP 서버 | core-config, interactive-review |
 | `ruff` | Python 포매팅 | core-config |
+| Node 18+ | sync 엔진 런타임 | codex-bridge |
+| Codex CLI 0.120.0+ | `~/.agents/skills/` 네이티브 로드 | codex-bridge (실행시) |
 
 ## 프로젝트 구조
 

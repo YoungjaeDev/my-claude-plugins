@@ -38,6 +38,7 @@ Sync OMC plugin skills (`plugins/*/skills/**/SKILL.md`) to Codex CLI's native sk
 - **Never apply transforms to frontmatter.** `bodyOnly: true` is a contract, not a default. Spec-documented transforms (`.omc/`→`.omx/`, `CLAUDE.md`→`AGENTS.md`, etc.) must only touch body.
 - **Never use non-atomic writes** that leave target in a partial state if the process dies mid-sync.
 - **Never bundle Windows/macOS verification into V1 scope.** Cross-platform testing is best-effort per spec.
+- **Never combine `--plugin <list>` with auto-prune.** The filter narrows `validSources` to the selected plugins, so `pruneOrphans` treats every OMC-managed skill from other plugins as an orphan and deletes it. Always pair `--plugin` with `--no-prune`, or run a full sync separately.
 
 ## Source of Truth
 

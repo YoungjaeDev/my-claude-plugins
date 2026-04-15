@@ -1,6 +1,6 @@
 ---
 name: codex-sync
-description: Sync OMC plugin skills to Codex `~/.agents/skills/` (OpenAI USER scope) with body-only transform rules and `bridge_source` provenance marker. Use when user says "codex sync", "sync skills to codex", "/codex-sync", or after adding/modifying OMC plugin skills that should also be available in independent Codex CLI sessions. Idempotent — safe to re-run.
+description: Sync OMC plugin skills to Codex `~/.agents/skills/` (OpenAI USER scope) with body-only transform rules and `bridge_source` provenance marker. Use when user says "codex sync", "sync skills to codex", "/codex-bridge:codex-sync", or after adding/modifying OMC plugin skills that should also be available in independent Codex CLI sessions. Idempotent — safe to re-run.
 ---
 
 # codex-sync
@@ -26,21 +26,32 @@ OMC (`plugins/*/skills/**/SKILL.md`) skill 들을 Codex CLI 가 네이티브로 
 
 ### 1. Claude Code skill (이것)
 
+Claude Code 세션에서 slash command 로 호출:
+
 ```
-$codex-sync
-$codex-sync --dry-run
-$codex-sync --plugin github-dev,core-config
+/codex-bridge:codex-sync
+/codex-bridge:codex-sync --dry-run
+/codex-bridge:codex-sync --plugin github-dev,core-config
 ```
 
 Claude Code 가 이 SKILL.md 를 읽은 뒤, 아래 Bash 명령을 실행한다.
 
-### 2. Direct CLI
+### 2. Direct CLI (Bash)
 
 ```bash
 node plugins/codex-bridge/scripts/sync.mjs [options]
 ```
 
-### 3. npm (V2 예정)
+### 3. Codex CLI (sync 후)
+
+본 스킬이 sync 되면 Codex 터미널 세션에서도 호출 가능:
+
+```
+$codex-sync
+$codex-sync --dry-run
+```
+
+### 4. npm (V2 예정)
 
 ```bash
 npx @youngjaedev/omc-codex-sync [options]
@@ -78,7 +89,7 @@ Exit codes: `0` 성공 · `1` 부분 실패 · `2` 치명적 (config 파싱 실�
 
 ## 실행 방법
 
-사용자가 `$codex-sync` 로 호출하면 다음 Bash 로 delegate:
+Claude Code 에서 사용자가 `/codex-bridge:codex-sync` 로 호출하면 다음 Bash 로 delegate:
 
 ```bash
 node plugins/codex-bridge/scripts/sync.mjs "$@"

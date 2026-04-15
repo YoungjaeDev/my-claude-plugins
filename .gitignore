@@ -6,6 +6,11 @@ dist/
 .serena/
 .sisyphus/
 
+# Python bytecode (regenerated on every run)
+__pycache__/
+*.pyc
+*.pyo
+
 # Windows reserved names (prevent accidental creation)
 nul
 NUL

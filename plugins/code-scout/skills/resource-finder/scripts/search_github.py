@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
 """
 GitHub Repository Search Script
 
-Search GitHub repositories using the gh CLI.
-Requires: gh CLI installed and authenticated (https://cli.github.com/)
+Wrapper around `gh search repos` / `gh search code`. Standard library only.
+External dependency: `gh` CLI installed and authenticated (https://cli.github.com/).
 
-Usage:
-    python search_github.py "keyword" [options]
+Run with uv from anywhere (no cwd requirement):
+    uv run /path/to/search_github.py "keyword" [options]
 
-Examples:
-    python search_github.py "object detection" --limit 10
-    python search_github.py "gradio app" --language python
-    python search_github.py "yolo world" --detailed --sort stars
+Prefer `gh search repos "..."` directly for single-shot queries. Use this
+wrapper when extra filters (stars/language/sort) plus JSON/detailed output
+make the query easier to compose.
 """
 
 import argparse
@@ -25,9 +28,7 @@ def check_gh_cli() -> bool:
     """Check if gh CLI is installed and authenticated."""
     try:
         result = subprocess.run(
-            ["gh", "auth", "status"],
-            capture_output=True,
-            text=True
+            ["gh", "auth", "status"], capture_output=True, text=True
         )
         return result.returncode == 0
     except FileNotFoundError:
@@ -39,7 +40,7 @@ def search_repos(
     limit: int = 10,
     language: Optional[str] = None,
     sort: str = "stars",
-    detailed: bool = False
+    detailed: bool = False,
 ) -> list[dict]:
     """
     Search GitHub repositories.
@@ -55,10 +56,16 @@ def search_repos(
         List of repository information dictionaries
     """
     cmd = [
-        "gh", "search", "repos", query,
-        "--limit", str(limit),
-        "--sort", sort,
-        "--json", "fullName,description,stargazersCount,forksCount,updatedAt,language,url,isArchived"
+        "gh",
+        "search",
+        "repos",
+        query,
+        "--limit",
+        str(limit),
+        "--sort",
+        sort,
+        "--json",
+        "fullName,description,stargazersCount,forksCount,updatedAt,language,url,isArchived",
     ]
 
     if language:
@@ -87,8 +94,12 @@ def get_repo_details(repo_name: str) -> Optional[dict]:
         Repository details dictionary or None
     """
     cmd = [
-        "gh", "repo", "view", repo_name,
-        "--json", "name,owner,description,stargazersCount,forksCount,watchers,issues,pullRequests,url,homepageUrl,createdAt,updatedAt,pushedAt,isArchived,isFork,languages,repositoryTopics,licenseInfo,readme"
+        "gh",
+        "repo",
+        "view",
+        repo_name,
+        "--json",
+        "name,owner,description,stargazersCount,forksCount,watchers,issues,pullRequests,url,homepageUrl,createdAt,updatedAt,pushedAt,isArchived,isFork,languages,repositoryTopics,licenseInfo,readme",
     ]
 
     try:
@@ -108,9 +119,9 @@ def format_repo_summary(repo: dict) -> str:
     lang = repo.get("language") or "N/A"
 
     return (
-        f"\n{'='*60}\n"
+        f"\n{'=' * 60}\n"
         f"{repo['fullName']}{archived}\n"
-        f"{'='*60}\n"
+        f"{'=' * 60}\n"
         f"Stars: {repo['stargazersCount']:,} | Forks: {repo['forksCount']:,} | Language: {lang}\n"
         f"Updated: {repo['updatedAt'][:10]}\n"
         f"URL: {repo['url']}\n"
@@ -124,7 +135,9 @@ def format_repo_detailed(details: dict) -> str:
     topic_names = [t.get("name", "") for t in topics] if topics else []
 
     languages = details.get("languages", [])
-    lang_names = [l.get("node", {}).get("name", "") for l in languages] if languages else []
+    lang_names = (
+        [l.get("node", {}).get("name", "") for l in languages] if languages else []
+    )
 
     license_info = details.get("licenseInfo")
     license_name = license_info.get("name", "N/A") if license_info else "N/A"
@@ -156,14 +169,27 @@ Examples:
   %(prog)s "object detection" --limit 10
   %(prog)s "gradio app" --language python
   %(prog)s "yolo world" --detailed --sort stars
-        """
+        """,
     )
 
     parser.add_argument("query", help="Search keyword")
-    parser.add_argument("--limit", "-n", type=int, default=10, help="Number of results (default: 10)")
+    parser.add_argument(
+        "--limit", "-n", type=int, default=10, help="Number of results (default: 10)"
+    )
     parser.add_argument("--language", "-l", help="Filter by programming language")
-    parser.add_argument("--sort", "-s", choices=["stars", "forks", "updated"], default="stars", help="Sort criteria (default: stars)")
-    parser.add_argument("--detailed", "-d", action="store_true", help="Show detailed info including README")
+    parser.add_argument(
+        "--sort",
+        "-s",
+        choices=["stars", "forks", "updated"],
+        default="stars",
+        help="Sort criteria (default: stars)",
+    )
+    parser.add_argument(
+        "--detailed",
+        "-d",
+        action="store_true",
+        help="Show detailed info including README",
+    )
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()
@@ -182,7 +208,7 @@ Examples:
         limit=args.limit,
         language=args.language,
         sort=args.sort,
-        detailed=args.detailed
+        detailed=args.detailed,
     )
 
     if not repos:

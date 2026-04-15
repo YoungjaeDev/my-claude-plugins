@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.7.12"
+    "version": "1.7.13"
   },
   "plugins": [
     {
@@ -32,8 +32,8 @@
     {
       "name": "code-scout",
       "source": "./plugins/code-scout",
-      "description": "Boilerplate and ML resource discovery",
-      "version": "1.0.0",
+      "description": "Boilerplate and ML resource discovery. Portable tools first (gh CLI, curl + HF REST, uvx hf); Python wrappers carry PEP 723 inline deps so `uv run <abs>` works from any cwd.",
+      "version": "1.1.0",
       "category": "research"
     },
     {

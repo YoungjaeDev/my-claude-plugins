@@ -41,17 +41,22 @@ Task(
 
 ## Skill: resource-finder
 
-Search tool for GitHub and Hugging Face.
+Search tool for GitHub and Hugging Face. **Portable tools first** (`gh` on
+$PATH, `curl` + HF REST, `uvx hf`); skill-internal scripts are optional
+wrappers run via `uv run <absolute_path>` (PEP 723 inline deps).
 
 ```bash
-# GitHub boilerplates
-gh search repos "fastapi boilerplate" --sort stars
+# GitHub (primary — works from any cwd)
+gh search repos "fastapi boilerplate" --sort stars --limit 10
 
-# HuggingFace models
-python skills/resource-finder/scripts/search_huggingface.py "yolo" --type models
+# HuggingFace via REST (no auth, no Python)
+curl -sS "https://huggingface.co/api/models?search=yolo&limit=10" | jq
 
-# HuggingFace demos
-python skills/resource-finder/scripts/search_huggingface.py "gradio" --type spaces
+# HuggingFace CLI (bootstraps via uv on demand)
+uvx hf search-repos "gradio" --repo-type space --limit 10
+
+# Optional Python wrapper (uv handles venv + deps)
+uv run plugins/code-scout/skills/resource-finder/scripts/search_huggingface.py "yolo" --type models
 ```
 
 ## When to Use

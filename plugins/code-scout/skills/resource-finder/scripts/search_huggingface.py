@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["huggingface_hub>=0.24"]
+# ///
 """
 Hugging Face Search Script
 
-Search Models, Datasets, and Spaces on Hugging Face Hub.
-Requires: huggingface_hub library (pip install huggingface_hub)
+Search Models, Datasets, and Spaces on Hugging Face Hub via huggingface_hub.
 
-Usage:
-    python search_huggingface.py "keyword" --type {models,datasets,spaces,all}
+Run with uv from anywhere (auto-installs huggingface_hub in ephemeral venv):
+    uv run /path/to/search_huggingface.py "keyword" --type {models,datasets,spaces,all}
 
-Examples:
-    python search_huggingface.py "object detection" --type models --limit 10
-    python search_huggingface.py "coco" --type datasets --limit 5
-    python search_huggingface.py "gradio demo" --type spaces --limit 10
-    python search_huggingface.py "segment anything" --type all
+For quick queries, `curl https://huggingface.co/api/<type>?search=<query>` is
+often enough and avoids Python altogether. Use this wrapper when structured
+output or tag filters beyond raw API help.
 """
 
 import argparse
@@ -22,6 +23,7 @@ from typing import Optional
 
 try:
     from huggingface_hub import HfApi, list_models, list_datasets, list_spaces
+
     HF_AVAILABLE = True
 except ImportError:
     HF_AVAILABLE = False
@@ -31,7 +33,7 @@ def search_models(
     query: str,
     limit: int = 10,
     task: Optional[str] = None,
-    library: Optional[str] = None
+    library: Optional[str] = None,
 ) -> list[dict]:
     """
     Search Hugging Face models.
@@ -81,9 +83,7 @@ def search_models(
 
 
 def search_datasets(
-    query: str,
-    limit: int = 10,
-    task: Optional[str] = None
+    query: str, limit: int = 10, task: Optional[str] = None
 ) -> list[dict]:
     """
     Search Hugging Face datasets.
@@ -127,11 +127,7 @@ def search_datasets(
         return []
 
 
-def search_spaces(
-    query: str,
-    limit: int = 10,
-    sdk: Optional[str] = None
-) -> list[dict]:
+def search_spaces(query: str, limit: int = 10, sdk: Optional[str] = None) -> list[dict]:
     """
     Search Hugging Face Spaces.
 
@@ -222,15 +218,29 @@ Tasks (for --task filter):
 
 SDKs (for --sdk filter):
   gradio, streamlit, docker, static
-        """
+        """,
     )
 
     parser.add_argument("query", help="Search keyword")
-    parser.add_argument("--type", "-t", choices=["models", "datasets", "spaces", "all"], default="all", help="Resource type to search (default: all)")
-    parser.add_argument("--limit", "-n", type=int, default=10, help="Number of results per type (default: 10)")
+    parser.add_argument(
+        "--type",
+        "-t",
+        choices=["models", "datasets", "spaces", "all"],
+        default="all",
+        help="Resource type to search (default: all)",
+    )
+    parser.add_argument(
+        "--limit",
+        "-n",
+        type=int,
+        default=10,
+        help="Number of results per type (default: 10)",
+    )
     parser.add_argument("--task", help="Filter by task (models/datasets only)")
     parser.add_argument("--library", help="Filter by library (models only)")
-    parser.add_argument("--sdk", help="Filter by SDK (spaces only): gradio, streamlit, docker, static")
+    parser.add_argument(
+        "--sdk", help="Filter by SDK (spaces only): gradio, streamlit, docker, static"
+    )
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()
@@ -247,35 +257,28 @@ SDKs (for --sdk filter):
     if args.type in ["models", "all"]:
         print(f"Searching Models for: '{args.query}'...", file=sys.stderr)
         results["models"] = search_models(
-            query=args.query,
-            limit=args.limit,
-            task=args.task,
-            library=args.library
+            query=args.query, limit=args.limit, task=args.task, library=args.library
         )
 
     if args.type in ["datasets", "all"]:
         print(f"Searching Datasets for: '{args.query}'...", file=sys.stderr)
         results["datasets"] = search_datasets(
-            query=args.query,
-            limit=args.limit,
-            task=args.task
+            query=args.query, limit=args.limit, task=args.task
         )
 
     if args.type in ["spaces", "all"]:
         print(f"Searching Spaces for: '{args.query}'...", file=sys.stderr)
         results["spaces"] = search_spaces(
-            query=args.query,
-            limit=args.limit,
-            sdk=args.sdk
+            query=args.query, limit=args.limit, sdk=args.sdk
         )
 
     # Output results
     if args.json:
         print(json.dumps(results, indent=2, default=str))
     else:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Hugging Face Search Results for: '{args.query}'")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         if "models" in results:
             print(f"\n--- MODELS ({len(results['models'])} found) ---")

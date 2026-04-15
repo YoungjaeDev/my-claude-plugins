@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 20 specialized plugins",
-    "version": "1.7.8"
+    "description": "Personal Claude Code plugin collection with 22 specialized plugins",
+    "version": "1.7.13"
   },
   "plugins": [
     {
@@ -32,8 +32,8 @@
     {
       "name": "code-scout",
       "source": "./plugins/code-scout",
-      "description": "Boilerplate and ML resource discovery",
-      "version": "1.0.0",
+      "description": "Boilerplate and ML resource discovery. Portable tools first (gh CLI, curl + HF REST, uvx hf); Python wrappers carry PEP 723 inline deps so `uv run <abs>` works from any cwd.",
+      "version": "1.1.0",
       "category": "research"
     },
     {
@@ -96,7 +96,7 @@
       "name": "humanizer",
       "source": "./plugins/humanizer",
       "description": "Remove AI writing patterns from text",
-      "version": "2.2.0",
+      "version": "2.1.1",
       "category": "content"
     },
     {
@@ -147,6 +147,13 @@
       "description": "Rewrite prompts using Google's TCREI structure for next-session reuse",
       "version": "1.0.0",
       "category": "content"
+    },
+    {
+      "name": "codex-bridge",
+      "source": "./plugins/codex-bridge",
+      "description": "Sync OMC plugin skills + commands + guidelines to Codex. Skills and commands land at ~/.agents/skills/ (USER scope); guidelines are injected into ~/.codex/AGENTS.md between omc-guidelines markers. Body-only transform with bridge_source provenance.",
+      "version": "1.2.0",
+      "category": "integration"
     }
   ]
 }

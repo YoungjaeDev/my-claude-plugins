@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (21)
+## Plugins (22)
 
 ### Core
 | Plugin | Description |
@@ -65,6 +65,11 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 |--------|-------------|
 | `workflow-viz` | System workflow Mermaid diagrams and ASCII progress tracking |
 
+### Integration
+| Plugin | Description |
+|--------|-------------|
+| `codex-bridge` | Sync OMC plugin skills to Codex `~/.agents/skills/` with body-only transform |
+
 ## Structure
 
 ```
@@ -92,7 +97,8 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── rules-forge/        # CLAUDE.md rules
 │   ├── slidev/             # Presentation generator
 │   ├── workflow-viz/       # Workflow visualization
-│   └── tcrei-prompt/       # TCREI prompt structuring
+│   ├── tcrei-prompt/       # TCREI prompt structuring
+│   └── codex-bridge/       # OMC → Codex skill sync
 ├── CLAUDE.md               # This file
 └── README.md               # Full documentation
 ```
@@ -101,32 +107,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 
 Plugins auto-load from `settings.json`. See README.md for detailed usage of each plugin.
 
-## Plugin Versioning
+## Modular Rules
 
-When updating plugin versions, synchronize these two files:
-
-| File | Purpose |
-|------|---------|
-| `plugins/<name>/.claude-plugin/plugin.json` | Cache refresh trigger (required) |
-| `.claude-plugin/marketplace.json` | UI display/metadata (required) |
-
-### Developer Workflow
-
-1. Update version in `plugin.json`
-2. Sync version in `marketplace.json`
-3. Bump marketplace version in `marketplace.json` metadata
-4. Commit and push
-
-### User Update (Cache Bug Workaround)
-
-Due to plugin cache bugs ([#17361](https://github.com/anthropics/claude-code/issues/17361), [#19197](https://github.com/anthropics/claude-code/issues/19197)), manual cache clearing is required:
-
-```bash
-# 1. Delete cache (required)
-rm -rf ~/.claude/plugins/cache/my-claude-plugins/
-
-# 2. Update marketplace and restart Claude Code
-/plugin marketplace update my-claude-plugins
-```
-
-> **Warning**: `/plugin update` and auto-update do NOT refresh plugin files. Cache deletion is the only reliable method.
+- See @.claude/rules/plugin-versioning.md for plugin version bump contract and cache-refresh workflow.
+- See @.claude/rules/codex-bridge-sync.md for codex-bridge sync invariants (SSOT, body-only transform, `bridge_source` marker, collision guard).

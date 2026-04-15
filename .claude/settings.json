@@ -17,7 +17,8 @@
       "./plugins/slidev",
       "./plugins/workflow-viz",
       "./plugins/rules-forge",
-      "./plugins/tcrei-prompt"
+      "./plugins/tcrei-prompt",
+      "./plugins/codex-bridge"
     ]
   }
 }

@@ -1,5 +1,5 @@
 {
   "name": "codex-bridge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sync OMC plugin skills to Codex ~/.agents/skills/ with body-only transform and bridge_source provenance marker"
 }

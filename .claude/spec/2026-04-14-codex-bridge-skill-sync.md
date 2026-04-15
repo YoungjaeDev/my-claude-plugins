@@ -45,7 +45,7 @@ description: <one-liner>
 
 ## User Story
 
-> Claude Code 에서 OMC 의 `$create-slide`, `$changelog-guide`, `$interview-methodology` 등을 쓰던 사용자가, 터미널에서 `codex` 직접 실행한 독립 Codex CLI 세션에서도 **같은 의도의 skill 들을** `$omc-create-slide`, `$omc-changelog-guide`, `$omc-interview-methodology` 로 호출할 수 있다. OMC 쪽에서 skill 을 수정하거나 새로 추가하면 `$codex-sync` 한 번 돌려서 Codex 쪽을 즉시 align 한다.
+> Claude Code 에서 OMC 의 `$create-slide`, `$changelog-guide`, `$interview-methodology` 등을 쓰던 사용자가, 터미널에서 `codex` 직접 실행한 독립 Codex CLI 세션에서도 **같은 이름·같은 의도의 skill 을** `$create-slide`, `$changelog-guide`, `$interview-methodology` 로 그대로 호출할 수 있다. 프리픽스 없이 OMX core skill 과 동일 네임스페이스 공유. OMC 쪽에서 skill 을 수정하거나 새로 추가하면 `$codex-sync` 한 번 돌려서 Codex 쪽을 즉시 align 한다.
 
 ---
 
@@ -60,7 +60,7 @@ description: <one-liner>
 | **MCP server config 동기화** (`config.toml`) | 서버 등록은 OMX `omx setup` 이 담당. 본 도구 책임 외. |
 | **파일 변경시 자동 sync (hook)** | 명시적 `$codex-sync` 호출 또는 CLI 실행. Hook 은 V2. |
 | **npm 바이너리 배포** | V2. V1 은 repo 내 실행만. |
-| **충돌시만 프리픽스 적용** | V1 은 항상 `omc-` 프리픽스. V2 에서 smart-prefix 옵션. |
+| **프리픽스 기반 격리** | 현 시점 OMX 25 개 vs OMC 26 개 skill 이름 충돌 0 건 확인 (2026-04-14). V1 은 프리픽스 없이 동일 네임스페이스 공유. 미래 OMX 업데이트가 동일 이름 skill 추가할 경우에 대비한 collision-fallback 프리픽스 부여 로직은 V2. |
 
 ---
 
@@ -82,13 +82,15 @@ description: <one-liner>
 - [ ] **Source 자동 탐색**: `plugins/*/skills/**/SKILL.md` 전부 스캔
   - 중첩 허용 (`plugins/<name>/skills/<skill>/SKILL.md` 또는 `plugins/<name>/skills/<subdir>/<skill>/SKILL.md`)
 - [ ] **Skill 디렉토리 통째 복사**: SKILL.md 옆의 scripts/, references/, assets/, 기타 파일 전부 이동
-- [ ] **Frontmatter 변환**:
-  - `name: X` → `name: omc-X`
-  - `description:` 등 나머지 필드 보존
-- [ ] **Mechanical content 치환** (Transform rules 테이블 참고)
-- [ ] **타깃 경로**: `${CODEX_HOME:-~/.codex}/skills/omc-<original-name>/SKILL.md`
-- [ ] **Overwrite-always**: 기존 `omc-*` 파일은 무조건 덮어쓰기
-- [ ] **Orphan auto-prune**: source 에 없는 `omc-*` 디렉토리는 기본 삭제 (별도 플래그 불필요)
+- [ ] **Frontmatter 처리**:
+  - `name` 필드 원본 유지 (프리픽스 없음)
+  - `description:` 등 기존 필드 보존
+  - **`bridge_source: <plugin>/<skill>` 필드 주입** — provenance 마커. orphan prune 식별자로 사용. 사용자 눈에 띄지 않는 메타, transform 대상 아님
+- [ ] **Mechanical content 치환** (Transform rules 테이블 참고). **body (frontmatter 아래) 만 치환 대상**, frontmatter 는 불변 (bridge_source 마커 보존 위함)
+- [ ] **타깃 경로**: `${CODEX_HOME:-~/.codex}/skills/<original-name>/SKILL.md`
+- [ ] **Overwrite-always**: `bridge_source` 마커 있는 기존 파일은 무조건 덮어쓰기. 마커 없는 파일은 OMC 외부 소유로 간주, **안 건드림** (safety guard)
+- [ ] **Orphan auto-prune**: `~/.codex/skills/*/SKILL.md` 중 `bridge_source` 가 있으나 그 경로에 원본이 없는 skill 자동 삭제. `bridge_source` 없는 skill 은 스캔 대상 외
+- [ ] **OMX 충돌 탐지**: 동일 이름의 `bridge_source` 없는 skill (= OMX 소유) 이 이미 있으면 stderr warning + 해당 skill skip. `omx doctor` 안내 출력
 - [ ] **Blacklist 설정**: `plugins/codex-bridge/codex-bridge.config.json`
 - [ ] **Dry-run 모드**: `--dry-run` — 파일 변경 0, 계획만 출력
 - [ ] **Verbose 모드**: `--verbose` — 파일별 행위 출력
@@ -111,7 +113,7 @@ description: <one-liner>
 - [ ] **파일 변경 hook**: `plugins/*/skills/**` Write/Edit 시 자동 sync
 - [ ] **npm 바이너리**: `npx @youngjaedev/omc-codex-sync`
 - [ ] **Project-level 지원**: `--scope project` → `.codex/skills/`
-- [ ] **충돌시만 프리픽스** 모드: `--prefix-mode collision-only`
+- [ ] **Collision-fallback 프리픽스**: OMX 가 나중에 동일 이름 skill 추가하면 자동으로 `omc-<name>` 으로 전환. V1 은 skip-with-warning, V2 는 자동 rename
 - [ ] **양방향 diff 리포트**: OMC ↔ Codex 양쪽 drift 탐지
 
 ---
@@ -147,17 +149,23 @@ V1 은 1+2, V2 에서 3 추가.
 
 ### Transform Rules (V1 — mechanical substitution)
 
-| 치환 전 | 치환 후 | 근거 |
-|---|---|---|
-| `.omc/` | `.omx/` | OMC state dir → OMX state dir |
-| `CLAUDE.md` | `AGENTS.md` | Claude Code → Codex 상위 컨벤션 |
-| `/oh-my-claudecode:<X>` | `$<X>` | slash command → explicit skill invocation |
-| `oh-my-claudecode` (brand text) | `oh-my-codex` | 브랜딩 |
-| `~/.claude/` | `~/.codex/` | user config 디렉토리 |
-| `claude-code-guide` (agent name) | `codex-guide` (V2 예정) | V1 에선 as-is, warning only |
-| `Task(subagent_type=...)` | (변환 안 함, V2) | V1 scope 제한 |
+| 치환 전 | 치환 후 | 매칭 모드 | 근거 |
+|---|---|---|---|
+| `.omc/` | `.omx/` | literal | OMC state dir → OMX state dir |
+| `CLAUDE.md` | `AGENTS.md` | literal | Claude Code → Codex 상위 컨벤션 |
+| `/oh-my-claudecode:<X>` | `$<X>` | literal | slash command → explicit skill invocation |
+| `oh-my-claudecode` (brand text) | `oh-my-codex` | literal | 브랜딩 |
+| `~/.claude/` | `~/.codex/` | literal | user config 디렉토리 |
+| `\bomc\b` | `omx` | word-boundary | 하드코딩된 단일 토큰 "omc" → "omx". 오탐 방지 위해 word-boundary 매칭 |
+| `\bOMC\b` | `OMX` | word-boundary | 대문자 변형 |
+| `claude-code-guide` (agent name) | `codex-guide` (V2 예정) | literal | V1 에선 as-is, warning only |
+| `Task(subagent_type=...)` | (변환 안 함, V2) | — | V1 scope 제한 |
 
-Regex 가 아니라 **literal substring replacement** — 예측 가능성·감사 가능성 우선. 각 치환은 `{from, to}` 객체 배열로 config 에 수록, 사용자가 추가/수정 가능.
+**매칭 모드**:
+- `literal`: `String.prototype.replaceAll()` 의 고정 문자열 치환. 예측 가능성 최고.
+- `word-boundary`: `/\bX\b/g` 정규식. 영숫자/언더스코어 이외 문자로 둘러싸인 X 만 매칭. `omc.json` 은 치환 O, `economic` 은 치환 X (경계 없음).
+
+**frontmatter 면제**: 각 파일의 `---` 구분자 사이 YAML frontmatter 는 치환 대상 아님. 이유: `bridge_source` 메타 필드 보존, 그리고 사용자가 의도적으로 넣은 skill 이름/description 이 오염되지 않도록.
 
 ### Directory/File handling
 
@@ -175,18 +183,21 @@ Regex 가 아니라 **literal substring replacement** — 예측 가능성·감�
     "scope": "user",
     "codexHome": null
   },
-  "prefix": "omc-",
+  "collisionFallbackPrefix": "omc-",
   "exclude": [
     "plugins/interactive-review/**",
     "plugins/midjourney/**"
   ],
   "transform": {
+    "bodyOnly": true,
     "rules": [
-      { "from": ".omc/", "to": ".omx/" },
-      { "from": "CLAUDE.md", "to": "AGENTS.md" },
-      { "from": "/oh-my-claudecode:", "to": "$" },
-      { "from": "oh-my-claudecode", "to": "oh-my-codex" },
-      { "from": "~/.claude/", "to": "~/.codex/" }
+      { "from": ".omc/", "to": ".omx/", "mode": "literal" },
+      { "from": "CLAUDE.md", "to": "AGENTS.md", "mode": "literal" },
+      { "from": "/oh-my-claudecode:", "to": "$", "mode": "literal" },
+      { "from": "oh-my-claudecode", "to": "oh-my-codex", "mode": "literal" },
+      { "from": "~/.claude/", "to": "~/.codex/", "mode": "literal" },
+      { "from": "omc", "to": "omx", "mode": "word-boundary" },
+      { "from": "OMC", "to": "OMX", "mode": "word-boundary" }
     ],
     "textExtensions": [".md", ".yml", ".yaml", ".json", ".sh", ".mjs", ".js", ".py", ".ts"]
   }
@@ -217,13 +228,14 @@ Exit codes:
 
 V1 완료 기준:
 1. `node plugins/codex-bridge/scripts/sync.mjs --dry-run` 시 예상 변경 계획이 정확히 출력됨
-2. `node plugins/codex-bridge/scripts/sync.mjs` 실행 후 `~/.codex/skills/omc-*` 에 이 repo 의 모든 OMC skill (blacklist 제외) 이 존재
-3. 각 skill 의 frontmatter `name` 이 `omc-<original>` 로 변경
-4. Transform rules 적용 확인 (예: `.omc/` 가 `.omx/` 로 바뀜)
-5. OMC 에서 임의 skill 삭제 후 재실행 → `~/.codex/skills/omc-<deleted>` 사라짐
-6. `omx doctor` 실행 → OMX 본래 skill 과 충돌 보고 없음
-7. `codex` 세션 열어서 `$omc-changelog-guide` 호출 가능 확인
+2. `node plugins/codex-bridge/scripts/sync.mjs` 실행 후 `~/.codex/skills/<name>/` 에 이 repo 의 모든 OMC skill (blacklist·OMX 충돌 제외) 이 존재
+3. 각 synced skill 의 frontmatter 에 `bridge_source: <plugin>/<skill>` 필드 존재
+4. Transform rules 적용 확인 (body 영역: `.omc/` → `.omx/`, word-boundary `omc` → `omx` 등. frontmatter 는 불변)
+5. OMC 에서 임의 skill 삭제 후 재실행 → `~/.codex/skills/<deleted>` 에서 `bridge_source` 가 그 경로면 사라짐. 마커 없는 skill 은 손 안 댐
+6. `omx doctor` 실행 → 충돌 보고 없음 (현 시점 충돌 0 건 기준)
+7. `codex` 세션 열어서 `$changelog-guide`, `$create-slide` 등 OMC 출신 skill 직접 호출 가능
 8. Windows/Linux/macOS 전부에서 실행 (CI 또는 수동 검증)
+9. OMX 업데이트 시뮬레이션 (임의의 `~/.codex/skills/create-slide/SKILL.md` 을 `bridge_source` 없이 미리 두고 sync 실행) → 해당 skill skip + warning, 다른 skill 은 정상 처리
 
 ---
 
@@ -246,6 +258,9 @@ V1 완료 기준:
 | 중간에 Ctrl+C | 부분 쓰기 방지 위해 임시 디렉토리 렌더링 후 atomic rename 사용 |
 | SKILL.md 가 아닌 스킬 진입점 (예: commands/*.md) | V1 scope 외 — skills/ 디렉토리만 |
 | OMC skill 본문에 AskUserQuestion / Task tool 참조 | V1 은 변환 없이 복사 (Codex 에서 tool 호출 실패시 사용자가 인지). V2 에서 blacklist 기본값으로 추가 |
+| OMX 가 동일 이름 skill 을 이미 설치한 상태 (`bridge_source` 없음) | sync skip + stderr warning + `omx doctor` 안내. V2 에서 collision-fallback 프리픽스로 재시도 옵션 |
+| word-boundary `omc` 가 의도치 않게 매칭 (예: 변수명 `my_omc_config`) | `my_omx_config` 로 변환 — 변수명은 word 로 인정됨. 사용자가 특정 변수를 보호하려면 blacklist 로 해당 skill 제외 |
+| frontmatter 안의 `omc` 문자열 (예: `description` 에 "omc" 언급) | **변환 안 됨** (bodyOnly: true). 원본 SKILL.md 를 사용자가 의도적으로 "omx" 로 작성하거나 V2 frontmatter-transform 옵션 사용 |
 
 ---
 
@@ -296,7 +311,9 @@ V1 완료 기준:
 2. 빈 `sync.mjs` 에 argument parsing + dry-run 모드 구현
 3. Source discovery (`plugins/*/skills/**/SKILL.md` glob)
 4. Frontmatter YAML 파서 (표준 라이브러리만 — 수동 파싱 혹은 최소 구현)
-5. Overwrite-always + directory copy
+5. **OMX 충돌 탐지**: `~/.codex/skills/<name>/SKILL.md` 존재 & `bridge_source` 없음 → skip + warning
+6. Overwrite-always + directory copy (충돌 통과한 것만)
+7. **bridge_source 마커 주입**: frontmatter 에 `bridge_source: <plugin>/<skill>` 필드 추가
 
 ### Phase 2 — Transform + prune + config
 6. Config 파일 로드 + 검증

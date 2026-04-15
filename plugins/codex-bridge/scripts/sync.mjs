@@ -294,11 +294,26 @@ export async function syncAll(options) {
     return true;
   });
 
+  const nameToPlugins = new Map();
+  for (const skill of filtered) {
+    const bucket = nameToPlugins.get(skill.skillName) ?? [];
+    bucket.push(skill.pluginName);
+    nameToPlugins.set(skill.skillName, bucket);
+  }
+  const collisions = [];
+  for (const [skillName, plugins] of nameToPlugins) {
+    if (plugins.length > 1) {
+      logger.warn(`[codex-bridge] collision: skill '${skillName}' in plugins [${plugins.join(', ')}] — last-wins after deterministic sort: ${plugins[plugins.length - 1]}`);
+      collisions.push({ skillName, plugins });
+    }
+  }
+
   const report = {
     dryRun,
     targetDir,
     discovered: allSkills.length,
     considered: filtered.length,
+    collisions,
     synced: [],
     skipped: [],
     removed: [],
@@ -553,6 +568,12 @@ export async function discoverSkills(pluginsDir) {
       if (err.code !== 'ENOENT') throw err;
     }
   }
+
+  results.sort((a, b) => {
+    if (a.pluginName !== b.pluginName) return a.pluginName < b.pluginName ? -1 : 1;
+    if (a.skillName !== b.skillName) return a.skillName < b.skillName ? -1 : 1;
+    return 0;
+  });
 
   return results;
 }

@@ -4,7 +4,7 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 21 specialized plugins",
+    "description": "Personal Claude Code plugin collection with 22 specialized plugins",
     "version": "1.7.9"
   },
   "plugins": [
@@ -96,7 +96,7 @@
       "name": "humanizer",
       "source": "./plugins/humanizer",
       "description": "Remove AI writing patterns from text",
-      "version": "2.2.0",
+      "version": "2.1.1",
       "category": "content"
     },
     {

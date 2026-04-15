@@ -343,7 +343,7 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 - **Body-only transform**: frontmatter 는 불변, body 만 7개 rule 치환
 - **Orphan prune**: `bridge_source` 있고 source 없어진 skill 자동 삭제
 
-**Transform rules (body-only):** `.omc/` → `.omx/`, `CLAUDE.md` → `AGENTS.md`, `/oh-my-claudecode:` → `$`, `~/.claude/` → `~/.codex/`, word-boundary `omc` → `omx`, `OMC` → `OMX`
+**Transform rules (body-only, 7개):** `.omc/` → `.omx/`, `CLAUDE.md` → `AGENTS.md`, `/oh-my-claudecode:` → `$`, `oh-my-claudecode` → `oh-my-codex`, `~/.claude/` → `~/.codex/`, word-boundary `omc` → `omx`, `OMC` → `OMX`
 
 **진입점:**
 - Claude Code: `$codex-sync [options]`

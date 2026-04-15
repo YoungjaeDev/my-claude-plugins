@@ -96,3 +96,30 @@ test('discoverSkills: skips plugins with no skills/ dir', async () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('discoverSkills: returns deterministically sorted results (pluginName, skillName)', async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-bridge-disc-'));
+  try {
+    const pluginsDir = path.join(tmpDir, 'plugins');
+    const mk = async (plugin, skill) => {
+      const p = path.join(pluginsDir, plugin, 'skills', skill);
+      await fs.mkdir(p, { recursive: true });
+      await fs.writeFile(path.join(p, 'SKILL.md'), `---\nname: ${skill}\n---\n`);
+    };
+    await mk('zebra', 'zeta');
+    await mk('alpha', 'beta');
+    await mk('alpha', 'alpha-skill');
+    await mk('mango', 'skill-x');
+
+    const skills = await discoverSkills(pluginsDir);
+    const order = skills.map(s => `${s.pluginName}/${s.skillName}`);
+    assert.deepEqual(order, [
+      'alpha/alpha-skill',
+      'alpha/beta',
+      'mango/skill-x',
+      'zebra/zeta',
+    ]);
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  }
+});

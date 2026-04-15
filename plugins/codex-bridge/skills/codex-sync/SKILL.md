@@ -5,7 +5,7 @@ description: Sync OMC plugin skills to Codex `~/.agents/skills/` (OpenAI USER sc
 
 # codex-sync
 
-OMC (`plugins/*/skills/**/SKILL.md`) skill 들을 Codex CLI 가 네이티브로 로드하는 `~/.agents/skills/` 로 변환·복사한다.
+OMC 의 skill (`plugins/*/skills/**/SKILL.md`) 과 command (`plugins/*/commands/*.md`) 를 Codex CLI 가 네이티브로 로드하는 `~/.agents/skills/` 로 변환·복사한다. Commands 는 Codex 에 네이티브 대응 개념이 없어 `<plugin>-<command>` 네임스페이스로 wrap 한 skill 로 변환된다.
 
 ## 언제 쓰나
 

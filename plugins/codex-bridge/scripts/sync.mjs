@@ -60,6 +60,39 @@ export function injectBridgeSource(content, marker) {
   return `---\n${newRaw}\n---\n${body}`;
 }
 
+export function normalizeFrontmatterDescription(content) {
+  const match = FRONTMATTER_RE.exec(content);
+  if (!match) return content;
+  const [, raw, body] = match;
+
+  const descRe = /^description:\s*(.*)$/m;
+  const descMatch = descRe.exec(raw);
+  if (!descMatch) return content;
+  const descValue = descMatch[1].trim();
+  if (!descValue.startsWith('|') && !descValue.startsWith('>')) return content;
+
+  const parsed = parseFrontmatter(content);
+  if (!parsed || !parsed.description) return content;
+  const flat = flattenDescription(parsed.description);
+
+  const lines = raw.split(/\r?\n/);
+  const out = [];
+  let skipContinuation = false;
+  for (const line of lines) {
+    if (descRe.test(line)) {
+      out.push(`description: ${yamlQuote(flat)}`);
+      skipContinuation = true;
+      continue;
+    }
+    if (skipContinuation) {
+      if (/^\s/.test(line) || line.trim() === '') continue;
+      skipContinuation = false;
+    }
+    out.push(line);
+  }
+  return `---\n${out.join('\n')}\n---\n${body}`;
+}
+
 export async function syncOne(source, targetRoot, rules, options = {}) {
   const logger = options.logger ?? defaultLogger();
   const sourceContent = await fs.readFile(source.skillPath, 'utf-8');
@@ -87,7 +120,8 @@ export async function syncOne(source, targetRoot, rules, options = {}) {
   }
 
   const transformed = transformSkillContent(sourceContent, rules);
-  const withMarker = injectBridgeSource(transformed, marker);
+  const normalized = normalizeFrontmatterDescription(transformed);
+  const withMarker = injectBridgeSource(normalized, marker);
 
   await fs.mkdir(targetRoot, { recursive: true });
   const stagingDir = await fs.mkdtemp(path.join(targetRoot, `.staging-${source.skillName}-`));
@@ -284,6 +318,7 @@ export async function syncAll(options) {
   } = options;
 
   const allSkills = await discoverSkills(pluginsDir);
+  const allCommands = await discoverCommands(pluginsDir);
   const pluginsRoot = path.dirname(pluginsDir);
 
   const filtered = allSkills.filter((skill) => {
@@ -291,6 +326,14 @@ export async function syncAll(options) {
     const rel = path.relative(pluginsRoot, skill.skillDir).split(path.sep).join('/');
     if (isExcluded(rel, config.exclude)) return false;
     if (isExcluded(`${rel}/SKILL.md`, config.exclude)) return false;
+    return true;
+  });
+
+  const filteredCommands = allCommands.filter((cmd) => {
+    if (pluginFilter && !pluginFilter.includes(cmd.pluginName)) return false;
+    const rel = path.relative(pluginsRoot, cmd.sourcePath).split(path.sep).join('/');
+    if (isExcluded(rel, config.exclude)) return false;
+    if (isExcluded(`plugins/${cmd.pluginName}/**`, config.exclude)) return false;
     return true;
   });
 
@@ -312,7 +355,9 @@ export async function syncAll(options) {
     dryRun,
     targetDir,
     discovered: allSkills.length,
+    discoveredCommands: allCommands.length,
     considered: filtered.length,
+    consideredCommands: filteredCommands.length,
     collisions,
     synced: [],
     skipped: [],
@@ -326,7 +371,7 @@ export async function syncAll(options) {
     validSources.add(marker);
 
     if (dryRun) {
-      logger.info(`[dry-run] would sync ${marker}`);
+      logger.info(`[dry-run] would sync skill ${marker}`);
       report.synced.push({ status: 'dry-run', bridgeSource: marker, skillName: skill.skillName });
       continue;
     }
@@ -334,7 +379,7 @@ export async function syncAll(options) {
     try {
       const result = await syncOne(skill, targetDir, config.transform.rules, { logger });
       if (result.status === 'synced') {
-        logger.info(`[codex-bridge] synced ${marker} → ${result.path}`);
+        logger.info(`[codex-bridge] synced skill ${marker} → ${result.path}`);
         report.synced.push(result);
       } else {
         report.skipped.push({ ...result, skillName: skill.skillName, bridgeSource: marker });
@@ -342,6 +387,30 @@ export async function syncAll(options) {
     } catch (err) {
       logger.warn(`[codex-bridge] error syncing ${marker}: ${err.message}`);
       report.errors.push({ skillName: skill.skillName, bridgeSource: marker, error: err.message });
+    }
+  }
+
+  for (const cmd of filteredCommands) {
+    const marker = `${cmd.pluginName}/commands/${cmd.commandName}`;
+    validSources.add(marker);
+
+    if (dryRun) {
+      logger.info(`[dry-run] would sync command ${marker} → ${cmd.targetSkillName}`);
+      report.synced.push({ status: 'dry-run', bridgeSource: marker, skillName: cmd.targetSkillName });
+      continue;
+    }
+
+    try {
+      const result = await syncCommand(cmd, targetDir, config.transform.rules, { logger });
+      if (result.status === 'synced') {
+        logger.info(`[codex-bridge] synced command ${marker} → ${result.path}`);
+        report.synced.push(result);
+      } else {
+        report.skipped.push({ ...result, skillName: cmd.targetSkillName, bridgeSource: marker });
+      }
+    } catch (err) {
+      logger.warn(`[codex-bridge] error syncing ${marker}: ${err.message}`);
+      report.errors.push({ skillName: cmd.targetSkillName, bridgeSource: marker, error: err.message });
     }
   }
 
@@ -431,7 +500,8 @@ function quietLogger() {
 function printSummary(report) {
   const lines = [
     `[codex-bridge] target: ${report.targetDir}`,
-    `  discovered: ${report.discovered}, considered: ${report.considered}`,
+    `  skills: discovered ${report.discovered}, considered ${report.considered}`,
+    `  commands: discovered ${report.discoveredCommands ?? 0}, considered ${report.consideredCommands ?? 0}`,
     `  synced: ${report.synced.length}, skipped: ${report.skipped.length}, removed: ${report.removed.length}, errors: ${report.errors.length}`,
   ];
   process.stderr.write(`${lines.join('\n')}\n`);
@@ -594,6 +664,128 @@ async function walkForSkillMd(dir, pluginName, out) {
       });
     }
   }
+}
+
+export async function discoverCommands(pluginsDir) {
+  const results = [];
+
+  let pluginEntries;
+  try {
+    pluginEntries = await fs.readdir(pluginsDir, { withFileTypes: true });
+  } catch (err) {
+    if (err.code === 'ENOENT') return results;
+    throw err;
+  }
+
+  for (const entry of pluginEntries) {
+    if (!entry.isDirectory()) continue;
+    const commandsDir = path.join(pluginsDir, entry.name, 'commands');
+    let files;
+    try {
+      files = await fs.readdir(commandsDir, { withFileTypes: true });
+    } catch (err) {
+      if (err.code === 'ENOENT') continue;
+      throw err;
+    }
+    for (const f of files) {
+      if (!f.isFile() || !f.name.endsWith('.md')) continue;
+      const commandName = f.name.slice(0, -3);
+      results.push({
+        pluginName: entry.name,
+        commandName,
+        sourcePath: path.join(commandsDir, f.name),
+        targetSkillName: `${entry.name}-${commandName}`,
+      });
+    }
+  }
+
+  results.sort((a, b) => {
+    if (a.pluginName !== b.pluginName) return a.pluginName < b.pluginName ? -1 : 1;
+    if (a.commandName !== b.commandName) return a.commandName < b.commandName ? -1 : 1;
+    return 0;
+  });
+
+  return results;
+}
+
+export function commandToSkillContent(sourceContent, pluginName, commandName) {
+  const fmMatch = FRONTMATTER_RE.exec(sourceContent);
+  let origDescription = null;
+  let body = sourceContent;
+
+  if (fmMatch) {
+    const parsed = parseFrontmatter(sourceContent);
+    if (parsed) {
+      origDescription = parsed.description;
+      body = parsed.body;
+    }
+  }
+
+  const description = origDescription
+    ? flattenDescription(origDescription)
+    : `Run ${commandName} command from ${pluginName} plugin.`;
+
+  const targetName = `${pluginName}-${commandName}`;
+  const marker = `${pluginName}/commands/${commandName}`;
+
+  return [
+    '---',
+    `name: ${targetName}`,
+    `description: ${yamlQuote(description)}`,
+    `bridge_source: ${marker}`,
+    '---',
+    body.startsWith('\n') ? body.slice(1) : body,
+  ].join('\n');
+}
+
+function flattenDescription(text) {
+  return String(text)
+    .replace(/^[|>][-+0-9]*\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function yamlQuote(text) {
+  return `"${String(text).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+export async function syncCommand(cmd, targetRoot, rules, options = {}) {
+  const logger = options.logger ?? defaultLogger();
+  const sourceContent = await fs.readFile(cmd.sourcePath, 'utf-8');
+
+  const targetSkillName = cmd.targetSkillName ?? `${cmd.pluginName}-${cmd.commandName}`;
+  const targetSkillDir = path.join(targetRoot, targetSkillName);
+  const targetSkillMd = path.join(targetSkillDir, 'SKILL.md');
+  const marker = `${cmd.pluginName}/commands/${cmd.commandName}`;
+
+  try {
+    const existing = await fs.readFile(targetSkillMd, 'utf-8');
+    const existingParsed = parseFrontmatter(existing);
+    const hasBridgeMarker = existingParsed && 'bridge_source' in existingParsed.fields;
+    if (!hasBridgeMarker) {
+      logger.warn(`[codex-bridge] skip ${targetSkillMd}: not managed by OMC (missing bridge_source marker). Inspect with 'omx doctor'.`);
+      return { status: 'skipped', reason: 'non-managed-collision' };
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+
+  const synthesized = commandToSkillContent(sourceContent, cmd.pluginName, cmd.commandName);
+  const transformed = transformSkillContent(synthesized, rules);
+
+  await fs.mkdir(targetRoot, { recursive: true });
+  const stagingDir = await fs.mkdtemp(path.join(targetRoot, `.staging-${targetSkillName}-`));
+
+  try {
+    await fs.writeFile(path.join(stagingDir, 'SKILL.md'), transformed, 'utf-8');
+    await fs.rm(targetSkillDir, { recursive: true, force: true });
+    await moveOrCopy(stagingDir, targetSkillDir);
+  } catch (err) {
+    await fs.rm(stagingDir, { recursive: true, force: true }).catch(() => {});
+    throw err;
+  }
+
+  return { status: 'synced', path: targetSkillMd, bridgeSource: marker };
 }
 
 const isMainModule = (() => {

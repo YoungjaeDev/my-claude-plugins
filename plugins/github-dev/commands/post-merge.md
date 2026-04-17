@@ -18,7 +18,7 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    - If unable to determine, run `gh pr list --state merged --limit 5` to show recent merged PRs and prompt user to select
 
    - Run `gh pr view <PR_NUMBER> --json number,title,baseRefName,headRefName,body,state,files` to get PR details
-   - Verify `state` is MERGED
+   - Verify `state` is MERGED. This `gh pr view` result is the **authoritative merge signal** for the rest of this workflow — later steps MUST NOT re-verify merge state by comparing git SHAs.
 
 2. **Check Local Changes**
    - Run `git status --porcelain` to check for uncommitted changes
@@ -39,8 +39,15 @@ Perform local branch cleanup and configuration updates after a PR has been merge
 
 4. **Clean Up Local Branch**
    - Check if branch exists locally: `git branch --list "$headRefName"`
+   - **Do NOT use any SHA-level commit comparison as a merge check** — `git log <base>..<branch>`, `git cherry <base> <branch>`, `git rev-list --left-right <base>...<branch>`, and similar variants all produce false positives after **squash merge** (base gets one new SHA containing combined content; branch SHAs unchanged) AND **rebase merge** (branch SHAs are rewritten on base — none match). Trust Step 1's `gh pr view` result; the content is already in base even when SHAs diverge.
+   - If unsure whether all content landed in base, compare content (not SHAs):
+     ```bash
+     # Content-level diff is safe for squash merges; empty output = fully landed
+     git diff "origin/$baseRefName..$headRefName" -- <paths>
+     ```
    - If exists, prompt user to confirm deletion
    - If confirmed: `git branch -d "$headRefName"`
+     - For squash-merged branches, expect `warning: not yet merged to HEAD` — this is normal. `git branch -d` detects merge via `origin/<branch>` tracking, so the delete still succeeds. Do NOT escalate to `-D`, do NOT treat the warning as data loss, and do NOT open a new PR for "missing" commits.
    - If any worktrees remain for this branch, inform user:
      > "Worktree detected for `$headRefName`. Run `/exit` with cleanup option to remove it."
 

@@ -110,6 +110,8 @@ Perform local branch cleanup and configuration updates after a PR has been merge
 
 6. **Integrate Learnings into Configuration Files**
 
+   > **Content-First principle**: Refine stale/duplicate content **in place first**, consolidate duplicates next, and only delete a file when it becomes empty or orphaned. File-level deletion is the last resort, not the default.
+
    Read the PR diff (`gh pr diff <PR_NUMBER>`) and PR body to extract learnings. Then integrate each learning into the **appropriate existing section** of configuration files.
 
    **CRITICAL: Never append "Post-Merge Notes" sections.** All learnings must be woven into the existing document structure as if they were always there.
@@ -163,6 +165,8 @@ Perform local branch cleanup and configuration updates after a PR has been merge
      ```
 
 7. **Update Serena Memory (if Serena MCP available)**
+
+   > **Content-First principle**: Before appending new learnings, scan existing memory for stale or duplicate content and refine it **in place**. Only delete a memory file when its content has been fully migrated elsewhere or becomes orphaned.
 
    Integrate PR learnings into Serena memory as native content. Learnings should read as if they were always part of the memory -- not as appended post-merge notes.
 

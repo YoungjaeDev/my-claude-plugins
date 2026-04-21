@@ -15,6 +15,7 @@ GitHub workflow automation commands for Claude Code.
 | `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
 | `/github-dev:code-review` | Process CodeRabbit review feedback with auto-fix |
 | `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |
+| `/github-dev:cleanup` | Archive or delete stale files (OMC state, build artifacts, logs, old docs, user paths) |
 
 ## resolve-issue Flags
 

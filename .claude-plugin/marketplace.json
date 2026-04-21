@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.7.14"
+    "version": "1.8.0"
   },
   "plugins": [
     {
@@ -18,8 +18,8 @@
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
-      "description": "GitHub workflow: commit, PR, issue, worktree, code review, project tracking, release",
-      "version": "1.7.2",
+      "description": "GitHub workflow: commit, PR, issue, worktree, code review, project tracking, release, repo cleanup",
+      "version": "1.8.0",
       "category": "github"
     },
     {

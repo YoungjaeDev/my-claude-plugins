@@ -16,7 +16,7 @@ Process CodeRabbit review feedback. Two entry modes:
 
 ## Entry routing
 
-```
+```text
 if "$ARGUMENTS" is non-empty
   -> Manual mode (Section A)
 else if open PR exists for current branch
@@ -45,7 +45,7 @@ Routing rules:
 
 - `state == "success"` — set `PR_NUM` from the supplied `pr` field, skip the `gh pr list` re-resolution in Entry routing, and continue with Section B.
 - `state == "failure"` — STOP. Print: `CodeRabbit reported failure on ${sha}. Inspect ${target_url} (CodeRabbit logs) before re-running. Not auto-fetching.` Do not call Section B.
-- cr-wait exited 124 (timeout) without a final JSON line — STOP. Print: `cr-wait timed out before CodeRabbit finished. Re-run with a larger --timeout or check ${target_url}.`
+- cr-wait exited 124 (timeout) without a final JSON line — STOP. Print: `cr-wait timed out before CodeRabbit finished. Re-run with a larger --timeout.` On timeout there is no JSON output and therefore no `target_url` to surface; only mention the URL when cr-wait emitted JSON with a non-empty `target_url`.
 - `source` is informational only (`probe` = fast-path hit, `poll` = waited). Behavior is identical for both.
 
 When invoked standalone (without prior cr-wait), skip this section and use the Entry routing block to resolve `PR_NUM` directly.
@@ -72,14 +72,14 @@ Process `$ARGUMENTS` as a pasted CodeRabbit review block.
 
 ### Input format examples
 
-```
+```text
 Warning: Style | Minor
 Variable name does not follow camelCase.
 - const user_name = "John";
 + const userName = "John";
 ```
 
-```
+```text
 Warning: Logic | Critical
 State is missing from useEffect dependency array.
 - useEffect(() => { fetch(url); }, []);
@@ -210,7 +210,7 @@ Severity map:
 
 Display as a single table preserving the original unresolved-thread order. Example:
 
-```
+```text
 CodeRabbit Issues for PR #123: <PR title>
 
 | # | Severity | Issue | Location | Type | Action |
@@ -271,17 +271,20 @@ After all Fix items are processed, show summary: applied / deferred / skipped.
 
 If any fixes were applied (in Section A or Section B):
 
-1. Stage only the changed files explicitly — never `git add -A`. Compute the file list from the working tree diff so both inline and Skill-delegation paths share the same staging behavior:
+1. Stage only the changed files explicitly — never `git add -A`. Compute the file list from the working tree diff so both inline and Skill-delegation paths share the same staging behavior. Use NUL-delimited output + bash array so filenames containing spaces or newlines are handled safely:
 
    ```bash
-   files=$(git diff --name-only)
-   [ -n "$files" ] && git add -- $files
+   files=()
+   while IFS= read -r -d '' f; do
+     files+=("$f")
+   done < <(git diff --name-only -z)
+   [ "${#files[@]}" -gt 0 ] && git add -- "${files[@]}"
    ```
 
 2. Run BUILD / TEST / LINT validation if a quick command exists for this project (see resolve-issue's "Verification Gates" — same tooling reused). Skip if no detectable build system.
 3. Commit with conventional-commits format. Default message:
 
-   ```
+   ```text
    fix: apply CodeRabbit auto-fixes
    ```
 

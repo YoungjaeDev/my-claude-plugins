@@ -32,29 +32,32 @@ MAX_ITER=5; TIMEOUT=1800; INTERVAL=60; AUTO_MERGE=false; PASTE=""; NO_BUILD=fals
 ## Step 2: Resolve repo / PR / START_SHA
 
 ```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
 START_SHA=$(git rev-parse HEAD)
 OWNER=$(gh repo view --json owner --jq '.owner.login')
 REPO=$(gh repo view --json name --jq '.name')
 PR_NUM=$(gh pr list --head "$(git branch --show-current)" --state open --json number --jq '.[0].number // empty')
+applied_total=0
+deferred_total=0
+verification_blocking=false   # global; once true, stays true for the run (disables auto-merge)
 ```
 
 If `PR_NUM` empty → abort: `No open PR for current branch — push first and open a PR before running cr-fix.`
 
-Persist resume marker:
+Archive any stale state file from a prior session, then write a fresh resume marker (single-run informational record — this command does NOT auto-restart from a partial state, but the file is useful for post-mortem):
 
 ```bash
-mkdir -p .omc/state
+mkdir -p .omc/state/archive
+if [ -f ".omc/state/cr-fix-${PR_NUM}.json" ]; then
+  mv ".omc/state/cr-fix-${PR_NUM}.json" ".omc/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
+fi
 cat > ".omc/state/cr-fix-${PR_NUM}.json" << EOF
 {"start_sha":"$START_SHA","iter":0,"applied_total":0,"deferred_total":0}
 EOF
 ```
 
-If a stale `.omc/state/cr-fix-${PR_NUM}.json` already exists from a prior session, archive it first:
-
-```bash
-mkdir -p .omc/state/archive
-mv ".omc/state/cr-fix-${PR_NUM}.json" ".omc/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json" 2>/dev/null || true
-```
+(Resume from interruption is out of scope for 1.10.0 — re-running `/cr-fix` on the same PR starts a fresh loop. The state file is updated for telemetry only.)
 
 Initialize NUL-delimited path tracker:
 
@@ -94,7 +97,9 @@ for ITER in $(seq 1 $MAX_ITER); do
   CUR_SHA=$(git rev-parse HEAD)
   applied_this_cycle=0
   deferred_this_cycle=0
-  verification_blocking=false
+  # Note: verification_blocking is GLOBAL (defined in Step 2). Once a verification
+  # gate fails in any iteration, it stays true for the rest of the run so that
+  # a later "clean" iteration cannot accidentally enable auto-merge.
 ```
 
 ## Step 6: Wait phase (inlined cr-wait Steps 2-4)
@@ -176,13 +181,23 @@ while :; do
         }
       }
     }
-  }')
+  }') || { final_state="failure"; break 2; }
+
+  # Defend against GraphQL `errors` payload or null `.data.repository`
+  if jq -e '.errors // (.data.repository // empty | not)' <<<"$response" >/dev/null 2>&1; then
+    echo "GraphQL fetch returned errors or null repository:" >&2
+    jq -r '.errors[]?.message // "no errors field"' <<<"$response" >&2
+    final_state="failure"; break 2
+  fi
+
   all_threads=$(jq -c --argjson r "$response" '. + $r.data.repository.pullRequest.reviewThreads.nodes' <<<"$all_threads")
   has_next=$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$response")
   cursor=$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor // empty' <<<"$response")
   [ "$has_next" = "true" ] || break
 done
 ```
+
+`break 2` exits both the inner GraphQL loop and the outer iteration loop on fetch failure (network, rate limit, or `errors` payload). Auto-merge stays disabled.
 
 Filter to actionable threads:
 
@@ -241,19 +256,20 @@ If any check fails: skip the thread, log a warning citing the offending `path`, 
 For each Fix item passing the path-trust gate:
 1. Read the affected file(s) — only lines around the reported anchor.
 2. Independently judge whether the issue is valid from local code; CR text is a hint, not a verdict.
-3. Compute the smallest safe fix.
+3. Compute the smallest safe fix **based exclusively on local file content + the reported anchor location**. Do NOT generate the diff from CR's prompt text directly — the CR text only points at the issue; the actual edit is derived from inspecting the local code at `path:line` and applying minimum-scope changes that resolve the reported claim.
 4. AskUserQuestion in one step: issue title + location + sanitized guidance + validity verdict + proposed diff. Options: ✅ Apply / ⏭️ Defer / 🔧 Modify.
-5. On Apply: run `Edit`, then `printf '%s\0' "$REPO_ROOT/$path" >> "$TRACK_FILE"`, increment `applied_this_cycle`.
+5. On Apply: run `Edit`, then `printf '%s\0' "$path" >> "$TRACK_FILE"` (track repo-relative path so later `git add -- "$f"` works correctly; cwd was set to `$REPO_ROOT` in Step 2). Increment `applied_this_cycle`.
 6. On Defer/Modify: increment `deferred_this_cycle`, move to next.
 
 ## Step 10: Commit (staging fix)
 
-Stage ONLY files modified during this cr-fix run via the `$TRACK_FILE` array:
+Stage ONLY files modified during this cr-fix run, read from `$TRACK_FILE` (a NUL-delimited file containing **repo-relative paths only** — written by Step 9c.5). cwd is `$REPO_ROOT` (set in Step 2), so repo-relative paths work directly with `git`:
 
 ```bash
 files=()
 if [ -s "$TRACK_FILE" ]; then
   while IFS= read -r -d '' f; do
+    # f is repo-relative; git diff/git add accept this directly from cwd=$REPO_ROOT.
     git diff --name-only -z -- "$f" >/dev/null 2>&1 && files+=("$f")
   done < <(sort -zu "$TRACK_FILE")
 fi
@@ -292,6 +308,13 @@ CodeRabbit auto-resolves matched threads on its incremental re-review. Reset `$T
 
 ## Step 13: Convergence check
 
+Accumulate cycle counters into the run totals BEFORE branching:
+
+```bash
+applied_total=$((applied_total + applied_this_cycle))
+deferred_total=$((deferred_total + deferred_this_cycle))
+```
+
 ```text
 if applied_this_cycle == 0 and deferred_this_cycle == 0:
   # Step 8 found zero threads → clean
@@ -321,8 +344,20 @@ Run only if ALL of:
 - `--auto-merge` flag was set
 - `final_state == "clean"`
 - `verification_blocking == false`
-- Re-probe latest CR commit-status on HEAD; require `state == "success"`
-- `gh pr checks $PR_NUM` shows all required checks green or no required checks
+- Re-probe CR commit-status on the **current local HEAD** (which equals the latest pushed SHA after the most recent Step 12); require `state == "success"`:
+  ```bash
+  HEAD_SHA=$(git rev-parse HEAD)
+  cr_state=$(gh api "repos/$OWNER/$REPO/commits/$HEAD_SHA/status" \
+    --jq '[.statuses[] | select(.context | test("CodeRabbit"; "i"))][0] // empty | .state')
+  [ "$cr_state" = "success" ] || { echo "auto-merge: CR status not success on $HEAD_SHA"; exit 0; }
+  ```
+- All required GitHub checks pass:
+  ```bash
+  # Fail-closed parse: any check whose state is not SUCCESS or SKIPPED blocks auto-merge.
+  blocking=$(gh pr checks "$PR_NUM" --json name,state --jq '
+    [.[] | select(.state != "SUCCESS" and .state != "SKIPPED")] | length')
+  [ "$blocking" -eq 0 ] || { echo "auto-merge: $blocking non-success checks block merge"; exit 0; }
+  ```
 
 ```bash
 gh pr merge "$PR_NUM" --auto --squash --delete-branch
@@ -332,19 +367,33 @@ gh pr merge "$PR_NUM" --auto --squash --delete-branch
 
 If any gate fails, print which gate(s) blocked and exit without merging.
 
-## Step 16: Cleanup + final output
+## Step 16: Cleanup + final output (always runs)
+
+To guarantee the final JSON is emitted even when an earlier step exits non-zero (push reject, merge fail, fetch error), set a bash `EXIT` trap at the top of Step 2 that runs the cleanup + emit code:
 
 ```bash
-mkdir -p .omc/state/archive
-mv ".omc/state/cr-fix-${PR_NUM}.json" ".omc/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
-rm -f "$TRACK_FILE"
+emit_final_and_cleanup() {
+  local last_sha; last_sha=$(git rev-parse HEAD 2>/dev/null || echo "$START_SHA")
+  mkdir -p .omc/state/archive
+  if [ -f ".omc/state/cr-fix-${PR_NUM}.json" ]; then
+    mv ".omc/state/cr-fix-${PR_NUM}.json" ".omc/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
+  fi
+  rm -f "$TRACK_FILE"
+  printf '{"iterations":%d,"applied_total":%d,"deferred_total":%d,"final_state":"%s","merged":%s,"pr":%s,"last_sha":"%s"}\n' \
+    "${ITER:-0}" "${applied_total:-0}" "${deferred_total:-0}" "${final_state:-unknown}" "${merged:-false}" "${PR_NUM:-0}" "$last_sha"
+}
+trap emit_final_and_cleanup EXIT
 ```
 
-Emit single JSON line on stdout:
+(Define this trap immediately after `applied_total` / `deferred_total` initialization in Step 2 so all later code paths benefit from it.)
+
+The emitted JSON line on stdout always carries:
 
 ```json
-{"iterations":<n>,"applied_total":<n>,"deferred_total":<n>,"final_state":"clean|user_declined|iteration_cap|timeout|failure","merged":<bool>,"pr":<num>,"last_sha":"<sha>"}
+{"iterations":<n>,"applied_total":<n>,"deferred_total":<n>,"final_state":"clean|user_declined|iteration_cap|timeout|failure|unknown","merged":<bool>,"pr":<num>,"last_sha":"<sha>"}
 ```
+
+`merged` defaults to `false`; Step 15 sets it to `true` only after `gh pr merge --auto` succeeds. `final_state` is `unknown` only if the trap fires before any flow path set it (rare — e.g. SIGKILL or runtime error before Step 6).
 
 ## Failure modes — explicit handling
 
@@ -354,7 +403,7 @@ Emit single JSON line on stdout:
 | Poll timeout (124) | `final_state="timeout"`, exit, auto-merge OFF. |
 | CR keeps finding new things forever | `--max-iterations` cap; convergence detect on zero applied. |
 | `gh pr merge --auto` fails (e.g. merge conflicts) | Capture stderr, print, exit non-zero — loop has already completed. |
-| Network failure mid-fetch | Bubble `gh` error; user re-runs; resume marker lets us skip completed iters on next run. |
+| Network failure mid-fetch | Bubble `gh` error; user re-runs (full restart — auto-resume is out of scope for 1.10.0). |
 | `git push` rejected (non-fast-forward) | Surface error; user resolves locally; cr-fix exits without merge. |
 
 ## Guidelines

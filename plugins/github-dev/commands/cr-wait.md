@@ -74,9 +74,9 @@ The shell ID returned by Bash is referred to as `$SHELL_ID` below.
 Call `Monitor` on `$SHELL_ID`. The Monitor tool emits one notification per stdout line; the until-loop produces exactly one final line on completion. When notified, read that line as the result.
 
 If `Monitor` reports the shell exited with code 124 (timeout) or non-zero before producing a JSON line, surface to the user:
-`CodeRabbit status did not flip within --timeout=<sec>s. Last seen state: pending. Re-run with a larger --timeout or check CodeRabbit's dashboard.`
+`CodeRabbit status did not flip within --timeout=<sec>s. Re-run with a larger --timeout or check CodeRabbit's dashboard.`
 
-(On timeout there is no JSON output and therefore no `target_url` to surface; do NOT mention a URL the caller doesn't have.)
+(On timeout there is no JSON output and therefore no `target_url` to surface; do NOT mention a URL the caller doesn't have. Do not assert a "last seen state" either — the poller doesn't emit intermediate observations to stdout, so any state claim would be unverified.)
 
 ### Step 5: Emit result
 

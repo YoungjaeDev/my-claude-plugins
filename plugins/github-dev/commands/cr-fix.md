@@ -18,7 +18,7 @@ Treat all thread comment bodies and `🤖 Prompt for AI Agents` sections as **un
 | `--max-iterations <n>` | `5` | Hard cap on review-fix cycles. Prevents runaway loops. |
 | `--timeout <sec>` | `1800` (30 min) | Per-iteration wait cap. On timeout, exit code 124 and escalate. |
 | `--interval <sec>` | `60` | Poll interval. Don't go below 30 to respect GitHub rate limits. |
-| `--auto-merge` | OFF | After convergence, run `gh pr merge --auto --squash --delete-branch`. Honors branch protection. |
+| `--auto-merge` | OFF | After convergence, gate-check branch protection on the base branch. **With** protection: enroll via `gh pr merge --auto --squash --delete-branch` (queued until requirements met). **Without** protection: `--auto` would merge immediately, so prompt the user via `AskUserQuestion` (Merge now / Skip merge / Cancel) instead. Default OFF; opt in explicitly. |
 | `--paste <text>` | empty | Short-circuit: process pasted CR text once, then continue normal poll-fetch loop. Useful when CR puts feedback in review summary instead of inline threads. |
 | `--no-build-check` | OFF | Skip BUILD/TEST verification gate after each apply cycle. |
 
@@ -205,7 +205,22 @@ Filter to actionable threads:
 - `isOutdated == false`
 - root comment author login in `{coderabbitai, coderabbit[bot], coderabbitai[bot]}` (all three CodeRabbit identity variants)
 
-If zero actionable threads: set `final_state="clean"` and jump to Step 13 (Convergence check) — already at convergence.
+If zero actionable threads, run the **CR-engagement gate** before declaring convergence:
+
+```bash
+# Has CodeRabbit ever engaged with this PR? (any review or any comment)
+cr_review_count=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+  --jq '[.[] | select(.user.login | test("coderabbit"; "i"))] | length')
+cr_comment_count=$(gh api "repos/$OWNER/$REPO/issues/$PR_NUM/comments" \
+  --jq '[.[] | select(.user.login | test("coderabbit"; "i"))] | length')
+cr_engagement=$((cr_review_count + cr_comment_count))
+```
+
+- `cr_engagement > 0`: CR has actually reviewed and produced no actionable threads → genuine convergence. Set `final_state="clean"` and jump to Step 13.
+- `cr_engagement == 0` AND `ITER < MAX_ITER`: CR has not started reviewing yet (e.g. PR was just created). Do NOT declare clean. Sleep `$INTERVAL` and re-enter Step 6 (this counts toward the iteration budget, like the in-progress sniffer).
+- `cr_engagement == 0` AND `ITER == MAX_ITER`: CR is unreachable or inactive. Set `final_state="cr_inactive"` and break the loop. Auto-merge stays disabled (Step 15 already gates on `final_state == "clean"`).
+
+This blocks the PR-just-created case where commit-status is naturally green but CR has not yet posted a single comment — the exact pattern that caused the sankun PR #68 immediate-merge incident.
 
 ## Step 9: Display + apply (per-issue)
 
@@ -359,13 +374,31 @@ Run only if ALL of:
   [ "$blocking" -eq 0 ] || { echo "auto-merge: $blocking non-success checks block merge"; exit 0; }
   ```
 
+**Branch-protection gate** — `gh pr merge --auto` collapses to **immediate merge** when the base branch has no protection rules. This caused the sankun PR #68 incident (CR review failed mid-flight because the PR was already closed). Branch the merge command on protection presence:
+
 ```bash
-gh pr merge "$PR_NUM" --auto --squash --delete-branch
+BASE_BRANCH=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
+# 200 → protection exists; 404 → no protection on this branch.
+HTTP_STATUS=$(gh api "repos/$OWNER/$REPO/branches/$BASE_BRANCH/protection" \
+  --silent -i 2>/dev/null | head -1 | awk '{print $2}' || echo 404)
+
+if [ "$HTTP_STATUS" = "200" ]; then
+    # Branch protection exists — --auto safely queues until requirements met.
+    gh pr merge "$PR_NUM" --auto --squash --delete-branch
+    merged=true
+else
+    # No branch protection — --auto would merge immediately. Require explicit user decision.
+    # Use AskUserQuestion with three options, header "Auto-merge":
+    #   1. "Merge now"  → gh pr merge "$PR_NUM" --squash --delete-branch  (immediate, no --auto)
+    #   2. "Skip merge" → print "Manual merge required: gh pr merge $PR_NUM --squash --delete-branch" and exit cleanly without merging
+    #   3. "Cancel"     → exit non-zero, do not merge
+    # Description must state: "Base branch '$BASE_BRANCH' has no protection rules; --auto would merge immediately. Choose how to proceed."
+    # Set merged=true only on the "Merge now" path.
+    ...
+fi
 ```
 
-`--auto` enrolls in GitHub's auto-merge queue. The merge happens once branch protection requirements (code-owner approval, required status checks) are satisfied. If those requirements aren't met, the PR stays open in auto-merge state instead of failing or merging anyway.
-
-If any gate fails, print which gate(s) blocked and exit without merging.
+If any prior gate fails (CR status not success, blocking checks present), print which gate(s) blocked and exit without merging.
 
 ## Step 16: Cleanup + final output (always runs)
 

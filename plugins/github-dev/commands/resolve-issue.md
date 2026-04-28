@@ -176,12 +176,18 @@ Before starting the workflow:
 
 10.5. **[NEW] Auto cr-fix loop (default ON)**:
     - Unless `--skip-cr-fix` is passed, invoke the `/github-dev:cr-fix` workflow inline (read `plugins/github-dev/commands/cr-fix.md` and execute its 16-step body in this same Claude turn). Pass through the resolve-issue flags: `--cr-fix-max <n>` becomes cr-fix's `--max-iterations`; `--auto-merge` is forwarded as-is. CodeRabbit auto-review takes ~7-30 min per cycle; cr-fix's wait phase uses `Bash(run_in_background) + Monitor` so token cost during waits is ~0.
+
+    > **Ambiguous user phrase handling**:
+    >
+    > User phrases like "auto merge로", "auto merge 전까지", "끝까지", "머지까지 가줘" are ambiguous — they can mean "enroll in auto-merge queue" or "drive until merge actually completes" or "drive the loop but stop before any merge". Default interpretation: drive cr-fix to natural convergence (`final_state="clean"` AND CR engagement gate satisfied). Do NOT enroll auto-merge unless the user passes the explicit `--auto-merge` flag. If the user used such a phrase but did not pass `--auto-merge`, surface a single `AskUserQuestion` ("did you mean enroll auto-merge?" — Yes / No) before any merge action. The sankun PR #68 incident (immediate merge with CR review left dangling) was caused by interpreting an ambiguous phrase as implicit `--auto-merge`.
+
     - Print one banner line at start: `CR auto-fix loop starting; pass --skip-cr-fix to disable.`
     - On non-success exit:
-      - `final_state` ∈ {failure, iteration_cap, user_declined}: cr-fix emits a final JSON line via its EXIT trap (Step 16). Surface that JSON's diagnostic to the user.
+      - `final_state` ∈ {failure, iteration_cap, user_declined, cr_inactive}: cr-fix emits a final JSON line via its EXIT trap (Step 16). Surface that JSON's diagnostic to the user.
       - `final_state="timeout"`: cr-fix's trap still emits the JSON line (with `final_state="timeout"` and `merged=false`), but the user-facing message should additionally mention exit code 124 if the underlying poller hit the wall-clock cap. Surface "cr-fix timed out — re-run with a larger `--cr-fix-max` or `--timeout`, or check the CodeRabbit dashboard."
+      - `final_state="cr_inactive"`: CodeRabbit never engaged with the PR within the iteration budget. Surface "CodeRabbit did not review the PR; merge not attempted. Check the CodeRabbit dashboard or re-run with a larger `--cr-fix-max`."
       - In all non-success cases, resolve-issue still considers itself complete (PR is open and reviewable). Do NOT auto-merge in any non-clean exit.
-    - On `final_state="clean"` and `--auto-merge` flag set: cr-fix already enrolled the PR in GitHub auto-merge queue (`gh pr merge --auto --squash --delete-branch`). The merge happens server-side once branch protection requirements are met.
+    - On `final_state="clean"` and `--auto-merge` flag set: cr-fix's Step 15 branches on branch-protection presence. With protection, `gh pr merge --auto --squash --delete-branch` queues the merge until protection requirements are met. Without protection, cr-fix prompts the user (Merge now / Skip merge / Cancel) — `--auto` would otherwise collapse to immediate merge and bypass any external review.
     - Save checkpoint: phase="cr-fix"
 
 11. **Update Issue Checkboxes**: Mark completed checkbox items in the issue as done.

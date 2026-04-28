@@ -13,7 +13,7 @@ GitHub workflow automation commands for Claude Code.
 | `/github-dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
 | `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
-| `/github-dev:cr-fix` | Unified CodeRabbit pipeline: wait + fetch + apply + push loop until clean, with optional auto-merge (default ON in resolve-issue) |
+| `/github-dev:cr-fix` | Unified CodeRabbit pipeline: wait + fetch + apply + push loop until clean, with optional auto-merge (default OFF; pass `--auto-merge` to enroll). Gates merge on branch-protection presence and on actual CR engagement. |
 | `/github-dev:code-review` | (Deprecated 1.10) Process CodeRabbit review feedback with auto-fetch or manual paste fallback |
 | `/github-dev:cr-wait` | (Deprecated 1.10) Wait for CodeRabbit GitHub commit-status to flip (background poll + Monitor) |
 | `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |

@@ -64,7 +64,7 @@ A snapshot of the keys this plugin depends on:
 | `reviews.enable_prompt_for_ai_agents` | true | `code-review` parses the AI Agents block |
 | `reviews.commit_status` | true | `cr-wait` polls this check |
 | `auto_review.enabled` | true | trigger reviews on push |
-| `auto_review.auto_incremental_review`| true | review subsequent  pushes |
+| `auto_review.auto_incremental_review` | true | review subsequent pushes |
 
 ## Verification
 

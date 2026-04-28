@@ -55,6 +55,17 @@ reviews:
 
 CodeRabbit auto-ingests `CLAUDE.md` / `AGENTS.md` / `.cursorrules` as review criteria — no extra config needed. If you maintain `.claude/rules/*.md` modules in this repo, they ARE picked up via the root `CLAUDE.md` `@.claude/rules/...` references.
 
+## Quick reference table
+
+A snapshot of the keys this plugin depends on:
+
+| Key | Default | Plugin dependency |
+|-----|---------|-------------------|
+| `reviews.enable_prompt_for_ai_agents` | true | `code-review` parses the AI Agents block |
+| `reviews.commit_status` | true | `cr-wait` polls this check |
+| `auto_review.enabled` | true | trigger reviews on push |
+| `auto_review.auto_incremental_review`| true | review subsequent  pushes |
+
 ## Verification
 
 After saving, push a commit and verify:

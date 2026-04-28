@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.9.0"
+    "version": "1.10.0"
   },
   "plugins": [
     {
@@ -18,8 +18,8 @@
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
-      "description": "GitHub workflow: commit, PR, issue, worktree, code review (CodeRabbit auto-fetch + cr-wait polling), project tracking, release, repo cleanup",
-      "version": "1.9.0",
+      "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit cr-fix pipeline (wait + auto-fetch + apply + push loop with optional auto-merge), project tracking, release, repo cleanup",
+      "version": "1.10.0",
       "category": "github"
     },
     {

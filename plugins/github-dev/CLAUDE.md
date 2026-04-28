@@ -13,8 +13,9 @@ GitHub workflow automation commands for Claude Code.
 | `/github-dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
 | `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
-| `/github-dev:code-review` | Process CodeRabbit review feedback with auto-fetch (no copy-paste) or manual paste fallback |
-| `/github-dev:cr-wait` | Wait for CodeRabbit GitHub commit-status to flip from pending (background poll + Monitor) |
+| `/github-dev:cr-fix` | Unified CodeRabbit pipeline: wait + fetch + apply + push loop until clean, with optional auto-merge (default ON in resolve-issue) |
+| `/github-dev:code-review` | (Deprecated 1.10) Process CodeRabbit review feedback with auto-fetch or manual paste fallback |
+| `/github-dev:cr-wait` | (Deprecated 1.10) Wait for CodeRabbit GitHub commit-status to flip (background poll + Monitor) |
 | `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |
 | `/github-dev:cleanup` | Archive or delete stale files (OMC state, build artifacts, logs, old docs, user paths) |
 
@@ -24,6 +25,9 @@ GitHub workflow automation commands for Claude Code.
 |------|-------------|
 | `--skip-review` | Skip 2-stage review (for trusted changes) |
 | `--strict` | Treat lint failures as blocking errors |
+| `--skip-cr-fix` | Skip the auto cr-fix loop after PR creation (default ON) |
+| `--cr-fix-max <n>` | Cap iterations on the auto cr-fix loop (default: 5) |
+| `--auto-merge` | Pass through to cr-fix; auto-merge after convergence (default OFF) |
 
 ## Recommended Worktree Workflow
 

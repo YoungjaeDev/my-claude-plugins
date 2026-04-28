@@ -110,7 +110,50 @@ Perform local branch cleanup and configuration updates after a PR has been merge
 
 6. **Integrate Learnings into Configuration Files**
 
+   > **Core Principle: No Stamps, Topical Names, Current State Only**
+   >
+   > Normative docs (CLAUDE.md, AGENTS.md, GEMINI.md, .claude/rules/*, Serena memory) hold the **current rules only**. Change history (provenance) is already preserved permanently in git commit messages, PR bodies, and GitHub blame -- do not duplicate it inside the docs.
+   >
+   > **Forbidden patterns (regex-identifiable):**
+   > - `\(?#\d+\)?` -- `(#123)`, `#123` inline citations
+   > - `\b(PR|pr|Pull Request) ?#?\d+\b` -- `PR #50`, `PR50`, `Pull Request 50`
+   > - `\b([Ii]ssue|이슈) ?#?\d+\b` -- `Issue #65`, `이슈 #53` (Korean stamp variant retained so the regex matches both English and Korean projects)
+   > - `\b(Added|Removed|Fixed|Changed|Introduced) in (PR|#)` -- historical narrative openers
+   > - `## Post-Merge` -- date- or PR-based section headers
+   > - `<YYYY-MM-DD>` embedded inside a section header itself
+   >
+   > **Section naming**: topical names only (e.g., `## Process Lifecycle`, `## Crawler Throttling`). Never include dates, PR numbers, or issue numbers in section names.
+   >
+   > **Writing tone**: "X is async" (current-state). NOT "X was changed to async in PR #50" (history). NOT "Previously we used Y; now we use X (#50)" (transition narrative).
+   >
+   > **Language consistency**: Match the language of the surrounding section. If the existing doc/section is Korean, write the new bullet in Korean; if English, write English. Never introduce a second language into a single-language section -- mid-sentence code-switching breaks readability and grep. Inspect the file's dominant language before writing; when unsure, use the language of the closest sibling bullet.
+   >
+   > **Exception**: `Closes #N` / `Fixes #N` GitHub keywords are allowed only inside commit messages, PR bodies, and issue bodies. Forbidden inside normative docs.
+
    > **Content-First principle**: Refine stale/duplicate content **in place first**, consolidate duplicates next, and only delete a file when it becomes empty or orphaned. File-level deletion is the last resort, not the default.
+
+   **Pre-Audit: Clean Existing Pollution First**
+
+   Before integrating new learnings, scrub existing stamps out of the target files first. This is the incremental healing step that gradually undoes pollution left by prior runs.
+
+   1. Build the target file candidate list: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.claude/rules/*.md` -- whichever exist.
+   2. For each file, grep for the Core Principle's forbidden patterns:
+      ```bash
+      rg -nP '(\(?#\d+\)?|\b(PR|pr) ?#?\d+\b|\b([Ii]ssue|이슈) ?#?\d+\b|\b(Added|Removed|Fixed|Changed|Introduced) in (PR|#)|## Post-Merge)' <file>
+      ```
+   3. If the hit count is 0, skip Pre-Audit immediately and proceed to the next step (Read the PR diff).
+   4. If hits are found, report to the user:
+      - Per-file hit line numbers with the quoted original text
+      - A "strip-stamp, preserve meaning" rewrite proposal for each line
+   5. **Rewrite principles**:
+      - Strip the stamp only, preserve normative content -- `"max_pages default is 10 (#53)"` -> `"max_pages default is 10"`
+      - Convert historical narrative to current-state -- `"PR #18 benchmark is no longer the safety baseline"` -> delete the line, or `"the uniform 1-2.5s benchmark is not used"` (current rule only)
+      - Same issue cited across multiple places -- consolidate the content into the single best-fit section, then delete the other citations
+      - Reasoning lifted from PR/issue bodies stays; only the citation goes
+   6. Apply gate via `AskUserQuestion`:
+      - Offer "apply all" / "pick per file" / "skip Pre-Audit"
+      - Show per-file hit counts in the description
+   7. Apply the approved cleanup, then proceed to integrate the new learnings.
 
    Read the PR diff (`gh pr diff <PR_NUMBER>`) and PR body to extract learnings. Then integrate each learning into the **appropriate existing section** of configuration files.
 
@@ -156,6 +199,18 @@ Perform local branch cleanup and configuration updates after a PR has been merge
      - Follow structure: Role, Key Components, Do's, Don'ts
      - **Always confirm with user before creating new rule files**
 
+   - **Pre-presentation validation (stamp self-check)**:
+
+     Before showing the proposal to the user, self-check **every added or modified line** against the Core Principle's forbidden patterns. (`Remove:` style cleanup lines are not subject to this check -- removing stamps is the goal.)
+
+     Validation checklist:
+     - [ ] No added/modified line contains `(#N)`, `PR #N`, `Issue #N`, `이슈 #N`, or similar inline citations
+     - [ ] No new section header includes a date, PR number, or issue number (`## Post-Merge`, `## 2026-04-28 Updates`, etc. forbidden)
+     - [ ] Every added bullet uses current-state tone ("X is async") -- not transition tone ("X was changed to async")
+     - [ ] No "Added in PR" / "Removed in PR" / "Fixed in PR" / "Introduced in PR" phrasing
+
+     **If any check fails**: do not show the proposal -- rewrite first. Self-loop until the patterns are satisfied. Every checkbox must be ✓ at the moment the proposal is presented.
+
    - Present the integration proposal to user as a diff-style summary before applying:
      ```
      CLAUDE.md changes:
@@ -169,6 +224,15 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    > **Content-First principle**: Before appending new learnings, scan existing memory for stale or duplicate content and refine it **in place**. Only delete a memory file when its content has been fully migrated elsewhere or becomes orphaned.
 
    Integrate PR learnings into Serena memory as native content. Learnings should read as if they were always part of the memory -- not as appended post-merge notes.
+
+   **Pre-Audit (clean stamps from existing memory files)**:
+
+   Before `list_memories` -> `read_memory`, grep every memory file against the Core Principle patterns. If hits are found, run the same Step 6 Pre-Audit procedure -- get user approval, then clean (`edit_memory`). After cleanup, proceed to integrate the new learnings.
+
+   The following patterns must be cleaned on sight (matching the "Bad" example below):
+   - `## Post-Merge (date, PR #N)` headers -- distribute the content into topical sections, then delete the header
+   - `post_merge_prN.md` filenames themselves -- migrate the content into a topical file, then delete the file
+   - `(Issue #N)` / `(이슈 #N)` inline citations inside bullets -- strip the citation only, preserve the content
 
    **Procedure:**
 
@@ -195,6 +259,7 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    - If no matching section exists, create a **topical section** named after the subject (e.g., `## Shutdown Handling`), not after the PR
    - Update outdated descriptions in place rather than keeping old text alongside new
    - If content doesn't fit any existing file, append to `project_overview.md` as catch-all
+   - **Self-check before applying `edit_memory`**: verify the text being added does not contain Core Principle forbidden patterns (`(#N)`, `PR #N`, `이슈 #N`, "Added in PR", etc.). If it does, rewrite first, then apply.
 
    **Example -- Good (PR #132: graceful shutdown fix):**
 
@@ -275,11 +340,13 @@ Role description (1-2 lines)
 
 ### Anti-Patterns (NEVER do these)
 
-- **Changelog-style notes**: `## Post-Merge Notes (PR #N)` sections at the bottom
-- **PR-specific Serena files**: `post_merge_prN.md` memory files
-- **Post-Merge headers in Serena memory**: `## Post-Merge (date, PR #N)` sections within memory files -- use topical section names instead
-- **Append-only updates**: Adding new sections instead of updating existing ones
-- **Footnote references**: "See PR #N for details" scattered in the document
+→ See **Core Principle: No Stamps, Topical Names, Current State Only** at the top of Step 6.
+
+Summary:
+- Never cite a PR or issue inside a normative doc (inline, header, or footnote)
+- No `## Post-Merge` style changelog sections; no `post_merge_prN.md` style PR-specific memory files
+- No append-only patterns -- update existing sections in place
+- No historical narrative -- write in current-state form
 
 ### Correct Integration Examples
 

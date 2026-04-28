@@ -13,7 +13,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 ### GitHub & Code Review
 | Plugin | Description |
 |--------|-------------|
-| `github-dev` | GitHub workflow (commit, PR, issue, code review) |
+| `github-dev` | GitHub workflow (commit, PR, issue, unified cr-fix CodeRabbit pipeline) |
 | `interactive-review` | Web UI code review with MCP server |
 
 ### Research & Search

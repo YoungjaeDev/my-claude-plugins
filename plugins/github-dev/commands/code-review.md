@@ -31,6 +31,23 @@ Resolve "open PR for current branch":
 PR_NUM=$(gh pr list --head "$(git branch --show-current)" --state open --json number --jq '.[0].number // empty')
 ```
 
+## cr-wait result handling (when chained)
+
+If invoked immediately after `/github-dev:cr-wait`, treat the previous command's single-line JSON output as authoritative. Schema:
+
+```json
+{"state":"success|failure","sha":"...","pr":<num>,"target_url":"...","source":"probe|poll"}
+```
+
+Routing rules:
+
+- `state == "success"` — proceed normally (Section B). Use the supplied `pr` value; do not re-resolve unless missing.
+- `state == "failure"` — STOP. Print: `CodeRabbit reported failure on ${sha}. Inspect ${target_url} (CodeRabbit logs) before re-running. Not auto-fetching.` Do not call Section B.
+- cr-wait exited 124 (timeout) without a final JSON line — STOP. Print: `cr-wait timed out before CodeRabbit finished. Re-run with a larger --timeout or check ${target_url}.`
+- `source` is informational only (`probe` = fast-path hit, `poll` = waited). Behavior is identical for both.
+
+When invoked standalone (without prior cr-wait), skip this section and use the routing block above.
+
 ---
 
 ## Section A: Manual mode (backward compatible)

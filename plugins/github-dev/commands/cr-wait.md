@@ -35,8 +35,10 @@ Some PRs already have the status before the user calls `/cr-wait`. Probe once fi
 
 ```bash
 gh api "repos/$OWNER/$REPO/commits/$SHA/status" \
-  --jq '.statuses[] | select(.context | test("CodeRabbit"; "i")) | {state, target_url, context, updated_at}'
+  --jq '[.statuses[] | select(.context | test("CodeRabbit"; "i"))][0] // empty | {state, target_url, context, updated_at}'
 ```
+
+The `[ ... ][0]` wrapping reduces multi-status race conditions to a single object so downstream parsing is unambiguous.
 
 If `state` is `success` or `failure`, emit the JSON line below and EXIT immediately:
 
@@ -52,7 +54,7 @@ If the status is missing entirely (no CodeRabbit context), warn:
 Call `Bash` with `run_in_background: true` and `timeout: <ms equivalent to --timeout>`:
 
 ```bash
-SHA="<resolved>"; OWNER="<resolved>"; REPO="<resolved>"; INTERVAL=<resolved>
+SHA="<resolved>"; OWNER="<resolved>"; REPO="<resolved>"; PR_NUM="<resolved>"; INTERVAL=<resolved>
 until s=$(gh api "repos/$OWNER/$REPO/commits/$SHA/status" \
             --jq '.statuses[] | select(.context | test("CodeRabbit"; "i")) | .state' | head -n1); \
       [ "$s" = "success" ] || [ "$s" = "failure" ]; do
@@ -60,7 +62,7 @@ until s=$(gh api "repos/$OWNER/$REPO/commits/$SHA/status" \
 done
 target=$(gh api "repos/$OWNER/$REPO/commits/$SHA/status" \
            --jq '.statuses[] | select(.context | test("CodeRabbit"; "i")) | .target_url' | head -n1)
-printf '{"state":"%s","sha":"%s","target_url":"%s","source":"poll"}\n' "$s" "$SHA" "$target"
+printf '{"state":"%s","sha":"%s","pr":%s,"target_url":"%s","source":"poll"}\n' "$s" "$SHA" "$PR_NUM" "$target"
 ```
 
 The shell ID returned by Bash is referred to as `$SHELL_ID` below.
@@ -77,8 +79,10 @@ If `Monitor` reports the shell exited with code 124 (timeout) or non-zero before
 The single-line JSON from the loop's last `printf` is the command's output. Downstream `/github-dev:code-review` parses this directly. Example:
 
 ```json
-{"state":"success","sha":"abcd123","target_url":"https://...","source":"poll"}
+{"state":"success","sha":"abcd123","pr":42,"target_url":"https://...","source":"poll"}
 ```
+
+Both `probe` and `poll` outputs share the same key set: `state`, `sha`, `pr`, `target_url`, `source`. Downstream consumers MUST treat the schema as fixed.
 
 If `state` is `failure`, do NOT auto-chain to `/code-review` — surface to the user with the `target_url` so they can inspect why CodeRabbit failed (auth, config, repo limit).
 

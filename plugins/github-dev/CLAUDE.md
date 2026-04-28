@@ -13,7 +13,8 @@ GitHub workflow automation commands for Claude Code.
 | `/github-dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
 | `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
-| `/github-dev:code-review` | Process CodeRabbit review feedback with auto-fix |
+| `/github-dev:code-review` | Process CodeRabbit review feedback with auto-fetch (no copy-paste) or manual paste fallback |
+| `/github-dev:cr-wait` | Wait for CodeRabbit GitHub commit-status to flip from pending (background poll + Monitor) |
 | `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |
 | `/github-dev:cleanup` | Archive or delete stale files (OMC state, build artifacts, logs, old docs, user paths) |
 

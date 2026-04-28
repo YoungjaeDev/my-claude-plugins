@@ -170,6 +170,7 @@ Before starting the workflow:
 10. **Create PR**: Create a pull request for the resolved issue.
     - **Commit only issue-relevant files**: Never use `git add -A`. Stage only files directly related to the issue.
     - **[NEW] Save checkpoint**: phase="pr"
+    - **CodeRabbit handoff**: After PR creation, CodeRabbit auto-review starts (typical 7-30 min). To wait + apply feedback without manual copy-paste, run `/github-dev:cr-wait` then `/github-dev:code-review`.
 
 11. **Update Issue Checkboxes**: Mark completed checkbox items in the issue as done.
 

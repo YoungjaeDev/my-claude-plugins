@@ -5,6 +5,8 @@ argument-hint: [--timeout 1800] [--interval 60]
 
 # Wait for CodeRabbit Review
 
+> **Deprecated as of 1.10.0.** Prefer `/github-dev:cr-fix` for the unified review-resolution pipeline. This command remains available as a decomposable primitive — useful when you want to wait without auto-fetching/applying — but new workflows should adopt `cr-fix`.
+
 Block until the CodeRabbit GitHub commit-status check on the current branch's HEAD flips from `pending` to `success` or `failure`. Designed to chain in front of `/github-dev:code-review`.
 
 Uses Claude Code's built-in `Bash(run_in_background)` + `Monitor` long-poll idiom. No external daemon, hook, or GitHub Action.
@@ -72,7 +74,9 @@ The shell ID returned by Bash is referred to as `$SHELL_ID` below.
 Call `Monitor` on `$SHELL_ID`. The Monitor tool emits one notification per stdout line; the until-loop produces exactly one final line on completion. When notified, read that line as the result.
 
 If `Monitor` reports the shell exited with code 124 (timeout) or non-zero before producing a JSON line, surface to the user:
-`CodeRabbit status did not flip within --timeout=<sec>s. Last seen state: pending. Check ${target_url} or rerun with a larger --timeout.`
+`CodeRabbit status did not flip within --timeout=<sec>s. Re-run with a larger --timeout or check CodeRabbit's dashboard.`
+
+(On timeout there is no JSON output and therefore no `target_url` to surface; do NOT mention a URL the caller doesn't have. Do not assert a "last seen state" either — the poller doesn't emit intermediate observations to stdout, so any state claim would be unverified.)
 
 ### Step 5: Emit result
 
@@ -84,7 +88,11 @@ The single-line JSON from the loop's last `printf` is the command's output. Down
 
 Both `probe` and `poll` outputs share the same key set: `state`, `sha`, `pr`, `target_url`, `source`. Downstream consumers MUST treat the schema as fixed.
 
-If `state` is `failure`, do NOT auto-chain to `/code-review` — surface to the user with the `target_url` so they can inspect why CodeRabbit failed (auth, config, repo limit).
+`target_url` may be an empty string even when `state` is `failure` — CodeRabbit does not always populate it. Downstream consumers should branch on `target_url`'s emptiness:
+- non-empty → "Inspect ${target_url} for logs."
+- empty → "Check the CodeRabbit dashboard for logs."
+
+If `state` is `failure`, do NOT auto-chain to `/code-review`.
 
 ## Status context name caveat
 

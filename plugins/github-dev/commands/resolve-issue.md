@@ -18,6 +18,9 @@ Before starting the workflow:
 |------|-------------|
 | `--skip-review` | Skip 2-stage review (for trusted changes) |
 | `--strict` | Treat lint failures as blocking errors |
+| `--skip-cr-fix` | Skip the auto cr-fix loop after PR creation (default: cr-fix runs) |
+| `--cr-fix-max <n>` | Cap iterations on the auto cr-fix loop (default: 5) |
+| `--auto-merge` | Pass through to cr-fix; auto-merge the PR after convergence (default: OFF) |
 
 > **Note**: For parallel development, create worktrees manually before starting Claude sessions. See CLAUDE.md for the recommended worktree workflow.
 
@@ -170,7 +173,16 @@ Before starting the workflow:
 10. **Create PR**: Create a pull request for the resolved issue.
     - **Commit only issue-relevant files**: Never use `git add -A`. Stage only files directly related to the issue.
     - **[NEW] Save checkpoint**: phase="pr"
-    - **CodeRabbit handoff**: After PR creation, CodeRabbit auto-review starts (typical 7-30 min). To wait + apply feedback without manual copy-paste, run `/github-dev:cr-wait` and only chain `/github-dev:code-review` when `cr-wait`'s output JSON has `"state":"success"`. On `"state":"failure"` or timeout (exit code 124), surface `target_url` to the user and stop.
+
+10.5. **[NEW] Auto cr-fix loop (default ON)**:
+    - Unless `--skip-cr-fix` is passed, invoke the `/github-dev:cr-fix` workflow inline (read `plugins/github-dev/commands/cr-fix.md` and execute its 16-step body in this same Claude turn). Pass through the resolve-issue flags: `--cr-fix-max <n>` becomes cr-fix's `--max-iterations`; `--auto-merge` is forwarded as-is. CodeRabbit auto-review takes ~7-30 min per cycle; cr-fix's wait phase uses `Bash(run_in_background) + Monitor` so token cost during waits is ~0.
+    - Print one banner line at start: `CR auto-fix loop starting; pass --skip-cr-fix to disable.`
+    - On non-success exit:
+      - `final_state` ∈ {failure, iteration_cap, user_declined}: cr-fix emits a final JSON line via its EXIT trap (Step 16). Surface that JSON's diagnostic to the user.
+      - `final_state="timeout"`: cr-fix's trap still emits the JSON line (with `final_state="timeout"` and `merged=false`), but the user-facing message should additionally mention exit code 124 if the underlying poller hit the wall-clock cap. Surface "cr-fix timed out — re-run with a larger `--cr-fix-max` or `--timeout`, or check the CodeRabbit dashboard."
+      - In all non-success cases, resolve-issue still considers itself complete (PR is open and reviewable). Do NOT auto-merge in any non-clean exit.
+    - On `final_state="clean"` and `--auto-merge` flag set: cr-fix already enrolled the PR in GitHub auto-merge queue (`gh pr merge --auto --squash --delete-branch`). The merge happens server-side once branch protection requirements are met.
+    - Save checkpoint: phase="cr-fix"
 
 11. **Update Issue Checkboxes**: Mark completed checkbox items in the issue as done.
 

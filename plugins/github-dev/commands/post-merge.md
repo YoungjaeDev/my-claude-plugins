@@ -112,46 +112,46 @@ Perform local branch cleanup and configuration updates after a PR has been merge
 
    > **Core Principle: No Stamps, Topical Names, Current State Only**
    >
-   > normative doc(CLAUDE.md, AGENTS.md, GEMINI.md, .claude/rules/*, Serena memory)은 **현재 상태의 규정**만 담는다. 변경 이력(provenance)은 git commit message, PR body, GitHub blame이 이미 영구 보존하므로 doc에 중복 기재하지 않는다.
+   > Normative docs (CLAUDE.md, AGENTS.md, GEMINI.md, .claude/rules/*, Serena memory) hold the **current rules only**. Change history (provenance) is already preserved permanently in git commit messages, PR bodies, and GitHub blame -- do not duplicate it inside the docs.
    >
-   > **금지 패턴 (regex로 식별):**
-   > - `\(?#\d+\)?` — `(#123)`, `#123` 인라인 인용
-   > - `\b(PR|pr|Pull Request) ?#?\d+\b` — `PR #50`, `PR50`, `Pull Request 50`
-   > - `\b([Ii]ssue|이슈) ?#?\d+\b` — `Issue #65`, `이슈 #53`
-   > - `\b(Added|Removed|Fixed|Changed|Introduced) in (PR|#)` — historical narrative 시작 패턴
-   > - `## Post-Merge` — 날짜·PR 기반 섹션 헤더
-   > - `<YYYY-MM-DD>`가 섹션 헤더 자체에 들어간 경우
+   > **Forbidden patterns (regex-identifiable):**
+   > - `\(?#\d+\)?` -- `(#123)`, `#123` inline citations
+   > - `\b(PR|pr|Pull Request) ?#?\d+\b` -- `PR #50`, `PR50`, `Pull Request 50`
+   > - `\b([Ii]ssue|이슈) ?#?\d+\b` -- `Issue #65`, `이슈 #53` (Korean stamp variant retained so the regex matches both English and Korean projects)
+   > - `\b(Added|Removed|Fixed|Changed|Introduced) in (PR|#)` -- historical narrative openers
+   > - `## Post-Merge` -- date- or PR-based section headers
+   > - `<YYYY-MM-DD>` embedded inside a section header itself
    >
-   > **섹션 명명 규칙**: topical name만 사용 (예: `## Process Lifecycle`, `## Crawler Throttling`). 날짜·PR·이슈 번호를 섹션명에 포함시키지 않는다.
+   > **Section naming**: topical names only (e.g., `## Process Lifecycle`, `## Crawler Throttling`). Never include dates, PR numbers, or issue numbers in section names.
    >
    > **Writing tone**: "X is async" (current-state). NOT "X was changed to async in PR #50" (history). NOT "Previously we used Y; now we use X (#50)" (transition narrative).
    >
-   > **예외**: `Closes #N` / `Fixes #N` 류 GitHub keyword는 commit message / PR body / issue 본문에서만 허용. normative doc 안에서는 금지.
+   > **Exception**: `Closes #N` / `Fixes #N` GitHub keywords are allowed only inside commit messages, PR bodies, and issue bodies. Forbidden inside normative docs.
 
    > **Content-First principle**: Refine stale/duplicate content **in place first**, consolidate duplicates next, and only delete a file when it becomes empty or orphaned. File-level deletion is the last resort, not the default.
 
    **Pre-Audit: Clean Existing Pollution First**
 
-   새 학습을 통합하기 전에 target 파일들의 기존 스탬프를 먼저 청소한다. 이전 실행이 남긴 누적 오염을 incremental하게 healing하는 단계.
+   Before integrating new learnings, scrub existing stamps out of the target files first. This is the incremental healing step that gradually undoes pollution left by prior runs.
 
-   1. Target 파일 후보 목록 작성: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.claude/rules/*.md` 중 존재하는 것만.
-   2. 각 파일에 Core Principle 의 금지 패턴 grep:
+   1. Build the target file candidate list: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.claude/rules/*.md` -- whichever exist.
+   2. For each file, grep for the Core Principle's forbidden patterns:
       ```bash
       rg -nP '(\(?#\d+\)?|\b(PR|pr) ?#?\d+\b|\b([Ii]ssue|이슈) ?#?\d+\b|\b(Added|Removed|Fixed|Changed|Introduced) in (PR|#)|## Post-Merge)' <file>
       ```
-   3. 히트가 0건이면 Pre-Audit 즉시 skip하고 다음 단계(Read the PR diff)로 진행.
-   4. 히트가 있으면 사용자에게 보고:
-      - 파일별 hit 줄 번호와 quoted 원문
-      - 각 줄에 대한 "stamp 제거 + 의미 보존" 재작성 제안
-   5. **재작성 원칙**:
-      - 스탬프만 제거하고 normative content는 보존 — `"max_pages 기본값은 10 (이슈 #53)"` → `"max_pages 기본값은 10"`
-      - Historical narrative는 current-state로 변환 — `"PR #18 벤치는 더 이상 안전 기준이 아님"` → 줄 자체 삭제 또는 `"uniform 1-2.5초 벤치는 사용하지 않는다"` (현재 규정만)
-      - 같은 이슈를 여러 곳에서 인용한 중복 — 가장 적절한 한 섹션으로 내용 통합 후 나머지 인용 삭제
-      - PR/이슈 본문에서 가져온 reasoning은 보존하되 출처 인용만 제거
-   6. `AskUserQuestion`으로 적용 게이트:
-      - "전부 적용" / "파일별 선택" / "Pre-Audit 건너뜀" 선택지 제공
-      - description에 파일별 hit 수 명시
-   7. 사용자 승인 후 정리 적용. 정리 완료 후 신규 학습 통합으로 진행.
+   3. If the hit count is 0, skip Pre-Audit immediately and proceed to the next step (Read the PR diff).
+   4. If hits are found, report to the user:
+      - Per-file hit line numbers with the quoted original text
+      - A "strip-stamp, preserve meaning" rewrite proposal for each line
+   5. **Rewrite principles**:
+      - Strip the stamp only, preserve normative content -- `"max_pages default is 10 (#53)"` -> `"max_pages default is 10"`
+      - Convert historical narrative to current-state -- `"PR #18 benchmark is no longer the safety baseline"` -> delete the line, or `"the uniform 1-2.5s benchmark is not used"` (current rule only)
+      - Same issue cited across multiple places -- consolidate the content into the single best-fit section, then delete the other citations
+      - Reasoning lifted from PR/issue bodies stays; only the citation goes
+   6. Apply gate via `AskUserQuestion`:
+      - Offer "apply all" / "pick per file" / "skip Pre-Audit"
+      - Show per-file hit counts in the description
+   7. Apply the approved cleanup, then proceed to integrate the new learnings.
 
    Read the PR diff (`gh pr diff <PR_NUMBER>`) and PR body to extract learnings. Then integrate each learning into the **appropriate existing section** of configuration files.
 
@@ -197,17 +197,17 @@ Perform local branch cleanup and configuration updates after a PR has been merge
      - Follow structure: Role, Key Components, Do's, Don'ts
      - **Always confirm with user before creating new rule files**
 
-   - **Pre-presentation validation (스탬프 자체 검증)**:
+   - **Pre-presentation validation (stamp self-check)**:
 
-     proposal을 사용자에게 보여주기 전에 **추가/수정되는 모든 라인**을 Core Principle 금지 패턴으로 self-check. (`Remove:` 류 cleanup 라인은 검증 대상 아님 — 스탬프 제거가 목적이므로 정상.)
+     Before showing the proposal to the user, self-check **every added or modified line** against the Core Principle's forbidden patterns. (`Remove:` style cleanup lines are not subject to this check -- removing stamps is the goal.)
 
-     검증 체크리스트:
-     - [ ] 추가/수정되는 어떤 라인도 `(#N)`, `PR #N`, `이슈 #N`, `Issue #N` 류 인라인 인용 없음
-     - [ ] 새 섹션 헤더가 날짜·PR·이슈 번호 포함하지 않음 (`## Post-Merge`, `## 2026-04-28 Updates` 등 금지)
-     - [ ] 모든 추가 bullet이 current-state 톤 ("X is async") — 변천사 톤 ("X was changed to async") 아님
-     - [ ] "Added in PR" / "Removed in PR" / "Fixed in PR" / "Introduced in PR" 어구 없음
+     Validation checklist:
+     - [ ] No added/modified line contains `(#N)`, `PR #N`, `Issue #N`, `이슈 #N`, or similar inline citations
+     - [ ] No new section header includes a date, PR number, or issue number (`## Post-Merge`, `## 2026-04-28 Updates`, etc. forbidden)
+     - [ ] Every added bullet uses current-state tone ("X is async") -- not transition tone ("X was changed to async")
+     - [ ] No "Added in PR" / "Removed in PR" / "Fixed in PR" / "Introduced in PR" phrasing
 
-     **하나라도 실패 시**: proposal을 사용자에게 보여주지 말고 먼저 재작성. 패턴을 만족할 때까지 self-loop. 사용자에게 보여줄 시점에는 모든 체크리스트가 ✓ 상태여야 한다.
+     **If any check fails**: do not show the proposal -- rewrite first. Self-loop until the patterns are satisfied. Every checkbox must be ✓ at the moment the proposal is presented.
 
    - Present the integration proposal to user as a diff-style summary before applying:
      ```
@@ -223,14 +223,14 @@ Perform local branch cleanup and configuration updates after a PR has been merge
 
    Integrate PR learnings into Serena memory as native content. Learnings should read as if they were always part of the memory -- not as appended post-merge notes.
 
-   **Pre-Audit (기존 memory 파일의 스탬프 정리)**:
+   **Pre-Audit (clean stamps from existing memory files)**:
 
-   `list_memories` → `read_memory` 단계 전에 모든 memory 파일에 Core Principle 패턴 grep. 히트 발견 시 Step 6의 Pre-Audit과 동일한 절차로 사용자 승인 후 정리 (`edit_memory` 사용). 정리 완료 후 신규 학습 통합 진행.
+   Before `list_memories` -> `read_memory`, grep every memory file against the Core Principle patterns. If hits are found, run the same Step 6 Pre-Audit procedure -- get user approval, then clean (`edit_memory`). After cleanup, proceed to integrate the new learnings.
 
-   특히 다음 패턴은 즉시 정리 대상 (아래 "Bad" 예제 형태):
-   - `## Post-Merge (date, PR #N)` 헤더 — topical 섹션으로 내용 분산 후 헤더 삭제
-   - `post_merge_prN.md` 파일명 자체 — 내용을 topical 파일로 이전 후 파일 삭제
-   - bullet 본문의 `(Issue #N)` / `(이슈 #N)` 인라인 인용 — 인용만 제거, 내용 보존
+   The following patterns must be cleaned on sight (matching the "Bad" example below):
+   - `## Post-Merge (date, PR #N)` headers -- distribute the content into topical sections, then delete the header
+   - `post_merge_prN.md` filenames themselves -- migrate the content into a topical file, then delete the file
+   - `(Issue #N)` / `(이슈 #N)` inline citations inside bullets -- strip the citation only, preserve the content
 
    **Procedure:**
 
@@ -257,7 +257,7 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    - If no matching section exists, create a **topical section** named after the subject (e.g., `## Shutdown Handling`), not after the PR
    - Update outdated descriptions in place rather than keeping old text alongside new
    - If content doesn't fit any existing file, append to `project_overview.md` as catch-all
-   - **Self-check before applying `edit_memory`**: 추가하려는 텍스트가 Core Principle 금지 패턴(`(#N)`, `PR #N`, `이슈 #N`, "Added in PR" 등)을 포함하는지 검증. 포함 시 재작성 후 적용.
+   - **Self-check before applying `edit_memory`**: verify the text being added does not contain Core Principle forbidden patterns (`(#N)`, `PR #N`, `이슈 #N`, "Added in PR", etc.). If it does, rewrite first, then apply.
 
    **Example -- Good (PR #132: graceful shutdown fix):**
 
@@ -340,11 +340,11 @@ Role description (1-2 lines)
 
 → See **Core Principle: No Stamps, Topical Names, Current State Only** at the top of Step 6.
 
-요약:
-- normative doc 안에 PR/이슈 인용 금지 (인라인, 헤더, footnote 모두)
-- `## Post-Merge` 류 changelog-style 섹션 / `post_merge_prN.md` 류 PR-specific memory 파일 금지
-- Append-only 패턴 금지 — 기존 섹션을 in-place 업데이트
-- Historical narrative 금지 — current-state로 작성
+Summary:
+- Never cite a PR or issue inside a normative doc (inline, header, or footnote)
+- No `## Post-Merge` style changelog sections; no `post_merge_prN.md` style PR-specific memory files
+- No append-only patterns -- update existing sections in place
+- No historical narrative -- write in current-state form
 
 ### Correct Integration Examples
 

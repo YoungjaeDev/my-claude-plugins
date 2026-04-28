@@ -17,7 +17,6 @@ GitHub workflow automation commands for Claude Code.
 | `/github-dev:code-review` | (Deprecated 1.10) Process CodeRabbit review feedback with auto-fetch or manual paste fallback |
 | `/github-dev:cr-wait` | (Deprecated 1.10) Wait for CodeRabbit GitHub commit-status to flip (background poll + Monitor) |
 | `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |
-| `/github-dev:cleanup` | Archive or delete stale files (OMC state, build artifacts, logs, old docs, user paths) |
 
 ## resolve-issue Flags
 

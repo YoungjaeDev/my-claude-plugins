@@ -128,6 +128,8 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    >
    > **Language consistency**: Match the language of the surrounding section. If the existing doc/section is Korean, write the new bullet in Korean; if English, write English. Never introduce a second language into a single-language section -- mid-sentence code-switching breaks readability and grep. Inspect the file's dominant language before writing; when unsure, use the language of the closest sibling bullet.
    >
+   > **Single source of truth (cross-file dedup)**: Each rule lives in exactly one file. Before adding new content to one normative doc, briefly check whether a sibling rule file (CLAUDE.md, AGENTS.md, GEMINI.md, .claude/rules/*) already covers the same topic. If a sibling already owns it, reference via `See @path/to/file.md` instead of duplicating the body. If two files already overlap on the same topic, pick the more specific file as owner, replace the other site with the `See @path` reference, and migrate any unique nuance into the owner. The check is intentionally lightweight -- a focused grep on the topic keyword, not a full re-read of every rule file.
+   >
    > **Exception**: `Closes #N` / `Fixes #N` GitHub keywords are allowed only inside commit messages, PR bodies, and issue bodies. Forbidden inside normative docs.
 
    > **Content-First principle**: Refine stale/duplicate content **in place first**, consolidate duplicates next, and only delete a file when it becomes empty or orphaned. File-level deletion is the last resort, not the default.

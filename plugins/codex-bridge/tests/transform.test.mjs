@@ -3,37 +3,29 @@ import assert from 'node:assert/strict';
 
 import { applyTransforms, transformSkillContent, DEFAULT_RULES } from '../scripts/sync.mjs';
 
-test('applyTransforms: .omc/ → .omx/ (literal)', () => {
-  assert.equal(applyTransforms('path .omc/state', DEFAULT_RULES), 'path .omx/state');
-});
-
 test('applyTransforms: CLAUDE.md → AGENTS.md (literal)', () => {
   assert.equal(applyTransforms('see CLAUDE.md for details', DEFAULT_RULES), 'see AGENTS.md for details');
 });
 
-test('applyTransforms: /oh-my-claudecode: → $ (literal)', () => {
-  assert.equal(applyTransforms('run /oh-my-claudecode:autopilot now', DEFAULT_RULES), 'run $autopilot now');
-});
-
-test('applyTransforms: oh-my-claudecode → oh-my-codex (literal)', () => {
-  assert.equal(applyTransforms('this is oh-my-claudecode docs', DEFAULT_RULES), 'this is oh-my-codex docs');
-});
-
-test('applyTransforms: ~/.claude/ → ~/.codex/ (literal)', () => {
+test('applyTransforms: .claude/ → .codex/ (literal, also covers ~/.claude/)', () => {
+  assert.equal(applyTransforms('open .claude/settings.json', DEFAULT_RULES), 'open .codex/settings.json');
   assert.equal(applyTransforms('cd ~/.claude/plugins', DEFAULT_RULES), 'cd ~/.codex/plugins');
 });
 
-test('applyTransforms: omc → omx (word-boundary only)', () => {
-  assert.equal(applyTransforms('omc project', DEFAULT_RULES), 'omx project');
-  assert.equal(applyTransforms('use omc, then', DEFAULT_RULES), 'use omx, then');
-  // word-boundary means alphanumeric-adjacent "omc" is NOT replaced
-  assert.equal(applyTransforms('economic', DEFAULT_RULES), 'economic');
+test('applyTransforms: namespace regex /<plugin>:<skill> → $<skill>', () => {
+  assert.equal(applyTransforms('run /superpowers:brainstorming now', DEFAULT_RULES), 'run $brainstorming now');
+  assert.equal(applyTransforms('try /github-dev:cr-fix here', DEFAULT_RULES), 'try $cr-fix here');
 });
 
-test('applyTransforms: OMC → OMX (word-boundary, case-sensitive)', () => {
-  assert.equal(applyTransforms('OMC runtime', DEFAULT_RULES), 'OMX runtime');
-  // case-sensitive: "Omc" not matched (only OMC caps or omc lowercase)
-  assert.equal(applyTransforms('mixed Omc', DEFAULT_RULES), 'mixed Omc');
+test('applyTransforms: namespace regex lookbehind blocks URL false positives', () => {
+  assert.equal(
+    applyTransforms('see https://x.io/foo:bar in docs', DEFAULT_RULES),
+    'see https://x.io/foo:bar in docs',
+  );
+  assert.equal(
+    applyTransforms('git@github.com:owner/repo.git', DEFAULT_RULES),
+    'git@github.com:owner/repo.git',
+  );
 });
 
 test('applyTransforms: leaves unrelated text unchanged', () => {
@@ -49,24 +41,22 @@ test('transformSkillContent: body transformed, frontmatter unchanged (bodyOnly c
   const src = [
     '---',
     'name: foo',
-    'description: mentions omc and CLAUDE.md on purpose',
+    'description: mentions CLAUDE.md and /plugin:skill on purpose',
     '---',
     '# Body',
-    'use CLAUDE.md and .omc/ here',
+    'use CLAUDE.md and .claude/ here',
   ].join('\n');
 
   const out = transformSkillContent(src, DEFAULT_RULES);
 
-  // frontmatter MUST be unchanged (bodyOnly=true)
-  assert.match(out, /^---\nname: foo\ndescription: mentions omc and CLAUDE\.md on purpose\n---\n/);
-  // body MUST be transformed
-  assert.match(out, /use AGENTS\.md and \.omx\/ here/);
+  assert.match(out, /^---\nname: foo\ndescription: mentions CLAUDE\.md and \/plugin:skill on purpose\n---\n/);
+  assert.match(out, /use AGENTS\.md and \.codex\/ here/);
 });
 
 test('transformSkillContent: content without frontmatter transforms whole body', () => {
-  const src = '# Plain\nuse .omc/ here';
+  const src = '# Plain\nuse .claude/ here';
   const out = transformSkillContent(src, DEFAULT_RULES);
-  assert.match(out, /\.omx\//);
+  assert.match(out, /\.codex\//);
 });
 
 test('transformSkillContent: preserves frontmatter with bridge_source marker', () => {
@@ -76,18 +66,18 @@ test('transformSkillContent: preserves frontmatter with bridge_source marker', (
     'description: desc',
     'bridge_source: sample/bar',
     '---',
-    'body omc text',
+    'body /superpowers:brainstorming text',
   ].join('\n');
 
   const out = transformSkillContent(src, DEFAULT_RULES);
 
   assert.match(out, /bridge_source: sample\/bar/);
-  assert.match(out, /body omx text/);
+  assert.match(out, /body \$brainstorming text/);
 });
 
-test('DEFAULT_RULES: has 7 entries as per spec', () => {
-  assert.equal(DEFAULT_RULES.length, 7);
+test('DEFAULT_RULES: has 3 entries (literal x2, regex x1)', () => {
+  assert.equal(DEFAULT_RULES.length, 3);
   const modes = new Set(DEFAULT_RULES.map(r => r.mode));
   assert.ok(modes.has('literal'));
-  assert.ok(modes.has('word-boundary'));
+  assert.ok(modes.has('regex'));
 });

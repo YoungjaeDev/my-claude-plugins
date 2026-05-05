@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// codex-bridge — Sync OMC plugin skills to Codex ~/.agents/skills/
+// codex-bridge — Sync my-claude-plugins skills and commands to Codex ~/.agents/skills/
 // Zero runtime dependencies. Node 18+.
 
 import fs from 'node:fs/promises';
@@ -10,13 +10,14 @@ import { fileURLToPath } from 'node:url';
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
 
 export const DEFAULT_RULES = [
-  { from: '.omc/', to: '.omx/', mode: 'literal' },
   { from: 'CLAUDE.md', to: 'AGENTS.md', mode: 'literal' },
-  { from: '/oh-my-claudecode:', to: '$', mode: 'literal' },
-  { from: 'oh-my-claudecode', to: 'oh-my-codex', mode: 'literal' },
-  { from: '~/.claude/', to: '~/.codex/', mode: 'literal' },
-  { from: 'omc', to: 'omx', mode: 'word-boundary' },
-  { from: 'OMC', to: 'OMX', mode: 'word-boundary' },
+  { from: '.claude/', to: '.codex/', mode: 'literal' },
+  {
+    from: '(?<![:/.\\w])\\/([a-z][a-z0-9-]*):([a-z][a-z0-9-]*)',
+    to: '$$$2',
+    mode: 'regex',
+    flags: 'g',
+  },
 ];
 
 function escapeRegex(s) {
@@ -30,6 +31,9 @@ export function applyTransforms(input, rules) {
       out = out.split(rule.from).join(rule.to);
     } else if (rule.mode === 'word-boundary') {
       const re = new RegExp(`\\b${escapeRegex(rule.from)}\\b`, 'g');
+      out = out.replace(re, rule.to);
+    } else if (rule.mode === 'regex') {
+      const re = new RegExp(rule.from, rule.flags ?? 'g');
       out = out.replace(re, rule.to);
     }
   }
@@ -112,7 +116,7 @@ export async function syncOne(source, targetRoot, rules, options = {}) {
     const existingParsed = parseFrontmatter(existing);
     const hasBridgeMarker = existingParsed && 'bridge_source' in existingParsed.fields;
     if (!hasBridgeMarker) {
-      logger.warn(`[codex-bridge] skip ${targetSkillMd}: not managed by OMC (missing bridge_source marker). Inspect with 'omx doctor'.`);
+      logger.warn(`[codex-bridge] skip ${targetSkillMd}: not managed by codex-bridge (missing bridge_source marker).`);
       return { status: 'skipped', reason: 'non-managed-collision' };
     }
   } catch (err) {
@@ -193,13 +197,8 @@ export const DEFAULT_CONFIG = {
   target: {
     scope: 'user',
     agentsHome: null,
-    agentsMdPath: null,
   },
-  agentsInject: {
-    enabled: true,
-    warnBytes: 32768,
-  },
-  collisionFallbackPrefix: 'omc-',
+  collisionFallbackPrefix: 'bridge-',
   exclude: [],
   transform: {
     bodyOnly: true,
@@ -235,9 +234,6 @@ function mergeConfig(base, override) {
   if (override.target && typeof override.target === 'object') {
     out.target = { ...out.target, ...override.target };
   }
-  if (override.agentsInject && typeof override.agentsInject === 'object') {
-    out.agentsInject = { ...out.agentsInject, ...override.agentsInject };
-  }
   if (typeof override.collisionFallbackPrefix === 'string') {
     out.collisionFallbackPrefix = override.collisionFallbackPrefix;
   }
@@ -269,7 +265,7 @@ function globToRegex(pattern) {
 
 const KNOWN_FLAGS = new Set([
   '--dry-run', '--verbose', '--no-prune', '--help', '-h',
-  '--config', '--plugin', '--report', '--no-agents-inject',
+  '--config', '--plugin', '--report', '--plugins-dir',
 ]);
 
 export function parseArgs(argv) {
@@ -277,11 +273,11 @@ export function parseArgs(argv) {
     dryRun: false,
     verbose: false,
     noPrune: false,
-    noAgentsInject: false,
     help: false,
     configPath: null,
     plugins: null,
     reportPath: null,
+    pluginsDir: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -292,7 +288,6 @@ export function parseArgs(argv) {
       case '--dry-run': out.dryRun = true; break;
       case '--verbose': out.verbose = true; break;
       case '--no-prune': out.noPrune = true; break;
-      case '--no-agents-inject': out.noAgentsInject = true; break;
       case '--help':
       case '-h':
         out.help = true;
@@ -311,6 +306,14 @@ export function parseArgs(argv) {
         out.reportPath = argv[++i];
         if (!out.reportPath) throw new Error('--report requires a path');
         break;
+      case '--plugins-dir': {
+        const value = argv[++i];
+        if (!value || value.startsWith('-')) {
+          throw new Error('--plugins-dir requires a path');
+        }
+        out.pluginsDir = value;
+        break;
+      }
     }
   }
   return out;
@@ -330,6 +333,13 @@ export async function syncAll(options) {
   const allSkills = await discoverSkills(pluginsDir);
   const allCommands = await discoverCommands(pluginsDir);
   const pluginsRoot = path.dirname(pluginsDir);
+
+  const warnings = [];
+  if (allSkills.length === 0) {
+    const msg = `[codex-bridge] discoverSkills returned 0 results from ${pluginsDir} — likely pluginsDir misresolution under Claude Code's versioned cache layout. Inspect with --dry-run --verbose, or pass --plugins-dir <path> to override.`;
+    logger.warn(msg);
+    warnings.push(msg);
+  }
 
   const filtered = allSkills.filter((skill) => {
     if (pluginFilter && !pluginFilter.includes(skill.pluginName)) return false;
@@ -364,6 +374,7 @@ export async function syncAll(options) {
   const report = {
     dryRun,
     targetDir,
+    pluginsDir,
     discovered: allSkills.length,
     discoveredCommands: allCommands.length,
     considered: filtered.length,
@@ -373,6 +384,7 @@ export async function syncAll(options) {
     skipped: [],
     removed: [],
     errors: [],
+    warnings,
   };
 
   const validSources = new Set();
@@ -424,42 +436,17 @@ export async function syncAll(options) {
     }
   }
 
-  if (options.agentsMdPath && options.injectAgents !== false && config.agentsInject?.enabled !== false) {
-    try {
-      const guidelines = await discoverGuidelines(pluginsDir);
-      const block = await renderGuidelinesBlock(guidelines, config.transform.rules);
-      const existing = await fs.readFile(options.agentsMdPath, 'utf-8').catch((err) => {
-        if (err.code === 'ENOENT') return '';
-        throw err;
-      });
-      const updated = injectGuidelinesIntoAgents(existing, block);
-      const warnBytes = config.agentsInject?.warnBytes ?? 32768;
-      if (Buffer.byteLength(updated, 'utf8') > warnBytes) {
-        logger.warn(`[codex-bridge] warn: ${options.agentsMdPath} would exceed ${warnBytes} bytes (~${Math.round(Buffer.byteLength(updated, 'utf8') / 1024)} KiB). Raise Codex 'project_doc_max_bytes' in ~/.codex/config.toml or reduce guidelines size.`);
-      }
-      report.guidelines = {
-        count: guidelines.length,
-        agentsMdPath: options.agentsMdPath,
-        bytes: Buffer.byteLength(updated, 'utf8'),
-      };
-      if (dryRun) {
-        logger.info(`[dry-run] would update ${options.agentsMdPath} with ${guidelines.length} guideline(s)`);
-      } else {
-        await fs.mkdir(path.dirname(options.agentsMdPath), { recursive: true });
-        await fs.writeFile(options.agentsMdPath, updated, 'utf-8');
-        logger.info(`[codex-bridge] injected ${guidelines.length} guideline(s) into ${options.agentsMdPath}`);
-      }
-    } catch (err) {
-      logger.warn(`[codex-bridge] agents-inject error: ${err.message}`);
-      report.errors.push({ stage: 'agents-inject', error: err.message });
-    }
-  }
-
   if (prune && !dryRun) {
-    const pruneResult = await pruneOrphans(targetDir, validSources);
-    report.removed = pruneResult.removed;
-    for (const r of pruneResult.removed) {
-      logger.info(`[codex-bridge] pruned orphan ${r.skillName} (was ${r.bridgeSource})`);
+    if (validSources.size === 0) {
+      const msg = `[codex-bridge] prune skipped: 0 valid sources discovered (likely pluginsDir misresolution or over-restrictive --plugin filter). Inspect with --dry-run --verbose.`;
+      logger.warn(msg);
+      report.warnings.push(msg);
+    } else {
+      const pruneResult = await pruneOrphans(targetDir, validSources);
+      report.removed = pruneResult.removed;
+      for (const r of pruneResult.removed) {
+        logger.info(`[codex-bridge] pruned orphan ${r.skillName} (was ${r.bridgeSource})`);
+      }
     }
   } else if (prune && dryRun) {
     const existingEntries = await fs.readdir(targetDir, { withFileTypes: true }).catch((err) => {
@@ -482,6 +469,21 @@ export async function syncAll(options) {
   return report;
 }
 
+export function isVersionedCacheChild(name) {
+  return /^\d+\.\d+\.\d+(?:[-+].*)?$/.test(name);
+}
+
+export async function resolvePluginsDir(scriptPath, override) {
+  if (override) return path.resolve(override);
+  const candidateA = path.resolve(path.dirname(scriptPath), '..', '..');
+  const entries = await fs.readdir(candidateA, { withFileTypes: true }).catch(() => []);
+  const dirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+  if (dirs.length > 0 && dirs.every(isVersionedCacheChild)) {
+    return path.resolve(candidateA, '..');
+  }
+  return candidateA;
+}
+
 export async function main(argv) {
   let args;
   try {
@@ -497,9 +499,23 @@ export async function main(argv) {
     return 0;
   }
 
-  const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const pluginsDir = path.resolve(pluginRoot, '..');
+  const scriptPath = fileURLToPath(import.meta.url);
+  const pluginRoot = path.resolve(path.dirname(scriptPath), '..');
+  const pluginsDir = await resolvePluginsDir(scriptPath, args.pluginsDir);
   const configPath = args.configPath ?? path.join(pluginRoot, 'codex-bridge.config.json');
+
+  if (args.verbose) {
+    let layout;
+    if (args.pluginsDir) {
+      layout = 'overridden via --plugins-dir';
+    } else {
+      const monorepoRoot = path.resolve(path.dirname(scriptPath), '..', '..');
+      layout = pluginsDir === monorepoRoot
+        ? 'auto-detected (monorepo)'
+        : 'auto-detected (versioned-cache fallback)';
+    }
+    process.stderr.write(`[codex-bridge] resolved pluginsDir: ${pluginsDir} (${layout})\n`);
+  }
 
   let config;
   try {
@@ -512,9 +528,6 @@ export async function main(argv) {
   const targetDir = config.target.agentsHome
     ?? path.join(os.homedir(), '.agents', 'skills');
 
-  const agentsMdPath = config.target.agentsMdPath
-    ?? path.join(os.homedir(), '.codex', 'AGENTS.md');
-
   const logger = args.verbose ? defaultLogger() : quietLogger();
 
   const report = await syncAll({
@@ -524,10 +537,14 @@ export async function main(argv) {
     dryRun: args.dryRun,
     pluginFilter: args.plugins,
     prune: !args.noPrune,
-    injectAgents: !args.noAgentsInject,
-    agentsMdPath,
     logger,
   });
+
+  if (args.verbose) {
+    const pluginEntries = await fs.readdir(pluginsDir, { withFileTypes: true }).catch(() => []);
+    const pluginCount = pluginEntries.filter(e => e.isDirectory()).length;
+    process.stderr.write(`[codex-bridge] discovered ${pluginCount} plugins, ${report.discovered} skills, ${report.discoveredCommands ?? 0} commands\n`);
+  }
 
   if (args.reportPath) {
     await fs.writeFile(args.reportPath, JSON.stringify(report, null, 2), 'utf-8');
@@ -550,9 +567,6 @@ function printSummary(report) {
     `  commands: discovered ${report.discoveredCommands ?? 0}, considered ${report.consideredCommands ?? 0}`,
     `  synced: ${report.synced.length}, skipped: ${report.skipped.length}, removed: ${report.removed.length}, errors: ${report.errors.length}`,
   ];
-  if (report.guidelines) {
-    lines.push(`  agents-inject: ${report.guidelines.count} guideline(s) → ${report.guidelines.agentsMdPath} (~${Math.round(report.guidelines.bytes / 1024)} KiB)`);
-  }
   process.stderr.write(`${lines.join('\n')}\n`);
 }
 
@@ -561,9 +575,11 @@ function printHelp() {
 
 Options:
   --dry-run              Plan without writing files
-  --verbose              Per-file logs
+  --verbose              Per-file logs + diagnostic (resolved pluginsDir, layout, counts)
   --config <path>        Custom config path (default: codex-bridge.config.json)
   --plugin <list>        Comma-separated plugin filter (e.g. --plugin github-dev,core-config)
+  --plugins-dir <path>   Override plugins directory (skips auto-detect; use when running
+                         from an unusual layout, e.g. Claude Code's versioned cache)
   --no-prune             Disable auto-prune of orphans
   --report <path>        Write JSON report to path
   -h, --help             Show this help
@@ -667,6 +683,83 @@ function stripYamlValue(value) {
   return trimmed;
 }
 
+export function compareSemver(a, b) {
+  const split = (v) => {
+    const noBuild = v.split('+', 1)[0];
+    const dashIdx = noBuild.indexOf('-');
+    const main = dashIdx === -1 ? noBuild : noBuild.slice(0, dashIdx);
+    const pre = dashIdx === -1 ? null : noBuild.slice(dashIdx + 1);
+    const nums = main.split('.').map(n => parseInt(n, 10) || 0);
+    return { nums, pre };
+  };
+  const A = split(a);
+  const B = split(b);
+  for (let i = 0; i < 3; i++) {
+    const an = A.nums[i] ?? 0;
+    const bn = B.nums[i] ?? 0;
+    if (an !== bn) return an - bn;
+  }
+  // Numeric core equal — apply semver pre-release rule:
+  // a version WITHOUT pre-release is greater than one WITH pre-release.
+  if (A.pre === null && B.pre === null) return 0;
+  if (A.pre === null) return 1;
+  if (B.pre === null) return -1;
+  // Both have pre-release: compare dot-separated identifiers per semver spec.
+  const aParts = A.pre.split('.');
+  const bParts = B.pre.split('.');
+  const max = Math.max(aParts.length, bParts.length);
+  for (let i = 0; i < max; i++) {
+    const ai = aParts[i];
+    const bi = bParts[i];
+    if (ai === undefined) return -1;
+    if (bi === undefined) return 1;
+    const aNum = /^\d+$/.test(ai);
+    const bNum = /^\d+$/.test(bi);
+    if (aNum && bNum) {
+      const diff = parseInt(ai, 10) - parseInt(bi, 10);
+      if (diff !== 0) return diff;
+    } else if (aNum) {
+      return -1; // numeric identifiers sort before alphanumeric
+    } else if (bNum) {
+      return 1;
+    } else {
+      if (ai < bi) return -1;
+      if (ai > bi) return 1;
+    }
+  }
+  return 0;
+}
+
+// Per-plugin layout resolver: returns the directory that holds `skills/` and
+// `commands/` for this plugin. Handles two layouts:
+//
+//   1. Monorepo / source checkout — `<plugin>/.claude-plugin/`, `<plugin>/skills/` …
+//      sit directly under `<plugin>/`. Returns `<plugin>` itself.
+//   2. Claude Code cache — `<plugin>/<semver>/.claude-plugin/`, `<plugin>/<semver>/skills/`
+//      sit under a version subdirectory. Returns `<plugin>/<latest-semver>`.
+//
+// The presence of `.claude-plugin/` directly under `<plugin>` is the canonical
+// monorepo signal. If absent and every direct child is semver-named, treat as
+// cache layout and pick the highest semver. Otherwise return `<plugin>` as-is
+// and let the downstream walker swallow ENOENT.
+export async function resolvePluginContentDir(pluginDir) {
+  let entries;
+  try {
+    entries = await fs.readdir(pluginDir, { withFileTypes: true });
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+  const dirNames = entries.filter(e => e.isDirectory()).map(e => e.name);
+  if (dirNames.includes('.claude-plugin')) return pluginDir;
+  const semverDirs = dirNames.filter(isVersionedCacheChild);
+  if (semverDirs.length > 0 && semverDirs.length === dirNames.length) {
+    semverDirs.sort(compareSemver);
+    return path.join(pluginDir, semverDirs[semverDirs.length - 1]);
+  }
+  return pluginDir;
+}
+
 export async function discoverSkills(pluginsDir) {
   const results = [];
 
@@ -680,7 +773,9 @@ export async function discoverSkills(pluginsDir) {
 
   for (const entry of pluginEntries) {
     if (!entry.isDirectory()) continue;
-    const skillsRoot = path.join(pluginsDir, entry.name, 'skills');
+    const contentRoot = await resolvePluginContentDir(path.join(pluginsDir, entry.name));
+    if (!contentRoot) continue;
+    const skillsRoot = path.join(contentRoot, 'skills');
     try {
       await walkForSkillMd(skillsRoot, entry.name, results);
     } catch (err) {
@@ -728,7 +823,9 @@ export async function discoverCommands(pluginsDir) {
 
   for (const entry of pluginEntries) {
     if (!entry.isDirectory()) continue;
-    const commandsDir = path.join(pluginsDir, entry.name, 'commands');
+    const contentRoot = await resolvePluginContentDir(path.join(pluginsDir, entry.name));
+    if (!contentRoot) continue;
+    const commandsDir = path.join(contentRoot, 'commands');
     let files;
     try {
       files = await fs.readdir(commandsDir, { withFileTypes: true });
@@ -798,86 +895,6 @@ function yamlQuote(text) {
   return `"${String(text).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
-export const GUIDELINES_MARKER_START = '<!-- omc-guidelines:start -->';
-export const GUIDELINES_MARKER_END = '<!-- omc-guidelines:end -->';
-
-export async function discoverGuidelines(pluginsDir) {
-  const results = [];
-  let pluginEntries;
-  try {
-    pluginEntries = await fs.readdir(pluginsDir, { withFileTypes: true });
-  } catch (err) {
-    if (err.code === 'ENOENT') return results;
-    throw err;
-  }
-
-  for (const entry of pluginEntries) {
-    if (!entry.isDirectory()) continue;
-    const guideDir = path.join(pluginsDir, entry.name, 'guidelines');
-    let files;
-    try {
-      files = await fs.readdir(guideDir, { withFileTypes: true });
-    } catch (err) {
-      if (err.code === 'ENOENT') continue;
-      throw err;
-    }
-    for (const f of files) {
-      if (!f.isFile() || !f.name.endsWith('.md')) continue;
-      results.push({
-        pluginName: entry.name,
-        guidelineName: f.name.slice(0, -3),
-        sourcePath: path.join(guideDir, f.name),
-      });
-    }
-  }
-
-  results.sort((a, b) => {
-    if (a.pluginName !== b.pluginName) return a.pluginName < b.pluginName ? -1 : 1;
-    if (a.guidelineName !== b.guidelineName) return a.guidelineName < b.guidelineName ? -1 : 1;
-    return 0;
-  });
-
-  return results;
-}
-
-export async function renderGuidelinesBlock(guidelines, rules) {
-  if (!guidelines || guidelines.length === 0) return '';
-
-  const sections = [];
-  for (const g of guidelines) {
-    const raw = await fs.readFile(g.sourcePath, 'utf-8');
-    const transformed = applyTransforms(raw, rules);
-    sections.push(`<!-- source: ${g.pluginName}/${g.guidelineName} -->\n${transformed.trim()}`);
-  }
-
-  const body = [
-    '## OMC Development Guidelines',
-    '',
-    '_Auto-synced from `plugins/*/guidelines/*.md` by codex-bridge. Edit source files, then re-run the sync command._',
-    '',
-    sections.join('\n\n'),
-  ].join('\n');
-
-  return `${GUIDELINES_MARKER_START}\n${body}\n${GUIDELINES_MARKER_END}`;
-}
-
-export function injectGuidelinesIntoAgents(existing, block) {
-  const esc = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-  const blockRe = new RegExp(
-    `(\\r?\\n){0,2}${esc(GUIDELINES_MARKER_START)}[\\s\\S]*?${esc(GUIDELINES_MARKER_END)}(\\r?\\n)?`,
-    'g',
-  );
-
-  const cleaned = existing.replace(blockRe, '\n');
-
-  if (!block) {
-    return cleaned.replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '\n');
-  }
-
-  const trimmedTail = cleaned.replace(/\s+$/, '');
-  return `${trimmedTail}\n\n${block}\n`;
-}
-
 export async function syncCommand(cmd, targetRoot, rules, options = {}) {
   const logger = options.logger ?? defaultLogger();
   const sourceContent = await fs.readFile(cmd.sourcePath, 'utf-8');
@@ -892,7 +909,7 @@ export async function syncCommand(cmd, targetRoot, rules, options = {}) {
     const existingParsed = parseFrontmatter(existing);
     const hasBridgeMarker = existingParsed && 'bridge_source' in existingParsed.fields;
     if (!hasBridgeMarker) {
-      logger.warn(`[codex-bridge] skip ${targetSkillMd}: not managed by OMC (missing bridge_source marker). Inspect with 'omx doctor'.`);
+      logger.warn(`[codex-bridge] skip ${targetSkillMd}: not managed by codex-bridge (missing bridge_source marker).`);
       return { status: 'skipped', reason: 'non-managed-collision' };
     }
   } catch (err) {

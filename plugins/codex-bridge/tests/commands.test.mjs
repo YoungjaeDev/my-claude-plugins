@@ -145,7 +145,7 @@ test('syncCommand: writes <plugin>-<command>/SKILL.md with bridge_source marker'
   try {
     const cmd = await makeCommandFile(
       tmp, 'github-dev', 'resolve-issue',
-      '---\ndescription: Resolve a GitHub issue\n---\n# Heading\nbody text with .omc/ path'
+      '---\ndescription: Resolve a GitHub issue\n---\n# Heading\nbody text with .claude/ path'
     );
     cmd.targetSkillName = 'github-dev-resolve-issue';
     const targetRoot = path.join(tmp, 'target', '.agents', 'skills');
@@ -159,8 +159,8 @@ test('syncCommand: writes <plugin>-<command>/SKILL.md with bridge_source marker'
     assert.match(written, /^---\nname: github-dev-resolve-issue\n/);
     assert.match(written, /description: "Resolve a GitHub issue"/);
     assert.match(written, /bridge_source: github-dev\/commands\/resolve-issue/);
-    // body transformed: .omc/ -> .omx/
-    assert.match(written, /\.omx\// );
+    // body transformed: .claude/ -> .codex/
+    assert.match(written, /\.codex\// );
   } finally {
     await fs.rm(tmp, { recursive: true, force: true });
   }

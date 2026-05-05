@@ -63,10 +63,10 @@ test('syncOne: creates target when not exists, injects bridge_source, transforms
       [
         '---',
         'name: my-skill',
-        'description: Does things with omc',
+        'description: Does things with CLAUDE.md',
         '---',
         '# Body',
-        'use CLAUDE.md and .omc/ here',
+        'use CLAUDE.md and .claude/ here',
       ].join('\n')
     );
     const targetRoot = path.join(tmp, 'target', '.agents', 'skills');
@@ -75,12 +75,12 @@ test('syncOne: creates target when not exists, injects bridge_source, transforms
 
     assert.equal(result.status, 'synced');
     const written = await fs.readFile(path.join(targetRoot, 'my-skill', 'SKILL.md'), 'utf-8');
-    // frontmatter unchanged (description mentions omc intentionally)
-    assert.match(written, /description: Does things with omc/);
+    // frontmatter unchanged (description preserved verbatim)
+    assert.match(written, /description: Does things with CLAUDE\.md/);
     // bridge_source injected
     assert.match(written, /bridge_source: pluginA\/my-skill/);
     // body transformed
-    assert.match(written, /use AGENTS\.md and \.omx\/ here/);
+    assert.match(written, /use AGENTS\.md and \.codex\/ here/);
   } finally {
     await fs.rm(tmp, { recursive: true, force: true });
   }
@@ -91,14 +91,14 @@ test('syncOne: skips when target has no bridge_source marker (collision guard)',
   try {
     const source = await makeSourceSkill(
       tmp, 'pluginA', 'shared-name',
-      '---\nname: shared-name\ndescription: OMC version\n---\nomc body'
+      '---\nname: shared-name\ndescription: bridge version\n---\nbridge body'
     );
     const targetRoot = path.join(tmp, 'target', '.agents', 'skills');
     const targetSkillDir = path.join(targetRoot, 'shared-name');
     await fs.mkdir(targetSkillDir, { recursive: true });
     await fs.writeFile(
       path.join(targetSkillDir, 'SKILL.md'),
-      '---\nname: shared-name\ndescription: OMX version (not managed)\n---\npre-existing'
+      '---\nname: shared-name\ndescription: external version (not managed)\n---\npre-existing'
     );
 
     const result = await syncOne(source, targetRoot, DEFAULT_RULES);
@@ -107,7 +107,7 @@ test('syncOne: skips when target has no bridge_source marker (collision guard)',
     assert.equal(result.reason, 'non-managed-collision');
     const existing = await fs.readFile(path.join(targetSkillDir, 'SKILL.md'), 'utf-8');
     // untouched
-    assert.match(existing, /OMX version \(not managed\)/);
+    assert.match(existing, /external version \(not managed\)/);
     assert.match(existing, /pre-existing/);
   } finally {
     await fs.rm(tmp, { recursive: true, force: true });
@@ -148,7 +148,7 @@ test('syncOne: copies additional files in skill dir', async () => {
       tmp, 'pluginA', 'with-assets',
       '---\nname: with-assets\ndescription: x\n---\nbody',
       {
-        'scripts/helper.sh': '#!/bin/bash\necho .omc/',
+        'scripts/helper.sh': '#!/bin/bash\necho .claude/',
         'references/notes.md': '# Reference\nsee CLAUDE.md',
         'assets/icon.txt': 'binary-ish payload',
       }
@@ -159,7 +159,7 @@ test('syncOne: copies additional files in skill dir', async () => {
 
     const out = path.join(targetRoot, 'with-assets');
     const script = await fs.readFile(path.join(out, 'scripts/helper.sh'), 'utf-8');
-    assert.match(script, /\.omx\//); // transformed (text ext)
+    assert.match(script, /\.codex\//); // transformed (text ext)
 
     const notes = await fs.readFile(path.join(out, 'references/notes.md'), 'utf-8');
     assert.match(notes, /AGENTS\.md/); // transformed (.md ext)
@@ -269,4 +269,142 @@ test('syncAll: no collision warning when all skill names unique', async () => {
   } finally {
     await fs.rm(tmp, { recursive: true, force: true });
   }
+});
+
+test('syncAll: prune is SKIPPED when validSources is empty (defends against pluginsDir misresolution)', async () => {
+  // Regression test for the destructive prune bug fixed in 1.3.1.
+  // If discovery returns 0 results (e.g. wrong pluginsDir under Claude Code's
+  // versioned cache layout), pruneOrphans must NOT run — otherwise every
+  // bridge-managed entry in ~/.agents/skills/ would be deleted.
+  const tmp = await freshTmp();
+  try {
+    // Empty plugins dir (no plugins/* under it) — discovery returns []
+    const pluginsDir = path.join(tmp, 'plugins');
+    await fs.mkdir(pluginsDir, { recursive: true });
+
+    // Pre-populate target with a bridge-managed skill that WOULD be pruned
+    // under the old behavior (orphan with no matching source).
+    const targetDir = path.join(tmp, 'target', '.agents', 'skills');
+    const preExisting = path.join(targetDir, 'previously-synced');
+    await fs.mkdir(preExisting, { recursive: true });
+    await fs.writeFile(
+      path.join(preExisting, 'SKILL.md'),
+      '---\nname: previously-synced\nbridge_source: somePlugin/previously-synced\n---\nold body'
+    );
+
+    const warnings = [];
+    const logger = { warn: (m) => warnings.push(m), info: () => {} };
+
+    const report = await syncAll({
+      pluginsDir,
+      targetDir,
+      config: DEFAULT_CONFIG,
+      dryRun: false,
+      prune: true,
+      logger,
+    });
+
+    // Guard fired: nothing pruned, warning emitted, file still present.
+    assert.deepEqual(report.removed, []);
+    assert.ok(
+      warnings.some(w => /prune skipped: 0 valid sources/.test(w)),
+      `expected prune-skip warning, got: ${warnings.join(' | ')}`
+    );
+    assert.ok(
+      report.warnings.some(w => /prune skipped: 0 valid sources/.test(w)),
+      'expected report.warnings to include prune-skip warning'
+    );
+
+    const survivor = await fs.readFile(path.join(preExisting, 'SKILL.md'), 'utf-8');
+    assert.match(survivor, /bridge_source: somePlugin\/previously-synced/);
+    assert.match(survivor, /old body/);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAll: empty discoverSkills emits warning into report.warnings (early signal)', async () => {
+  const tmp = await freshTmp();
+  try {
+    const pluginsDir = path.join(tmp, 'plugins');
+    await fs.mkdir(pluginsDir, { recursive: true });
+
+    const warnings = [];
+    const logger = { warn: (m) => warnings.push(m), info: () => {} };
+
+    const report = await syncAll({
+      pluginsDir,
+      targetDir: path.join(tmp, 'target', '.agents', 'skills'),
+      config: DEFAULT_CONFIG,
+      dryRun: true,
+      prune: false,
+      logger,
+    });
+
+    assert.ok(
+      warnings.some(w => /discoverSkills returned 0 results/.test(w)),
+      `expected discoverSkills-empty warning, got: ${warnings.join(' | ')}`
+    );
+    assert.ok(
+      report.warnings.some(w => /discoverSkills returned 0 results/.test(w)),
+      'expected report.warnings to include discoverSkills-empty warning'
+    );
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAll: prune still runs normally when validSources non-empty', async () => {
+  // Sanity check: the safety guard must NOT block legitimate prunes.
+  const tmp = await freshTmp();
+  try {
+    // One source plugin/skill — validSources will include it.
+    await makeSourceSkill(tmp, 'alpha', 'kept', '---\nname: kept\ndescription: x\n---\nbody');
+
+    const targetDir = path.join(tmp, 'target', '.agents', 'skills');
+    // Pre-populate an orphan (bridge-managed but no matching source).
+    const orphan = path.join(targetDir, 'orphan-skill');
+    await fs.mkdir(orphan, { recursive: true });
+    await fs.writeFile(
+      path.join(orphan, 'SKILL.md'),
+      '---\nname: orphan-skill\nbridge_source: deleted/orphan-skill\n---\ngone'
+    );
+
+    const logger = { warn: () => {}, info: () => {} };
+
+    const report = await syncAll({
+      pluginsDir: path.join(tmp, 'plugins'),
+      targetDir,
+      config: DEFAULT_CONFIG,
+      dryRun: false,
+      prune: true,
+      logger,
+    });
+
+    assert.equal(report.removed.length, 1);
+    assert.equal(report.removed[0].skillName, 'orphan-skill');
+    // Orphan dir is gone
+    await assert.rejects(fs.access(orphan));
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('parseArgs: --plugins-dir captures path', async () => {
+  const { parseArgs } = await import('../scripts/sync.mjs');
+  const args = parseArgs(['--plugins-dir', '/custom/path']);
+  assert.equal(args.pluginsDir, '/custom/path');
+});
+
+test('parseArgs: --plugins-dir without value throws', async () => {
+  const { parseArgs } = await import('../scripts/sync.mjs');
+  assert.throws(() => parseArgs(['--plugins-dir']), /requires a path/);
+});
+
+test('parseArgs: --plugins-dir followed by another flag is rejected (does not silently consume the flag)', async () => {
+  const { parseArgs } = await import('../scripts/sync.mjs');
+  // Without the dash-prefix guard, this would parse pluginsDir="--dry-run"
+  // and consume the actual --dry-run flag.
+  assert.throws(() => parseArgs(['--plugins-dir', '--dry-run']), /requires a path/);
+  assert.throws(() => parseArgs(['--plugins-dir', '-h']), /requires a path/);
 });

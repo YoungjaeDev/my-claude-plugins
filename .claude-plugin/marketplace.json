@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 21 specialized plugins",
-    "version": "1.15.1"
+    "description": "Personal Claude Code plugin collection with 20 specialized plugins",
+    "version": "1.16.0"
   },
   "plugins": [
     {
@@ -105,13 +105,6 @@
       "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
       "version": "1.0.1",
       "category": "research"
-    },
-    {
-      "name": "prd-suite",
-      "source": "./plugins/prd-suite",
-      "description": "PRD, Tech Spec, Use Case, IA document generation",
-      "version": "1.1.0",
-      "category": "planning"
     },
     {
       "name": "docs-forge",

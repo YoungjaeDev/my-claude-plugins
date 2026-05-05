@@ -3,7 +3,7 @@
 ## Overview
 
 <!-- workflow-viz: system-overview -->
-<!-- last-updated: 2026-04-28 11:36:46 -->
+<!-- last-updated: 2026-05-05 22:56:00 -->
 
 ## C4 Container Diagram
 
@@ -46,7 +46,6 @@ flowchart TB
 
         subgraph Content["Content & Docs"]
             SL[slidev<br/>Presentations]
-            PRD[prd-suite<br/>PRD documents]
             TR[translator<br/>Translation]
             HU[humanizer<br/>AI text humanizer]
             NO[notion<br/>Notion upload]
@@ -87,7 +86,7 @@ flowchart TB
     class GD,IR,DF devStyle
     class CS,DW,PS researchStyle
     class CO,MJ aiStyle
-    class SL,PRD,TR,HU,NO contentStyle
+    class SL,TR,HU,NO contentStyle
     class NB,ML,IV toolStyle
 ```
 
@@ -99,7 +98,7 @@ flowchart TB
 | **Development** | github-dev, interactive-review, docs-forge | Code workflow |
 | **Research** | code-scout, deepwiki, paper-search-tools | Information gathering |
 | **AI Models** | council, midjourney | External AI services |
-| **Content** | slidev, prd-suite, translator, humanizer, notion | Document creation |
+| **Content** | slidev, translator, humanizer, notion | Document creation |
 | **Tools** | notebook, ml-toolkit, interview | Specialized utilities |
 
 ## Data Flow

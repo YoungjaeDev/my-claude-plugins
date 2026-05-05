@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -83,7 +83,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
-| | `prd-suite` | PRD, Tech Spec, Use Case 생성 |
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
 | | `rules-forge` | CLAUDE.md 생성 및 .claude/rules/ 모듈화 |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
@@ -375,20 +374,6 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 
 </details>
 
-<details>
-<summary><strong>prd-suite</strong> - PRD & Spec 문서 생성</summary>
-
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/prd-suite:prd` | PRD 작성 |
-| `/prd-suite:tech-spec` | Tech Spec 작성 |
-| `/prd-suite:usecase` | Use Case 작성 |
-| `/prd-suite:ia` | IA 작성 |
-| `/prd-suite:spec-all` | 전체 순차 실행 |
-
-</details>
-
 ### Presentation
 
 <details>
@@ -480,7 +465,6 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
       "./plugins/translator",
       "./plugins/midjourney",
       "./plugins/interview",
-      "./plugins/prd-suite",
       "./plugins/notion",
       "./plugins/humanizer",
       "./plugins/slidev",
@@ -524,7 +508,6 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
 │   ├── translator/            # 번역
 │   ├── midjourney/            # 이미지 생성
 │   ├── interview/             # 요구사항 수집
-│   ├── prd-suite/             # PRD & spec 생성
 │   ├── notion/                # Notion 연동
 │   ├── humanizer/             # AI 패턴 제거
 │   ├── slidev/                # 프레젠테이션 생성

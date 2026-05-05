@@ -98,6 +98,7 @@ node plugins/codex-bridge/scripts/sync.mjs "$@"
 1. Node 18+ 설치 여부: `node --version`
 2. `~/.agents/skills/` 쓰기 권한
 3. Target 에 외부 관리 skill 이 있는 경우, 충돌 탐지 후 skip + stderr warning
+4. `--plugin <list>` 사용 시 `--no-prune` 을 함께 사용 (미사용 시 선택되지 않은 플러그인의 bridge-managed skill 이 orphan prune 대상이 될 수 있음)
 
 실행 후:
 

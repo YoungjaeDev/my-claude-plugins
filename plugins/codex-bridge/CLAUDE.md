@@ -48,6 +48,7 @@ namespace regex 는 lookbehind `(?<![:/.\w])` 가드로 `https://x.io/foo:bar` �
 
 - Target: `$HOME/.agents/skills/<name>/SKILL.md` — OpenAI 공식 USER scope
 - `~/.codex/skills/` (외부 관리) 는 **절대 건드리지 않음**
+- `~/.codex/AGENTS.md` 에는 어떤 콘텐츠도 **주입하지 않음**
 - `CODEX_HOME` env 는 state/log base 일 뿐, skill 디렉토리와 무관
 
 ## Dependencies

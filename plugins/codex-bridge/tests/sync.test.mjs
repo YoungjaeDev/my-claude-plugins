@@ -270,3 +270,133 @@ test('syncAll: no collision warning when all skill names unique', async () => {
     await fs.rm(tmp, { recursive: true, force: true });
   }
 });
+
+test('syncAll: prune is SKIPPED when validSources is empty (defends against pluginsDir misresolution)', async () => {
+  // Regression test for the destructive prune bug fixed in 1.3.1.
+  // If discovery returns 0 results (e.g. wrong pluginsDir under Claude Code's
+  // versioned cache layout), pruneOrphans must NOT run — otherwise every
+  // bridge-managed entry in ~/.agents/skills/ would be deleted.
+  const tmp = await freshTmp();
+  try {
+    // Empty plugins dir (no plugins/* under it) — discovery returns []
+    const pluginsDir = path.join(tmp, 'plugins');
+    await fs.mkdir(pluginsDir, { recursive: true });
+
+    // Pre-populate target with a bridge-managed skill that WOULD be pruned
+    // under the old behavior (orphan with no matching source).
+    const targetDir = path.join(tmp, 'target', '.agents', 'skills');
+    const preExisting = path.join(targetDir, 'previously-synced');
+    await fs.mkdir(preExisting, { recursive: true });
+    await fs.writeFile(
+      path.join(preExisting, 'SKILL.md'),
+      '---\nname: previously-synced\nbridge_source: somePlugin/previously-synced\n---\nold body'
+    );
+
+    const warnings = [];
+    const logger = { warn: (m) => warnings.push(m), info: () => {} };
+
+    const report = await syncAll({
+      pluginsDir,
+      targetDir,
+      config: DEFAULT_CONFIG,
+      dryRun: false,
+      prune: true,
+      logger,
+    });
+
+    // Guard fired: nothing pruned, warning emitted, file still present.
+    assert.deepEqual(report.removed, []);
+    assert.ok(
+      warnings.some(w => /prune skipped: 0 valid sources/.test(w)),
+      `expected prune-skip warning, got: ${warnings.join(' | ')}`
+    );
+    assert.ok(
+      report.warnings.some(w => /prune skipped: 0 valid sources/.test(w)),
+      'expected report.warnings to include prune-skip warning'
+    );
+
+    const survivor = await fs.readFile(path.join(preExisting, 'SKILL.md'), 'utf-8');
+    assert.match(survivor, /bridge_source: somePlugin\/previously-synced/);
+    assert.match(survivor, /old body/);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAll: empty discoverSkills emits warning into report.warnings (early signal)', async () => {
+  const tmp = await freshTmp();
+  try {
+    const pluginsDir = path.join(tmp, 'plugins');
+    await fs.mkdir(pluginsDir, { recursive: true });
+
+    const warnings = [];
+    const logger = { warn: (m) => warnings.push(m), info: () => {} };
+
+    const report = await syncAll({
+      pluginsDir,
+      targetDir: path.join(tmp, 'target', '.agents', 'skills'),
+      config: DEFAULT_CONFIG,
+      dryRun: true,
+      prune: false,
+      logger,
+    });
+
+    assert.ok(
+      warnings.some(w => /discoverSkills returned 0 results/.test(w)),
+      `expected discoverSkills-empty warning, got: ${warnings.join(' | ')}`
+    );
+    assert.ok(
+      report.warnings.some(w => /discoverSkills returned 0 results/.test(w)),
+      'expected report.warnings to include discoverSkills-empty warning'
+    );
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAll: prune still runs normally when validSources non-empty', async () => {
+  // Sanity check: the safety guard must NOT block legitimate prunes.
+  const tmp = await freshTmp();
+  try {
+    // One source plugin/skill — validSources will include it.
+    await makeSourceSkill(tmp, 'alpha', 'kept', '---\nname: kept\ndescription: x\n---\nbody');
+
+    const targetDir = path.join(tmp, 'target', '.agents', 'skills');
+    // Pre-populate an orphan (bridge-managed but no matching source).
+    const orphan = path.join(targetDir, 'orphan-skill');
+    await fs.mkdir(orphan, { recursive: true });
+    await fs.writeFile(
+      path.join(orphan, 'SKILL.md'),
+      '---\nname: orphan-skill\nbridge_source: deleted/orphan-skill\n---\ngone'
+    );
+
+    const logger = { warn: () => {}, info: () => {} };
+
+    const report = await syncAll({
+      pluginsDir: path.join(tmp, 'plugins'),
+      targetDir,
+      config: DEFAULT_CONFIG,
+      dryRun: false,
+      prune: true,
+      logger,
+    });
+
+    assert.equal(report.removed.length, 1);
+    assert.equal(report.removed[0].skillName, 'orphan-skill');
+    // Orphan dir is gone
+    await assert.rejects(fs.access(orphan));
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('parseArgs: --plugins-dir captures path', async () => {
+  const { parseArgs } = await import('../scripts/sync.mjs');
+  const args = parseArgs(['--plugins-dir', '/custom/path']);
+  assert.equal(args.pluginsDir, '/custom/path');
+});
+
+test('parseArgs: --plugins-dir without value throws', async () => {
+  const { parseArgs } = await import('../scripts/sync.mjs');
+  assert.throws(() => parseArgs(['--plugins-dir']), /requires a path/);
+});

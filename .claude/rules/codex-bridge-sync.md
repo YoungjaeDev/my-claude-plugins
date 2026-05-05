@@ -14,7 +14,7 @@ Commands are not a first-class concept in Codex — they're wrapped as synthetic
 
 ## Key Components
 
-- `scripts/sync.mjs` — single-file Node 18+ engine (zero runtime deps). Exports `discoverSkills`, `discoverCommands`, `parseFrontmatter`, `applyTransforms`, `transformSkillContent`, `injectBridgeSource`, `syncOne`, `syncCommand`, `syncAll`, `pruneOrphans`, `loadConfig`, `parseArgs`, `isExcluded`.
+- `scripts/sync.mjs` — single-file Node 18+ engine (zero runtime deps). Exports `discoverSkills`, `discoverCommands`, `resolvePluginsDir`, `resolvePluginContentDir`, `isVersionedCacheChild`, `compareSemver`, `parseFrontmatter`, `applyTransforms`, `transformSkillContent`, `injectBridgeSource`, `syncOne`, `syncCommand`, `syncAll`, `pruneOrphans`, `loadConfig`, `parseArgs`, `isExcluded`.
 - `codex-bridge.config.json` — default `exclude` glob list + 3 transform rules + text extension whitelist.
 - `skills/codex-sync/SKILL.md` — Claude Code entrypoint (`/codex-bridge:codex-sync`).
 - `tests/*.test.mjs` — `node --test` suite, fixtures in `tests/fixtures/`.
@@ -32,6 +32,8 @@ Commands are not a first-class concept in Codex — they're wrapped as synthetic
 - **Emit a collision warning once per duplicate `skillName`** detected across distinct plugins, including all plugin names involved and the winner after sort. Store in `report.collisions[]`.
 - **Guard `const` declarations against top-level TDZ.** Any module-level `if (isMainModule) main(...)` block must appear after every `const` it transitively depends on (e.g. `KNOWN_FLAGS`). Function declarations hoist; lexical bindings do not.
 - **Test Red first.** Fixtures live in `tests/fixtures/`. Write failing test, then the minimal export needed to pass. Re-run the full suite after every cycle.
+- **Resolve `pluginsDir` via `resolvePluginsDir(scriptPath, override)`** which detects monorepo vs Claude Code versioned cache layout (heuristic: every direct child of the monorepo candidate is semver-named ⇒ jump one level up). Honor `--plugins-dir <path>` override. Per-plugin layout is resolved by `resolvePluginContentDir(pluginDir)` which descends into `<plugin>/<latest-semver>/` when `.claude-plugin/` is absent and all children are semver. Together they make discovery work both from `<repo>/plugins/codex-bridge/scripts/sync.mjs` and from `~/.claude/plugins/cache/my-claude-plugins/codex-bridge/<version>/scripts/sync.mjs`.
+- **Skip `pruneOrphans` when `validSources.size === 0`.** A discovery miss (wrong `pluginsDir`, over-restrictive `--plugin` filter, freshly-init repo) must never trigger destructive prune. Emit a stderr warning and push to `report.warnings` so the failure is visible. Pair with the `discoverSkills returned 0 results` warning emitted at the top of `syncAll` for upstream signal.
 
 ## Don'ts
 

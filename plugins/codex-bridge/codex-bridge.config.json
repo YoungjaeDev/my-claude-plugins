@@ -6,7 +6,6 @@
   },
   "collisionFallbackPrefix": "bridge-",
   "exclude": [
-    "plugins/interactive-review/**",
     "plugins/midjourney/**"
   ],
   "transform": {

@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.13.1"
+    "version": "1.15.0"
   },
   "plugins": [
     {
@@ -19,7 +19,7 @@
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit cr-fix pipeline (wait + auto-fetch + apply + push loop with branch-protection-gated auto-merge and CR-engagement guard), project tracking, release",
-      "version": "1.13.1",
+      "version": "1.14.0",
       "category": "github"
     },
     {
@@ -151,8 +151,8 @@
     {
       "name": "codex-bridge",
       "source": "./plugins/codex-bridge",
-      "description": "Sync OMC plugin skills + commands + guidelines to Codex. Skills and commands land at ~/.agents/skills/ (USER scope); guidelines are injected into ~/.codex/AGENTS.md between omc-guidelines markers. Body-only transform with bridge_source provenance.",
-      "version": "1.2.0",
+      "description": "Sync my-claude-plugins skills and commands to Codex ~/.agents/skills/ (USER scope) so they become callable as native $skill-name. Body-only transform with bridge_source provenance marker.",
+      "version": "1.3.0",
       "category": "integration"
     }
   ]

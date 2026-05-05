@@ -1,16 +1,10 @@
 {
-  "_comment": "Default config for codex-bridge. Override via --config <path>. scope=user → $HOME/.agents/skills (OpenAI USER scope). Set target.agentsHome to override (testing). target.agentsMdPath defaults to ~/.codex/AGENTS.md (where guideline blocks are injected). CODEX_HOME has no effect on skill directory but may shift AGENTS.md — override agentsMdPath if needed.",
+  "_comment": "Default config for codex-bridge. Override via --config <path>. scope=user → $HOME/.agents/skills (OpenAI USER scope). Set target.agentsHome to override (testing).",
   "target": {
     "scope": "user",
-    "agentsHome": null,
-    "agentsMdPath": null
+    "agentsHome": null
   },
-  "agentsInject": {
-    "enabled": true,
-    "warnBytes": 32768,
-    "_comment": "warnBytes = Codex default project_doc_max_bytes. Warning emitted when AGENTS.md exceeds this. Raise Codex's project_doc_max_bytes in ~/.codex/config.toml to match."
-  },
-  "collisionFallbackPrefix": "omc-",
+  "collisionFallbackPrefix": "bridge-",
   "exclude": [
     "plugins/interactive-review/**",
     "plugins/midjourney/**"
@@ -18,13 +12,14 @@
   "transform": {
     "bodyOnly": true,
     "rules": [
-      { "from": ".omc/", "to": ".omx/", "mode": "literal" },
       { "from": "CLAUDE.md", "to": "AGENTS.md", "mode": "literal" },
-      { "from": "/oh-my-claudecode:", "to": "$", "mode": "literal" },
-      { "from": "oh-my-claudecode", "to": "oh-my-codex", "mode": "literal" },
-      { "from": "~/.claude/", "to": "~/.codex/", "mode": "literal" },
-      { "from": "omc", "to": "omx", "mode": "word-boundary" },
-      { "from": "OMC", "to": "OMX", "mode": "word-boundary" }
+      { "from": ".claude/", "to": ".codex/", "mode": "literal" },
+      {
+        "from": "(?<![:/.\\w])\\/([a-z][a-z0-9-]*):([a-z][a-z0-9-]*)",
+        "to": "$$$2",
+        "mode": "regex",
+        "flags": "g"
+      }
     ],
     "textExtensions": [".md", ".yml", ".yaml", ".json", ".sh", ".mjs", ".js", ".py", ".ts"]
   }

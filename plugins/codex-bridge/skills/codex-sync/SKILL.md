@@ -101,16 +101,16 @@ node plugins/codex-bridge/scripts/sync.mjs "$@"
 
 `--verbose` 출력 첫 줄에 어느 layout 인지 명시된다:
 
-```
+```text
 [codex-bridge] resolved pluginsDir: /path (auto-detected (monorepo))
 [codex-bridge] resolved pluginsDir: /path (auto-detected (versioned-cache fallback))
 [codex-bridge] resolved pluginsDir: /path (overridden via --plugins-dir)
 ```
 
-비표준 layout 이거나 자동 인식이 잘못 동작하면 `--plugins-dir <path>` 로 명시:
+비표준 layout 이거나 자동 인식이 잘못 동작하면 `--plugins-dir <path>` 로 명시 (repo root 에서 실행 가정):
 
 ```bash
-node sync.mjs --dry-run --verbose --plugins-dir /custom/plugins
+node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose --plugins-dir /custom/plugins
 ```
 
 Windows 경로도 지원 (Node `path.resolve` 가 OS 별 separator 정규화).

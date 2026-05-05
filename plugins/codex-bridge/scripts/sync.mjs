@@ -306,10 +306,14 @@ export function parseArgs(argv) {
         out.reportPath = argv[++i];
         if (!out.reportPath) throw new Error('--report requires a path');
         break;
-      case '--plugins-dir':
-        out.pluginsDir = argv[++i];
-        if (!out.pluginsDir) throw new Error('--plugins-dir requires a path');
+      case '--plugins-dir': {
+        const value = argv[++i];
+        if (!value || value.startsWith('-')) {
+          throw new Error('--plugins-dir requires a path');
+        }
+        out.pluginsDir = value;
         break;
+      }
     }
   }
   return out;
@@ -680,12 +684,50 @@ function stripYamlValue(value) {
 }
 
 export function compareSemver(a, b) {
-  const parts = (v) => v.split(/[-+]/)[0].split('.').map(n => parseInt(n, 10) || 0);
-  const [aMajor, aMinor, aPatch] = parts(a);
-  const [bMajor, bMinor, bPatch] = parts(b);
-  if (aMajor !== bMajor) return aMajor - bMajor;
-  if (aMinor !== bMinor) return aMinor - bMinor;
-  return aPatch - bPatch;
+  const split = (v) => {
+    const noBuild = v.split('+', 1)[0];
+    const dashIdx = noBuild.indexOf('-');
+    const main = dashIdx === -1 ? noBuild : noBuild.slice(0, dashIdx);
+    const pre = dashIdx === -1 ? null : noBuild.slice(dashIdx + 1);
+    const nums = main.split('.').map(n => parseInt(n, 10) || 0);
+    return { nums, pre };
+  };
+  const A = split(a);
+  const B = split(b);
+  for (let i = 0; i < 3; i++) {
+    const an = A.nums[i] ?? 0;
+    const bn = B.nums[i] ?? 0;
+    if (an !== bn) return an - bn;
+  }
+  // Numeric core equal — apply semver pre-release rule:
+  // a version WITHOUT pre-release is greater than one WITH pre-release.
+  if (A.pre === null && B.pre === null) return 0;
+  if (A.pre === null) return 1;
+  if (B.pre === null) return -1;
+  // Both have pre-release: compare dot-separated identifiers per semver spec.
+  const aParts = A.pre.split('.');
+  const bParts = B.pre.split('.');
+  const max = Math.max(aParts.length, bParts.length);
+  for (let i = 0; i < max; i++) {
+    const ai = aParts[i];
+    const bi = bParts[i];
+    if (ai === undefined) return -1;
+    if (bi === undefined) return 1;
+    const aNum = /^\d+$/.test(ai);
+    const bNum = /^\d+$/.test(bi);
+    if (aNum && bNum) {
+      const diff = parseInt(ai, 10) - parseInt(bi, 10);
+      if (diff !== 0) return diff;
+    } else if (aNum) {
+      return -1; // numeric identifiers sort before alphanumeric
+    } else if (bNum) {
+      return 1;
+    } else {
+      if (ai < bi) return -1;
+      if (ai > bi) return 1;
+    }
+  }
+  return 0;
 }
 
 // Per-plugin layout resolver: returns the directory that holds `skills/` and

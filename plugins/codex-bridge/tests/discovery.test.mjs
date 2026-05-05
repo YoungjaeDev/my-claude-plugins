@@ -132,10 +132,31 @@ test('compareSemver: orders by major, minor, patch', () => {
   assert.ok(compareSemver('2.0.0', '1.99.99') > 0);
 });
 
-test('compareSemver: ignores prerelease/build metadata for ordering', () => {
-  // Simple numeric-prefix comparison; `-rc.1` is stripped.
-  assert.equal(compareSemver('1.0.0-rc.1', '1.0.0-rc.2'), 0);
+test('compareSemver: pre-release sorts before stable at the same numeric core (semver §11)', () => {
+  assert.ok(compareSemver('1.3.1-rc.1', '1.3.1') < 0, 'pre-release < stable');
+  assert.ok(compareSemver('1.3.1', '1.3.1-rc.1') > 0, 'stable > pre-release');
+});
+
+test('compareSemver: pre-release identifiers compared per semver spec', () => {
+  // numeric identifiers compare numerically
+  assert.ok(compareSemver('1.0.0-rc.1', '1.0.0-rc.2') < 0);
+  assert.ok(compareSemver('1.0.0-rc.10', '1.0.0-rc.9') > 0);
+  // alphanumeric identifiers compare lexically
+  assert.ok(compareSemver('1.0.0-alpha', '1.0.0-beta') < 0);
+  // shorter identifier list sorts before longer when prefixes match
+  assert.ok(compareSemver('1.0.0-rc', '1.0.0-rc.1') < 0);
+  // numeric < alphanumeric per spec
+  assert.ok(compareSemver('1.0.0-1', '1.0.0-a') < 0);
+});
+
+test('compareSemver: numeric core wins over pre-release ordering', () => {
   assert.ok(compareSemver('1.0.0-rc.1', '1.0.1') < 0);
+  assert.ok(compareSemver('1.0.1-rc.1', '1.0.0') > 0);
+});
+
+test('compareSemver: build metadata is ignored for ordering', () => {
+  assert.equal(compareSemver('1.0.0+build1', '1.0.0+build2'), 0);
+  assert.equal(compareSemver('1.0.0', '1.0.0+meta'), 0);
 });
 
 test('resolvePluginContentDir: monorepo plugin (.claude-plugin/ present) returns plugin dir as-is', async () => {

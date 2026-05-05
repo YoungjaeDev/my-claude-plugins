@@ -400,3 +400,11 @@ test('parseArgs: --plugins-dir without value throws', async () => {
   const { parseArgs } = await import('../scripts/sync.mjs');
   assert.throws(() => parseArgs(['--plugins-dir']), /requires a path/);
 });
+
+test('parseArgs: --plugins-dir followed by another flag is rejected (does not silently consume the flag)', async () => {
+  const { parseArgs } = await import('../scripts/sync.mjs');
+  // Without the dash-prefix guard, this would parse pluginsDir="--dry-run"
+  // and consume the actual --dry-run flag.
+  assert.throws(() => parseArgs(['--plugins-dir', '--dry-run']), /requires a path/);
+  assert.throws(() => parseArgs(['--plugins-dir', '-h']), /requires a path/);
+});

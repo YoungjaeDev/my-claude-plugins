@@ -242,8 +242,12 @@ test('discoverSkills: handles versioned cache layout, picks latest version per p
     const codexSync = skills.find(s => s.pluginName === 'codex-bridge');
     assert.ok(codexSync, 'expected codex-bridge entry');
     assert.equal(codexSync.skillName, 'codex-sync');
-    // Verify the LATEST version was picked (1.3.1, not 1.2.0 / 1.3.0)
-    assert.match(codexSync.skillPath, /\/1\.3\.1\/skills\/codex-sync\/SKILL\.md$/);
+    // Verify the LATEST version was picked (1.3.1, not 1.2.0 / 1.3.0).
+    // Use path.join + path.normalize so the assertion holds on both POSIX and Windows.
+    assert.equal(
+      path.normalize(codexSync.skillPath),
+      path.join(cacheRoot, 'codex-bridge', '1.3.1', 'skills', 'codex-sync', 'SKILL.md')
+    );
     const body = await fs.readFile(codexSync.skillPath, 'utf-8');
     assert.match(body, /latest/);
 
@@ -272,7 +276,10 @@ test('discoverCommands: handles versioned cache layout, picks latest version per
     assert.equal(commands.length, 1);
     assert.equal(commands[0].pluginName, 'github-dev');
     assert.equal(commands[0].commandName, 'commit-and-push');
-    assert.match(commands[0].sourcePath, /\/1\.14\.0\/commands\/commit-and-push\.md$/);
+    assert.equal(
+      path.normalize(commands[0].sourcePath),
+      path.join(cacheRoot, 'github-dev', '1.14.0', 'commands', 'commit-and-push.md')
+    );
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
@@ -296,7 +303,10 @@ test('discoverSkills: monorepo plugin with coincidentally-semver-named subdir is
     assert.equal(skills[0].pluginName, 'mixed-plugin');
     assert.equal(skills[0].skillName, 'real-skill');
     // skill is from monorepo path, NOT the 1.2.3 subdir
-    assert.match(skills[0].skillPath, /\/mixed-plugin\/skills\/real-skill\/SKILL\.md$/);
+    assert.equal(
+      path.normalize(skills[0].skillPath),
+      path.join(pluginDir, 'skills', 'real-skill', 'SKILL.md')
+    );
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }

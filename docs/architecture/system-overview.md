@@ -29,7 +29,6 @@ flowchart TB
 
         subgraph Development["Development Tools"]
             GD[github-dev<br/>Commands: resolve-issue, PR, etc.]
-            IR[interactive-review<br/>Web UI code review]
             DF[docs-forge<br/>README/CHANGELOG]
         end
 
@@ -83,7 +82,7 @@ flowchart TB
     classDef toolStyle fill:#6366F1,stroke:#4F46E5,color:#fff
 
     class CC,OMC coreStyle
-    class GD,IR,DF devStyle
+    class GD,DF devStyle
     class CS,DW,PS researchStyle
     class CO,MJ aiStyle
     class SL,TR,HU,NO contentStyle
@@ -95,7 +94,7 @@ flowchart TB
 | Category | Plugins | Purpose |
 |----------|---------|---------|
 | **Core** | core-config, omc | Foundation: hooks, orchestration |
-| **Development** | github-dev, interactive-review, docs-forge | Code workflow |
+| **Development** | github-dev, docs-forge | Code workflow |
 | **Research** | code-scout, deepwiki, paper-search-tools | Information gathering |
 | **AI Models** | council, midjourney | External AI services |
 | **Content** | slidev, translator, humanizer, notion | Document creation |

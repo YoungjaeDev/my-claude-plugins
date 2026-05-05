@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 20 specialized plugins",
-    "version": "1.16.0"
+    "description": "Personal Claude Code plugin collection with 19 specialized plugins",
+    "version": "1.17.0"
   },
   "plugins": [
     {
@@ -21,13 +21,6 @@
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit cr-fix pipeline (wait + auto-fetch + apply + push loop with branch-protection-gated auto-merge and CR-engagement guard), project tracking, release",
       "version": "1.14.0",
       "category": "github"
-    },
-    {
-      "name": "interactive-review",
-      "source": "./plugins/interactive-review",
-      "description": "Web UI code review with MCP server",
-      "version": "1.0.6",
-      "category": "code-review"
     },
     {
       "name": "code-scout",

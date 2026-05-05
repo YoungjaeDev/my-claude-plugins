@@ -3,7 +3,6 @@
     "local": [
       "./plugins/core-config",
       "./plugins/github-dev",
-      "./plugins/interactive-review",
       "./plugins/code-scout",
       "./plugins/council",
       "./plugins/deepwiki",

@@ -51,13 +51,6 @@ node --test plugins/codex-bridge/tests/*.test.mjs
 node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose
 ```
 
-- interactive-review MCP 서버 로컬 실행:
-
-```bash
-cd plugins/interactive-review/mcp-server
-uv run python server.py
-```
-
 - Python 테스트가 필요한 경우 해당 플러그인 디렉터리에서 `uv run pytest`를 우선 사용하세요.
 
 ## 문서 작성 스타일

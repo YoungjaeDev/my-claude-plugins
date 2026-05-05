@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 20개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-20-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -69,7 +69,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 |---------|---------|------|
 | **Core** | `core-config` | 가이드라인 자동 주입, Python 포매팅, 알림 |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
-| | `interactive-review` | 브라우저 기반 코드 리뷰 UI |
 | **Research** | `code-scout` | GitHub, HuggingFace 등 10+ 플랫폼 리소스 검색 |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
@@ -155,19 +154,6 @@ claude  # .claude/settings.json에서 자동 로드
 **Flags:** `--skip-review`, `--strict`
 
 **Requirements:** `gh` CLI
-
-</details>
-
-<details>
-<summary><strong>interactive-review</strong> - 웹 UI 코드 리뷰</summary>
-
-브라우저 기반 인터랙티브 코드 리뷰.
-
-- 체크박스 승인 워크플로우
-- 실시간 리뷰 인터페이스
-- PEP 723 의존성
-
-**Requirements:** `uv`
 
 </details>
 
@@ -455,7 +441,6 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
     "local": [
       "./plugins/core-config",
       "./plugins/github-dev",
-      "./plugins/interactive-review",
       "./plugins/code-scout",
       "./plugins/council",
       "./plugins/deepwiki",
@@ -484,7 +469,7 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
 |------|------|------|
 | [Claude Code](https://docs.anthropic.com/claude-code) | 기본 CLI | Yes |
 | `gh` | GitHub 플러그인 | github-dev |
-| `uv` | Python MCP 서버 | core-config, interactive-review |
+| `uv` | Python MCP 서버 | core-config |
 | `ruff` | Python 포매팅 | core-config |
 | Node 18+ | sync 엔진 런타임 | codex-bridge |
 | Codex CLI 0.120.0+ | `~/.agents/skills/` 네이티브 로드 | codex-bridge (실행시) |
@@ -498,7 +483,6 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
 ├── plugins/
 │   ├── core-config/           # 가이드라인 + 훅
 │   ├── github-dev/            # GitHub 워크플로우
-│   ├── interactive-review/    # 웹 UI 리뷰
 │   ├── code-scout/            # 리소스 탐색
 │   ├── council/               # LLM Council
 │   ├── deepwiki/              # 레포 문서화

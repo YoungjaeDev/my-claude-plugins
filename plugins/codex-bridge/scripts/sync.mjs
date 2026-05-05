@@ -265,7 +265,7 @@ function globToRegex(pattern) {
 
 const KNOWN_FLAGS = new Set([
   '--dry-run', '--verbose', '--no-prune', '--help', '-h',
-  '--config', '--plugin', '--report',
+  '--config', '--plugin', '--report', '--plugins-dir',
 ]);
 
 export function parseArgs(argv) {
@@ -277,6 +277,7 @@ export function parseArgs(argv) {
     configPath: null,
     plugins: null,
     reportPath: null,
+    pluginsDir: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -305,6 +306,14 @@ export function parseArgs(argv) {
         out.reportPath = argv[++i];
         if (!out.reportPath) throw new Error('--report requires a path');
         break;
+      case '--plugins-dir': {
+        const value = argv[++i];
+        if (!value || value.startsWith('-')) {
+          throw new Error('--plugins-dir requires a path');
+        }
+        out.pluginsDir = value;
+        break;
+      }
     }
   }
   return out;
@@ -324,6 +333,13 @@ export async function syncAll(options) {
   const allSkills = await discoverSkills(pluginsDir);
   const allCommands = await discoverCommands(pluginsDir);
   const pluginsRoot = path.dirname(pluginsDir);
+
+  const warnings = [];
+  if (allSkills.length === 0) {
+    const msg = `[codex-bridge] discoverSkills returned 0 results from ${pluginsDir} — likely pluginsDir misresolution under Claude Code's versioned cache layout. Inspect with --dry-run --verbose, or pass --plugins-dir <path> to override.`;
+    logger.warn(msg);
+    warnings.push(msg);
+  }
 
   const filtered = allSkills.filter((skill) => {
     if (pluginFilter && !pluginFilter.includes(skill.pluginName)) return false;
@@ -358,6 +374,7 @@ export async function syncAll(options) {
   const report = {
     dryRun,
     targetDir,
+    pluginsDir,
     discovered: allSkills.length,
     discoveredCommands: allCommands.length,
     considered: filtered.length,
@@ -367,6 +384,7 @@ export async function syncAll(options) {
     skipped: [],
     removed: [],
     errors: [],
+    warnings,
   };
 
   const validSources = new Set();
@@ -419,10 +437,16 @@ export async function syncAll(options) {
   }
 
   if (prune && !dryRun) {
-    const pruneResult = await pruneOrphans(targetDir, validSources);
-    report.removed = pruneResult.removed;
-    for (const r of pruneResult.removed) {
-      logger.info(`[codex-bridge] pruned orphan ${r.skillName} (was ${r.bridgeSource})`);
+    if (validSources.size === 0) {
+      const msg = `[codex-bridge] prune skipped: 0 valid sources discovered (likely pluginsDir misresolution or over-restrictive --plugin filter). Inspect with --dry-run --verbose.`;
+      logger.warn(msg);
+      report.warnings.push(msg);
+    } else {
+      const pruneResult = await pruneOrphans(targetDir, validSources);
+      report.removed = pruneResult.removed;
+      for (const r of pruneResult.removed) {
+        logger.info(`[codex-bridge] pruned orphan ${r.skillName} (was ${r.bridgeSource})`);
+      }
     }
   } else if (prune && dryRun) {
     const existingEntries = await fs.readdir(targetDir, { withFileTypes: true }).catch((err) => {
@@ -445,6 +469,21 @@ export async function syncAll(options) {
   return report;
 }
 
+export function isVersionedCacheChild(name) {
+  return /^\d+\.\d+\.\d+(?:[-+].*)?$/.test(name);
+}
+
+export async function resolvePluginsDir(scriptPath, override) {
+  if (override) return path.resolve(override);
+  const candidateA = path.resolve(path.dirname(scriptPath), '..', '..');
+  const entries = await fs.readdir(candidateA, { withFileTypes: true }).catch(() => []);
+  const dirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+  if (dirs.length > 0 && dirs.every(isVersionedCacheChild)) {
+    return path.resolve(candidateA, '..');
+  }
+  return candidateA;
+}
+
 export async function main(argv) {
   let args;
   try {
@@ -460,9 +499,23 @@ export async function main(argv) {
     return 0;
   }
 
-  const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const pluginsDir = path.resolve(pluginRoot, '..');
+  const scriptPath = fileURLToPath(import.meta.url);
+  const pluginRoot = path.resolve(path.dirname(scriptPath), '..');
+  const pluginsDir = await resolvePluginsDir(scriptPath, args.pluginsDir);
   const configPath = args.configPath ?? path.join(pluginRoot, 'codex-bridge.config.json');
+
+  if (args.verbose) {
+    let layout;
+    if (args.pluginsDir) {
+      layout = 'overridden via --plugins-dir';
+    } else {
+      const monorepoRoot = path.resolve(path.dirname(scriptPath), '..', '..');
+      layout = pluginsDir === monorepoRoot
+        ? 'auto-detected (monorepo)'
+        : 'auto-detected (versioned-cache fallback)';
+    }
+    process.stderr.write(`[codex-bridge] resolved pluginsDir: ${pluginsDir} (${layout})\n`);
+  }
 
   let config;
   try {
@@ -486,6 +539,12 @@ export async function main(argv) {
     prune: !args.noPrune,
     logger,
   });
+
+  if (args.verbose) {
+    const pluginEntries = await fs.readdir(pluginsDir, { withFileTypes: true }).catch(() => []);
+    const pluginCount = pluginEntries.filter(e => e.isDirectory()).length;
+    process.stderr.write(`[codex-bridge] discovered ${pluginCount} plugins, ${report.discovered} skills, ${report.discoveredCommands ?? 0} commands\n`);
+  }
 
   if (args.reportPath) {
     await fs.writeFile(args.reportPath, JSON.stringify(report, null, 2), 'utf-8');
@@ -516,9 +575,11 @@ function printHelp() {
 
 Options:
   --dry-run              Plan without writing files
-  --verbose              Per-file logs
+  --verbose              Per-file logs + diagnostic (resolved pluginsDir, layout, counts)
   --config <path>        Custom config path (default: codex-bridge.config.json)
   --plugin <list>        Comma-separated plugin filter (e.g. --plugin github-dev,core-config)
+  --plugins-dir <path>   Override plugins directory (skips auto-detect; use when running
+                         from an unusual layout, e.g. Claude Code's versioned cache)
   --no-prune             Disable auto-prune of orphans
   --report <path>        Write JSON report to path
   -h, --help             Show this help
@@ -622,6 +683,83 @@ function stripYamlValue(value) {
   return trimmed;
 }
 
+export function compareSemver(a, b) {
+  const split = (v) => {
+    const noBuild = v.split('+', 1)[0];
+    const dashIdx = noBuild.indexOf('-');
+    const main = dashIdx === -1 ? noBuild : noBuild.slice(0, dashIdx);
+    const pre = dashIdx === -1 ? null : noBuild.slice(dashIdx + 1);
+    const nums = main.split('.').map(n => parseInt(n, 10) || 0);
+    return { nums, pre };
+  };
+  const A = split(a);
+  const B = split(b);
+  for (let i = 0; i < 3; i++) {
+    const an = A.nums[i] ?? 0;
+    const bn = B.nums[i] ?? 0;
+    if (an !== bn) return an - bn;
+  }
+  // Numeric core equal — apply semver pre-release rule:
+  // a version WITHOUT pre-release is greater than one WITH pre-release.
+  if (A.pre === null && B.pre === null) return 0;
+  if (A.pre === null) return 1;
+  if (B.pre === null) return -1;
+  // Both have pre-release: compare dot-separated identifiers per semver spec.
+  const aParts = A.pre.split('.');
+  const bParts = B.pre.split('.');
+  const max = Math.max(aParts.length, bParts.length);
+  for (let i = 0; i < max; i++) {
+    const ai = aParts[i];
+    const bi = bParts[i];
+    if (ai === undefined) return -1;
+    if (bi === undefined) return 1;
+    const aNum = /^\d+$/.test(ai);
+    const bNum = /^\d+$/.test(bi);
+    if (aNum && bNum) {
+      const diff = parseInt(ai, 10) - parseInt(bi, 10);
+      if (diff !== 0) return diff;
+    } else if (aNum) {
+      return -1; // numeric identifiers sort before alphanumeric
+    } else if (bNum) {
+      return 1;
+    } else {
+      if (ai < bi) return -1;
+      if (ai > bi) return 1;
+    }
+  }
+  return 0;
+}
+
+// Per-plugin layout resolver: returns the directory that holds `skills/` and
+// `commands/` for this plugin. Handles two layouts:
+//
+//   1. Monorepo / source checkout — `<plugin>/.claude-plugin/`, `<plugin>/skills/` …
+//      sit directly under `<plugin>/`. Returns `<plugin>` itself.
+//   2. Claude Code cache — `<plugin>/<semver>/.claude-plugin/`, `<plugin>/<semver>/skills/`
+//      sit under a version subdirectory. Returns `<plugin>/<latest-semver>`.
+//
+// The presence of `.claude-plugin/` directly under `<plugin>` is the canonical
+// monorepo signal. If absent and every direct child is semver-named, treat as
+// cache layout and pick the highest semver. Otherwise return `<plugin>` as-is
+// and let the downstream walker swallow ENOENT.
+export async function resolvePluginContentDir(pluginDir) {
+  let entries;
+  try {
+    entries = await fs.readdir(pluginDir, { withFileTypes: true });
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+  const dirNames = entries.filter(e => e.isDirectory()).map(e => e.name);
+  if (dirNames.includes('.claude-plugin')) return pluginDir;
+  const semverDirs = dirNames.filter(isVersionedCacheChild);
+  if (semverDirs.length > 0 && semverDirs.length === dirNames.length) {
+    semverDirs.sort(compareSemver);
+    return path.join(pluginDir, semverDirs[semverDirs.length - 1]);
+  }
+  return pluginDir;
+}
+
 export async function discoverSkills(pluginsDir) {
   const results = [];
 
@@ -635,7 +773,9 @@ export async function discoverSkills(pluginsDir) {
 
   for (const entry of pluginEntries) {
     if (!entry.isDirectory()) continue;
-    const skillsRoot = path.join(pluginsDir, entry.name, 'skills');
+    const contentRoot = await resolvePluginContentDir(path.join(pluginsDir, entry.name));
+    if (!contentRoot) continue;
+    const skillsRoot = path.join(contentRoot, 'skills');
     try {
       await walkForSkillMd(skillsRoot, entry.name, results);
     } catch (err) {
@@ -683,7 +823,9 @@ export async function discoverCommands(pluginsDir) {
 
   for (const entry of pluginEntries) {
     if (!entry.isDirectory()) continue;
-    const commandsDir = path.join(pluginsDir, entry.name, 'commands');
+    const contentRoot = await resolvePluginContentDir(path.join(pluginsDir, entry.name));
+    if (!contentRoot) continue;
+    const commandsDir = path.join(contentRoot, 'commands');
     let files;
     try {
       files = await fs.readdir(commandsDir, { withFileTypes: true });

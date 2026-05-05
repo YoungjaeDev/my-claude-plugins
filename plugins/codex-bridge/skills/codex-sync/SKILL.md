@@ -58,9 +58,10 @@ $codex-sync --dry-run
 | Flag | 동작 |
 |------|-----|
 | `--dry-run` | 파일 변경 없이 계획만 출력 |
-| `--verbose` | 파일별 행위 상세 출력 |
+| `--verbose` | 파일별 행위 + 진단 출력 (resolved pluginsDir, layout 종류, plugin/skill/command counts) |
 | `--config <path>` | 커스텀 config 경로 (기본: `codex-bridge.config.json`) |
 | `--plugin <list>` | 쉼표 구분 플러그인 필터 (예: `--plugin github-dev,core-config`) |
+| `--plugins-dir <path>` | plugins 디렉토리 명시 지정 (auto-detect 우회. 비표준 layout 디버깅 / 단위 테스트용) |
 | `--no-prune` | auto-prune 비활성화 |
 | `--report <path>` | JSON 리포트 파일 출력 |
 | `-h`, `--help` | 도움말 |
@@ -91,6 +92,29 @@ node plugins/codex-bridge/scripts/sync.mjs "$@"
 
 사용자가 `--dry-run` 을 지정하지 않았고 `~/.agents/skills/` 에 codex-bridge-managed skill 이 없다면, 먼저 `--dry-run --verbose` 로 변경사항을 미리 보여준 뒤 사용자 확인을 받고 실제 실행한다.
 
+### 실행 위치 (plugin cache vs source checkout)
+
+스크립트는 두 가지 layout 을 자동 인식한다:
+
+- **Source checkout (monorepo)**: `<repo>/plugins/codex-bridge/scripts/sync.mjs` 직접 실행. `pluginsDir` 가 `<repo>/plugins` 로 자동 산출되어 모든 plugin 이 정상 발견됨.
+- **Claude Code plugin cache**: `~/.claude/plugins/cache/my-claude-plugins/codex-bridge/<version>/scripts/sync.mjs` 가 호출되는 케이스. `pluginsDir` 가 `~/.claude/plugins/cache/my-claude-plugins/` 로 산출되며, plugin 별 `<plugin>/<latest-semver>/skills/` · `commands/` 까지 자동으로 descend 한다.
+
+`--verbose` 출력 첫 줄에 어느 layout 인지 명시된다:
+
+```text
+[codex-bridge] resolved pluginsDir: /path (auto-detected (monorepo))
+[codex-bridge] resolved pluginsDir: /path (auto-detected (versioned-cache fallback))
+[codex-bridge] resolved pluginsDir: /path (overridden via --plugins-dir)
+```
+
+비표준 layout 이거나 자동 인식이 잘못 동작하면 `--plugins-dir <path>` 로 명시 (repo root 에서 실행 가정):
+
+```bash
+node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose --plugins-dir /custom/plugins
+```
+
+Windows 경로도 지원 (Node `path.resolve` 가 OS 별 separator 정규화).
+
 ## Safety Checks
 
 실행 전 다음을 확인:
@@ -99,6 +123,8 @@ node plugins/codex-bridge/scripts/sync.mjs "$@"
 2. `~/.agents/skills/` 쓰기 권한
 3. Target 에 외부 관리 skill 이 있는 경우, 충돌 탐지 후 skip + stderr warning
 4. `--plugin <list>` 사용 시 `--no-prune` 을 함께 사용 (미사용 시 선택되지 않은 플러그인의 bridge-managed skill 이 orphan prune 대상이 될 수 있음)
+5. **Layout auto-detect**: monorepo / Claude Code cache 자동 인식. `--verbose` 출력 첫 줄로 검증 가능 (`auto-detected (monorepo)` / `auto-detected (versioned-cache fallback)` / `overridden via --plugins-dir`)
+6. **Prune safety net** (1.3.1+): discovery 가 0 skill 을 반환하면 (잘못된 `pluginsDir` resolution 가능성) auto-prune 은 자동으로 skip 되고 stderr warning 출력. 이 가드가 있어도 비정상 출력을 보면 즉시 중단 권장
 
 실행 후:
 

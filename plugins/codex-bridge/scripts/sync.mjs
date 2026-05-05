@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// codex-bridge — Sync OMC plugin skills to Codex ~/.agents/skills/
+// codex-bridge — Sync my-claude-plugins skills and commands to Codex ~/.agents/skills/
 // Zero runtime dependencies. Node 18+.
 
 import fs from 'node:fs/promises';
@@ -10,13 +10,14 @@ import { fileURLToPath } from 'node:url';
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
 
 export const DEFAULT_RULES = [
-  { from: '.omc/', to: '.omx/', mode: 'literal' },
   { from: 'CLAUDE.md', to: 'AGENTS.md', mode: 'literal' },
-  { from: '/oh-my-claudecode:', to: '$', mode: 'literal' },
-  { from: 'oh-my-claudecode', to: 'oh-my-codex', mode: 'literal' },
-  { from: '~/.claude/', to: '~/.codex/', mode: 'literal' },
-  { from: 'omc', to: 'omx', mode: 'word-boundary' },
-  { from: 'OMC', to: 'OMX', mode: 'word-boundary' },
+  { from: '.claude/', to: '.codex/', mode: 'literal' },
+  {
+    from: '(?<![:/.\\w])\\/([a-z][a-z0-9-]*):([a-z][a-z0-9-]*)',
+    to: '$$$2',
+    mode: 'regex',
+    flags: 'g',
+  },
 ];
 
 function escapeRegex(s) {
@@ -30,6 +31,9 @@ export function applyTransforms(input, rules) {
       out = out.split(rule.from).join(rule.to);
     } else if (rule.mode === 'word-boundary') {
       const re = new RegExp(`\\b${escapeRegex(rule.from)}\\b`, 'g');
+      out = out.replace(re, rule.to);
+    } else if (rule.mode === 'regex') {
+      const re = new RegExp(rule.from, rule.flags ?? 'g');
       out = out.replace(re, rule.to);
     }
   }
@@ -112,7 +116,7 @@ export async function syncOne(source, targetRoot, rules, options = {}) {
     const existingParsed = parseFrontmatter(existing);
     const hasBridgeMarker = existingParsed && 'bridge_source' in existingParsed.fields;
     if (!hasBridgeMarker) {
-      logger.warn(`[codex-bridge] skip ${targetSkillMd}: not managed by OMC (missing bridge_source marker). Inspect with 'omx doctor'.`);
+      logger.warn(`[codex-bridge] skip ${targetSkillMd}: not managed by codex-bridge (missing bridge_source marker).`);
       return { status: 'skipped', reason: 'non-managed-collision' };
     }
   } catch (err) {
@@ -193,13 +197,8 @@ export const DEFAULT_CONFIG = {
   target: {
     scope: 'user',
     agentsHome: null,
-    agentsMdPath: null,
   },
-  agentsInject: {
-    enabled: true,
-    warnBytes: 32768,
-  },
-  collisionFallbackPrefix: 'omc-',
+  collisionFallbackPrefix: 'bridge-',
   exclude: [],
   transform: {
     bodyOnly: true,
@@ -235,9 +234,6 @@ function mergeConfig(base, override) {
   if (override.target && typeof override.target === 'object') {
     out.target = { ...out.target, ...override.target };
   }
-  if (override.agentsInject && typeof override.agentsInject === 'object') {
-    out.agentsInject = { ...out.agentsInject, ...override.agentsInject };
-  }
   if (typeof override.collisionFallbackPrefix === 'string') {
     out.collisionFallbackPrefix = override.collisionFallbackPrefix;
   }
@@ -269,7 +265,7 @@ function globToRegex(pattern) {
 
 const KNOWN_FLAGS = new Set([
   '--dry-run', '--verbose', '--no-prune', '--help', '-h',
-  '--config', '--plugin', '--report', '--no-agents-inject',
+  '--config', '--plugin', '--report',
 ]);
 
 export function parseArgs(argv) {
@@ -277,7 +273,6 @@ export function parseArgs(argv) {
     dryRun: false,
     verbose: false,
     noPrune: false,
-    noAgentsInject: false,
     help: false,
     configPath: null,
     plugins: null,
@@ -292,7 +287,6 @@ export function parseArgs(argv) {
       case '--dry-run': out.dryRun = true; break;
       case '--verbose': out.verbose = true; break;
       case '--no-prune': out.noPrune = true; break;
-      case '--no-agents-inject': out.noAgentsInject = true; break;
       case '--help':
       case '-h':
         out.help = true;
@@ -424,37 +418,6 @@ export async function syncAll(options) {
     }
   }
 
-  if (options.agentsMdPath && options.injectAgents !== false && config.agentsInject?.enabled !== false) {
-    try {
-      const guidelines = await discoverGuidelines(pluginsDir);
-      const block = await renderGuidelinesBlock(guidelines, config.transform.rules);
-      const existing = await fs.readFile(options.agentsMdPath, 'utf-8').catch((err) => {
-        if (err.code === 'ENOENT') return '';
-        throw err;
-      });
-      const updated = injectGuidelinesIntoAgents(existing, block);
-      const warnBytes = config.agentsInject?.warnBytes ?? 32768;
-      if (Buffer.byteLength(updated, 'utf8') > warnBytes) {
-        logger.warn(`[codex-bridge] warn: ${options.agentsMdPath} would exceed ${warnBytes} bytes (~${Math.round(Buffer.byteLength(updated, 'utf8') / 1024)} KiB). Raise Codex 'project_doc_max_bytes' in ~/.codex/config.toml or reduce guidelines size.`);
-      }
-      report.guidelines = {
-        count: guidelines.length,
-        agentsMdPath: options.agentsMdPath,
-        bytes: Buffer.byteLength(updated, 'utf8'),
-      };
-      if (dryRun) {
-        logger.info(`[dry-run] would update ${options.agentsMdPath} with ${guidelines.length} guideline(s)`);
-      } else {
-        await fs.mkdir(path.dirname(options.agentsMdPath), { recursive: true });
-        await fs.writeFile(options.agentsMdPath, updated, 'utf-8');
-        logger.info(`[codex-bridge] injected ${guidelines.length} guideline(s) into ${options.agentsMdPath}`);
-      }
-    } catch (err) {
-      logger.warn(`[codex-bridge] agents-inject error: ${err.message}`);
-      report.errors.push({ stage: 'agents-inject', error: err.message });
-    }
-  }
-
   if (prune && !dryRun) {
     const pruneResult = await pruneOrphans(targetDir, validSources);
     report.removed = pruneResult.removed;
@@ -512,9 +475,6 @@ export async function main(argv) {
   const targetDir = config.target.agentsHome
     ?? path.join(os.homedir(), '.agents', 'skills');
 
-  const agentsMdPath = config.target.agentsMdPath
-    ?? path.join(os.homedir(), '.codex', 'AGENTS.md');
-
   const logger = args.verbose ? defaultLogger() : quietLogger();
 
   const report = await syncAll({
@@ -524,8 +484,6 @@ export async function main(argv) {
     dryRun: args.dryRun,
     pluginFilter: args.plugins,
     prune: !args.noPrune,
-    injectAgents: !args.noAgentsInject,
-    agentsMdPath,
     logger,
   });
 
@@ -550,9 +508,6 @@ function printSummary(report) {
     `  commands: discovered ${report.discoveredCommands ?? 0}, considered ${report.consideredCommands ?? 0}`,
     `  synced: ${report.synced.length}, skipped: ${report.skipped.length}, removed: ${report.removed.length}, errors: ${report.errors.length}`,
   ];
-  if (report.guidelines) {
-    lines.push(`  agents-inject: ${report.guidelines.count} guideline(s) → ${report.guidelines.agentsMdPath} (~${Math.round(report.guidelines.bytes / 1024)} KiB)`);
-  }
   process.stderr.write(`${lines.join('\n')}\n`);
 }
 
@@ -798,86 +753,6 @@ function yamlQuote(text) {
   return `"${String(text).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
-export const GUIDELINES_MARKER_START = '<!-- omc-guidelines:start -->';
-export const GUIDELINES_MARKER_END = '<!-- omc-guidelines:end -->';
-
-export async function discoverGuidelines(pluginsDir) {
-  const results = [];
-  let pluginEntries;
-  try {
-    pluginEntries = await fs.readdir(pluginsDir, { withFileTypes: true });
-  } catch (err) {
-    if (err.code === 'ENOENT') return results;
-    throw err;
-  }
-
-  for (const entry of pluginEntries) {
-    if (!entry.isDirectory()) continue;
-    const guideDir = path.join(pluginsDir, entry.name, 'guidelines');
-    let files;
-    try {
-      files = await fs.readdir(guideDir, { withFileTypes: true });
-    } catch (err) {
-      if (err.code === 'ENOENT') continue;
-      throw err;
-    }
-    for (const f of files) {
-      if (!f.isFile() || !f.name.endsWith('.md')) continue;
-      results.push({
-        pluginName: entry.name,
-        guidelineName: f.name.slice(0, -3),
-        sourcePath: path.join(guideDir, f.name),
-      });
-    }
-  }
-
-  results.sort((a, b) => {
-    if (a.pluginName !== b.pluginName) return a.pluginName < b.pluginName ? -1 : 1;
-    if (a.guidelineName !== b.guidelineName) return a.guidelineName < b.guidelineName ? -1 : 1;
-    return 0;
-  });
-
-  return results;
-}
-
-export async function renderGuidelinesBlock(guidelines, rules) {
-  if (!guidelines || guidelines.length === 0) return '';
-
-  const sections = [];
-  for (const g of guidelines) {
-    const raw = await fs.readFile(g.sourcePath, 'utf-8');
-    const transformed = applyTransforms(raw, rules);
-    sections.push(`<!-- source: ${g.pluginName}/${g.guidelineName} -->\n${transformed.trim()}`);
-  }
-
-  const body = [
-    '## OMC Development Guidelines',
-    '',
-    '_Auto-synced from `plugins/*/guidelines/*.md` by codex-bridge. Edit source files, then re-run the sync command._',
-    '',
-    sections.join('\n\n'),
-  ].join('\n');
-
-  return `${GUIDELINES_MARKER_START}\n${body}\n${GUIDELINES_MARKER_END}`;
-}
-
-export function injectGuidelinesIntoAgents(existing, block) {
-  const esc = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-  const blockRe = new RegExp(
-    `(\\r?\\n){0,2}${esc(GUIDELINES_MARKER_START)}[\\s\\S]*?${esc(GUIDELINES_MARKER_END)}(\\r?\\n)?`,
-    'g',
-  );
-
-  const cleaned = existing.replace(blockRe, '\n');
-
-  if (!block) {
-    return cleaned.replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '\n');
-  }
-
-  const trimmedTail = cleaned.replace(/\s+$/, '');
-  return `${trimmedTail}\n\n${block}\n`;
-}
-
 export async function syncCommand(cmd, targetRoot, rules, options = {}) {
   const logger = options.logger ?? defaultLogger();
   const sourceContent = await fs.readFile(cmd.sourcePath, 'utf-8');
@@ -892,7 +767,7 @@ export async function syncCommand(cmd, targetRoot, rules, options = {}) {
     const existingParsed = parseFrontmatter(existing);
     const hasBridgeMarker = existingParsed && 'bridge_source' in existingParsed.fields;
     if (!hasBridgeMarker) {
-      logger.warn(`[codex-bridge] skip ${targetSkillMd}: not managed by OMC (missing bridge_source marker). Inspect with 'omx doctor'.`);
+      logger.warn(`[codex-bridge] skip ${targetSkillMd}: not managed by codex-bridge (missing bridge_source marker).`);
       return { status: 'skipped', reason: 'non-managed-collision' };
     }
   } catch (err) {

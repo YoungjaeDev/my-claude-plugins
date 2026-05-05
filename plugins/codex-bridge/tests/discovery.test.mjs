@@ -17,7 +17,7 @@ test('parseFrontmatter: normal frontmatter returns {name, description, body}', a
   assert.equal(result.name, 'test-skill');
   assert.equal(result.description, 'A normal test skill for fixtures');
   assert.match(result.body, /# Body/);
-  assert.match(result.body, /\.omc\//);
+  assert.match(result.body, /\.claude\//);
 });
 
 test('parseFrontmatter: no frontmatter returns null', async () => {

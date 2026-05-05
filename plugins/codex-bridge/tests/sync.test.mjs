@@ -63,10 +63,10 @@ test('syncOne: creates target when not exists, injects bridge_source, transforms
       [
         '---',
         'name: my-skill',
-        'description: Does things with omc',
+        'description: Does things with CLAUDE.md',
         '---',
         '# Body',
-        'use CLAUDE.md and .omc/ here',
+        'use CLAUDE.md and .claude/ here',
       ].join('\n')
     );
     const targetRoot = path.join(tmp, 'target', '.agents', 'skills');
@@ -75,12 +75,12 @@ test('syncOne: creates target when not exists, injects bridge_source, transforms
 
     assert.equal(result.status, 'synced');
     const written = await fs.readFile(path.join(targetRoot, 'my-skill', 'SKILL.md'), 'utf-8');
-    // frontmatter unchanged (description mentions omc intentionally)
-    assert.match(written, /description: Does things with omc/);
+    // frontmatter unchanged (description preserved verbatim)
+    assert.match(written, /description: Does things with CLAUDE\.md/);
     // bridge_source injected
     assert.match(written, /bridge_source: pluginA\/my-skill/);
     // body transformed
-    assert.match(written, /use AGENTS\.md and \.omx\/ here/);
+    assert.match(written, /use AGENTS\.md and \.codex\/ here/);
   } finally {
     await fs.rm(tmp, { recursive: true, force: true });
   }
@@ -91,14 +91,14 @@ test('syncOne: skips when target has no bridge_source marker (collision guard)',
   try {
     const source = await makeSourceSkill(
       tmp, 'pluginA', 'shared-name',
-      '---\nname: shared-name\ndescription: OMC version\n---\nomc body'
+      '---\nname: shared-name\ndescription: bridge version\n---\nbridge body'
     );
     const targetRoot = path.join(tmp, 'target', '.agents', 'skills');
     const targetSkillDir = path.join(targetRoot, 'shared-name');
     await fs.mkdir(targetSkillDir, { recursive: true });
     await fs.writeFile(
       path.join(targetSkillDir, 'SKILL.md'),
-      '---\nname: shared-name\ndescription: OMX version (not managed)\n---\npre-existing'
+      '---\nname: shared-name\ndescription: external version (not managed)\n---\npre-existing'
     );
 
     const result = await syncOne(source, targetRoot, DEFAULT_RULES);
@@ -107,7 +107,7 @@ test('syncOne: skips when target has no bridge_source marker (collision guard)',
     assert.equal(result.reason, 'non-managed-collision');
     const existing = await fs.readFile(path.join(targetSkillDir, 'SKILL.md'), 'utf-8');
     // untouched
-    assert.match(existing, /OMX version \(not managed\)/);
+    assert.match(existing, /external version \(not managed\)/);
     assert.match(existing, /pre-existing/);
   } finally {
     await fs.rm(tmp, { recursive: true, force: true });
@@ -148,7 +148,7 @@ test('syncOne: copies additional files in skill dir', async () => {
       tmp, 'pluginA', 'with-assets',
       '---\nname: with-assets\ndescription: x\n---\nbody',
       {
-        'scripts/helper.sh': '#!/bin/bash\necho .omc/',
+        'scripts/helper.sh': '#!/bin/bash\necho .claude/',
         'references/notes.md': '# Reference\nsee CLAUDE.md',
         'assets/icon.txt': 'binary-ish payload',
       }
@@ -159,7 +159,7 @@ test('syncOne: copies additional files in skill dir', async () => {
 
     const out = path.join(targetRoot, 'with-assets');
     const script = await fs.readFile(path.join(out, 'scripts/helper.sh'), 'utf-8');
-    assert.match(script, /\.omx\//); // transformed (text ext)
+    assert.match(script, /\.codex\//); // transformed (text ext)
 
     const notes = await fs.readFile(path.join(out, 'references/notes.md'), 'utf-8');
     assert.match(notes, /AGENTS\.md/); // transformed (.md ext)

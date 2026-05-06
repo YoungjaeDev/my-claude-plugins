@@ -21,6 +21,8 @@ Before starting the workflow:
 | `--skip-cr-fix` | Skip the auto cr-fix loop after PR creation (default: cr-fix runs) |
 | `--cr-fix-max <n>` | Cap iterations on the auto cr-fix loop (default: 5) |
 | `--auto-merge` | Pass through to cr-fix; auto-merge the PR after convergence (default: OFF) |
+| `--codex-grace <sec>` | Pass through to cr-fix; extra wait window after CodeRabbit completes for ChatGPT-Codex review comments (default: 90) |
+| `--no-codex` | Pass through to cr-fix; force-disable Codex auto-detect for the run (default: auto-detect ON) |
 
 > **Note**: For parallel development, create worktrees manually before starting Claude sessions. See CLAUDE.md for the recommended worktree workflow.
 
@@ -175,7 +177,7 @@ Before starting the workflow:
     - **[NEW] Save checkpoint**: phase="pr"
 
 10.5. **[NEW] Auto cr-fix loop (default ON)**:
-    - Unless `--skip-cr-fix` is passed, invoke the `/github-dev:cr-fix` workflow inline (read `plugins/github-dev/commands/cr-fix.md` and execute its 16-step body in this same Claude turn). Pass through the resolve-issue flags: `--cr-fix-max <n>` becomes cr-fix's `--max-iterations`; `--auto-merge` is forwarded as-is. CodeRabbit auto-review takes ~7-30 min per cycle; cr-fix's wait phase uses `Bash(run_in_background) + Monitor` so token cost during waits is ~0.
+    - Unless `--skip-cr-fix` is passed, invoke the `/github-dev:cr-fix` workflow inline (read `plugins/github-dev/commands/cr-fix.md` and execute its 16-step body in this same Claude turn). Pass through the resolve-issue flags: `--cr-fix-max <n>` becomes cr-fix's `--max-iterations`; `--auto-merge`, `--codex-grace <sec>`, `--no-codex` are forwarded as-is. CodeRabbit auto-review takes ~7-30 min per cycle; ChatGPT-Codex (when present) typically posts within 5 min after CR; cr-fix's wait phase uses `Bash(run_in_background) + Monitor` so token cost during waits is ~0. Codex auto-detect is enabled by default — repos without Codex installed see no behavior change.
 
     > **Ambiguous user phrase handling**:
     >

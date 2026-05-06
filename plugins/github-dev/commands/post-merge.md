@@ -221,6 +221,33 @@ Perform local branch cleanup and configuration updates after a PR has been merge
        Remove: "Post-Merge Notes (PR #130)" section (content migrated above)
      ```
 
+6.5. **Normative Doc Size Audit**
+
+   After Step 6 integration is applied, measure each existing normative doc against a size budget. Doc growth is the most common silent regression of the integration step -- this audit surfaces it before it triggers Claude Code's runtime perf warning.
+
+   **Threshold:** 32000 chars. Sits 8k below Claude Code's 40k perf-warning trigger (`Large CLAUDE.md will impact performance (X chars > 40.0k)`), giving the user headroom to act before the warning fires.
+
+   **Procedure:**
+
+   1. Build candidate list from files that exist in the repo:
+      - `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` at repo root
+      - One-level matches under `.claude/rules/*.md` (do not recurse into subdirectories)
+   2. Measure char count per file with `wc -m` (chars, not bytes -- byte counts are misleading for Korean / multibyte content).
+   3. If no file exceeds 32000 chars: emit `All normative docs within 32k chars; size audit clean.` and proceed to Step 7.
+   4. If at least one file exceeds 32000 chars:
+      a. Show a per-file size table, marking offenders:
+         ```
+         File                            Size      Status
+         CLAUDE.md                       49,969    OVER (>32k)
+         .claude/rules/gt-review.md      22,874    ok
+         AGENTS.md                       8,140     ok
+         ```
+      b. `AskUserQuestion`, header `Size audit`:
+         - **Run claude-md-improver** -- invoke the `claude-md-management:claude-md-improver` skill via the Skill tool, passing the over-sized file paths. The skill scans, evaluates against templates, and proposes targeted updates (split into modular rules, dedupe, etc.). The skill itself prompts before applying changes.
+         - **Defer** -- print `Run /claude-md-management:claude-md-improver later on: <files>` and continue.
+         - **Skip** -- continue silently.
+   5. The `Run` path executes inline as a sub-flow; if the user declines mid-skill, return control to Step 7 (do not block the rest of post-merge).
+
 7. **Update Serena Memory (if Serena MCP available)**
 
    > **Content-First principle**: Before appending new learnings, scan existing memory for stale or duplicate content and refine it **in place**. Only delete a memory file when its content has been fully migrated elsewhere or becomes orphaned.

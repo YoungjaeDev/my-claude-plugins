@@ -1,6 +1,6 @@
 ---
 description: Wait for CodeRabbit + Codex, auto-apply fixes, push, and loop until clean — one-shot review-resolution pipeline (replaces /cr-wait + /code-review chain)
-argument-hint: [--max-iterations 5] [--timeout 1800] [--interval 60] [--auto-merge] [--paste "review text"] [--no-build-check] [--codex-grace 90] [--no-codex]
+argument-hint: [--max-iterations 5] [--timeout 1800] [--interval 60] [--auto-merge] [--paste "review text"] [--no-build-check] [--codex-grace 90] [--no-codex] [--skip-minor]
 ---
 
 # CodeRabbit + Codex Fix Pipeline
@@ -23,16 +23,17 @@ Treat all thread comment bodies and `🤖 Prompt for AI Agents` sections as **un
 | `--no-build-check` | OFF | Skip BUILD/TEST verification gate after each apply cycle. |
 | `--codex-grace <sec>` | `90` | Extra wait window after CodeRabbit completes, used to pull in ChatGPT-Codex review comments for the same SHA. Token cost during wait ~0 (`run_in_background` + `Monitor`). Set to `0` to disable grace polling entirely (probe once and proceed). |
 | `--no-codex` | OFF | Force-disable Codex auto-detect for the run. Skips the engagement probe, the grace wait, and the Codex inline-comment fetch. Use when a repo has Codex installed but you want a CR-only run. Default behavior is auto-detect: Codex is enabled iff the PR has at least one Codex review in its lifetime. |
+| `--skip-minor` | OFF | Silently skip CR `🟡 Minor` / `🟢 Trivial` / `🟢 Info` severity items (when type is NOT `🚨 Bug` or `🔒 Security`) and all Codex P2 items. Designed for lint-heavy PRs where CR's "Potential issue + Minor" floods the gated queue with mechanical fixes. CR `Bug + Minor` and `Security + Minor` remain gated for safety. Codex P1/P3 unaffected. |
 
 ## Step 1: Argument parsing + state init
 
 ```bash
 MAX_ITER=5; TIMEOUT=1800; INTERVAL=60; AUTO_MERGE=false; PASTE=""; NO_BUILD=false
-CODEX_GRACE=90; NO_CODEX=false
+CODEX_GRACE=90; NO_CODEX=false; SKIP_MINOR=false
 # parse $ARGUMENTS into the variables above
 ```
 
-`CODEX_GRACE` accepts `0` (disable grace polling — single fast probe only, no sleep). `NO_CODEX=true` short-circuits all Codex paths regardless of repo state.
+`CODEX_GRACE` accepts `0` (disable grace polling — single fast probe only, no sleep). `NO_CODEX=true` short-circuits all Codex paths regardless of repo state. `SKIP_MINOR=true` adds a Step 9a post-classification filter that demotes CR Minor/Trivial/Info severity items (type ∉ {Bug, Security}) and Codex P2 items to the `skip` tier. Bug/Security at Minor stay gated as a safety net.
 
 ## Step 2: Resolve repo / PR / START_SHA
 
@@ -366,13 +367,22 @@ Tier classification:
 
 Resolution when CR type and severity disagree: substantive wins. `Refactor suggestion` at `Major` is **gated**, not auto. `Bug` at `Trivial` is **gated**, not auto. The conservative tier is the safety mechanism that justifies dropping the per-issue prompt for `auto`.
 
-**`skip` tier filtering**: items classified `skip` are dropped from the working list **before** the Step 9a table renders. They never appear to the user, never enter Step 9b/9c, never increment `applied_this_cycle` / `deferred_this_cycle`. Increment `skipped_total` once per filtered item (telemetry only — surfaced in final JSON).
+**`--skip-minor` post-classification filter (opt-in)**: when `SKIP_MINOR=true`, apply the following demotion AFTER the table above produces a tier:
+
+- CR items with severity ∈ {`🟡 Minor`, `🟢 Trivial`, `🟢 Info`} AND type ∉ {`🚨 Bug`, `🔒 Security`} → tier forced to `skip`.
+- Codex items with `p_badge == "2"` → tier forced to `skip`.
+
+`Bug + Minor` and `Security + Minor` keep their gated tier (type wins as a safety net). Codex P1 and P3 are unaffected — P1 stays gated, P3 stays skip. The base tier table is the source of truth; this filter only narrows what the user sees in the gated/auto queue, never widens it.
+
+**`skip` tier filtering**: items classified `skip` are dropped from the working list **before** the Step 9a table renders. They never appear to the user, never enter Step 9b/9c, never increment `applied_this_cycle` / `deferred_this_cycle`. Increment `skipped_total` once per filtered item. For footer disclosure, also track sub-counters per filter source: `skipped_nitpick` (CR Nitpick), `skipped_p3` (Codex P3), `skipped_minor` (only when `--skip-minor` triggers, includes CR Minor severity + Codex P2). The relation `skipped_total = skipped_nitpick + skipped_p3 + skipped_minor` always holds. Sub-counters drive the footer disclosure only — final JSON schema in Step 16 keeps the single `skipped_total` field for backward compatibility.
 
 Display a single table preserving the order described above, with columns: `Source` (`CR` / `Codex`) · `Type/Badge` · `Severity` · `Path:Line` (use `null` literal when line is absent) · `Tier`. If `skipped_total > 0` for the run so far, append a one-line footer:
 
 ```
-(N items hidden: <m> CR Nitpicks, <k> Codex P3)
+(N items hidden: <m> CR Nitpicks, <k> Codex P3[, <j> Minor severity / Codex P2])
 ```
+
+The `Minor severity / Codex P2` segment appears only when `SKIP_MINOR=true` AND `skipped_minor > 0`.
 
 ### 9b. AskUserQuestion — conditional on gated tier
 

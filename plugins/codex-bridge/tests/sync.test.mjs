@@ -7,6 +7,7 @@ import os from 'node:os';
 import {
   syncOne,
   syncAll,
+  syncAgent,
   injectBridgeSource,
   DEFAULT_RULES,
   DEFAULT_CONFIG,
@@ -385,6 +386,189 @@ test('syncAll: prune still runs normally when validSources non-empty', async () 
     assert.equal(report.removed[0].skillName, 'orphan-skill');
     // Orphan dir is gone
     await assert.rejects(fs.access(orphan));
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+async function makeAgentFile(root, plugin, agent, content) {
+  const dir = path.join(root, 'plugins', plugin, 'agents');
+  await fs.mkdir(dir, { recursive: true });
+  const filePath = path.join(dir, `${agent}.md`);
+  await fs.writeFile(filePath, content);
+  return { pluginName: plugin, agentName: agent, sourcePath: filePath, targetTomlName: `${plugin}-${agent}` };
+}
+
+test('syncAgent: writes <plugin>-<agent>.toml with bridge_source comment marker', async () => {
+  const tmp = await freshTmp();
+  try {
+    const agent = await makeAgentFile(
+      tmp, 'code-scout', 'scout',
+      [
+        '---',
+        'name: scout',
+        'description: |',
+        '  Code and ML resource scout. Finds boilerplates.',
+        'model: haiku',
+        '---',
+        '# Scout Agent',
+        'use CLAUDE.md and .claude/ paths',
+      ].join('\n')
+    );
+    const targetDir = path.join(tmp, 'target', '.codex', 'agents');
+
+    const result = await syncAgent(agent, targetDir, DEFAULT_RULES);
+
+    assert.equal(result.status, 'synced');
+    const tomlPath = path.join(targetDir, 'code-scout-scout.toml');
+    const written = await fs.readFile(tomlPath, 'utf-8');
+    // bridge_source comment as first line
+    assert.match(written, /^# bridge_source = "code-scout\/agents\/scout"/m);
+    // model preserved as comment
+    assert.match(written, /^# original-model = "haiku"$/m);
+    // canonical TOML fields
+    assert.match(written, /^name = "code-scout-scout"$/m);
+    assert.match(written, /^description = "Code and ML resource scout\. Finds boilerplates\."$/m);
+    assert.match(written, /^developer_instructions = """$/m);
+    // body transformed
+    assert.match(written, /AGENTS\.md/);
+    assert.match(written, /\.codex\//);
+    assert.doesNotMatch(written, /CLAUDE\.md/);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAgent: idempotent — running twice produces identical output', async () => {
+  const tmp = await freshTmp();
+  try {
+    const agent = await makeAgentFile(
+      tmp, 'p', 'a',
+      '---\nname: a\ndescription: x\n---\nbody\n'
+    );
+    const targetDir = path.join(tmp, 'target', '.codex', 'agents');
+
+    await syncAgent(agent, targetDir, DEFAULT_RULES);
+    const after1 = await fs.readFile(path.join(targetDir, 'p-a.toml'), 'utf-8');
+    await syncAgent(agent, targetDir, DEFAULT_RULES);
+    const after2 = await fs.readFile(path.join(targetDir, 'p-a.toml'), 'utf-8');
+    assert.equal(after1, after2);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAgent: skipped when target .toml exists without bridge_source marker (safety guard)', async () => {
+  const tmp = await freshTmp();
+  try {
+    const agent = await makeAgentFile(
+      tmp, 'p', 'a',
+      '---\nname: a\ndescription: bridge version\n---\nbridge body'
+    );
+    const targetDir = path.join(tmp, 'target', '.codex', 'agents');
+    await fs.mkdir(targetDir, { recursive: true });
+    const tomlPath = path.join(targetDir, 'p-a.toml');
+    await fs.writeFile(
+      tomlPath,
+      'name = "p-a"\ndescription = "external user-managed"\ndeveloper_instructions = "..."\n'
+    );
+
+    const result = await syncAgent(agent, targetDir, DEFAULT_RULES);
+
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'non-managed-collision');
+    const still = await fs.readFile(tomlPath, 'utf-8');
+    assert.match(still, /external user-managed/);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAgent: overwrites when target .toml has bridge_source marker', async () => {
+  const tmp = await freshTmp();
+  try {
+    const agent = await makeAgentFile(
+      tmp, 'p', 'a',
+      '---\nname: a\ndescription: v2\n---\nnew body\n'
+    );
+    const targetDir = path.join(tmp, 'target', '.codex', 'agents');
+    await fs.mkdir(targetDir, { recursive: true });
+    const tomlPath = path.join(targetDir, 'p-a.toml');
+    await fs.writeFile(
+      tomlPath,
+      '# bridge_source = "p/agents/a"\nname = "p-a"\ndescription = "v1"\ndeveloper_instructions = """\nold body\n"""\n'
+    );
+
+    const result = await syncAgent(agent, targetDir, DEFAULT_RULES);
+    assert.equal(result.status, 'synced');
+    const written = await fs.readFile(tomlPath, 'utf-8');
+    assert.match(written, /description = "v2"/);
+    assert.match(written, /new body/);
+    assert.doesNotMatch(written, /old body/);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAgent: creates target directory when missing', async () => {
+  const tmp = await freshTmp();
+  try {
+    const agent = await makeAgentFile(tmp, 'p', 'a', '---\nname: a\ndescription: x\n---\nbody');
+    const targetDir = path.join(tmp, 'never', 'created', 'agents');
+
+    const result = await syncAgent(agent, targetDir, DEFAULT_RULES);
+    assert.equal(result.status, 'synced');
+    await fs.access(path.join(targetDir, 'p-a.toml'));
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAgent: leaves no .staging-* file behind on success', async () => {
+  const tmp = await freshTmp();
+  try {
+    const agent = await makeAgentFile(tmp, 'p', 'a', '---\nname: a\ndescription: x\n---\nbody');
+    const targetDir = path.join(tmp, 'target', '.codex', 'agents');
+
+    await syncAgent(agent, targetDir, DEFAULT_RULES);
+    const entries = await fs.readdir(targetDir);
+    const staging = entries.filter(e => e.includes('.staging-'));
+    assert.deepEqual(staging, []);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('syncAll: discovers and syncs agents alongside skills/commands', async () => {
+  const tmp = await freshTmp();
+  try {
+    // one of each kind
+    await makeSourceSkill(tmp, 'plg', 'sk', '---\nname: sk\ndescription: x\n---\nskill body');
+    const cmdDir = path.join(tmp, 'plugins', 'plg', 'commands');
+    await fs.mkdir(cmdDir, { recursive: true });
+    await fs.writeFile(path.join(cmdDir, 'cmd.md'), '---\ndescription: cmd desc\n---\ncmd body');
+    await makeAgentFile(tmp, 'plg', 'ag', '---\nname: ag\ndescription: agent desc\n---\nagent body');
+
+    const skillsTarget = path.join(tmp, 'target', '.agents', 'skills');
+    const agentsTomlTarget = path.join(tmp, 'target', '.codex', 'agents');
+
+    const report = await syncAll({
+      pluginsDir: path.join(tmp, 'plugins'),
+      targetDir: skillsTarget,
+      agentsTomlDir: agentsTomlTarget,
+      config: DEFAULT_CONFIG,
+      dryRun: false,
+      prune: false,
+      logger: { warn: () => {}, info: () => {} },
+    });
+
+    assert.equal(report.discoveredAgents, 1);
+    assert.equal(report.consideredAgents, 1);
+    // synced array contains all three (skill + command + agent)
+    const sources = report.synced.map(s => s.bridgeSource).sort();
+    assert.deepEqual(sources, ['plg/agents/ag', 'plg/commands/cmd', 'plg/sk']);
+    // toml file actually written
+    await fs.access(path.join(agentsTomlTarget, 'plg-ag.toml'));
   } finally {
     await fs.rm(tmp, { recursive: true, force: true });
   }

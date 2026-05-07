@@ -8,13 +8,15 @@ Behavioral invariants for the my-claude-plugins → Codex skill sync engine (`pl
 
 ## Role
 
-Sync plugin skills (`plugins/*/skills/**/SKILL.md`) AND commands (`plugins/*/commands/*.md`) to Codex CLI's native skill directory (`~/.agents/skills/`) idempotently. my-claude-plugins is single source of truth (SSOT); the target is a derived artifact rebuilt every run.
+Sync plugin skills (`plugins/*/skills/**/SKILL.md`), commands (`plugins/*/commands/*.md`), AND subagents (`plugins/*/agents/*.md`) to Codex CLI's native directories (`~/.agents/skills/` for skills+commands, `~/.codex/agents/*.toml` for subagents) idempotently. my-claude-plugins is single source of truth (SSOT); the target is a derived artifact rebuilt every run.
 
 Commands are not a first-class concept in Codex — they're wrapped as synthetic skills with `<plugin>-<command>` naming (e.g. `github-dev-resolve-issue`) and `bridge_source: <plugin>/commands/<command>` markers to distinguish from skill-origin entries.
 
+Subagents have their own native target in Codex (`~/.codex/agents/<plugin>-<agent>.toml`). Markdown frontmatter is converted to TOML; body is wrapped in `developer_instructions = """..."""` triple-quoted multi-line string. The provenance marker is a `# bridge_source = "<plugin>/agents/<agent>"` comment on the first line (TOML has no first-class metadata, so the comment carries the role of the YAML `bridge_source:` field).
+
 ## Key Components
 
-- `scripts/sync.mjs` — single-file Node 18+ engine (zero runtime deps). Exports `discoverSkills`, `discoverCommands`, `resolvePluginsDir`, `resolvePluginContentDir`, `isVersionedCacheChild`, `compareSemver`, `parseFrontmatter`, `applyTransforms`, `transformSkillContent`, `injectBridgeSource`, `syncOne`, `syncCommand`, `syncAll`, `pruneOrphans`, `loadConfig`, `parseArgs`, `isExcluded`.
+- `scripts/sync.mjs` — single-file Node 18+ engine (zero runtime deps). Exports `discoverSkills`, `discoverCommands`, `discoverAgents`, `resolvePluginsDir`, `resolvePluginContentDir`, `isVersionedCacheChild`, `compareSemver`, `parseFrontmatter`, `applyTransforms`, `transformSkillContent`, `injectBridgeSource`, `agentToCodexToml`, `syncOne`, `syncCommand`, `syncAgent`, `syncAll`, `pruneOrphans`, `pruneAgentOrphans`, `tomlHasBridgeSource`, `readTomlBridgeSource`, `loadConfig`, `parseArgs`, `isExcluded`.
 - `codex-bridge.config.json` — default `exclude` glob list + 3 transform rules + text extension whitelist.
 - `skills/codex-sync/SKILL.md` — Claude Code entrypoint (`/codex-bridge:codex-sync`).
 - `tests/*.test.mjs` — `node --test` suite, fixtures in `tests/fixtures/`.
@@ -24,8 +26,9 @@ Commands are not a first-class concept in Codex — they're wrapped as synthetic
 - **Preserve frontmatter verbatim.** Never let transform rules touch content between the `---` fences. This protects the `bridge_source` provenance marker AND the user-authored `name`/`description` fields.
 - **Flatten multi-line YAML block-scalar descriptions (`description: |` / `description: >`) to a single line at sync time.** Codex's skill loader expects single-line descriptions per [official spec](https://developers.openai.com/codex/skills). Block scalars have caused source skills to fail to load into `$skill` selector. Normalization happens in `normalizeFrontmatterDescription`, between body transform and `bridge_source` injection — value preserved, form normalized.
 - **Wrap commands as synthetic skills.** `plugins/*/commands/*.md` are converted via `commandToSkillContent` into `<plugin>-<command>/SKILL.md` files. Claude Code-only frontmatter keys (`allowed-tools`, `argument-hint`, `paths`, `version`) are dropped; only `name`, `description` (flattened), and `bridge_source` remain. Body is preserved and goes through standard transform rules.
-- **Inject `bridge_source: <plugin>/<skill>` into every synced SKILL.md frontmatter.** The marker is the single source for orphan pruning and collision guarding — without it the sync engine cannot tell bridge-owned files from user/external files.
-- **Return `status: 'skipped'` with `reason: 'non-managed-collision'` whenever target SKILL.md exists and lacks `bridge_source`.** Emit a stderr warning naming the file.
+- **Convert subagents to Codex TOML.** `plugins/*/agents/*.md` are converted via `agentToCodexToml` into `<plugin>-<agent>.toml` files at `~/.codex/agents/`. Structure: `# bridge_source = "<plugin>/agents/<agent>"` comment on line 1, optional `# original-model`/`# original-skills`/`# original-tools` comments preserving Claude Code-only fields (Codex's model alias namespace differs — drop the value, keep the trail), then real TOML keys `name`, `description`, `developer_instructions = """..."""`. Body transforms run before TOML wrap; backslashes and `"""` sequences are escaped per TOML basic multi-line string rules (`\` → `\\`, `"""` → `\"""`).
+- **Inject `bridge_source: <plugin>/<skill>` into every synced SKILL.md frontmatter.** The marker is the single source for orphan pruning and collision guarding — without it the sync engine cannot tell bridge-owned files from user/external files. For agent .toml files, the same role is played by the `# bridge_source = "..."` comment.
+- **Return `status: 'skipped'` with `reason: 'non-managed-collision'` whenever target SKILL.md (or agent .toml) exists and lacks the `bridge_source` marker.** Emit a stderr warning naming the file.
 - **Sort `discoverSkills` output deterministically** by `(pluginName, skillName)` before returning. Spec P1 `last-wins` semantics require stable ordering so idempotent re-runs produce identical results.
 - **Write via staging dir inside target root, then `fs.rename`** for atomicity. On `EXDEV`, fall back to `fs.cp({ recursive: true, force: true })` followed by `fs.rm` on the staging dir.
 - **Restrict body transforms to the extension whitelist**: `.md`, `.yml`, `.yaml`, `.json`, `.sh`, `.mjs`, `.js`, `.py`, `.ts`. Other extensions must be copied byte-for-byte.
@@ -37,9 +40,9 @@ Commands are not a first-class concept in Codex — they're wrapped as synthetic
 
 ## Don'ts
 
-- **Never touch `~/.codex/skills/`.** That directory is externally managed. The bridge operates exclusively on `~/.agents/skills/`.
-- **Never delete a SKILL.md that lacks `bridge_source`.** Orphan-prune only considers marker-tagged files; untagged files are treated as external ownership.
-- **Never override the OpenAI-official target path.** `~/.agents/skills/` is fixed per OpenAI Codex Skills docs. `CODEX_HOME` env is for state/log/config base only — it does NOT control skill discovery. `config.target.agentsHome` exists for testing only.
+- **Never touch `~/.codex/skills/`.** That directory is externally managed. The bridge operates exclusively on `~/.agents/skills/` (skills+commands) and `~/.codex/agents/` (subagents).
+- **Never delete a SKILL.md or agent .toml that lacks the `bridge_source` marker.** Orphan-prune only considers marker-tagged files (frontmatter `bridge_source:` for skills, `# bridge_source = "..."` comment for agent .toml); untagged files are treated as external/user ownership.
+- **Never override the OpenAI-official target paths.** `~/.agents/skills/` is fixed per OpenAI Codex Skills docs; `~/.codex/agents/*.toml` is fixed per OpenAI Codex Subagents docs. `CODEX_HOME` env is for state/log/config base only — it does NOT control skill or agent discovery. `config.target.agentsHome` and `config.target.agentsTomlHome` exist for testing only.
 - **Never add runtime dependencies.** Node 18+ built-ins only. The spec mandates zero-deps for portability and reproducibility.
 - **Never apply transforms to frontmatter.** `bodyOnly: true` is a contract, not a default. Transforms (`CLAUDE.md`→`AGENTS.md`, `.claude/`→`.codex/`, namespace regex) must only touch body.
 - **Never use non-atomic writes** that leave target in a partial state if the process dies mid-sync.
@@ -53,11 +56,11 @@ Commands are not a first-class concept in Codex — they're wrapped as synthetic
 - Plugin doc: `plugins/codex-bridge/CLAUDE.md`
 - Entry skill: `plugins/codex-bridge/skills/codex-sync/SKILL.md`
 
-## Out of Scope (V2)
+## Out of Scope
 
 - `agents/openai.yaml` sidecar (eventual migration target for `bridge_source`)
 - File-change hook for auto-sync
-- `Task(subagent_type=...)` → Codex native subagent mapping
+- Codex-compatible mapping for agent `model` / `tools` (currently preserved as `# original-*` comments only — user must wire up manually if desired)
 - Project-level `.agents/skills/` scope
 - Collision-fallback prefix mode
 - npm bin distribution

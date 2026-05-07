@@ -1,6 +1,6 @@
-# CodeRabbit Configuration for `cr-wait` + `code-review` Auto-Fetch
+# CodeRabbit Configuration for `cr-fix` Auto-Fetch
 
-Recommended `.coderabbit.yaml` keys to keep `/github-dev:cr-wait` and `/github-dev:code-review` working without surprises.
+Recommended `.coderabbit.yaml` keys to keep `/github-dev:cr-fix` working without surprises.
 
 This file is reference only — drop the snippet into your repo's `.coderabbit.yaml` after a quick review. The plugin does NOT auto-write this file into user repos.
 
@@ -9,7 +9,7 @@ This file is reference only — drop the snippet into your repo's `.coderabbit.y
 ```yaml
 reviews:
   enable_prompt_for_ai_agents: true   # default true; our fetch path parses "🤖 Prompt for AI Agents" blocks
-  commit_status: true                 # default true; cr-wait polls this status check
+  commit_status: true                 # default true; cr-fix polls this status check
 auto_review:
   enabled: true                       # default true; review fires on PR open + push
 ```
@@ -32,14 +32,14 @@ auto_review:
 
 ## Rate-limit sanity
 
-CodeRabbit Pro has per-seat hourly review quotas. To avoid hitting them in the cr-wait → code-review loop:
+CodeRabbit Pro has per-seat hourly review quotas. To avoid hitting them in the cr-fix loop:
 
 ```yaml
 reviews:
   auto_pause_after_reviewed_commits: 5   # pause after 5 incremental reviews per PR
 ```
 
-Combined with the plugin defaults (`/cr-wait --timeout 1800` + manual `/code-review` invocation), this keeps long iteration loops within free-tier limits.
+Combined with the plugin defaults (`/github-dev:cr-fix --timeout 1800`), this keeps long iteration loops within free-tier limits.
 
 ## Path filters (optional, large monorepos)
 
@@ -66,6 +66,6 @@ If either fails, the corresponding flag in this config is the most likely culpri
 
 ## What is intentionally NOT in this template
 
-- `pre_merge_checks.*.mode: error` and `request_changes_workflow: true` — these gate auto-merge and are out of scope for the cr-wait/code-review pair. Add them only when adopting auto-merge separately.
+- `pre_merge_checks.*.mode: error` and `request_changes_workflow: true` — these gate auto-merge and are out of scope for cr-fix's default flow. Add them only when adopting auto-merge separately.
 - Custom Finishing-Touch recipes — Pro+ feature, not required for the official autofix flow this plugin uses.
 - Webhooks — CodeRabbit does not provide an inbound webhook for "review done"; commit-status polling is the supported wait path.

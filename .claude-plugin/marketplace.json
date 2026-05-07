@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 19 specialized plugins",
-    "version": "1.21.0"
+    "version": "1.22.0"
   },
   "plugins": [
     {
@@ -19,7 +19,7 @@
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline (wait + auto-fetch + apply + push loop with branch-protection-gated auto-merge, CR-engagement guard, Codex auto-detect with grace polling, CR Nitpick + Codex P3 silent skip, optional --skip-minor opt-in for Minor + Codex P2 suppression), project tracking, release",
-      "version": "1.17.0",
+      "version": "1.18.0",
       "category": "github"
     },
     {

@@ -1,11 +1,11 @@
 ---
-description: Wait for CodeRabbit + Codex, auto-apply fixes, push, and loop until clean — one-shot review-resolution pipeline (replaces /cr-wait + /code-review chain)
+description: Wait for CodeRabbit + Codex, auto-apply fixes, push, and loop until clean — one-shot review-resolution pipeline
 argument-hint: [--max-iterations 5] [--timeout 1800] [--interval 60] [--auto-merge] [--paste "review text"] [--no-build-check] [--codex-grace 90] [--no-codex] [--skip-minor]
 ---
 
 # CodeRabbit + Codex Fix Pipeline
 
-Self-contained command that owns the full review-resolution loop. Replaces the manual `/github-dev:cr-wait` → `/github-dev:code-review` chain used in 1.9.0.
+Self-contained command that owns the full review-resolution loop.
 
 One Claude turn drives the entire pipeline; the wait phase inside each iteration uses `Bash(run_in_background)` + `Monitor` so token cost during review windows is ~0. The pipeline gates on CodeRabbit's commit-status (the only review bot that publishes one) and then opportunistically pulls in ChatGPT-Codex review comments within a configurable grace period.
 
@@ -110,7 +110,7 @@ for ITER in $(seq 1 $MAX_ITER); do
   # a later "clean" iteration cannot accidentally enable auto-merge.
 ```
 
-## Step 6: Wait phase — CodeRabbit (inlined cr-wait Steps 2-4)
+## Step 6: Wait phase — CodeRabbit
 
 **Codex auto-detect (first iteration + mid-run flip)**:
 
@@ -632,7 +632,7 @@ The emitted JSON line on stdout always carries:
 
 | Failure | Behavior |
 |---------|----------|
-| Probe never registers CR context | Same fallback as cr-wait Step 2; enter poll loop. |
+| Probe never registers CR context | Enter poll loop with the existing CR-status query (no probe-specific shortcut). |
 | Poll timeout (124) | `final_state="timeout"`, exit, auto-merge OFF. |
 | CR keeps finding new things forever | `--max-iterations` cap; convergence detect on zero applied. |
 | `gh pr merge --auto` fails (e.g. merge conflicts) | Capture stderr, print, exit non-zero — loop has already completed. |
@@ -650,6 +650,5 @@ The emitted JSON line on stdout always carries:
 
 ## Reference
 
-- Replaces the chained `/github-dev:cr-wait` → `/github-dev:code-review` flow used in 1.9.0. Both remain available as decomposable primitives but are deprecated as of 1.10.0.
 - Official source for the GraphQL query and AGENTS.md Step 0: `coderabbitai/skills` autofix SKILL.md (`~/.agents/skills/autofix/SKILL.md` after `npx skills add coderabbitai/skills`).
 - See `plugins/github-dev/docs/coderabbit-config.md` for the recommended `.coderabbit.yaml` keys this command depends on.

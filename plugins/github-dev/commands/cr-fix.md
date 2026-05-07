@@ -121,12 +121,20 @@ if [ "$ITER" = "1" ]; then
   if [ "$NO_CODEX" = "true" ]; then
     codex_active="disabled"
   else
-    codex_review_count=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-      --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id' \
-      | wc -l)
-    if [ "$codex_review_count" -gt 0 ]; then
-      codex_active="active"
+    # Capture gh output separately so a transient API error doesn't masquerade
+    # as "0 Codex reviews". `gh api ... | wc -l` would return 0 on failure
+    # because the pipeline exit status comes from wc, silently locking
+    # codex_active to "inactive" for the whole run.
+    if codex_review_ids=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+        --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id'); then
+      codex_review_count=$(grep -c . <<< "$codex_review_ids")
+      if [ "$codex_review_count" -gt 0 ]; then
+        codex_active="active"
+      else
+        codex_active="inactive"
+      fi
     else
+      echo "warn: Codex engagement probe failed (gh api error); falling back to inactive — re-run cr-fix to retry" >&2
       codex_active="inactive"
     fi
   fi
@@ -139,11 +147,14 @@ elif [ "$codex_active" = "inactive" ]; then
   # late-arriving Codex review flip the cache to "active". Within a
   # single iteration the resolution is fixed, so the deterministic-per-
   # iteration guarantee still holds.
-  codex_review_count=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-    --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id' \
-    | wc -l)
-  if [ "$codex_review_count" -gt 0 ]; then
-    codex_active="active"
+  if codex_review_ids=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+      --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id'); then
+    codex_review_count=$(grep -c . <<< "$codex_review_ids")
+    if [ "$codex_review_count" -gt 0 ]; then
+      codex_active="active"
+    fi
+  else
+    echo "warn: Codex mid-run probe failed; leaving codex_active=inactive for this iteration" >&2
   fi
 fi
 ```

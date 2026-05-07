@@ -9,13 +9,10 @@ GitHub workflow automation commands for Claude Code.
 | `/github-dev:commit-and-push` | Analyze changes, commit with conventional message, push |
 | `/github-dev:create-issue-label` | Create standardized issue labels |
 | `/github-dev:decompose-issue` | Break down large issues into sub-tasks, define architecture mapping |
-| `/github-dev:merge-worktree` | Squash merge worktree branch to base branch with learning integration |
 | `/github-dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
 | `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
 | `/github-dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex pipeline: wait + fetch + apply + push loop until clean, with optional auto-merge (default OFF; pass `--auto-merge` to enroll). Gates merge on branch-protection presence and on actual CR engagement. CR Refactor suggestions at Minor/Trivial/Info auto-apply; CR substantive items (Bug, Potential issue, Security, Critical/High/Major) and Codex P1/P2 are gated per-issue. CR Nitpicks and Codex P3 are silently skipped. Codex is auto-detected per PR (engaged at least once → ON; never engaged → OFF). Optional `--skip-minor` opt-in silently demotes CR Minor severity (excluding Bug/Security) + Codex P2 to skip, for lint-heavy PRs where the default gated queue is too long. |
-| `/github-dev:code-review` | (Deprecated 1.10) Process CodeRabbit review feedback with auto-fetch or manual paste fallback |
-| `/github-dev:cr-wait` | (Deprecated 1.10) Wait for CodeRabbit GitHub commit-status to flip (background poll + Monitor) |
 | `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |
 
 ## resolve-issue Flags
@@ -31,39 +28,21 @@ GitHub workflow automation commands for Claude Code.
 | `--no-codex` | Pass through to cr-fix; force-disable Codex auto-detect for the run |
 | `--skip-minor` | Pass through to cr-fix; demote CR Minor (excluding Bug/Security) + Codex P2 to skip |
 
-## Recommended Worktree Workflow
+## Worktree Workflow (PR-based)
 
-Use Claude Code built-in worktree support for parallel development:
+Use Claude Code's built-in worktree (`claude --worktree <name>`) for isolated PR work:
 
 ```bash
-# Create worktree (built-in)
 claude --worktree feature-auth
-
-# Work inside worktree, then merge back
-/github-dev:merge-worktree
-
-# Exit with cleanup (built-in)
-/exit  # select cleanup option
+# inside the worktree
+/github-dev:resolve-issue 42       # creates branch + PR + drives cr-fix
+# after PR is merged on GitHub, exit and switch contexts:
+/exit                              # cleanup option for the worktree
+# in a fresh session at the main repo
+/github-dev:post-merge <PR>        # cleanup + integrate learnings
 ```
 
-**Worktree Lifecycle:**
-```
-claude --worktree <name>  -->  work  -->  /merge-worktree  -->  /exit (cleanup)
-     (built-in)                          (squash merge +        (built-in)
-                                          learning integration)
-```
-
-**Flags:**
-| Flag | Description |
-|------|-------------|
-| `--target <branch>` | Base branch (default: auto-detect main/master) |
-| `--no-squash` | Use merge --no-ff instead of squash |
-| `--skip-learning` | Skip learning integration |
-
-**Limitations:**
-- Cannot checkout the same branch in two worktrees simultaneously
-- Each worktree requires separate dependency installation (`npm install`, etc.)
-- merge-worktree checks out the target branch in the original repo (may affect other sessions)
+**Note:** `post-merge` aborts when run from a worktree (Step 3 checks out the base branch, which conflicts with the original repo's checkout). Exit the worktree first.
 
 ## Project Progress Tracking
 

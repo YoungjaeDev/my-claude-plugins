@@ -121,8 +121,9 @@ if [ "$ITER" = "1" ]; then
   if [ "$NO_CODEX" = "true" ]; then
     codex_active="disabled"
   else
-    codex_review_count=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-      --jq '[.[] | select(.user.login == "chatgpt-codex-connector[bot]")] | length')
+    codex_review_count=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+      --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id' \
+      | wc -l)
     if [ "$codex_review_count" -gt 0 ]; then
       codex_active="active"
     else
@@ -138,8 +139,9 @@ elif [ "$codex_active" = "inactive" ]; then
   # late-arriving Codex review flip the cache to "active". Within a
   # single iteration the resolution is fixed, so the deterministic-per-
   # iteration guarantee still holds.
-  codex_review_count=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-    --jq '[.[] | select(.user.login == "chatgpt-codex-connector[bot]")] | length')
+  codex_review_count=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+    --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id' \
+    | wc -l)
   if [ "$codex_review_count" -gt 0 ]; then
     codex_active="active"
   fi

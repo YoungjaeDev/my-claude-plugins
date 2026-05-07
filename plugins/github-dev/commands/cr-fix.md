@@ -134,7 +134,7 @@ if [ "$ITER" = "1" ]; then
         codex_active="inactive"
       fi
     else
-      echo "warn: Codex engagement probe failed (gh api error); falling back to inactive — re-run cr-fix to retry" >&2
+      echo "warn: Codex engagement probe failed (gh api error); codex_active=inactive for this iteration — will be re-probed on the next iteration if still inactive" >&2
       codex_active="inactive"
     fi
   fi

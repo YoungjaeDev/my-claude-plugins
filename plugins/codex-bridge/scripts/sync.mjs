@@ -197,6 +197,7 @@ export const DEFAULT_CONFIG = {
   target: {
     scope: 'user',
     agentsHome: null,
+    agentsTomlHome: null,
   },
   collisionFallbackPrefix: 'bridge-',
   exclude: [],
@@ -323,6 +324,7 @@ export async function syncAll(options) {
   const {
     pluginsDir,
     targetDir,
+    agentsTomlDir = null,
     config,
     dryRun = false,
     pluginFilter = null,
@@ -332,6 +334,7 @@ export async function syncAll(options) {
 
   const allSkills = await discoverSkills(pluginsDir);
   const allCommands = await discoverCommands(pluginsDir);
+  const allAgents = await discoverAgents(pluginsDir);
   const pluginsRoot = path.dirname(pluginsDir);
 
   const warnings = [];
@@ -357,6 +360,14 @@ export async function syncAll(options) {
     return true;
   });
 
+  const filteredAgents = allAgents.filter((ag) => {
+    if (pluginFilter && !pluginFilter.includes(ag.pluginName)) return false;
+    const rel = path.relative(pluginsRoot, ag.sourcePath).split(path.sep).join('/');
+    if (isExcluded(rel, config.exclude)) return false;
+    if (isExcluded(`plugins/${ag.pluginName}/**`, config.exclude)) return false;
+    return true;
+  });
+
   const nameToPlugins = new Map();
   for (const skill of filtered) {
     const bucket = nameToPlugins.get(skill.skillName) ?? [];
@@ -374,15 +385,19 @@ export async function syncAll(options) {
   const report = {
     dryRun,
     targetDir,
+    agentsTomlDir,
     pluginsDir,
     discovered: allSkills.length,
     discoveredCommands: allCommands.length,
+    discoveredAgents: allAgents.length,
     considered: filtered.length,
     consideredCommands: filteredCommands.length,
+    consideredAgents: filteredAgents.length,
     collisions,
     synced: [],
     skipped: [],
     removed: [],
+    removedAgents: [],
     errors: [],
     warnings,
   };
@@ -436,6 +451,33 @@ export async function syncAll(options) {
     }
   }
 
+  const validAgentSources = new Set();
+  for (const ag of filteredAgents) {
+    const marker = `${ag.pluginName}/agents/${ag.agentName}`;
+    validAgentSources.add(marker);
+
+    if (!agentsTomlDir) continue;
+
+    if (dryRun) {
+      logger.info(`[dry-run] would sync agent ${marker} → ${ag.targetTomlName}.toml`);
+      report.synced.push({ status: 'dry-run', bridgeSource: marker, tomlName: ag.targetTomlName });
+      continue;
+    }
+
+    try {
+      const result = await syncAgent(ag, agentsTomlDir, config.transform.rules, { logger });
+      if (result.status === 'synced') {
+        logger.info(`[codex-bridge] synced agent ${marker} → ${result.path}`);
+        report.synced.push(result);
+      } else {
+        report.skipped.push({ ...result, tomlName: ag.targetTomlName, bridgeSource: marker });
+      }
+    } catch (err) {
+      logger.warn(`[codex-bridge] error syncing ${marker}: ${err.message}`);
+      report.errors.push({ tomlName: ag.targetTomlName, bridgeSource: marker, error: err.message });
+    }
+  }
+
   if (prune && !dryRun) {
     if (validSources.size === 0) {
       const msg = `[codex-bridge] prune skipped: 0 valid sources discovered (likely pluginsDir misresolution or over-restrictive --plugin filter). Inspect with --dry-run --verbose.`;
@@ -446,6 +488,24 @@ export async function syncAll(options) {
       report.removed = pruneResult.removed;
       for (const r of pruneResult.removed) {
         logger.info(`[codex-bridge] pruned orphan ${r.skillName} (was ${r.bridgeSource})`);
+      }
+    }
+    if (agentsTomlDir) {
+      if (pluginFilter) {
+        const msg = `[codex-bridge] agent prune skipped: --plugin filter is active; rerun with --no-prune or full sync separately.`;
+        logger.warn(msg);
+        report.warnings.push(msg);
+      } else if (filteredAgents.length === 0 && allAgents.length === 0) {
+        // No agents discovered at all; mirror the same defensive guard as skills/commands.
+        const msg = `[codex-bridge] agent prune skipped: 0 agents discovered. Inspect with --dry-run --verbose.`;
+        logger.warn(msg);
+        report.warnings.push(msg);
+      } else {
+        const agentPruneResult = await pruneAgentOrphans(agentsTomlDir, validAgentSources);
+        report.removedAgents = agentPruneResult.removed;
+        for (const r of agentPruneResult.removed) {
+          logger.info(`[codex-bridge] pruned orphan agent ${r.tomlName} (was ${r.bridgeSource})`);
+        }
       }
     }
   } else if (prune && dryRun) {
@@ -463,6 +523,23 @@ export async function syncAll(options) {
           logger.info(`[dry-run] would prune ${entry.name} (orphan ${parsed.fields.bridge_source})`);
         }
       } catch { /* skip */ }
+    }
+    if (agentsTomlDir) {
+      const tomlEntries = await fs.readdir(agentsTomlDir, { withFileTypes: true }).catch((err) => {
+        if (err.code === 'ENOENT') return [];
+        throw err;
+      });
+      for (const entry of tomlEntries) {
+        if (!entry.isFile() || !entry.name.endsWith('.toml') || entry.name.startsWith('.staging-')) continue;
+        try {
+          const content = await fs.readFile(path.join(agentsTomlDir, entry.name), 'utf-8');
+          const marker = readTomlBridgeSource(content);
+          if (marker && !validAgentSources.has(marker)) {
+            report.removedAgents.push({ tomlName: entry.name, bridgeSource: marker, dryRun: true });
+            logger.info(`[dry-run] would prune agent ${entry.name} (orphan ${marker})`);
+          }
+        } catch { /* skip */ }
+      }
     }
   }
 
@@ -527,12 +604,15 @@ export async function main(argv) {
 
   const targetDir = config.target.agentsHome
     ?? path.join(os.homedir(), '.agents', 'skills');
+  const agentsTomlDir = config.target.agentsTomlHome
+    ?? path.join(os.homedir(), '.codex', 'agents');
 
   const logger = args.verbose ? defaultLogger() : quietLogger();
 
   const report = await syncAll({
     pluginsDir,
     targetDir,
+    agentsTomlDir,
     config,
     dryRun: args.dryRun,
     pluginFilter: args.plugins,
@@ -543,7 +623,7 @@ export async function main(argv) {
   if (args.verbose) {
     const pluginEntries = await fs.readdir(pluginsDir, { withFileTypes: true }).catch(() => []);
     const pluginCount = pluginEntries.filter(e => e.isDirectory()).length;
-    process.stderr.write(`[codex-bridge] discovered ${pluginCount} plugins, ${report.discovered} skills, ${report.discoveredCommands ?? 0} commands\n`);
+    process.stderr.write(`[codex-bridge] discovered ${pluginCount} plugins, ${report.discovered} skills, ${report.discoveredCommands ?? 0} commands, ${report.discoveredAgents ?? 0} agents\n`);
   }
 
   if (args.reportPath) {
@@ -563,10 +643,14 @@ function quietLogger() {
 function printSummary(report) {
   const lines = [
     `[codex-bridge] target: ${report.targetDir}`,
-    `  skills: discovered ${report.discovered}, considered ${report.considered}`,
-    `  commands: discovered ${report.discoveredCommands ?? 0}, considered ${report.consideredCommands ?? 0}`,
-    `  synced: ${report.synced.length}, skipped: ${report.skipped.length}, removed: ${report.removed.length}, errors: ${report.errors.length}`,
   ];
+  if (report.agentsTomlDir) {
+    lines.push(`[codex-bridge] agents toml target: ${report.agentsTomlDir}`);
+  }
+  lines.push(`  skills: discovered ${report.discovered}, considered ${report.considered}`);
+  lines.push(`  commands: discovered ${report.discoveredCommands ?? 0}, considered ${report.consideredCommands ?? 0}`);
+  lines.push(`  agents: discovered ${report.discoveredAgents ?? 0}, considered ${report.consideredAgents ?? 0}`);
+  lines.push(`  synced: ${report.synced.length}, skipped: ${report.skipped.length}, removed: ${report.removed.length}, removedAgents: ${report.removedAgents?.length ?? 0}, errors: ${report.errors.length}`);
   process.stderr.write(`${lines.join('\n')}\n`);
 }
 
@@ -852,6 +936,186 @@ export async function discoverCommands(pluginsDir) {
   });
 
   return results;
+}
+
+export async function discoverAgents(pluginsDir) {
+  const results = [];
+
+  let pluginEntries;
+  try {
+    pluginEntries = await fs.readdir(pluginsDir, { withFileTypes: true });
+  } catch (err) {
+    if (err.code === 'ENOENT') return results;
+    throw err;
+  }
+
+  for (const entry of pluginEntries) {
+    if (!entry.isDirectory()) continue;
+    const contentRoot = await resolvePluginContentDir(path.join(pluginsDir, entry.name));
+    if (!contentRoot) continue;
+    const agentsDir = path.join(contentRoot, 'agents');
+    let files;
+    try {
+      files = await fs.readdir(agentsDir, { withFileTypes: true });
+    } catch (err) {
+      if (err.code === 'ENOENT') continue;
+      throw err;
+    }
+    for (const f of files) {
+      if (!f.isFile() || !f.name.endsWith('.md')) continue;
+      const agentName = f.name.slice(0, -3);
+      results.push({
+        pluginName: entry.name,
+        agentName,
+        sourcePath: path.join(agentsDir, f.name),
+        targetTomlName: `${entry.name}-${agentName}`,
+      });
+    }
+  }
+
+  results.sort((a, b) => {
+    if (a.pluginName !== b.pluginName) return a.pluginName < b.pluginName ? -1 : 1;
+    if (a.agentName !== b.agentName) return a.agentName < b.agentName ? -1 : 1;
+    return 0;
+  });
+
+  return results;
+}
+
+function tomlBasicQuote(text) {
+  return `"${String(text).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+function escapeTomlMultilineBody(body) {
+  // TOML basic multi-line strings (""" ... """):
+  // - backslashes must be doubled (\\)
+  // - any literal """ would terminate the string; emit \""" to get a literal triple-quote
+  const withDoubledBackslashes = body.replace(/\\/g, '\\\\');
+  return withDoubledBackslashes.replace(/"""/g, '\\"""');
+}
+
+export function agentToCodexToml(sourceContent, pluginName, agentName, rules) {
+  const fmMatch = FRONTMATTER_RE.exec(sourceContent);
+  let parsed = null;
+  let body = sourceContent;
+
+  if (fmMatch) {
+    parsed = parseFrontmatter(sourceContent);
+    if (parsed) body = parsed.body;
+  }
+
+  const description = parsed && parsed.description
+    ? flattenDescription(parsed.description)
+    : `${agentName} agent from ${pluginName} plugin.`;
+
+  const targetName = `${pluginName}-${agentName}`;
+  const marker = `${pluginName}/agents/${agentName}`;
+
+  const transformedBody = applyTransforms(body, rules);
+  const escaped = escapeTomlMultilineBody(transformedBody);
+  // Strip a single leading newline from body (keeps things tidy; the TOML
+  // multi-line opener swallows the immediate newline after """ anyway).
+  const trimmedBody = escaped.startsWith('\n') ? escaped.slice(1) : escaped;
+
+  const lines = [`# bridge_source = ${tomlBasicQuote(marker)}`];
+  if (parsed && parsed.fields) {
+    if (parsed.fields.model) lines.push(`# original-model = ${tomlBasicQuote(parsed.fields.model)}`);
+    if (parsed.fields.skills) lines.push(`# original-skills = ${tomlBasicQuote(parsed.fields.skills)}`);
+    if (parsed.fields.tools) lines.push(`# original-tools = ${tomlBasicQuote(parsed.fields.tools)}`);
+  }
+  lines.push(`name = ${tomlBasicQuote(targetName)}`);
+  lines.push(`description = ${tomlBasicQuote(description)}`);
+  lines.push('developer_instructions = """');
+  lines.push(trimmedBody.replace(/\n+$/, ''));
+  lines.push('"""');
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+const BRIDGE_SOURCE_COMMENT_RE = /^#\s*bridge_source\s*=\s*"([^"\r\n]*)"\s*(?:\r?\n|$)/;
+
+export function tomlHasBridgeSource(content) {
+  return BRIDGE_SOURCE_COMMENT_RE.test(content);
+}
+
+export function readTomlBridgeSource(content) {
+  const m = BRIDGE_SOURCE_COMMENT_RE.exec(content);
+  return m ? m[1] : null;
+}
+
+export async function syncAgent(agent, agentsTomlDir, rules, options = {}) {
+  const logger = options.logger ?? defaultLogger();
+  const sourceContent = await fs.readFile(agent.sourcePath, 'utf-8');
+
+  const tomlName = agent.targetTomlName ?? `${agent.pluginName}-${agent.agentName}`;
+  const tomlPath = path.join(agentsTomlDir, `${tomlName}.toml`);
+  const marker = `${agent.pluginName}/agents/${agent.agentName}`;
+
+  try {
+    const existing = await fs.readFile(tomlPath, 'utf-8');
+    if (!tomlHasBridgeSource(existing)) {
+      logger.warn(`[codex-bridge] skip ${tomlPath}: not managed by codex-bridge (missing # bridge_source marker).`);
+      return { status: 'skipped', reason: 'non-managed-collision' };
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+
+  const tomlContent = agentToCodexToml(sourceContent, agent.pluginName, agent.agentName, rules);
+
+  await fs.mkdir(agentsTomlDir, { recursive: true });
+  const stagingPath = path.join(agentsTomlDir, `.staging-${tomlName}-${process.pid}-${Date.now()}.toml`);
+  try {
+    await fs.writeFile(stagingPath, tomlContent, 'utf-8');
+    await moveOrCopy(stagingPath, tomlPath);
+  } catch (err) {
+    await fs.rm(stagingPath, { force: true }).catch(() => {});
+    throw err;
+  }
+
+  return { status: 'synced', path: tomlPath, bridgeSource: marker };
+}
+
+export async function pruneAgentOrphans(agentsTomlDir, validAgentSources) {
+  const report = { removed: [], preserved: [] };
+
+  let entries;
+  try {
+    entries = await fs.readdir(agentsTomlDir, { withFileTypes: true });
+  } catch (err) {
+    if (err.code === 'ENOENT') return report;
+    throw err;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith('.toml')) continue;
+    if (entry.name.startsWith('.staging-')) continue;
+
+    const fullPath = path.join(agentsTomlDir, entry.name);
+    let content;
+    try {
+      content = await fs.readFile(fullPath, 'utf-8');
+    } catch (err) {
+      if (err.code === 'ENOENT') continue;
+      throw err;
+    }
+
+    const marker = readTomlBridgeSource(content);
+    if (!marker) {
+      report.preserved.push({ tomlName: entry.name, reason: 'no-bridge-source' });
+      continue;
+    }
+
+    if (validAgentSources.has(marker)) {
+      report.preserved.push({ tomlName: entry.name, reason: 'valid', bridgeSource: marker });
+    } else {
+      await fs.rm(fullPath, { force: true });
+      report.removed.push({ tomlName: entry.name, bridgeSource: marker });
+    }
+  }
+
+  return report;
 }
 
 export function commandToSkillContent(sourceContent, pluginName, commandName) {

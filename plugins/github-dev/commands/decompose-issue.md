@@ -142,21 +142,36 @@ Break down large work items into manageable, independent issues. Follow project 
      STATEEOF
      ```
 
-10. Ask about GitHub creation: Use AskUserQuestion to let user decide on milestone and issue creation
-    - Create milestone with **Markdown Table** in description:
-      ```bash
-      # Generate initial progress table (all issues [ ] pending, progress 0%)
-      # See update-progress.md "Milestone Format" for full format
+10. **Ask about GitHub creation**: Use AskUserQuestion to let user decide on milestone and issue creation
+    - Create milestone with **Markdown Table** in description.
 
-      RESPONSE=$(gh api repos/:owner/:repo/milestones \
+      > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `update-progress.md` "Type M-2"), never in the milestone description.
+
+      Build `$MILESTONE_TABLE` with the required table block below (canonical spec at `update-progress.md:160`).
+      You may prepend objective/scope and dependency-order summary sections required by this file's milestone guidelines.
+
+      ```markdown
+      ## <milestoneName> Progress (auto-updated: YYYY-MM-DD)
+
+      | Status | Issue | Title | Depends On |
+      |--------|-------|-------|------------|
+      | [ ] | #<n1> | <title1> | - |
+      | [ ] | #<n2> | <title2> | #<n1> |
+
+      **Progress: 0/<total> (0%)**
+      ```
+
+      Then create the milestone:
+      ```bash
+      RESPONSE=$(gh api repos/{owner}/{repo}/milestones \
         -f title="<Milestone Name>" \
         -f description="$MILESTONE_TABLE")
       MILESTONE_NUMBER=$(echo "$RESPONSE" | jq '.number')
       ```
     - Update state file with milestoneId:
       ```bash
-      # Update milestoneId in project-tracking-{slug}.json
-      # Set milestoneId to $MILESTONE_NUMBER
+      STATE_FILE=".omc/state/project-tracking-${SLUG}.json"
+      jq --arg mid "$MILESTONE_NUMBER" '.milestoneId = ($mid | tonumber)' "$STATE_FILE" > tmp.$$.json && mv tmp.$$.json "$STATE_FILE"
       ```
     - Assign issues with `--milestone` option
     - After issue creation, update the state file `issues` map with actual GitHub issue numbers

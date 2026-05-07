@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import { discoverSkills, discoverCommands, parseFrontmatter, resolvePluginContentDir, compareSemver } from '../scripts/sync.mjs';
+import { discoverSkills, discoverCommands, discoverAgents, parseFrontmatter, resolvePluginContentDir, compareSemver } from '../scripts/sync.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(__dirname, 'fixtures');
@@ -282,6 +282,110 @@ test('discoverCommands: handles versioned cache layout, picks latest version per
     );
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('discoverAgents: finds agents/*.md files at every plugin', async () => {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-bridge-agents-'));
+  try {
+    const mk = async (plugin, agent) => {
+      const dir = path.join(tmp, 'plugins', plugin, 'agents');
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, `${agent}.md`), `---\nname: ${agent}\ndescription: x\n---\nbody`);
+    };
+    await mk('alpha', 'a-agent');
+    await mk('alpha', 'b-agent');
+    await mk('beta', 'c-agent');
+
+    const agents = await discoverAgents(path.join(tmp, 'plugins'));
+    assert.equal(agents.length, 3);
+    const keys = agents.map(a => `${a.pluginName}/${a.agentName}`);
+    assert.deepEqual(keys, ['alpha/a-agent', 'alpha/b-agent', 'beta/c-agent']);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('discoverAgents: targetTomlName is <plugin>-<agent>', async () => {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-bridge-agents-'));
+  try {
+    const dir = path.join(tmp, 'plugins', 'code-scout', 'agents');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, 'scout.md'), '---\nname: scout\ndescription: x\n---\nbody');
+
+    const agents = await discoverAgents(path.join(tmp, 'plugins'));
+    assert.equal(agents.length, 1);
+    assert.equal(agents[0].targetTomlName, 'code-scout-scout');
+    assert.equal(
+      path.normalize(agents[0].sourcePath),
+      path.join(dir, 'scout.md')
+    );
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('discoverAgents: ignores non-md files in agents/', async () => {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-bridge-agents-'));
+  try {
+    const dir = path.join(tmp, 'plugins', 'p', 'agents');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, 'real.md'), '---\nname: real\n---\n');
+    await fs.writeFile(path.join(dir, 'README.txt'), 'not an agent');
+    await fs.writeFile(path.join(dir, 'script.sh'), '#!/bin/sh\n');
+
+    const agents = await discoverAgents(path.join(tmp, 'plugins'));
+    assert.equal(agents.length, 1);
+    assert.equal(agents[0].agentName, 'real');
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('discoverAgents: returns [] when plugins dir missing', async () => {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-bridge-agents-'));
+  try {
+    const agents = await discoverAgents(path.join(tmp, 'nope'));
+    assert.deepEqual(agents, []);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('discoverAgents: returns [] when no plugin has agents/', async () => {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-bridge-agents-'));
+  try {
+    await fs.mkdir(path.join(tmp, 'plugins', 'p', 'skills'), { recursive: true });
+    const agents = await discoverAgents(path.join(tmp, 'plugins'));
+    assert.deepEqual(agents, []);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('discoverAgents: handles versioned cache layout, picks latest version per plugin', async () => {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-bridge-agents-'));
+  try {
+    const cacheRoot = path.join(tmp, 'my-claude-plugins');
+    const writeAgent = async (plugin, version, name, body = '# agent') => {
+      const dir = path.join(cacheRoot, plugin, version, 'agents');
+      await fs.mkdir(path.join(cacheRoot, plugin, version, '.claude-plugin'), { recursive: true });
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, `${name}.md`), `---\nname: ${name}\ndescription: x\n---\n${body}`);
+    };
+    await writeAgent('code-scout', '1.0.0', 'scout', 'old');
+    await writeAgent('code-scout', '1.1.0', 'scout', 'latest');
+
+    const agents = await discoverAgents(cacheRoot);
+    assert.equal(agents.length, 1);
+    assert.equal(agents[0].pluginName, 'code-scout');
+    assert.equal(agents[0].agentName, 'scout');
+    assert.equal(
+      path.normalize(agents[0].sourcePath),
+      path.join(cacheRoot, 'code-scout', '1.1.0', 'agents', 'scout.md')
+    );
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
   }
 });
 

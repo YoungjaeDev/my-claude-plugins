@@ -47,6 +47,14 @@ Before starting the workflow:
    - If no plan file, continue to next step
    - **[NEW] Save checkpoint**: phase="plan"
 
+2.5. **Worktree context check**:
+    ```bash
+    if [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
+      echo "[info] In linked worktree — Step 3 will replace this worktree's branch with feat/<n>-<slug>. This is expected for the PR flow."
+    fi
+    ```
+    No abort. The PR flow inside a worktree is supported.
+
 3. **Create Branch**: Create and checkout a new branch from the default branch.
    - **Detect default branch**: `git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'`
    - **Branch naming convention**: `{type}/{issue-number}-{short-description}`

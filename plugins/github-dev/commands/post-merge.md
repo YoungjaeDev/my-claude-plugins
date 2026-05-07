@@ -13,6 +13,18 @@ Perform local branch cleanup and configuration updates after a PR has been merge
 ## Workflow
 
 1. **Identify PR**
+
+   **Worktree guard (P0)**: post-merge must run from the main repo, not a worktree. Step 3 checks out the base branch, which collides with the original repo's checkout.
+
+   ```bash
+   if [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
+     MAIN_REPO=$(cd "$(git rev-parse --git-common-dir)/.." && pwd -P)
+     echo "[abort] post-merge cannot run inside a worktree."
+     echo "Run /exit (cleanup option), then re-run /github-dev:post-merge from $MAIN_REPO"
+     exit 1
+   fi
+   ```
+
    - Use PR number if provided as argument
    - Otherwise, attempt to infer related PR/issue number from conversation context
    - If unable to determine, run `gh pr list --state merged --limit 5` to show recent merged PRs and prompt user to select
@@ -223,30 +235,28 @@ Perform local branch cleanup and configuration updates after a PR has been merge
 
 6.5. **Normative Doc Size Audit**
 
-   After Step 6 integration is applied, measure each existing normative doc against a size budget. Doc growth is the most common silent regression of the integration step -- this audit surfaces it before it triggers Claude Code's runtime perf warning.
+After Step 6 integration is applied, measure normative docs and offer split/improve when oversized.
 
-   **Threshold:** 32000 chars. Sits 8k below Claude Code's 40k perf-warning trigger (`Large CLAUDE.md will impact performance (X chars > 40.0k)`), giving the user headroom to act before the warning fires.
+**Threshold:** 32000 chars (8k below Claude Code's 40k perf-warning).
 
-   **Procedure:**
+**Procedure:**
 
-   1. Build candidate list from files that exist in the repo:
-      - `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` at repo root
-      - One-level matches under `.claude/rules/*.md` (do not recurse into subdirectories)
-   2. Measure char count per file with `wc -m` (chars, not bytes -- byte counts are misleading for Korean / multibyte content).
-   3. If no file exceeds 32000 chars: emit `All normative docs within 32k chars; size audit clean.` and proceed to Step 7.
-   4. If at least one file exceeds 32000 chars:
-      a. Show a per-file size table, marking offenders:
-         ```
-         File                            Size      Status
-         CLAUDE.md                       49,969    OVER (>32k)
-         .claude/rules/gt-review.md      22,874    ok
-         AGENTS.md                       8,140     ok
-         ```
-      b. `AskUserQuestion`, header `Size audit`:
-         - **Run claude-md-improver** -- invoke the `claude-md-management:claude-md-improver` skill via the Skill tool, passing the over-sized file paths. The skill scans, evaluates against templates, and proposes targeted updates (split into modular rules, dedupe, etc.). The skill itself prompts before applying changes.
-         - **Defer** -- print `Run /claude-md-management:claude-md-improver later on: <files>` and continue.
-         - **Skip** -- continue silently.
-   5. The `Run` path executes inline as a sub-flow; if the user declines mid-skill, return control to Step 7 (do not block the rest of post-merge).
+1. Build candidate list (files that exist):
+   - `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` at repo root
+   - One-level matches under `.claude/rules/*.md` (no recursion)
+2. Measure char count per file with `wc -m` (chars, not bytes — Korean/multibyte safe).
+3. If no file exceeds 32000 chars: emit `All normative docs within 32k; size audit clean.` and proceed to Step 7.
+4. If at least one file exceeds 32000 chars:
+   a. Show per-file size table marking offenders.
+   b. `AskUserQuestion`, header `Size audit`:
+      - **Split with rules-forge:split** (Recommended) — invoke `/rules-forge:split --threshold 20` for each oversized file. Extracts topical sections to `.claude/rules/<topic>.md`, rewrites the root with `@import` references. Best when the file is bulky.
+      - **Improve with claude-md-improver** — invoke the `claude-md-management:claude-md-improver` skill for quality refinement (dedup, stale content, rubric scoring). Best when the file is already modular but verbose.
+      - **Both: split first, then improve** — run `rules-forge:split`, then re-measure; if root is still > 32000, run `claude-md-improver` on the trimmed root.
+      - **Defer** — print `Run /rules-forge:split or /claude-md-management:claude-md-improver later on: <files>` and continue.
+      - **Skip** — continue silently.
+5. Each path runs inline as a sub-flow; the invoked skill/command itself prompts before applying changes. If the user declines mid-skill, return control to Step 7 (do not block the rest of post-merge).
+
+**Why split-first is recommended**: at 32k+ chars the dominant problem is bulk, not phrasing. `rules-forge:split` (`plugins/rules-forge/commands/split.md`) is the dedicated extraction engine — auto-classifies sections (Architecture/Testing/API/Frontend/Deployment/Security), generates `@import` directives, supports `--dry-run`. `claude-md-improver` (`plugins/claude-md-management`) is rubric-based quality audit; its references contain no size-reduction logic.
 
 7. **Update Serena Memory (if Serena MCP available)**
 

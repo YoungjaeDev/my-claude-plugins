@@ -1,12 +1,12 @@
 # Codex Bridge Plugin
 
-my-claude-plugins 의 skill 들을 Codex CLI 가 네이티브로 로드하는 `~/.agents/skills/` (OpenAI 공식 USER scope) 로 idempotent 하게 변환·복사한다.
+my-claude-plugins 의 skill / command / subagent 를 Codex CLI 가 네이티브로 로드하는 위치 (`~/.agents/skills/` 와 `~/.codex/agents/` — OpenAI 공식 USER scope) 로 idempotent 하게 변환·복사한다.
 
 ## Skill
 
 | Skill | Description |
 |-------|-------------|
-| `codex-sync` | Sync my-claude-plugins skills and commands to `~/.agents/skills/` |
+| `codex-sync` | Sync my-claude-plugins skills, commands, and subagents to `~/.agents/skills/` (skills+commands) and `~/.codex/agents/*.toml` (subagents) |
 
 ## 원칙
 
@@ -60,10 +60,15 @@ namespace regex 는 lookbehind `(?<![:/.\w])` 가드로 `https://x.io/foo:bar` �
 
 ## 경로 정설
 
-- Target: `$HOME/.agents/skills/<name>/SKILL.md` — OpenAI 공식 USER scope
+- Skill / command target: `$HOME/.agents/skills/<name>/SKILL.md` — OpenAI 공식 USER scope skill
+- Subagent target: `$HOME/.codex/agents/<plugin>-<agent>.toml` — OpenAI 공식 USER scope subagent
+- `bridge_source` provenance marker:
+  - skills/commands: `bridge_source: <plugin>/<skill>` 또는 `<plugin>/commands/<command>` (frontmatter key)
+  - agents: `# bridge_source = "<plugin>/agents/<agent>"` (TOML 첫 줄 주석)
+- 마커 없는 파일은 **절대 건드리지 않음** (사용자가 직접 작성한 skill/agent 보호). prune 도 마커 매칭만.
 - `~/.codex/skills/` (외부 관리) 는 **절대 건드리지 않음**
 - `~/.codex/AGENTS.md` 에는 어떤 콘텐츠도 **주입하지 않음**
-- `CODEX_HOME` env 는 state/log base 일 뿐, skill 디렉토리와 무관
+- `CODEX_HOME` env 는 state/log base 일 뿐, skill / agent 디렉토리와 무관
 
 ## Dependencies
 
@@ -74,4 +79,5 @@ namespace regex 는 lookbehind `(?<![:/.\w])` 가드로 `https://x.io/foo:bar` �
 
 - Spec: `.claude/spec/2026-04-14-codex-bridge-skill-sync.md`
 - OpenAI Codex Skills: https://developers.openai.com/codex/skills
+- OpenAI Codex Subagents: https://developers.openai.com/codex/subagents
 - OpenAI Codex Customization: https://developers.openai.com/codex/concepts/customization

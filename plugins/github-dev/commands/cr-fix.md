@@ -48,7 +48,7 @@ applied_total=0
 deferred_total=0
 skipped_total=0               # CR Nitpick + Codex P3 silently filtered (telemetry only)
 verification_blocking=false   # global; once true, stays true for the run (disables auto-merge)
-codex_active=unknown          # set in Step 6 first iteration: "active" / "inactive" / "disabled"
+codex_active=unknown          # set in Step 6 first iteration; "inactive" -> "active" mid-run flip allowed at iter 2+ Step 6 entry. Values: "active" / "inactive" / "disabled".
 ```
 
 If `PR_NUM` empty → abort: `No open PR for current branch — push first and open a PR before running cr-fix.`
@@ -112,27 +112,54 @@ for ITER in $(seq 1 $MAX_ITER); do
 
 ## Step 6: Wait phase — CodeRabbit (inlined cr-wait Steps 2-4)
 
-**Codex auto-detect (first iteration only)**:
+**Codex auto-detect (first iteration + mid-run flip)**:
 
-Before the CR probe in iteration 1, resolve `codex_active` for the run:
+Before the CR probe, resolve `codex_active` for the iteration. The first iteration always probes; subsequent iterations only re-probe when the cache is still `inactive`, so an `active` decision is sticky for the rest of the run:
 
 ```bash
 if [ "$ITER" = "1" ]; then
   if [ "$NO_CODEX" = "true" ]; then
     codex_active="disabled"
   else
-    codex_review_count=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-      --jq '[.[] | select(.user.login == "chatgpt-codex-connector[bot]")] | length')
-    if [ "$codex_review_count" -gt 0 ]; then
-      codex_active="active"
+    # Capture gh output separately so a transient API error doesn't masquerade
+    # as "0 Codex reviews". `gh api ... | wc -l` would return 0 on failure
+    # because the pipeline exit status comes from wc, silently locking
+    # codex_active to "inactive" for the whole run.
+    if codex_review_ids=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+        --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id'); then
+      codex_review_count=$(awk 'NF{c++} END{print c+0}' <<< "$codex_review_ids")
+      if [ "$codex_review_count" -gt 0 ]; then
+        codex_active="active"
+      else
+        codex_active="inactive"
+      fi
     else
+      echo "warn: Codex engagement probe failed (gh api error); codex_active=inactive for this iteration — will be re-probed on the next iteration if still inactive" >&2
       codex_active="inactive"
     fi
+  fi
+elif [ "$codex_active" = "inactive" ]; then
+  # Mid-run re-probe: a PR opened seconds before the first Codex review
+  # arrives (CodeRabbit responds in seconds, Codex typically 3-5 min)
+  # would otherwise stay locked as "inactive" for the entire run and
+  # skip Step 8b. The probe is idempotent (a pure read on /reviews) so
+  # there is no race condition to prevent — re-running it just lets a
+  # late-arriving Codex review flip the cache to "active". Within a
+  # single iteration the resolution is fixed, so the deterministic-per-
+  # iteration guarantee still holds.
+  if codex_review_ids=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+      --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id'); then
+    codex_review_count=$(awk 'NF{c++} END{print c+0}' <<< "$codex_review_ids")
+    if [ "$codex_review_count" -gt 0 ]; then
+      codex_active="active"
+    fi
+  else
+    echo "warn: Codex mid-run probe failed; leaving codex_active=inactive for this iteration" >&2
   fi
 fi
 ```
 
-`codex_active` is cached for the rest of the run. A PR that gains its first Codex review mid-run will not auto-flip from `inactive` to `active` — re-run cr-fix to pick it up. This keeps behavior deterministic per run and avoids race conditions on the engagement probe.
+`codex_active` is cached **within** an iteration so Step 6b grace polling and Step 8b inline-fetch both see a fixed value. Across iterations, an `inactive` cache will be re-probed at the next Step 6 entry; `active` and `disabled` never flip back. This catches the common case where a PR opens just before its first Codex review arrives — without the mid-run re-probe the run would skip Codex output entirely even though the review is sitting on the same SHA Step 8 is fetching.
 
 **Probe once (fast path)**:
 

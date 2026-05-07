@@ -127,7 +127,7 @@ if [ "$ITER" = "1" ]; then
     # codex_active to "inactive" for the whole run.
     if codex_review_ids=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
         --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id'); then
-      codex_review_count=$(grep -c . <<< "$codex_review_ids")
+      codex_review_count=$(awk 'NF{c++} END{print c+0}' <<< "$codex_review_ids")
       if [ "$codex_review_count" -gt 0 ]; then
         codex_active="active"
       else
@@ -149,7 +149,7 @@ elif [ "$codex_active" = "inactive" ]; then
   # iteration guarantee still holds.
   if codex_review_ids=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
       --jq '.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .id'); then
-    codex_review_count=$(grep -c . <<< "$codex_review_ids")
+    codex_review_count=$(awk 'NF{c++} END{print c+0}' <<< "$codex_review_ids")
     if [ "$codex_review_count" -gt 0 ]; then
       codex_active="active"
     fi

@@ -147,7 +147,8 @@ Break down large work items into manageable, independent issues. Follow project 
 
       > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `update-progress.md` "Type M-2"), never in the milestone description.
 
-      Build `$MILESTONE_TABLE` in this exact format (canonical spec at `update-progress.md:160`):
+      Build `$MILESTONE_TABLE` with the required table block below (canonical spec at `update-progress.md:160`).
+      You may prepend objective/scope and dependency-order summary sections required by this file's milestone guidelines.
 
       ```markdown
       ## <milestoneName> Progress (auto-updated: YYYY-MM-DD)

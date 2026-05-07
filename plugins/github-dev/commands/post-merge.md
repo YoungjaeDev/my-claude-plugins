@@ -249,7 +249,7 @@ After Step 6 integration is applied, measure normative docs and offer split/impr
 4. If at least one file exceeds 32000 chars:
    a. Show per-file size table marking offenders.
    b. `AskUserQuestion`, header `Size audit`:
-      - **Split with rules-forge:split** (Recommended) — invoke `/rules-forge split --threshold 20` for each oversized file. Extracts topical sections to `.claude/rules/<topic>.md`, rewrites the root with `@import` references. Best when the file is bulky.
+      - **Split with rules-forge:split** (Recommended) — invoke `/rules-forge:split --threshold 20` for each oversized file. Extracts topical sections to `.claude/rules/<topic>.md`, rewrites the root with `@import` references. Best when the file is bulky.
       - **Improve with claude-md-improver** — invoke the `claude-md-management:claude-md-improver` skill for quality refinement (dedup, stale content, rubric scoring). Best when the file is already modular but verbose.
       - **Both: split first, then improve** — run `rules-forge:split`, then re-measure; if root is still > 32000, run `claude-md-improver` on the trimmed root.
       - **Defer** — print `Run /rules-forge:split or /claude-md-management:claude-md-improver later on: <files>` and continue.

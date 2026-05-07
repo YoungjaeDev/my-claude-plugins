@@ -39,7 +39,7 @@ reviews:
   auto_pause_after_reviewed_commits: 5   # pause after 5 incremental reviews per PR
 ```
 
-Combined with the plugin defaults (`/cr-fix --timeout 1800`), this keeps long iteration loops within free-tier limits.
+Combined with the plugin defaults (`/github-dev:cr-fix --timeout 1800`), this keeps long iteration loops within free-tier limits.
 
 ## Path filters (optional, large monorepos)
 

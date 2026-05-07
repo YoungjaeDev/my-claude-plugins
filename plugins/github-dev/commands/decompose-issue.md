@@ -163,12 +163,16 @@ Break down large work items into manageable, independent issues. Follow project 
 
       Then create the milestone:
       ```bash
-      RESPONSE=$(gh api repos/:owner/:repo/milestones \
+      RESPONSE=$(gh api repos/{owner}/{repo}/milestones \
         -f title="<Milestone Name>" \
         -f description="$MILESTONE_TABLE")
       MILESTONE_NUMBER=$(echo "$RESPONSE" | jq '.number')
       ```
-    - Update state file with milestoneId
+    - Update state file with milestoneId:
+      ```bash
+      STATE_FILE=".omc/state/project-tracking-${SLUG}.json"
+      jq --arg mid "$MILESTONE_NUMBER" '.milestoneId = ($mid | tonumber)' "$STATE_FILE" > tmp.$$.json && mv tmp.$$.json "$STATE_FILE"
+      ```
     - Assign issues with `--milestone` option
     - After issue creation, update the state file `issues` map with actual GitHub issue numbers
 

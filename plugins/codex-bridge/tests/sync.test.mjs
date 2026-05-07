@@ -423,7 +423,10 @@ test('syncAgent: writes <plugin>-<agent>.toml with bridge_source comment marker'
     const tomlPath = path.join(targetDir, 'code-scout-scout.toml');
     const written = await fs.readFile(tomlPath, 'utf-8');
     // bridge_source comment as first line
-    assert.match(written, /^# bridge_source = "code-scout\/agents\/scout"/m);
+    assert.equal(
+      written.split('\n')[0],
+      '# bridge_source = "code-scout/agents/scout"'
+    );
     // model preserved as comment
     assert.match(written, /^# original-model = "haiku"$/m);
     // canonical TOML fields

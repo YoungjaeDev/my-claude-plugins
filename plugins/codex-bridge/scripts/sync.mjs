@@ -491,7 +491,11 @@ export async function syncAll(options) {
       }
     }
     if (agentsTomlDir) {
-      if (filteredAgents.length === 0 && allAgents.length === 0) {
+      if (pluginFilter) {
+        const msg = `[codex-bridge] agent prune skipped: --plugin filter is active; rerun with --no-prune or full sync separately.`;
+        logger.warn(msg);
+        report.warnings.push(msg);
+      } else if (filteredAgents.length === 0 && allAgents.length === 0) {
         // No agents discovered at all; mirror the same defensive guard as skills/commands.
         const msg = `[codex-bridge] agent prune skipped: 0 agents discovered. Inspect with --dry-run --verbose.`;
         logger.warn(msg);
@@ -1029,7 +1033,7 @@ export function agentToCodexToml(sourceContent, pluginName, agentName, rules) {
   return lines.join('\n');
 }
 
-const BRIDGE_SOURCE_COMMENT_RE = /^#\s*bridge_source\s*=\s*"([^"]*)"\s*$/m;
+const BRIDGE_SOURCE_COMMENT_RE = /^#\s*bridge_source\s*=\s*"([^"\r\n]*)"\s*(?:\r?\n|$)/;
 
 export function tomlHasBridgeSource(content) {
   return BRIDGE_SOURCE_COMMENT_RE.test(content);
@@ -1064,7 +1068,6 @@ export async function syncAgent(agent, agentsTomlDir, rules, options = {}) {
   const stagingPath = path.join(agentsTomlDir, `.staging-${tomlName}-${process.pid}-${Date.now()}.toml`);
   try {
     await fs.writeFile(stagingPath, tomlContent, 'utf-8');
-    await fs.rm(tomlPath, { force: true });
     await moveOrCopy(stagingPath, tomlPath);
   } catch (err) {
     await fs.rm(stagingPath, { force: true }).catch(() => {});

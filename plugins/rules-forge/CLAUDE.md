@@ -1,145 +1,118 @@
 # Rules Forge Plugin
 
-**Generate and restructure CLAUDE.md systems with modular .claude/rules/ delegation**
+**Generate and restructure CLAUDE.md systems with modular `.claude/rules/` delegation**
 
 ## Overview
 
-Rules Forge helps you create and maintain clean, modular CLAUDE.md instruction systems by:
+Rules Forge helps create and maintain clean, modular CLAUDE.md
+instruction systems. A single skill (`write-rules`) auto-detects
+project state and branches into one of four modes:
 
-1. **Generating** new CLAUDE.md systems from scratch with interview-based workflows
-2. **Restructuring** existing monolithic CLAUDE.md files into modular `.claude/rules/` delegation
-3. **Migrating** from legacy patterns to modern best practices
+- **NEW** — Generate a fresh CLAUDE.md system + initial `.claude/rules/*.md`
+- **TIGHTEN** — Patch an existing small CLAUDE.md into Do/Don't shape
+- **SPLIT** — Extract sections from a monolithic CLAUDE.md into modular rules
+- **REORGANIZE** — Audit existing root + rules/ structure for drift
 
-This plugin integrates seamlessly with the official `claude-md-management` plugin for ongoing maintenance and updates.
+Aligned with Claude Code 2026 official docs: `.claude/rules/*.md`
+auto-load with `paths:` glob scoping, 200-line root target, no
+redundant `@import` directives.
 
-## Features
-
-### Skills
+## Skills
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `rules-guide` | `/rules-forge:rules-guide` | Interactive CLAUDE.md generation and restructuring |
+| `write-rules` | `/rules-forge:write-rules` or natural language | Generate or restructure CLAUDE.md + `.claude/rules/` with auto mode detection |
 
-**Auto-triggers:**
-- "generate claude.md"
-- "restructure claude.md"
-- "split claude.md"
-- "modularize instructions"
+**Auto-triggers** (natural language phrases the skill responds to):
+- "rules 작성", "write rules"
+- "generate claude.md", "create claude.md system"
+- "restructure claude.md", "split claude.md", "modularize instructions"
+- "organize project rules", "rules 분리"
 
-### Commands
+## Assets
 
-| Command | Purpose |
-|---------|---------|
-| `/rules-forge generate` | Generate new CLAUDE.md system (interview workflow) |
-| `/rules-forge split` | Extract rules from existing CLAUDE.md to .claude/rules/ |
+The skill ships with three asset categories under
+`skills/write-rules/assets/`:
 
-## Usage Examples
+| Directory | Contents | When loaded |
+|-----------|----------|-------------|
+| `references/` | Verbatim KR excerpt of Claude Code's official memory docs (CLAUDE.md placement, `.claude/rules/`, auto-memory, AGENTS.md, troubleshooting) | On demand when user asks "why this structure" or skill needs to cite docs |
+| `templates/` | Output skeletons — root CLAUDE.md, single rule file (Variants A/B), category catalog | Per mode execution |
+| `examples/` | Four adapted reference rules from `codefactory-co/golden-rabbit-antigravity-v1` (Next.js Clean Architecture, Next.js Framework, Tech Stack: Supabase, SaaS Service Spec) | Per mode execution when tech stack matches |
 
-### Generate New CLAUDE.md
+Assets are loaded with the `Read` tool only when the skill needs them
+— they don't enter context at session start.
 
-```
-/rules-forge generate
-```
+## Output File Structure
 
-Interactive interview asks about:
-- Project type and domain
-- Team size and experience level
-- Required instruction categories
-- Existing tools/frameworks
-- Code style preferences
-
-### Restructure Existing CLAUDE.md
+The skill generates this canonical layout:
 
 ```
-/rules-forge split
+your-project/
+├── CLAUDE.md                   # Root (≤200 lines target)
+└── .claude/
+    └── rules/
+        ├── architecture.md     # path-scoped or always-load
+        ├── framework.md        # path-scoped
+        ├── tech-stack.md       # usually always-load
+        └── ...                 # one per detected category
 ```
 
-Automatically:
-1. Analyzes current CLAUDE.md
-2. Extracts modular sections to `.claude/rules/`
-3. Updates root with `@import` references
-4. Preserves critical root content (quick reference, emergency protocols)
+Optional companions the skill detects and hints about (but does not
+generate):
 
-### Combined Workflow
+- `AGENTS.md` — if present, skill suggests `@AGENTS.md` import line
+- `CLAUDE.local.md` — skill hints about `.gitignore` pattern
 
-```
-"restructure my claude.md into modular rules"
-```
+## Output Conventions
 
-Auto-triggers `rules-guide` skill with restructure mode.
+### Root CLAUDE.md
 
-## Integration with claude-md-management
+- Project overview (1–2 sentences)
+- Critical Rules (5–7 always-visible safety items)
+- Quick Reference table (build / test / dev commands)
+- Code Structure (brief, ≤10 lines)
+- Rules section (plain text ToC pointing to `.claude/rules/*.md`)
+- **No `@import` directives** — `.claude/rules/*.md` auto-loads
 
-**Rules Forge** focuses on **initial creation and major restructuring**:
-- Generating new CLAUDE.md systems
-- Migrating monolithic → modular
-- One-time extraction of rules
+### Each `.claude/rules/*.md`
 
-**claude-md-management** handles **ongoing maintenance**:
-- Adding/updating individual rules
-- Managing imports
-- Incremental updates
+Follows the proven Role / Do / Don't / Examples / Source of Truth
+shape (the same pattern this repo uses in
+`.claude/rules/codex-bridge-sync.md`).
 
-### Recommended Workflow
-
-1. **Initial Setup**: Use Rules Forge to generate or restructure
-2. **Daily Updates**: Use claude-md-management for incremental changes
-3. **Major Refactors**: Return to Rules Forge for restructuring
-
-## File Structure
-
-```
-.claude/
-├── CLAUDE.md           # Root (quick reference + @import statements)
-└── rules/
-    ├── core/           # Core guidelines
-    ├── workflows/      # Process workflows
-    ├── architecture/   # Design patterns
-    ├── testing/        # Test standards
-    └── tools/          # Tool-specific rules
+Variant A (path-scoped):
+```yaml
+---
+paths:
+  - "src/api/**/*.ts"
+---
 ```
 
-## Best Practices
+Variant B (always-load): no frontmatter at all.
 
-### What Goes in Root CLAUDE.md
+## Integration with `claude-md-management`
 
-- **Project identity** (1-2 sentences)
-- **Emergency protocols** (critical safety rules)
-- **Quick reference table** (common tasks)
-- **@import directives** for all rule categories
+Rules Forge handles **initial creation and major restructuring**.
+The official `claude-md-management` plugin handles **ongoing
+maintenance** — incremental rule additions, edits, and refactors.
 
-### What Goes in .claude/rules/
+Recommended workflow:
 
-- Detailed guidelines (>10 lines)
-- Domain-specific rules
-- Framework conventions
-- Testing procedures
-- Tool configurations
-- Code style guides
-
-### Content Classification
-
-| Content Type | Location | Reason |
-|--------------|----------|--------|
-| Project overview | Root | Immediate context |
-| Critical safety rules | Root | Always visible |
-| Navigation/ToC | Root | Quick access |
-| Detailed guidelines | Rules | Modular, focused |
-| Framework docs | Rules | Domain-specific |
-| Code patterns | Rules | Reusable across projects |
-| Test procedures | Rules | Isolated concern |
-
-## Examples
-
-See `skills/rules-guide/references/examples.md` for:
-- Minimal startup CLAUDE.md
-- Full-featured enterprise system
-- Incremental migration paths
-- Before/after restructuring comparisons
+1. Initial setup → `write-rules` (mode = NEW)
+2. Daily updates → `claude-md-management`
+3. Major refactors → `write-rules` (mode = REORGANIZE or SPLIT)
 
 ## Version History
 
-- **1.0.0** (2026-02-14) - Initial release
-  - Interactive CLAUDE.md generation
-  - Monolithic → modular restructuring
-  - Template library with examples
+- **2.0.0** (2026-05-12) — BREAKING
+  - Consolidated `rules-guide` skill + `generate` / `split` commands
+    into a single `write-rules` skill with internal mode detection
+  - Aligned output with Claude Code 2026 docs (200-line root cap,
+    `paths:` glob scoping, no auto `@import` for `.claude/rules/`)
+  - Added `assets/` directory with references / templates / examples
+  - Removed `commands/` directory (commands merged into skills per
+    docs change)
+  - Migration: `/rules-forge:generate` and `/rules-forge:split` removed.
+    Use `/rules-forge:write-rules` (or natural-language triggers).
+- **1.0.0** (2026-02-14) — Initial release

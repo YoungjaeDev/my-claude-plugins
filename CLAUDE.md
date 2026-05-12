@@ -56,7 +56,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 | Plugin | Description |
 |--------|-------------|
 | `docs-forge` | README/CHANGELOG generation with CRO best practices |
-| `rules-forge` | CLAUDE.md generation and .claude/rules/ modular structure |
+| `rules-forge` | CLAUDE.md + .claude/rules/ generation with auto mode detection (single write-rules skill) |
 
 ### Visualization
 | Plugin | Description |
@@ -90,7 +90,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── notion/             # Notion
 │   ├── humanizer/          # AI text humanizer
 │   ├── docs-forge/         # README/CHANGELOG
-│   ├── rules-forge/        # CLAUDE.md rules
+│   ├── rules-forge/        # write-rules skill (auto mode detection)
 │   ├── slidev/             # Presentation generator
 │   ├── workflow-viz/       # Workflow visualization
 │   ├── tcrei-prompt/       # TCREI prompt structuring

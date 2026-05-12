@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 19 specialized plugins",
-    "version": "1.22.0"
+    "version": "1.23.0"
   },
   "plugins": [
     {
@@ -123,8 +123,8 @@
     {
       "name": "rules-forge",
       "source": "./plugins/rules-forge",
-      "description": "CLAUDE.md generation and .claude/rules/ modular structure",
-      "version": "1.0.0",
+      "description": "CLAUDE.md generation and .claude/rules/ modular structure with auto mode detection (NEW/TIGHTEN/SPLIT/REORGANIZE), single write-rules skill entrypoint",
+      "version": "2.0.0",
       "category": "documentation"
     },
     {

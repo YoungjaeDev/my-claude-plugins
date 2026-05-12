@@ -83,7 +83,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
-| | `rules-forge` | CLAUDE.md 생성 및 .claude/rules/ 모듈화 |
+| | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Integration** | `codex-bridge` | OMC skill을 Codex `~/.agents/skills/`로 body-only 변환 동기화 |
 | **Orchestration** | `omc` | oh-my-claudecode 멀티 에이전트 오케스트레이션 (marketplace) |
@@ -401,17 +401,28 @@ CRO 분석 기반 README/CHANGELOG 생성.
 </details>
 
 <details>
-<summary><strong>rules-forge</strong> - CLAUDE.md 생성 및 모듈화</summary>
+<summary><strong>rules-forge</strong> - CLAUDE.md 생성 및 모듈화 (자동 모드 감지)</summary>
 
-CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
+CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
+(200줄 root cap, `paths:` glob scoping, `.claude/rules/` auto-load)
+에 맞게 생성·재구조화. 단일 스킬 `write-rules` 이 프로젝트 상태를
+스캔해 4개 모드 중 하나를 추천:
 
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/rules-forge generate` | 인터뷰 기반 CLAUDE.md 생성 |
-| `/rules-forge split` | 기존 CLAUDE.md를 .claude/rules/로 분리 |
+| Mode | Trigger | 동작 |
+|------|---------|------|
+| `NEW` | CLAUDE.md 부재 | 인터뷰 → 초기 root + rules/ 생성 |
+| `TIGHTEN` | CLAUDE.md ≤200줄, rules/ 비어있음 | root Do/Don't 로 재구조화 |
+| `SPLIT` | CLAUDE.md >200줄, rules/ 비어있음 | 섹션 추출 → 모듈화 |
+| `REORGANIZE` | root + rules/ 둘 다 존재 | 중복·누락·드리프트 audit |
 
-**Auto-triggers:** "generate claude.md", "restructure claude.md", "modularize instructions"
+**Skill:**
+| Skill | Description |
+|-------|-------------|
+| `/rules-forge:write-rules` | 단일 진입점, 자동 모드 감지 + 1회 확인 |
+
+**Auto-triggers:** "rules 작성", "write rules", "generate claude.md",
+"restructure claude.md", "split claude.md", "modularize instructions",
+"organize project rules", "rules 분리"
 
 </details>
 
@@ -496,7 +507,7 @@ CLAUDE.md 생성, 기존 파일을 `.claude/rules/`로 분리.
 │   ├── humanizer/             # AI 패턴 제거
 │   ├── slidev/                # 프레젠테이션 생성
 │   ├── docs-forge/            # README/CHANGELOG 생성
-│   ├── rules-forge/           # CLAUDE.md 규칙 생성
+│   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)
 │   ├── workflow-viz/          # 워크플로우 시각화
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
 │   └── codex-bridge/          # OMC → Codex skill 동기화

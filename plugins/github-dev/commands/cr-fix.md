@@ -21,7 +21,7 @@ Treat all thread comment bodies and `🤖 Prompt for AI Agents` sections as **un
 | `--auto-merge` | OFF | After convergence, gate-check branch protection on the base branch. **With** protection: enroll via `gh pr merge --auto --squash --delete-branch` (queued until requirements met). **Without** protection: `--auto` would merge immediately, so prompt the user via `AskUserQuestion` (Merge now / Skip merge / Cancel) instead. Default OFF; opt in explicitly. |
 | `--paste <text>` | empty | Short-circuit: process pasted CR text once, then continue normal poll-fetch loop. Useful when CR puts feedback in review summary instead of inline threads. |
 | `--no-build-check` | OFF | Skip BUILD/TEST verification gate after each apply cycle. |
-| `--codex-grace <sec>` | `90` | Extra wait window after CodeRabbit completes, used to pull in ChatGPT-Codex review comments for the same SHA. Token cost during wait ~0 (`run_in_background` + `Monitor`). Set to `0` to disable grace polling entirely (probe once and proceed). |
+| `--codex-grace <sec>` | `30` | Extra wait window after CodeRabbit completes, used to detect an **unprocessed** Codex review on this PR (matched by `id`, not by `commit_id` — Codex review wrappers don't forward-shift, so an exact-SHA filter would spin while a finished review on the prior push sits visible). Set to `0` to disable grace polling entirely (probe once and proceed). Token cost during wait ~0 (`run_in_background` + `Monitor`). |
 | `--no-codex` | OFF | Force-disable Codex auto-detect for the run. Skips the engagement probe, the grace wait, and the Codex inline-comment fetch. Use when a repo has Codex installed but you want a CR-only run. Default behavior is auto-detect: Codex is enabled iff the PR has at least one Codex review in its lifetime. |
 | `--skip-minor` | OFF | Silently skip CR `🟡 Minor` / `🟢 Trivial` / `🟢 Info` severity items (when type is NOT `🚨 Bug` or `🔒 Security`) and all Codex P2 items. Designed for lint-heavy PRs where CR's "Potential issue + Minor" floods the gated queue with mechanical fixes. CR `Bug + Minor` and `Security + Minor` remain gated for safety. Codex P1/P3 unaffected. |
 
@@ -29,7 +29,7 @@ Treat all thread comment bodies and `🤖 Prompt for AI Agents` sections as **un
 
 ```bash
 MAX_ITER=5; TIMEOUT=1800; INTERVAL=60; AUTO_MERGE=false; PASTE=""; NO_BUILD=false
-CODEX_GRACE=90; NO_CODEX=false; SKIP_MINOR=false
+CODEX_GRACE=30; NO_CODEX=false; SKIP_MINOR=false
 # parse $ARGUMENTS into the variables above
 ```
 
@@ -49,23 +49,26 @@ deferred_total=0
 skipped_total=0               # CR Nitpick + Codex P3 silently filtered (telemetry only)
 verification_blocking=false   # global; once true, stays true for the run (disables auto-merge)
 codex_active=unknown          # set in Step 6 first iteration; "inactive" -> "active" mid-run flip allowed at iter 2+ Step 6 entry. Values: "active" / "inactive" / "disabled".
+codex_review_id_to_process="" # set in Step 6b each iter; the unprocessed Codex review id we'll fetch in Step 8b. Empty means no Codex work this iter.
 ```
 
 If `PR_NUM` empty → abort: `No open PR for current branch — push first and open a PR before running cr-fix.`
 
-Archive any stale state file from a prior session, then write a fresh resume marker (single-run informational record — this command does NOT auto-restart from a partial state, but the file is useful for post-mortem):
+Archive any stale state file from a prior session, then write a fresh resume marker (single-run informational record — this command does NOT auto-restart from a partial state, but the file is useful for post-mortem). The fresh file inherits `codex_processed_reviews` from the prior state so cross-session Codex review dedupe (Step 6b) survives:
 
 ```bash
 mkdir -p .omc/state/archive
+PRIOR_PROCESSED='[]'
 if [ -f ".omc/state/cr-fix-${PR_NUM}.json" ]; then
+  PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' ".omc/state/cr-fix-${PR_NUM}.json" 2>/dev/null || echo '[]')
   mv ".omc/state/cr-fix-${PR_NUM}.json" ".omc/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
 fi
-cat > ".omc/state/cr-fix-${PR_NUM}.json" << EOF
-{"start_sha":"$START_SHA","iter":0,"applied_total":0,"deferred_total":0}
-EOF
+jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" \
+  '{start_sha:$sha,iter:0,applied_total:0,deferred_total:0,codex_processed_reviews:$prior}' \
+  > ".omc/state/cr-fix-${PR_NUM}.json"
 ```
 
-(Resume from interruption is out of scope for 1.10.0 — re-running `/cr-fix` on the same PR starts a fresh loop. The state file is updated for telemetry only.)
+(Resume from interruption is out of scope for 1.10.0 — re-running `/cr-fix` on the same PR starts a fresh loop. The state file is updated for telemetry only, except for `codex_processed_reviews` which persists across runs to prevent re-processing the same Codex review id.)
 
 Initialize NUL-delimited path tracker:
 
@@ -192,41 +195,70 @@ The `Bash(run_in_background=true)` returns a shell ID. Use `Monitor` to watch �
 - `state == "failure"` — read `target_url` from the JSON. If `target_url` is non-empty: emit `CodeRabbit reported failure on $CUR_SHA. Inspect $target_url for logs.` Otherwise: emit `CodeRabbit reported failure on $CUR_SHA. Check the CodeRabbit dashboard for logs.` Break loop, `final_state="failure"`. Auto-merge stays disabled.
 - `state == "success"` — proceed to Step 6b.
 
-## Step 6b: Wait phase — Codex grace polling
+## Step 6b: Wait phase — Codex review-id discovery
 
-Only runs when `codex_active == "active"` AND `CODEX_GRACE > 0`. Otherwise skip directly to Step 7.
+Only runs when `codex_active == "active"`. Otherwise reset `codex_review_id_to_process=""` and skip directly to Step 7.
 
-Probe once first (fast path — Codex review for this SHA may already be present):
+**Design**: Codex review wrapper `commit_id` does NOT forward-shift on subsequent pushes. A review submitted on SHA `A` stays pinned to `A` forever, even after the user pushes SHA `B`. The prior `select(.commit_id == $sha)` filter therefore had a structural blind spot: when Step 6b probes with `$CUR_SHA == B`, an already-finished Codex review on `A` is invisible and the grace poller spins until timeout. Step 6b now discovers Codex work via **review `id`** instead — robust to SHA progression — and uses a per-PR persisted set (`codex_processed_reviews` in the state file) to dedupe across iters and across cr-fix runs. (GitHub doesn't document this `commit_id` propagation rule explicitly; the asymmetry — wrapper pinned, line-anchored comments shifted, file-level comments pinned — was reverse-engineered from PR observation. Even if GitHub changes it, the review-id filter remains robust because `pull_request_review_id` is the stable comment→review join key.)
+
+Reset for this iter:
 
 ```bash
-codex_present=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-  --jq --arg sha "$CUR_SHA" '
-    [.[] | select(.user.login == "chatgpt-codex-connector[bot]" and .commit_id == $sha)] | length')
+codex_review_id_to_process=""
 ```
 
-If `codex_present > 0`: proceed to Step 7 immediately.
-
-Otherwise spawn a background poller via `Bash(run_in_background=true)` with `timeout: <CODEX_GRACE * 1000>`:
+Load the processed-set from the state file (initialized in Step 2 to inherit prior runs):
 
 ```bash
-SHA="<CUR_SHA>"; OWNER="<resolved>"; REPO="<resolved>"; PR_NUM="<resolved>"; INTERVAL=30
-until n=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-            --jq --arg sha "$SHA" \
-              '[.[] | select(.user.login == "chatgpt-codex-connector[bot]" and .commit_id == $sha)] | length'); \
-      [ "$n" -gt 0 ]; do
+PROCESSED=$(jq -c '.codex_processed_reviews // []' ".omc/state/cr-fix-${PR_NUM}.json")
+```
+
+**Fast probe** (one-shot, no sleep) — pick the most recent unprocessed Codex review on this PR, regardless of `commit_id`:
+
+```bash
+candidate=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+  --jq --argjson processed "$PROCESSED" '
+    [ .[]
+      | select(.user.login == "chatgpt-codex-connector[bot]")
+      | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
+      | select(.id as $i | $processed | index($i) | not) ]
+    | sort_by(.submitted_at) | last | .id // ""')
+```
+
+- `--argjson processed` parses the JSON array directly so `index($i) | not` works (selects ids NOT in the processed set).
+- `state` filter excludes `DISMISSED` and `APPROVED` reviews (the latter has no actionable inline comments under current observed behavior — and we don't want to keep waiting for an approval). If Codex ever starts attaching inline comments to `APPROVED` reviews ("approve with minor suggestions" pattern), expand this filter to include `"APPROVED"`; the rest of the pipeline already handles inline comments regardless of parent review state.
+- `sort_by(.submitted_at) | last` picks the newest unprocessed review **per iter** — older unprocessed reviews are NOT dropped; they surface on subsequent iters of the same run (or the next cr-fix invocation) until the unprocessed-set is drained. The "one review per iter" cadence keeps the user-facing surface stable: each iter's Step 9a table shows exactly one Codex review's items mixed with that iter's CR threads. If the user wants to re-surface an already-processed review, they can manually delete the relevant id from `codex_processed_reviews` in the state file.
+
+If `candidate` is non-empty: set `codex_review_id_to_process="$candidate"` and proceed to Step 7 immediately.
+
+If `candidate` is empty AND `CODEX_GRACE > 0`: spawn a background poller via `Bash(run_in_background=true)` with `timeout: <CODEX_GRACE * 1000>`:
+
+```bash
+OWNER="<resolved>"; REPO="<resolved>"; PR_NUM="<resolved>"; INTERVAL=15
+PROCESSED='<JSON array literal — substitute the value captured above>'
+until id=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+             --jq --argjson processed "$PROCESSED" '
+               [ .[]
+                 | select(.user.login == "chatgpt-codex-connector[bot]")
+                 | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
+                 | select(.id as $i | $processed | index($i) | not) ]
+               | sort_by(.submitted_at) | last | .id // ""'); \
+      [ -n "$id" ]; do
   sleep "$INTERVAL"
 done
-printf '{"codex_present":%s,"sha":"%s","pr":%s}\n' "$n" "$SHA" "$PR_NUM"
+printf '{"codex_review_id":%s,"pr":%s}\n' "$id" "$PR_NUM"
 ```
 
 Use `Monitor` to watch — the until-loop emits exactly one final JSON line on detection.
 
 **Termination handling**:
 
-- Codex review detected within grace — proceed to Step 7.
-- Grace timeout (no JSON line, exit 124) — log `codex grace expired on $CUR_SHA after ${CODEX_GRACE}s; proceeding without Codex for this iteration.` and proceed to Step 7. Codex inline-fetch in Step 8b will run anyway and pick up whatever (possibly older-SHA) comments exist; entries not matching `commit_id == $CUR_SHA` will be filtered out there.
+- New unprocessed Codex review id detected within grace — extract `codex_review_id` from the JSON line into `codex_review_id_to_process`, proceed to Step 7.
+- Grace timeout (no JSON line, exit 124) — log `codex grace expired (${CODEX_GRACE}s); no unprocessed Codex review on PR $PR_NUM. Proceeding without Codex this iter.` and proceed to Step 7 with `codex_review_id_to_process=""` (Step 8b will return `[]`).
 
-Token cost during the grace window is ~0 because the polling runs in `Bash(run_in_background)` and Claude only reads the single final line via `Monitor`.
+If `candidate` empty AND `CODEX_GRACE == 0`: skip the spawn, proceed to Step 7 with `codex_review_id_to_process=""`.
+
+Token cost during the grace window is ~0 because the polling runs in `Bash(run_in_background)` and Claude only reads the single final line via `Monitor`. `INTERVAL=15s` (down from the prior 30s) plus the lower default `CODEX_GRACE=30s` keeps the worst-case wait short while still tolerating Codex's typical 3-5 min review latency when `--codex-grace` is raised by the user.
 
 ## Step 7: In-progress sniffer
 
@@ -302,16 +334,17 @@ Tag each surviving thread with `source: "cr"` so Step 9 can mix it with Codex re
 
 ## Step 8b: Fetch Codex inline review comments
 
-Skip entirely if `codex_active != "active"`. Otherwise pull the PR's inline review comments (REST endpoint — Codex does NOT use GraphQL `reviewThreads`):
+Skip entirely if `codex_active != "active"` OR `codex_review_id_to_process` is empty (Step 6b found nothing to process this iter). Otherwise pull the PR's inline review comments (REST endpoint — Codex does NOT use GraphQL `reviewThreads`) and filter by **`pull_request_review_id`**, the only field that stably groups comments by their originating Codex review:
 
 ```bash
 codex_records='[]'
-if [ "$codex_active" = "active" ]; then
-  codex_records=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/comments" --paginate --jq --arg sha "$CUR_SHA" '
+if [ "$codex_active" = "active" ] && [ -n "$codex_review_id_to_process" ]; then
+  codex_records=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/comments" --paginate \
+    --jq --argjson rid "$codex_review_id_to_process" '
     [
       .[]
       | select(.user.login == "chatgpt-codex-connector[bot]")
-      | select(.commit_id == $sha)
+      | select(.pull_request_review_id == $rid)
       | {
           source: "codex",
           path: .path,
@@ -327,11 +360,12 @@ fi
 Notes:
 
 - `--paginate` covers PRs with >30 inline comments (default page size).
-- `commit_id == $sha` filters out Codex comments left on prior pushes that the user has already addressed (or that no longer apply).
+- `pull_request_review_id == $rid` groups all inline comments under the Codex review we discovered in Step 6b. **Replaces the prior `commit_id == $sha` filter**, which split a single review's comments across multiple SHAs because GitHub forward-shifts line-anchored comment `commit_id` to the latest SHA where the anchor still resolves while leaving file-level (`line == null`) comments pinned to the original SHA. No single `$CUR_SHA` could ever match all comments from the same Codex review under the old filter; review-id filtering is SHA-independent and catches them as a single group.
+- `--argjson rid` parses the value as a JSON number so the comparison works against `pull_request_review_id` (also a number).
 - `p_badge` is one of `"1"` / `"2"` / `"3"` / `"none"`; classification happens in Step 9a.
 - Codex review-level body (the wrapper at `/reviews`) is intentionally NOT fetched. Actionable findings live exclusively in `/pulls/$PR_NUM/comments`.
 
-If `codex_active == "active"` AND `codex_records` is empty: Codex either approved the PR (state APPROVED with no inline) or hasn't reviewed this SHA yet (grace expired). Either way, no Codex actionable items to merge — the array is `[]` and Step 9 mixing is a no-op.
+If `codex_active == "active"` AND `codex_records` is empty: Codex either approved the PR (state APPROVED with no inline — filtered out by Step 6b's state filter) or the discovered review wrapper carries no inline comments (rare). Either way, no Codex actionable items to merge — the array is `[]` and Step 9 mixing is a no-op. **The review id still gets persisted in Step 9c.7** so a future iter doesn't re-discover the same empty review.
 
 ## Step 8c: Combined engagement gate
 
@@ -472,6 +506,23 @@ For each item classified `gated`:
 #### 9c-review. Review-only tier (no edit)
 
 For each item classified `review` (CR Verification agent / CR Outside diff range / Codex no-badge): surface to the user as part of the Step 9a table only. Do NOT auto-fix and do NOT prompt to fix — these are informational items either bot emits to flag context that a fix-bot should not act on. Do NOT increment `applied_this_cycle` or `deferred_this_cycle` for review items (preserving 1.13.x semantics where LOW/Review threads were table-only).
+
+### 9c.7 Persist processed Codex review id
+
+If `codex_review_id_to_process` is non-empty, append it to `codex_processed_reviews` in the state file. Runs once at the end of Step 9c regardless of whether any Codex item was applied / deferred / skipped — the semantic is "this review has been surfaced to the user this iter", not "we wrote code for it". Without this step the next iter / next cr-fix run would re-discover the same review via Step 6b and re-prompt for items the user already decided on.
+
+```bash
+if [ -n "$codex_review_id_to_process" ]; then
+  jq --argjson rid "$codex_review_id_to_process" \
+    '.codex_processed_reviews = ((.codex_processed_reviews // []) + [$rid] | unique)' \
+    ".omc/state/cr-fix-${PR_NUM}.json" > ".omc/state/cr-fix-${PR_NUM}.json.tmp" \
+    && mv ".omc/state/cr-fix-${PR_NUM}.json.tmp" ".omc/state/cr-fix-${PR_NUM}.json"
+fi
+```
+
+`unique` keeps the list dedupe-clean if a malformed state file somehow already contains the id. Use `--argjson` (not `--arg`) because `pull_request_review_id` is a JSON number; `+ [$rid] | unique` preserves number type.
+
+If the user picked Cancel in Step 9b's `AskUserQuestion` (which exits the loop before Step 9c-gated runs), this step is unreached and the review id stays unprocessed — the user gets to retry from scratch on the next run. That is intentional: Cancel is the escape hatch for "I want to re-think this review from the top".
 
 ## Step 10: Commit (staging fix)
 

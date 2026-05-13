@@ -42,6 +42,8 @@ state = {
   hasRulesDir:      exists("./.claude/rules/") and contains at least one *.md
   rulesFileCount:   count of .claude/rules/*.md
   hasAgentsMd:      exists("./AGENTS.md")
+  contentSignals:   tags derived from grep over root + rules content
+                    (clean-arch, nextjs-framework, supabase, service-spec)
 }
 
 mode =
@@ -51,6 +53,9 @@ mode =
   REORGANIZE  if state.hasClaudeMd and state.hasRulesDir
 ```
 
+`contentSignals` does not influence `mode` selection. It tells the
+chosen mode which `assets/examples/*.md` to Read for grounding.
+
 ### Execution
 
 1. Run state scan:
@@ -59,7 +64,20 @@ mode =
    { test -f .claude/CLAUDE.md && wc -l .claude/CLAUDE.md; }
    { test -d .claude/rules && ls .claude/rules/*.md 2>/dev/null | wc -l; }
    test -f AGENTS.md && echo agents-md-present
+
+   # Content signals — scan root + rules for canonical tech-stack
+   # markers that map to a bundled example.
+   SCAN_FILES=$(ls CLAUDE.md .claude/CLAUDE.md .claude/rules/*.md 2>/dev/null)
+   [ -n "$SCAN_FILES" ] && {
+     grep -liE 'clean architecture|composition root|use ?case|repository pattern' $SCAN_FILES && echo signal:clean-arch
+     grep -liE 'next\.js|server component|server action|app router'              $SCAN_FILES && echo signal:nextjs-framework
+     grep -liE 'supabase|rls policy|row-level security'                          $SCAN_FILES && echo signal:supabase
+     grep -liE 'pricing tier|service spec|prd|target user'                       $SCAN_FILES && echo signal:service-spec
+   } 2>/dev/null
    ```
+
+   Collect `signal:*` lines into `state.contentSignals`. Empty list
+   is fine — examples are then skipped.
 
 2. Compute `mode` per the rules above.
 
@@ -117,8 +135,12 @@ Generate a fresh CLAUDE.md system from scratch.
    `./CLAUDE.md` last (so the root file's "Rules" ToC references
    files that already exist).
 
-8. **Verify**: root ≤200 lines, each rule ≤150 lines, root contains
-   no `@import` for rules/.
+8. **Verify** (deterministic commands):
+   ```bash
+   wc -l CLAUDE.md                                     # expect ≤200
+   find .claude/rules -name '*.md' -exec wc -l {} +    # each ≤150
+   grep -c '^@\.claude/rules' CLAUDE.md                # expect 0
+   ```
 
 9. **Summarize**: file list with line counts + Post-generation Hints.
 
@@ -129,6 +151,9 @@ Patch the existing root CLAUDE.md in place — no new rules/ files.
 1. **Read** current root CLAUDE.md.
 
 2. **Read** `assets/templates/root-claude-md.md` for the target shape.
+   For each tag in `state.contentSignals`, also **Read** the matching
+   `assets/examples/*.md` so the Do/Don't framings can borrow proven
+   wording instead of being invented from scratch.
 
 3. **Identify**:
    - Sections that map to specific file paths (candidates for
@@ -143,8 +168,13 @@ Patch the existing root CLAUDE.md in place — no new rules/ files.
 5. **Apply** edits via Edit tool — surgical, no whole-file rewrite
    unless necessary.
 
-6. **Verify**: line count delta, no new sections added that don't
-   trace to user input.
+6. **Verify** (deterministic commands):
+   ```bash
+   wc -l CLAUDE.md                           # expect lower than before
+   git diff --stat CLAUDE.md                 # confirm scope is surgical
+   grep -c '^@\.claude/rules' CLAUDE.md      # expect 0
+   ```
+   Cross-check: no new sections added that don't trace to user input.
 
 7. **Summarize**: changes applied + suggestion to consider SPLIT if
    root remains ≥150 lines after tightening.
@@ -155,10 +185,17 @@ Extract sections from root CLAUDE.md into new `.claude/rules/*.md`.
 
 1. **Read** current root CLAUDE.md.
 
-2. **Parse** section headers (`## Foo`, `### Bar`).
+2. **Read** `assets/templates/rule-categories.md` (category
+   vocabulary) and `assets/templates/rule-file.md` (per-target
+   skeleton). For each tag in `state.contentSignals`, also **Read**
+   the matching `assets/examples/*.md` — these tell you the canonical
+   shape an extracted section should land in, instead of dumping raw
+   prose into a new file.
 
-3. **Classify** each section by topic. Use `assets/templates/rule-categories.md`
-   as the category vocabulary. Heuristics:
+3. **Parse** section headers (`## Foo`, `### Bar`).
+
+4. **Classify** each section by topic. Use the category vocabulary
+   you just loaded. Heuristics:
    - Headers containing "Architecture", "Design", "Structure" → `architecture.md`
    - Headers containing "Framework", "Next.js", "React", "Vue" → `framework.md`
    - Headers containing "Stack", "Tool", "Database", "Style" → `tech-stack.md`
@@ -168,35 +205,55 @@ Extract sections from root CLAUDE.md into new `.claude/rules/*.md`.
    - Headers with dense bash command blocks ≥30 lines → `<purpose>.md`
      (e.g., `experiments.md`, `vlm-serving.md`)
 
-4. **Select** sections ≥ extraction threshold (default 10 lines, or
+5. **Select** sections ≥ extraction threshold (default 10 lines, or
    adjusted via skill argument if provided).
 
-5. **Propose** the extraction plan via AskUserQuestion: per-target
+6. **Propose** the extraction plan via AskUserQuestion: per-target
    filename + line range + suggested `paths:` glob (if directory
    pattern is clear from section content).
 
-6. **Generate** each target rule file using
-   `assets/templates/rule-file.md` Variant A or B:
+7. **Generate** each target rule file using Variant A or B of
+   `rule-file.md`:
    - Variant A (`paths:`) when section content references specific
      directories or file patterns.
    - Variant B (no frontmatter) otherwise.
 
-7. **Rewrite** root CLAUDE.md: keep Project Overview + Critical Rules
+8. **Rewrite** root CLAUDE.md: keep Project Overview + Critical Rules
    + Quick Reference + Rules ToC. Remove extracted sections.
    No `@import` directives — `.claude/rules/*.md` auto-loads.
 
-8. **Verify**: root ≤200 lines, each new rule ≤150 lines, no content
-   lost (sum of extracted sections + reduced root ≈ original root).
+9. **Verify** (deterministic commands):
+   ```bash
+   wc -l CLAUDE.md                                     # expect ≤200
+   find .claude/rules -name '*.md' -exec wc -l {} +    # each ≤150
+   grep -c '^@\.claude/rules' CLAUDE.md                # expect 0
+   ```
+   Cross-check: sum of extracted sections + reduced root ≈ original
+   root (no content silently dropped).
 
-9. **Summarize**: before/after line counts + new files + Post-generation Hints.
+10. **Summarize**: before/after line counts + new files + Post-generation Hints.
 
 ### Mode: REORGANIZE
 
 Cross-check existing root + rules/ structure.
 
-1. **Read** root CLAUDE.md and all `.claude/rules/*.md`.
+1. **Read** the assets that ground the audit:
+   - `assets/templates/rule-file.md` — target shape (Role / Do / Don't
+     / Source of Truth) for any restructure proposals.
+   - `assets/templates/rule-categories.md` — category vocabulary and
+     naming convention for any rename/split proposals.
+   - For each tag in `state.contentSignals`, also **Read** the
+     matching example: `clean-arch` → `assets/examples/nextjs-clean-arch.md`,
+     `nextjs-framework` → `assets/examples/nextjs-framework.md`,
+     `supabase` → `assets/examples/tech-stack-supabase.md`,
+     `service-spec` → `assets/examples/saas-service-spec.md`. These
+     give canonical reference shapes for comparing against existing
+     rules — without them, "should this rule look different?" is a
+     guess instead of a diff.
 
-2. **Audit** each issue:
+2. **Read** root CLAUDE.md and all `.claude/rules/*.md`.
+
+3. **Audit** each issue:
    - Root size: if >200 lines, propose extraction (subset of SPLIT
      logic). Bash command blocks ≥30 lines are prime candidates for
      extraction to operationally-named rules (`experiments.md`,
@@ -212,20 +269,65 @@ Cross-check existing root + rules/ structure.
    - Missing Do/Don't structure: if a rule is long prose, propose
      restructuring.
 
-3. **Present** findings as a numbered list via AskUserQuestion — user
+4. **Present** findings as a numbered list via AskUserQuestion — user
    chooses which items to apply (multi-select). No items applied
    without explicit selection.
 
-4. **Apply** each accepted item:
+5. **Apply** each accepted item:
    - Section extraction: use Edit on root + Write for new rule file.
    - Frontmatter addition: use Edit on the target rule.
    - `@import` removal: Edit on root.
    - Restructuring: Edit on target.
 
-5. **Verify** after each apply: file syntax intact, line counts
-   match plan.
+6. **Verify** after each apply (deterministic commands):
+   ```bash
+   wc -l CLAUDE.md                                     # expect ≤200
+   find .claude/rules -name '*.md' -exec wc -l {} +    # each ≤150
+   grep -c '^@\.claude/rules' CLAUDE.md                # expect 0
+   ```
 
-6. **Summarize**: items applied / declined + Post-generation Hints.
+7. **Summarize**: items applied / declined + Post-generation Hints.
+
+## Worked Example: REORGANIZE + Clean Arch signal
+
+A short trace of how the pieces fit together when the audit lands on
+a Clean Architecture codebase. The point is to show what
+`contentSignals` actually changes — without it the audit is generic
+prose; with it the audit can cite a canonical reference.
+
+```
+Input state:
+  CLAUDE.md         (210 lines)
+  .claude/rules/architecture.md  (180 lines, prose-heavy)
+
+Scan:
+  state.claudeMdLines = 210
+  state.hasRulesDir   = true
+  state.contentSignals = ["clean-arch"]      ← grep hit on "Composition Root"
+  mode = REORGANIZE
+
+Read (step 1):
+  assets/templates/rule-file.md              ← target shape
+  assets/templates/rule-categories.md        ← naming/paths vocab
+  assets/examples/nextjs-clean-arch.md       ← canonical Clean Arch shape
+                                               (only because signal matched)
+
+Read (step 2):
+  CLAUDE.md, .claude/rules/architecture.md
+
+Audit findings (step 3):
+  - root size 210 > 200 → propose extracting "Build & Test" block
+  - architecture.md 180 > 150 → propose splitting by layer
+    (domain.md / application.md / infrastructure.md), with paths:
+    globs grounded in nextjs-clean-arch.md's layer map
+  - architecture.md is prose → propose restructure to
+    Role / Do / Don't using rule-file.md Variant A
+```
+
+Without `contentSignals`, step 3 still flags the size issues but the
+restructure proposal would be generic. The signal-driven Read of
+`nextjs-clean-arch.md` is what turns "this rule should be shorter"
+into "this rule should split along the layer seams the example uses".
 
 ## Output Conventions
 
@@ -277,23 +379,22 @@ detected state. Each hint is informational only — no auto-modification.
 
 ## Assets Reference
 
-Files this skill Read s on demand, by mode:
+Index of the files each mode's execution steps already cite. The
+single source of truth for *when* to Read each file is the numbered
+step list inside each Mode Execution section — this table is just
+a quick lookup.
 
-| Mode | Read | Purpose |
+| Mode | Always Read | Read if `contentSignals` matches |
 |---|---|---|
-| NEW | `assets/templates/root-claude-md.md` | root skeleton |
-| NEW | `assets/templates/rule-file.md` | rule file skeleton |
-| NEW | `assets/templates/rule-categories.md` | category catalog + globs |
-| NEW (tech stack matches) | `assets/examples/nextjs-clean-arch.md` | Clean Architecture example |
-| NEW (tech stack matches) | `assets/examples/nextjs-framework.md` | Next.js framework example |
-| NEW (tech stack matches) | `assets/examples/tech-stack-supabase.md` | Tech stack example |
-| NEW (product-heavy) | `assets/examples/saas-service-spec.md` | PRD-rules hybrid example |
-| TIGHTEN | `assets/templates/root-claude-md.md` | target shape reference |
-| SPLIT | `assets/templates/rule-categories.md` | classification vocabulary |
-| SPLIT | `assets/templates/rule-file.md` | per-extracted skeleton |
-| REORGANIZE | `assets/templates/rule-file.md` | shape for restructure |
-| REORGANIZE | `assets/templates/rule-categories.md` | category audit |
-| Any (on "why" question) | `assets/references/claude-code-memory.md` | official docs grounding |
+| NEW (interview) | `templates/root-claude-md.md`, `templates/rule-file.md`, `templates/rule-categories.md` | `examples/nextjs-clean-arch.md` (clean-arch), `examples/nextjs-framework.md` (nextjs-framework), `examples/tech-stack-supabase.md` (supabase), `examples/saas-service-spec.md` (service-spec) |
+| TIGHTEN | `templates/root-claude-md.md` | same example-tag mapping as above |
+| SPLIT | `templates/rule-categories.md`, `templates/rule-file.md` | same example-tag mapping as above |
+| REORGANIZE | `templates/rule-file.md`, `templates/rule-categories.md` | same example-tag mapping as above |
+| Any (when user asks "why this structure") | `references/claude-code-memory.md` | — |
+
+`contentSignals` are emitted by the Detection Logic bash scan
+(`grep -liE`). Tags: `clean-arch`, `nextjs-framework`, `supabase`,
+`service-spec`. Empty list = no example Read.
 
 ## Invocation
 

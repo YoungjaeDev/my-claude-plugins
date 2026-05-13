@@ -105,6 +105,19 @@ Recommended workflow:
 
 ## Version History
 
+- **2.1.0** (2026-05-13) — Asset routing fixes (non-breaking)
+  - Mode execution sections now cite `Read assets/*` inline at the
+    first step (was: bottom-of-file `Assets Reference` table only).
+    REORGANIZE / TIGHTEN / SPLIT no longer skip the bundled examples
+    when a tech-stack signal is present.
+  - Detection Logic adds `contentSignals` field (grep tags:
+    `clean-arch`, `nextjs-framework`, `supabase`, `service-spec`)
+    that drives which `assets/examples/*.md` the mode Reads. Signals
+    do not affect mode selection.
+  - Verify steps in every mode replaced prose checks with concrete
+    bash commands (`wc -l`, `find`, `grep -c '^@\.claude/rules'`).
+  - Added a Worked Example section showing REORGANIZE + Clean Arch
+    signal flow end-to-end.
 - **2.0.0** (2026-05-12) — BREAKING
   - Consolidated `rules-guide` skill + `generate` / `split` commands
     into a single `write-rules` skill with internal mode detection

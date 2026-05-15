@@ -151,7 +151,7 @@ When dispatching subagents or background tasks:
 
 1. **Serena MCP** - Semantic analysis (symbols, references) - preferred
 2. **Built-in LSP** - Alternative when Serena unavailable
-3. **Explorer agent** - Broad exploration (see OMC CLAUDE.md)
+3. **Explore agent** - Broad read-only exploration when symbol search isn't enough
 
 ### LSP Unavailable Handling
 
@@ -185,7 +185,7 @@ When LSP returns "No LSP server available":
 
 ## Self-Verification (MANDATORY)
 
-Always execute code after writing. See OMC CLAUDE.md "Verification-Before-Completion Protocol".
+Always execute code after writing. The protocol below is mandatory.
 
 ### Test-First Verification
 
@@ -303,4 +303,3 @@ When translating to Korean:
 ## Related
 
 - [ML Guidelines](./ml-guidelines.md) - ML/CV best practices
-- OMC CLAUDE.md - Multi-agent orchestration, verification protocols

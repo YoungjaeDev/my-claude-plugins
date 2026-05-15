@@ -134,7 +134,16 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    > - `## Post-Merge` -- date- or PR-based section headers
    > - `<YYYY-MM-DD>` embedded inside a section header itself
    >
-   > **Section naming**: topical names only (e.g., `## Process Lifecycle`, `## Crawler Throttling`). Never include dates, PR numbers, or issue numbers in section names.
+   > **Exception -- designed history sections**: A section MAY opt out of these rules by placing `<!-- history-allowed [max=N] -->` immediately after its H2/H3 heading. The marker applies until the next same-or-higher-level heading. Inside a marked section:
+   > - Pre-Audit stamp grep MUST skip hits.
+   > - Pre-presentation self-check MUST skip added/modified lines.
+   > - Date suffixes in the section name (see Section naming below) are allowed.
+   > - The Anti-Patterns "Never cite a PR or issue" rule does NOT apply.
+   > - If `max=N` is set, History Rotation (Step 6.4) applies.
+   >
+   > Use only when the section MUST hold time-ordered bullets that cannot be absorbed into normative sections (e.g. CHANGELOG entries migrated into a CLAUDE.md summary). Do NOT use as a blanket escape -- when in doubt, absorb the learning into a topical section and delete the bullet.
+   >
+   > **Section naming**: topical names only (e.g., `## Process Lifecycle`, `## Crawler Throttling`). PR numbers and issue numbers are forbidden in any section name. Date suffixes (`(YYYY-MM)`, `(YYYY-Q[1-4])`) are allowed ONLY inside a section marked `<!-- history-allowed -->`. Full ISO dates (`YYYY-MM-DD`) remain forbidden in section names regardless of marker -- bullet-level dates belong inside the bullet text, not in the heading.
    >
    > **Writing tone**: "X is async" (current-state). NOT "X was changed to async in PR #50" (history). NOT "Previously we used Y; now we use X (#50)" (transition narrative).
    >
@@ -155,6 +164,7 @@ Perform local branch cleanup and configuration updates after a PR has been merge
       ```bash
       rg -nP '(\(?#\d+\)?|\b(PR|pr) ?#?\d+\b|\b([Ii]ssue|이슈) ?#?\d+\b|\b(Added|Removed|Fixed|Changed|Introduced) in (PR|#)|## Post-Merge)' <file>
       ```
+   2.5. **Marker filter**: For each grep hit, walk back to the nearest preceding H2/H3 heading. If a line `<!-- history-allowed [...] -->` appears between that heading and the next H2/H3 (i.e., the hit lives inside a marked section), drop the hit from the report. Only hits outside marker sections proceed to step 3.
    3. If the hit count is 0, skip Pre-Audit immediately and proceed to the next step (Read the PR diff).
    4. If hits are found, report to the user:
       - Per-file hit line numbers with the quoted original text
@@ -217,6 +227,8 @@ Perform local branch cleanup and configuration updates after a PR has been merge
 
      Before showing the proposal to the user, self-check **every added or modified line** against the Core Principle's forbidden patterns. (`Remove:` style cleanup lines are not subject to this check -- removing stamps is the goal.)
 
+     **Marker exception**: lines being added inside a section marked `<!-- history-allowed -->` are exempt from the four checks below. All other added/modified lines must pass every check.
+
      Validation checklist:
      - [ ] No added/modified line contains `(#N)`, `PR #N`, `Issue #N`, `이슈 #N`, or similar inline citations
      - [ ] No new section header includes a date, PR number, or issue number (`## Post-Merge`, `## 2026-04-28 Updates`, etc. forbidden)
@@ -232,6 +244,18 @@ Perform local branch cleanup and configuration updates after a PR has been merge
        Key Modules > electron-admin: "4 nav tabs" -> "3 nav tabs: Dashboard / AI / Settings"
        Remove: "Post-Merge Notes (PR #130)" section (content migrated above)
      ```
+
+6.4. **History Rotation** (sections marked `<!-- history-allowed max=N -->` only)
+
+After Step 6 integration is applied, scan each normative doc for sections marked `<!-- history-allowed max=N -->`. For each such section whose bullet count exceeds N:
+
+1. Identify which oldest bullets have been fully absorbed into normative sections of the same doc (architecture / code conventions / commands / rules files).
+2. Present an absorption mapping via `AskUserQuestion`:
+   - One row per candidate bullet: bullet text + "absorbed where" (target section path) OR "not absorbed".
+   - Options: "remove all absorbed" / "remove subset" / "keep all".
+3. After user confirmation, remove the approved bullets. Any non-redundant nuance that has NOT yet been absorbed MUST be migrated to its proper normative section before deletion -- never delete net-new content.
+
+Sections without the `max=N` parameter, or with bullet count <= N, are skipped. Rotation is intentionally opt-in: unmarked sections never trigger this step, and marked sections without `max` keep all bullets indefinitely.
 
 6.5. **Normative Doc Size Audit**
 
@@ -267,6 +291,8 @@ After Step 6 integration is applied, measure normative docs and offer split/impr
    **Pre-Audit (clean stamps from existing memory files)**:
 
    Before `list_memories` -> `read_memory`, grep every memory file against the Core Principle patterns. If hits are found, run the same Step 6 Pre-Audit procedure -- get user approval, then clean (`edit_memory`). After cleanup, proceed to integrate the new learnings.
+
+   **Marker exception**: the same `<!-- history-allowed -->` rule from Step 6 Core Principle applies to memory files. Sections marked with this comment are exempt from stamp grep and the self-check before `edit_memory`.
 
    The following patterns must be cleaned on sight (matching the "Bad" example below):
    - `## Post-Merge (date, PR #N)` headers -- distribute the content into topical sections, then delete the header
@@ -382,7 +408,7 @@ Role description (1-2 lines)
 → See **Core Principle: No Stamps, Topical Names, Current State Only** at the top of Step 6.
 
 Summary:
-- Never cite a PR or issue inside a normative doc (inline, header, or footnote)
+- Never cite a PR or issue inside a normative doc (inline, header, or footnote) -- exception: sections marked `<!-- history-allowed -->` (see Step 6 Core Principle exception)
 - No `## Post-Merge` style changelog sections; no `post_merge_prN.md` style PR-specific memory files
 - No append-only patterns -- update existing sections in place
 - No historical narrative -- write in current-state form

@@ -98,8 +98,8 @@ Break down large work items into manageable, independent issues. Follow project 
      - Example: `"v1.0 Auth System"` -> `"v1-0-auth-system"`
    - Save initial state file:
      ```bash
-     mkdir -p .omc/state
-     cat > .omc/state/project-tracking-${SLUG}.json << 'STATEEOF'
+     mkdir -p .claude/state
+     cat > .claude/state/project-tracking-${SLUG}.json << 'STATEEOF'
      {
        "version": "2.0.0",
        "milestoneId": null,
@@ -170,7 +170,7 @@ Break down large work items into manageable, independent issues. Follow project 
       ```
     - Update state file with milestoneId:
       ```bash
-      STATE_FILE=".omc/state/project-tracking-${SLUG}.json"
+      STATE_FILE=".claude/state/project-tracking-${SLUG}.json"
       jq --arg mid "$MILESTONE_NUMBER" '.milestoneId = ($mid | tonumber)' "$STATE_FILE" > tmp.$$.json && mv tmp.$$.json "$STATE_FILE"
       ```
     - Assign issues with `--milestone` option

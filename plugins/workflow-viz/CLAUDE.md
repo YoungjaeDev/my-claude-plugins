@@ -23,4 +23,4 @@ System-wide workflow visualization with Mermaid diagrams and ASCII progress trac
 - `docs/architecture/workflows/` - Per-plugin flowcharts
 
 ## State File
-`.omc/state/workflow-progress.json` - Current progress state
+`.claude/state/workflow-progress.json` - Current progress state

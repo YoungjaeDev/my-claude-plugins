@@ -89,22 +89,19 @@ Before starting the workflow:
    ```
    # Structure analysis
    Task(
-     subagent_type="oh-my-claudecode:explore",
-     model="haiku",
+     subagent_type="Explore",
      prompt="Analyze architecture related to [feature]. Map file relationships and module boundaries."
    )
 
    # Pattern analysis
    Task(
-     subagent_type="oh-my-claudecode:explore",
-     model="haiku",
+     subagent_type="Explore",
      prompt="Find similar implementations of [feature type] in the codebase."
    )
 
    # Dependency analysis
    Task(
-     subagent_type="oh-my-claudecode:explore",
-     model="haiku",
+     subagent_type="Explore",
      prompt="Identify all modules that depend on [target]. List potential breaking changes."
    )
    ```
@@ -125,14 +122,14 @@ Before starting the workflow:
    ```
    # For complex implementation
    Task(
-     subagent_type="oh-my-claudecode:executor-high",
+     subagent_type="claude",
      model="opus",
      prompt="Implement [complex feature]. Ensure type safety and error handling."
    )
 
    # For standard implementation
    Task(
-     subagent_type="oh-my-claudecode:executor",
+     subagent_type="claude",
      model="sonnet",
      prompt="Implement [feature] in [file]. Follow existing patterns."
    )
@@ -146,7 +143,7 @@ Before starting the workflow:
    ```
    # Parallel test writing
    Task(
-     subagent_type="oh-my-claudecode:executor",
+     subagent_type="claude",
      model="sonnet",
      prompt="Write unit tests for [file]. Target 80% coverage. Test happy path, edge cases, error conditions."
    )
@@ -158,13 +155,13 @@ Before starting the workflow:
    ```
    # Parallel validation
    Task(
-     subagent_type="oh-my-claudecode:executor-low",
+     subagent_type="claude",
      model="haiku",
      prompt="Run test suite and report pass/fail count."
    )
 
    Task(
-     subagent_type="oh-my-claudecode:executor-low",
+     subagent_type="claude",
      model="haiku",
      prompt="Run linter and report issues."
    )
@@ -210,7 +207,7 @@ Before starting the workflow:
       ```
     - If milestone exists:
       1. Generate slug from milestone name (lowercase, spaces to hyphens, remove special chars)
-      2. Check for state file: `.omc/state/project-tracking-{slug}.json`
+      2. Check for state file: `.claude/state/project-tracking-{slug}.json`
       3. If state file exists:
          - Load the state file
          - Update issue state to `"in_progress"` (PR created during resolve)
@@ -231,7 +228,7 @@ Before starting the workflow:
     - **Note**: GitHub diagram sync is NOT performed here. Diagrams are updated in `post-merge` after the PR is merged.
 
 12. **[NEW] Cleanup**:
-    - Archive state file to `.omc/state/archive/`
+    - Archive state file to `.claude/state/archive/`
 
 > See [Work Guidelines](../guidelines/work-guidelines.md)
 
@@ -257,7 +254,7 @@ Before starting the workflow:
 Session state enables workflow recovery after interruption.
 
 ### State File Location
-Sessions are saved to: `.omc/state/github-dev-{issue-number}.json`
+Sessions are saved to: `.claude/state/github-dev-{issue-number}.json`
 
 ### State Schema
 ```json
@@ -279,17 +276,17 @@ Sessions are saved to: `.omc/state/github-dev-{issue-number}.json`
 
 ### Checkpoint Save (after each phase)
 ```bash
-mkdir -p .omc/state
-cat > .omc/state/github-dev-${ISSUE_NUMBER}.json << 'EOF'
+mkdir -p .claude/state
+cat > .claude/state/github-dev-${ISSUE_NUMBER}.json << 'EOF'
 {... state JSON ...}
 EOF
 ```
 
 ### Cleanup (on successful completion)
 ```bash
-mkdir -p .omc/state/archive
-mv .omc/state/github-dev-${ISSUE_NUMBER}.json \
-   .omc/state/archive/github-dev-${ISSUE_NUMBER}-$(date +%Y%m%d).json
+mkdir -p .claude/state/archive
+mv .claude/state/github-dev-${ISSUE_NUMBER}.json \
+   .claude/state/archive/github-dev-${ISSUE_NUMBER}-$(date +%Y%m%d).json
 ```
 
 ---
@@ -317,7 +314,7 @@ Quality gates that must pass before commit.
 ### Running Verification
 ```
 Task(
-  subagent_type="oh-my-claudecode:executor-low",
+  subagent_type="claude",
   model="haiku",
   prompt="Run verification checks for this project:
     1. Detect project type from config files
@@ -346,7 +343,7 @@ Before PR creation, implementation passes two review stages:
 
 ```
 Task(
-  subagent_type="oh-my-claudecode:architect-medium",
+  subagent_type="claude",
   model="sonnet",
   prompt="Spec compliance review for issue #${ISSUE_NUMBER}
     ## Issue Requirements
@@ -365,7 +362,7 @@ Task(
 
 ```
 Task(
-  subagent_type="oh-my-claudecode:architect",
+  subagent_type="claude",
   model="opus",
   prompt="Code quality review for issue #${ISSUE_NUMBER}
     ## Changed Files

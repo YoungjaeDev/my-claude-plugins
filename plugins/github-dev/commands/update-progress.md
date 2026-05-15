@@ -8,7 +8,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
 
 ## Arguments
 
-- Milestone name (optional): Target milestone to update. If omitted, auto-detect from `.omc/state/project-tracking-*.json`
+- Milestone name (optional): Target milestone to update. If omitted, auto-detect from `.claude/state/project-tracking-*.json`
 
 ## Flags
 
@@ -29,8 +29,8 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
 ## Workflow
 
 1. **Load State File**
-   - If milestone name provided: slugify and load `.omc/state/project-tracking-{slug}.json`
-   - If `--all`: scan all `.omc/state/project-tracking-*.json` files
+   - If milestone name provided: slugify and load `.claude/state/project-tracking-{slug}.json`
+   - If `--all`: scan all `.claude/state/project-tracking-*.json` files
    - If no argument: scan for state files, if exactly one found use it, if multiple ask user to select
    - If no state file found: inform user to run `/github-dev:decompose-issue` first to set up tracking
 
@@ -173,7 +173,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
 
    a. **Milestone description** (Markdown Table):
       ```bash
-      MILESTONE_NUMBER=$(cat .omc/state/project-tracking-{slug}.json | jq -r '.milestoneId')
+      MILESTONE_NUMBER=$(cat .claude/state/project-tracking-{slug}.json | jq -r '.milestoneId')
       # If milestoneId is null, fetch from API:
       # MILESTONE_NUMBER=$(gh api repos/:owner/:repo/milestones --jq '.[] | select(.title=="<name>") | .number')
 
@@ -225,7 +225,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
 7. **Save State File**
    - Update `lastSyncedAt` to current ISO timestamp
    - Update all issue states and module progress values
-   - Save to `.omc/state/project-tracking-{slug}.json`
+   - Save to `.claude/state/project-tracking-{slug}.json`
 
 8. **Terminal Output**
    - Print Type M-1 ASCII diagram to terminal

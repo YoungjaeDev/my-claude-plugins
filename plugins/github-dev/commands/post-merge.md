@@ -81,7 +81,7 @@ Perform local branch cleanup and configuration updates after a PR has been merge
      ```
    - If milestone exists:
      1. Generate slug from milestone name (lowercase, spaces to hyphens, remove special chars)
-     2. Load state file: `.omc/state/project-tracking-{slug}.json`
+     2. Load state file: `.claude/state/project-tracking-{slug}.json`
      3. If state file not found: skip this issue
      4. Update issue state to `"closed"` in the state file
      5. Recalculate module progress:
@@ -102,7 +102,7 @@ Perform local branch cleanup and configuration updates after a PR has been merge
         - See `update-progress.md` "Type M-2" for full format
      8. Update milestone description:
         ```bash
-        MILESTONE_NUMBER=$(cat .omc/state/project-tracking-${SLUG}.json | jq -r '.milestoneId')
+        MILESTONE_NUMBER=$(cat .claude/state/project-tracking-${SLUG}.json | jq -r '.milestoneId')
         # Fallback if null:
         # MILESTONE_NUMBER=$(gh api repos/:owner/:repo/milestones \
         #   --jq '.[] | select(.title=="<name>") | .number')

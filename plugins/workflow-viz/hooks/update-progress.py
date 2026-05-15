@@ -3,7 +3,7 @@
 Workflow Progress Tracker Hook
 
 Triggered on Stop event to update workflow progress state.
-Updates .omc/state/workflow-progress.json and diagram metadata.
+Updates .claude/state/workflow-progress.json and diagram metadata.
 """
 
 import json
@@ -14,7 +14,7 @@ from pathlib import Path
 
 # 경로 설정
 PROJECT_ROOT = Path(os.environ.get("CLAUDE_PROJECT_ROOT", os.getcwd()))
-STATE_DIR = PROJECT_ROOT / ".omc" / "state"
+STATE_DIR = PROJECT_ROOT / ".claude" / "state"
 STATE_FILE = STATE_DIR / "workflow-progress.json"
 DOCS_DIR = PROJECT_ROOT / "docs" / "architecture"
 
@@ -53,30 +53,6 @@ def detect_active_workflow() -> dict | None:
                     "command": data.get("command", "unknown"),
                     "phase": data.get("phase", "unknown"),
                     "issueNumber": data.get("issueNumber"),
-                }
-
-    # ralph state
-    ralph_state = STATE_DIR / "ralph-state.json"
-    if ralph_state.exists():
-        with open(ralph_state, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if data.get("active"):
-                return {
-                    "plugin": "omc",
-                    "command": "ralph",
-                    "iteration": data.get("iteration", 0),
-                }
-
-    # ultrapilot state
-    ultrapilot_state = STATE_DIR / "ultrapilot-state.json"
-    if ultrapilot_state.exists():
-        with open(ultrapilot_state, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if data.get("active"):
-                return {
-                    "plugin": "omc",
-                    "command": "ultrapilot",
-                    "workers": data.get("workers", 0),
                 }
 
     return None

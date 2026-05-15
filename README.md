@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 20개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 19개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-20-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-19-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -42,12 +42,6 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 ```
 
 설치 후 `/github-dev:resolve-issue 123` 같은 명령어로 바로 사용 가능합니다.
-
-> **oh-my-claudecode** (멀티 에이전트 오케스트레이션)는 별도 설치:
-> ```bash
-> /plugin marketplace add Yeachan-Heo/oh-my-claudecode
-> /plugin install oh-my-claudecode@omc
-> ```
 
 ## 플러그인 업데이트
 
@@ -86,7 +80,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Integration** | `codex-bridge` | OMC skill을 Codex `~/.agents/skills/`로 body-only 변환 동기화 |
-| **Orchestration** | `omc` | oh-my-claudecode 멀티 에이전트 오케스트레이션 (marketplace) |
 
 ## 설치 옵션
 
@@ -518,7 +511,6 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 ## 참고 자료
 
 - [Claude Code Documentation](https://docs.anthropic.com/claude-code)
-- [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode)
 - [Claude Code Plugin System](https://docs.anthropic.com/claude-code/plugins)
 
 ## License

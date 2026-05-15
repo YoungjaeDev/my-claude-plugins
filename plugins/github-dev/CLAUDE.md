@@ -48,7 +48,7 @@ claude --worktree feature-auth
 
 Tracks milestone progress with architecture diagrams synced to GitHub.
 
-**State file**: `.omc/state/project-tracking-{slug}.json` -- created by `decompose-issue`, updated by `resolve-issue` and `post-merge`
+**State file**: `.claude/state/project-tracking-{slug}.json` -- created by `decompose-issue`, updated by `resolve-issue` and `post-merge`
 
 **Diagram types**:
 | Type | Format | Used In |
@@ -86,12 +86,11 @@ Tracks milestone progress with architecture diagrams synced to GitHub.
 
 ## Task Tool 2.1.16 Syntax
 
-This plugin uses oh-my-claudecode agents with Task Tool 2.1.16:
+This plugin uses Claude Code built-in agents with Task Tool 2.1.16:
 
 ```
 Task(
-  subagent_type="oh-my-claudecode:explore",
-  model="haiku",
+  subagent_type="Explore",
   prompt="..."
 )
 ```
@@ -100,8 +99,8 @@ Task(
 
 | Task Type | Agent | Model |
 |-----------|-------|-------|
-| Code search | `explore` | `haiku` |
-| Implementation | `executor` | `sonnet` |
-| Complex refactoring | `executor-high` | `opus` |
-| Test writing | `executor` | `sonnet` |
-| Validation | `executor-low` | `haiku` |
+| Code search | `Explore` | auto |
+| Implementation | `claude` | `sonnet` |
+| Complex refactoring | `claude` | `opus` |
+| Test writing | `claude` | `sonnet` |
+| Validation | `claude` | `haiku` |

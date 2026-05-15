@@ -1,9 +1,9 @@
-# oh-my-claudecode System Architecture
+# my-claude-plugins System Architecture
 
 ## Overview
 
 <!-- workflow-viz: system-overview -->
-<!-- last-updated: 2026-05-05 22:56:00 -->
+<!-- last-updated: 2026-05-15 14:43:29 -->
 
 ## C4 Container Diagram
 
@@ -21,10 +21,9 @@ flowchart TB
         U[Claude Code User]
     end
 
-    subgraph System["oh-my-claudecode"]
+    subgraph System["my-claude-plugins"]
         subgraph Core["Core Layer"]
             CC[core-config<br/>Hooks: guidelines, format, notify]
-            OMC[omc<br/>Multi-agent orchestration]
         end
 
         subgraph Development["Development Tools"]
@@ -81,7 +80,7 @@ flowchart TB
     classDef contentStyle fill:#EC4899,stroke:#DB2777,color:#fff
     classDef toolStyle fill:#6366F1,stroke:#4F46E5,color:#fff
 
-    class CC,OMC coreStyle
+    class CC coreStyle
     class GD,DF devStyle
     class CS,DW,PS researchStyle
     class CO,MJ aiStyle
@@ -93,7 +92,7 @@ flowchart TB
 
 | Category | Plugins | Purpose |
 |----------|---------|---------|
-| **Core** | core-config, omc | Foundation: hooks, orchestration |
+| **Core** | core-config | Foundation: hooks, formatting, notifications |
 | **Development** | github-dev, docs-forge | Code workflow |
 | **Research** | code-scout, deepwiki, paper-search-tools | Information gathering |
 | **AI Models** | council, midjourney | External AI services |
@@ -106,21 +105,18 @@ flowchart TB
 sequenceDiagram
     actor User
     participant CC as core-config
-    participant OMC as omc
     participant Plugin as Target Plugin
     participant Ext as External Service
 
     User->>CC: Request (auto-inject guidelines)
-    CC->>OMC: Enhanced request
-    OMC->>Plugin: Delegate to appropriate plugin
+    CC->>Plugin: Enhanced request
     Plugin->>Ext: External API call (if needed)
     Ext-->>Plugin: Response
-    Plugin-->>OMC: Result
-    OMC-->>User: Final response
+    Plugin-->>User: Final response
     CC->>CC: Stop hook (notify)
 ```
 
 ## See Also
 
 - [Plugin Workflows](./workflows/) - Individual plugin flowcharts
-- [Progress State](.omc/state/workflow-progress.json) - Current execution state
+- [Progress State](.claude/state/workflow-progress.json) - Current execution state

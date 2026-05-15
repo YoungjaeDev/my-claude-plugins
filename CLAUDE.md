@@ -2,13 +2,12 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (20)
+## Plugins (19)
 
 ### Core
 | Plugin | Description |
 |--------|-------------|
 | `core-config` | Guidelines auto-injection, Python formatting, notifications |
-| `omc` | oh-my-claudecode wrapper (marketplace) |
 
 ### GitHub
 | Plugin | Description |
@@ -77,7 +76,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 ├── plugins/
 │   ├── core-config/        # Guidelines + hooks
 │   ├── github-dev/         # GitHub workflow
-│   ├── omc/                # oh-my-claudecode
 │   ├── code-scout/         # Resource discovery
 │   ├── council/            # LLM Council
 │   ├── deepwiki/           # Repo docs

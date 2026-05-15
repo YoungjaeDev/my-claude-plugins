@@ -116,7 +116,7 @@ When adding features, consider disable/delete scenarios.
 
 ### Parallel Execution
 
-Run independent tasks in parallel via the Agent tool. See OMC CLAUDE.md "Parallelization Rules" for details.
+Run independent tasks in parallel via the Agent tool — emit multiple tool-use blocks in a single message; no shared state between them.
 
 **Result Collection (MANDATORY):**
 - MUST wait for ALL parallel agents to complete before proceeding

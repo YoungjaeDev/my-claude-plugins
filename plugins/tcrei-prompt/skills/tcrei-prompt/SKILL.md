@@ -285,7 +285,7 @@ Delegate to verifier via Task tool:
 
 ```
 Task(
-  subagent_type="oh-my-claudecode:verifier",
+  subagent_type="claude",
   model="haiku",
   prompt="Verify this TCREI prompt for quality:
     1. Task: Has action verb + output format + constraints?

@@ -57,15 +57,15 @@ If `PR_NUM` empty → abort: `No open PR for current branch — push first and o
 Archive any stale state file from a prior session, then write a fresh resume marker (single-run informational record — this command does NOT auto-restart from a partial state, but the file is useful for post-mortem). The fresh file inherits `codex_processed_reviews` from the prior state so cross-session Codex review dedupe (Step 6b) survives:
 
 ```bash
-mkdir -p .omc/state/archive
+mkdir -p .claude/state/archive
 PRIOR_PROCESSED='[]'
-if [ -f ".omc/state/cr-fix-${PR_NUM}.json" ]; then
-  PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' ".omc/state/cr-fix-${PR_NUM}.json" 2>/dev/null || echo '[]')
-  mv ".omc/state/cr-fix-${PR_NUM}.json" ".omc/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
+if [ -f ".claude/state/cr-fix-${PR_NUM}.json" ]; then
+  PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' ".claude/state/cr-fix-${PR_NUM}.json" 2>/dev/null || echo '[]')
+  mv ".claude/state/cr-fix-${PR_NUM}.json" ".claude/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
 fi
 jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" \
   '{start_sha:$sha,iter:0,applied_total:0,deferred_total:0,codex_processed_reviews:$prior}' \
-  > ".omc/state/cr-fix-${PR_NUM}.json"
+  > ".claude/state/cr-fix-${PR_NUM}.json"
 ```
 
 (Resume from interruption is out of scope for 1.10.0 — re-running `/cr-fix` on the same PR starts a fresh loop. The state file is updated for telemetry only, except for `codex_processed_reviews` which persists across runs to prevent re-processing the same Codex review id.)
@@ -210,7 +210,7 @@ codex_review_id_to_process=""
 Load the processed-set from the state file (initialized in Step 2 to inherit prior runs):
 
 ```bash
-PROCESSED=$(jq -c '.codex_processed_reviews // []' ".omc/state/cr-fix-${PR_NUM}.json")
+PROCESSED=$(jq -c '.codex_processed_reviews // []' ".claude/state/cr-fix-${PR_NUM}.json")
 ```
 
 **Fast probe** (one-shot, no sleep) — pick the most recent unprocessed Codex review on this PR, regardless of `commit_id`:
@@ -515,8 +515,8 @@ If `codex_review_id_to_process` is non-empty, append it to `codex_processed_revi
 if [ -n "$codex_review_id_to_process" ]; then
   jq --argjson rid "$codex_review_id_to_process" \
     '.codex_processed_reviews = ((.codex_processed_reviews // []) + [$rid] | unique)' \
-    ".omc/state/cr-fix-${PR_NUM}.json" > ".omc/state/cr-fix-${PR_NUM}.json.tmp" \
-    && mv ".omc/state/cr-fix-${PR_NUM}.json.tmp" ".omc/state/cr-fix-${PR_NUM}.json"
+    ".claude/state/cr-fix-${PR_NUM}.json" > ".claude/state/cr-fix-${PR_NUM}.json.tmp" \
+    && mv ".claude/state/cr-fix-${PR_NUM}.json.tmp" ".claude/state/cr-fix-${PR_NUM}.json"
 fi
 ```
 
@@ -655,9 +655,9 @@ To guarantee the final JSON is emitted even when an earlier step exits non-zero 
 ```bash
 emit_final_and_cleanup() {
   local last_sha; last_sha=$(git rev-parse HEAD 2>/dev/null || echo "$START_SHA")
-  mkdir -p .omc/state/archive
-  if [ -f ".omc/state/cr-fix-${PR_NUM}.json" ]; then
-    mv ".omc/state/cr-fix-${PR_NUM}.json" ".omc/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
+  mkdir -p .claude/state/archive
+  if [ -f ".claude/state/cr-fix-${PR_NUM}.json" ]; then
+    mv ".claude/state/cr-fix-${PR_NUM}.json" ".claude/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
   fi
   rm -f "$TRACK_FILE"
   printf '{"iterations":%d,"applied_total":%d,"deferred_total":%d,"skipped_total":%d,"codex_state":"%s","final_state":"%s","merged":%s,"pr":%s,"last_sha":"%s"}\n' \

@@ -25,17 +25,14 @@ Display current system workflow progress with ASCII visualization.
 
 ### Step 1: Load State
 
-Read current progress from `.omc/state/workflow-progress.json`.
+Read current progress from `.claude/state/workflow-progress.json`.
 
 If file doesn't exist, show "No active workflow" message.
 
 ### Step 2: Detect Active Workflows
 
 Check for active state files:
-- `.omc/state/github-dev-*.json` (excluding archive/)
-- `.omc/state/ralph-state.json`
-- `.omc/state/ultrapilot-state.json`
-- `.omc/state/swarm-tasks.db`
+- `.claude/state/github-dev-*.json` (excluding archive/)
 
 ### Step 3: Generate ASCII Visualization
 
@@ -43,19 +40,19 @@ Check for active state files:
 
 ```
 +===========================================================+
-|              oh-my-claudecode System Status               |
+|              my-claude-plugins System Status              |
 +===========================================================+
 
   [Core]              [Development]         [Research]
   +-------------+     +-------------+      +-------------+
   | core-config |     | github-dev  |      | code-scout  |
-  | [ACTIVE]    |     | [IDLE]      |      | [IDLE]      |
+  | [ACTIVE]    |     | [ACTIVE]    |      | [IDLE]      |
   +-------------+     +-------------+      +-------------+
-  | omc         |     | docs-forge  |      | deepwiki    |
-  | [ACTIVE]    |     | [IDLE]      |      | [IDLE]      |
-  +-------------+     +-------------+      +-------------+
+                      | docs-forge  |      | deepwiki    |
+                      | [IDLE]      |      | [IDLE]      |
+                      +-------------+      +-------------+
 
-  Active Workflow: omc:ralph (iteration 3/10)
+  Active Workflow: github-dev:resolve-issue (phase 4/9)
 
   Progress: [████████░░░░░░░░] 50%
 
@@ -140,7 +137,7 @@ When user says "show progress":
 Checking workflow state...
 
 +===========================================================+
-|              oh-my-claudecode System Status               |
+|              my-claude-plugins System Status              |
 +===========================================================+
 
   Currently Active: github-dev:resolve-issue #42

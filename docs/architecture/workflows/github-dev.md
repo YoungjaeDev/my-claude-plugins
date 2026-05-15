@@ -1,7 +1,7 @@
 # github-dev Workflow
 
 <!-- workflow-viz: github-dev -->
-<!-- last-updated: 2026-03-18 16:58:01 -->
+<!-- last-updated: 2026-05-15 14:43:29 -->
 
 ## Overview
 
@@ -107,7 +107,7 @@ flowchart LR
 
 ## State File Schema
 
-Location: `.omc/state/github-dev-{issue}.json`
+Location: `.claude/state/github-dev-{issue}.json`
 
 ```json
 {

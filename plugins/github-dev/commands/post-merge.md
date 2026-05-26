@@ -120,6 +120,13 @@ Perform local branch cleanup and configuration updates after a PR has been merge
      10. Save state file with updated `lastSyncedAt`
    - Skip silently if no milestones found on any related issues
 
+5.7. **Update `.claude/state/spec.json`** (if present)
+   - If `.claude/state/spec.json` exists at the repo root, find the entry in `in_progress` whose `linked.pr` matches the merged PR number (or `linked.issue` if no PR ref).
+   - Move it to `completed` with `merge_sha` = first 7 chars of the merge commit SHA, `completed_at` = today (UTC `YYYY-MM-DD`). Also set the matching spec file's frontmatter `status: merged`.
+   - If no matching entry exists, skip silently (the spec may not have been tracked, e.g., emergency hotfix).
+   - The schema and update mechanics are owned by the `llm-wiki:state-tracker` skill — invoke it (`/llm-wiki:state-tracker complete <spec-path>`) rather than direct JSON edit if the plugin is installed; otherwise apply a direct JSON edit using the schema documented in `plugins/llm-wiki/skills/state-tracker/SKILL.md`.
+   - Skip entirely if `.claude/state/` directory does not exist.
+
 6. **Integrate Learnings into Configuration Files**
 
    > **Core Principle: No Stamps, Topical Names, Current State Only**

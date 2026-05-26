@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (19)
+## Plugins (20)
 
 ### Core
 | Plugin | Description |
@@ -67,6 +67,11 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 |--------|-------------|
 | `codex-bridge` | Sync OMC plugin skills to Codex `~/.agents/skills/` with body-only transform |
 
+### Memory & Lore
+| Plugin | Description |
+|--------|-------------|
+| `llm-wiki` | Karpathy LLM-Wiki 3-layer (5 skills + state-tracker + 2 hooks + bootstrap templates) for `.claude/wiki/` + `.claude/state/spec.json` |
+
 ## Structure
 
 ```
@@ -92,7 +97,8 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── slidev/             # Presentation generator
 │   ├── workflow-viz/       # Workflow visualization
 │   ├── tcrei-prompt/       # TCREI prompt structuring
-│   └── codex-bridge/       # OMC → Codex skill sync
+│   ├── codex-bridge/       # OMC → Codex skill sync
+│   └── llm-wiki/           # LLM-Wiki 3-layer + state-tracker
 ├── CLAUDE.md               # This file
 └── README.md               # Full documentation
 ```

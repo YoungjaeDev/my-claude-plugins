@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 19 specialized plugins",
-    "version": "1.28.0"
+    "description": "Personal Claude Code plugin collection with 20 specialized plugins",
+    "version": "1.29.0"
   },
   "plugins": [
     {
@@ -19,7 +19,7 @@
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline (wait + auto-fetch + apply + push loop with branch-protection-gated auto-merge, CR-engagement guard, Codex review-id discovery + dedupe with grace polling, CR Nitpick + Codex P3 silent skip, optional --skip-minor opt-in for Minor + Codex P2 suppression), project tracking, release",
-      "version": "1.21.0",
+      "version": "1.21.1",
       "category": "github"
     },
     {
@@ -140,6 +140,13 @@
       "description": "Sync my-claude-plugins skills, commands, and subagents to Codex (~/.agents/skills/ for skills+commands, ~/.codex/agents/*.toml for subagents — USER scope) so they become callable as native $skill-name / subagent. Body-only transform with bridge_source provenance marker.",
       "version": "1.4.0",
       "category": "integration"
+    },
+    {
+      "name": "llm-wiki",
+      "source": "./plugins/llm-wiki",
+      "description": "Karpathy LLM-Wiki 3-layer (5 skills: query/ingest/lint/bootstrap/post-merge-wiki + state-tracker for spec/issue/PR aggregate + 2 soft-hint hooks + bootstrap templates). Universal — works in any repo with .claude/wiki/.",
+      "version": "1.0.0",
+      "category": "memory"
     }
   ]
 }

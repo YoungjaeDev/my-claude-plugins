@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 19개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 20개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-19-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-20-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -80,6 +80,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Integration** | `codex-bridge` | OMC skill을 Codex `~/.agents/skills/`로 body-only 변환 동기화 |
+| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/post-merge-wiki + state-tracker + 2 hooks) |
 
 ## 설치 옵션
 
@@ -335,6 +336,39 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 
 </details>
 
+### Memory & Lore
+
+<details>
+<summary><strong>llm-wiki</strong> - Karpathy LLM-Wiki 3-layer + spec/issue/PR state tracker</summary>
+
+`.claude/rules/` (invariants) + `.claude/wiki/` (LLM-maintained lore) + `.claude/state/spec.json` (work-pipeline aggregate) 패키지. 어느 repo 든 `/plugin install llm-wiki` 한 번이면 5 skill + 2 hook + bootstrap 템플릿 즉시 사용 가능.
+
+**Skills:**
+| Skill | Description |
+|-------|-------------|
+| `/llm-wiki:query-wiki` | wiki MOC (`index.md`) 진입 + typed cross-ref 따라가기 |
+| `/llm-wiki:ingest-finding` | 새 audit / PR finding 을 wiki 에 반영 (diff-log + multi-page cross-update) |
+| `/llm-wiki:lint-wiki` | 4 wiki-rot 모드 감사 (identity/level/relationship/staleness) + 6주 retro 리마인더 |
+| `/llm-wiki:bootstrap-wiki` | 새 repo 에 3-layer scaffold (templates 번들) |
+| `/llm-wiki:post-merge-wiki` | merge 후 `git show --name-only` 기반 ingest 후보 도출 → `ingest-finding` 체인 |
+| `/llm-wiki:state-tracker` | `.claude/state/spec.json` read/init/start/complete (spec ↔ issue/PR aggregate) |
+
+**Hooks (auto-installed):**
+| Hook | Trigger | Behavior |
+|------|---------|----------|
+| `wiki_stale_check.sh` | UserPromptSubmit | `last_verified:` > 60일 page soft-hint (rate-limit 1h/cwd) |
+| `wiki_post_commit_hint.sh` | PostToolUse(Bash) | 2+ file 또는 50+ line commit 시 ingest 제안 (rate-limit 10min) |
+
+**Cross-ref grammar** (raw `[[wikilink]]` 금지):
+- `> Refines: [[page-id]]` — 세부 추가
+- `> Contradicts: [[page-id]]` — 충돌, 해결 필요
+- `> Evidence: docs/.../audit.md` — 원본 인용 (복사 아님)
+- `> See-also: [[page-id]]` — 측면 연관
+
+**Conditional:** wiki 없는 repo 에서는 hook silent skip. global SSOT 통일 — `~/.claude/` 의 wiki 자산은 plugin 으로 이관됨.
+
+</details>
+
 ### Planning & Methodology
 
 <details>
@@ -461,7 +495,8 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
       "./plugins/rules-forge",
       "./plugins/workflow-viz",
       "./plugins/tcrei-prompt",
-      "./plugins/codex-bridge"
+      "./plugins/codex-bridge",
+      "./plugins/llm-wiki"
     ]
   }
 }
@@ -503,7 +538,8 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 │   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)
 │   ├── workflow-viz/          # 워크플로우 시각화
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
-│   └── codex-bridge/          # OMC → Codex skill 동기화
+│   ├── codex-bridge/          # OMC → Codex skill 동기화
+│   └── llm-wiki/              # LLM-Wiki 3-layer + state-tracker
 ├── CLAUDE.md
 └── README.md
 ```

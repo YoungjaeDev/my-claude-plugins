@@ -2,12 +2,12 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (19)
+## Plugins (21)
 
 ### Core
 | Plugin | Description |
 |--------|-------------|
-| `core-config` | Guidelines auto-injection, Python formatting, notifications |
+| `core-config` | Python auto-format + cross-platform notifications (work guidelines live in `~/.claude/CLAUDE.md`) |
 
 ### GitHub
 | Plugin | Description |
@@ -67,6 +67,16 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 |--------|-------------|
 | `codex-bridge` | Sync OMC plugin skills to Codex `~/.agents/skills/` with body-only transform |
 
+### Memory & Lore
+| Plugin | Description |
+|--------|-------------|
+| `llm-wiki` | Karpathy LLM-Wiki 3-layer (5 skills + 2 hooks + bootstrap templates) for `.claude/wiki/` |
+
+### Workflow State
+| Plugin | Description |
+|--------|-------------|
+| `spec-state` | Spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
+
 ## Structure
 
 ```
@@ -92,7 +102,9 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── slidev/             # Presentation generator
 │   ├── workflow-viz/       # Workflow visualization
 │   ├── tcrei-prompt/       # TCREI prompt structuring
-│   └── codex-bridge/       # OMC → Codex skill sync
+│   ├── codex-bridge/       # OMC → Codex skill sync
+│   ├── llm-wiki/           # LLM-Wiki 3-layer (wiki lore)
+│   └── spec-state/         # spec/issue/PR work-pipeline aggregate
 ├── CLAUDE.md               # This file
 └── README.md               # Full documentation
 ```

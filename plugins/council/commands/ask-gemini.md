@@ -80,7 +80,7 @@ You are a code review expert reviewing work in progress.
 [Project guidelines]
 
 ### Work Guidelines
-Read and follow: .claude/guidelines/work-guidelines.md
+Read and follow ~/.claude/CLAUDE.md (user-global) plus any project CLAUDE.md / gemini.md.
 If .claude/rules/ exists, also read relevant rule files for module-specific guidance.
 (Use your file access to read these files directly)
 

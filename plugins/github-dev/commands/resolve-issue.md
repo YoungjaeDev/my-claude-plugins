@@ -230,7 +230,7 @@ Before starting the workflow:
 12. **[NEW] Cleanup**:
     - Archive state file to `.claude/state/archive/`
 
-> See [Work Guidelines](../guidelines/work-guidelines.md)
+> Follow ~/.claude/CLAUDE.md and project CLAUDE.md.
 
 ## Verification and Completion Criteria
 

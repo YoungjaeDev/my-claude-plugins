@@ -3,7 +3,7 @@
 ## Overview
 
 <!-- workflow-viz: system-overview -->
-<!-- last-updated: 2026-05-15 14:43:29 -->
+<!-- last-updated: 2026-05-15 22:07:58 -->
 
 ## C4 Container Diagram
 

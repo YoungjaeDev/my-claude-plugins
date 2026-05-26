@@ -155,7 +155,7 @@ Create a versioned GitHub release with automatic version detection, version file
     Release created: https://github.com/<owner>/<repo>/releases/tag/v<NEW_VERSION>
     ```
 
-> See [Work Guidelines](../guidelines/work-guidelines.md)
+> Follow ~/.claude/CLAUDE.md and project CLAUDE.md.
 
 ## Version File Detection Details
 

@@ -1,23 +1,21 @@
 # Core Config Plugin
 
-Development workflow essentials: guidelines auto-injection, Python formatting, and notifications.
+Development workflow essentials: Python formatting and notifications.
 
 ## Hooks
 
 | Hook | Trigger | Description |
 |------|---------|-------------|
-| `inject-guidelines.sh` | UserPromptSubmit | Auto-inject work guidelines on every prompt |
 | `auto-format-python.py` | Post Write/Edit | Auto-format Python with ruff |
 | `notify_osc.sh` | Stop/Notification | Terminal OSC 777 notifications |
 
 ## Guidelines
 
-Guidelines are auto-injected via hook. Available references:
+User-global work guidelines live in `~/.claude/CLAUDE.md` (SSOT, auto-loaded by Claude Code). Project-specific guidelines live in each repo's `CLAUDE.md`.
 
 | File | Purpose |
 |------|---------|
-| `work-guidelines.md` | Core development workflow (auto-injected) |
-| `ml-guidelines.md` | ML/CV best practices |
+| `ml-guidelines.md` | ML/CV best practices (reference, on-demand) |
 
 ## Requirements
 

@@ -169,7 +169,7 @@ Model-specific guidelines (project root):
 - ./CLAUDE.md (Claude Opus/Sonnet)
 - ./AGENTS.md (Codex)
 - ./gemini.md (Gemini)
-- .claude/guidelines/work-guidelines.md (All models - style and response guidelines)
+- ~/.claude/CLAUDE.md (All models - user-global style/response guidelines)
 - .claude/rules/*.md (All models - module-specific rules, if directory exists)
 ```
 
@@ -287,8 +287,7 @@ Task(model="opus", subagent_type="general-purpose", run_in_background: true):
     You are participating in an LLM Council deliberation as Claude Opus.
 
     ## Guidelines
-    Read and follow ./CLAUDE.md project guidelines.
-    Read and follow: .claude/guidelines/work-guidelines.md for style guidelines.
+    Read and follow ~/.claude/CLAUDE.md (user-global) plus ./CLAUDE.md project guidelines.
     You have access to MCP tools. Use them actively to gather accurate information.
 
     ## Question
@@ -312,7 +311,7 @@ Task(model="opus", subagent_type="general-purpose", run_in_background: true):
 ```
 Task(model="sonnet", subagent_type="general-purpose", run_in_background: true):
   prompt: [Same structure as Opus, including:
-    Read and follow: .claude/guidelines/work-guidelines.md for style guidelines.]
+    Read and follow ~/.claude/CLAUDE.md (user-global) plus ./CLAUDE.md for style guidelines.]
 ```
 
 **Codex:**
@@ -329,8 +328,7 @@ Task(subagent_type="general-purpose", run_in_background: true):
     (Do NOT specify model - let Codex CLI use its default for forward compatibility)
 
     ## Guidelines
-    Read and follow ./AGENTS.md project guidelines.
-    Read and follow: .claude/guidelines/work-guidelines.md for style guidelines.
+    Read and follow ~/.claude/CLAUDE.md (user-global) plus ./AGENTS.md project guidelines.
     You have access to MCP tools. Use them actively to gather accurate information.
 
     ## Question
@@ -363,8 +361,7 @@ Task(subagent_type="general-purpose", run_in_background: true):
     Gemini can access project files directly via MCP tools.
 
     ## Guidelines
-    Read and follow ./gemini.md project guidelines.
-    Read and follow: .claude/guidelines/work-guidelines.md for style guidelines.
+    Read and follow ~/.claude/CLAUDE.md (user-global) plus ./gemini.md project guidelines.
     You have access to MCP tools. Use them actively to gather accurate information.
 
     ## Question

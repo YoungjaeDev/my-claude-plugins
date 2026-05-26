@@ -1,20 +1,8 @@
 {
   "name": "core-config",
-  "version": "1.3.6",
-  "description": "Core development configuration: guidelines, hooks, and workflow automation (cross-platform)",
+  "version": "1.4.0",
+  "description": "Core development configuration: Python auto-format + cross-platform notifications. Work guidelines live in ~/.claude/CLAUDE.md (SSOT).",
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 -X utf8 ${CLAUDE_PLUGIN_ROOT}/hooks/inject-guidelines.py",
-            "timeout": 5000
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",

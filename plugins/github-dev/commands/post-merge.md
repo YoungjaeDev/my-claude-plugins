@@ -124,7 +124,7 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    - If `.claude/state/spec.json` exists at the repo root, find the entry in `in_progress` whose `linked.pr` matches the merged PR number (or `linked.issue` if no PR ref).
    - Move it to `completed` with `merge_sha` = first 7 chars of the merge commit SHA, `completed_at` = today (UTC `YYYY-MM-DD`). Also set the matching spec file's frontmatter `status: merged`.
    - If no matching entry exists, skip silently (the spec may not have been tracked, e.g., emergency hotfix).
-   - The schema and update mechanics are owned by the `llm-wiki:state-tracker` skill — invoke it (`/llm-wiki:state-tracker complete <spec-path>`) rather than direct JSON edit if the plugin is installed; otherwise apply a direct JSON edit using the schema documented in `plugins/llm-wiki/skills/state-tracker/SKILL.md`.
+   - The schema and update mechanics are owned by the `spec-state:state-tracker` skill — invoke it (`/spec-state:state-tracker complete <spec-path>`) rather than direct JSON edit if the plugin is installed; otherwise apply a direct JSON edit using the schema documented in `plugins/spec-state/skills/state-tracker/SKILL.md`.
    - Skip entirely if `.claude/state/` directory does not exist.
 
 6. **Integrate Learnings into Configuration Files**
@@ -383,7 +383,7 @@ After Step 6 integration is applied, measure normative docs and offer split/impr
    - If confirmed: Commit using Conventional Commits format
    - Stage only modified files: `git add CLAUDE.md AGENTS.md GEMINI.md README.md .serena/memories/ 2>/dev/null || true`
 
-> See [Work Guidelines](../guidelines/work-guidelines.md)
+> Follow ~/.claude/CLAUDE.md and project CLAUDE.md.
 
 ## Configuration File Integration Guide
 

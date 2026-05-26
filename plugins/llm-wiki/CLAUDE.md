@@ -7,7 +7,6 @@ Karpathy LLM-Wiki 3-layer system packaged as a plugin. Universal — works in an
 | Component | Path | Purpose |
 |-----------|------|---------|
 | **5 skills** | `skills/{query,ingest,lint,bootstrap,post-merge}-wiki/` | wiki query, finding ingest, health audit, repo bootstrap, post-merge ingest chain |
-| **state-tracker skill** | `skills/state-tracker/` | read/init/start/complete ops on `.claude/state/spec.json` (spec → issue → PR aggregate) |
 | **2 hooks** | `hooks/wiki_{stale_check,post_commit_hint}.sh` | UserPromptSubmit + PostToolUse(Bash) soft hints |
 | **bootstrap templates** | `skills/bootstrap-wiki/assets/templates/` | wiki-skeleton (index, log, spec) + rules-skeleton (_entrypoint, code-map, _domain) |
 
@@ -34,9 +33,9 @@ Pages link via typed references only — never raw `[[wikilink]]`:
 
 All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in `.claude/wiki/log.md` with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`. `grep '## ' wiki/log.md` recovers the time-series.
 
-## State tracker
+## Related: spec-state
 
-`.claude/state/spec.json` is an aggregate cache of spec → linked issue/PR → description. `state-tracker` skill owns the 4 ops; spec frontmatter (`status:`) is the SSOT — cache is regeneratable.
+Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned by the separate `spec-state` plugin (`state-tracker` skill). llm-wiki tracks knowledge lore; spec-state tracks the work pipeline. The two are independent — install whichever you need.
 
 ## Conditional behavior
 

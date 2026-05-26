@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 20개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-20-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -61,7 +61,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 
 | 카테고리 | 플러그인 | 설명 |
 |---------|---------|------|
-| **Core** | `core-config` | 가이드라인 자동 주입, Python 포매팅, 알림 |
+| **Core** | `core-config` | Python 포매팅, 알림 (work guidelines 는 `~/.claude/CLAUDE.md`) |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
 | **Research** | `code-scout` | GitHub, HuggingFace 등 10+ 플랫폼 리소스 검색 |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
@@ -80,7 +80,8 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Integration** | `codex-bridge` | OMC skill을 Codex `~/.agents/skills/`로 body-only 변환 동기화 |
-| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/post-merge-wiki + state-tracker + 2 hooks) |
+| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/post-merge-wiki + 2 hooks) |
+| **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 
 ## 설치 옵션
 
@@ -112,12 +113,11 @@ claude  # .claude/settings.json에서 자동 로드
 <details>
 <summary><strong>core-config</strong> - 개발 필수 설정</summary>
 
-가이드라인 자동 주입 및 워크플로우 훅.
+Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 `~/.claude/CLAUDE.md` (SSOT) 가 담당.
 
 **Hooks:**
 | Hook | Trigger | Description |
 |------|---------|-------------|
-| `inject-guidelines.sh` | UserPromptSubmit | 작업 가이드라인 자동 주입 |
 | `auto-format-python.py` | Post Write/Edit | ruff로 Python 포매팅 |
 | `notify_osc.sh` | Stop/Notification | 터미널 알림 |
 
@@ -339,9 +339,9 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 ### Memory & Lore
 
 <details>
-<summary><strong>llm-wiki</strong> - Karpathy LLM-Wiki 3-layer + spec/issue/PR state tracker</summary>
+<summary><strong>llm-wiki</strong> - Karpathy LLM-Wiki 3-layer</summary>
 
-`.claude/rules/` (invariants) + `.claude/wiki/` (LLM-maintained lore) + `.claude/state/spec.json` (work-pipeline aggregate) 패키지. 어느 repo 든 `/plugin install llm-wiki` 한 번이면 5 skill + 2 hook + bootstrap 템플릿 즉시 사용 가능.
+`.claude/rules/` (invariants) + `.claude/wiki/` (LLM-maintained lore) 패키지. 어느 repo 든 `/plugin install llm-wiki` 한 번이면 5 skill + 2 hook + bootstrap 템플릿 즉시 사용 가능.
 
 **Skills:**
 | Skill | Description |
@@ -351,7 +351,6 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 | `/llm-wiki:lint-wiki` | 4 wiki-rot 모드 감사 (identity/level/relationship/staleness) + 6주 retro 리마인더 |
 | `/llm-wiki:bootstrap-wiki` | 새 repo 에 3-layer scaffold (templates 번들) |
 | `/llm-wiki:post-merge-wiki` | merge 후 `git show --name-only` 기반 ingest 후보 도출 → `ingest-finding` 체인 |
-| `/llm-wiki:state-tracker` | `.claude/state/spec.json` read/init/start/complete (spec ↔ issue/PR aggregate) |
 
 **Hooks (auto-installed):**
 | Hook | Trigger | Behavior |
@@ -365,7 +364,25 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 - `> Evidence: docs/.../audit.md` — 원본 인용 (복사 아님)
 - `> See-also: [[page-id]]` — 측면 연관
 
-**Conditional:** wiki 없는 repo 에서는 hook silent skip. global SSOT 통일 — `~/.claude/` 의 wiki 자산은 plugin 으로 이관됨.
+**Related:** spec / issue / PR work-pipeline state 는 `spec-state` plugin 으로 분리.
+
+**Conditional:** wiki 없는 repo 에서는 hook silent skip.
+
+</details>
+
+### Workflow State
+
+<details>
+<summary><strong>spec-state</strong> - spec / issue / PR work-pipeline aggregate</summary>
+
+`.claude/state/spec.json` 한 파일로 "지금 무엇이 in-flight 이고 어떤 spec / issue / PR 에 묶여있나" 를 한 번의 `Read` 로 답하기 위한 aggregate cache. spec frontmatter `status:` 가 SSOT, JSON 은 regeneratable cache.
+
+**Skill:**
+| Skill | Description |
+|-------|-------------|
+| `/spec-state:state-tracker` | `.claude/state/spec.json` 4 ops — `read` / `init` (regenerate from frontmatter) / `start <spec>` / `complete <spec>` |
+
+`github-dev:post-merge` Step 5.7 이 merge 직후 `complete <spec-path>` 를 자동 호출. hooks 없음 — 순수 on-demand skill.
 
 </details>
 
@@ -496,7 +513,8 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
       "./plugins/workflow-viz",
       "./plugins/tcrei-prompt",
       "./plugins/codex-bridge",
-      "./plugins/llm-wiki"
+      "./plugins/llm-wiki",
+      "./plugins/spec-state"
     ]
   }
 }
@@ -539,7 +557,8 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 │   ├── workflow-viz/          # 워크플로우 시각화
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
 │   ├── codex-bridge/          # OMC → Codex skill 동기화
-│   └── llm-wiki/              # LLM-Wiki 3-layer + state-tracker
+│   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
+│   └── spec-state/            # spec/issue/PR work-pipeline aggregate
 ├── CLAUDE.md
 └── README.md
 ```

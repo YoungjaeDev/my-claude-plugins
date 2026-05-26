@@ -4,22 +4,22 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 20 specialized plugins",
-    "version": "1.29.0"
+    "description": "Personal Claude Code plugin collection with 21 specialized plugins",
+    "version": "1.30.0"
   },
   "plugins": [
     {
       "name": "core-config",
       "source": "./plugins/core-config",
-      "description": "Guidelines auto-injection, Python formatting, notifications (cross-platform)",
-      "version": "1.3.6",
+      "description": "Python auto-format + cross-platform notifications. Work guidelines live in ~/.claude/CLAUDE.md (SSOT).",
+      "version": "1.4.0",
       "category": "core"
     },
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline (wait + auto-fetch + apply + push loop with branch-protection-gated auto-merge, CR-engagement guard, Codex review-id discovery + dedupe with grace polling, CR Nitpick + Codex P3 silent skip, optional --skip-minor opt-in for Minor + Codex P2 suppression), project tracking, release",
-      "version": "1.21.1",
+      "version": "1.21.2",
       "category": "github"
     },
     {
@@ -144,9 +144,16 @@
     {
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
-      "description": "Karpathy LLM-Wiki 3-layer (5 skills: query/ingest/lint/bootstrap/post-merge-wiki + state-tracker for spec/issue/PR aggregate + 2 soft-hint hooks + bootstrap templates). Universal — works in any repo with .claude/wiki/.",
-      "version": "1.0.0",
+      "description": "Karpathy LLM-Wiki 3-layer (5 skills: query/ingest/lint/bootstrap/post-merge-wiki + 2 soft-hint hooks + bootstrap templates). Universal — works in any repo with .claude/wiki/.",
+      "version": "1.1.0",
       "category": "memory"
+    },
+    {
+      "name": "spec-state",
+      "source": "./plugins/spec-state",
+      "description": "Spec/issue/PR work-pipeline aggregate. state-tracker skill manages .claude/state/spec.json (read/init/start/complete). Called by github-dev:post-merge.",
+      "version": "1.0.0",
+      "category": "workflow"
     }
   ]
 }

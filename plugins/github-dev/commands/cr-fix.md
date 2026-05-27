@@ -266,7 +266,7 @@ CodeRabbit sometimes flips `commit_status` to success while still processing. De
 
 ```bash
 PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
-gh pr view "$PR_NUM" --json comments,reviews --jq --arg t "$PUSH_TIME" '
+gh pr view "$PR_NUM" --json comments,reviews | jq --arg t "$PUSH_TIME" '
   [
     (.comments[]?
       | select(.author.login == "coderabbitai" or .author.login == "coderabbit[bot]" or .author.login == "coderabbitai[bot]")
@@ -282,7 +282,7 @@ gh pr view "$PR_NUM" --json comments,reviews --jq --arg t "$PUSH_TIME" '
 '
 ```
 
-`PUSH_TIME` is the committer date of `$CUR_SHA` (an ISO-8601 string); the jq `>` comparison on ISO-8601 strings is lexicographic but correct because the format is fixed-width and zero-padded. Older "in progress" messages from previous pushes are excluded, so iter=2+ no longer triggers a phantom sleep on a long-dead sniffer hit.
+`PUSH_TIME` is the committer date of `$CUR_SHA` (an ISO-8601 string); the jq `>` comparison on ISO-8601 strings is lexicographic but correct because the format is fixed-width and zero-padded. Older "in progress" messages from previous pushes are excluded, so iter=2+ no longer triggers a phantom sleep on a long-dead sniffer hit. The `gh ... | jq --arg t ...` pipe (instead of `gh ... --jq --arg ...`) is required because `gh`'s built-in `--jq` flag accepts a single filter string and does NOT forward `--arg` / `--argjson` to the underlying jq engine — passing them inline triggers `accepts 1 arg(s), received 4` and the sniffer never runs.
 
 If the count is greater than 0, sleep `$INTERVAL` and repeat Step 6 once before continuing. Counts toward iteration budget only if it triggers a full re-poll (not just the sniff).
 
@@ -383,11 +383,13 @@ If the **combined** count (CR actionable threads + Codex actionable records) is 
 # Has CodeRabbit engaged with THIS push? (review submitted_at / comment created_at > push time)
 PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
 cr_review_count=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-  --jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.submitted_at > $t)] | length')
+  | jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.submitted_at > $t)] | length')
 cr_comment_count=$(gh api "repos/$OWNER/$REPO/issues/$PR_NUM/comments" \
-  --jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.created_at > $t)] | length')
+  | jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.created_at > $t)] | length')
 cr_engagement=$((cr_review_count + cr_comment_count))
 ```
+
+The `gh ... | jq --arg t ...` pipe is required for the same reason as Step 7: `gh`'s `--jq` flag does not forward `--arg` to the jq engine. The pipe shape mirrors Step 8b's `gh api ... --paginate | jq --argjson rid ...` pattern.
 
 - `cr_engagement > 0`: CR has reviewed THIS push and produced no actionable threads → genuine convergence. Set `final_state="clean"` and jump to Step 13.
 - `cr_engagement == 0` AND `ITER < MAX_ITER`: CR has not started reviewing this push yet (e.g. status went green before the review payload posted, or the PR was just created). Do NOT declare clean. Sleep `$INTERVAL` and re-enter Step 6 (this counts toward the iteration budget, like the in-progress sniffer).

@@ -262,22 +262,27 @@ Token cost during the grace window is ~0 because the polling runs in `Bash(run_i
 
 ## Step 7: In-progress sniffer
 
-CodeRabbit sometimes flips `commit_status` to success while still processing. Detect explicitly:
+CodeRabbit sometimes flips `commit_status` to success while still processing. Detect explicitly — **limited to comments and reviews created after the current push**, otherwise a stale "Come back again in a few minutes" message from a prior push would re-fire the sleep branch on every subsequent iter:
 
 ```bash
-gh pr view "$PR_NUM" --json comments,reviews --jq '
+PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
+gh pr view "$PR_NUM" --json comments,reviews --jq --arg t "$PUSH_TIME" '
   [
     (.comments[]?
       | select(.author.login == "coderabbitai" or .author.login == "coderabbit[bot]" or .author.login == "coderabbitai[bot]")
+      | select(.createdAt > $t)
       | .body // empty),
     (.reviews[]?
       | select(.author.login == "coderabbitai" or .author.login == "coderabbit[bot]" or .author.login == "coderabbitai[bot]")
+      | select(.submittedAt > $t)
       | .body // empty)
   ]
   | map(select(test("Come back again in a few minutes")))
   | length
 '
 ```
+
+`PUSH_TIME` is the committer date of `$CUR_SHA` (an ISO-8601 string); the jq `>` comparison on ISO-8601 strings is lexicographic but correct because the format is fixed-width and zero-padded. Older "in progress" messages from previous pushes are excluded, so iter=2+ no longer triggers a phantom sleep on a long-dead sniffer hit.
 
 If the count is greater than 0, sleep `$INTERVAL` and repeat Step 6 once before continuing. Counts toward iteration budget only if it triggers a full re-poll (not just the sniff).
 
@@ -369,22 +374,26 @@ If `codex_active == "active"` AND `codex_records` is empty: Codex either approve
 
 ## Step 8c: Combined engagement gate
 
-If the **combined** count (CR actionable threads + Codex actionable records) is zero, run the engagement gate before declaring convergence:
+If the **combined** count (CR actionable threads + Codex actionable records) is zero, run the engagement gate before declaring convergence. The gate is **SHA-aware** — only CR activity created after `$CUR_SHA` was pushed counts. A PR-lifetime engagement query (the prior implementation) over-counts in two race windows:
+
+1. **Stale signal** — every CR review/comment from prior pushes inflates `cr_engagement` indefinitely. A new push with zero CR response yet would falsely declare clean as long as any old CR welcome message exists.
+2. **Step 6 → Step 8 race** — CR's commit-status `success` can land minutes before the actual review threads post (observed lag up to ~15 min). The race is harmless only if engagement is judged on **this** SHA; otherwise prior-SHA CR activity sweeps the gate green before the new threads appear.
 
 ```bash
-# Has CodeRabbit ever engaged with this PR? (any review or any comment)
+# Has CodeRabbit engaged with THIS push? (review submitted_at / comment created_at > push time)
+PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
 cr_review_count=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-  --jq '[.[] | select(.user.login | test("coderabbit"; "i"))] | length')
+  --jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.submitted_at > $t)] | length')
 cr_comment_count=$(gh api "repos/$OWNER/$REPO/issues/$PR_NUM/comments" \
-  --jq '[.[] | select(.user.login | test("coderabbit"; "i"))] | length')
+  --jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.created_at > $t)] | length')
 cr_engagement=$((cr_review_count + cr_comment_count))
 ```
 
-- `cr_engagement > 0`: CR has actually reviewed and produced no actionable threads → genuine convergence. Set `final_state="clean"` and jump to Step 13.
-- `cr_engagement == 0` AND `ITER < MAX_ITER`: CR has not started reviewing yet (e.g. PR was just created). Do NOT declare clean. Sleep `$INTERVAL` and re-enter Step 6 (this counts toward the iteration budget, like the in-progress sniffer).
-- `cr_engagement == 0` AND `ITER == MAX_ITER`: CR is unreachable or inactive. Set `final_state="cr_inactive"` and break the loop. Auto-merge stays disabled (Step 15 already gates on `final_state == "clean"`).
+- `cr_engagement > 0`: CR has reviewed THIS push and produced no actionable threads → genuine convergence. Set `final_state="clean"` and jump to Step 13.
+- `cr_engagement == 0` AND `ITER < MAX_ITER`: CR has not started reviewing this push yet (e.g. status went green before the review payload posted, or the PR was just created). Do NOT declare clean. Sleep `$INTERVAL` and re-enter Step 6 (this counts toward the iteration budget, like the in-progress sniffer).
+- `cr_engagement == 0` AND `ITER == MAX_ITER`: CR is unreachable or inactive on this SHA. Set `final_state="cr_inactive"` and break the loop. Auto-merge stays disabled (Step 15 already gates on `final_state == "clean"`).
 
-This blocks the PR-just-created case where commit-status is naturally green but CR has not yet posted a single comment — the exact pattern that caused the sankun PR #68 immediate-merge incident.
+This blocks the PR-just-created case where commit-status is naturally green but CR has not yet posted a single comment — the exact pattern that caused the sankun PR #68 immediate-merge incident — and also closes the Step 6 → Step 8 race that previously let stale CR activity false-clean a fresh push.
 
 ## Step 9: Display + apply (tiered)
 

@@ -382,14 +382,16 @@ If the **combined** count (CR actionable threads + Codex actionable records) is 
 ```bash
 # Has CodeRabbit engaged with THIS push? (review submitted_at / comment created_at > push time)
 PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
-cr_review_count=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+cr_review_count=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+  | jq -s 'add // []' \
   | jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.submitted_at > $t)] | length')
-cr_comment_count=$(gh api "repos/$OWNER/$REPO/issues/$PR_NUM/comments" \
+cr_comment_count=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" \
+  | jq -s 'add // []' \
   | jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.created_at > $t)] | length')
 cr_engagement=$((cr_review_count + cr_comment_count))
 ```
 
-The `gh ... | jq --arg t ...` pipe is required for the same reason as Step 7: `gh`'s `--jq` flag does not forward `--arg` to the jq engine. The pipe shape mirrors Step 8b's `gh api ... --paginate | jq --argjson rid ...` pattern.
+`--paginate` is required because both REST endpoints default to `per_page=30` and return chronological ascending order. On long-running PRs (>30 prior reviews/comments) the unpaginated first page contains only old entries, the `> $PUSH_TIME` filter drops all of them, and the iter sleeps until `MAX_ITER` exits with `cr_inactive` even when CR already reviewed this push. `gh api --paginate` emits one JSON document per page (concatenated, not merged), so `jq -s 'add // []'` slurps and flattens them into a single array before the cutoff filter runs. The trailing `gh ... | jq --arg t ...` pipe stays — `gh`'s `--jq` flag does not forward `--arg` to the jq engine. The pipe shape mirrors Step 8b's `gh api ... --paginate | jq --argjson rid ...` pattern.
 
 - `cr_engagement > 0`: CR has reviewed THIS push and produced no actionable threads → genuine convergence. Set `final_state="clean"` and jump to Step 13.
 - `cr_engagement == 0` AND `ITER < MAX_ITER`: CR has not started reviewing this push yet (e.g. status went green before the review payload posted, or the PR was just created). Do NOT declare clean. Sleep `$INTERVAL` and re-enter Step 6 (this counts toward the iteration budget, like the in-progress sniffer).

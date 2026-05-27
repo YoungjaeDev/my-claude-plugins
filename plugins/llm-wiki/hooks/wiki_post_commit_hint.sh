@@ -15,7 +15,7 @@ cmd=""
 if command -v jq >/dev/null 2>&1; then
   cmd=$(printf '%s' "$input_json" | jq -r '.tool_input.command // empty' 2>/dev/null)
 else
-  cmd=$(printf '%s' "$input_json" | grep -oP '"command"\s*:\s*"\K[^"]+' | head -1)
+  cmd=$(printf '%s' "$input_json" | LC_ALL=C.UTF-8 grep -oP '"command"\s*:\s*"\K[^"]+' | head -1)
 fi
 [[ -z "$cmd" ]] && exit 0
 
@@ -39,7 +39,8 @@ touch "$marker"
 # Stat the last commit's diff
 files_changed=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l || echo 0)
 lines_changed=$(git diff --shortstat HEAD~1 HEAD 2>/dev/null \
-                | grep -oP '\d+(?= insertion| deletion)' | paste -sd+ | bc 2>/dev/null || echo 0)
+                | LC_ALL=C.UTF-8 grep -oP '\d+(?= insertion| deletion)' \
+                | awk '{s+=$1} END{print s+0}' 2>/dev/null || echo 0)
 [[ -z "$lines_changed" ]] && lines_changed=0
 
 # Threshold: 2+ files OR 50+ lines OR a merge commit

@@ -22,7 +22,7 @@ today_ts=$(date +%s)
 stale=()
 
 while IFS= read -r f; do
-  d=$(grep -oP '^last_verified:\s*\K\d{4}-\d{2}-\d{2}' "$f" 2>/dev/null | head -1)
+  d=$(LC_ALL=C.UTF-8 grep -oP '^last_verified:\s*\K\d{4}-\d{2}-\d{2}' "$f" 2>/dev/null | head -1)
   [[ -z "$d" ]] && continue
   d_ts=$(date -d "$d" +%s 2>/dev/null) || continue
   age_days=$(( (today_ts - d_ts) / 86400 ))

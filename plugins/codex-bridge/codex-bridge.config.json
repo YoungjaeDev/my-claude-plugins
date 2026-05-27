@@ -7,7 +7,7 @@
   },
   "collisionFallbackPrefix": "bridge-",
   "exclude": [
-    "plugins/midjourney/**"
+    "**/midjourney/**"
   ],
   "transform": {
     "bodyOnly": true,

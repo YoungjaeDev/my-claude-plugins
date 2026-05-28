@@ -265,7 +265,17 @@ Token cost during the grace window is ~0 because the polling runs in `Bash(run_i
 CodeRabbit sometimes flips `commit_status` to success while still processing. Detect explicitly — **limited to comments and reviews created after the current push**, otherwise a stale "Come back again in a few minutes" message from a prior push would re-fire the sleep branch on every subsequent iter:
 
 ```bash
-PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
+# PUSH_TIME = earliest individual status created_at on this SHA. Best proxy for "when GitHub
+# first saw this SHA" — CR / CI typically post a `pending` status within ~seconds of receiving
+# the webhook. NOTE: must use /commits/{sha}/statuses (plural, full history) not /status
+# (singular, latest-per-context combined view) — the singular endpoint hides the early `pending`
+# entries and would yield the review-complete time instead of the push time.
+# Falls back to commit committer.date only if no statuses exist yet (very rare race) — but
+# committer.date is git metadata, NOT push time, so cherry-picks or stale-commit pushes would
+# otherwise leak prior-push CR activity through the SHA-aware filters below.
+PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" \
+  --jq '[.[].created_at] | sort | .[0] // empty')
+[ -n "$PUSH_TIME" ] || PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
 gh pr view "$PR_NUM" --json comments,reviews | jq --arg t "$PUSH_TIME" '
   [
     (.comments[]?
@@ -381,7 +391,11 @@ If the **combined** count (CR actionable threads + Codex actionable records) is 
 
 ```bash
 # Has CodeRabbit engaged with THIS push? (review submitted_at / comment created_at > push time)
-PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
+# PUSH_TIME = earliest individual /statuses created_at; see Step 7 for rationale (committer.date
+# is git metadata, not push time, and would leak prior-push CR activity through this gate).
+PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" \
+  --jq '[.[].created_at] | sort | .[0] // empty')
+[ -n "$PUSH_TIME" ] || PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
 cr_review_count=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
   | jq -s 'add // []' \
   | jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.submitted_at > $t)] | length')

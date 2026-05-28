@@ -40,3 +40,10 @@ Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned b
 ## Conditional behavior
 
 Hooks and skills no-op silently when `.claude/wiki/` is absent. Safe to enable globally; nothing fires in repos without the wiki layer.
+
+## Shell portability
+
+Hooks and skill scripts target POSIX-shell + a thin set of GNU extensions. Two pitfalls trip up minimal containers and non-en_US locales:
+
+- `grep -P` (PCRE) shorthand classes (`\d`, `\s`, `\K`, ...) silently fail under non-UTF-8 locales (e.g. `ko_KR.eucKR`). Wrap every `grep -oP` call with `LC_ALL=C.UTF-8` to force a deterministic locale.
+- `bc` is not part of busybox / alpine / minimal-Debian base images. Replace `paste -sd+ | bc` with `awk '{s+=$1} END{print s+0}'` to sum numeric lines without an external arithmetic dependency.

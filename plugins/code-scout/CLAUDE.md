@@ -25,7 +25,8 @@ research-orchestrator (skill, entry point)
   │   hf-scout        (uvx hf + HF REST)      │ → /tmp/research/_workspace/*.json
   │   web-scout       (exa MCP, WebSearch)    │
   │   docs-scout      (context7 + deepwiki)   │
-  │   paper-scout     (placeholder, next PR)  │
+  │   # paper-scout — deferred to next PR;     │
+  │   # academic queries → paper-search-tools  │
   │                                           │
   └─ fan-in ─────────────────────────────────►│
       synthesis-scout (dedup, trust, conflict)

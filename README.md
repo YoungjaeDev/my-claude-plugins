@@ -172,7 +172,8 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 | `web-scout` | exa MCP 우선, WebSearch fallback (Reddit/SO/블로그/뉴스) |
 | `docs-scout` | Context7 (라이브러리 docs) + DeepWiki (repo Q&A) |
 | `synthesis-scout` | dedup / trust ranking / conflict resolution / 최종 보고서 |
-| `paper-scout` | 다음 PR 예정 (paper-search-tools 통합) |
+
+학술 논문이 필요한 경우 `paper-search-tools` 플러그인을 직접 사용. native `paper-scout` agent는 다음 PR 에서 추가 예정.
 
 **Usage:**
 ```

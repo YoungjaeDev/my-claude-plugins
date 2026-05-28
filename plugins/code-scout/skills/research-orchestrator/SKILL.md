@@ -68,9 +68,11 @@ Look at the query and pick scouts. See `references/agent-routing.md` for the ful
 | `quick`, HF-leaning query | `hf-scout` only |
 | `quick`, docs question | `docs-scout` only |
 | `quick`, web/community question | `web-scout` only |
-| `deep` | `github-scout` + `hf-scout` + `web-scout` + `docs-scout` (+ `paper-scout` if academic) |
+| `deep` | `github-scout` + `hf-scout` + `web-scout` + `docs-scout` |
 
-Assign sequential `artifact_id` slots in dispatch order: `01_github`, `02_hf`, `03_web`, `04_docs`, `05_paper`.
+Assign sequential `artifact_id` slots in dispatch order: `01_github`, `02_hf`, `03_web`, `04_docs`.
+
+For academic queries (papers, benchmarks, SOTA), do **not** dispatch a `paper-scout` — that agent is not wired up in v2.0. Instead, point the user at the `paper-search-tools` plugin directly (`mcp__plugin_paper-search-tools_*` MCP tools), or include a `## Gaps` note in the report. Native `paper-scout` integration is scheduled for the next PR.
 
 ### 4. Fan-out dispatch
 

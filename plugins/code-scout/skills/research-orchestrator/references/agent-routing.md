@@ -39,7 +39,7 @@ Any of these forces deep fan-out:
 
 **Should NOT trigger (route elsewhere):**
 1. "단순 GitHub PR 검색 / merge" → `github-dev:resolve-issue` or `github-dev:cr-fix`
-2. "Academic paper on diffusion models" → `paper-search-tools` directly (paper-scout placeholder)
+2. "Academic paper on diffusion models" → `paper-search-tools` directly (no paper-scout agent in v2.0; integration deferred to next PR)
 3. "Ask a single question about pytorch/serve repo" → `deepwiki:ask` directly
 4. "Resolve library ID for langchain" → `context7` MCP directly
 5. "Translate this article" → `translator` plugin
@@ -51,7 +51,7 @@ Any of these forces deep fan-out:
 
 ### vs. `paper-search-tools`
 
-`paper-search-tools` owns arXiv / PubMed / Semantic Scholar / Crossref / etc. with structured paper-level APIs. If the user wants citations, papers, DOIs — go there directly. `research-orchestrator` only invokes `paper-scout` (placeholder) when the topic is technical and papers would be one of several inputs (not the sole input).
+`paper-search-tools` owns arXiv / PubMed / Semantic Scholar / Crossref / etc. with structured paper-level APIs. If the user wants citations, papers, DOIs — go there directly. In v2.0 there is no `paper-scout` agent; for mixed-source deep research that would benefit from papers, the orchestrator points the user at `paper-search-tools` and notes the missing axis in `## Gaps`. Native `paper-scout` integration ships in the next PR.
 
 ### vs. `deepwiki:ask`
 
@@ -77,7 +77,7 @@ query mentions / implies                  → add this scout
   company / person names, "announcement"
 "docs", "API", "migration guide",           docs-scout
   "how does X work in repo Y"
-"paper", "arxiv", "benchmark", "SOTA"       paper-scout (placeholder)
+"paper", "arxiv", "benchmark", "SOTA"       paper-search-tools plugin (no paper-scout in v2.0)
 ```
 
 When in doubt at `deep` mode, include `github-scout` + `web-scout` + `docs-scout` as the baseline trio.

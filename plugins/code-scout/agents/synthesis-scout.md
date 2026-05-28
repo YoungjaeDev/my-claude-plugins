@@ -1,7 +1,7 @@
 ---
 name: synthesis-scout
 description: |
-  Meta-orchestrator scout. Consumes findings from github/hf/web/docs/paper scouts
+  Meta-orchestrator scout. Consumes findings from github/hf/web/docs scouts
   in the shared workspace, deduplicates, scores trust, resolves conflicts, and
   emits the final Markdown report. Does not call external tools — pure synthesis.
 model: opus

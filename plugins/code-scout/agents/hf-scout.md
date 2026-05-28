@@ -21,7 +21,7 @@ Single-axis scout for the HF hub. Fans out under `research-orchestrator`; writes
 
 ## Tools
 
-Primary: `curl https://huggingface.co/api/{models,datasets,spaces}?search=...` for cwd-free public search; `uvx hf search-repos` when richer fields are needed. Read `skills/resource-finder/SKILL.md` for the canonical query patterns.
+Primary: `curl https://huggingface.co/api/{models,datasets,spaces}?search=...` for cwd-free public search; `uvx hf {models,spaces,datasets} ls|search|info` when you need CLI subcommands (note: top-level `hf search-repos` does **not** exist — use the per-type subcommands). Read `skills/resource-finder/SKILL.md` for the canonical query patterns.
 
 ## Workflow
 

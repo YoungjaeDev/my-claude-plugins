@@ -24,7 +24,7 @@ Read-only filesystem (`Read`, `Bash` for `ls` / `jq`). **Do not** call exa, WebS
 
 ## Workflow
 
-1. `ls ${workspace_dir}/*.json` → load every artifact. Skip files with `error` set and no `findings`.
+1. `ls ${workspace_dir}/*.json | sort` → load every artifact in lexical order (deterministic merge per the `{NN}_{axis}.json` convention). Skip files where the `error` field is set and `findings` is empty.
 2. **Dedup**:
    - GitHub: by `id` (`<owner>/<repo>`)
    - HF: by `id`

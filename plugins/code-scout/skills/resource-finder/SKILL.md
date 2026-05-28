@@ -19,7 +19,7 @@ Primary tools are **portable CLIs on `$PATH`**, not skill-internal scripts. Pref
 | Platform | Primary (cwd-free, no Python) | Fallback (structured JSON) |
 |---|---|---|
 | GitHub | `gh search repos` / `gh search code` / `gh repo view` | `uv run <abs>/scripts/search_github.py` |
-| Hugging Face | `uvx hf search-repos` (+ `curl https://huggingface.co/api/...`) | `uv run <abs>/scripts/search_huggingface.py` |
+| Hugging Face | `curl https://huggingface.co/api/...` (+ `uvx hf {models\|spaces\|datasets} ls/search/info`) | `uv run <abs>/scripts/search_huggingface.py` |
 
 `<abs>` resolves to `plugins/code-scout/skills/resource-finder` in Claude Code (repo-rooted) or `~/.agents/skills/resource-finder` in Codex (after sync). Use absolute paths to avoid cwd surprises.
 
@@ -114,11 +114,26 @@ curl -sS "https://huggingface.co/api/models?search=qwen+vl&sort=downloads&direct
 
 ### `uvx hf` (official CLI)
 
+The top-level `hf` CLI groups commands by repo type — there is no `hf search-repos`. Use the per-type subcommands instead:
+
 ```bash
-uvx hf search-repos "object detection" --repo-type model --limit 10
+# Models — list with sort + filter
+uvx hf models ls --sort downloads --limit 10
+uvx hf models info <repo_id>                      # full metadata for a single model
+
+# Spaces — has real semantic search
+uvx hf spaces search "object detection gradio" --limit 10
+
+# Datasets — list (no search subcommand; use REST API above for keyword search)
+uvx hf datasets ls --limit 10
+uvx hf datasets info <repo_id>
+
+# Downloads (any repo type via --repo-type)
 uvx hf download <repo_id> --include "*.json" --local-dir /tmp/<name>     # config only
 uvx hf download <space_id> --repo-type space --include "*.py" --local-dir /tmp/<name>
 ```
+
+For keyword search across models or datasets, the REST endpoints above are simpler than the CLI.
 
 Download into `/tmp/` — always temporary, outside the repo root.
 

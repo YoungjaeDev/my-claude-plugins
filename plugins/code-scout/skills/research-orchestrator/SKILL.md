@@ -49,14 +49,14 @@ Default `quick`. Upgrade to `deep` if any of these match in the query:
 ### 2. Workspace setup
 
 ```bash
-TS="$(date +%Y%m%d_%H%M%S)"
-WORKSPACE="/tmp/research/_workspace"
-REPORT="/tmp/research/final_report.md"
-rm -rf "$WORKSPACE" && mkdir -p "$WORKSPACE"
-mkdir -p "$(dirname "$REPORT")"
+# Per-run isolated workspace — never share /tmp/research/_workspace across runs
+# (parallel orchestrator runs would otherwise clobber each other's artifacts).
+WORKSPACE="${workspace_dir:-$(mktemp -d /tmp/research/run.XXXXXXXX)}"
+REPORT="${report_path:-${WORKSPACE%/}/final_report.md}"
+mkdir -p "$WORKSPACE" "$(dirname "$REPORT")"
 ```
 
-One workspace per orchestrator run — wipe it at the start so synthesis sees only fresh artifacts.
+Caller-supplied `workspace_dir` / `report_path` are honored verbatim; otherwise each run gets its own `mktemp` directory. Tell the user the resolved `$WORKSPACE` and `$REPORT` paths in the final summary so they can inspect or delete the run's artifacts.
 
 ### 3. Axis routing
 

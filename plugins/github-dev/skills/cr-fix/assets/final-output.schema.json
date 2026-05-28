@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/YoungjaeDev/my-claude-plugins/plugins/github-dev/skills/cr-fix/assets/final-output.schema.json",
+  "title": "cr-fix final output",
+  "description": "Single JSON object emitted on stdout by scripts/emit-final-json.sh (run as bash EXIT trap).",
+  "type": "object",
+  "required": [
+    "iterations",
+    "applied_total",
+    "deferred_total",
+    "skipped_total",
+    "codex_state",
+    "final_state",
+    "merged",
+    "pr",
+    "last_sha",
+    "cr_source",
+    "cli_invocations",
+    "rate_limit_hits"
+  ],
+  "properties": {
+    "iterations":      { "type": "integer", "minimum": 0 },
+    "applied_total":   { "type": "integer", "minimum": 0 },
+    "deferred_total":  { "type": "integer", "minimum": 0 },
+    "skipped_total":   { "type": "integer", "minimum": 0, "description": "CR Nitpicks + Codex P3 + (when --skip-minor) Minor severity + Codex P2" },
+    "codex_state":     { "type": "string", "enum": ["active", "inactive", "disabled", "unknown"] },
+    "final_state":     { "type": "string", "enum": ["clean", "user_declined", "iteration_cap", "timeout", "failure", "cr_inactive", "rate_limited", "cli_failed", "unknown"] },
+    "merged":          { "type": "boolean" },
+    "pr":              { "type": "integer", "minimum": 0 },
+    "last_sha":        { "type": "string" },
+    "cr_source":       { "type": "string", "enum": ["auto", "pr-bot", "cli", "codex-only"], "description": "Final resolved source after any Step 7c silent flip; not necessarily the user-passed value." },
+    "cli_invocations": { "type": "integer", "minimum": 0, "description": "Count of Step 7d coderabbit CLI spawns across iterations." },
+    "rate_limit_hits": { "type": "integer", "minimum": 0, "description": "Count of Step 7b/c rate-limit detections across iterations." }
+  },
+  "additionalProperties": false
+}

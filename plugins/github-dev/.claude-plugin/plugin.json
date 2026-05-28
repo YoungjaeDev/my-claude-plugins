@@ -1,15 +1,17 @@
 {
   "name": "github-dev",
-  "version": "1.21.3",
+  "version": "1.22.0",
   "description": "GitHub workflow automation commands for Claude Code",
   "commands": [
     "./commands/commit-and-push.md",
-    "./commands/cr-fix.md",
     "./commands/create-issue-label.md",
     "./commands/decompose-issue.md",
     "./commands/post-merge.md",
     "./commands/resolve-issue.md",
     "./commands/update-progress.md",
     "./commands/release.md"
+  ],
+  "skills": [
+    "./skills/cr-fix"
   ]
 }

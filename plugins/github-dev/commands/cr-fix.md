@@ -262,22 +262,42 @@ Token cost during the grace window is ~0 because the polling runs in `Bash(run_i
 
 ## Step 7: In-progress sniffer
 
-CodeRabbit sometimes flips `commit_status` to success while still processing. Detect explicitly:
+CodeRabbit sometimes flips `commit_status` to success while still processing. Detect explicitly — **limited to comments and reviews created after the current push**, otherwise a stale "Come back again in a few minutes" message from a prior push would re-fire the sleep branch on every subsequent iter:
 
 ```bash
-gh pr view "$PR_NUM" --json comments,reviews --jq '
+# PUSH_TIME = earliest individual status created_at on this SHA. Best proxy for "when GitHub
+# first saw this SHA" — CR / CI typically post a `pending` status within ~seconds of receiving
+# the webhook. NOTES:
+#   - Must use /commits/{sha}/statuses (plural, full history) not /status (singular,
+#     latest-per-context combined view) — the singular endpoint hides early `pending`
+#     entries and would yield the review-complete time instead of the push time.
+#   - Must use --paginate; the statuses endpoint returns latest-first with default per_page=30,
+#     so an unpaginated read on a CI-heavy SHA picks "oldest of the newest 30" rather than
+#     the actual earliest status, shifting PUSH_TIME forward past CR's review for this push.
+#     `jq -s 'add // []'` slurps all pages into a single array before sorting.
+# Falls back to commit committer.date only if no statuses exist yet (very rare race) — but
+# committer.date is git metadata, NOT push time, so cherry-picks or stale-commit pushes would
+# otherwise leak prior-push CR activity through the SHA-aware filters below.
+PUSH_TIME=$(gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" \
+  | jq -sr 'add // [] | [.[].created_at] | sort | .[0] // empty')
+[ -n "$PUSH_TIME" ] || PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
+gh pr view "$PR_NUM" --json comments,reviews | jq --arg t "$PUSH_TIME" '
   [
     (.comments[]?
       | select(.author.login == "coderabbitai" or .author.login == "coderabbit[bot]" or .author.login == "coderabbitai[bot]")
+      | select(.createdAt > $t)
       | .body // empty),
     (.reviews[]?
       | select(.author.login == "coderabbitai" or .author.login == "coderabbit[bot]" or .author.login == "coderabbitai[bot]")
+      | select(.submittedAt > $t)
       | .body // empty)
   ]
   | map(select(test("Come back again in a few minutes")))
   | length
 '
 ```
+
+`PUSH_TIME` is the committer date of `$CUR_SHA` (an ISO-8601 string); the jq `>` comparison on ISO-8601 strings is lexicographic but correct because the format is fixed-width and zero-padded. Older "in progress" messages from previous pushes are excluded, so iter=2+ no longer triggers a phantom sleep on a long-dead sniffer hit. The `gh ... | jq --arg t ...` pipe (instead of `gh ... --jq --arg ...`) is required because `gh`'s built-in `--jq` flag accepts a single filter string and does NOT forward `--arg` / `--argjson` to the underlying jq engine — passing them inline triggers `accepts 1 arg(s), received 4` and the sniffer never runs.
 
 If the count is greater than 0, sleep `$INTERVAL` and repeat Step 6 once before continuing. Counts toward iteration budget only if it triggers a full re-poll (not just the sniff).
 
@@ -369,22 +389,34 @@ If `codex_active == "active"` AND `codex_records` is empty: Codex either approve
 
 ## Step 8c: Combined engagement gate
 
-If the **combined** count (CR actionable threads + Codex actionable records) is zero, run the engagement gate before declaring convergence:
+If the **combined** count (CR actionable threads + Codex actionable records) is zero, run the engagement gate before declaring convergence. The gate is **SHA-aware** — only CR activity created after `$CUR_SHA` was pushed counts. A PR-lifetime engagement query (the prior implementation) over-counts in two race windows:
+
+1. **Stale signal** — every CR review/comment from prior pushes inflates `cr_engagement` indefinitely. A new push with zero CR response yet would falsely declare clean as long as any old CR welcome message exists.
+2. **Step 6 → Step 8 race** — CR's commit-status `success` can land minutes before the actual review threads post (observed lag up to ~15 min). The race is harmless only if engagement is judged on **this** SHA; otherwise prior-SHA CR activity sweeps the gate green before the new threads appear.
 
 ```bash
-# Has CodeRabbit ever engaged with this PR? (any review or any comment)
-cr_review_count=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-  --jq '[.[] | select(.user.login | test("coderabbit"; "i"))] | length')
-cr_comment_count=$(gh api "repos/$OWNER/$REPO/issues/$PR_NUM/comments" \
-  --jq '[.[] | select(.user.login | test("coderabbit"; "i"))] | length')
+# Has CodeRabbit engaged with THIS push? (review submitted_at / comment created_at > push time)
+# PUSH_TIME = earliest individual /statuses created_at; see Step 7 for rationale (committer.date
+# is git metadata, not push time, and would leak prior-push CR activity through this gate).
+PUSH_TIME=$(gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" \
+  | jq -sr 'add // [] | [.[].created_at] | sort | .[0] // empty')
+[ -n "$PUSH_TIME" ] || PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
+cr_review_count=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+  | jq -s 'add // []' \
+  | jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.submitted_at > $t)] | length')
+cr_comment_count=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" \
+  | jq -s 'add // []' \
+  | jq --arg t "$PUSH_TIME" '[.[] | select(.user.login | test("coderabbit"; "i")) | select(.created_at > $t)] | length')
 cr_engagement=$((cr_review_count + cr_comment_count))
 ```
 
-- `cr_engagement > 0`: CR has actually reviewed and produced no actionable threads → genuine convergence. Set `final_state="clean"` and jump to Step 13.
-- `cr_engagement == 0` AND `ITER < MAX_ITER`: CR has not started reviewing yet (e.g. PR was just created). Do NOT declare clean. Sleep `$INTERVAL` and re-enter Step 6 (this counts toward the iteration budget, like the in-progress sniffer).
-- `cr_engagement == 0` AND `ITER == MAX_ITER`: CR is unreachable or inactive. Set `final_state="cr_inactive"` and break the loop. Auto-merge stays disabled (Step 15 already gates on `final_state == "clean"`).
+`--paginate` is required because both REST endpoints default to `per_page=30` and return chronological ascending order. On long-running PRs (>30 prior reviews/comments) the unpaginated first page contains only old entries, the `> $PUSH_TIME` filter drops all of them, and the iter sleeps until `MAX_ITER` exits with `cr_inactive` even when CR already reviewed this push. `gh api --paginate` emits one JSON document per page (concatenated, not merged), so `jq -s 'add // []'` slurps and flattens them into a single array before the cutoff filter runs. The trailing `gh ... | jq --arg t ...` pipe stays — `gh`'s `--jq` flag does not forward `--arg` to the jq engine. The pipe shape mirrors Step 8b's `gh api ... --paginate | jq --argjson rid ...` pattern.
 
-This blocks the PR-just-created case where commit-status is naturally green but CR has not yet posted a single comment — the exact pattern that caused the sankun PR #68 immediate-merge incident.
+- `cr_engagement > 0`: CR has reviewed THIS push and produced no actionable threads → genuine convergence. Set `final_state="clean"` and jump to Step 13.
+- `cr_engagement == 0` AND `ITER < MAX_ITER`: CR has not started reviewing this push yet (e.g. status went green before the review payload posted, or the PR was just created). Do NOT declare clean. Sleep `$INTERVAL` and re-enter Step 6 (this counts toward the iteration budget, like the in-progress sniffer).
+- `cr_engagement == 0` AND `ITER == MAX_ITER`: CR is unreachable or inactive on this SHA. Set `final_state="cr_inactive"` and break the loop. Auto-merge stays disabled (Step 15 already gates on `final_state == "clean"`).
+
+This blocks the PR-just-created case where commit-status is naturally green but CR has not yet posted a single comment — the exact pattern that caused the sankun PR #68 immediate-merge incident — and also closes the Step 6 → Step 8 race that previously let stale CR activity false-clean a fresh push.
 
 ## Step 9: Display + apply (tiered)
 

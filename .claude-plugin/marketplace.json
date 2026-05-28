@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 21 specialized plugins",
-    "version": "1.30.0"
+    "description": "Personal Claude Code plugin collection with 22 specialized plugins",
+    "version": "1.32.0"
   },
   "plugins": [
     {
@@ -18,8 +18,8 @@
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
-      "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline (wait + auto-fetch + apply + push loop with branch-protection-gated auto-merge, CR-engagement guard, Codex review-id discovery + dedupe with grace polling, CR Nitpick + Codex P3 silent skip, optional --skip-minor opt-in for Minor + Codex P2 suppression), project tracking, release",
-      "version": "1.21.2",
+      "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline (now a multi-file skill: wait + auto-fetch + apply + push loop with branch-protection-gated auto-merge, CR-engagement guard, Codex review-id discovery + dedupe, CR Nitpick + Codex P3 silent skip, optional --skip-minor; rate-limit early-escape with auto fallback to local CodeRabbit CLI or Codex-only via --cr-source), project tracking, release",
+      "version": "1.22.0",
       "category": "github"
     },
     {
@@ -145,7 +145,7 @@
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
       "description": "Karpathy LLM-Wiki 3-layer (5 skills: query/ingest/lint/bootstrap/post-merge-wiki + 2 soft-hint hooks + bootstrap templates). Universal — works in any repo with .claude/wiki/.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "memory"
     },
     {
@@ -154,6 +154,13 @@
       "description": "Spec/issue/PR work-pipeline aggregate. state-tracker skill manages .claude/state/spec.json (read/init/start/complete). Called by github-dev:post-merge.",
       "version": "1.0.0",
       "category": "workflow"
+    },
+    {
+      "name": "project-init",
+      "source": "./plugins/project-init",
+      "description": "One-shot first-day project bootstrap: interview, .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines (general/ml/web variants), README/CHANGELOG seed, gh repo create + initial push. Single command /project-init:new.",
+      "version": "0.1.0",
+      "category": "planning"
     }
   ]
 }

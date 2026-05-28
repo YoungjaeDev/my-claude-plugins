@@ -24,6 +24,7 @@ Before starting the workflow:
 | `--codex-grace <sec>` | Pass through to cr-fix; extra wait window after CodeRabbit completes for ChatGPT-Codex review comments (default: 90) |
 | `--no-codex` | Pass through to cr-fix; force-disable Codex auto-detect for the run (default: auto-detect ON) |
 | `--skip-minor` | Pass through to cr-fix; silently skip CR Minor/Trivial/Info severity (excluding Bug/Security) + Codex P2 to shrink the gated queue on lint-heavy PRs |
+| `--cr-source <mode>` | Pass through to cr-fix; review source selector. `auto` (default) falls back to local `coderabbit` CLI or Codex-only on PR-bot rate-limit. `pr-bot` / `cli` / `codex-only` lock the source. |
 
 > **Note**: For parallel development, create worktrees manually before starting Claude sessions. See CLAUDE.md for the recommended worktree workflow.
 
@@ -183,7 +184,7 @@ Before starting the workflow:
     - **[NEW] Save checkpoint**: phase="pr"
 
 10.5. **[NEW] Auto cr-fix loop (default ON)**:
-    - Unless `--skip-cr-fix` is passed, invoke the `/github-dev:cr-fix` workflow inline (read `plugins/github-dev/commands/cr-fix.md` and execute its 16-step body in this same Claude turn). Pass through the resolve-issue flags: `--cr-fix-max <n>` becomes cr-fix's `--max-iterations`; `--auto-merge`, `--codex-grace <sec>`, `--no-codex`, `--skip-minor` are forwarded as-is. CodeRabbit auto-review takes ~7-30 min per cycle; ChatGPT-Codex (when present) typically posts within 5 min after CR; cr-fix's wait phase uses `Bash(run_in_background) + Monitor` so token cost during waits is ~0. Codex auto-detect is enabled by default — repos without Codex installed see no behavior change.
+    - Unless `--skip-cr-fix` is passed, invoke the `/github-dev:cr-fix` skill (`plugins/github-dev/skills/cr-fix/SKILL.md`) and let it run its 16-step lifecycle in this same Claude turn. Pass through the resolve-issue flags: `--cr-fix-max <n>` becomes cr-fix's `--max-iterations`; `--auto-merge`, `--codex-grace <sec>`, `--no-codex`, `--skip-minor`, `--cr-source <auto|pr-bot|cli|codex-only>` are forwarded as-is. CodeRabbit auto-review takes ~7-30 min per cycle; ChatGPT-Codex (when present) typically posts within 5 min after CR; cr-fix's wait phase uses `Bash(run_in_background) + Monitor` so token cost during waits is ~0. Codex auto-detect is enabled by default — repos without Codex installed see no behavior change. PR-bot rate-limit detection (~30s) auto-flips to local `coderabbit` CLI or Codex-only when `--cr-source=auto`.
 
     > **Ambiguous user phrase handling**:
     >

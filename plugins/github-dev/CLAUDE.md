@@ -12,7 +12,7 @@ GitHub workflow automation commands for Claude Code.
 | `/github-dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
 | `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
-| `/github-dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex pipeline: wait + fetch + apply + push loop until clean, with optional auto-merge (default OFF; pass `--auto-merge` to enroll). Gates merge on branch-protection presence and on actual CR engagement. CR Refactor suggestions at Minor/Trivial/Info auto-apply; CR substantive items (Bug, Potential issue, Security, Critical/High/Major) and Codex P1/P2 are gated per-issue. CR Nitpicks and Codex P3 are silently skipped. Codex is auto-detected per PR (engaged at least once → ON; never engaged → OFF). Optional `--skip-minor` opt-in silently demotes CR Minor severity (excluding Bug/Security) + Codex P2 to skip, for lint-heavy PRs where the default gated queue is too long. |
+| `/github-dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex pipeline (multi-file skill at `skills/cr-fix/`): wait + fetch + apply + push loop until clean, with optional auto-merge (default OFF; pass `--auto-merge` to enroll). Gates merge on branch-protection presence and on actual CR engagement. CR Refactor suggestions at Minor/Trivial/Info auto-apply; CR substantive items (Bug, Potential issue, Security, Critical/High/Major) and Codex P1/P2 are gated per-issue. CR Nitpicks and Codex P3 are silently skipped. Codex is auto-detected per PR (engaged at least once → ON; never engaged → OFF). `--skip-minor` opt-in demotes CR Minor severity (excluding Bug/Security) + Codex P2 to skip. `--cr-source <auto\|pr-bot\|cli\|codex-only>` controls review source; `auto` falls back to the local `coderabbit` CLI or Codex-only when the PR-bot is rate-limited (early-escape ~30s, no more 1800s spin). |
 | `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |
 
 ## resolve-issue Flags
@@ -27,6 +27,7 @@ GitHub workflow automation commands for Claude Code.
 | `--codex-grace <sec>` | Pass through to cr-fix; Codex grace window after CR completes (default: 90) |
 | `--no-codex` | Pass through to cr-fix; force-disable Codex auto-detect for the run |
 | `--skip-minor` | Pass through to cr-fix; demote CR Minor (excluding Bug/Security) + Codex P2 to skip |
+| `--cr-source <mode>` | Pass through to cr-fix; review source: `auto` (default, fall back to CLI/codex-only on PR-bot rate-limit), `pr-bot`, `cli`, `codex-only` |
 
 ## Worktree Workflow (PR-based)
 
@@ -83,6 +84,15 @@ Tracks milestone progress with architecture diagrams synced to GitHub.
 
 - `gh` CLI installed and authenticated
 - GitHub repository with proper permissions
+
+## gh / jq Invariants
+
+All commands in this plugin shell out to `gh` and `jq`. Four pitfalls that silently break new bash blocks:
+
+- `gh ... --jq <expr>` accepts a single filter string and does NOT forward jq CLI flags (`--arg`, `--argjson`). Variable injection requires the pipe form: `gh ... | jq --arg name "$value" '...'`. Trying `gh ... --jq --arg name "$v" '...'` fails with `accepts 1 arg(s), received 4`.
+- REST endpoints (`/pulls/{pr}/reviews`, `/issues/{pr}/comments`, `/commits/{sha}/statuses`) default to `per_page=30` and return paginated results. On long-lived PRs or CI-heavy SHAs the first page can be all-old or all-newest-30 — use `gh api --paginate ... | jq -s 'add // []' | jq ...` to slurp every page into a single array before filtering.
+- `/commits/{sha}/statuses` (plural) returns every individual status event; `/commits/{sha}/status` (singular) collapses to one latest entry per context. The singular endpoint hides early `pending` entries, so use plural when the earliest moment a SHA was observed matters.
+- Commit `committer.date` is git metadata — cherry-picks, rebases, or stale-commit pushes make it arbitrarily older than the actual push. For "when did GitHub first see this SHA" use the earliest `/statuses` `created_at`; `committer.date` is acceptable only as a last-resort fallback when no statuses exist yet.
 
 ## Task Tool 2.1.16 Syntax
 

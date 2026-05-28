@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/YoungjaeDev/my-claude-plugins/plugins/github-dev/skills/cr-fix/assets/state.schema.json",
+  "title": "cr-fix per-run state file",
+  "description": "Lives at .claude/state/cr-fix-${PR_NUM}.json. Single-run informational record. Archived on Step 16 exit. Inherits codex_processed_reviews from prior session.",
+  "type": "object",
+  "required": ["start_sha", "iter", "applied_total", "deferred_total", "codex_processed_reviews"],
+  "properties": {
+    "start_sha":               { "type": "string", "description": "git rev-parse HEAD at Step 2." },
+    "iter":                    { "type": "integer", "minimum": 0 },
+    "applied_total":           { "type": "integer", "minimum": 0 },
+    "deferred_total":          { "type": "integer", "minimum": 0 },
+    "codex_processed_reviews": {
+      "type": "array",
+      "items":   { "type": "integer", "description": "Codex review id (pull_request_review_id)." },
+      "uniqueItems": true,
+      "description": "Cross-iter / cross-run dedupe of surfaced Codex reviews. See references/codex-state-machine.md."
+    },
+    "cr_source": {
+      "type": "string",
+      "enum": ["pending", "pr-bot", "cli", "codex-only"],
+      "description": "Resolved source after Step 5b heuristic and Step 7c silent flip. 'pending' before any iter has run."
+    }
+  },
+  "additionalProperties": true
+}

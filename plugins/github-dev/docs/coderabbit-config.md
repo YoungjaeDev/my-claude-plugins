@@ -64,6 +64,54 @@ After saving, push a commit and verify:
 
 If either fails, the corresponding flag in this config is the most likely culprit.
 
+## Local CodeRabbit CLI fallback (`--cr-source cli`)
+
+When the PR-bot is rate-limited (org quota exhausted), `cr-fix` (with `--cr-source auto`, the default) can fall back to the locally installed `coderabbit` CLI which has its own per-user quota independent of PR-bot. Force the path explicitly via `--cr-source cli`.
+
+### Install
+
+```bash
+# Linux / macOS via official installer
+curl -fsSL https://cli.coderabbit.ai/install.sh | sh
+
+# macOS via Homebrew
+brew install coderabbit
+```
+
+Verify: `coderabbit --version`.
+
+### Authenticate
+
+Interactive (recommended for local dev):
+```bash
+coderabbit auth login
+```
+
+CI / non-interactive: export `CODERABBIT_TOKEN` (generate at https://app.coderabbit.ai/settings/api-keys).
+
+### Rate limits
+
+Per-user, refillable bucket independent of the PR-bot org quota:
+
+| Plan | Calls / hour |
+|------|--------------|
+| Free | 3 |
+| Pro  | 5 |
+| Pro+ | 10 |
+
+cr-fix counts CLI spawns in the Step 16 final JSON as `cli_invocations`. Stay within bucket — repeated rate-limit hits within the same loop fall through to `final_state=cli_failed` (no auto-retry).
+
+### Source selection table
+
+| `--cr-source` | Behavior |
+|---|---|
+| `auto` (default) | PR-bot first; on rate-limit detection (~30s window) auto-flip to `cli` if installed+authed, else `codex-only` if Codex active, else AskUserQuestion. |
+| `pr-bot` | Never flip. Rate-limit gives `final_state=rate_limited`. |
+| `cli` | Skip PR-bot entirely. Pre-flight requires `coderabbit` installed + authed. |
+| `codex-only` | Skip CR entirely. Pre-flight requires Codex active on the PR. |
+
+See `plugins/github-dev/skills/cr-fix/references/rate-limit-fallback.md` for the full decision matrix.
+
 ## What is intentionally NOT in this template
 
 - `pre_merge_checks.*.mode: error` and `request_changes_workflow: true` — these gate auto-merge and are out of scope for cr-fix's default flow. Add them only when adopting auto-merge separately.

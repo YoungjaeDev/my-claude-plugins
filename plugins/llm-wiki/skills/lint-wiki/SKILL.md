@@ -41,7 +41,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
    ```bash
    today=$(date +%s)
    while IFS= read -r f; do
-     d=$(grep -oP '^last_verified:\s*\K\d{4}-\d{2}-\d{2}' "$f" || true)
+     d=$(LC_ALL=C.UTF-8 grep -oP '^last_verified:\s*\K\d{4}-\d{2}-\d{2}' "$f" || true)
      [[ -z "$d" ]] && continue
      age_days=$(( (today - $(date -d "$d" +%s)) / 86400 ))
      [[ $age_days -gt 60 ]] && printf '%s (%d days)\n' "$f" "$age_days"
@@ -52,7 +52,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
 5. **Orphan scan** (pages not in index, indexed pages that don't exist):
    ```bash
    diff <(find .claude/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md' | sort) \
-        <(grep -oP '\(\K[^)]+\.md' .claude/wiki/index.md | sed 's|^|.claude/wiki/|' | sort)
+        <(LC_ALL=C.UTF-8 grep -oP '\(\K[^)]+\.md' .claude/wiki/index.md | sed 's|^|.claude/wiki/|' | sort)
    ```
 
 6. **MOC integrity** (cross-refs to non-existent pages):

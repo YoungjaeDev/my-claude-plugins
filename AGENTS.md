@@ -79,8 +79,11 @@ node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose
 ### P1 — Performance / Maintainability
 - **Plugin versioning 위반** — `plugins/<name>/.claude-plugin/plugin.json` 와 `.claude-plugin/marketplace.json` 의 version 불일치, `metadata.version` 누락.
 - **Plugin count drift** — 루트 `CLAUDE.md` / `README.md` 의 플러그인 수 / badge / 트리가 marketplace.json 과 어긋남.
-- **`gh api --paginate` + `--jq` 조합에 `--slurp` 누락** — multi-page 응답에서 jq 가 multiple JSON document 받음 (PR #24 의 실제 finding). 단, `gh` 는 `--slurp` 와 `--jq` 동시 사용을 거부하므로 `gh api --paginate --slurp ENDPOINT | jq ...` 패턴을 쓴다.
-- **Idempotency 회귀** — 같은 디렉토리 재실행 시 사용자 파일 덮어쓰기. `[ -f X ] || cp ...` 가드 누락.
+- **`gh api --paginate` + `--jq` 조합에 `--slurp` 누락** — multi-page 응답에서 jq 가 multiple JSON document 받음. 단, `gh` 는 `--slurp` 와 `--jq` 동시 사용을 거부하므로 `gh api --paginate --slurp ENDPOINT | jq ...` 패턴을 쓴다.
+- **Idempotency 회귀** — 같은 디렉토리 재실행 시 사용자 파일 덮어쓰기, `git commit` 이 변경 없을 때 `nothing to commit` 으로 abort, 이미 등록된 `origin` remote 에 `gh repo create --remote=origin` 충돌, 등. `[ -f X ] || cp ...` / `git diff --cached --quiet` / `git remote get-url origin` 류 가드를 한 곳에 모아 점검.
+- **Cross-platform shell 가정** — `sed -i 'cmd'` 는 GNU-only, BSD/macOS 는 `sed -i '' 'cmd'` 시그니처. `${VAR,,}` 는 Bash 4+ 전용이라 macOS 기본 `/bin/bash` 3.2 에서 bad substitution 으로 깨짐. 둘 다 detect+branch (`sed --version`) 또는 POSIX alternative (`tr '[:upper:]' '[:lower:]'`) 사용.
+- **사용자 입력 substitution safety** — `sed` replacement 에서 `&` 는 매치 전체로 확장되고 `\` / 구분자 (`|` 등) 도 escape 필요. 사용자 입력을 placeholder 로 sed 에 넣기 전 `sed 's/[\\&|]/\\&/g'` 류로 정화. `AskUserQuestion` 라벨 (`"X (Recommended)"`) 을 그대로 변수에 넣어 파일 경로 / CLI 플래그 토큰으로 쓰지 말 것 — case-match 로 도메인 토큰 (`general` / `private` 등) 추출 후 사용.
+- **API 실패와 빈 결과 구분** — `gh api ... || echo "[]"` 같은 패턴은 네트워크 / rate-limit / 권한 에러를 "결과 없음" 으로 삼켜 사용자가 잘못된 결정을 내리게 함. 실패 시 명시적 `exit 2` 또는 stderr 로그 + 호출자 통보.
 - Skill / command 의 frontmatter 누락 또는 잘못된 `name:` / `description:` (codex-bridge sync 가 깨짐).
 - `Read` / `Edit` 가능한 영역을 `Bash cat` / `Bash sed` 로 우회 (Claude Code 도구 우선 규칙 위반).
 - 새 dependency, GitHub Actions, CI/CD 권한 변경 — 최소 권한, lockfile, supply-chain.
@@ -89,7 +92,7 @@ node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose
 - 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `marketplace.json` entry + `metadata.version` 4 곳 동시 업데이트 필수.
 - `plugins/codex-bridge/scripts/sync.mjs` 변경 시 `.claude/rules/codex-bridge-sync.md` 의 invariants (SSOT, body-only transform, `bridge_source` 마커, collision guard) 위반 여부 확인.
 - Skill body 의 transform rule (`CLAUDE.md→AGENTS.md`, `.claude/→.codex/`, namespace regex) 은 frontmatter 보존이 contract. 새 rule 추가 시 `bodyOnly: true` 유지.
-- Plugin 캐시 이슈 (`#17361`, `#19197`) — version bump 만으로는 사용자 캐시 갱신 보장 안 됨. 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차 유지.
+- Plugin 캐시 이슈 ([anthropics/claude-code#17361](https://github.com/anthropics/claude-code/issues/17361), [anthropics/claude-code#19197](https://github.com/anthropics/claude-code/issues/19197)) — version bump 만으로는 사용자 캐시 갱신 보장 안 됨. 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차 유지.
 
 ## CodeRabbit / Codex 조율
 

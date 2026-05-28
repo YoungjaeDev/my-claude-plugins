@@ -94,7 +94,7 @@ Look at the query and pick scouts. See `references/agent-routing.md` for the ful
 
 Assign sequential `artifact_id` slots in dispatch order: `01_github`, `02_hf`, `03_web`, `04_docs`.
 
-For academic queries (papers, benchmarks, SOTA), do **not** dispatch a `paper-scout` — that agent is not wired up in v2.0. Instead, route the user to the `paper-search-tools` plugin (its `paper-search-usage` skill documents the actual MCP tool surface, which Claude Code namespaces as `mcp__plugin_paper-search-tools_paper-search__*`; rely on the skill instead of memorizing a path), or include a `## Gaps` note in the report. Native `paper-scout` integration is scheduled for the next PR.
+For academic queries (papers, benchmarks, SOTA), do **not** dispatch a `paper-scout` — that agent is not wired up in v2.0. Instead, route the user to the `paper-search-tools` plugin and let its `paper-search-usage` skill drive the actual tool calls (it owns the canonical MCP tool names; this skill should not duplicate them). When papers are only one of several requested axes, include a `## Gaps` note pointing at `paper-search-tools` in the final report. Native `paper-scout` integration is scheduled for the next PR.
 
 ### 4. Fan-out dispatch
 

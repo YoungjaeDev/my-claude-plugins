@@ -267,14 +267,19 @@ CodeRabbit sometimes flips `commit_status` to success while still processing. De
 ```bash
 # PUSH_TIME = earliest individual status created_at on this SHA. Best proxy for "when GitHub
 # first saw this SHA" — CR / CI typically post a `pending` status within ~seconds of receiving
-# the webhook. NOTE: must use /commits/{sha}/statuses (plural, full history) not /status
-# (singular, latest-per-context combined view) — the singular endpoint hides the early `pending`
-# entries and would yield the review-complete time instead of the push time.
+# the webhook. NOTES:
+#   - Must use /commits/{sha}/statuses (plural, full history) not /status (singular,
+#     latest-per-context combined view) — the singular endpoint hides early `pending`
+#     entries and would yield the review-complete time instead of the push time.
+#   - Must use --paginate; the statuses endpoint returns latest-first with default per_page=30,
+#     so an unpaginated read on a CI-heavy SHA picks "oldest of the newest 30" rather than
+#     the actual earliest status, shifting PUSH_TIME forward past CR's review for this push.
+#     `jq -s 'add // []'` slurps all pages into a single array before sorting.
 # Falls back to commit committer.date only if no statuses exist yet (very rare race) — but
 # committer.date is git metadata, NOT push time, so cherry-picks or stale-commit pushes would
 # otherwise leak prior-push CR activity through the SHA-aware filters below.
-PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" \
-  --jq '[.[].created_at] | sort | .[0] // empty')
+PUSH_TIME=$(gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" \
+  | jq -sr 'add // [] | [.[].created_at] | sort | .[0] // empty')
 [ -n "$PUSH_TIME" ] || PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
 gh pr view "$PR_NUM" --json comments,reviews | jq --arg t "$PUSH_TIME" '
   [
@@ -393,8 +398,8 @@ If the **combined** count (CR actionable threads + Codex actionable records) is 
 # Has CodeRabbit engaged with THIS push? (review submitted_at / comment created_at > push time)
 # PUSH_TIME = earliest individual /statuses created_at; see Step 7 for rationale (committer.date
 # is git metadata, not push time, and would leak prior-push CR activity through this gate).
-PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" \
-  --jq '[.[].created_at] | sort | .[0] // empty')
+PUSH_TIME=$(gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" \
+  | jq -sr 'add // [] | [.[].created_at] | sort | .[0] // empty')
 [ -n "$PUSH_TIME" ] || PUSH_TIME=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA" --jq '.commit.committer.date')
 cr_review_count=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
   | jq -s 'add // []' \

@@ -427,7 +427,7 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 2. 첫 도메인 lore → `/llm-wiki:bootstrap-wiki`
 3. 첫 PR merge 후 → `/github-dev:post-merge` (자동 `/llm-wiki:post-merge-wiki` 체이닝)
 
-**Requirements:** `gh` CLI authenticated
+**Requirements:** `gh` CLI authenticated, `git`, `jq`
 
 </details>
 

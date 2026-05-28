@@ -27,6 +27,7 @@ GitHub workflow automation commands for Claude Code.
 | `--codex-grace <sec>` | Pass through to cr-fix; Codex grace window after CR completes (default: 90) |
 | `--no-codex` | Pass through to cr-fix; force-disable Codex auto-detect for the run |
 | `--skip-minor` | Pass through to cr-fix; demote CR Minor (excluding Bug/Security) + Codex P2 to skip |
+| `--cr-source <mode>` | Pass through to cr-fix; review source: `auto` (default, fall back to CLI/codex-only on PR-bot rate-limit), `pr-bot`, `cli`, `codex-only` |
 
 ## Worktree Workflow (PR-based)
 

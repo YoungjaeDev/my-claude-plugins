@@ -96,7 +96,7 @@ node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose
 
 ## CodeRabbit / Codex 조율
 
-이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/github-dev:cr-fix` 명령이 양쪽을 동시에 처리한다 (`plugins/github-dev/commands/cr-fix.md`).
+이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/github-dev:cr-fix` 스킬이 양쪽을 동시에 처리한다 (`plugins/github-dev/skills/cr-fix/SKILL.md` + `references/` + `scripts/`). PR-bot rate-limit 시 `--cr-source auto` 가 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback (~30s 감지, 1800s spin 해소).
 
 | Source | Tier 정책 |
 |--------|-----------|

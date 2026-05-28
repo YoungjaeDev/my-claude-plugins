@@ -1,9 +1,11 @@
 ---
 name: deep-scout
 description: |
-  DEPRECATED in code-scout v2.0. Routes any invocation to the new
-  `research-orchestrator` skill (deep mode). Kept as a thin shim so existing
-  `Agent(subagent_type="code-scout:deep-scout")` calls keep working.
+  DEPRECATED in code-scout v2.0. Doc-only pointer — does not perform research
+  and does not transparently delegate. Returns a migration message instructing
+  the caller to re-run from the main session via
+  `Skill("code-scout:research-orchestrator")` or call a specific scout
+  (`code-scout:{github,hf,web,docs}-scout`) directly.
 model: opus
 ---
 

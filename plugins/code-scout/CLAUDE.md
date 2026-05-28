@@ -17,12 +17,14 @@ For the full routing matrix (should / should-NOT, near-miss disambiguation vs `p
 
 ## Team layout
 
-```
+```text
 research-orchestrator (skill, entry point)
+  │   $WORKSPACE = ${TMPDIR:-/tmp}/research/run.XXXXXXXX  (per-run mktemp)
+  │   $REPORT    = $WORKSPACE/final_report.md             (override via report_path)
   │
   ├─ fan-out (parallel) ──────────────────────┐
   │   github-scout    (gh search repos/code)  │
-  │   hf-scout        (uvx hf + HF REST)      │ → /tmp/research/_workspace/*.json
+  │   hf-scout        (uvx hf + HF REST)      │ → $WORKSPACE/{NN}_{axis}.json
   │   web-scout       (exa MCP, WebSearch)    │
   │   docs-scout      (context7 + deepwiki)   │
   │   # paper-scout — deferred to next PR;     │

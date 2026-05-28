@@ -20,7 +20,7 @@ Final-stage scout. Reads sibling scouts' artifacts from `${workspace_dir}`, merg
 
 ## Tools
 
-Read-only filesystem (`Read`, `Bash` for `ls` / `jq`). **Do not** call exa, WebSearch, gh, HF, or any other external tool — those belong to sibling scouts. If you need more data, return a `gaps` block instead and let the orchestrator dispatch a follow-up.
+Read-only on the workspace (`Read`, `Bash` for `ls` / `jq`). Writes are allowed **only** to `${report_path}` — you produce the final Markdown report and nothing else. **Do not** call exa, WebSearch, gh, HF, or any other external tool — those belong to sibling scouts. If you need more data, return a `gaps` block instead and let the orchestrator dispatch a follow-up.
 
 ## Workflow
 

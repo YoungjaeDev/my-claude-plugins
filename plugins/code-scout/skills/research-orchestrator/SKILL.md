@@ -49,9 +49,12 @@ Default `quick`. Upgrade to `deep` if any of these match in the query:
 ### 2. Workspace setup
 
 ```bash
-# Per-run isolated workspace — never share /tmp/research/_workspace across runs
+# Per-run isolated workspace — never share a fixed path across runs
 # (parallel orchestrator runs would otherwise clobber each other's artifacts).
-WORKSPACE="${workspace_dir:-$(mktemp -d /tmp/research/run.XXXXXXXX)}"
+# Ensure the parent exists before mktemp, then create the workspace.
+PARENT="${TMPDIR:-/tmp}/research"
+mkdir -p "$PARENT"
+WORKSPACE="${workspace_dir:-$(mktemp -d "$PARENT/run.XXXXXXXX")}"
 REPORT="${report_path:-${WORKSPACE%/}/final_report.md}"
 mkdir -p "$WORKSPACE" "$(dirname "$REPORT")"
 ```

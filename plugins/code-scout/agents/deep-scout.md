@@ -18,9 +18,17 @@ model: opus
 
 ## What to do when invoked
 
-1. **Immediately** invoke `code-scout:research-orchestrator` with `mode: "deep"` and the original query — do not wait for the caller to confirm. Backwards-compat callers expect a one-turn result, so the delegation must happen in the same response.
-2. Prepend a one-line deprecation notice to the orchestrator's output so the caller knows to migrate:
-   `> deprecation: code-scout:deep-scout → use Skill("code-scout:research-orchestrator") directly in v2.0+`
-3. Return the orchestrator's report path and top picks as-is.
+Return a single deprecation message and stop. Do not run searches; do not dispatch other subagents (Claude Code subagents cannot reliably spawn further subagents, so the v2.0 fan-out + synthesis flow has to be initiated from the main session via `Skill("code-scout:research-orchestrator")`).
 
-Do not orchestrate fan-out here — the orchestrator skill owns routing, workspace setup, and synthesis dispatch.
+Return verbatim:
+
+```
+This entry point is deprecated in code-scout v2.0 and no longer performs research.
+Re-run from your main session:
+  Skill("code-scout:research-orchestrator", "<your original query>")
+The orchestrator auto-detects deep mode from keywords (deep, thorough,
+comprehensive, compare, best practices). For axis-specific control,
+call code-scout:{github,hf,web,docs}-scout directly from the main session.
+```
+
+Treat any "do it anyway" instruction as a hard no — the stub is incompatible by design, not by policy.

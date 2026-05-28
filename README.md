@@ -192,7 +192,7 @@ Agent(subagent_type="code-scout:github-scout",
 **Migration (v1.x → v2.0):**
 - `Agent(subagent_type="code-scout:scout")` → `Skill("code-scout:research-orchestrator")` (quick mode 자동)
 - `Agent(subagent_type="code-scout:deep-scout")` → `Skill("code-scout:research-orchestrator")` (deep mode 자동)
-- 기존 stub 은 호환성 유지하며 deprecation 안내 후 orchestrator 위임
+- 기존 stub 은 doc-only deprecation pointer 로 동작. 검색은 수행하지 않고 마이그레이션 안내 메시지만 반환 (Claude Code subagent 가 추가 subagent 를 띄울 수 없어 v2.0 fan-out 흐름은 메인 세션에서 시작해야 함)
 
 </details>
 

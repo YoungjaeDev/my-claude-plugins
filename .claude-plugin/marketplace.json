@@ -145,7 +145,7 @@
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
       "description": "Karpathy LLM-Wiki 3-layer (5 skills: query/ingest/lint/bootstrap/post-merge-wiki + 2 soft-hint hooks + bootstrap templates). Universal — works in any repo with .claude/wiki/.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "memory"
     },
     {

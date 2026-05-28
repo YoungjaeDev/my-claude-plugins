@@ -17,7 +17,7 @@
 
 ## 파일 구성
 
-```
+```text
 plugins/project-init/
 ├── .claude-plugin/plugin.json
 ├── commands/new.md                     # 단일 orchestration command

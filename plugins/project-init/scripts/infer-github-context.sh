@@ -33,7 +33,9 @@ if [ -z "$PERSONAL" ]; then
 fi
 
 # Orgs (paginated)
-ORGS_JSON=$(gh api --paginate /user/orgs --jq '[.[].login]' 2>/dev/null || echo "[]")
+# Note: gh CLI rejects --slurp + --jq together, so we pipe to local jq.
+# --slurp wraps multi-page responses as array-of-arrays; [.[][].login] flattens.
+ORGS_JSON=$(gh api --paginate --slurp /user/orgs 2>/dev/null | jq -c '[.[][].login]' 2>/dev/null || echo "[]")
 if [ -z "$ORGS_JSON" ]; then
   ORGS_JSON="[]"
 fi

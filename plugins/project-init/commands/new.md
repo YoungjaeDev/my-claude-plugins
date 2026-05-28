@@ -123,16 +123,22 @@ placeholder (`<project_name>`, `<one-line description>`) 는 Phase 1 응답으�
 - header: "Variant"
 - options: "<recommended> (Recommended)" / 나머지 2 개
 
+> 응답을 `VARIANT` 변수에 할당 (예: `general` / `ml` / `web`). 사용자가 비워두거나 응답 누락 시 default `VARIANT=general`.
+
 ```bash
 SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.${VARIANT}.md"
 # Variant 가 general 이면 base 파일
 [ "$VARIANT" = "general" ] && SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.md"
 
-cp "$SRC" AGENTS.md
-# placeholder 치환
-sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" AGENTS.md
-sed -i "s|{{ONE_LINER}}|${ONE_LINER}|g" AGENTS.md
-sed -i "s|{{OWNER}}|${OWNER}|g" AGENTS.md
+if [ ! -f AGENTS.md ]; then
+  cp "$SRC" AGENTS.md
+  # placeholder 치환
+  sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" AGENTS.md
+  sed -i "s|{{ONE_LINER}}|${ONE_LINER}|g" AGENTS.md
+  sed -i "s|{{OWNER}}|${OWNER}|g" AGENTS.md
+else
+  echo "[skip] AGENTS.md already exists — preserving existing content"
+fi
 ```
 
 AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 자동으로 읽는다 ([OpenAI Codex GitHub integration](https://developers.openai.com/codex/integrations/github)) — 사용자에게 한 줄 안내.
@@ -145,7 +151,7 @@ AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 �
 
 sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" README.md CHANGELOG.md
 sed -i "s|{{ONE_LINER}}|${ONE_LINER}|g" README.md
-sed -i "s|{{OWNER}}|${OWNER}|g" README.md
+sed -i "s|{{OWNER}}|${OWNER}|g" README.md CHANGELOG.md
 sed -i "s|{{LICENSE}}|${LICENSE}|g" README.md
 ```
 
@@ -179,7 +185,7 @@ License 가 None 이 아니면 — gh repo create 후 `gh api` 로 LICENSE 파�
 
 ## Phase 7 — Summary + Next Actions
 
-```
+```text
 ✓ Project '<name>' bootstrapped at <cwd>
 
 Files seeded:

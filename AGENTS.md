@@ -58,3 +58,47 @@ node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose
 - 사용자-facing 문서는 한국어 설명을 자연스럽게 유지하고, 명령어와 경로는 코드 포맷으로 표기하세요.
 - README류 문서는 실제 설치/사용 흐름을 우선하고, 플러그인 수, 플러그인 이름, 명령어 예시는 매니페스트와 일치시켜야 합니다.
 - 큰 구조 변경 없이 문서만 보강하는 경우에도 관련 count, badge, 목록이 stale하지 않은지 확인하세요.
+
+## Review guidelines
+
+> 이 섹션은 Codex GitHub cloud reviewer 가 자동으로 읽는 영역이다. 한국어로 리뷰한다. 발견사항은 영향 + 근거 (파일/라인) + 수정 방향 순서로 제시한다. 근거가 부족하면 `unverified` 로 표시한다.
+
+### Do not flag (린터/포매터 영역)
+- 들여쓰기, 따옴표 스타일, trailing whitespace — 포매터 영역.
+- import 순서, 한 줄 helper 추출 — 결함이 아니면 skip.
+- 단순 typo / 영문 문법 — 의미 오류 아니면 skip.
+- Markdown 줄바꿈 / 줄간격 micro-optimization — 가독성 문제 아니면 skip.
+
+### P0 — Correctness / Security
+- Secret / API key / token 노출 (사용자 GitHub PAT, OpenAI/Anthropic key 등).
+- `gh api` / `gh pr merge` / `gh repo create` 류 destructive 명령이 사용자 확인 없이 실행되는 흐름.
+- Plugin SSOT 위반 — `plugins/*/skills/**` 외부에서 sync 결과물 (`~/.agents/skills/`, `~/.codex/agents/`) 을 직접 수정하는 코드.
+- `bridge_source` provenance marker 없이 sync target 파일을 prune / 덮어쓰기.
+- Shell injection — 사용자 입력을 quote 없이 shell 명령에 합치는 경우.
+
+### P1 — Performance / Maintainability
+- **Plugin versioning 위반** — `plugins/<name>/.claude-plugin/plugin.json` 와 `.claude-plugin/marketplace.json` 의 version 불일치, `metadata.version` 누락.
+- **Plugin count drift** — 루트 `CLAUDE.md` / `README.md` 의 플러그인 수 / badge / 트리가 marketplace.json 과 어긋남.
+- **`gh api --paginate` + `--jq` 조합에 `--slurp` 누락** — multi-page 응답에서 jq 가 multiple JSON document 받음 (PR #24 의 실제 finding). 단, `gh` 는 `--slurp` 와 `--jq` 동시 사용을 거부하므로 `gh api --paginate --slurp ENDPOINT | jq ...` 패턴을 쓴다.
+- **Idempotency 회귀** — 같은 디렉토리 재실행 시 사용자 파일 덮어쓰기. `[ -f X ] || cp ...` 가드 누락.
+- Skill / command 의 frontmatter 누락 또는 잘못된 `name:` / `description:` (codex-bridge sync 가 깨짐).
+- `Read` / `Edit` 가능한 영역을 `Bash cat` / `Bash sed` 로 우회 (Claude Code 도구 우선 규칙 위반).
+- 새 dependency, GitHub Actions, CI/CD 권한 변경 — 최소 권한, lockfile, supply-chain.
+
+### Domain-specific (Claude Code plugin marketplace)
+- 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `marketplace.json` entry + `metadata.version` 4 곳 동시 업데이트 필수.
+- `plugins/codex-bridge/scripts/sync.mjs` 변경 시 `.claude/rules/codex-bridge-sync.md` 의 invariants (SSOT, body-only transform, `bridge_source` 마커, collision guard) 위반 여부 확인.
+- Skill body 의 transform rule (`CLAUDE.md→AGENTS.md`, `.claude/→.codex/`, namespace regex) 은 frontmatter 보존이 contract. 새 rule 추가 시 `bodyOnly: true` 유지.
+- Plugin 캐시 이슈 (`#17361`, `#19197`) — version bump 만으로는 사용자 캐시 갱신 보장 안 됨. 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차 유지.
+
+## CodeRabbit / Codex 조율
+
+이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/github-dev:cr-fix` 명령이 양쪽을 동시에 처리한다 (`plugins/github-dev/commands/cr-fix.md`).
+
+| Source | Tier 정책 |
+|--------|-----------|
+| CR `🚨 Bug` / `⚠️ Potential issue` / `🔒 Security` / `🔴 Critical-High` / `🟠 Major` | `gated` — per-issue 확인 |
+| CR `🛠️ Refactor` (`🟡 Minor` / `🟢 Trivial` / `🟢 Info`) | `auto` — 자동 적용 |
+| CR `📝 Nitpick` | `skip` |
+| Codex P1 (red), P2 (yellow) | `gated` |
+| Codex P3 (green) | `skip` |

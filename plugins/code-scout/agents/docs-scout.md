@@ -14,7 +14,7 @@ Single-axis scout for canonical documentation. Fans out under `research-orchestr
 ## Inputs (from orchestrator)
 
 - `query` — what the user actually wants to know
-- `workspace_dir` — default `/tmp/research/_workspace`
+- `workspace_dir` — absolute path; required when called directly (no implicit fixed default — the orchestrator passes a per-run `mktemp` directory)
 - `artifact_id` — slot like `04_docs`
 - Optional: `library_hint` (e.g. `"pytorch"`), `repo_hint` (e.g. `"pytorch/serve"`), `topic` (narrow subtopic)
 

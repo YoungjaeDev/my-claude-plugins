@@ -15,7 +15,7 @@ Single-axis scout for the open web. Fans out under `research-orchestrator`; writ
 ## Inputs (from orchestrator)
 
 - `query` — natural-language target
-- `workspace_dir` — default `/tmp/research/_workspace`
+- `workspace_dir` — absolute path; required when called directly (no implicit fixed default — the orchestrator passes a per-run `mktemp` directory)
 - `artifact_id` — slot like `03_web`
 - Optional: `site_hints` (e.g. `["reddit.com", "stackoverflow.com"]`), `time_range` (e.g. `"past year"`)
 

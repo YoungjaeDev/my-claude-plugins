@@ -15,7 +15,7 @@ Single-axis scout for the HF hub. Fans out under `research-orchestrator`; writes
 ## Inputs (from orchestrator)
 
 - `query` — natural-language target (task or model family)
-- `workspace_dir` — default `/tmp/research/_workspace`
+- `workspace_dir` — absolute path; required when called directly (no implicit fixed default — the orchestrator passes a per-run `mktemp` directory)
 - `artifact_id` — slot like `02_hf`
 - Optional: `repo_type` (`model` | `dataset` | `space`), `sort` (`downloads` | `likes`), `limit`
 

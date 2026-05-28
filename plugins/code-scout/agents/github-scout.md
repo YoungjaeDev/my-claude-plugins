@@ -15,7 +15,7 @@ Single-axis scout for GitHub. Fans out under `research-orchestrator`; writes fin
 ## Inputs (from orchestrator)
 
 - `query` — natural-language research target
-- `workspace_dir` — absolute path, default `/tmp/research/_workspace`
+- `workspace_dir` — absolute path; required when called directly (no implicit fixed default — the orchestrator passes a per-run `mktemp` directory)
 - `artifact_id` — slot like `01_github` (orchestrator-assigned)
 - Optional: `language`, `min_stars`, `pushed_since` (e.g. `2025-01-01`)
 

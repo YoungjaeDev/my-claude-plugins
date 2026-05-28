@@ -13,10 +13,10 @@ Final-stage scout. Reads sibling scouts' artifacts from `${workspace_dir}`, merg
 
 ## Inputs (from orchestrator)
 
-- `workspace_dir` — default `/tmp/research/_workspace`
+- `workspace_dir` — absolute path; required when called directly (orchestrator passes the same per-run `mktemp` directory the fan-out scouts wrote to)
 - `query` — original user query (for report header)
 - `mode` — `quick` | `deep`
-- `report_path` — absolute path for final Markdown, default `/tmp/research/final_report.md`
+- `report_path` — absolute path for final Markdown; orchestrator defaults this to `${workspace_dir}/final_report.md` so it stays inside the run's workspace
 
 ## Tools
 
@@ -93,7 +93,7 @@ Read-only on the workspace (`Read`, `Bash` for `ls` / `jq`). Writes are allowed 
 ## Output schema (printed to stdout, ≤20 lines)
 
 ```yaml
-report_path: /tmp/research/final_report.md
+report_path: ${WORKSPACE}/final_report.md
 mode: quick | deep
 sources_merged: 4
 top_picks:

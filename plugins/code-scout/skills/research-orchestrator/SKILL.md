@@ -76,15 +76,17 @@ For academic queries (papers, benchmarks, SOTA), do **not** dispatch a `paper-sc
 
 ### 4. Fan-out dispatch
 
-For `deep` mode, dispatch all chosen scouts in a single message so they run concurrently:
+For `deep` mode, dispatch all chosen scouts in a single message so they run concurrently. Always pass the **resolved `$WORKSPACE`** from step 2 — never the literal `/tmp/research/_workspace` string, otherwise parallel orchestrator runs collide:
 
 ```
 Agent(subagent_type="code-scout:github-scout",
-      prompt="query=<...>\nworkspace_dir=/tmp/research/_workspace\nartifact_id=01_github")
+      prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=01_github")
 Agent(subagent_type="code-scout:hf-scout",
-      prompt="query=<...>\nworkspace_dir=/tmp/research/_workspace\nartifact_id=02_hf")
-Agent(subagent_type="code-scout:web-scout", ...)
-Agent(subagent_type="code-scout:docs-scout", ...)
+      prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=02_hf")
+Agent(subagent_type="code-scout:web-scout",
+      prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=03_web")
+Agent(subagent_type="code-scout:docs-scout",
+      prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=04_docs")
 ```
 
 For long-running runs (more than ~2 minutes expected per scout), prefer `Agent({...}, {run_in_background: true})` + `Monitor` so the orchestrator can stream progress.
@@ -97,24 +99,31 @@ After every fan-out scout has written its artifact:
 
 ```
 Agent(subagent_type="code-scout:synthesis-scout",
-      prompt="workspace_dir=/tmp/research/_workspace\nquery=<...>\nmode=<quick|deep>\nreport_path=/tmp/research/final_report.md")
+      prompt="workspace_dir=$WORKSPACE\nquery=<...>\nmode=<quick|deep>\nreport_path=$REPORT")
 ```
 
 Synthesis is strictly read-only on the workspace — it cannot call exa, gh, or HF tools. See `references/synthesis-rules.md` for the merge / trust / conflict rules synthesis-scout follows.
 
 ### 6. Return
 
-Surface the report path and top-3 picks to the user. Do not paste the entire report inline unless the user asked for it — the file path is enough for follow-up.
+Surface the resolved `$REPORT` path and top-3 picks to the user. Do not paste the entire report inline unless the user asked for it — the file path is enough for follow-up.
 
 ## Quick mode shortcut
 
-If only one scout is needed, skip the workspace dance:
+For a single-axis query, still allocate the per-run `$WORKSPACE` (so the scout's contract is consistent and you can re-run synthesis later). Dispatch just the one scout with a single `artifact_id`, then either skip synthesis (read the one artifact yourself for an inline summary) or dispatch synthesis-scout for a one-axis report:
 
 ```
-Agent(subagent_type="code-scout:<single>-scout", prompt="query=<...>\n# no workspace_dir/artifact_id; write findings to stdout")
+# Step 2 already set $WORKSPACE via mktemp.
+Agent(subagent_type="code-scout:<single>-scout",
+      prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=01_<axis>")
+
+# Then either: orchestrator reads $WORKSPACE/01_<axis>.json directly and
+# emits a short Markdown summary (cheaper for trivial queries), OR:
+Agent(subagent_type="code-scout:synthesis-scout",
+      prompt="workspace_dir=$WORKSPACE\nquery=<...>\nmode=quick\nreport_path=$REPORT")
 ```
 
-The scout will return its findings JSON inline; the orchestrator turns it into a one-page Markdown summary itself.
+Do **not** ask the scout to "write findings to stdout" — every scout's contract is artifact-based; ad-hoc stdout-only mode is not supported.
 
 ## Failure handling
 

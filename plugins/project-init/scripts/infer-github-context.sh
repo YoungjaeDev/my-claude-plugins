@@ -19,6 +19,13 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
+# jq 존재 확인 — paginated org 응답 flatten + 최종 envelope 조립에 필수
+# (gh CLI 는 --slurp 와 --jq 동시 사용 거부 → local jq 가 hard dependency)
+if ! command -v jq >/dev/null 2>&1; then
+  echo "[infer-github-context] jq not installed. Install: https://jqlang.github.io/jq/download/" >&2
+  exit 1
+fi
+
 # Auth 확인
 if ! gh auth status >/dev/null 2>&1; then
   echo "[infer-github-context] gh CLI not authenticated. Run: gh auth login" >&2

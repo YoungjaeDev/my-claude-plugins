@@ -18,6 +18,7 @@ description: First-day project bootstrap — interview, .claude/ scaffold, CLAUD
 
 - `gh` CLI 설치 + `gh auth status` OK
 - `git` 설치
+- `jq` 설치 (Phase 0 의 `infer-github-context.sh` 와 일부 placeholder 치환 헬퍼가 의존)
 - 현재 디렉토리가 작업 대상 — `pwd` 출력을 사용자에게 보여주고 진행 확인
 
 ## Phase 0 — Preflight (자동, no prompt)
@@ -130,6 +131,14 @@ SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.${VARIANT}.md"
 # Variant 가 general 이면 base 파일
 [ "$VARIANT" = "general" ] && SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.md"
 
+# Portable in-place sed — GNU sed 는 `sed -i 'cmd' file`, BSD/macOS sed 는
+# `sed -i '' 'cmd' file` 시그니처. `sed --version` 으로 분기한다.
+if sed --version >/dev/null 2>&1; then
+  sed_inplace() { sed -i "$@"; }
+else
+  sed_inplace() { sed -i '' "$@"; }
+fi
+
 # sed replacement 컨텍스트에서 위험한 문자 (\, &, |) escape — 사용자 입력에
 # "Frontend & Backend" 같은 `&` 가 있으면 sed 가 매치 전체를 다시 삽입한다.
 esc_sed() { printf '%s' "$1" | sed 's/[\\&|]/\\&/g'; }
@@ -141,9 +150,9 @@ LICENSE_ESC=$(esc_sed "$LICENSE")
 if [ ! -f AGENTS.md ]; then
   cp "$SRC" AGENTS.md
   # placeholder 치환 (escape 된 값 사용)
-  sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME_ESC}|g" AGENTS.md
-  sed -i "s|{{ONE_LINER}}|${ONE_LINER_ESC}|g" AGENTS.md
-  sed -i "s|{{OWNER}}|${OWNER_ESC}|g" AGENTS.md
+  sed_inplace "s|{{PROJECT_NAME}}|${PROJECT_NAME_ESC}|g" AGENTS.md
+  sed_inplace "s|{{ONE_LINER}}|${ONE_LINER_ESC}|g" AGENTS.md
+  sed_inplace "s|{{OWNER}}|${OWNER_ESC}|g" AGENTS.md
 else
   echo "[skip] AGENTS.md already exists — preserving existing content"
 fi
@@ -154,14 +163,25 @@ AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 �
 ## Phase 5 — README + CHANGELOG
 
 ```bash
-[ -f README.md ] || cp ${CLAUDE_PLUGIN_ROOT}/assets/README.minimal.md README.md
-[ -f CHANGELOG.md ] || cp ${CLAUDE_PLUGIN_ROOT}/assets/CHANGELOG.initial.md CHANGELOG.md
+# 새로 시드한 파일만 추적 — 기존 파일에 의도적으로 둔 {{PROJECT_NAME}} 류
+# placeholder 가 변조되지 않도록 cp 한 파일에만 치환을 적용한다.
+SEEDED_FILES=()
+if [ ! -f README.md ]; then
+  cp "${CLAUDE_PLUGIN_ROOT}/assets/README.minimal.md" README.md
+  SEEDED_FILES+=("README.md")
+fi
+if [ ! -f CHANGELOG.md ]; then
+  cp "${CLAUDE_PLUGIN_ROOT}/assets/CHANGELOG.initial.md" CHANGELOG.md
+  SEEDED_FILES+=("CHANGELOG.md")
+fi
 
-# Phase 4 에서 정의한 *_ESC 값 재사용 — escape 된 값으로 안전 치환
-sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME_ESC}|g" README.md CHANGELOG.md
-sed -i "s|{{ONE_LINER}}|${ONE_LINER_ESC}|g" README.md
-sed -i "s|{{OWNER}}|${OWNER_ESC}|g" README.md CHANGELOG.md
-sed -i "s|{{LICENSE}}|${LICENSE_ESC}|g" README.md
+# Phase 4 에서 정의한 sed_inplace / *_ESC 재사용 — escape + 플랫폼 portable
+for f in "${SEEDED_FILES[@]}"; do
+  sed_inplace "s|{{PROJECT_NAME}}|${PROJECT_NAME_ESC}|g" "$f"
+  sed_inplace "s|{{ONE_LINER}}|${ONE_LINER_ESC}|g" "$f"
+  sed_inplace "s|{{OWNER}}|${OWNER_ESC}|g" "$f"
+  sed_inplace "s|{{LICENSE}}|${LICENSE_ESC}|g" "$f"
+done
 ```
 
 게이트: README.md 첫 30줄 미리보기 후 수정 기회. 한 번 더 호출하지 않고 inline `Edit` 로 즉시 수정.

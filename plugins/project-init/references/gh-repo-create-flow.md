@@ -12,13 +12,16 @@
 # Personal account
 PERSONAL=$(gh api user --jq '.login')
 
-# Orgs 사용자가 멤버인 것 전체
-ORGS=$(gh api /user/orgs --jq '.[].login')
-# 또는 페이지네이션 안전:
-ORGS=$(gh api --paginate /user/orgs --jq '.[].login')
+# Orgs (paginated)
+# gh CLI 는 --slurp 와 --jq 동시 사용을 거부하므로 --slurp 출력을 local jq 로
+# 파이프한다. --paginate 단독 + --jq 는 multi-page 시 jq 가 separate JSON
+# document 를 받아 페이지 경계에서 첫 페이지만 남게 됨 (PR #24 의 실제 finding).
+ORGS=$(gh api --paginate --slurp /user/orgs | jq -c '[.[][].login]')
 ```
 
-> `--paginate` 안전 사용: orgs 가 30 개 넘는 경우 첫 페이지 30 개만 잡힘.
+> `--paginate` 만 단독으로 쓰면 30 개 초과 결과가 multi-document 로 흘러서
+> `--jq` 가 첫 페이지만 잡는다. `--slurp` 으로 array-of-arrays 로 묶고
+> `jq '[.[][].login]'` 로 flatten 하는 패턴이 portable + correct.
 
 ### 결정 트리
 

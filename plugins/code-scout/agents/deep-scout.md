@@ -22,7 +22,7 @@ Return a single deprecation message and stop. Do not run searches; do not dispat
 
 Return verbatim:
 
-```
+```text
 This entry point is deprecated in code-scout v2.0 and no longer performs research.
 Re-run from your main session:
   Skill("code-scout:research-orchestrator", "<your original query>")

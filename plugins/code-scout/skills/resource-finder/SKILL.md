@@ -57,7 +57,9 @@ gh search repos "cookiecutter fastapi" --sort stars
 ### 4. Quality filters
 
 ```bash
-gh search repos "keyword" stars:>50 pushed:>2026-01-01 --language python --sort stars
+# Embed qualifiers inside the quoted query string — leaving stars:>50 unquoted in
+# the shell makes Bash treat `>` as a redirection and silently drops the filter.
+gh search repos "keyword stars:>50 pushed:>2026-01-01" --language python --sort stars
 ```
 
 For HF, use `?sort=downloads&direction=-1` on the REST endpoint to surface mature models first.

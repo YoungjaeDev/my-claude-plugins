@@ -24,7 +24,13 @@ Read-only on the workspace (`Read`, `Bash` for `ls` / `jq`). Writes are allowed 
 
 ## Workflow
 
-1. `ls ${workspace_dir}/*.json | sort` → load every artifact in lexical order (deterministic merge per the `{NN}_{axis}.json` convention). Skip files where the `error` field is set and `findings` is empty.
+1. Enumerate artifacts in lexical order so the merge is deterministic per the `{NN}_{axis}.json` convention. Use a quoted form that survives paths with spaces or metacharacters — `workspace_dir` is caller-supplied and must never be interpolated unquoted into the shell:
+   ```bash
+   # safe enumeration; reject relative or empty paths up-front
+   [[ "${workspace_dir}" = /* ]] || { echo "workspace_dir must be absolute" >&2; exit 2; }
+   find "${workspace_dir}" -maxdepth 1 -name '*.json' -print0 | sort -z | xargs -0 -n1 cat
+   ```
+   Skip files where the `error` field is set and `findings` is empty.
 2. **Dedup**:
    - GitHub: by `id` (`<owner>/<repo>`)
    - HF: by `id`

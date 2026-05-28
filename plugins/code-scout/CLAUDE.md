@@ -32,7 +32,7 @@ research-orchestrator (skill, entry point)
   │                                           │
   └─ fan-in ─────────────────────────────────►│
       synthesis-scout (dedup, trust, conflict)
-        → /tmp/research/final_report.md
+        → $REPORT  (= $WORKSPACE/final_report.md unless caller overrode it)
 ```
 
 All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical order so synthesis merges deterministically. See `skills/research-orchestrator/references/synthesis-rules.md` for dedup keys, trust rubric, and conflict resolution.

@@ -60,7 +60,7 @@ Reliability rubric: `high` = official org / >5k stars + recent push, `medium` = 
 
 ## Coordination
 
-- If your `${artifact_id}.json` already exists from a prior run, overwrite it (orchestrator clears workspace per query).
+- If your `${artifact_id}.json` already exists from a prior run, overwrite it. Partial re-execution intentionally re-runs only the targeted scout's slot; sibling artifacts in the same workspace are left untouched by the orchestrator.
 - If `gh` returns rate-limit / auth errors, write the file with an empty `findings` array and an `error` field — never block synthesis.
 - Do not call other scouts. Stay in your axis.
 

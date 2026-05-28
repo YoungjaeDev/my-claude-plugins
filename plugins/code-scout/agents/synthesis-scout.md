@@ -104,7 +104,8 @@ conflicts: 0  # count
 
 ## Coordination
 
-- Never write to sibling scouts' `${artifact_id}.json` files — read-only.
+- Never write to sibling scouts' `${artifact_id}.json` files — read-only on the workspace.
+- Overwrite `${report_path}` on every run (no merge into a pre-existing report). Partial re-execution flows re-invoke you on the same workspace after one or more sibling artifacts were rewritten, so the new report supersedes the old one.
 - Never spawn subagents. The orchestrator owns dispatch.
 - If `workspace_dir` is empty, emit a report with `## Gaps` listing every expected axis and return non-zero in the stdout summary (`sources_merged: 0`).
 

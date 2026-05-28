@@ -63,6 +63,6 @@ The old `scout` / `deep-scout` agents remain as thin deprecation stubs that dele
 
 | Version | Notes |
 |---|---|
-| 2.0.0 | Harness refactor — 5-scout team (`github` / `hf` / `web` / `docs` / `synthesis`) + `research-orchestrator` skill + `exa-web-search` skill. exa MCP wired into web-scout. Legacy `scout` / `deep-scout` agents stubbed. **Breaking**: direct `subagent_type` callers should migrate per table above. |
+| 2.0.0 | Harness refactor — 5-scout team (`github` / `hf` / `web` / `docs` / `synthesis`) + `research-orchestrator` skill + `exa-web-search` skill. exa MCP wired into web-scout. Legacy `scout` / `deep-scout` agents stubbed. cr-fix loop converged after 9 substantive fixes across 5 iters (Codex P2 ×8 + CR Major ×1: paper-scout routing, sort merge, mktemp parent + isolation, hf CLI subcommands, workspace propagation, stub auto-delegate, Context7 fallback, synthesis Write permission). Harness audit boost — Phase 0 context-check + partial re-execution mode + follow-up triggers + scout re-invoke rule + test scenarios + negative trigger surface in description. **Breaking**: direct `subagent_type` callers should migrate per table above. |
 | 1.1.0 | Portable-tools-first refactor (`gh`, `uvx hf`, REST + jq). PEP 723 wrappers for cwd-free `uv run`. |
 | 1.0.0 | Initial release — `scout` (haiku) + `deep-scout` (sonnet) with `resource-finder` skill. |

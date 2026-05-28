@@ -60,7 +60,7 @@ Reliability rubric: `high` = official blog / vendor docs / >1yr-stable consensus
 
 ## Coordination
 
-- Overwrite `${artifact_id}.json` on every run.
+- If your `${artifact_id}.json` already exists from a prior run, overwrite it. Partial re-execution intentionally re-runs only the targeted scout's slot; sibling artifacts in the same workspace are left untouched by the orchestrator.
 - On exa quota / network error, fall back to WebSearch and note `tool_used: "websearch"` plus an `error` field for the failed exa attempt.
 - Do not call other scouts.
 

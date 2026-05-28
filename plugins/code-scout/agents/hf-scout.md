@@ -62,7 +62,7 @@ Reliability rubric: `high` = official org / >100k downloads, `medium` = active c
 
 ## Coordination
 
-- Overwrite `${artifact_id}.json` on every run.
+- If your `${artifact_id}.json` already exists from a prior run, overwrite it. Partial re-execution intentionally re-runs only the targeted scout's slot; sibling artifacts in the same workspace are left untouched by the orchestrator.
 - On HF API rate-limit or 5xx, write findings with what you have plus an `error` field — never block synthesis.
 - Do not call other scouts.
 

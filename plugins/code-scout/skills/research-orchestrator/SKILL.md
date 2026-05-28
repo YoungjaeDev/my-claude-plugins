@@ -2,12 +2,19 @@
 name: research-orchestrator
 description: |
   Multi-axis research orchestrator for code, ML, docs, and web sources. Routes a
-  natural-language query to one or more specialized scouts (github, hf, web, docs,
-  paper) running in parallel, then dispatches synthesis-scout to dedup, trust-rank,
-  and emit a final Markdown report. Use when the user asks "research X", "find best
-  practices for Y", "compare A vs B", "what's the consensus on Z", or wants a
-  cross-source technical brief. Triggers — "research", "조사해줘", "best practices",
-  "compare frameworks", "what does the community say", "deep dive", "find boilerplate".
+  natural-language query to one or more specialized scouts (github, hf, web, docs)
+  running in parallel, then dispatches synthesis-scout to dedup, trust-rank, and
+  emit a final Markdown report. Use when the user asks "research X", "find best
+  practices for Y", "compare A vs B", "what's the consensus on Z", wants a
+  cross-source technical brief, OR asks to refine prior research ("이전 조사 보완",
+  "재실행", "결과 업데이트", "follow up on previous research"). Triggers — "research",
+  "조사해줘", "조사", "보완", "재실행", "다시 실행", "업데이트", "이전 결과 기반",
+  "best practices", "compare frameworks", "what does the community say", "deep dive",
+  "find boilerplate", "follow up", "refine research".
+  Do NOT trigger for: single-repo GitHub PR/issue work (use github-dev), academic-paper-only
+  queries (use paper-search-tools directly), single-question repo Q&A (use deepwiki:ask),
+  one-off library docs lookup (use context7 MCP directly), Notion uploads, translations,
+  or slide generation.
 ---
 
 # Research Orchestrator
@@ -34,10 +41,22 @@ See `references/agent-routing.md` for the full should / should-NOT matrix.
 
 - `query` (required) — user's natural-language research target
 - `mode` (optional) — `quick` | `deep`; auto-detected if absent
-- `workspace_dir` (optional) — defaults to `/tmp/research/_workspace`
-- `report_path` (optional) — defaults to `/tmp/research/final_report.md`
+- `workspace_dir` (optional) — when set, the orchestrator reuses this directory and the caller owns lifecycle (enables partial re-execution; see Phase 0 below). When unset, each run gets its own `mktemp` directory.
+- `report_path` (optional) — defaults to `${workspace_dir}/final_report.md`
+
+**Data-transfer protocol:** file-based via `$WORKSPACE/{NN}_{axis}.json`. Sibling scouts do not communicate directly; everything flows through the workspace and is merged by synthesis-scout. Lexical filename ordering = deterministic merge order.
 
 ## Workflow
+
+### Phase 0: Context check (re-execution detection)
+
+Before mode detection, inspect the caller-supplied `workspace_dir`:
+
+- **Fresh run** (no `workspace_dir`, or directory missing) → proceed to Phase 1 normally; Phase 2 creates a new `mktemp` directory.
+- **Partial re-execution** (existing `workspace_dir` + user explicitly asks to refine one axis, e.g. "github 결과만 다시"): keep the directory, dispatch only the named scout(s) with the existing `artifact_id` (they overwrite their slot), then re-run synthesis on the merged set.
+- **Fresh re-run on same workspace** (existing `workspace_dir` + user asks to redo the whole query): move the old directory to `${workspace_dir}_prev.$(date +%s)` for audit, then create a new one at the same path.
+
+Tell the user which mode you picked in one sentence so they can correct you if intent differs.
 
 ### 1. Mode detection
 
@@ -158,3 +177,28 @@ Orchestrator wraps top picks into a short Markdown answer.
 Mode: `deep` (compare + consensus).
 Fan-out: `web-scout` (community sentiment), `docs-scout` (Pydantic migration docs via Context7), `github-scout` (issues / migration PRs).
 Synthesis reconciles official migration guide vs community pain points.
+
+## Test scenarios
+
+### Normal flow — deep mode, all axes healthy
+
+1. User: "Compare vLLM vs TGI for production serving"
+2. Phase 0: no `workspace_dir` supplied → fresh run.
+3. Phase 2 creates `$PARENT/run.AbCd1234/`.
+4. Phase 4 dispatches 4 scouts in parallel; each writes its `{NN}_{axis}.json` in 30-90s.
+5. Phase 5 invokes synthesis-scout; it sorts artifacts, dedups (vLLM repo appears in both github + web → merged), trust-ranks, emits `final_report.md` with Recommended Picks + Conflicts table.
+6. Phase 6 surfaces the report path and top-3 picks. Exit clean.
+
+**Expected stdout:** `report_path=/tmp/research/run.AbCd1234/final_report.md mode=deep sources_merged=4 conflicts=1`.
+
+### Error flow — one axis errors, partial re-execution
+
+1. User: "Research RAG eval frameworks 2026" → fresh deep run as above.
+2. `web-scout` returns an exa-quota error and writes `03_web.json` with `findings: []` + `error: "exa quota exhausted"`.
+3. Synthesis still produces a report but adds `## Gaps` noting the missing web axis.
+4. User: "이전 결과의 web 축만 다시 돌려줘 — exa quota 풀렸음"
+5. Phase 0 detects existing `workspace_dir` + axis-specific refinement → partial re-execution mode.
+6. Only `web-scout` is re-dispatched with `artifact_id=03_web` (overwriting the previous error artifact).
+7. synthesis-scout re-runs on the merged set; `## Gaps` disappears from the new report.
+
+**Expected behavior:** existing `01_github.json`, `02_hf.json`, `04_docs.json` are untouched; only `03_web.json` is rewritten; final report regenerated.

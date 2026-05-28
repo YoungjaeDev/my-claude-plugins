@@ -127,10 +127,6 @@ placeholder (`<project_name>`, `<one-line description>`) 는 Phase 1 응답으�
 > 응답을 `VARIANT` 변수에 할당 (예: `general` / `ml` / `web`). 사용자가 비워두거나 응답 누락 시 default `VARIANT=general`.
 
 ```bash
-SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.${VARIANT}.md"
-# Variant 가 general 이면 base 파일
-[ "$VARIANT" = "general" ] && SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.md"
-
 # Portable in-place sed — GNU sed 는 `sed -i 'cmd' file`, BSD/macOS sed 는
 # `sed -i '' 'cmd' file` 시그니처. `sed --version` 으로 분기한다.
 if sed --version >/dev/null 2>&1; then
@@ -138,6 +134,24 @@ if sed --version >/dev/null 2>&1; then
 else
   sed_inplace() { sed -i '' "$@"; }
 fi
+
+# POSIX 소문자화 — ${VAR,,} 는 Bash 4+ 전용이라 macOS 기본 /bin/bash (3.2) 에서
+# bad substitution 으로 깨진다. tr 로 대체 (Phase 6 visibility 정규화에서도 재사용).
+to_lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
+# AskUserQuestion 라벨 ("ml (Recommended)" / "web" / "general") 을
+# 파일명 토큰 (general|ml|web) 으로 정규화. 알 수 없는 값은 abort.
+variant_lower=$(to_lower "$VARIANT")
+case "$variant_lower" in
+  *ml*)         VARIANT_FLAG="ml" ;;
+  *web*)        VARIANT_FLAG="web" ;;
+  *general*|"") VARIANT_FLAG="general" ;;
+  *) echo "[abort] Unknown variant: $VARIANT"; exit 1 ;;
+esac
+
+SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.${VARIANT_FLAG}.md"
+# Variant 가 general 이면 base 파일
+[ "$VARIANT_FLAG" = "general" ] && SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.md"
 
 # sed replacement 컨텍스트에서 위험한 문자 (\, &, |) escape — 사용자 입력에
 # "Frontend & Backend" 같은 `&` 가 있으면 sed 가 매치 전체를 다시 삽입한다.
@@ -203,8 +217,10 @@ git commit -m "chore: bootstrap project skeleton via project-init"
 
 ```bash
 # AskUserQuestion 라벨 ("Private (Recommended)", "Public", "Internal") 을
-# gh CLI 가 받는 단일 토큰 (private|public|internal) 으로 정규화.
-case "${VISIBILITY,,}" in
+# gh CLI 토큰 (private|public|internal) 으로 정규화.
+# Phase 4 의 to_lower 헬퍼 재사용 (POSIX tr — Bash 3.2 호환).
+vis_lower=$(to_lower "$VISIBILITY")
+case "$vis_lower" in
   *private*)  VIS_FLAG="private" ;;
   *public*)   VIS_FLAG="public" ;;
   *internal*) VIS_FLAG="internal" ;;

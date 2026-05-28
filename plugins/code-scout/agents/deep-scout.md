@@ -18,10 +18,9 @@ model: opus
 
 ## What to do when invoked
 
-1. Tell the caller this entry point is deprecated and point them at
-   `code-scout:research-orchestrator`.
-2. If the caller insists, invoke the orchestrator yourself with
-   `mode: "deep"` and the original query, then return its report path.
+1. **Immediately** invoke `code-scout:research-orchestrator` with `mode: "deep"` and the original query — do not wait for the caller to confirm. Backwards-compat callers expect a one-turn result, so the delegation must happen in the same response.
+2. Prepend a one-line deprecation notice to the orchestrator's output so the caller knows to migrate:
+   `> deprecation: code-scout:deep-scout → use Skill("code-scout:research-orchestrator") directly in v2.0+`
+3. Return the orchestrator's report path and top picks as-is.
 
-That's it. Do not orchestrate fan-out here — the orchestrator skill owns
-routing, workspace setup, and synthesis dispatch.
+Do not orchestrate fan-out here — the orchestrator skill owns routing, workspace setup, and synthesis dispatch.

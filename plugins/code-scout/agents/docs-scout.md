@@ -20,7 +20,7 @@ Single-axis scout for canonical documentation. Fans out under `research-orchestr
 
 ## Tools
 
-- `mcp__context7__resolve-library-id` → `mcp__context7__query-docs` for library API and migration docs
+- `mcp__context7__resolve-library-id` → `mcp__context7__query-docs` (older Context7 deployments expose `mcp__context7__get-library-docs` with `context7CompatibleLibraryID` + `topic` args — fall back to that signature if `query-docs` is not registered) for library API and migration docs
 - `mcp__deepwiki__ask_question` for repo-specific architecture / "how does X work" questions
 - `mcp__deepwiki__read_wiki_structure` / `read_wiki_contents` when you need a topic map first
 

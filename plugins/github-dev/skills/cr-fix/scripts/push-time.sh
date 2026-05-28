@@ -11,7 +11,10 @@ t=$(gh api --paginate "repos/$OWNER/$REPO/commits/$SHA/statuses" 2>/dev/null \
   | jq -sr 'add // [] | [.[].created_at] | sort | .[0] // empty')
 
 if [ -z "$t" ]; then
-  t=$(gh api "repos/$OWNER/$REPO/commits/$SHA" --jq '.commit.committer.date')
+  # Pipe form per plugins/github-dev/CLAUDE.md gh / jq invariants; keeps the codebase
+  # uniform with sibling scripts (auto-merge-gate, poll-cr-status, probe-codex-engagement).
+  t=$(gh api "repos/$OWNER/$REPO/commits/$SHA" 2>/dev/null \
+    | jq -r '.commit.committer.date // empty')
 fi
 
 printf '%s\n' "$t"

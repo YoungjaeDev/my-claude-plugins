@@ -177,9 +177,14 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 
 **Usage:**
 ```
+# 권장: orchestrator 가 workspace 생성 + 라우팅 + synthesis 까지 모두 처리
 Skill("code-scout:research-orchestrator", "Research RAG eval frameworks 2026")
-# 또는 단일 axis 직접 호출
-Agent(subagent_type="code-scout:github-scout", prompt="...")
+
+# 단일 axis 직접 호출 (scout 계약상 workspace_dir + artifact_id 필요)
+WORKSPACE=$(mktemp -d /tmp/research/run.XXXXXX)
+Agent(subagent_type="code-scout:github-scout",
+      prompt="query=fastapi production boilerplate\nworkspace_dir=$WORKSPACE\nartifact_id=01_github")
+# 결과는 $WORKSPACE/01_github.json
 ```
 
 **Migration (v1.x → v2.0):**

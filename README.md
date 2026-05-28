@@ -181,7 +181,9 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 Skill("code-scout:research-orchestrator", "Research RAG eval frameworks 2026")
 
 # 단일 axis 직접 호출 (scout 계약상 workspace_dir + artifact_id 필요)
-WORKSPACE=$(mktemp -d /tmp/research/run.XXXXXX)
+PARENT="${TMPDIR:-/tmp}/research"
+mkdir -p "$PARENT"
+WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
 Agent(subagent_type="code-scout:github-scout",
       prompt="query=fastapi production boilerplate\nworkspace_dir=$WORKSPACE\nartifact_id=01_github")
 # 결과는 $WORKSPACE/01_github.json

@@ -17,7 +17,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 ### Research & Search
 | Plugin | Description |
 |--------|-------------|
-| `code-scout` | Boilerplate/ML resource discovery (GitHub, HuggingFace, 10+ platforms) |
+| `code-scout` | Multi-axis research harness — 5-scout team (github/hf/web/docs/synthesis) + research-orchestrator skill + exa MCP integration |
 | `deepwiki` | AI-powered GitHub repo documentation |
 | `paper-search-tools` | Academic paper search (arXiv, PubMed, Semantic Scholar, etc.) |
 

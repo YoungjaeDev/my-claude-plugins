@@ -63,7 +63,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 |---------|---------|------|
 | **Core** | `core-config` | Python 포매팅, 알림 (work guidelines 는 `~/.claude/CLAUDE.md`) |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
-| **Research** | `code-scout` | GitHub, HuggingFace 등 10+ 플랫폼 리소스 검색 |
+| **Research** | `code-scout` | 다축 리서치 하네스 — 5-scout 팀 (github/hf/web/docs/synthesis) + research-orchestrator skill + exa MCP 통합 |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
 | **AI Models** | `council` | Claude, Codex, Gemini 멀티모델 심의 |
@@ -155,18 +155,36 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 ### Research & Search
 
 <details>
-<summary><strong>code-scout</strong> - 코드 & ML 리소스 탐색</summary>
+<summary><strong>code-scout</strong> - 다축 코드 & ML 리서치 하네스 (v2.0)</summary>
 
-**Agents:**
-| Agent | Model | Platforms |
-|-------|-------|-----------|
-| `scout` | haiku | GitHub, HuggingFace |
-| `deep-scout` | sonnet | 10+ (Reddit, SO, arXiv 등) |
+**Skills (entry points):**
+| Skill | Purpose |
+|-------|---------|
+| `research-orchestrator` | 메인 진입점. 쿼리 → mode 감지 (quick/deep) → fan-out → synthesis-scout 합성. |
+| `exa-web-search` | web-scout 의 exa MCP 사용 가이드. |
+| `resource-finder` | github/hf-scout 의 검색 hygiene cheat-sheet. |
+
+**Agent team (all `opus`):**
+| Agent | Axis |
+|-------|------|
+| `github-scout` | `gh search repos/code`, awesome-list discovery |
+| `hf-scout` | `uvx hf` + HF REST API (models/datasets/spaces) |
+| `web-scout` | exa MCP 우선, WebSearch fallback (Reddit/SO/블로그/뉴스) |
+| `docs-scout` | Context7 (라이브러리 docs) + DeepWiki (repo Q&A) |
+| `synthesis-scout` | dedup / trust ranking / conflict resolution / 최종 보고서 |
+| `paper-scout` | 다음 PR 예정 (paper-search-tools 통합) |
 
 **Usage:**
 ```
-Task(subagent_type="code-scout:scout", prompt="Find FastAPI boilerplate")
+Skill("code-scout:research-orchestrator", "Research RAG eval frameworks 2026")
+# 또는 단일 axis 직접 호출
+Agent(subagent_type="code-scout:github-scout", prompt="...")
 ```
+
+**Migration (v1.x → v2.0):**
+- `Agent(subagent_type="code-scout:scout")` → `Skill("code-scout:research-orchestrator")` (quick mode 자동)
+- `Agent(subagent_type="code-scout:deep-scout")` → `Skill("code-scout:research-orchestrator")` (deep mode 자동)
+- 기존 stub 은 호환성 유지하며 deprecation 안내 후 orchestrator 위임
 
 </details>
 

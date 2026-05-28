@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 21 specialized plugins",
-    "version": "1.30.1"
+    "description": "Personal Claude Code plugin collection with 22 specialized plugins",
+    "version": "1.31.0"
   },
   "plugins": [
     {
@@ -154,6 +154,13 @@
       "description": "Spec/issue/PR work-pipeline aggregate. state-tracker skill manages .claude/state/spec.json (read/init/start/complete). Called by github-dev:post-merge.",
       "version": "1.0.0",
       "category": "workflow"
+    },
+    {
+      "name": "project-init",
+      "source": "./plugins/project-init",
+      "description": "One-shot first-day project bootstrap: interview, .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines (general/ml/web variants), README/CHANGELOG seed, gh repo create + initial push. Single command /project-init:new.",
+      "version": "0.1.0",
+      "category": "planning"
     }
   ]
 }

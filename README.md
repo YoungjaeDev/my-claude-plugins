@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -76,6 +76,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
+| | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
@@ -404,6 +405,32 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 
 </details>
 
+<details>
+<summary><strong>project-init</strong> - Day-1 프로젝트 부트스트랩</summary>
+
+새 디렉토리에서 단일 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료.
+
+**시드 결과:**
+- `.claude/{spec,rules,wiki}/` 빈 구조 (`.gitkeep`)
+- `CLAUDE.md` — minimal stub + LLM Wiki 사용 안내
+- `AGENTS.md` — Codex GitHub cloud reviewer 가 자동으로 읽는 `## Review guidelines` 섹션 포함 (variant: general / ml / web)
+- `README.md`, `CHANGELOG.md` — minimal 시드 (각각 6-section, Keep-a-Changelog Unreleased)
+- gh repo create + 초기 commit + push
+
+**원칙:**
+- Minimal seeding — `bootstrap-wiki` / `write-rules` 는 호출 X, 안내만 (빈 프로젝트에 generic 콘텐츠 만들면 사용자 덮어쓰기 비용 발생)
+- Owner gate — personal vs 조직 결정은 `AskUserQuestion` 으로 명시 선택
+- Idempotent — 같은 디렉토리 재호출 시 기존 파일 보존
+
+**Next actions** (`/project-init:new` 완료 후):
+1. 코드 쌓이면 → `/rules-forge:write-rules`
+2. 첫 도메인 lore → `/llm-wiki:bootstrap-wiki`
+3. 첫 PR merge 후 → `/github-dev:post-merge` (자동 `/llm-wiki:post-merge-wiki` 체이닝)
+
+**Requirements:** `gh` CLI authenticated
+
+</details>
+
 ### Presentation
 
 <details>
@@ -558,7 +585,8 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
 │   ├── codex-bridge/          # OMC → Codex skill 동기화
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
-│   └── spec-state/            # spec/issue/PR work-pipeline aggregate
+│   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
+│   └── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 ├── CLAUDE.md
 └── README.md
 ```

@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (21)
+## Plugins (22)
 
 ### Core
 | Plugin | Description |
@@ -45,6 +45,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 | Plugin | Description |
 |--------|-------------|
 | `interview` | Structured requirements gathering |
+| `project-init` | First-day project bootstrap (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + README/CHANGELOG + gh repo create) |
 
 ### Presentation
 | Plugin | Description |
@@ -104,7 +105,8 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── tcrei-prompt/       # TCREI prompt structuring
 │   ├── codex-bridge/       # OMC → Codex skill sync
 │   ├── llm-wiki/           # LLM-Wiki 3-layer (wiki lore)
-│   └── spec-state/         # spec/issue/PR work-pipeline aggregate
+│   ├── spec-state/         # spec/issue/PR work-pipeline aggregate
+│   └── project-init/       # Day-1 project bootstrap (interview + .claude/ + AGENTS.md + gh repo)
 ├── CLAUDE.md               # This file
 └── README.md               # Full documentation
 ```

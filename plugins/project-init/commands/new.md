@@ -130,12 +130,20 @@ SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.${VARIANT}.md"
 # Variant 가 general 이면 base 파일
 [ "$VARIANT" = "general" ] && SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.md"
 
+# sed replacement 컨텍스트에서 위험한 문자 (\, &, |) escape — 사용자 입력에
+# "Frontend & Backend" 같은 `&` 가 있으면 sed 가 매치 전체를 다시 삽입한다.
+esc_sed() { printf '%s' "$1" | sed 's/[\\&|]/\\&/g'; }
+PROJECT_NAME_ESC=$(esc_sed "$PROJECT_NAME")
+ONE_LINER_ESC=$(esc_sed "$ONE_LINER")
+OWNER_ESC=$(esc_sed "$OWNER")
+LICENSE_ESC=$(esc_sed "$LICENSE")
+
 if [ ! -f AGENTS.md ]; then
   cp "$SRC" AGENTS.md
-  # placeholder 치환
-  sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" AGENTS.md
-  sed -i "s|{{ONE_LINER}}|${ONE_LINER}|g" AGENTS.md
-  sed -i "s|{{OWNER}}|${OWNER}|g" AGENTS.md
+  # placeholder 치환 (escape 된 값 사용)
+  sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME_ESC}|g" AGENTS.md
+  sed -i "s|{{ONE_LINER}}|${ONE_LINER_ESC}|g" AGENTS.md
+  sed -i "s|{{OWNER}}|${OWNER_ESC}|g" AGENTS.md
 else
   echo "[skip] AGENTS.md already exists — preserving existing content"
 fi
@@ -149,10 +157,11 @@ AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 �
 [ -f README.md ] || cp ${CLAUDE_PLUGIN_ROOT}/assets/README.minimal.md README.md
 [ -f CHANGELOG.md ] || cp ${CLAUDE_PLUGIN_ROOT}/assets/CHANGELOG.initial.md CHANGELOG.md
 
-sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME}|g" README.md CHANGELOG.md
-sed -i "s|{{ONE_LINER}}|${ONE_LINER}|g" README.md
-sed -i "s|{{OWNER}}|${OWNER}|g" README.md CHANGELOG.md
-sed -i "s|{{LICENSE}}|${LICENSE}|g" README.md
+# Phase 4 에서 정의한 *_ESC 값 재사용 — escape 된 값으로 안전 치환
+sed -i "s|{{PROJECT_NAME}}|${PROJECT_NAME_ESC}|g" README.md CHANGELOG.md
+sed -i "s|{{ONE_LINER}}|${ONE_LINER_ESC}|g" README.md
+sed -i "s|{{OWNER}}|${OWNER_ESC}|g" README.md CHANGELOG.md
+sed -i "s|{{LICENSE}}|${LICENSE_ESC}|g" README.md
 ```
 
 게이트: README.md 첫 30줄 미리보기 후 수정 기회. 한 번 더 호출하지 않고 inline `Edit` 로 즉시 수정.
@@ -173,12 +182,21 @@ git commit -m "chore: bootstrap project skeleton via project-init"
 `AskUserQuestion`: dry-run 미리보기 후 confirm.
 
 ```bash
+# AskUserQuestion 라벨 ("Private (Recommended)", "Public", "Internal") 을
+# gh CLI 가 받는 단일 토큰 (private|public|internal) 으로 정규화.
+case "${VISIBILITY,,}" in
+  *private*)  VIS_FLAG="private" ;;
+  *public*)   VIS_FLAG="public" ;;
+  *internal*) VIS_FLAG="internal" ;;
+  *) echo "[abort] Unknown visibility: $VISIBILITY"; exit 1 ;;
+esac
+
 # Repo create + push (dry-run preview first, then real run)
-PREVIEW="gh repo create ${OWNER}/${PROJECT_NAME} --${VISIBILITY,,} --description \"${ONE_LINER}\" --source=. --remote=origin --push"
+PREVIEW="gh repo create ${OWNER}/${PROJECT_NAME} --${VIS_FLAG} --description \"${ONE_LINER}\" --source=. --remote=origin --push"
 echo "$PREVIEW"
 
 # User confirms via AskUserQuestion (Recommended: "Run")
-gh repo create "${OWNER}/${PROJECT_NAME}" --"${VISIBILITY,,}" --description "${ONE_LINER}" --source=. --remote=origin --push
+gh repo create "${OWNER}/${PROJECT_NAME}" --"${VIS_FLAG}" --description "${ONE_LINER}" --source=. --remote=origin --push
 ```
 
 License 가 None 이 아니면 — gh repo create 후 `gh api` 로 LICENSE 파일 생성하거나 사용자에게 "later" 안내. 단순화를 위해 V1 에서는 안내만.

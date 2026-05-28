@@ -206,11 +206,17 @@ done
 # Git init if needed
 [ -d .git ] || git init -b main
 
-# Stage all seeded files
+# Stage all seeded files (이미 존재한 파일은 git add 가 no-op)
 git add .claude/ CLAUDE.md AGENTS.md README.md CHANGELOG.md
 
-# Initial commit
-git commit -m "chore: bootstrap project skeleton via project-init"
+# Idempotent re-run 경로: Phase 4/5 가 모두 skip 했고 staged diff 가 없으면
+# `git commit` 이 `nothing to commit` 으로 실패해 이후 gh repo create 까지
+# abort 된다. staged 변경 존재 여부로 분기한다.
+if ! git diff --cached --quiet; then
+  git commit -m "chore: bootstrap project skeleton via project-init"
+else
+  echo "[skip] no new changes to commit — idempotent re-run path"
+fi
 ```
 
 `AskUserQuestion`: dry-run 미리보기 후 confirm.

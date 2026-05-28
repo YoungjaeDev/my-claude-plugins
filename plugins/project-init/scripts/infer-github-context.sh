@@ -42,9 +42,15 @@ fi
 # Orgs (paginated)
 # Note: gh CLI rejects --slurp + --jq together, so we pipe to local jq.
 # --slurp wraps multi-page responses as array-of-arrays; [.[][].login] flattens.
-ORGS_JSON=$(gh api --paginate --slurp /user/orgs 2>/dev/null | jq -c '[.[][].login]' 2>/dev/null || echo "[]")
-if [ -z "$ORGS_JSON" ]; then
-  ORGS_JSON="[]"
+# gh / jq 실패를 빈 목록으로 삼키지 않는다 — exit 2 로 분리해야 사용자가
+# "조직 없음" 과 "API 실패" 를 구분해 owner 선택을 잘못 내리지 않는다.
+if ! ORGS_RAW=$(gh api --paginate --slurp /user/orgs 2>/dev/null); then
+  echo "[infer-github-context] gh api /user/orgs failed (network/rate-limit/permission)" >&2
+  exit 2
+fi
+if ! ORGS_JSON=$(printf '%s' "$ORGS_RAW" | jq -c '[.[][].login]' 2>/dev/null); then
+  echo "[infer-github-context] jq parse failed on /user/orgs response" >&2
+  exit 2
 fi
 
 # 최종 JSON 조립 — jq 가 -c 로 compact 출력

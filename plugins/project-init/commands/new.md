@@ -233,12 +233,21 @@ case "$vis_lower" in
   *) echo "[abort] Unknown visibility: $VISIBILITY"; exit 1 ;;
 esac
 
-# Repo create + push (dry-run preview first, then real run)
-PREVIEW="gh repo create ${OWNER}/${PROJECT_NAME} --${VIS_FLAG} --description \"${ONE_LINER}\" --source=. --remote=origin --push"
-echo "$PREVIEW"
+# Idempotent re-run 가드: origin remote 가 이미 있으면 `gh repo create
+# --remote=origin` 이 중복 등록을 시도하다 실패한다. 기존 remote 가 가리키는
+# URL 을 노출하고 사용자에게 manual push 명령을 안내한다.
+if git remote get-url origin >/dev/null 2>&1; then
+  EXISTING=$(git remote get-url origin)
+  echo "[skip] origin remote already exists ($EXISTING) — skipping gh repo create."
+  echo "       manual sync: git push -u origin $(git branch --show-current)"
+else
+  # Repo create + push (dry-run preview first, then real run)
+  PREVIEW="gh repo create ${OWNER}/${PROJECT_NAME} --${VIS_FLAG} --description \"${ONE_LINER}\" --source=. --remote=origin --push"
+  echo "$PREVIEW"
 
-# User confirms via AskUserQuestion (Recommended: "Run")
-gh repo create "${OWNER}/${PROJECT_NAME}" --"${VIS_FLAG}" --description "${ONE_LINER}" --source=. --remote=origin --push
+  # User confirms via AskUserQuestion (Recommended: "Run")
+  gh repo create "${OWNER}/${PROJECT_NAME}" --"${VIS_FLAG}" --description "${ONE_LINER}" --source=. --remote=origin --push
+fi
 ```
 
 License 가 None 이 아니면 — gh repo create 후 `gh api` 로 LICENSE 파일 생성하거나 사용자에게 "later" 안내. 단순화를 위해 V1 에서는 안내만.

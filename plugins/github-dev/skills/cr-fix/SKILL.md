@@ -322,7 +322,8 @@ bash $SKILL_DIR/scripts/persist-codex-id.sh "$STATE_FILE" "$codex_review_id_to_p
 
 ```bash
 res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER")
-[ "$res" = "noop" ] && { /* skip Steps 11-12, jump to Step 13 */; }
+# If res == "noop", skip Steps 11-12 and jump to Step 13
+if [ "$res" = "noop" ]; then : ; fi
 ```
 
 ## Step 11: Verification gate

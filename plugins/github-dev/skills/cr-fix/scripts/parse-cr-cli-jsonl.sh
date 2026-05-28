@@ -26,21 +26,23 @@ jq -c -s '
             "trivial": "🟢 Trivial", "info": "🟢 Info" }[(($f.severity // "") | ascii_downcase)] // null
         ),
         # Phase A TBD: issue-category header. Try header regex (same as PR-bot); fallback to category field.
+        # `try ... catch null` keeps a single malformed comment from aborting the whole array.
         type_emoji: (
-          (($f.comment // "") | capture("_(?<t>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_").t)
+          (try (($f.comment // "") | capture("_(?<t>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_").t) catch null)
           // ($f.category // null)
         )
       }
   ]
 ' "$JSONL" 2>/dev/null || {
   echo "warn: parse-cr-cli-jsonl: malformed JSONL lines present in $JSONL; falling back to per-line filter" >&2
-  # Per-line fallback: skip non-JSON lines defensively.
+  # Per-line fallback: skip non-JSON lines defensively. Mirrors the main path field set
+  # (suggestions[0].line included, capture() wrapped in try) so behavior stays consistent.
   jq -c -R '. as $l | try (fromjson | select(.type == "finding")) catch empty' "$JSONL" \
     | jq -c -s '[ .[] | {
         source: "cli", path: (.fileName // .file // null),
-        line: (.line // .lineNumber // .startLine // null),
+        line: (.line // .lineNumber // .startLine // ((.suggestions // [])[0].line // null)),
         body: (.comment // ""), guidance: (.codegenInstructions // ""), comment_id: null,
         severity_emoji: ({ "critical":"🔴 Critical","major":"🟠 Major","minor":"🟡 Minor","trivial":"🟢 Trivial","info":"🟢 Info" }[((.severity // "") | ascii_downcase)] // null),
-        type_emoji: (((.comment // "") | capture("_(?<t>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_").t) // (.category // null))
+        type_emoji: ((try ((.comment // "") | capture("_(?<t>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_").t) catch null) // (.category // null))
       } ]'
 }

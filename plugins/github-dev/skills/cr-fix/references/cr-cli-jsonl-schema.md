@@ -38,7 +38,7 @@ When binding is uncertain, the parser logs `cr-cli-binding-unverified: <field>` 
 
 ## Record projection (Step 8d)
 
-```
+```text
 finding event {
   severity: "major",
   fileName: "src/foo.py",

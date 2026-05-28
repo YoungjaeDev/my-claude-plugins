@@ -30,7 +30,7 @@ Invariant: `skipped_total = skipped_nitpick + skipped_p3 + skipped_minor`.
 
 ## Footer disclosure format
 
-```
+```text
 (N items hidden: <m> CR Nitpicks, <k> Codex P3[, <j> Minor severity / Codex P2])
 ```
 

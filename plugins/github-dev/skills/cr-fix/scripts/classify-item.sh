@@ -11,7 +11,7 @@ jq -c --argjson skip_minor "$( [ "$SKIP_MINOR" = "true" ] && echo true || echo f
   | (.source // "") as $src
   | (.type_emoji // "") as $type
   | (.severity_emoji // "") as $sev
-  | (.p_badge // "") as $pb
+  | ((.p_badge // "") | tostring) as $pb
   | (
       # Base tier
       if $src == "codex" then

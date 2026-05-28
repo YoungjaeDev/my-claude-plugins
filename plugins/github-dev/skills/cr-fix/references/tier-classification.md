@@ -53,4 +53,4 @@ When `SKIP_MINOR=true`, apply the following demotion AFTER the table above produ
 
 ## Display ordering for gated items
 
-CR/CLI items first (CRITICAL → HIGH → MEDIUM by severity), then Codex P1, then Codex P2. Substantive-first ordering keeps user attention on highest-impact items.
+CR/CLI items first (CRITICAL → HIGH → MAJOR by severity), then Codex P1, then Codex P2. Substantive-first ordering keeps user attention on highest-impact items.

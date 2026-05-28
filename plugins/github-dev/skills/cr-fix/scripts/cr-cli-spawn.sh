@@ -12,9 +12,12 @@ set -euo pipefail
 OUT="/tmp/cr-cli-review-${PR_NUM}-iter${ITER}.jsonl"
 : > "$OUT"
 
-# shellcheck disable=SC2086  # CONFIG_FILES is intentionally word-split
+# Split CONFIG_FILES on whitespace into a safe array so individual filenames
+# cannot inject extra coderabbit flags via interpolation.
+read -r -a CONFIG_FILES_ARR <<< "$CONFIG_FILES"
+
 set +e
-coderabbit review --agent --type committed --base "$BASE" --config $CONFIG_FILES > "$OUT" 2>&1
+coderabbit review --agent --type committed --base "$BASE" --config "${CONFIG_FILES_ARR[@]}" > "$OUT" 2>&1
 rc=$?
 set -e
 

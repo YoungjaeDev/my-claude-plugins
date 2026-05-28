@@ -12,8 +12,11 @@ RID="${2:?review id required}"
 
 [ -f "$STATE" ] || { echo "error: state file $STATE not found" >&2; exit 1; }
 
-tmp="${STATE}.tmp"
+# Per-invocation tmp file so parallel persist calls on the same STATE don't race.
+tmp=$(mktemp "${STATE}.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
 jq --argjson rid "$RID" \
   '.codex_processed_reviews = ((.codex_processed_reviews // []) + [$rid] | unique)' \
   "$STATE" > "$tmp"
 mv "$tmp" "$STATE"
+trap - EXIT

@@ -11,7 +11,8 @@ fi
 
 if coderabbit auth status >/dev/null 2>&1; then
   ver=$(coderabbit --version 2>/dev/null | head -n1 || echo unknown)
-  printf '{"installed":true,"authed":true,"version":"%s"}\n' "$ver"
+  # Use jq -n --arg so a version string containing quotes/newlines stays valid JSON.
+  jq -cn --arg ver "$ver" '{installed:true, authed:true, version:$ver}'
   exit 0
 else
   printf '{"installed":true,"authed":false,"hint":"Run: coderabbit auth login"}\n'

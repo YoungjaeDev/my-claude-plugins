@@ -10,8 +10,13 @@ set -euo pipefail
 
 OWNER="${1:?}"; REPO="${2:?}"; PR_NUM="${3:?}"; HEAD_SHA="${4:?}"
 
-cr_state=$(gh api "repos/$OWNER/$REPO/commits/$HEAD_SHA/status" \
-  --jq '[.statuses[] | select(.context | test("CodeRabbit"; "i"))][0] // empty | .state' 2>/dev/null || echo "")
+cr_state=$(
+  gh api --paginate "repos/$OWNER/$REPO/commits/$HEAD_SHA/statuses" 2>/dev/null \
+    | jq -r -s 'add // []
+                | map(select(.context | test("CodeRabbit"; "i")))
+                | sort_by(.created_at) | reverse
+                | (.[0].state // "unknown")' \
+  || echo "unknown")
 cr_state="${cr_state:-unknown}"
 
 blocking=$(gh pr checks "$PR_NUM" --json name,state \

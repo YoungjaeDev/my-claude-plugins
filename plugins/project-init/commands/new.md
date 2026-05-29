@@ -207,7 +207,7 @@ done
 [ -d .git ] || git init -b main
 
 # Stage all seeded files (이미 존재한 파일은 git add 가 no-op)
-git add .claude/ CLAUDE.md AGENTS.md README.md CHANGELOG.md
+git add .claude/ .llmwiki/ CLAUDE.md AGENTS.md README.md CHANGELOG.md
 
 # Idempotent re-run 경로: Phase 4/5 가 모두 skip 했고 staged diff 가 없으면
 # `git commit` 이 `nothing to commit` 으로 실패해 이후 gh repo create 까지

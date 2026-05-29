@@ -110,7 +110,7 @@ When `--cr-source=auto`, the PR has Codex active, AND the diff is small, silentl
 
 ```bash
 if [ "$ITER" = "1" ] && [ "$CR_SOURCE" = "auto" ] && [ "$SMALL_DIFF_LOC" -gt 0 ]; then
-  # Probe Codex engagement first; reuse the result for Step 6.
+  # Probe Codex engagement first; reuse the result for Step 5c / Step 6.
   codex_active=$(bash $SKILL_DIR/scripts/probe-codex-engagement.sh "$OWNER" "$REPO" "$PR_NUM")
   [ "$NO_CODEX" = "true" ] && codex_active=disabled
   if [ "$codex_active" = "active" ]; then
@@ -125,11 +125,9 @@ if [ "$ITER" = "1" ] && [ "$CR_SOURCE" = "auto" ] && [ "$SMALL_DIFF_LOC" -gt 0 ]
 fi
 ```
 
-## Step 6: Wait phase — CodeRabbit
+### Step 5c: Codex re-probe (decoupled from CR wait)
 
-Skip entirely when `CR_SOURCE ∈ {cli, codex-only}`. Otherwise:
-
-**Codex auto-detect**: refresh `codex_active` for this iter. First iter probes always; later iters re-probe only if cache is still `inactive` (sticky `active`/`disabled`). See `references/codex-state-machine.md`.
+Refresh `codex_active` once per iter **before** the CR status check. Codex submission can lag push by 1-3 minutes, so the iter-1 probe done in Step 5b (or here on non-auto sources) often returns `inactive` while a Codex review is still in flight. Re-probing here — instead of nesting the probe inside the CR polling block — ensures Codex output is surfaced even when CR returns `state=success` up-front and Step 6's polling path is skipped. Sticky semantics: `active` and `disabled` never flip back; only `inactive` is re-probed. See `references/codex-state-machine.md`.
 
 ```bash
 if [ "$ITER" = "1" ] && [ "$codex_active" = "unknown" ]; then
@@ -141,12 +139,33 @@ elif [ "$codex_active" = "inactive" ]; then
 fi
 ```
 
+## Step 6: Wait phase — CodeRabbit
+
+Skip entirely when `CR_SOURCE ∈ {cli, codex-only}`. Otherwise:
+
 **CR status probe + poll** (single object via `[ ... ][0]` to dodge multi-status races):
 
 ```bash
 s=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA/status" \
   --jq '[.statuses[] | select(.context | test("CodeRabbit"; "i"))][0] // empty | .state')
 ```
+
+### Step 6a: Rate-limit sniff on up-front `success`
+
+When `s == "success"` (CR status flipped to success before polling started), CR may still be rate-limited — the `CodeRabbit` commit status reports `success` with description `"Review completed"` even when the review payload is just a `Review limit reached` comment. The polling-time self-escape inside `poll-cr-status.sh` never runs in that path, so check the issue-comments stream once before treating the iter as clean:
+
+```bash
+PUSH_TIME=${PUSH_TIME:-$(bash $SKILL_DIR/scripts/push-time.sh "$OWNER" "$REPO" "$CUR_SHA")}
+if [ "$s" = "success" ]; then
+  if rl=$(bash $SKILL_DIR/scripts/sniff-cr-rate-limit.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
+    s=rate_limited
+    rate_limit_hits=$((rate_limit_hits + 1))
+    # Fall through to Step 7c (rate-limit fallback table).
+  fi
+fi
+```
+
+The sniff is one extra `gh pr view --json comments,reviews` per iter — unconditional on the success branch, no flag. Detects the literal `Review limit reached` marker (case-insensitive) along with the other 2 patterns documented in `references/rate-limit-fallback.md`. The follow-up `s=rate_limited` reuses the existing Step 6 termination branch so 7c handles the fallback uniformly.
 
 If `s` is not yet `success`/`failure`, compute `PUSH_TIME` then spawn the poller:
 

@@ -110,7 +110,7 @@ Do **not** use other firecrawl tools from this skill:
 
 ## Tier-4 fetch fallback — `insane-search`
 
-When `web_fetch_exa` returns 403/challenge **and** `firecrawl_scrape` also fails (typical pattern: X/Twitter, Reddit, Coupang, gated dashboards behind WAF), retry once with `Skill("insane-search:insane-search", url=...)`. It runs its own 5-phase transport escalation internally (official API index → lightweight probes → TLS impersonation → real browser → parallel) and returns a single verdict — caller only consumes it:
+When `web_fetch_exa` returns 403/challenge **and** `firecrawl_scrape` also fails (typical pattern: X/Twitter, Reddit, Coupang, gated dashboards behind WAF), retry once with `Skill("insane-search:insane-search", url=...)`. **`insane-search` is an optional plugin** (see `plugins/code-scout/CLAUDE.md` requirements section): if the skill is not installed, or the invocation errors with skill-not-found / load failure, skip the tier-4 retry entirely and emit the finding from `Highlights` alone, recording `insane_search: not_installed` (or the error string) in `errors[]`. Otherwise it runs its own 5-phase transport escalation internally (official API index → lightweight probes → TLS impersonation → real browser → parallel) and returns a single verdict — caller only consumes it:
 
 | verdict | meaning | action |
 |---|---|---|

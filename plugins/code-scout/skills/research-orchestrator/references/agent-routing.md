@@ -55,7 +55,7 @@ When the deep query **also** carries an academic signal (paper / arxiv / SOTA / 
 
 ### vs. `paper-search-tools`
 
-`paper-search-tools` plugin owns the 8-source MCP family (arXiv / PubMed / Semantic Scholar / Crossref / bioRxiv / medRxiv / IACR / Google Scholar) — search + read + download. `paper-scout` (v2.1) wraps the search half for fan-out research: it picks 2-3 sources by domain, runs parallel searches, scores reliability, and writes `05_paper.json`. Route through `paper-scout` (via orchestrator) when papers are an axis of a broader research query. Call `paper-search-tools` directly when the user wants a single paper's PDF / full text (`download_*` / `read_*`) — that's the user's follow-up after seeing paper-scout's metadata, not part of the scout's job (LLM context budget).
+`paper-search-tools` plugin owns the 8-source MCP family (arXiv / PubMed / Semantic Scholar / Crossref / bioRxiv / medRxiv / IACR / Google Scholar) — search across all 8, **read + download on 7 (arXiv / PubMed / Semantic Scholar / Crossref / bioRxiv / medRxiv / IACR only — Google Scholar is search-only)**. `paper-scout` (v2.1) wraps the search half for fan-out research: it picks 2-3 sources by domain, runs parallel searches, scores reliability, and writes `05_paper.json`. Route through `paper-scout` (via orchestrator) when papers are an axis of a broader research query. Call `paper-search-tools` directly when the user wants a single paper's PDF / full text (`download_*` / `read_*`) — that's the user's follow-up after seeing paper-scout's metadata, not part of the scout's job (LLM context budget). For Google Scholar hits with a DOI, use `get_crossref_paper_by_doi` to enrich; there is no `read_google_scholar_paper` or `download_google_scholar`.
 
 ### vs. `/deep-research`
 

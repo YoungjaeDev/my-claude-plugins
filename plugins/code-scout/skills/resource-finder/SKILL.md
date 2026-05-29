@@ -1,60 +1,52 @@
 ---
 name: resource-finder
 description: |
-  Search and discover open-source resources: boilerplates, starter templates,
-  reference implementations on GitHub, and ML models/datasets/demos on Hugging Face.
-  Use when starting new projects, finding code patterns, or discovering ML resources.
+  Shared search hygiene + cwd-free GitHub / Hugging Face query reference for
+  code-scout's github-scout and hf-scout agents. Date anchoring, multi-query
+  patterns, quality filters, and the optional Python wrappers for richer JSON
+  output. Use when authoring a query that runs through `gh` or HF REST and you
+  want the canonical cheat-sheet.
 ---
 
 # Resource Finder
 
-## Overview
+Shared hygiene reference for `github-scout` and `hf-scout`. Tool-specific call patterns and reliability rubrics live in each scout's agent file — this skill is the cross-axis cheat-sheet.
 
-Find open-source resources for your projects:
-- **Boilerplates & Templates**: Production-ready project starters
-- **Reference Implementations**: Learn from existing code patterns
-- **ML Resources**: Models, datasets, and demo apps on Hugging Face
+## Tool priority
 
-## Tool Priority (Important)
+Primary tools are **portable CLIs on `$PATH`**, not skill-internal scripts. Prefer the direct tools first:
 
-Primary tools are **portable CLIs on `$PATH`**, not skill-internal scripts.
-Skill scripts (`scripts/*.py`) are advanced wrappers with extra filters; they
-require cwd=skill-root OR an absolute path, and they need `uv`/`python3`
-available. Prefer the direct tools first:
+| Platform | Primary (cwd-free, no Python) | Fallback (structured JSON) |
+|---|---|---|
+| GitHub | `gh search repos` / `gh search code` / `gh repo view` | `uv run <abs>/scripts/search_github.py` |
+| Hugging Face | `curl https://huggingface.co/api/...` (+ `uvx hf {models\|spaces\|datasets} ls/search/info`) | `uv run <abs>/scripts/search_huggingface.py` |
 
-| Platform | Primary (cwd-free, no Python) | Fallback (structured output) |
-|----------|-------------------------------|------------------------------|
-| **GitHub** | `gh search repos` / `gh search code` / `gh repo view` | `uv run <abs>/scripts/search_github.py` |
-| **Hugging Face** | `uvx hf search` (+ `curl https://huggingface.co/api/...`) | `uv run <abs>/scripts/search_huggingface.py` |
+`<abs>` resolves to `plugins/code-scout/skills/resource-finder` in Claude Code (repo-rooted) or `~/.agents/skills/resource-finder` in Codex (after sync). Use absolute paths to avoid cwd surprises.
 
-`<abs>` resolves to `plugins/code-scout/skills/resource-finder` in Claude Code
-(repo-rooted) or `~/.agents/skills/resource-finder` in Codex (after sync). Use
-the absolute path to avoid cwd surprises.
+## Search hygiene
 
-## Search Quality Principles
-
-### 1. Verify Current Date
+### 1. Verify current date
 
 ```bash
 date +%Y-%m-%d
 ```
 
-Use **current year** in searches for recency filtering.
+Use the **current year** in queries for recency filtering. Don't hard-code last year.
 
-### 2. Natural Query Formulation
+### 2. Natural query formulation
 
 Write queries as you would ask a person:
 
-| Intent | Query Style | Example |
-|--------|-------------|---------|
-| **Find starter** | "boilerplate" + stack | `"react typescript starter template"` |
-| **Find implementation** | "how to" + task | `"how to implement websocket in fastapi"` |
-| **Compare options** | "vs" / "comparison" | `"YOLOv8 vs RT-DETR 2024"` |
-| **Find demo** | task + "demo" | `"image segmentation gradio demo"` |
+| Intent | Query style | Example |
+|---|---|---|
+| Find starter | "boilerplate" + stack | `react typescript starter template` |
+| Find implementation | "how to" + task | `how to implement websocket in fastapi` |
+| Compare options | `vs` / `comparison` | `YOLOv8 vs RT-DETR 2026` |
+| Find demo | task + `demo` | `image segmentation gradio demo` |
 
-### 3. Multi-Query Approach
+### 3. Multi-query approach
 
-Search from 2-3 perspectives when initial results aren't sufficient:
+Search from 2-3 angles when the first query is thin:
 
 ```bash
 gh search repos "fastapi boilerplate" --sort stars
@@ -62,80 +54,50 @@ gh search repos "python api authentication jwt" --sort stars
 gh search repos "cookiecutter fastapi" --sort stars
 ```
 
-### 4. Quality Filters
+### 4. Quality filters
 
 ```bash
-gh search repos "keyword" stars:>50 pushed:>2026-01-01 --language python --sort stars
+# Embed qualifiers inside the quoted query string — leaving stars:>50 unquoted in
+# the shell makes Bash treat `>` as a redirection and silently drops the filter.
+gh search repos "keyword stars:>50 pushed:>2026-01-01" --language python --sort stars
 ```
 
-## GitHub Search (primary: `gh` CLI)
+For HF, use `?sort=downloads&direction=-1` on the REST endpoint to surface mature models first.
 
-`gh` is installed and authenticated on the user's environment. Every query
-below works from any directory.
+## GitHub cheat-sheet (`gh` CLI)
 
-### Starter Templates & Boilerplates
+`gh` is installed and authenticated on the user's environment. Every query works from any directory.
 
 ```bash
+# Starter templates / boilerplates
 gh search repos "fastapi boilerplate production ready" --sort stars --limit 10
-gh search repos "react typescript starter template" --sort stars --limit 10
-gh search repos "pytorch lightning project template" --sort stars --limit 10
-
-# Cookiecutter (Python-native scaffolding)
 gh search repos "cookiecutter ml project" --sort stars
-gh search repos "cookiecutter fastapi" --sort stars
+
+# Curated awesome-lists (check first for high-signal pre-filtered links)
+gh search repos "awesome object-detection" --sort stars
+
+# Repository inspection
+gh repo view <owner>/<repo>                                  # README + stats
+gh repo view <owner>/<repo> --json description,stargazerCount,pushedAt,primaryLanguage
+
+# Code search (pattern discovery)
+gh search code "Qwen2VL" --extension py --limit 20
+gh search code "from huggingface_hub import" --language python
 ```
+
+Keyword vocabulary:
 
 | Keyword | Outcome |
-|---------|---------|
+|---|---|
 | `boilerplate` | Production-ready project structure |
 | `starter`, `starter-kit` | Minimal setup to get running |
 | `template` | Reusable project scaffolding |
 | `scaffold` | Code generation base |
 | `cookiecutter` | Python templating system |
 
-### Curated Lists (awesome-*)
+## Hugging Face cheat-sheet (`uvx hf` + REST)
 
-Community-curated quality. Check first before deep-diving:
-
-```bash
-gh search repos "awesome object-detection" --sort stars
-gh search repos "awesome fastapi" --sort stars
-gh search repos "awesome gradio" --sort stars
-```
-
-### Repository Analysis
-
-After finding a candidate:
-
-1. `gh repo view <owner>/<repo>` — README + stats
-2. `gh repo view <owner>/<repo> --json description,stargazerCount,pushedAt`
-3. Clone or `gh browse` specific files (app.py, pyproject.toml, requirements.txt)
-
-### Code Search
-
-```bash
-gh search code "Qwen2VL" --extension py --limit 20
-gh search code "from huggingface_hub import" --language python
-```
-
-### Advanced Wrapper (optional)
-
-Use the Python wrapper only when you want JSON filtering that `gh` flags don't
-support natively. PEP 723 inline metadata lets `uv` run it from anywhere:
-
-```bash
-# Claude Code context
-uv run plugins/code-scout/skills/resource-finder/scripts/search_github.py \
-    "fastapi boilerplate" --limit 10 --detailed
-
-# Codex context (after sync)
-uv run ~/.agents/skills/resource-finder/scripts/search_github.py \
-    "fastapi boilerplate" --limit 10 --detailed
-```
-
-## Hugging Face Search (primary: `uvx hf` + REST API)
-
-### Quick REST API (no auth needed for public search)
+### Public REST (no auth)
 
 ```bash
 # Models
@@ -146,94 +108,64 @@ curl -sS "https://huggingface.co/api/datasets?search=coco&limit=5" | jq
 
 # Spaces (demos)
 curl -sS "https://huggingface.co/api/spaces?search=gradio+demo&limit=10" | jq
+
+# Sorted by downloads
+curl -sS "https://huggingface.co/api/models?search=qwen+vl&sort=downloads&direction=-1&limit=10" \
+  | jq '.[] | {id, downloads, likes}'
 ```
 
-### `uvx hf` (official CLI, bootstrapped via uv on demand)
+### `uvx hf` (official CLI)
+
+The top-level `hf` CLI groups commands by repo type — there is no `hf search-repos`. Use the per-type subcommands instead:
 
 ```bash
-uvx hf search-repos "object detection" --repo-type model --limit 10
-uvx hf download <repo_id> --include "*.json" --local-dir /tmp/<name>
-```
+# Models — list with sort + filter
+uvx hf models ls --sort downloads --limit 10
+uvx hf models info <repo_id>                      # full metadata for a single model
 
-### Download Source for Analysis
+# Spaces — has real semantic search
+uvx hf spaces search "object detection gradio" --limit 10
 
-```bash
-# Space source code (for pattern study)
+# Datasets — list (no search subcommand; use REST API above for keyword search)
+uvx hf datasets ls --limit 10
+uvx hf datasets info <repo_id>
+
+# Downloads (any repo type via --repo-type)
+uvx hf download <repo_id> --include "*.json" --local-dir /tmp/<name>     # config only
 uvx hf download <space_id> --repo-type space --include "*.py" --local-dir /tmp/<name>
-
-# Model config only (lightweight)
-uvx hf download <repo_id> --include "*.json" --local-dir /tmp/<name>
 ```
 
-Always write downloads under `/tmp/` (temporary, outside repo root).
+For keyword search across models or datasets, the REST endpoints above are simpler than the CLI.
 
-### Advanced Wrapper (optional)
+Download into `/tmp/` — always temporary, outside the repo root.
 
-When tag filters or structured output helps:
+## Optional Python wrappers
+
+Use only when you want JSON filtering beyond what `gh` flags / `curl + jq` support. PEP 723 inline metadata lets `uv` run them from anywhere:
 
 ```bash
 # Claude Code
+uv run plugins/code-scout/skills/resource-finder/scripts/search_github.py \
+    "fastapi boilerplate" --limit 10 --detailed
+
 uv run plugins/code-scout/skills/resource-finder/scripts/search_huggingface.py \
     "object detection" --type models --limit 10
 
-# Codex (after sync)
+# Codex (after codex-bridge sync)
 uv run ~/.agents/skills/resource-finder/scripts/search_huggingface.py \
     "object detection" --type models --limit 10
 ```
 
-First run may take a moment — `uv` installs `huggingface_hub` in an ephemeral
-venv (PEP 723 metadata declares the dep).
+First HF wrapper run installs `huggingface_hub` in an ephemeral venv via `uv`.
 
-## Example Workflows
+## Citation discipline
 
-### Starting a New FastAPI Project
-
-```bash
-gh search repos "fastapi boilerplate production" --sort stars --limit 5
-gh search repos "awesome fastapi" --sort stars
-gh repo view tiangolo/full-stack-fastapi-template
-```
-
-### Finding ML Demo Patterns
-
-```bash
-# Search Spaces (primary)
-curl -sS "https://huggingface.co/api/spaces?search=object+detection+gradio&limit=5" | jq '.[] | {id, likes, sdk}'
-
-# Or via CLI
-uvx hf search-repos "object detection gradio" --repo-type space --limit 5
-
-# Study app.py
-uvx hf download <space_id> --repo-type space --include "*.py" --local-dir /tmp/demo
-cat /tmp/demo/app.py
-```
-
-### Comparing Model Families
-
-```bash
-# 1. Find candidates via REST
-curl -sS "https://huggingface.co/api/models?search=qwen+vl&limit=10" | jq '.[].id'
-
-# 2. Check downloads/likes (ranked)
-curl -sS "https://huggingface.co/api/models?search=qwen+vl&sort=downloads&direction=-1&limit=10" \
-    | jq '.[] | {id, downloads, likes}'
-
-# 3. Official repo for docs
-gh repo view QwenLM/Qwen2-VL
-```
-
-## Tips
-
-1. **Start with `gh search` and `curl .../api/`** — they work anywhere, no Python
-2. **`awesome-*` lists first** for curated high-signal resources
-3. **Stars + recency filters** (`pushed:>YYYY-MM-DD`, `stars:>50`) surface maintained projects
-4. **Download selectively** with `--include` glob patterns
-5. **Cite sources** — include URLs in final output
+Every result a scout emits must carry the canonical URL the user can click — `https://github.com/<owner>/<repo>` or `https://huggingface.co/<repo_id>`. Never paraphrase a finding without its source.
 
 ## Requirements
 
-- `gh` CLI (authenticated) — primary for GitHub
-- `uv` — auto-installs HF deps, runs scripts portably
+- `gh` CLI authenticated — primary for GitHub
+- `uv` — auto-installs HF deps, runs wrapper scripts portably
 - `jq` — JSON parsing for REST responses
 - Python 3.11+ (resolved via `uv run`; no direct `python` call needed)
 

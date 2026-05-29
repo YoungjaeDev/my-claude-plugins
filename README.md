@@ -63,7 +63,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 |---------|---------|------|
 | **Core** | `core-config` | Python 포매팅, 알림 (work guidelines 는 `~/.claude/CLAUDE.md`) |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
-| **Research** | `code-scout` | GitHub, HuggingFace 등 10+ 플랫폼 리소스 검색 |
+| **Research** | `code-scout` | 다축 리서치 하네스 — 5-scout 팀 (github/hf/web/docs/synthesis) + research-orchestrator skill + exa MCP 통합 |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
 | **AI Models** | `council` | Claude, Codex, Gemini 멀티모델 심의 |
@@ -155,18 +155,48 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 ### Research & Search
 
 <details>
-<summary><strong>code-scout</strong> - 코드 & ML 리소스 탐색</summary>
+<summary><strong>code-scout</strong> - 다축 코드 & ML 리서치 하네스 (v2.0)</summary>
 
-**Agents:**
-| Agent | Model | Platforms |
-|-------|-------|-----------|
-| `scout` | haiku | GitHub, HuggingFace |
-| `deep-scout` | sonnet | 10+ (Reddit, SO, arXiv 등) |
+**Skills (entry points):**
+| Skill | Purpose |
+|-------|---------|
+| `research-orchestrator` | 메인 진입점. 쿼리 → mode 감지 (quick/deep) → fan-out → synthesis-scout 합성. |
+| `exa-web-search` | web-scout 의 exa MCP 사용 가이드. |
+| `resource-finder` | github/hf-scout 의 검색 hygiene cheat-sheet. |
 
-**Usage:**
+**Agent team (all `opus`):**
+| Agent | Axis |
+|-------|------|
+| `github-scout` | `gh search repos/code`, awesome-list discovery |
+| `hf-scout` | `uvx hf` + HF REST API (models/datasets/spaces) |
+| `web-scout` | exa MCP 우선, WebSearch fallback (Reddit/SO/블로그/뉴스) |
+| `docs-scout` | Context7 (라이브러리 docs) + DeepWiki (repo Q&A) |
+| `synthesis-scout` | dedup / trust ranking / conflict resolution / 최종 보고서 |
+
+학술 논문이 필요한 경우 `paper-search-tools` 플러그인을 직접 사용. native `paper-scout` agent는 다음 PR 에서 추가 예정.
+
+**Usage — Claude Code 호출 (셸 아님, 메인 세션에서 실행):**
+```text
+# 권장: orchestrator 가 workspace 생성 + 라우팅 + synthesis 까지 모두 처리
+Skill("code-scout:research-orchestrator", "Research RAG eval frameworks 2026")
+
+# 단일 axis 직접 호출 (scout 계약상 workspace_dir + artifact_id 필요)
+Agent(subagent_type="code-scout:github-scout",
+      prompt="query=fastapi production boilerplate\nworkspace_dir=$WORKSPACE\nartifact_id=01_github")
 ```
-Task(subagent_type="code-scout:scout", prompt="Find FastAPI boilerplate")
+
+**Workspace 준비 (위 직접 호출 전에 실제 셸에서):**
+```bash
+PARENT="${TMPDIR:-/tmp}/research"
+mkdir -p "$PARENT"
+WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
+# 결과는 $WORKSPACE/01_github.json
 ```
+
+**Migration (v1.x → v2.0):**
+- `Agent(subagent_type="code-scout:scout")` → `Skill("code-scout:research-orchestrator")` (quick mode 자동)
+- `Agent(subagent_type="code-scout:deep-scout")` → `Skill("code-scout:research-orchestrator")` (deep mode 자동)
+- 기존 stub 은 doc-only deprecation pointer 로 동작. 검색은 수행하지 않고 마이그레이션 안내 메시지만 반환 (Claude Code subagent 가 추가 subagent 를 띄울 수 없어 v2.0 fan-out 흐름은 메인 세션에서 시작해야 함)
 
 </details>
 

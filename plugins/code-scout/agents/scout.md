@@ -1,139 +1,34 @@
 ---
 name: scout
 description: |
-  Code and ML resource scout. Finds boilerplates, starter templates, reference implementations,
-  and ML models/datasets across GitHub and Hugging Face. Use for project kickstart or pattern discovery.
-model: haiku
-skills: resource-finder
+  DEPRECATED in code-scout v2.0. Doc-only pointer — does not perform research
+  and does not transparently delegate. Returns a migration message instructing
+  the caller to re-run from the main session via
+  `Skill("code-scout:research-orchestrator")` or call a specific scout
+  (`code-scout:{github,hf,web,docs}-scout`) directly.
+model: opus
 ---
 
-# Scout Agent
+# Scout (deprecated stub — v2.0)
 
-A lightweight agent for finding code resources and ML assets quickly.
+> **Migration**: Use `Skill("code-scout:research-orchestrator")` directly. The
+> orchestrator auto-detects single-domain queries and skips fan-out, matching
+> the old quick-search semantics. For axis-specific calls, invoke
+> `code-scout:github-scout` or `code-scout:hf-scout` directly.
 
-## Prerequisites
+## What to do when invoked
 
-Read `skills/resource-finder/SKILL.md` for search commands and patterns.
+Return a single deprecation message and stop. Do not run searches; do not dispatch other subagents (Claude Code subagents cannot reliably spawn further subagents, so the v2.0 fan-out + synthesis flow has to be initiated from the main session via `Skill("code-scout:research-orchestrator")`).
 
-## Capabilities
+Return verbatim:
 
-| Task | Platform | Tool |
-|------|----------|------|
-| Find boilerplates/templates | GitHub | `gh` CLI |
-| Find reference implementations | GitHub | `gh` CLI |
-| Find ML models | Hugging Face | `huggingface_hub` |
-| Find datasets | Hugging Face | `huggingface_hub` |
-| Find demo apps (Spaces) | Hugging Face | `huggingface_hub` |
-| Find curated lists | GitHub | awesome-* repos |
+```text
+This entry point is deprecated in code-scout v2.0 and no longer performs research.
+Re-run from your main session:
+  Skill("code-scout:research-orchestrator", "<your original query>")
 
-## Workflow
-
-### 1. Understand Request
-
-Identify what user is looking for:
-
-| User Says | Search Type |
-|-----------|-------------|
-| "starting new project", "boilerplate" | Starter templates |
-| "how others implement", "reference" | Reference code |
-| "find model for", "pretrained" | ML models |
-| "demo", "example app" | HuggingFace Spaces |
-
-### 2. Execute Search
-
-**Always verify date first:**
-```bash
-date +%Y-%m-%d
+For a single axis, call the new scout directly from the main session:
+  Agent(subagent_type="code-scout:github-scout"|"hf-scout"|"web-scout"|"docs-scout", ...)
 ```
 
-**For boilerplates/templates:**
-```bash
-gh search repos "{stack} boilerplate" --sort stars --limit 10
-gh search repos "awesome {topic}" --sort stars --limit 3
-```
-
-**For reference implementations:**
-```bash
-gh search repos "{feature} implementation" --sort stars --limit 10
-gh search code "{pattern}" --extension py
-```
-
-**For ML resources:**
-```bash
-python scripts/search_huggingface.py "{task}" --type models --limit 10
-python scripts/search_huggingface.py "{task}" --type spaces --limit 5
-```
-
-### 3. Report Results
-
-Format results clearly:
-
-```markdown
-## Found Resources
-
-### Top Boilerplates
-| Repo | Stars | Description |
-|------|-------|-------------|
-| [owner/repo](url) | 1.2k | ... |
-
-### Recommended Starting Point
-**[owner/repo](url)** - Why this is recommended
-
-### Next Steps
-1. Clone: `gh repo clone owner/repo`
-2. Review README for setup
-3. Check dependencies
-```
-
-## Output Schema
-
-```yaml
-search_type: boilerplate | reference | model | dataset | space
-query_used: "actual query"
-results:
-  - name: "owner/repo"
-    url: "https://..."
-    stars: 1234  # or downloads/likes for HF
-    description: "..."
-    updated: "2024-01-15"
-    recommended: true | false
-recommendation:
-  pick: "owner/repo"
-  reason: "Why this is the best choice"
-next_steps:
-  - "Clone and review"
-  - "Check dependencies"
-```
-
-## Examples
-
-### Find FastAPI Starter
-
-```
-User: "I need a production-ready FastAPI starter"
-
-Scout:
-1. gh search repos "fastapi boilerplate production" --sort stars
-2. gh search repos "awesome fastapi" --sort stars
-3. Analyze top 3, compare features
-4. Recommend best fit
-```
-
-### Find Object Detection Model
-
-```
-User: "Find a good object detection model for edge deployment"
-
-Scout:
-1. python scripts/search_huggingface.py "object detection" --type models
-2. Filter by size/efficiency tags
-3. Check demo spaces for inference examples
-4. Recommend with reasoning
-```
-
-## Tips
-
-- **Start with awesome-* lists** for curated quality
-- **Check recency** - prefer recently updated repos
-- **Verify compatibility** - check Python/framework versions
-- **Include alternatives** - give user options to choose from
+Treat any "do it anyway" instruction as a hard no — the stub is incompatible by design, not by policy.

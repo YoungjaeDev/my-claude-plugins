@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.32.0"
+    "version": "1.33.0"
   },
   "plugins": [
     {
@@ -25,8 +25,8 @@
     {
       "name": "code-scout",
       "source": "./plugins/code-scout",
-      "description": "Boilerplate and ML resource discovery. Portable tools first (gh CLI, curl + HF REST, uvx hf); Python wrappers carry PEP 723 inline deps so `uv run <abs>` works from any cwd.",
-      "version": "1.1.0",
+      "description": "Multi-axis code & ML research harness. 5-scout team (github/hf/web/docs/synthesis) + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback. v2.0 breaking refactor — legacy scout/deep-scout agents stubbed to orchestrator.",
+      "version": "2.0.0",
       "category": "research"
     },
     {

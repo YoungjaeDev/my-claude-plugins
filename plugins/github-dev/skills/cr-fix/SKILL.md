@@ -155,7 +155,10 @@ s=$(gh api "repos/$OWNER/$REPO/commits/$CUR_SHA/status" \
 When `s == "success"` (CR status flipped to success before polling started), CR may still be rate-limited — the `CodeRabbit` commit status reports `success` with description `"Review completed"` even when the review payload is just a `Review limit reached` comment. The polling-time self-escape inside `poll-cr-status.sh` never runs in that path, so check the issue-comments stream once before treating the iter as clean:
 
 ```bash
-PUSH_TIME=${PUSH_TIME:-$(bash $SKILL_DIR/scripts/push-time.sh "$OWNER" "$REPO" "$CUR_SHA")}
+# Always recompute against the current SHA — Step 12 resets only TRACK_FILE,
+# so a stale PUSH_TIME from a previous iter would let sniff-cr-rate-limit.sh
+# match an old `Review limit reached` comment against the wrong push window.
+PUSH_TIME=$(bash $SKILL_DIR/scripts/push-time.sh "$OWNER" "$REPO" "$CUR_SHA")
 if [ "$s" = "success" ]; then
   if rl=$(bash $SKILL_DIR/scripts/sniff-cr-rate-limit.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
     s=rate_limited
@@ -274,7 +277,9 @@ codex_records=$(bash $SKILL_DIR/scripts/fetch-codex-comments.sh "$OWNER" "$REPO"
 Skip when `CR_SOURCE ∈ {cli, codex-only}`. Otherwise, if `(cr_records + codex_records) == 0`:
 
 ```bash
-PUSH_TIME=${PUSH_TIME:-$(bash $SKILL_DIR/scripts/push-time.sh "$OWNER" "$REPO" "$CUR_SHA")}
+# Always recompute PUSH_TIME against the current SHA so engagement-gate.sh
+# anchors its comment-window check to this iteration's push, not a stale one.
+PUSH_TIME=$(bash $SKILL_DIR/scripts/push-time.sh "$OWNER" "$REPO" "$CUR_SHA")
 cr_engagement=$(bash $SKILL_DIR/scripts/engagement-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME")
 ```
 

@@ -40,9 +40,9 @@ resolve_wiki_root() {
 wiki_root="$(resolve_wiki_root)" || exit 0
 
 # Rate-limit: suppress if we've already fired in the last 10 minutes for this cwd
-marker="/tmp/wiki_post_commit_hint.$(printf '%s' "$PWD" | md5sum | cut -d' ' -f1)"
+marker="/tmp/wiki_post_commit_hint.$(printf '%s' "$PWD" | cksum | cut -d' ' -f1)"
 if [[ -f "$marker" ]]; then
-  age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || echo 0) ))
+  age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null || echo 0) ))
   [[ $age -lt 600 ]] && exit 0
 fi
 touch "$marker"

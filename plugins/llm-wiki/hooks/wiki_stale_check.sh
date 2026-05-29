@@ -20,9 +20,9 @@ resolve_wiki_root() {
 wiki_root="$(resolve_wiki_root)" || exit 0
 
 # Rate-limit: only run once per hour per cwd
-marker="/tmp/wiki_stale_check.$(printf '%s' "$PWD" | md5sum | cut -d' ' -f1)"
+marker="/tmp/wiki_stale_check.$(printf '%s' "$PWD" | cksum | cut -d' ' -f1)"
 if [[ -f "$marker" ]]; then
-  age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || echo 0) ))
+  age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null || echo 0) ))
   [[ $age -lt 3600 ]] && exit 0
 fi
 touch "$marker"
@@ -33,7 +33,7 @@ stale=()
 while IFS= read -r f; do
   d=$(LC_ALL=C.UTF-8 grep -oP '^last_verified:\s*\K\d{4}-\d{2}-\d{2}' "$f" 2>/dev/null | head -1)
   [[ -z "$d" ]] && continue
-  d_ts=$(date -d "$d" +%s 2>/dev/null) || continue
+  d_ts=$(date -d "$d" +%s 2>/dev/null || date -j -f '%Y-%m-%d' "$d" +%s 2>/dev/null) || continue
   # Per-page volatility window: volatile -> 30d, stable/absent -> 180d
   vol=$(LC_ALL=C.UTF-8 grep -oP '^volatility:\s*\K\S+' "$f" 2>/dev/null | head -1)
   if [[ "$vol" == "volatile" ]]; then window=30; else window=180; fi

@@ -30,9 +30,9 @@ log_file="$wiki_root/log.md"
 [[ -f "$log_file" ]] || exit 0
 
 # Rate-limit: only run once per 4h per cwd (avoid /clear spam)
-marker="/tmp/wiki_session_start_lint_hint.$(printf '%s' "$PWD" | md5sum | cut -d' ' -f1)"
+marker="/tmp/wiki_session_start_lint_hint.$(printf '%s' "$PWD" | cksum | cut -d' ' -f1)"
 if [[ -f "$marker" ]]; then
-  age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || echo 0) ))
+  age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null || echo 0) ))
   [[ $age -lt 14400 ]] && exit 0
 fi
 touch "$marker"
@@ -44,7 +44,7 @@ msg=""
 if [[ -z "$newest" ]]; then
   msg="[wiki-lint-hint] no lint-wiki baseline in $log_file; consider /lint-wiki to establish wiki health."
 else
-  n_ts=$(date -d "$newest" +%s 2>/dev/null) || exit 0
+  n_ts=$(date -d "$newest" +%s 2>/dev/null || date -j -f '%Y-%m-%d' "$newest" +%s 2>/dev/null) || exit 0
   age_days=$(( ($(date +%s) - n_ts) / 86400 ))
   if (( age_days > 3 )); then
     msg="[wiki-lint-hint] last /lint-wiki was $age_days days ago ($newest); consider /lint-wiki to catch drift."

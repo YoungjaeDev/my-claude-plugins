@@ -87,7 +87,8 @@ Hooks and skills no-op silently when no wiki root resolves (none of `.llmwiki/wi
 
 ## Shell portability
 
-Hooks and skill scripts target POSIX-shell + a thin set of GNU extensions. Two pitfalls trip up minimal containers and non-en_US locales:
+Hooks and skill scripts target POSIX-shell and degrade gracefully across GNU (Linux) and BSD (macOS) userlands. Pitfalls that trip up minimal containers, non-en_US locales, and macOS:
 
 - `grep -P` (PCRE) shorthand classes (`\d`, `\s`, `\K`, ...) silently fail under non-UTF-8 locales (e.g. `ko_KR.eucKR`). Wrap every `grep -oP` call with `LC_ALL=C.UTF-8` to force a deterministic locale.
 - `bc` is not part of busybox / alpine / minimal-Debian base images. Replace `paste -sd+ | bc` with `awk '{s+=$1} END{print s+0}'` to sum numeric lines without an external arithmetic dependency.
+- GNU-only `stat -c %Y` / `date -d` / `md5sum` break on macOS/BSD. The hooks use portable fallbacks: `stat -c %Y f || stat -f %m f`, `date -d "$x" +%s || date -j -f '%Y-%m-%d' "$x" +%s`, and `cksum` (POSIX) instead of `md5sum` for the per-cwd rate-limit marker. Preserve these fallbacks when editing any hook.

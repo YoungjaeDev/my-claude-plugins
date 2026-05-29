@@ -63,7 +63,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 |---------|---------|------|
 | **Core** | `core-config` | Python 포매팅, 알림 (work guidelines 는 `~/.claude/CLAUDE.md`) |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
-| **Research** | `code-scout` | 다축 리서치 하네스 — 5-scout 팀 (github/hf/web/docs/synthesis) + research-orchestrator skill + exa MCP 통합 |
+| **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음) |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
 | **AI Models** | `council` | Claude, Codex, Gemini 멀티모델 심의 |
@@ -155,25 +155,26 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 ### Research & Search
 
 <details>
-<summary><strong>code-scout</strong> - 다축 코드 & ML 리서치 하네스 (v2.0)</summary>
+<summary><strong>code-scout</strong> - 다축 코드 & ML 리서치 하네스 (v2.1)</summary>
 
 **Skills (entry points):**
 | Skill | Purpose |
 |-------|---------|
 | `research-orchestrator` | 메인 진입점. 쿼리 → mode 감지 (quick/deep) → fan-out → synthesis-scout 합성. |
-| `exa-web-search` | web-scout 의 exa MCP 사용 가이드. |
+| `exa-web-search` | web-scout 의 exa MCP + 4-tier fetch (exa → firecrawl → insane-search) 사용 가이드. |
 | `resource-finder` | github/hf-scout 의 검색 hygiene cheat-sheet. |
 
-**Agent team (all `opus`):**
+**Agent team (6, all `opus`):**
 | Agent | Axis |
 |-------|------|
 | `github-scout` | `gh search repos/code`, awesome-list discovery |
 | `hf-scout` | `uvx hf` + HF REST API (models/datasets/spaces) |
-| `web-scout` | exa MCP 우선, WebSearch fallback (Reddit/SO/블로그/뉴스) |
+| `web-scout` | exa MCP 우선, WebSearch fallback (Reddit/SO/블로그/뉴스). fetch 4-tier: exa → firecrawl → **insane-search** (WAF/403/challenge URL, X/Reddit/Coupang 등) |
 | `docs-scout` | Context7 (라이브러리 docs) + DeepWiki (repo Q&A) |
-| `synthesis-scout` | dedup / trust ranking / conflict resolution / 최종 보고서 |
+| `paper-scout` | paper-search-tools 8-source 래핑 (arXiv/Semantic Scholar/Crossref/PubMed/bioRxiv/medRxiv/IACR/Google Scholar). 도메인별 2-3 source 선택, 학술 신호 감지 시 deep mode 5-axis 에 자동 인입 |
+| `synthesis-scout` | dedup (DOI 포함) / trust ranking (peer-reviewed > arxiv high-cite > arxiv recent) / conflict resolution / 최종 보고서 |
 
-학술 논문이 필요한 경우 `paper-search-tools` 플러그인을 직접 사용. native `paper-scout` agent는 다음 PR 에서 추가 예정.
+**경계 — `/deep-research` 와 분리**: code-scout 는 code / ML / docs / papers 도메인 전용. 정책 / 시장 / 역사 / 인물 등 일반 토픽은 sibling `/deep-research` 직접 호출 (7-phase + adversarial verify + state machine). orchestrator 가 위임하지 않음 — 의도된 boundary.
 
 **Usage — Claude Code 호출 (셸 아님, 메인 세션에서 실행):**
 ```text
@@ -183,6 +184,10 @@ Skill("code-scout:research-orchestrator", "Research RAG eval frameworks 2026")
 # 단일 axis 직접 호출 (scout 계약상 workspace_dir + artifact_id 필요)
 Agent(subagent_type="code-scout:github-scout",
       prompt="query=fastapi production boilerplate\nworkspace_dir=$WORKSPACE\nartifact_id=01_github")
+
+# 학술 단일 axis
+Agent(subagent_type="code-scout:paper-scout",
+      prompt="query=sparse autoencoder interpretability\nworkspace_dir=$WORKSPACE\nartifact_id=05_paper")
 ```
 
 **Workspace 준비 (위 직접 호출 전에 실제 셸에서):**
@@ -190,13 +195,14 @@ Agent(subagent_type="code-scout:github-scout",
 PARENT="${TMPDIR:-/tmp}/research"
 mkdir -p "$PARENT"
 WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
-# 결과는 $WORKSPACE/01_github.json
+# 결과는 $WORKSPACE/01_github.json 등
 ```
 
-**Migration (v1.x → v2.0):**
-- `Agent(subagent_type="code-scout:scout")` → `Skill("code-scout:research-orchestrator")` (quick mode 자동)
-- `Agent(subagent_type="code-scout:deep-scout")` → `Skill("code-scout:research-orchestrator")` (deep mode 자동)
-- 기존 stub 은 doc-only deprecation pointer 로 동작. 검색은 수행하지 않고 마이그레이션 안내 메시지만 반환 (Claude Code subagent 가 추가 subagent 를 띄울 수 없어 v2.0 fan-out 흐름은 메인 세션에서 시작해야 함)
+**Migration:**
+- v1.x → v2.0: `Agent(subagent_type="code-scout:scout")` → `Skill("code-scout:research-orchestrator")` (quick mode 자동)
+- v2.0 → v2.1: `Agent(subagent_type="code-scout:deep-scout")` 호출 자체 불가 (v2.0 에서도 doc-only stub 이라 검색 안 했으므로 사용자 관찰 동작 동일). 대안: `Skill("code-scout:research-orchestrator")` 에 "deep / thorough / comprehensive / compare / best practices" 키워드 포함 → deep mode 자동.
+- 학술 신호 (paper / arxiv / DOI / SOTA / benchmark / 인용 / venue names) 가 있는 deep 쿼리는 자동으로 5-axis (paper-scout 포함). 기존 4-axis flow 는 무변경.
+- WAF / 403 fetch 실패는 web-scout 가 자동으로 insane-search 로 retry. 호출자 변경 없음.
 
 </details>
 

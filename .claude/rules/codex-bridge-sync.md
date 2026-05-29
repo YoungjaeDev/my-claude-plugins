@@ -37,6 +37,7 @@ Subagents have their own native target in Codex (`~/.codex/agents/<plugin>-<agen
 - **Test Red first.** Fixtures live in `tests/fixtures/`. Write failing test, then the minimal export needed to pass. Re-run the full suite after every cycle.
 - **Resolve `pluginsDir` via `resolvePluginsDir(scriptPath, override)`** which detects monorepo vs Claude Code versioned cache layout (heuristic: every direct child of the monorepo candidate is semver-named ⇒ jump one level up). Honor `--plugins-dir <path>` override. Per-plugin layout is resolved by `resolvePluginContentDir(pluginDir)` which descends into `<plugin>/<latest-semver>/` when `.claude-plugin/` is absent and all children are semver. Together they make discovery work both from `<repo>/plugins/codex-bridge/scripts/sync.mjs` and from `~/.claude/plugins/cache/my-claude-plugins/codex-bridge/<version>/scripts/sync.mjs`.
 - **Skip `pruneOrphans` when `validSources.size === 0`.** A discovery miss (wrong `pluginsDir`, over-restrictive `--plugin` filter, freshly-init repo) must never trigger destructive prune. Emit a stderr warning and push to `report.warnings` so the failure is visible. Pair with the `discoverSkills returned 0 results` warning emitted at the top of `syncAll` for upstream signal.
+- **Leave `.llmwiki/` untouched.** It is the intended shared neutral root for wiki + raw lore, deliberately placed OUTSIDE `.claude/` so the `.claude/` → `.codex/` literal transform never rewrites it — keeping a single shared wiki instead of forking one copy per agent.
 
 ## Don'ts
 

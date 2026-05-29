@@ -32,7 +32,7 @@ plugins/project-init/
 │   └── gh-repo-create-flow.md          # owner 추론 + visibility 결정
 ├── scripts/
 │   ├── infer-github-context.sh         # gh api user + orgs
-│   └── idempotent-seed.sh              # 충돌 가드 + .claude/ 시드
+│   └── idempotent-seed.sh              # 충돌 가드 + .claude/ + .llmwiki/ 시드
 └── CLAUDE.md                           # this file
 ```
 

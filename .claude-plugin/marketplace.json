@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.32.0"
+    "version": "1.33.0"
   },
   "plugins": [
     {
@@ -144,22 +144,22 @@
     {
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
-      "description": "Karpathy LLM-Wiki 3-layer (5 skills: query/ingest/lint/bootstrap/post-merge-wiki + 2 soft-hint hooks + bootstrap templates). Universal — works in any repo with .claude/wiki/.",
-      "version": "1.1.1",
+      "description": "Karpathy LLM-Wiki 3-layer: 6 skills (query/ingest/lint/bootstrap/migrate/post-merge-wiki) + 3 soft-hint hooks + bootstrap templates. Neutral .llmwiki/ root (codex-bridge .claude/->.codex/ can't fork it); resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki.",
+      "version": "1.2.0",
       "category": "memory"
     },
     {
       "name": "spec-state",
       "source": "./plugins/spec-state",
       "description": "Spec/issue/PR work-pipeline aggregate. state-tracker skill manages .claude/state/spec.json (read/init/start/complete). Called by github-dev:post-merge.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "workflow"
     },
     {
       "name": "project-init",
       "source": "./plugins/project-init",
       "description": "One-shot first-day project bootstrap: interview, .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines (general/ml/web variants), README/CHANGELOG seed, gh repo create + initial push. Single command /project-init:new.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "planning"
     }
   ]

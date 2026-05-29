@@ -1,6 +1,6 @@
 {
   "name": "project-init",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "One-shot first-day project bootstrap: .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines, README/CHANGELOG seed, gh repo create + push. Single command /project-init:new orchestrates interview -> local seed -> remote repo -> initial commit.",
   "author": {
     "name": "YoungjaeDev"

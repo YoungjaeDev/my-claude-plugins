@@ -25,8 +25,17 @@ case "$cmd" in
   *) exit 0 ;;
 esac
 
-# Need a .claude/wiki/ to suggest anything
-[[ -d ".claude/wiki" ]] || exit 0
+# Need a wiki to suggest anything
+# --- canonical wiki-root resolver (llm-wiki v2) ---
+# Resolution order: .llmwiki/wiki (preferred) -> .claude/wiki (legacy) -> .codex/wiki (legacy fork)
+resolve_wiki_root() {
+  local cand
+  for cand in ".llmwiki/wiki" ".claude/wiki" ".codex/wiki"; do
+    if [[ -d "$cand" ]]; then printf '%s\n' "$cand"; return 0; fi
+  done
+  return 1
+}
+wiki_root="$(resolve_wiki_root)" || exit 0
 
 # Rate-limit: suppress if we've already fired in the last 10 minutes for this cwd
 marker="/tmp/wiki_post_commit_hint.$(printf '%s' "$PWD" | md5sum | cut -d' ' -f1)"

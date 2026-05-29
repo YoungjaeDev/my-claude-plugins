@@ -39,4 +39,4 @@ Items that came up during brainstorming but are not in this spec.
 
 ## Sources
 
-- gist / PR / wiki page / audit md citations
+- gist / PR / wiki page / `.llmwiki/raw/` evidence / audit md citations

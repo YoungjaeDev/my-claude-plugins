@@ -18,14 +18,26 @@ CMD="${1:-}"
 shift || true
 
 cmd_ensure_claude_dirs() {
-  local subdirs=("spec" "rules" "wiki")
-  for sub in "${subdirs[@]}"; do
+  # Schema layer (spec, rules) stays under .claude/. Wiki + raw evidence live under the
+  # neutral .llmwiki/ root so codex-bridge's .claude/->.codex/ transform never forks them.
+  local claude_subdirs=("spec" "rules")
+  local llmwiki_subdirs=("raw" "wiki")
+  for sub in "${claude_subdirs[@]}"; do
     mkdir -p ".claude/${sub}"
     if [ ! -f ".claude/${sub}/.gitkeep" ]; then
       : > ".claude/${sub}/.gitkeep"
       echo "[seed] created .claude/${sub}/.gitkeep"
     else
       echo "[skip] .claude/${sub}/.gitkeep already exists"
+    fi
+  done
+  for sub in "${llmwiki_subdirs[@]}"; do
+    mkdir -p ".llmwiki/${sub}"
+    if [ ! -f ".llmwiki/${sub}/.gitkeep" ]; then
+      : > ".llmwiki/${sub}/.gitkeep"
+      echo "[seed] created .llmwiki/${sub}/.gitkeep"
+    else
+      echo "[skip] .llmwiki/${sub}/.gitkeep already exists"
     fi
   done
 }
@@ -132,7 +144,7 @@ case "$CMD" in
 idempotent-seed.sh — /project-init:new helper
 
 Commands:
-  ensure-claude-dirs                  Create .claude/{spec,rules,wiki}/.gitkeep
+  ensure-claude-dirs                  Create .claude/{spec,rules}/.gitkeep + .llmwiki/{raw,wiki}/.gitkeep
   seed-if-missing <src> <dst>         Copy template only if dst absent
   check-collision <path>              Exit 1 if path exists, 0 if absent
   diagnose                            Output JSON snapshot of cwd state

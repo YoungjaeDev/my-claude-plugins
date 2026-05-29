@@ -50,6 +50,15 @@ Cache is regeneratable any time. Direct JSON edits are allowed but rare — pref
 - `github-dev:post-merge` auto-calls `complete <spec-path>` after a merge to update the cache.
 - `llm-wiki` is independent — wiki lore (`.llmwiki/wiki/log.md`) tracks knowledge events; spec-state tracks the work pipeline.
 
+## Wiring status
+
+The write-side wiring is intentionally asymmetric:
+
+- **`complete` is auto-wired** — `github-dev:post-merge` Step 5.7 fires `complete <spec-path>` after a merge.
+- **`start` / `init` are NOT auto-wired** into `resolve-issue` / `decompose-issue`. They run manually, or as part of the `superpowers:writing-plans` chain.
+
+Consequence: `.claude/state/spec.json` stays absent until the first `start` / `init` in a repo. This dormancy is **by design**, not a bug — the cache materializes only once a tracked spec begins, and `complete` no-ops gracefully when the file is absent (see Conditional behavior). There is no overlap with `llm-wiki`: that plugin tracks durable knowledge lore, spec-state tracks transient work-pipeline state.
+
 ## Conditional behavior
 
 Safe to install in any repo. Skill operations no-op gracefully when `.claude/state/spec.json` (and `.claude/spec/`) are absent — `read` prints empty state, `init` requires user confirmation.

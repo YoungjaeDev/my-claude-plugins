@@ -152,7 +152,7 @@
       "name": "spec-state",
       "source": "./plugins/spec-state",
       "description": "Spec/issue/PR work-pipeline aggregate. state-tracker skill manages .claude/state/spec.json (read/init/start/complete). Called by github-dev:post-merge.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "category": "workflow"
     },
     {

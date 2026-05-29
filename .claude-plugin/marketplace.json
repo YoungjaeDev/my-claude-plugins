@@ -19,7 +19,7 @@
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline (now a multi-file skill: wait + auto-fetch + apply + push loop with branch-protection-gated auto-merge, CR-engagement guard, Codex review-id discovery + dedupe, CR Nitpick + Codex P3 silent skip, optional --skip-minor; rate-limit early-escape with auto fallback to local CodeRabbit CLI or Codex-only via --cr-source), project tracking, release",
-      "version": "1.23.0",
+      "version": "1.23.1",
       "category": "github"
     },
     {

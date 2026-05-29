@@ -8,6 +8,14 @@ Every `/ingest-finding` and `/post-merge-wiki` run writes a block here **before*
 
 <!-- New entries go directly under this line -->
 
+## 2026-05-29 — post-merge #28 (post-merge-wiki)
+
+Diff log written before applying the page edit (git-revertible). Merge SHA `62315ed` — feat(github-dev): post-merge Step 5.8 conditional wiki ingest chain.
+
+- llm-wiki-design/post-merge-trigger.md: new page (id `post-merge-trigger`, status active, volatility stable, sources 2) — post-merge-wiki has two complementary triggers: github-dev:post-merge Step 5.8 (conditional soft-dependency, mirrors the spec-state Step 5.7 pattern, covers GitHub-UI merges) + the wiki_post_commit_hint.sh PostToolUse hook (local CLI merge commits only). `> See-also: [[curated-conservative]]`.
+- index.md: added the post-merge-trigger hook under the `## llm-wiki-design` domain section; MOC `last_verified:` kept 2026-05-29.
+- Evidence (in-diff, from `git show --name-only`): `plugins/github-dev/commands/post-merge.md` (Step 5.8). Complementary pre-existing source: `plugins/llm-wiki/hooks/wiki_post_commit_hint.sh`.
+
 ## 2026-05-29 — ingest v2 design record: 4 pages (ingest-finding)
 
 Diff log written before applying the page edits (git-revertible).

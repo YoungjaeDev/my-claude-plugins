@@ -65,3 +65,4 @@ The v2 design record: which rohitg00-v2 ideas were harvested vs rejected, and wh
 - [Neutral `.llmwiki/` root](llm-wiki-design/neutral-llmwiki-root.md) — wiki/raw move out of `.claude/` so codex-bridge's `.claude/`->`.codex/` body transform can never fork the wiki per-agent.
 - [Volatility over decay](llm-wiki-design/volatility-over-decay.md) — a `volatility:` class with a fixed window replaces Ebbinghaus decay math; old is not stale.
 - [Provenance over confidence](llm-wiki-design/provenance-over-confidence.md) — `sources: N` + a named `## Sources` list replaces fabricated float confidence.
+- [Post-merge wiki trigger](llm-wiki-design/post-merge-trigger.md) — post-merge-wiki fires from two complementary triggers: github-dev:post-merge Step 5.8 (workflow + GitHub-UI merges) and the wiki_post_commit_hint hook (local CLI merges only).

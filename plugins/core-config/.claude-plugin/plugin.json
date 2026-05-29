@@ -1,8 +1,19 @@
 {
   "name": "core-config",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Core development configuration: Python auto-format + cross-platform notifications. Work guidelines live in ~/.claude/CLAUDE.md (SSOT).",
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/memory_nudge.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",

@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.36.0"
+    "version": "1.37.0"
   },
   "plugins": [
     {
       "name": "core-config",
       "source": "./plugins/core-config",
       "description": "Python auto-format + cross-platform notifications. Work guidelines live in ~/.claude/CLAUDE.md (SSOT).",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "category": "core"
     },
     {

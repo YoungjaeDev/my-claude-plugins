@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.35.0"
+    "version": "1.36.0"
   },
   "plugins": [
     {
@@ -103,7 +103,7 @@
       "name": "docs-forge",
       "source": "./plugins/docs-forge",
       "description": "README/CHANGELOG generation with CRO best practices",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "documentation"
     },
     {

@@ -1,3 +1,8 @@
+---
+name: readme-guide
+description: README patterns and templates reference — writing best practices derived from awesome-readme examples. Loaded by the docs-forge readme workflow.
+---
+
 # README Guide
 
 This skill provides README writing patterns and best practices derived from awesome-readme examples.

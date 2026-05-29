@@ -1,3 +1,8 @@
+---
+name: changelog-guide
+description: CHANGELOG format and automation reference — writing patterns based on Keep a Changelog and Conventional Commits. Loaded by the docs-forge changelog workflow.
+---
+
 # CHANGELOG Guide
 
 This skill provides CHANGELOG writing patterns based on Keep a Changelog and Conventional Commits.

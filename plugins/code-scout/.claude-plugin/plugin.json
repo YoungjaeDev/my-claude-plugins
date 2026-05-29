@@ -1,7 +1,19 @@
 {
   "name": "code-scout",
-  "version": "1.1.0",
-  "description": "Find boilerplates, starter templates, reference implementations, and ML resources. Includes lightweight scout and comprehensive deep-scout for multi-platform research.",
-  "skills": ["./skills/resource-finder"],
-  "agents": ["./agents/scout.md", "./agents/deep-scout.md"]
+  "version": "2.0.0",
+  "description": "Multi-axis code & ML research harness. 5-scout team (github/hf/web/docs/synthesis) + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback.",
+  "skills": [
+    "./skills/research-orchestrator",
+    "./skills/exa-web-search",
+    "./skills/resource-finder"
+  ],
+  "agents": [
+    "./agents/github-scout.md",
+    "./agents/hf-scout.md",
+    "./agents/web-scout.md",
+    "./agents/docs-scout.md",
+    "./agents/synthesis-scout.md",
+    "./agents/scout.md",
+    "./agents/deep-scout.md"
+  ]
 }

@@ -30,6 +30,7 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 - **Never bump `plugin.json` without `marketplace.json`** (or vice versa). Downstream users will see the mismatched version and lose trust in the registry.
 - **Never rely on `/plugin update` or `/plugin marketplace update` alone** to refresh plugin files. Plugin cache bugs ([#17361](https://github.com/anthropics/claude-code/issues/17361), [#19197](https://github.com/anthropics/claude-code/issues/19197)) mean file contents do not refresh until `~/.claude/plugins/cache/my-claude-plugins/` is deleted.
 - **Never skip the plugin count update** when adding/removing a plugin. Stale counts in README/CLAUDE.md erode credibility.
+- **Never bump `metadata.version` against a branch's original base when concurrent branches are in flight.** Two branches off the same base that each bump `metadata.version` to the same next value (e.g. both `1.32.0` → `1.33.0`) merge with NO git conflict — the values are identical — so `main` silently ends one release short while containing two. Right before merging, re-check `metadata.version` against `origin/main` (not the branch's fork point) and bump past whatever already landed. After merging the second of two concurrent marketplace releases, verify `metadata.version` advanced by two from the shared base.
 
 ## Developer Workflow
 

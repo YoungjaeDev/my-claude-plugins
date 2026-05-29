@@ -15,9 +15,12 @@ scripts/              # ad-hoc ops scripts. See wiki/code-map/scripts-and-output
 
 .claude/
   rules/              # schema invariants (always or path-scoped)
-  wiki/               # LLM-maintained lore (on-demand). MOC: wiki/index.md
   skills/             # workflow runbooks (Skill tool)
   spec/               # per-PR specs (date-prefixed)
+
+.llmwiki/             # neutral root (codex-bridge .claude/->.codex/ never touches it)
+  raw/                # immutable evidence (Evidence: cites)
+  wiki/               # LLM-maintained lore (on-demand). MOC: .llmwiki/wiki/index.md
 ```
 
 Replace the placeholders above with the actual top-level directories. Keep this file 1-depth only; any deeper detail goes to `wiki/code-map/`.

@@ -73,7 +73,7 @@ Question 4: **License**
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
-# 생성: .claude/{spec,rules,wiki}/.gitkeep
+# 생성: .claude/{spec,rules}/.gitkeep + .llmwiki/{raw,wiki}/.gitkeep
 ```
 
 `bootstrap-wiki` / `write-rules` 는 호출하지 않는다 — 빈 프로젝트에는 적을 lore 도, tech-stack signal 도 없다.
@@ -87,11 +87,11 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
 
 <one-line description>
 
-## LLM Wiki (`.claude/wiki/`)
+## LLM Wiki (`.llmwiki/wiki/`)
 
 이 프로젝트는 Karpathy LLM-Wiki 3-layer 시스템 위에 동작한다. 도메인 lore (provider quirks, design rationale, debugging stories) 는 wiki 가 보관한다.
 
-- **진입점**: `.claude/wiki/index.md` (Map of Content). 페이지 직접 grep 금지.
+- **진입점**: `.llmwiki/wiki/index.md` (Map of Content). 페이지 직접 grep 금지.
 - **사용 순서**:
   1. lore 가 필요할 때 → `/llm-wiki:query-wiki` 먼저
   2. 새 발견 → `/llm-wiki:ingest-finding`
@@ -207,7 +207,7 @@ done
 [ -d .git ] || git init -b main
 
 # Stage all seeded files (이미 존재한 파일은 git add 가 no-op)
-git add .claude/ CLAUDE.md AGENTS.md README.md CHANGELOG.md
+git add .claude/ .llmwiki/ CLAUDE.md AGENTS.md README.md CHANGELOG.md
 
 # Idempotent re-run 경로: Phase 4/5 가 모두 skip 했고 staged diff 가 없으면
 # `git commit` 이 `nothing to commit` 으로 실패해 이후 gh repo create 까지
@@ -260,7 +260,8 @@ License 가 None 이 아니면 — gh repo create 후 `gh api` 로 LICENSE 파�
 Files seeded:
   .claude/spec/.gitkeep
   .claude/rules/.gitkeep
-  .claude/wiki/.gitkeep
+  .llmwiki/raw/.gitkeep
+  .llmwiki/wiki/.gitkeep
   CLAUDE.md       (minimal stub — LLM Wiki entrypoint)
   AGENTS.md       (variant: <variant> — includes Codex Review guidelines)
   README.md       (6-section minimal)
@@ -273,7 +274,7 @@ Next actions (call when ready):
      (tech-stack 기반 CLAUDE.md + .claude/rules/*.md 재생성)
 
   2. 첫 도메인 lore 쌓이면 → /llm-wiki:bootstrap-wiki
-     (도메인 인터뷰 + .claude/wiki/<domain>/ 구조 시드)
+     (도메인 인터뷰 + .llmwiki/wiki/<domain>/ 구조 시드)
 
   3. 첫 PR merge 후        → /github-dev:post-merge
      (자동으로 /llm-wiki:post-merge-wiki 체이닝)

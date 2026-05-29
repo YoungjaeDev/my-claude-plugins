@@ -17,7 +17,12 @@
       "./plugins/workflow-viz",
       "./plugins/rules-forge",
       "./plugins/tcrei-prompt",
-      "./plugins/codex-bridge"
+      "./plugins/codex-bridge",
+      "./plugins/llm-wiki",
+      "./plugins/spec-state",
+      "./plugins/project-init",
+      "./plugins/paper-search-tools",
+      "./plugins/docs-forge"
     ]
   }
 }

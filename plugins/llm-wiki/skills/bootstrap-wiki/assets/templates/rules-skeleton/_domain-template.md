@@ -6,7 +6,7 @@ paths: src/<domain>/**, tests/<domain>/**
 
 Path-scoped rule. Loaded only when files matching `paths:` are in context.
 
-This file holds **trip-wire invariants** for the `<domain>` module — things that break tests / release / reproducibility if violated. For debugging stories, provider quirks, design rationale, see `wiki/<domain>/`.
+This file holds **trip-wire invariants** for the `<domain>` module — things that break tests / release / reproducibility if violated. For debugging stories, provider quirks, design rationale, see `.llmwiki/wiki/<domain>/`.
 
 ## Invariants
 
@@ -14,7 +14,7 @@ This file holds **trip-wire invariants** for the `<domain>` module — things th
 
 ## See also (wiki)
 
-- `wiki/<domain>/...` — TODO
+- `.llmwiki/wiki/<domain>/...` — TODO
 
 ## Cross-refs
 

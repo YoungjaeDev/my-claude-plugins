@@ -127,6 +127,12 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    - The schema and update mechanics are owned by the `spec-state:state-tracker` skill — invoke it (`/spec-state:state-tracker complete <spec-path>`) rather than direct JSON edit if the plugin is installed; otherwise apply a direct JSON edit using the schema documented in `plugins/spec-state/skills/state-tracker/SKILL.md`.
    - Skip entirely if `.claude/state/` directory does not exist.
 
+5.8. **Trigger wiki ingest (if a wiki layer exists)**
+   - Resolve the wiki root in order: `.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`. Skip silently if none resolves (llm-wiki not in use — no hard dependency).
+   - Skip for trivial merges (typo / dep-bump / formatting — reuse `post-merge-wiki`'s own "Do NOT use" list).
+   - Otherwise surface via `AskUserQuestion` whether to run `/llm-wiki:post-merge-wiki` (that skill derives + gates the ingest candidates itself). Invoke on accept; else note as a manual follow-up.
+   - Skip silently if the `post-merge-wiki` skill is not installed.
+
 6. **Integrate Learnings into Configuration Files**
 
    > **Core Principle: No Stamps, Topical Names, Current State Only**

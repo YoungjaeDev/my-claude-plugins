@@ -63,7 +63,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 |---------|---------|------|
 | **Core** | `core-config` | Python 포매팅, 알림 (work guidelines 는 `~/.claude/CLAUDE.md`) |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
-| **Research** | `code-scout` | GitHub, HuggingFace 등 10+ 플랫폼 리소스 검색 |
+| **Research** | `code-scout` | 다축 리서치 하네스 — 5-scout 팀 (github/hf/web/docs/synthesis) + research-orchestrator skill + exa MCP 통합 |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
 | **AI Models** | `council` | Claude, Codex, Gemini 멀티모델 심의 |
@@ -81,7 +81,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Integration** | `codex-bridge` | OMC skill을 Codex `~/.agents/skills/`로 body-only 변환 동기화 |
-| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/post-merge-wiki + 2 hooks) |
+| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/migrate/post-merge-wiki + 3 hooks) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 
 ## 설치 옵션
@@ -155,18 +155,48 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 ### Research & Search
 
 <details>
-<summary><strong>code-scout</strong> - 코드 & ML 리소스 탐색</summary>
+<summary><strong>code-scout</strong> - 다축 코드 & ML 리서치 하네스 (v2.0)</summary>
 
-**Agents:**
-| Agent | Model | Platforms |
-|-------|-------|-----------|
-| `scout` | haiku | GitHub, HuggingFace |
-| `deep-scout` | sonnet | 10+ (Reddit, SO, arXiv 등) |
+**Skills (entry points):**
+| Skill | Purpose |
+|-------|---------|
+| `research-orchestrator` | 메인 진입점. 쿼리 → mode 감지 (quick/deep) → fan-out → synthesis-scout 합성. |
+| `exa-web-search` | web-scout 의 exa MCP 사용 가이드. |
+| `resource-finder` | github/hf-scout 의 검색 hygiene cheat-sheet. |
 
-**Usage:**
+**Agent team (all `opus`):**
+| Agent | Axis |
+|-------|------|
+| `github-scout` | `gh search repos/code`, awesome-list discovery |
+| `hf-scout` | `uvx hf` + HF REST API (models/datasets/spaces) |
+| `web-scout` | exa MCP 우선, WebSearch fallback (Reddit/SO/블로그/뉴스) |
+| `docs-scout` | Context7 (라이브러리 docs) + DeepWiki (repo Q&A) |
+| `synthesis-scout` | dedup / trust ranking / conflict resolution / 최종 보고서 |
+
+학술 논문이 필요한 경우 `paper-search-tools` 플러그인을 직접 사용. native `paper-scout` agent는 다음 PR 에서 추가 예정.
+
+**Usage — Claude Code 호출 (셸 아님, 메인 세션에서 실행):**
+```text
+# 권장: orchestrator 가 workspace 생성 + 라우팅 + synthesis 까지 모두 처리
+Skill("code-scout:research-orchestrator", "Research RAG eval frameworks 2026")
+
+# 단일 axis 직접 호출 (scout 계약상 workspace_dir + artifact_id 필요)
+Agent(subagent_type="code-scout:github-scout",
+      prompt="query=fastapi production boilerplate\nworkspace_dir=$WORKSPACE\nartifact_id=01_github")
 ```
-Task(subagent_type="code-scout:scout", prompt="Find FastAPI boilerplate")
+
+**Workspace 준비 (위 직접 호출 전에 실제 셸에서):**
+```bash
+PARENT="${TMPDIR:-/tmp}/research"
+mkdir -p "$PARENT"
+WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
+# 결과는 $WORKSPACE/01_github.json
 ```
+
+**Migration (v1.x → v2.0):**
+- `Agent(subagent_type="code-scout:scout")` → `Skill("code-scout:research-orchestrator")` (quick mode 자동)
+- `Agent(subagent_type="code-scout:deep-scout")` → `Skill("code-scout:research-orchestrator")` (deep mode 자동)
+- 기존 stub 은 doc-only deprecation pointer 로 동작. 검색은 수행하지 않고 마이그레이션 안내 메시지만 반환 (Claude Code subagent 가 추가 subagent 를 띄울 수 없어 v2.0 fan-out 흐름은 메인 세션에서 시작해야 함)
 
 </details>
 
@@ -342,7 +372,7 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 <details>
 <summary><strong>llm-wiki</strong> - Karpathy LLM-Wiki 3-layer</summary>
 
-`.claude/rules/` (invariants) + `.claude/wiki/` (LLM-maintained lore) 패키지. 어느 repo 든 `/plugin install llm-wiki` 한 번이면 5 skill + 2 hook + bootstrap 템플릿 즉시 사용 가능.
+`.claude/rules/` (invariants) + 중립 `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence) 패키지. 어느 repo 든 `/plugin install llm-wiki` 한 번이면 6 skill + 3 hook + bootstrap 템플릿 즉시 사용 가능. wiki 해석 순서: `.llmwiki/wiki/` → legacy `.claude/wiki/` → `.codex/wiki/` (중립 root 라 codex-bridge `.claude/`→`.codex/` 변환이 fork 못 함).
 
 **Skills:**
 | Skill | Description |
@@ -352,18 +382,22 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 | `/llm-wiki:lint-wiki` | 4 wiki-rot 모드 감사 (identity/level/relationship/staleness) + 6주 retro 리마인더 |
 | `/llm-wiki:bootstrap-wiki` | 새 repo 에 3-layer scaffold (templates 번들) |
 | `/llm-wiki:post-merge-wiki` | merge 후 `git show --name-only` 기반 ingest 후보 도출 → `ingest-finding` 체인 |
+| `/llm-wiki:migrate-wiki` | 기존 `.claude/wiki`/`.codex/wiki` 를 중립 `.llmwiki/` 로 마이그레이트 + v2 frontmatter(status/volatility/sources) 추가 (idempotent, diff-log) |
 
 **Hooks (auto-installed):**
+
 | Hook | Trigger | Behavior |
 |------|---------|----------|
-| `wiki_stale_check.sh` | UserPromptSubmit | `last_verified:` > 60일 page soft-hint (rate-limit 1h/cwd) |
+| `wiki_stale_check.sh` | UserPromptSubmit | volatility 윈도우(stable 180d / volatile 30d) 초과 page soft-hint (rate-limit 1h/cwd) |
 | `wiki_post_commit_hint.sh` | PostToolUse(Bash) | 2+ file 또는 50+ line commit 시 ingest 제안 (rate-limit 10min) |
+| `wiki_session_start_lint_hint.sh` | SessionStart | 최근 `lint-wiki` 가 3일 초과 경과 시 `/lint-wiki` 권유 (additionalContext, rate-limit 4h) |
 
 **Cross-ref grammar** (raw `[[wikilink]]` 금지):
 - `> Refines: [[page-id]]` — 세부 추가
 - `> Contradicts: [[page-id]]` — 충돌, 해결 필요
-- `> Evidence: docs/.../audit.md` — 원본 인용 (복사 아님)
+- `> Evidence: .llmwiki/raw/<file>` — 원본 인용 (복사 아님; 외부 `docs/...` 도 가능)
 - `> See-also: [[page-id]]` — 측면 연관
+- `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — v2 typed relations
 
 **Related:** spec / issue / PR work-pipeline state 는 `spec-state` plugin 으로 분리.
 
@@ -411,7 +445,7 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 새 디렉토리에서 단일 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료.
 
 **시드 결과:**
-- `.claude/{spec,rules,wiki}/` 빈 구조 (`.gitkeep`)
+- `.claude/{spec,rules}/` + `.llmwiki/{raw,wiki}/` 빈 구조 (`.gitkeep`)
 - `CLAUDE.md` — minimal stub + LLM Wiki 사용 안내
 - `AGENTS.md` — Codex GitHub cloud reviewer 가 자동으로 읽는 `## Review guidelines` 섹션 포함 (variant: general / ml / web)
 - `README.md`, `CHANGELOG.md` — minimal 시드 (각각 6-section, Keep-a-Changelog Unreleased)

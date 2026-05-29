@@ -25,13 +25,24 @@ case "$cmd" in
   *) exit 0 ;;
 esac
 
-# Need a .claude/wiki/ to suggest anything
-[[ -d ".claude/wiki" ]] || exit 0
+# Need a wiki to suggest anything
+# --- canonical wiki-root resolver (llm-wiki v2) ---
+# Resolution order: .llmwiki/wiki (preferred) -> .claude/wiki (legacy) -> .codex/wiki (legacy fork)
+# A candidate counts only if it carries an init signal (index.md or log.md), so an empty
+# seeded .gitkeep-only dir never masks a populated legacy wiki.
+resolve_wiki_root() {
+  local cand
+  for cand in ".llmwiki/wiki" ".claude/wiki" ".codex/wiki"; do
+    if [[ -f "$cand/index.md" || -f "$cand/log.md" ]]; then printf '%s\n' "$cand"; return 0; fi
+  done
+  return 1
+}
+wiki_root="$(resolve_wiki_root)" || exit 0
 
 # Rate-limit: suppress if we've already fired in the last 10 minutes for this cwd
-marker="/tmp/wiki_post_commit_hint.$(printf '%s' "$PWD" | md5sum | cut -d' ' -f1)"
+marker="/tmp/wiki_post_commit_hint.$(printf '%s' "$PWD" | cksum | cut -d' ' -f1)"
 if [[ -f "$marker" ]]; then
-  age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || echo 0) ))
+  age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null || echo 0) ))
   [[ $age -lt 600 ]] && exit 0
 fi
 touch "$marker"

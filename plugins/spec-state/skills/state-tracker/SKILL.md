@@ -103,5 +103,5 @@ After any write:
 
 - **Auto-create `.claude/state/spec.json` without asking** — the user may not want state tracking in this repo. `read` returns empty + suggests `init` instead.
 - **Drift between state.json and spec frontmatter** — if they disagree, frontmatter wins; regenerate the cache.
-- **Embed wiki audit events here** — those go in `.claude/wiki/log.md`. This file tracks the work pipeline, not lore.
+- **Embed wiki audit events here** — those go in `.llmwiki/wiki/log.md`. This file tracks the work pipeline, not lore.
 - **Store free-form notes** — keep `description` to one line. Detail belongs in the spec body.

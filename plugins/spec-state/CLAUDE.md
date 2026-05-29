@@ -48,7 +48,7 @@ Cache is regeneratable any time. Direct JSON edits are allowed but rare — pref
 ## Relation to other plugins
 
 - `github-dev:post-merge` auto-calls `complete <spec-path>` after a merge to update the cache.
-- `llm-wiki` is independent — wiki lore (`.claude/wiki/log.md`) tracks knowledge events; spec-state tracks the work pipeline.
+- `llm-wiki` is independent — wiki lore (`.llmwiki/wiki/log.md`) tracks knowledge events; spec-state tracks the work pipeline.
 
 ## Conditional behavior
 

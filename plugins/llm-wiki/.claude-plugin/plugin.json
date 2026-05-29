@@ -1,7 +1,7 @@
 {
   "name": "llm-wiki",
-  "version": "1.1.1",
-  "description": "Karpathy LLM-Wiki 3-layer system: 5 skills (query/ingest/lint/bootstrap/post-merge-wiki) + 2 soft-hint hooks (stale check, post-commit hint). Universal — works in any repo with .claude/wiki/. For spec/issue/PR work-pipeline state see the spec-state plugin.",
+  "version": "1.2.0",
+  "description": "Karpathy LLM-Wiki 3-layer system: 6 skills (query/ingest/lint/bootstrap/migrate/post-merge-wiki) + 3 soft-hint hooks (stale check, post-commit hint, session-start lint hint). Uses the neutral .llmwiki/ root (so codex-bridge's .claude/->.codex/ transform can't fork it); resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. For spec/issue/PR work-pipeline state see the spec-state plugin.",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -22,6 +22,18 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/wiki_post_commit_hint.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/wiki_session_start_lint_hint.sh",
             "timeout": 5000
           }
         ]

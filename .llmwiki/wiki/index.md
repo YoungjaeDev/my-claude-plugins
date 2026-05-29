@@ -1,7 +1,7 @@
 ---
 id: wiki-moc
 aliases: [moc, table-of-contents, llms-txt]
-last_verified: TODO-INITIAL-DATE
+last_verified: 2026-05-29
 ---
 
 # Wiki Map of Content (MOC)
@@ -56,3 +56,12 @@ All wiki edits append one line to `log.md` (`## YYYY-MM-DD — <summary>` header
 
 <!-- Add domain sections below. Each section is `## <domain>` followed by a bulleted list:
      `- [page-title](<domain>/<slug>.md) — 1-line hook` -->
+
+## llm-wiki-design
+
+The v2 design record: which rohitg00-v2 ideas were harvested vs rejected, and why.
+
+- [Curated-conservative v2 upgrade](llm-wiki-design/curated-conservative.md) — hub: harvest the git-auditable kernel of each v2 idea, reject the heavyweight machinery (steal the ideas, not the plan).
+- [Neutral `.llmwiki/` root](llm-wiki-design/neutral-llmwiki-root.md) — wiki/raw move out of `.claude/` so codex-bridge's `.claude/`->`.codex/` body transform can never fork the wiki per-agent.
+- [Volatility over decay](llm-wiki-design/volatility-over-decay.md) — a `volatility:` class with a fixed window replaces Ebbinghaus decay math; old is not stale.
+- [Provenance over confidence](llm-wiki-design/provenance-over-confidence.md) — `sources: N` + a named `## Sources` list replaces fabricated float confidence.

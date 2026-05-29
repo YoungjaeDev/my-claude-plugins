@@ -81,7 +81,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Integration** | `codex-bridge` | OMC skill을 Codex `~/.agents/skills/`로 body-only 변환 동기화 |
-| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/post-merge-wiki + 2 hooks) |
+| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/migrate/post-merge-wiki + 3 hooks) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 
 ## 설치 옵션
@@ -372,7 +372,7 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 <details>
 <summary><strong>llm-wiki</strong> - Karpathy LLM-Wiki 3-layer</summary>
 
-`.claude/rules/` (invariants) + `.claude/wiki/` (LLM-maintained lore) 패키지. 어느 repo 든 `/plugin install llm-wiki` 한 번이면 5 skill + 2 hook + bootstrap 템플릿 즉시 사용 가능.
+`.claude/rules/` (invariants) + 중립 `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence) 패키지. 어느 repo 든 `/plugin install llm-wiki` 한 번이면 6 skill + 3 hook + bootstrap 템플릿 즉시 사용 가능. wiki 해석 순서: `.llmwiki/wiki/` → legacy `.claude/wiki/` → `.codex/wiki/` (중립 root 라 codex-bridge `.claude/`→`.codex/` 변환이 fork 못 함).
 
 **Skills:**
 | Skill | Description |
@@ -382,18 +382,22 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 | `/llm-wiki:lint-wiki` | 4 wiki-rot 모드 감사 (identity/level/relationship/staleness) + 6주 retro 리마인더 |
 | `/llm-wiki:bootstrap-wiki` | 새 repo 에 3-layer scaffold (templates 번들) |
 | `/llm-wiki:post-merge-wiki` | merge 후 `git show --name-only` 기반 ingest 후보 도출 → `ingest-finding` 체인 |
+| `/llm-wiki:migrate-wiki` | 기존 `.claude/wiki`/`.codex/wiki` 를 중립 `.llmwiki/` 로 마이그레이트 + v2 frontmatter(status/volatility/sources) 추가 (idempotent, diff-log) |
 
 **Hooks (auto-installed):**
+
 | Hook | Trigger | Behavior |
 |------|---------|----------|
-| `wiki_stale_check.sh` | UserPromptSubmit | `last_verified:` > 60일 page soft-hint (rate-limit 1h/cwd) |
+| `wiki_stale_check.sh` | UserPromptSubmit | volatility 윈도우(stable 180d / volatile 30d) 초과 page soft-hint (rate-limit 1h/cwd) |
 | `wiki_post_commit_hint.sh` | PostToolUse(Bash) | 2+ file 또는 50+ line commit 시 ingest 제안 (rate-limit 10min) |
+| `wiki_session_start_lint_hint.sh` | SessionStart | 최근 `lint-wiki` 가 3일 초과 경과 시 `/lint-wiki` 권유 (additionalContext, rate-limit 4h) |
 
 **Cross-ref grammar** (raw `[[wikilink]]` 금지):
 - `> Refines: [[page-id]]` — 세부 추가
 - `> Contradicts: [[page-id]]` — 충돌, 해결 필요
-- `> Evidence: docs/.../audit.md` — 원본 인용 (복사 아님)
+- `> Evidence: .llmwiki/raw/<file>` — 원본 인용 (복사 아님; 외부 `docs/...` 도 가능)
 - `> See-also: [[page-id]]` — 측면 연관
+- `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — v2 typed relations
 
 **Related:** spec / issue / PR work-pipeline state 는 `spec-state` plugin 으로 분리.
 
@@ -441,7 +445,7 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 새 디렉토리에서 단일 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료.
 
 **시드 결과:**
-- `.claude/{spec,rules,wiki}/` 빈 구조 (`.gitkeep`)
+- `.claude/{spec,rules}/` + `.llmwiki/{raw,wiki}/` 빈 구조 (`.gitkeep`)
 - `CLAUDE.md` — minimal stub + LLM Wiki 사용 안내
 - `AGENTS.md` — Codex GitHub cloud reviewer 가 자동으로 읽는 `## Review guidelines` 섹션 포함 (variant: general / ml / web)
 - `README.md`, `CHANGELOG.md` — minimal 시드 (각각 6-section, Keep-a-Changelog Unreleased)

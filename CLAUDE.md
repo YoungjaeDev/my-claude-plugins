@@ -71,7 +71,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 ### Memory & Lore
 | Plugin | Description |
 |--------|-------------|
-| `llm-wiki` | Karpathy LLM-Wiki 3-layer (5 skills + 2 hooks + bootstrap templates) for `.claude/wiki/` |
+| `llm-wiki` | Karpathy LLM-Wiki 3-layer (6 skills + 3 hooks + bootstrap templates) for the neutral `.llmwiki/` root (+ legacy `.claude/wiki/`) |
 
 ### Workflow State
 | Plugin | Description |

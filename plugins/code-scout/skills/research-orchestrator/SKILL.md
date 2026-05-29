@@ -106,10 +106,12 @@ Agent(subagent_type="code-scout:github-scout",
 Agent(subagent_type="code-scout:hf-scout",
       prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=02_hf")
 Agent(subagent_type="code-scout:web-scout",
-      prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=03_web")
+      prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=03_web\nmode=deep")
 Agent(subagent_type="code-scout:docs-scout",
       prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=04_docs")
 ```
+
+`web-scout` uses `mode` to decide between exa-only (quick) and exa + WebSearch in parallel (deep). The other scouts ignore `mode` — their search surface is single-tool by design.
 
 For long-running runs (more than ~2 minutes expected per scout), prefer `Agent({...}, {run_in_background: true})` + `Monitor` so the orchestrator can stream progress.
 

@@ -78,18 +78,33 @@ mcp__exa__web_fetch_exa({ url: "<url from a prior search result>" })
 
 Avoid `numResults > 10` — return diminishes fast and the response gets unwieldy in synthesis.
 
-## Fallback to `WebSearch`
+## Combining with `WebSearch` (mode-dependent)
 
-Exa quota / network errors → fall back to the built-in `WebSearch`. When you fall back, record `tool_used: "websearch"` in the scout artifact and add an `error` field with the exa error message so synthesis-scout can flag reduced reliability.
+| Mode | Pattern |
+|---|---|
+| `quick` | exa primary; `WebSearch` only as fallback when exa is unavailable, quota-exhausted, or returns empty. Record `tool_used: "websearch"` + the exa error in the artifact. |
+| `deep` | run exa and `WebSearch` **in parallel** as co-searches and merge before fetching. They are complementary — exa wins on semantic intent + official sources, `WebSearch` wins on `site:`-scoped community results (Reddit threads, niche SO answers, GitHub issue discussions). The +30%-ish token cost is worth the ~2× long-tail coverage on deep mode. |
+
+Drop obvious duplicates by canonical URL before the fetch phase; synthesis-scout will canonicalize again downstream, but pre-filtering saves fetch budget.
 
 WebSearch supports `site:` operators and `allowed_domains` / `blocked_domains` — use them to compensate for the loss of exa's semantic ranking.
 
-```
+```text
 WebSearch({
   query: "site:reddit.com r/MachineLearning pytorch lightning 2026",
   allowed_domains: ["reddit.com"]
 })
 ```
+
+## Fetch fallback — `firecrawl_scrape`
+
+`web_fetch_exa` is the default extractor (cheaper, returns the same canonical URL space as the search). Switch to `mcp__firecrawl__firecrawl_scrape` **only** when `web_fetch_exa` fails: timeout, 403, empty body, JS-heavy SPA, or Cloudflare / anti-bot interstitial. Record `firecrawl_scrape` in `fetch_tools_used`.
+
+Do **not** use other firecrawl tools from this skill:
+- `firecrawl_search` — overlaps with exa/WebSearch; adds a 3rd partial-coverage axis without enough lift.
+- `firecrawl_deep_research` — runs its own multi-step research; competes with `research-orchestrator`'s own flow. Strict no.
+- `firecrawl_crawl` / `firecrawl_map` — site-wide crawls are out of scope for a research scout.
+- `firecrawl_extract` — structured-field extraction (prices, ratings) is a different domain.
 
 ## Citation hygiene
 

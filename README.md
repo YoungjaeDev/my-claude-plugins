@@ -200,7 +200,7 @@ WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
 
 **Migration:**
 - v1.x → v2.0: `Agent(subagent_type="code-scout:scout")` → `Skill("code-scout:research-orchestrator")` (quick mode 자동)
-- v2.0 → v2.1: `Agent(subagent_type="code-scout:deep-scout")` 호출 자체 불가 (v2.0 에서도 doc-only stub 이라 검색 안 했으므로 사용자 관찰 동작 동일). 대안: `Skill("code-scout:research-orchestrator")` 에 "deep / thorough / comprehensive / compare / best practices" 키워드 포함 → deep mode 자동.
+- v2.0 → v2.1: `Agent(subagent_type="code-scout:deep-scout")` 는 v2.0 doc-only stub 그대로 유지 (사용자 관찰 동작 v2.0 과 동일 — 동일 migration 메시지 반환). 영구 제거는 향후 MAJOR 릴리스로 연기. 권장 대안: `Skill("code-scout:research-orchestrator")` 에 "deep / thorough / comprehensive / compare / best practices" 키워드 포함 → deep mode 자동.
 - 학술 신호 (paper / arxiv / DOI / SOTA / benchmark / 인용 / venue names) 가 있는 deep 쿼리는 자동으로 5-axis (paper-scout 포함). 기존 4-axis flow 는 무변경.
 - WAF / 403 fetch 실패는 web-scout 가 자동으로 insane-search 로 retry. 호출자 변경 없음.
 

@@ -1,6 +1,6 @@
 # code-scout
 
-Multi-axis code & ML research harness. v2.1 grows the v2.0 4-axis team to a 5-axis team (adds `paper-scout`) + synthesis orchestrator, wires `insane-search` as a tier-4 transport fetch fallback, and removes the dead `deep-scout` stub.
+Multi-axis code & ML research harness. v2.1 grows the v2.0 4-axis team to a 5-axis team (adds `paper-scout`) + synthesis orchestrator, and wires `insane-search` as a tier-4 transport fetch fallback.
 
 ## When to use
 
@@ -59,7 +59,7 @@ The legacy `scout` agent remains as a **doc-only deprecation pointer**: it retur
 ### v2.0 → v2.1
 
 - `paper-scout` 5th axis is auto-included in `deep` mode when the query carries academic signal (paper / arxiv / DOI / SOTA / benchmark / 인용 / venue names). Existing 4-axis deep flows are unchanged.
-- `Agent(subagent_type="code-scout:deep-scout")` is **no longer callable** — the stub was removed. The v2.0 stub already did not run searches, so the user-visible behavior is the same; the call now errors instead of returning a migration message. Replace with `Skill("code-scout:research-orchestrator")` (deep mode auto-detected from "deep / thorough / comprehensive / compare / best practices" keywords).
+- `Agent(subagent_type="code-scout:deep-scout")` continues to return the same v2.0 deprecation message — the doc-only stub is **retained** for backward compatibility (no user-visible change vs v2.0). Permanent removal is deferred to a future MAJOR release. Callers should migrate to `Skill("code-scout:research-orchestrator")` (deep mode auto-detected from "deep / thorough / comprehensive / compare / best practices" keywords).
 - `web-scout` now auto-retries WAF / 403 / blocked fetches through `insane-search` as a tier-4 transport fallback. No caller change required.
 - General non-code/ML research (politics / market / history / biographies) → call `/deep-research` directly. code-scout does not delegate; the boundary is intentional (each harness is tuned for its domain).
 
@@ -77,7 +77,7 @@ The legacy `scout` agent remains as a **doc-only deprecation pointer**: it retur
 
 | Version | Notes |
 |---|---|
-| 2.1.0 | Adds `paper-scout` as the 5th axis (wraps paper-search-tools 8-source MCP family — arXiv / Semantic Scholar / Crossref / PubMed / bioRxiv / medRxiv / IACR / Google Scholar — with domain-driven source selection). Wires `insane-search` as `web-scout` tier-4 transport fetch fallback for WAF / 403 / blocked URLs (X / Reddit / Coupang). Documents the `/deep-research` boundary — code-scout owns code/ML/docs/papers, `/deep-research` owns generic topics; orchestrator does not delegate. Removes the dead `deep-scout` stub (v2.0 doc-only pointer never ran searches; the migration path is unchanged — invoke `research-orchestrator` with deep keywords). |
+| 2.1.0 | Adds `paper-scout` as the 5th axis (wraps paper-search-tools 8-source MCP family — arXiv / Semantic Scholar / Crossref / PubMed / bioRxiv / medRxiv / IACR / Google Scholar — with domain-driven source selection). Wires `insane-search` as `web-scout` tier-4 transport fetch fallback for WAF / 403 / blocked URLs (X / Reddit / Coupang). Documents the `/deep-research` boundary — code-scout owns code/ML/docs/papers, `/deep-research` owns generic topics; orchestrator does not delegate. The v2.0 `deep-scout` doc-only stub is retained for backward compatibility (permanent removal deferred to a future MAJOR release). |
 | 2.0.0 | Harness refactor — 5-scout team (`github` / `hf` / `web` / `docs` / `synthesis`) + `research-orchestrator` skill + `exa-web-search` skill. exa MCP wired into web-scout. Legacy `scout` / `deep-scout` agents stubbed. cr-fix loop converged after 9 substantive fixes across 5 iters (Codex P2 ×8 + CR Major ×1: paper-scout routing, sort merge, mktemp parent + isolation, hf CLI subcommands, workspace propagation, stub auto-delegate, Context7 fallback, synthesis Write permission). Harness audit boost — Phase 0 context-check + partial re-execution mode + follow-up triggers + scout re-invoke rule + test scenarios + negative trigger surface in description. **Breaking**: direct `subagent_type` callers should migrate per table above. |
 | 1.1.0 | Portable-tools-first refactor (`gh`, `uvx hf`, REST + jq). PEP 723 wrappers for cwd-free `uv run`. |
 | 1.0.0 | Initial release — `scout` (haiku) + `deep-scout` (sonnet) with `resource-finder` skill. |

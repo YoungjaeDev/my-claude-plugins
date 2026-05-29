@@ -14,6 +14,7 @@
     "./agents/docs-scout.md",
     "./agents/paper-scout.md",
     "./agents/synthesis-scout.md",
-    "./agents/scout.md"
+    "./agents/scout.md",
+    "./agents/deep-scout.md"
   ]
 }

@@ -66,3 +66,9 @@ The v2 design record: which rohitg00-v2 ideas were harvested vs rejected, and wh
 - [Volatility over decay](llm-wiki-design/volatility-over-decay.md) — a `volatility:` class with a fixed window replaces Ebbinghaus decay math; old is not stale.
 - [Provenance over confidence](llm-wiki-design/provenance-over-confidence.md) — `sources: N` + a named `## Sources` list replaces fabricated float confidence.
 - [Post-merge wiki trigger](llm-wiki-design/post-merge-trigger.md) — post-merge-wiki fires from two complementary triggers: github-dev:post-merge Step 5.8 (workflow + GitHub-UI merges) and the wiki_post_commit_hint hook (local CLI merges only).
+
+## plugin-ops
+
+Operational lore for the plugin system itself — cache, loading, version resolution. Complements the schema-layer version contract in `.claude/rules/plugin-versioning.md`.
+
+- [Plugin cache version-pinning](plugin-ops/cache-version-pinning.md) — the cache holds multiple versions per plugin; a session pins the startup-resolved version, so a newer already-cached version is not served until restart (or via a `local` settings.json source).

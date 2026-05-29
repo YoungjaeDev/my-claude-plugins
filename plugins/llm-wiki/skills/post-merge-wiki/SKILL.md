@@ -83,7 +83,7 @@ Do NOT use:
 
 ## Output format
 
-```
+```text
 ## Post-merge ingest — PR #<N> (<SHA>)
 
 Candidates (file → finding → evidence):
@@ -101,7 +101,7 @@ Result:
 
 ### Worked example
 
-```
+```text
 ## Post-merge ingest — PR #132 (a1b2c3d)
 
 Candidates (file → finding → evidence):

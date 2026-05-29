@@ -96,7 +96,7 @@ After applying the ingest, report:
 1. The `log.md` block you appended FIRST (the diff log), as it appears in the resolved root's `log.md`.
 2. A one-line per-page edit summary (page → what changed → `last_verified` / `status` / `sources` after).
 
-```
+```text
 ## YYYY-MM-DD — <one-line summary> (ingest-finding)
 
 - <domain>/<page>.md: <1-line description of the change>
@@ -110,7 +110,7 @@ Source: a debug session found provider X returns `null` on inputs > 8 KB.
 
 `log.md` block appended first:
 
-```
+```text
 ## 2026-05-29 — provider-x null on oversize inputs (ingest-finding)
 
 - backend/provider-x.md: new page, status: active, volatility: volatile, sources: 1

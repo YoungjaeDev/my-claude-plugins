@@ -93,7 +93,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
 
 Produce a Markdown report:
 
-```
+```text
 ## Wiki Health Report — YYYY-MM-DD
 
 - Identity: <n duplicates / clean>
@@ -112,7 +112,7 @@ Report only — do not auto-fix. User reviews and triggers `/llm-wiki:ingest-fin
 
 ### Worked example
 
-```
+```text
 ## Wiki Health Report — 2026-05-29
 
 - Identity: clean

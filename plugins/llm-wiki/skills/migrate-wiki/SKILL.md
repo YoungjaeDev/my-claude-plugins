@@ -59,7 +59,7 @@ Do NOT use:
 
 ## Output format
 
-```
+```text
 ## Wiki Migration — YYYY-MM-DD
 
 Detected:
@@ -80,7 +80,7 @@ Legacy dirs kept (not removed): <list>
 
 Repo has `.claude/wiki/` (5 pages, no v2 frontmatter) and a forked `.codex/wiki/` (same 5 pages).
 
-```
+```text
 ## Wiki Migration — 2026-05-29
 
 Detected:

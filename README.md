@@ -355,6 +355,7 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 | `/llm-wiki:migrate-wiki` | 기존 `.claude/wiki`/`.codex/wiki` 를 중립 `.llmwiki/` 로 마이그레이트 + v2 frontmatter(status/volatility/sources) 추가 (idempotent, diff-log) |
 
 **Hooks (auto-installed):**
+
 | Hook | Trigger | Behavior |
 |------|---------|----------|
 | `wiki_stale_check.sh` | UserPromptSubmit | volatility 윈도우(stable 180d / volatile 30d) 초과 page soft-hint (rate-limit 1h/cwd) |
@@ -414,7 +415,7 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 새 디렉토리에서 단일 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료.
 
 **시드 결과:**
-- `.claude/{spec,rules,wiki}/` 빈 구조 (`.gitkeep`)
+- `.claude/{spec,rules}/` + `.llmwiki/{raw,wiki}/` 빈 구조 (`.gitkeep`)
 - `CLAUDE.md` — minimal stub + LLM Wiki 사용 안내
 - `AGENTS.md` — Codex GitHub cloud reviewer 가 자동으로 읽는 `## Review guidelines` 섹션 포함 (variant: general / ml / web)
 - `README.md`, `CHANGELOG.md` — minimal 시드 (각각 6-section, Keep-a-Changelog Unreleased)

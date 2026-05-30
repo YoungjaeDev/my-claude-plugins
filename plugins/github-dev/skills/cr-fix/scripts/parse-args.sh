@@ -4,7 +4,7 @@
 # Validates --cr-source and threshold values.
 set -euo pipefail
 
-MAX_ITER=5; TIMEOUT=1800; INTERVAL=60; AUTO_MERGE=false; PASTE=""; NO_BUILD=false
+MAX_ITER=5; TIMEOUT=1800; INTERVAL=8; AUTO_MERGE=false; PASTE=""; NO_BUILD=false
 CODEX_GRACE=30; NO_CODEX=false; SKIP_MINOR=false
 CR_SOURCE=auto; SMALL_DIFF_LOC=200; SMALL_DIFF_FILES=5
 

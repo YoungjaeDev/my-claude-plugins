@@ -1,0 +1,6 @@
+{
+  "name": "llm-wiki",
+  "version": "1.3.0",
+  "description": "Karpathy LLM-Wiki 3-layer system: 6 skills (query/ingest/lint/bootstrap/migrate/post-merge-wiki) + 3 soft-hint hooks (stale check, post-commit hint, session-start lint hint). Uses the neutral .llmwiki/ root (so codex-bridge's .claude/->.codex/ transform can't fork it); resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. For spec/issue/PR work-pipeline state see the spec-state plugin.",
+  "skills": "./skills/"
+}

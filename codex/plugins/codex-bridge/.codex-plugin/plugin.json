@@ -1,0 +1,6 @@
+{
+  "name": "codex-bridge",
+  "version": "1.5.0",
+  "description": "Sync my-claude-plugins skills, commands, and subagents to Codex — user mode (~/.agents/skills/ + ~/.codex/agents/*.toml) or plugin emit (--emit plugin builds committable Codex plugin packages: codex/plugins/** + .agents/plugins/marketplace.json for `codex plugin marketplace add`). Body-only transform with bridge_source provenance marker",
+  "skills": "./skills/"
+}

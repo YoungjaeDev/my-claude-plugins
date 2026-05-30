@@ -53,7 +53,7 @@ if [ -f "$STATE_FILE" ]; then
 fi
 codex_latest_id=""
 if codex_pages=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null); then
-  codex_latest_id=$(jq -s --argjson p "$PROCESSED" 'add // []
+  codex_latest_id=$(jq -rs --argjson p "$PROCESSED" 'add // []
       | [ .[]
           | select(.user.login == "chatgpt-codex-connector[bot]")
           | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
@@ -65,7 +65,7 @@ fi
 # ── 4. Codex emoji probe (best-effort, 3 channels) ──────────────────────────
 codex_emoji_state="unknown"
 if [ -x "$SCRIPT_DIR/probe-codex-state.sh" ]; then
-  emoji_json=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" \
+  emoji_json=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" PUSH_TIME="$PUSH_TIME" \
                bash "$SCRIPT_DIR/probe-codex-state.sh" 2>/dev/null || echo '{}')
   codex_emoji_state=$(jq -r '.emoji_state // "unknown"' <<<"$emoji_json")
 fi

@@ -197,12 +197,14 @@ fi
 **CR status poll** (only if pre-flight did NOT already give us a terminal state):
 
 ```bash
-if [ "$gate" = "cr_wait" ] || [ "$gate" = "bypass" ]; then
+if [ "$gate" = "cr_wait" ]; then
   # Bash(run_in_background=true, timeout=TIMEOUT*1000):
   #   OWNER=... REPO=... SHA=$CUR_SHA PR_NUM=... INTERVAL=$INTERVAL PUSH_TIME=$PUSH_TIME TIMEOUT=... \
   #     bash $SKILL_DIR/scripts/poll-cr-status.sh
   # Monitor returns one JSON line: {state:"success"|"failure"|"rate_limited", ...}
 fi
+# CR_SOURCE ∈ {cli, codex-only} sets gate="bypass" (Step 5) — never poll PR-bot in those modes;
+# Step 7d (CLI) / Step 8b (Codex inline) handle the source directly.
 ```
 
 `poll-cr-status.sh` self-escapes when it detects a CR rate-limit body within the first 30s window. With `INTERVAL=8s` (default), the polling cycle is fast enough that the user-facing wakeup feels interactive. Termination branches:

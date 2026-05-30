@@ -16,7 +16,9 @@ set -euo pipefail
 : "${CUR_SHA:?sha required}"
 : "${PUSH_TIME:?push time required}"
 : "${STATE_FILE:?state file required}"
-: "${CODEX_TIMEOUT:=600}"
+# Honor the documented CODEX_PREFLIGHT_TIMEOUT alias (references/arguments.md);
+# fall through to the internal CODEX_TIMEOUT name otherwise. Default 600s.
+: "${CODEX_TIMEOUT:=${CODEX_PREFLIGHT_TIMEOUT:-600}}"
 
 SCRIPT_DIR="${SKIP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 

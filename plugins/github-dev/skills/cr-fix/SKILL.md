@@ -141,7 +141,11 @@ for ITER in $(seq 1 $MAX_ITER); do
         : # fall through to Step 6 polling (legacy v1 behavior).
         ;;
       codex_wait)
-        : # CR is done; fall through to Step 6b grace polling only.
+        # CR is done; force Codex grace polling. Without this, codex_active may
+        # still be "unknown" (Step 6's auto-detect only runs on gate=cr_wait), so
+        # Step 6b's `codex_active=active` guard would skip polling entirely and
+        # we'd lose findings from a Codex review still publishing.
+        codex_active=active
         ;;
       rate_limited)
         rate_limit_hits=$((rate_limit_hits+1))

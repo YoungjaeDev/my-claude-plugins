@@ -362,7 +362,7 @@ codex plugin marketplace upgrade   # git pull 로 업데이트
 - 둘 다 `node scripts/sync-codex-manifests.mjs` 가 Claude `.claude-plugin/` 소스에서 생성한다(`--check` 로 drift 검출).
 - skill 1개 이상인 plugin 만 Codex 카탈로그에 포함(command-only plugin·`midjourney` 제외 — Claude 전용). Codex 는 plugin.json 에 `commands`/`agents` 필드가 없어 command/subagent 를 로드하지 않는다.
 
-**Requirements:** Node 18+, Codex CLI 0.120.0+
+**Requirements:** Node 18+, Codex CLI 0.131.0+ (the `codex plugin marketplace` subcommands used above were added in 0.131.0)
 
 </details>
 
@@ -588,7 +588,7 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 | `uv` | Python MCP 서버 | core-config |
 | `ruff` | Python 포매팅 | core-config |
 | Node 18+ | Codex 매니페스트 동기화 스크립트 | `scripts/sync-codex-manifests.mjs` |
-| Codex CLI 0.120.0+ | Codex 네이티브 설치 (shared-source) | Codex 사용 시 |
+| Codex CLI 0.131.0+ | Codex 네이티브 설치 (shared-source; `codex plugin marketplace` 하위명령 필요) | Codex 사용 시 |
 
 ## 프로젝트 구조
 

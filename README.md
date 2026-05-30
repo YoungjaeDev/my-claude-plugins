@@ -41,7 +41,7 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 /plugin install code-scout@my-claude-plugins
 ```
 
-설치 후 `/github-dev:resolve-issue 123` 같은 명령어로 바로 사용 가능합니다.
+설치 후 "이슈 123 해결해줘" 처럼 자연어로 의도를 말하면 해당 skill 이 자동 트리거됩니다 (대부분의 워크플로우가 slash command 가 아니라 skill 로 동작).
 
 ## 플러그인 업데이트
 
@@ -130,22 +130,19 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 <details>
 <summary><strong>github-dev</strong> - GitHub 워크플로우 자동화</summary>
 
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/github-dev:commit-and-push` | 분석, 커밋, 푸시 |
-| `/github-dev:resolve-issue` | 이슈 해결 E2E (worktree, 리뷰, 검증) |
-| `/github-dev:cr-fix` | CodeRabbit + Codex 통합 파이프라인 (skill, wait + fetch + apply + push 루프, --auto-merge 옵션, resolve-issue 기본 ON). `--cr-source <auto\|pr-bot\|cli\|codex-only>` 로 소스 선택; `auto` 는 PR-bot rate-limit 감지 시 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback (1800s spin 해소). |
-| `/github-dev:code-review` | (1.10 deprecated) CodeRabbit 피드백 자동 fetch + 수동 paste fallback |
-| `/github-dev:cr-wait` | (1.10 deprecated) CodeRabbit commit status 백그라운드 폴링 |
-| `/github-dev:post-merge` | 브랜치 정리, PR 학습 내용을 설정 파일/Serena/README에 통합 |
-| `/github-dev:merge-worktree` | worktree에서 base 브랜치로 squash merge + 학습 반영 |
-| `/github-dev:decompose-issue` | 이슈를 하위 작업으로 분해 |
-| `create-issue-labels` (skill) | 표준화된 이슈 라벨 생성 (자동 트리거 skill, Codex `$create-issue-labels`) |
-| `/github-dev:update-progress` | 마일스톤/이슈 진행 상황 동기화 |
-| `/github-dev:release` | 버전 릴리스 + 자동 CHANGELOG 생성 |
+**Skills** (auto-triggering; describe intent in natural language. Also exported to Codex as `$<name>`):
+| Skill | Description |
+|-------|-------------|
+| `commit-and-push` | 분석, 커밋, 푸시 (지정한 파일만) |
+| `resolve-issue` | 이슈 해결 E2E (worktree, 리뷰, 검증; auto-merge 기본 OFF) |
+| `cr-fix` | CodeRabbit + Codex 통합 파이프라인 (wait + fetch + apply + push 루프, auto-merge 옵션, resolve-issue 기본 ON). 소스 선택(`auto`/`pr-bot`/`cli`/`codex-only`); `auto` 는 PR-bot rate-limit 감지 시 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback (1800s spin 해소). |
+| `post-merge` | 브랜치 정리, PR 학습 내용을 설정 파일/Serena/README에 통합 (비가역 단계는 미리보기+확인) |
+| `decompose-issue` | 이슈를 하위 작업으로 분해 (GitHub 생성은 확인 게이트) |
+| `create-issue-labels` | 표준화된 이슈 라벨 생성 |
+| `update-progress` | 마일스톤/이슈 진행 상황 동기화 (write-back 게이트) |
+| `release` | 버전 릴리스 + 자동 CHANGELOG 생성 (태깅/푸시 전 미리보기+확인) |
 
-**Flags:** `--skip-review`, `--strict`
+**resolve-issue 옵션:** 검토 생략 / strict lint / cr-fix 생략 / auto-merge (기본 OFF) 등은 요청 표현에서 추론. 자세한 내용은 플러그인 CLAUDE.md 참조.
 
 **Requirements:** `gh` CLI
 
@@ -239,13 +236,13 @@ facebook/react에서 reconciliation은 어떻게 동작하나요?
 
 여러 AI 모델에 질문하고 집단 지혜 합성.
 
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/council` | 멀티모델 심의 |
-| `/council --quick` | 퀵 모드 (1라운드) |
-| `/council:ask-codex` | Codex 직접 질문 |
-| `/council:ask-gemini` | Gemini 직접 질문 |
+**Skills** (auto-triggering; also exported to Codex as `$<name>`):
+| Skill | Description |
+|-------|-------------|
+| `council` | 멀티모델 심의 ("quick" 이라고 하면 1라운드 퀵 모드) |
+| `council-setup` | Codex/Gemini CLI 설치 |
+| `ask-codex` | Codex 직접 질문 |
+| `ask-gemini` | Gemini 직접 질문 |
 
 **Models:** Claude Opus, Sonnet, Codex, Gemini
 
@@ -444,7 +441,7 @@ codex plugin marketplace upgrade   # git pull 로 업데이트
 <details>
 <summary><strong>project-init</strong> - Day-1 프로젝트 부트스트랩</summary>
 
-새 디렉토리에서 단일 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료.
+새 디렉토리에서 `new` 스킬 ("이 프로젝트 부트스트랩해줘") 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료. 명시적 의도에서만 동작하며 Phase 0 에서 작업 디렉토리/의도를 확인한다 (Codex `$new`).
 
 **시드 결과:**
 - `.claude/{spec,rules}/` + `.llmwiki/{raw,wiki}/` 빈 구조 (`.gitkeep`)
@@ -458,10 +455,10 @@ codex plugin marketplace upgrade   # git pull 로 업데이트
 - Owner gate — personal vs 조직 결정은 `AskUserQuestion` 으로 명시 선택
 - Idempotent — 같은 디렉토리 재호출 시 기존 파일 보존
 
-**Next actions** (`/project-init:new` 완료 후):
-1. 코드 쌓이면 → `/rules-forge:write-rules`
-2. 첫 도메인 lore → `/llm-wiki:bootstrap-wiki`
-3. 첫 PR merge 후 → `/github-dev:post-merge` (자동 `/llm-wiki:post-merge-wiki` 체이닝)
+**Next actions** (`new` 스킬 완료 후):
+1. 코드 쌓이면 → `rules-forge:write-rules` 스킬
+2. 첫 도메인 lore → `llm-wiki:bootstrap-wiki` 스킬
+3. 첫 PR merge 후 → `github-dev:post-merge` 스킬 (자동 `llm-wiki:post-merge-wiki` 체이닝)
 
 **Requirements:** `gh` CLI authenticated, `git`, `jq`
 
@@ -494,12 +491,12 @@ codex plugin marketplace upgrade   # git pull 로 업데이트
 
 CRO 분석 기반 README/CHANGELOG 생성.
 
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/docs-forge:readme generate` | 템플릿에서 README 생성 |
-| `/docs-forge:readme analyze` | 기존 README 분석 |
-| `/docs-forge:changelog init` | CHANGELOG 초기화 |
+**Skills** (auto-triggering; also exported to Codex as `$<name>`):
+| Skill | Description |
+|-------|-------------|
+| `readme` | README 생성/분석 (writes/edits) |
+| `changelog` | CHANGELOG 생성/갱신 (writes/edits) |
+| `readme-guide` / `changelog-guide` | 패턴 레퍼런스 (read-only) |
 
 **Templates:** CLI, Library, React Component, MCP Plugin, SaaS, Desktop
 

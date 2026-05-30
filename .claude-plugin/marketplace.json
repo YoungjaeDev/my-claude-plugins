@@ -18,8 +18,8 @@
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
-      "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; --auto-merge + --skip-minor + --cr-source retained), project tracking, release. create-issue-label promoted to create-issue-labels skill (dual-tool: Claude + Codex)",
-      "version": "1.25.0",
+      "description": "GitHub workflow (all native skills): commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; auto-merge + skip-minor + cr-source retained), project tracking, release. All workflows are skills (Claude auto-discovery + Codex shared-source)",
+      "version": "1.26.0",
       "category": "github"
     },
     {
@@ -33,7 +33,7 @@
       "name": "council",
       "source": "./plugins/council",
       "description": "Multi-model deliberation: Claude, Codex, Gemini",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "category": "ai-models"
     },
     {
@@ -96,14 +96,14 @@
       "name": "paper-search-tools",
       "source": "./plugins/paper-search-tools",
       "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "category": "research"
     },
     {
       "name": "docs-forge",
       "source": "./plugins/docs-forge",
       "description": "README/CHANGELOG generation with CRO best practices",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "category": "documentation"
     },
     {
@@ -151,8 +151,8 @@
     {
       "name": "project-init",
       "source": "./plugins/project-init",
-      "description": "One-shot first-day project bootstrap: interview, .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines (general/ml/web variants), README/CHANGELOG seed, gh repo create + initial push. Single command /project-init:new.",
-      "version": "0.1.1",
+      "description": "One-shot first-day project bootstrap: interview, .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines (general/ml/web variants), README/CHANGELOG seed, gh repo create + initial push. Single `new` skill.",
+      "version": "0.2.0",
       "category": "planning"
     }
   ]

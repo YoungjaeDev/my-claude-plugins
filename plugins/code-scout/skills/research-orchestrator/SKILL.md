@@ -1,20 +1,24 @@
 ---
 name: research-orchestrator
 description: |
-  Multi-axis research orchestrator for code, ML, docs, and web sources. Routes a
-  natural-language query to one or more specialized scouts (github, hf, web, docs)
-  running in parallel, then dispatches synthesis-scout to dedup, trust-rank, and
-  emit a final Markdown report. Use when the user asks "research X", "find best
-  practices for Y", "compare A vs B", "what's the consensus on Z", wants a
-  cross-source technical brief, OR asks to refine prior research ("이전 조사 보완",
-  "재실행", "결과 업데이트", "follow up on previous research"). Triggers — "research",
-  "조사해줘", "조사", "보완", "재실행", "다시 실행", "업데이트", "이전 결과 기반",
-  "best practices", "compare frameworks", "what does the community say", "deep dive",
-  "find boilerplate", "follow up", "refine research".
-  Do NOT trigger for: single-repo GitHub PR/issue work (use github-dev), academic-paper-only
-  queries (use paper-search-tools directly), single-question repo Q&A (use deepwiki:ask),
-  one-off library docs lookup (use context7 MCP directly), Notion uploads, translations,
-  or slide generation.
+  Multi-axis research orchestrator for code, ML, docs, web, and academic-paper
+  sources. Routes a natural-language query to one or more specialized scouts
+  (github, hf, web, docs, paper) running in parallel, then dispatches
+  synthesis-scout to dedup, trust-rank, and emit a final Markdown report. Use
+  when the user asks "research X", "find best practices for Y", "compare A vs B",
+  "what's the consensus on Z", wants a cross-source technical brief, OR asks to
+  refine prior research ("이전 조사 보완", "재실행", "결과 업데이트", "follow up on
+  previous research"). Triggers — "research", "조사해줘", "조사", "보완", "재실행",
+  "다시 실행", "업데이트", "이전 결과 기반", "best practices", "compare frameworks",
+  "what does the community say", "deep dive", "find boilerplate", "follow up",
+  "refine research".
+  Do NOT trigger for: single-repo GitHub PR/issue work (use github-dev),
+  single-question repo Q&A (use deepwiki:ask), one-off library docs lookup (use
+  context7 MCP directly), single-paper PDF download (use paper-search-tools
+  download_* directly), general non-code/ML topic research — politics, market,
+  history, biographies — (use /deep-research, which has 7-phase + adversarial
+  verify built for that domain), Notion uploads, translations, or slide
+  generation.
 ---
 
 # Research Orchestrator
@@ -31,9 +35,10 @@ Use when:
 
 Skip / use something else when:
 - The user wants a GitHub PR review → `github-dev:cr-fix` / `github-dev:resolve-issue`
-- The user wants academic papers only → `paper-search-tools` plugin (paper-scout placeholder until next PR)
 - The user wants to ask a single question about one repo → `deepwiki:ask` directly
 - The user wants to read library API docs only → `context7` MCP directly
+- The user wants a single paper's PDF or full text → `paper-search-tools` `download_*` / `read_*` directly (paper-scout is metadata-only)
+- The user's query is **outside the code / ML domain** (politics, market, history, biographies, general policy) → `/deep-research` directly. Its 7-phase + adversarial verify + state-machine flow is tuned for generic topics; code-scout's 5-axis routing is tuned for code/ML and would mis-route on those queries. Orchestrator does **not** delegate to `/deep-research` — the boundary is intentional.
 
 See `references/agent-routing.md` for the full should / should-NOT matrix.
 
@@ -90,11 +95,13 @@ Look at the query and pick scouts. See `references/agent-routing.md` for the ful
 | `quick`, HF-leaning query | `hf-scout` only |
 | `quick`, docs question | `docs-scout` only |
 | `quick`, web/community question | `web-scout` only |
-| `deep` | `github-scout` + `hf-scout` + `web-scout` + `docs-scout` |
+| `quick`, academic / arxiv / SOTA / DOI / benchmark | `paper-scout` only |
+| `deep`, no academic signal | `github-scout` + `hf-scout` + `web-scout` + `docs-scout` (4-axis) |
+| `deep`, with academic signal | above + `paper-scout` (5-axis) |
 
-Assign sequential `artifact_id` slots in dispatch order: `01_github`, `02_hf`, `03_web`, `04_docs`.
+Assign sequential `artifact_id` slots in dispatch order: `01_github`, `02_hf`, `03_web`, `04_docs`, `05_paper`. Skipped axes leave their slot unallocated; synthesis-scout's `find` enumeration handles sparse workspaces deterministically.
 
-For academic queries (papers, benchmarks, SOTA), do **not** dispatch a `paper-scout` — that agent is not wired up in v2.0. Instead, route the user to the `paper-search-tools` plugin and let its `paper-search-usage` skill drive the actual tool calls (it owns the canonical MCP tool names; this skill should not duplicate them). When papers are only one of several requested axes, include a `## Gaps` note pointing at `paper-search-tools` in the final report. Native `paper-scout` integration is scheduled for the next PR.
+Academic signal triggers: "paper", "arxiv", "preprint", "DOI", "SOTA", "benchmark paper", "citation", "venue", "ICML", "NeurIPS", "ICLR", "CVPR", "ACL", "EMNLP", "RSA", "Crypto", "PubMed", "bioRxiv", and Korean equivalents (논문, 인용, 학회, 저널).
 
 ### 4. Fan-out dispatch
 
@@ -109,9 +116,11 @@ Agent(subagent_type="code-scout:web-scout",
       prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=03_web\nmode=deep")
 Agent(subagent_type="code-scout:docs-scout",
       prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=04_docs")
+Agent(subagent_type="code-scout:paper-scout",
+      prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=05_paper")
 ```
 
-`web-scout` uses `mode` to decide between exa-only (quick) and exa + WebSearch in parallel (deep). The other scouts ignore `mode` — their search surface is single-tool by design.
+Drop the `paper-scout` line in deep dispatches with no academic signal; drop other lines accordingly when fan-out narrows. `web-scout` uses `mode` to decide between exa-only (quick) and exa + WebSearch in parallel (deep). The other scouts ignore `mode` — their search surface is single-tool by design.
 
 For long-running runs (more than ~2 minutes expected per scout), prefer `Agent({...}, {run_in_background: true})` + `Monitor` so the orchestrator can stream progress.
 

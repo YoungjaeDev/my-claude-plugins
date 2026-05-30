@@ -1,7 +1,7 @@
 ---
 name: synthesis-scout
 description: |
-  Meta-orchestrator scout. Consumes findings from github/hf/web/docs scouts
+  Meta-orchestrator scout. Consumes findings from github/hf/web/docs/paper scouts
   in the shared workspace, deduplicates, scores trust, resolves conflicts, and
   emits the final Markdown report. Does not call external tools — pure synthesis.
 model: opus
@@ -37,7 +37,8 @@ Read-only on the workspace (`Read`, `Bash` for `ls` / `jq`). Writes are allowed 
    - Web/docs: by canonical URL (strip query-string, lowercase host, drop trailing slash)
    - Cross-platform: if a GitHub repo URL also appears in web findings, keep the github entry and merge the web `summary` into its `evidence`
 3. **Trust ranking** — sort within each category:
-   - `official_docs` > `official_blog` > `deepwiki_qa` > GitHub (stars-weighted) > HF (downloads-weighted) > Reddit/SO/HN > Twitter / opinion blogs
+   - `official_docs` > `official_blog` > `deepwiki_qa` > peer-reviewed paper > arxiv preprint (>100 citations) > GitHub (stars-weighted) > HF (downloads-weighted) > recent arxiv preprint > Reddit/SO/HN > workshop/blog mention > Twitter / opinion blogs
+   - See `skills/research-orchestrator/references/synthesis-rules.md` for the full table including paper time-weighting (2-year boost, 5-year penalty, seminal-paper exception).
    - Tie-break by recency (`pushed_at` / `published` / `ran_at` if nothing else)
 4. **Conflict resolution** — if two axes contradict:
    - Prefer official docs over community opinion
@@ -79,6 +80,10 @@ Read-only on the workspace (`Read`, `Bash` for `ls` / `jq`). Writes are allowed 
 ### Hugging Face Resources
 | Resource | Type | Downloads | Why |
 |----------|------|-----------|-----|
+
+### Papers
+| Title | Venue | Year | Citations | Why |
+|-------|-------|------|-----------|-----|
 
 ### Community Insights
 - {reddit/SO/blog summary with link}

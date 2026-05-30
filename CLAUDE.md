@@ -17,7 +17,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 ### Research & Search
 | Plugin | Description |
 |--------|-------------|
-| `code-scout` | Multi-axis research harness — 5-scout team (github/hf/web/docs/synthesis) + research-orchestrator skill + exa MCP integration |
+| `code-scout` | Multi-axis research harness — 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl tier-3 + insane-search tier-4 for WAF/blocked URLs. paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics. |
 | `deepwiki` | AI-powered GitHub repo documentation |
 | `paper-search-tools` | Academic paper search (arXiv, PubMed, Semantic Scholar, etc.) |
 

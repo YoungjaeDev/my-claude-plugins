@@ -13,7 +13,7 @@
 #   - Otherwise keep polling status.
 set -euo pipefail
 
-: "${OWNER:?}"; : "${REPO:?}"; : "${SHA:?}"; : "${PR_NUM:?}"; : "${INTERVAL:=60}"; : "${PUSH_TIME:?}"
+: "${OWNER:?}"; : "${REPO:?}"; : "${SHA:?}"; : "${PR_NUM:?}"; : "${INTERVAL:=8}"; : "${PUSH_TIME:?}"
 EARLY_CHECK_WINDOW="${EARLY_CHECK_WINDOW:-30}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

@@ -56,12 +56,15 @@ Do NOT use:
    - New pages inside existing domains (rare)
    - New domain dir (needs user approval — surface as a question, do not auto-create)
 
-4. **Present the candidates to the user via AskUserQuestion**:
-   - Show the list with 1-line summaries
-   - Let user pick which to ingest, which to skip
-   - Multi-select OK
+4. **Triage candidates by autonomy boundary** (see the table below):
+   - **Auto-ingest** high-confidence within-domain candidates — an existing-page update or a new page inside an existing domain, each tied to a concrete file from `git show --name-only`. No prompt; these land autonomously and appear in the Step 6 final report.
+   - **Gate via `AskUserQuestion`** only the candidates that cross an autonomy boundary:
+     - a new domain dir (`ingest-finding` would create a top-level domain)
+     - a `> Contradicts:` that needs resolution against an existing page
+     - a `rules/*.md` invariant change (alert only — never auto-edit)
+   - Show 1-line summaries; multi-select OK. If nothing is gated, skip the prompt and proceed straight to ingest.
 
-5. **For each accepted candidate**: invoke `/llm-wiki:ingest-finding` (or call its steps inline if already loaded). The ingest skill handles the diff-log + cross-update discipline, and applies v2 frontmatter defaults (`status: active`, inferred `volatility:`, `sources:`) to any new page it creates.
+5. **For each candidate cleared to ingest** (auto-ingested within-domain candidates + any gated candidate the user accepted): invoke `/llm-wiki:ingest-finding` (or call its steps inline if already loaded). The ingest skill handles the diff-log + cross-update discipline, and applies v2 frontmatter defaults (`status: active`, inferred `volatility:`, `sources:`) to any new page it creates.
 
 6. **Final report**:
    - Pages updated (with `last_verified:` bump count)
@@ -78,8 +81,9 @@ Do NOT use:
 | Update existing wiki page (via `ingest-finding`) | ✅ | — |
 | Add new wiki page inside existing domain | ✅ | — |
 | Add new wiki domain dir | ❌ | ✅ |
+| Resolve a `> Contradicts:` against an existing page | ❌ | ✅ |
 | Modify `rules/*.md` invariant | ❌ (alert only) | ✅ |
-| Skip a candidate the user didn't review | ❌ | ✅ |
+| Skip a *gated* candidate the user didn't review | ❌ | ✅ |
 
 ## Output format
 
@@ -90,7 +94,7 @@ Candidates (file → finding → evidence):
 - <touched-file> → <1-line finding> → <evidence-file>
 - ...
 
-Accepted: <list> | Skipped: <list>
+Auto-ingested: <list> | Gated→accepted: <list> | Skipped: <list>
 
 Result:
 - Pages updated: <domain>/<page>.md (last_verified bumped)
@@ -108,7 +112,7 @@ Candidates (file → finding → evidence):
 - src/providers/x.py → provider X returns null on >8KB inputs → src/providers/x.py
 - src/cache.py → no lore (mechanical refactor) → (dropped)
 
-Accepted: backend/provider-x.md | Skipped: cache refactor
+Auto-ingested: backend/provider-x.md | Gated→accepted: (none) | Skipped: cache refactor
 
 Result:
 - Pages updated: (none)
@@ -123,12 +127,12 @@ Result:
 - Pages touched have `last_verified: <today>`
 - New pages carry v2 frontmatter defaults (`status: active`, inferred `volatility:`, `sources:`)
 - No raw `[[wikilink]]` introduced (typed grammar only)
-- User explicitly approved the candidate list before any wiki edit
+- User approved any *gated* candidate (new domain / contradiction / `rules/*.md`); within-domain ingests proceed autonomously and appear in the Step 6 final report
 - Every ingested candidate maps to a concrete file in `git show --name-only`
 
 ## Anti-patterns
 
-- **Auto-ingest without user review** — surprise edits to lore erode trust.
+- **Auto-create a new domain / resolve a contradiction / change a `rules/*.md` invariant without review** — these cross an autonomy boundary and erode trust. (Within-domain ingests — existing-page updates and new pages inside an existing domain — are *intended* to proceed autonomously; see the autonomy table.)
 - **Ingest every trivial fix** — wiki becomes a churn log instead of a synthesis layer.
 - **Skip the diff log** — `ingest-finding` requires the resolved root's `log.md` entry first; don't shortcut it here either.
 - **Run before `github-dev:post-merge`** — branch cleanup + milestone state must settle first.

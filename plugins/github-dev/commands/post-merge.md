@@ -202,6 +202,13 @@ Perform local branch cleanup and configuration updates after a PR has been merge
      - `GEMINI.md` - Google Gemini CLI specific instructions
      - `.claude/rules/*.md` - Modular rule files
 
+   - **Expected root config structure** (CLAUDE.md, AGENTS.md, GEMINI.md):
+     1. Project Context - Business goal + tech stack (1-2 sentences)
+     2. Commands - Package manager and run commands
+     3. Golden Rules - Immutable / Do's / Don'ts
+     4. Modular Rules - `See @.claude/rules/[module].md` references
+     5. Project-Specific - Data locations, key modules, tracking, etc.
+
    - **Classification and Placement** (applies to all config files):
 
      | Learning Type | Target Section | Action |
@@ -233,7 +240,17 @@ Perform local branch cleanup and configuration updates after a PR has been merge
    - **Modular Rule Files** (.claude/rules/*.md):
      - Check if relevant module file exists
      - Propose path-specific rules with frontmatter: `paths: src/[module]/**`
-     - Follow structure: Role, Key Components, Do's, Don'ts
+     - Follow this structure:
+       ```markdown
+       ---
+       paths: src/[module]/**  # Optional: conditional loading
+       ---
+       # [Module] Rules
+       Role description (1-2 lines)
+       ## Key Components
+       ## Do's
+       ## Don'ts
+       ```
      - **Always confirm with user before creating new rule files**
 
    - **Pre-presentation validation (stamp self-check)**:
@@ -390,70 +407,3 @@ After Step 6 integration is applied, measure normative docs and offer split/impr
    - Stage only modified files: `git add CLAUDE.md AGENTS.md GEMINI.md README.md .serena/memories/ 2>/dev/null || true`
 
 > Follow ~/.claude/CLAUDE.md and project CLAUDE.md.
-
-## Configuration File Integration Guide
-
-The following guidelines apply to CLAUDE.md, AGENTS.md, GEMINI.md, and `.claude/rules/*.md`:
-
-### Expected File Structure
-
-**Root Config (CLAUDE.md, AGENTS.md, GEMINI.md)**:
-1. Project Context - Business goal + tech stack (1-2 sentences)
-2. Commands - Package manager and run commands
-3. Golden Rules - Immutable / Do's / Don'ts
-4. Modular Rules - `See @.claude/rules/[module].md` references
-5. Project-Specific - Data locations, key modules, tracking, etc.
-
-**Modular Rules (.claude/rules/*.md)**:
-```markdown
----
-paths: src/[module]/**  # Optional: conditional loading
----
-# [Module] Rules
-Role description (1-2 lines)
-## Key Components
-## Do's
-## Don'ts
-```
-
-### Anti-Patterns (NEVER do these)
-
-→ See **Core Principle: No Stamps, Topical Names, Current State Only** at the top of Step 6.
-
-Summary:
-- Never cite a PR or issue inside a normative doc (inline, header, or footnote) -- exception: sections marked `<!-- history-allowed -->` (see Step 6 Core Principle exception)
-- No `## Post-Merge` style changelog sections; no `post_merge_prN.md` style PR-specific memory files
-- No append-only patterns -- update existing sections in place
-- No historical narrative -- write in current-state form
-
-### Correct Integration Examples
-
-**Instead of**:
-```markdown
-## Post-Merge Notes (PR #130)
-- Preview Mode removed. Dispatcher is direct-send only.
-- Admin Nav changed from 4 tabs to 3 tabs.
-```
-
-**Do this**:
-```markdown
-## Golden Rules
-### Don'ts
-- Never reintroduce preview branching (Dispatcher is registerSendFunction() + direct-send only)
-
-## Key Modules
-| apps/electron-admin/ | Electron admin app (...3 nav tabs: Dashboard / AI / Settings...) |
-```
-
-### Examples of Content to Remove
-- Temporary notes like `TODO: remove after #123 is resolved`
-- Temporary workaround descriptions for specific issues
-- Known issues lists that have been resolved
-- Any existing `## Post-Merge Notes (PR #N)` sections (migrate content first)
-
-### Examples of Content to Modify
-- Changed directory structure descriptions
-- Updated dependency information
-- Commands or configurations that are no longer valid
-- Module descriptions that no longer match reality
-- Test counts that have changed

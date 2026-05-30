@@ -367,9 +367,22 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 - Claude Code: `$codex-sync [options]`
 - Direct CLI: `node plugins/codex-bridge/scripts/sync.mjs [options]`
 
-**CLI options:** `--dry-run`, `--verbose`, `--config <path>`, `--plugin <list>`, `--no-prune`, `--report <path>`
+**CLI options:** `--emit <user|plugin>`, `--dry-run`, `--verbose`, `--config <path>`, `--plugin <list>`, `--no-prune`, `--report <path>`
 
-**Requirements:** Node 18+, Codex CLI 0.120.0+
+**Plugin emit (`--emit plugin`):** 개별 파일 복사 대신 **Codex 네이티브 plugin 패키지**를 repo 안에 빌드 → `codex plugin marketplace add` 1줄 설치 + `git pull` 업데이트. `$HOME` 미접촉(순수 repo 산출물).
+
+```bash
+node plugins/codex-bridge/scripts/sync.mjs --emit plugin        # 전체 빌드
+# 원격 1줄 설치 (push 후):
+codex plugin marketplace add YoungjaeDev/my-claude-plugins
+codex plugin add <plugin>@my-claude-plugins
+```
+
+산출물: `.agents/plugins/marketplace.json`(카탈로그) + `codex/plugins/<plugin>/{.codex-plugin/plugin.json, skills/, AGENTS.md}`. commands→`<plugin>-<command>` skill wrap, agents/hooks→`AGENTS.md` 문서화(Codex plugin.json 은 `agents`/Claude-hook 미지원). transform scope: plugin-local `/<plugin>:skill` 보존, 외부 참조만 `$skill` 평탄화.
+
+**Codex 마켓플레이스 범위:** 20개 plugin 등록. `midjourney`(config `exclude`), `core-config`(호출 가능한 skill 없음 — hooks 전용)는 제외. user-mode `~/.agents/skills/` 동기화는 영향 없음(backward compat).
+
+**Requirements:** Node 18+, Codex CLI 0.120.0+ (plugin emit 빌드는 코어; 설치/검증은 0.134.0 에서 확인)
 
 </details>
 

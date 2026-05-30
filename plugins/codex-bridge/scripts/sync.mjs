@@ -17,6 +17,10 @@ export const DEFAULT_RULES = [
     to: '$$$2',
     mode: 'regex',
     flags: 'g',
+    // In plugin emit mode, preserve `/<currentPlugin>:skill` (plugin-local
+    // cross-reference) and only flatten references to OTHER plugins to `$skill`.
+    // Ignored in user mode — there every namespace ref is flattened.
+    scope: 'external-only',
   },
 ];
 
@@ -24,7 +28,12 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function applyTransforms(input, rules) {
+// context: { emitMode?: 'user'|'plugin', currentPlugin?: string }
+// A regex rule may carry `scope: 'external-only'`. In plugin emit mode such a
+// rule preserves matches whose first capture group equals `currentPlugin`
+// (a plugin-local reference) and only rewrites matches pointing at other
+// plugins. In user mode (default) scope is ignored — behaviour is unchanged.
+export function applyTransforms(input, rules, context = {}) {
   let out = input;
   for (const rule of rules) {
     if (rule.mode === 'literal') {
@@ -34,19 +43,28 @@ export function applyTransforms(input, rules) {
       out = out.replace(re, rule.to);
     } else if (rule.mode === 'regex') {
       const re = new RegExp(rule.from, rule.flags ?? 'g');
-      out = out.replace(re, rule.to);
+      if (rule.scope === 'external-only' && context.emitMode === 'plugin' && context.currentPlugin) {
+        const singleRe = new RegExp(rule.from, (rule.flags ?? 'g').replace('g', ''));
+        out = out.replace(re, (match, p1) => {
+          // p1 is the first capture group; by convention the plugin namespace.
+          if (p1 === context.currentPlugin) return match; // preserve plugin-local ref
+          return match.replace(singleRe, rule.to);
+        });
+      } else {
+        out = out.replace(re, rule.to);
+      }
     }
   }
   return out;
 }
 
-export function transformSkillContent(content, rules) {
+export function transformSkillContent(content, rules, context = {}) {
   const match = FRONTMATTER_RE.exec(content);
   if (!match) {
-    return applyTransforms(content, rules);
+    return applyTransforms(content, rules, context);
   }
   const [, raw, body] = match;
-  return `---\n${raw}\n---\n${applyTransforms(body, rules)}`;
+  return `---\n${raw}\n---\n${applyTransforms(body, rules, context)}`;
 }
 
 const TEXT_EXTENSIONS = new Set(['.md', '.yml', '.yaml', '.json', '.sh', '.mjs', '.js', '.py', '.ts']);
@@ -152,29 +170,29 @@ async function moveOrCopy(from, to) {
   }
 }
 
-async function renderSkillTree(sourceDir, dstDir, rules, skillMdOverride) {
+async function renderSkillTree(sourceDir, dstDir, rules, skillMdOverride, context = {}) {
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
   await fs.mkdir(dstDir, { recursive: true });
   for (const entry of entries) {
     const srcPath = path.join(sourceDir, entry.name);
     const dstPath = path.join(dstDir, entry.name);
     if (entry.isDirectory()) {
-      await renderSkillTree(srcPath, dstPath, rules, null);
+      await renderSkillTree(srcPath, dstPath, rules, null, context);
     } else if (entry.isFile()) {
       if (entry.name === 'SKILL.md' && skillMdOverride != null) {
         await fs.writeFile(dstPath, skillMdOverride, 'utf-8');
       } else {
-        await renderFile(srcPath, dstPath, rules);
+        await renderFile(srcPath, dstPath, rules, context);
       }
     }
   }
 }
 
-async function renderFile(srcPath, dstPath, rules) {
+async function renderFile(srcPath, dstPath, rules, context = {}) {
   const ext = path.extname(srcPath).toLowerCase();
   if (TEXT_EXTENSIONS.has(ext)) {
     const content = await fs.readFile(srcPath, 'utf-8');
-    await fs.writeFile(dstPath, applyTransforms(content, rules), 'utf-8');
+    await fs.writeFile(dstPath, applyTransforms(content, rules, context), 'utf-8');
   } else {
     await fs.copyFile(srcPath, dstPath);
   }
@@ -199,6 +217,13 @@ export const DEFAULT_CONFIG = {
     agentsHome: null,
     agentsTomlHome: null,
   },
+  // Emit target: 'user' → copy into $HOME (~/.agents/skills, ~/.codex/agents);
+  // 'plugin' → build Codex plugin packages under pluginBuildRoot (repo). CLI
+  // --emit overrides this. Default 'user' keeps backward-compatible behaviour.
+  emitMode: 'user',
+  // Repo root for plugin emit output (codex/plugins/** + .agents/plugins/
+  // marketplace.json). null → derived from the resolved plugins dir parent.
+  pluginBuildRoot: null,
   collisionFallbackPrefix: 'bridge-',
   exclude: [],
   transform: {
@@ -235,6 +260,12 @@ function mergeConfig(base, override) {
   if (override.target && typeof override.target === 'object') {
     out.target = { ...out.target, ...override.target };
   }
+  if (typeof override.emitMode === 'string') {
+    out.emitMode = override.emitMode;
+  }
+  if (typeof override.pluginBuildRoot === 'string' || override.pluginBuildRoot === null) {
+    out.pluginBuildRoot = override.pluginBuildRoot;
+  }
   if (typeof override.collisionFallbackPrefix === 'string') {
     out.collisionFallbackPrefix = override.collisionFallbackPrefix;
   }
@@ -266,8 +297,10 @@ function globToRegex(pattern) {
 
 const KNOWN_FLAGS = new Set([
   '--dry-run', '--verbose', '--no-prune', '--help', '-h',
-  '--config', '--plugin', '--report', '--plugins-dir',
+  '--config', '--plugin', '--report', '--plugins-dir', '--emit',
 ]);
+
+const EMIT_MODES = new Set(['user', 'plugin']);
 
 export function parseArgs(argv) {
   const out = {
@@ -279,6 +312,7 @@ export function parseArgs(argv) {
     plugins: null,
     reportPath: null,
     pluginsDir: null,
+    emit: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -286,6 +320,14 @@ export function parseArgs(argv) {
       throw new Error(`Unknown argument: ${arg}`);
     }
     switch (arg) {
+      case '--emit': {
+        const value = argv[++i];
+        if (!value || !EMIT_MODES.has(value)) {
+          throw new Error("--emit requires a mode: 'user' or 'plugin'");
+        }
+        out.emit = value;
+        break;
+      }
       case '--dry-run': out.dryRun = true; break;
       case '--verbose': out.verbose = true; break;
       case '--no-prune': out.noPrune = true; break;
@@ -602,12 +644,40 @@ export async function main(argv) {
     return 2;
   }
 
+  const logger = args.verbose ? defaultLogger() : quietLogger();
+
+  const emitMode = args.emit ?? config.emitMode ?? 'user';
+
+  if (emitMode === 'plugin') {
+    const buildRoot = config.pluginBuildRoot
+      ? path.resolve(config.pluginBuildRoot)
+      : path.dirname(pluginsDir);
+
+    if (args.verbose) {
+      process.stderr.write(`[codex-bridge] emit mode: plugin → buildRoot ${buildRoot}\n`);
+    }
+
+    const report = await emitPlugins({
+      pluginsDir,
+      buildRoot,
+      config,
+      dryRun: args.dryRun,
+      pluginFilter: args.plugins,
+      logger,
+    });
+
+    if (args.reportPath) {
+      await fs.writeFile(args.reportPath, JSON.stringify(report, null, 2), 'utf-8');
+    }
+
+    printPluginSummary(report);
+    return report.errors.length > 0 ? 1 : 0;
+  }
+
   const targetDir = config.target.agentsHome
     ?? path.join(os.homedir(), '.agents', 'skills');
   const agentsTomlDir = config.target.agentsTomlHome
     ?? path.join(os.homedir(), '.codex', 'agents');
-
-  const logger = args.verbose ? defaultLogger() : quietLogger();
 
   const report = await syncAll({
     pluginsDir,
@@ -658,6 +728,10 @@ function printHelp() {
   const help = `Usage: node sync.mjs [options]
 
 Options:
+  --emit <user|plugin>   Output target. 'user' (default) copies into $HOME
+                         (~/.agents/skills, ~/.codex/agents). 'plugin' builds
+                         committable Codex plugin packages under the repo
+                         (codex/plugins/** + .agents/plugins/marketplace.json).
   --dry-run              Plan without writing files
   --verbose              Per-file logs + diagnostic (resolved pluginsDir, layout, counts)
   --config <path>        Custom config path (default: codex-bridge.config.json)
@@ -1196,6 +1270,340 @@ export async function syncCommand(cmd, targetRoot, rules, options = {}) {
   }
 
   return { status: 'synced', path: targetSkillMd, bridgeSource: marker };
+}
+
+// ---------------------------------------------------------------------------
+// Plugin emit (`--emit plugin`)
+//
+// Builds Codex-native plugin packages from the Claude source plugins into the
+// repo (committable, installable via `codex plugin marketplace add`). Pure repo
+// output — no $HOME side effects (that is user-mode's job, left untouched).
+//
+//   <buildRoot>/.agents/plugins/marketplace.json   — Codex catalog (all plugins)
+//   <buildRoot>/codex/plugins/<plugin>/
+//       .codex-plugin/plugin.json                  — name/version/description/skills
+//       skills/<name>/SKILL.md                     — transformed skills + wrapped commands
+//       AGENTS.md                                  — subagent + hook documentation
+// ---------------------------------------------------------------------------
+
+async function readJsonFile(p) {
+  try {
+    return JSON.parse(await fs.readFile(p, 'utf-8'));
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
+// Map a Claude `.claude-plugin/plugin.json` to a Codex `.codex-plugin/plugin.json`.
+// Required Codex fields: name, version, description. `skills` points at the
+// bundled skills directory (string form, matching OpenAI's own plugins).
+export function generatePluginJson(pluginName, source = {}) {
+  return {
+    name: source.name ?? pluginName,
+    version: source.version ?? '0.0.0',
+    description: source.description ?? `${pluginName} plugin.`,
+    skills: './skills/',
+  };
+}
+
+// Build the Codex marketplace catalog. `plugins` is an ordered list of
+// { name, description?, category? }. `source.path` is repo-root relative
+// (verified: `codex plugin marketplace add <repo>` reads
+// `<repo>/.agents/plugins/marketplace.json` and resolves source paths from
+// the repo root).
+export function generateMarketplaceJson(plugins, options = {}) {
+  const pathBase = options.pluginPathBase ?? './codex/plugins';
+  return {
+    name: options.name ?? 'my-claude-plugins',
+    interface: { displayName: options.displayName ?? 'My Claude Plugins (Codex)' },
+    plugins: plugins.map((p) => {
+      const entry = {
+        name: p.name,
+        source: { source: 'local', path: `${pathBase}/${p.name}` },
+      };
+      if (p.description) entry.description = flattenDescription(p.description);
+      if (p.category) entry.category = p.category;
+      return entry;
+    }),
+  };
+}
+
+// Per-plugin AGENTS.md. Documents bundled skills, plus the two components Codex
+// plugin.json cannot carry: subagents (served via user-mode ~/.codex/agents/*.toml)
+// and Claude hooks (inert under Codex — documented only).
+export function buildPluginAgentsDoc(pluginName, { skillCount = 0, commandCount = 0, agents = [], hooks = [] } = {}) {
+  const lines = [];
+  lines.push(`# ${pluginName} — Codex package notes`);
+  lines.push('');
+  lines.push(`Generated by codex-bridge plugin emit. Source of truth: \`my-claude-plugins/plugins/${pluginName}\`.`);
+  lines.push('');
+  lines.push('## Skills');
+  lines.push('');
+  const totalSkills = skillCount + commandCount;
+  lines.push(`This plugin bundles ${totalSkills} skill(s) under \`skills/\`, callable in Codex as \`$<name>\`` +
+    (commandCount > 0 ? ` (${commandCount} of them are wrapped Claude commands, named \`${pluginName}-<command>\`).` : '.'));
+  lines.push('');
+
+  if (agents.length > 0) {
+    lines.push('## Subagents (not installed by `codex plugin add`)');
+    lines.push('');
+    lines.push('Codex `plugin.json` has no `agents` field, so these Claude Code subagents are');
+    lines.push('not bundled. To use them in Codex, run the user-mode bridge sync');
+    lines.push('(`node plugins/codex-bridge/scripts/sync.mjs`), which writes them to');
+    lines.push('`~/.codex/agents/<plugin>-<agent>.toml`.');
+    lines.push('');
+    lines.push('| Agent | Codex subagent | Description |');
+    lines.push('|-------|----------------|-------------|');
+    for (const a of agents) {
+      const desc = (a.description ?? '').replace(/\|/g, '\\|');
+      lines.push(`| ${a.agentName} | ${pluginName}-${a.agentName} | ${desc} |`);
+    }
+    lines.push('');
+  }
+
+  if (hooks.length > 0) {
+    lines.push('## Hooks (Claude Code only — inert under Codex)');
+    lines.push('');
+    lines.push('This plugin defines Claude Code hooks. The Codex hook lifecycle is not yet');
+    lines.push('mapped, so they are documented here only and do nothing under Codex:');
+    lines.push('');
+    for (const h of hooks) {
+      lines.push(`- \`${h}\``);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+function hookEventSummary(hooks) {
+  if (!hooks || typeof hooks !== 'object') return [];
+  const out = [];
+  for (const [event, entries] of Object.entries(hooks)) {
+    const count = Array.isArray(entries)
+      ? entries.reduce((n, e) => n + (Array.isArray(e.hooks) ? e.hooks.length : 0), 0)
+      : 0;
+    out.push(`${event} (${count} command${count === 1 ? '' : 's'})`);
+  }
+  return out;
+}
+
+export async function emitPlugins(options) {
+  const {
+    pluginsDir,
+    buildRoot,
+    config,
+    dryRun = false,
+    pluginFilter = null,
+    logger = defaultLogger(),
+  } = options;
+
+  const rules = config.transform.rules;
+  const pluginsRoot = path.dirname(pluginsDir);
+
+  const allSkills = await discoverSkills(pluginsDir);
+  const allCommands = await discoverCommands(pluginsDir);
+  const allAgents = await discoverAgents(pluginsDir);
+
+  const skillExcluded = (s) => {
+    const rel = path.relative(pluginsRoot, s.skillDir).split(path.sep).join('/');
+    return isExcluded(rel, config.exclude) || isExcluded(`${rel}/SKILL.md`, config.exclude);
+  };
+  const pluginExcluded = (name) => isExcluded(`plugins/${name}/**`, config.exclude);
+
+  // Group by plugin (exclude applied; pluginFilter NOT applied so the
+  // marketplace catalog stays complete even on a filtered rebuild).
+  const byPlugin = new Map();
+  const bucket = (name) => {
+    if (!byPlugin.has(name)) byPlugin.set(name, { skills: [], commands: [], agents: [] });
+    return byPlugin.get(name);
+  };
+  for (const s of allSkills) {
+    if (pluginExcluded(s.pluginName) || skillExcluded(s)) continue;
+    bucket(s.pluginName).skills.push(s);
+  }
+  for (const c of allCommands) {
+    if (pluginExcluded(c.pluginName)) continue;
+    bucket(c.pluginName).commands.push(c);
+  }
+  for (const a of allAgents) {
+    if (pluginExcluded(a.pluginName)) continue;
+    bucket(a.pluginName).agents.push(a);
+  }
+
+  const allNames = [...byPlugin.keys()].sort();
+  const buildNames = pluginFilter ? allNames.filter((n) => pluginFilter.includes(n)) : allNames;
+
+  const rootMp = await readJsonFile(path.join(pluginsRoot, '.claude-plugin', 'marketplace.json'));
+  const metaByName = new Map();
+  if (rootMp && Array.isArray(rootMp.plugins)) {
+    for (const p of rootMp.plugins) metaByName.set(p.name, { description: p.description, category: p.category });
+  }
+
+  const codexPluginsDir = path.join(buildRoot, 'codex', 'plugins');
+  const report = {
+    dryRun,
+    buildRoot,
+    codexPluginsDir,
+    marketplacePath: path.join(buildRoot, '.agents', 'plugins', 'marketplace.json'),
+    plugins: [],
+    removed: [],
+    errors: [],
+  };
+
+  const context = (name) => ({ emitMode: 'plugin', currentPlugin: name });
+
+  for (const name of buildNames) {
+    const group = byPlugin.get(name);
+    const contentRoot = await resolvePluginContentDir(path.join(pluginsDir, name));
+    const sourcePluginJson = contentRoot
+      ? await readJsonFile(path.join(contentRoot, '.claude-plugin', 'plugin.json'))
+      : null;
+    const hooks = hookEventSummary(sourcePluginJson?.hooks);
+
+    const summary = {
+      name,
+      skills: group.skills.length,
+      commands: group.commands.length,
+      agents: group.agents.length,
+      hooks: hooks.length,
+    };
+
+    if (dryRun) {
+      logger.info(`[dry-run] would emit plugin ${name}: ${summary.skills} skills, ${summary.commands} commands → wrapped, ${summary.agents} agents → AGENTS.md${hooks.length ? `, ${hooks.length} hook event(s) → doc` : ''}`);
+      report.plugins.push(summary);
+      continue;
+    }
+
+    try {
+      await fs.mkdir(codexPluginsDir, { recursive: true });
+      const stagingDir = await fs.mkdtemp(path.join(codexPluginsDir, `.staging-plugin-${name}-`));
+      try {
+        // .codex-plugin/plugin.json
+        const codexPluginJson = generatePluginJson(name, sourcePluginJson ?? {});
+        await fs.mkdir(path.join(stagingDir, '.codex-plugin'), { recursive: true });
+        await fs.writeFile(
+          path.join(stagingDir, '.codex-plugin', 'plugin.json'),
+          `${JSON.stringify(codexPluginJson, null, 2)}\n`,
+          'utf-8',
+        );
+
+        const skillsOut = path.join(stagingDir, 'skills');
+        const ctx = context(name);
+
+        // skills → skills/<name>/ (full tree, transformed)
+        for (const skill of group.skills) {
+          const sourceContent = await fs.readFile(skill.skillPath, 'utf-8');
+          const parsed = parseFrontmatter(sourceContent);
+          if (!parsed) {
+            logger.warn(`[codex-bridge] ${name}/${skill.skillName}: source SKILL.md has no frontmatter, skipping`);
+            continue;
+          }
+          const transformed = transformSkillContent(sourceContent, rules, ctx);
+          const normalized = normalizeFrontmatterDescription(transformed);
+          const withMarker = injectBridgeSource(normalized, `${name}/${skill.skillName}`);
+          await renderSkillTree(skill.skillDir, path.join(skillsOut, skill.skillName), rules, withMarker, ctx);
+        }
+
+        // commands → skills/<plugin>-<command>/SKILL.md (wrapped)
+        for (const cmd of group.commands) {
+          const sourceContent = await fs.readFile(cmd.sourcePath, 'utf-8');
+          const synthesized = commandToSkillContent(sourceContent, cmd.pluginName, cmd.commandName);
+          const transformed = transformSkillContent(synthesized, rules, ctx);
+          const cmdDir = path.join(skillsOut, cmd.targetSkillName);
+          await fs.mkdir(cmdDir, { recursive: true });
+          await fs.writeFile(path.join(cmdDir, 'SKILL.md'), transformed, 'utf-8');
+        }
+
+        // AGENTS.md (subagent + hook documentation)
+        const agentDocs = [];
+        for (const ag of group.agents) {
+          const agContent = await fs.readFile(ag.sourcePath, 'utf-8');
+          const agParsed = parseFrontmatter(agContent);
+          agentDocs.push({
+            agentName: ag.agentName,
+            description: agParsed?.description ? flattenDescription(agParsed.description) : '',
+          });
+        }
+        const agentsMd = buildPluginAgentsDoc(name, {
+          skillCount: group.skills.length,
+          commandCount: group.commands.length,
+          agents: agentDocs,
+          hooks,
+        });
+        await fs.writeFile(path.join(stagingDir, 'AGENTS.md'), `${agentsMd}\n`, 'utf-8');
+
+        const pluginOutDir = path.join(codexPluginsDir, name);
+        await fs.rm(pluginOutDir, { recursive: true, force: true });
+        await moveOrCopy(stagingDir, pluginOutDir);
+        logger.info(`[codex-bridge] emitted plugin ${name} → ${pluginOutDir}`);
+        report.plugins.push(summary);
+      } catch (err) {
+        await fs.rm(stagingDir, { recursive: true, force: true }).catch(() => {});
+        throw err;
+      }
+    } catch (err) {
+      logger.warn(`[codex-bridge] error emitting plugin ${name}: ${err.message}`);
+      report.errors.push({ name, error: err.message });
+    }
+  }
+
+  // Orphan prune of plugin dirs no longer in the catalog (full builds only).
+  if (!dryRun && !pluginFilter) {
+    const existing = await fs.readdir(codexPluginsDir, { withFileTypes: true }).catch((err) => {
+      if (err.code === 'ENOENT') return [];
+      throw err;
+    });
+    const valid = new Set(allNames);
+    for (const entry of existing) {
+      if (!entry.isDirectory() || entry.name.startsWith('.staging-')) continue;
+      if (!valid.has(entry.name)) {
+        await fs.rm(path.join(codexPluginsDir, entry.name), { recursive: true, force: true });
+        report.removed.push(entry.name);
+        logger.info(`[codex-bridge] pruned orphan plugin package ${entry.name}`);
+      }
+    }
+  }
+
+  // marketplace.json (full catalog — all non-excluded plugins)
+  const mpPlugins = [];
+  for (const name of allNames) {
+    let meta = metaByName.get(name);
+    if (!meta || !meta.description) {
+      const contentRoot = await resolvePluginContentDir(path.join(pluginsDir, name));
+      const pj = contentRoot ? await readJsonFile(path.join(contentRoot, '.claude-plugin', 'plugin.json')) : null;
+      meta = { description: meta?.description ?? pj?.description, category: meta?.category };
+    }
+    mpPlugins.push({ name, description: meta.description, category: meta.category });
+  }
+  const marketplaceJson = generateMarketplaceJson(mpPlugins, {
+    name: rootMp?.name ?? 'my-claude-plugins',
+    displayName: rootMp?.metadata?.description ? 'My Claude Plugins (Codex)' : undefined,
+  });
+  report.catalogCount = mpPlugins.length;
+
+  if (dryRun) {
+    logger.info(`[dry-run] would write marketplace.json with ${mpPlugins.length} plugin(s) → ${report.marketplacePath}`);
+  } else {
+    const mpDir = path.dirname(report.marketplacePath);
+    await fs.mkdir(mpDir, { recursive: true });
+    const stagingMp = path.join(mpDir, `.staging-marketplace-${process.pid}.json`);
+    await fs.writeFile(stagingMp, `${JSON.stringify(marketplaceJson, null, 2)}\n`, 'utf-8');
+    await moveOrCopy(stagingMp, report.marketplacePath);
+    logger.info(`[codex-bridge] wrote marketplace catalog (${mpPlugins.length} plugins) → ${report.marketplacePath}`);
+  }
+
+  return report;
+}
+
+function printPluginSummary(report) {
+  const lines = [`[codex-bridge] plugin build root: ${report.buildRoot}`];
+  lines.push(`  emitted: ${report.plugins.length} plugin package(s)`);
+  lines.push(`  catalog: ${report.catalogCount ?? report.plugins.length} plugin(s) in marketplace.json`);
+  if (report.removed.length) lines.push(`  pruned: ${report.removed.length} orphan package(s)`);
+  if (report.errors.length) lines.push(`  errors: ${report.errors.length}`);
+  process.stderr.write(`${lines.join('\n')}\n`);
 }
 
 const isMainModule = (() => {

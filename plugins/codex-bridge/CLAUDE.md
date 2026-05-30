@@ -20,9 +20,19 @@ my-claude-plugins 의 skill / command / subagent 를 Codex CLI 가 네이티브�
 1. Claude Code skill: `/codex-bridge:codex-sync` (이 플러그인 활성화 시)
 2. Direct CLI: `node plugins/codex-bridge/scripts/sync.mjs [options]`
 
+## Emit modes
+
+- **`--emit user`** (기본): `~/.agents/skills/`(skills+commands) + `~/.codex/agents/*.toml`(subagents) 로 복사. 개별 파일 sync, 머신마다 재실행 필요.
+- **`--emit plugin`**: repo 안에 Codex 네이티브 plugin 패키지 빌드 → `codex plugin marketplace add` 로 통째 설치. `$HOME` 미접촉(순수 repo 산출물).
+  - `.agents/plugins/marketplace.json` (카탈로그) + `codex/plugins/<plugin>/{.codex-plugin/plugin.json, skills/, AGENTS.md}`
+  - commands → `<plugin>-<command>` skill wrap, agents/hooks → `AGENTS.md` 문서화 (Codex plugin.json 은 `agents`/Claude-hook 미지원)
+  - transform scope: plugin-local `/<plugin>:skill` 보존, 외부 참조만 `$skill` 평탄화 (`scope: "external-only"`)
+  - config `emitMode` / `pluginBuildRoot` 로도 제어 (CLI `--emit` 우선)
+
 ## CLI Options
 
 ```
+--emit <user|plugin>   출력 타깃 (기본 user). plugin = repo 안 Codex plugin 패키지 빌드
 --dry-run              파일 변경 없이 계획만 출력
 --verbose              파일별 행위 + 진단 출력 (resolved pluginsDir, layout, counts)
 --config <path>        커스텀 config 경로

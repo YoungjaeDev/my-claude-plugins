@@ -1,10 +1,12 @@
 {
-  "_comment": "Default config for codex-bridge. Override via --config <path>. scope=user → $HOME/.agents/skills for skills/commands and $HOME/.codex/agents for subagent .toml files (OpenAI USER scope). Set target.agentsHome / target.agentsTomlHome to override (testing).",
+  "_comment": "Default config for codex-bridge. Override via --config <path>. scope=user → $HOME/.agents/skills for skills/commands and $HOME/.codex/agents for subagent .toml files (OpenAI USER scope). Set target.agentsHome / target.agentsTomlHome to override (testing). emitMode='plugin' (or --emit plugin) builds Codex plugin packages under pluginBuildRoot (null → repo root) instead of $HOME.",
   "target": {
     "scope": "user",
     "agentsHome": null,
     "agentsTomlHome": null
   },
+  "emitMode": "user",
+  "pluginBuildRoot": null,
   "collisionFallbackPrefix": "bridge-",
   "exclude": [
     "plugins/midjourney/**"
@@ -18,7 +20,8 @@
         "from": "(?<![:/.\\w])\\/([a-z][a-z0-9-]*):([a-z][a-z0-9-]*)",
         "to": "$$$2",
         "mode": "regex",
-        "flags": "g"
+        "flags": "g",
+        "scope": "external-only"
       }
     ],
     "textExtensions": [".md", ".yml", ".yaml", ".json", ".sh", ".mjs", ".js", ".py", ".ts"]

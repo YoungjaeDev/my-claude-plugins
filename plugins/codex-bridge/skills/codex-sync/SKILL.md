@@ -58,6 +58,7 @@ $codex-sync --dry-run
 
 | Flag | 동작 |
 |------|-----|
+| `--emit <user\|plugin>` | 출력 타깃. `user`(기본)=`~/.agents/skills`·`~/.codex/agents`로 복사. `plugin`=repo 안에 Codex plugin 패키지 빌드(`codex/plugins/**`+`.agents/plugins/marketplace.json`) |
 | `--dry-run` | 파일 변경 없이 계획만 출력 |
 | `--verbose` | 파일별 행위 + 진단 출력 (resolved pluginsDir, layout 종류, plugin/skill/command counts) |
 | `--config <path>` | 커스텀 config 경로 (기본: `codex-bridge.config.json`) |
@@ -183,6 +184,50 @@ Windows 경로도 지원 (Node `path.resolve` 가 OS 별 separator 정규화).
 - 마커 있음 → overwrite (codex-bridge-managed 이므로 안전)
 - 다른 plugin 에서 동일 이름 → last-wins (경고)
 
+## Plugin emit mode (`--emit plugin`)
+
+User-mode 가 개별 파일을 `$HOME` 에 흩뿌리는 것과 달리, plugin emit 은 **Codex 네이티브 plugin 패키지**를 repo 안에 빌드해 `codex plugin marketplace add` 로 통째 설치/업데이트 가능하게 만든다. **`$HOME` 을 건드리지 않는다** (순수 repo 산출물).
+
+```bash
+node plugins/codex-bridge/scripts/sync.mjs --emit plugin            # 전체 빌드
+node plugins/codex-bridge/scripts/sync.mjs --emit plugin --dry-run --verbose
+node plugins/codex-bridge/scripts/sync.mjs --emit plugin --plugin council   # 일부만 재빌드
+```
+
+### 출력 레이아웃 (repo-root 기준)
+
+```
+.agents/plugins/marketplace.json      # Codex 카탈로그 (전체 plugin 등록)
+codex/plugins/<plugin>/
+├── .codex-plugin/plugin.json         # name/version/description (원본 .claude-plugin/plugin.json 매핑) + skills:"./skills/"
+├── skills/<name>/SKILL.md            # 변환된 skill + wrapped command(<plugin>-<command>)
+└── AGENTS.md                         # subagent + hook 문서화
+```
+
+### 컴포넌트 매핑
+
+| 컴포넌트 | plugin emit 처리 |
+|---|---|
+| skill | `skills/<name>/SKILL.md` 로 변환 (frontmatter 불변, body transform, `bridge_source` 마커) |
+| command | `<plugin>-<command>` skill 로 wrap → `skills/` 에 배치 |
+| agent | Codex plugin.json 에 `agents` 필드 없음 → `AGENTS.md` 에 문서화 (실제 호출은 user-mode `~/.codex/agents/*.toml` 경유) |
+| hook | Codex hook lifecycle 미검증 → `AGENTS.md` 에 "Claude 전용, Codex 에서 inert" 로 문서화 (plugin.json 에 주입 안 함) |
+
+### transform scope 분리
+
+plugin 모드에서 namespace rule 은 `scope: "external-only"` 로 동작한다: `/<현재plugin>:skill` 같은 **plugin-local 참조는 보존**하고, `/<다른plugin>:skill` 같은 **외부 참조만 `$skill` 로 평탄화**한다. user-mode 는 scope 를 무시하고 모든 참조를 평탄화한다(기존 동작).
+
+### 설치 (Codex CLI)
+
+```bash
+# 원격 1줄 설치
+codex plugin marketplace add YoungjaeDev/my-claude-plugins
+codex plugin add <plugin>@my-claude-plugins
+# git pull 로 업데이트: codex plugin marketplace upgrade
+```
+
+`source.path` base 는 **repo-root** 다 (실측 확인: `codex plugin marketplace add <repo>` 가 `<repo>/.agents/plugins/marketplace.json` 을 읽고 source path 를 repo-root 에서 resolve).
+
 ## Out of Scope
 
 추후 작업:
@@ -190,6 +235,7 @@ Windows 경로도 지원 (Node `path.resolve` 가 OS 별 separator 정규화).
 - Project-level `.agents/skills/` 타깃
 - Collision-fallback 프리픽스 자동 부여
 - agent `model` / `tools` 의 Codex 호환 매핑 (현재 `# original-*` 주석으로만 보존)
+- Codex hook lifecycle 정식 매핑 (공식 spec 공개 대기 — 현재는 AGENTS.md 문서화)
 
 ## 참조
 

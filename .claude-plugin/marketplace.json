@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 22 specialized plugins",
-    "version": "1.39.0"
+    "version": "1.40.0"
   },
   "plugins": [
     {
@@ -137,8 +137,8 @@
     {
       "name": "codex-bridge",
       "source": "./plugins/codex-bridge",
-      "description": "Sync my-claude-plugins skills, commands, and subagents to Codex (~/.agents/skills/ for skills+commands, ~/.codex/agents/*.toml for subagents — USER scope) so they become callable as native $skill-name / subagent. Body-only transform with bridge_source provenance marker.",
-      "version": "1.4.0",
+      "description": "Sync my-claude-plugins skills, commands, and subagents to Codex. User mode (~/.agents/skills/ + ~/.codex/agents/*.toml — USER scope, native $skill-name) or plugin emit (--emit plugin builds committable Codex plugin packages under codex/plugins/** + .agents/plugins/marketplace.json for `codex plugin marketplace add`). Body-only transform with bridge_source provenance marker.",
+      "version": "1.5.0",
       "category": "integration"
     },
     {

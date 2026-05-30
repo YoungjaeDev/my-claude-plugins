@@ -152,9 +152,20 @@ elif [ "$codex_timeout_active" = "false" ]; then
 elif [ "$codex_emoji_state" = "unknown" ] && [ -z "$codex_latest_id" ]; then
   # Last resort: ask "has Codex EVER reviewed this PR?". If no — treat as
   # inactive (clean) so CR-only PRs return gate=proceed instead of codex_wait.
-  if [ -x "$SCRIPT_DIR/probe-codex-engagement.sh" ] \
-     && [ "$(bash "$SCRIPT_DIR/probe-codex-engagement.sh" "$OWNER" "$REPO" "$PR_NUM" 2>/dev/null)" = "inactive" ]; then
-    codex_state="clean"
+  # Important: probe-codex-engagement.sh also prints "inactive" on gh API
+  # failure (with a "warn:" stderr line) — that path must NOT collapse to
+  # clean, or transient API errors silently mark Codex done. Capture stderr
+  # too and treat any "warn:" line as "API failure → unknown → arriving".
+  if [ -x "$SCRIPT_DIR/probe-codex-engagement.sh" ]; then
+    eng_combined=$(bash "$SCRIPT_DIR/probe-codex-engagement.sh" "$OWNER" "$REPO" "$PR_NUM" 2>&1 || true)
+    eng_stdout=$(printf '%s\n' "$eng_combined" | grep -v '^warn:' | tail -1)
+    if printf '%s\n' "$eng_combined" | grep -q '^warn:'; then
+      codex_state="arriving"  # API failure → conservative
+    elif [ "$eng_stdout" = "inactive" ]; then
+      codex_state="clean"
+    else
+      codex_state="arriving"
+    fi
   else
     codex_state="arriving"
   fi

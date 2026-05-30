@@ -509,6 +509,7 @@ See `references/failure-modes.md` for the `final_state` enum.
 - **Pre-flight decision matrix: `references/pre-flight-rules.md`**
 - **Codex emoji parsing + timestamp sort rules: `references/codex-parsing-rules.md`**
 - **Autonomous judgment matrix (Step 9c): `references/autonomous-judgment.md`**
+- **Dogfood lessons for v2.1 follow-up: `references/lessons-from-dogfood.md`**
 - Failure modes table: `references/failure-modes.md`
 - Tier classification (full): `references/tier-classification.md`
 - Codex state semantics: `references/codex-state-machine.md`

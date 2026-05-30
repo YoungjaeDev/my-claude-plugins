@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -80,7 +80,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
-| **Integration** | `codex-bridge` | OMC skill을 Codex `~/.agents/skills/`로 body-only 변환 동기화 |
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/migrate/post-merge-wiki + 3 hooks) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 
@@ -348,26 +347,23 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 
 </details>
 
-### Integration
+### Codex (shared-source)
 
 <details>
-<summary><strong>codex-bridge</strong> - OMC → Codex skill 동기화</summary>
+<summary><strong>Codex 네이티브 설치</strong> - 같은 repo, 한 줄 설치</summary>
 
-OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네이티브로 로드하는 `~/.agents/skills/` (OpenAI 공식 USER scope) 로 idempotent 변환·복사.
+이 repo 는 Claude 마켓플레이스(`.claude-plugin/marketplace.json`)와 Codex 마켓플레이스(`.agents/plugins/marketplace.json`)를 **한 트리에 공존**시킨다. Codex 는 Claude 와 **동일한** `plugins/<name>/skills/` 를 그대로 로드한다 — 변환·복제 없음(shared-source).
 
-**핵심 원칙:**
-- **SSOT**: OMC source 는 단일 소스, `~/.agents/skills/` 는 derived artifact (양방향 sync 아님)
-- **Safety**: `bridge_source` 마커 없는 파일은 절대 건드리지 않음 (OMX / 사용자 파일 보호)
-- **Body-only transform**: frontmatter 는 불변, body 만 7개 rule 치환
-- **Orphan prune**: `bridge_source` 있고 source 없어진 skill 자동 삭제
+```bash
+# 원격 1줄 설치
+codex plugin marketplace add YoungjaeDev/my-claude-plugins
+codex plugin add <plugin>@my-claude-plugins
+codex plugin marketplace upgrade   # git pull 로 업데이트
+```
 
-**Transform rules (body-only, 7개):** `.omc/` → `.omx/`, `CLAUDE.md` → `AGENTS.md`, `/oh-my-claudecode:` → `$`, `oh-my-claudecode` → `oh-my-codex`, `~/.claude/` → `~/.codex/`, word-boundary `omc` → `omx`, `OMC` → `OMX`
-
-**진입점:**
-- Claude Code: `$codex-sync [options]`
-- Direct CLI: `node plugins/codex-bridge/scripts/sync.mjs [options]`
-
-**CLI options:** `--dry-run`, `--verbose`, `--config <path>`, `--plugin <list>`, `--no-prune`, `--report <path>`
+- Codex 전용 산출물은 작은 커밋 매니페스트 둘뿐: 플러그인별 `.codex-plugin/plugin.json` + 루트 `.agents/plugins/marketplace.json`.
+- 둘 다 `node scripts/sync-codex-manifests.mjs` 가 Claude `.claude-plugin/` 소스에서 생성한다(`--check` 로 drift 검출).
+- skill 1개 이상인 plugin 만 Codex 카탈로그에 포함(command-only plugin·`midjourney` 제외 — Claude 전용). Codex 는 plugin.json 에 `commands`/`agents` 필드가 없어 command/subagent 를 로드하지 않는다.
 
 **Requirements:** Node 18+, Codex CLI 0.120.0+
 
@@ -579,7 +575,6 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
       "./plugins/rules-forge",
       "./plugins/workflow-viz",
       "./plugins/tcrei-prompt",
-      "./plugins/codex-bridge",
       "./plugins/llm-wiki",
       "./plugins/spec-state"
     ]
@@ -595,8 +590,8 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 | `gh` | GitHub 플러그인 | github-dev |
 | `uv` | Python MCP 서버 | core-config |
 | `ruff` | Python 포매팅 | core-config |
-| Node 18+ | sync 엔진 런타임 | codex-bridge |
-| Codex CLI 0.120.0+ | `~/.agents/skills/` 네이티브 로드 | codex-bridge (실행시) |
+| Node 18+ | Codex 매니페스트 동기화 스크립트 | `scripts/sync-codex-manifests.mjs` |
+| Codex CLI 0.120.0+ | Codex 네이티브 설치 (shared-source) | Codex 사용 시 |
 
 ## 프로젝트 구조
 
@@ -623,7 +618,6 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 │   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)
 │   ├── workflow-viz/          # 워크플로우 시각화
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
-│   ├── codex-bridge/          # OMC → Codex skill 동기화
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
 │   └── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)

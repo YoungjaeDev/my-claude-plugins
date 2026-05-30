@@ -80,14 +80,26 @@ async function main() {
 
     if (!included) {
       // Prune a stale Codex manifest if the plugin no longer qualifies.
-      if (await fs.readFile(codexManifest, 'utf8').then(() => true, () => false)) {
+      // Only ENOENT means "nothing to prune"; surface any other I/O error
+      // (e.g. permissions) instead of silently passing the drift check.
+      const codexManifestExists = await fs.access(codexManifest).then(
+        () => true,
+        (err) => { if (err.code === 'ENOENT') return false; throw err; },
+      );
+      if (codexManifestExists) {
         changes.push(path.relative(REPO_ROOT, codexManifest));
         if (!check) await fs.rm(path.join(pluginDir, '.codex-plugin'), { recursive: true, force: true });
       }
       continue;
     }
 
-    const src = await readJson(path.join(pluginDir, '.claude-plugin', 'plugin.json')) ?? {};
+    // A skill-bearing plugin must have a readable source manifest. Failing loud
+    // beats emitting a 0.0.0 fallback that hides SSOT drift in a committed artifact.
+    const srcPath = path.join(pluginDir, '.claude-plugin', 'plugin.json');
+    const src = await readJson(srcPath);
+    if (!src) {
+      throw new Error(`${name} ships skills but has no readable .claude-plugin/plugin.json (${path.relative(REPO_ROOT, srcPath)}); refusing to emit a fallback manifest.`);
+    }
     await writeIfChanged(codexManifest, fmt({
       name: src.name ?? name,
       version: src.version ?? '0.0.0',

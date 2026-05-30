@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# Usage: OWNER=... REPO=... PR_NUM=... CUR_SHA=... PUSH_TIME=... STATE_FILE=... \
+#        [CODEX_TIMEOUT=600] [SKIP_DIR=/path/to/scripts] \
+#        bash scripts/pre-flight.sh
+#
+# Emits exactly one JSON line on stdout summarising the pre-flight decision.
+# See references/pre-flight-rules.md for the decision matrix and field contract.
+#
+# Exits 0 always. Per-channel failures are absorbed and surface as "unknown"
+# values; the SKILL.md falls back to legacy Step 6 polling on gate=cr_wait.
+set -euo pipefail
+
+: "${OWNER:?owner required}"
+: "${REPO:?repo required}"
+: "${PR_NUM:?pr required}"
+: "${CUR_SHA:?sha required}"
+: "${PUSH_TIME:?push time required}"
+: "${STATE_FILE:?state file required}"
+: "${CODEX_TIMEOUT:=600}"
+
+SCRIPT_DIR="${SKIP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+
+# ── 1. CR commit-status (state + description) ────────────────────────────────
+cr_status='{}'
+if cr_pages=$(gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" 2>/dev/null); then
+  cr_status=$(jq -s 'add // []
+                     | [ .[] | select(.context | test("CodeRabbit"; "i")) ]
+                     | sort_by(.created_at) | reverse | .[0] // {}' <<<"$cr_pages")
+fi
+cr_state=$(jq -r '.state // ""' <<<"$cr_status")
+cr_desc=$(jq -r '.description // ""' <<<"$cr_status")
+
+# Normalize empty state → "none" for the output JSON; the matrix treats both
+# as "no status row yet" but downstream tooling reads strings, not blanks.
+cr_state_out="${cr_state:-none}"
+
+# ── 2. CR rate-limit sniff (comment body + commit-status description) ───────
+rate_limit_source="none"
+if [ "$cr_desc" != "" ] \
+   && jq -nr --arg d "$cr_desc" '$d | test("Review skipped: free tier disabled|Review limit reached|rate limited"; "i")' \
+        | grep -q true 2>/dev/null; then
+  rate_limit_source="description"
+fi
+if [ "$rate_limit_source" = "none" ] \
+   && bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" >/dev/null 2>&1; then
+  rate_limit_source="comment"
+fi
+
+# ── 3. Codex review submission (unprocessed id) ─────────────────────────────
+PROCESSED='[]'
+if [ -f "$STATE_FILE" ]; then
+  PROCESSED=$(jq -c '.codex_processed_reviews // []' "$STATE_FILE" 2>/dev/null || echo '[]')
+fi
+codex_latest_id=""
+if codex_pages=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null); then
+  codex_latest_id=$(jq -s --argjson p "$PROCESSED" 'add // []
+      | [ .[]
+          | select(.user.login == "chatgpt-codex-connector[bot]")
+          | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
+          | select(.id as $i | $p | index($i) | not) ]
+      | sort_by(.submitted_at) | last | .id // ""' <<<"$codex_pages")
+fi
+[ "$codex_latest_id" = "null" ] && codex_latest_id=""
+
+# ── 4. Codex emoji probe (best-effort, 3 channels) ──────────────────────────
+codex_emoji_state="unknown"
+if [ -x "$SCRIPT_DIR/probe-codex-state.sh" ]; then
+  emoji_json=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" \
+               bash "$SCRIPT_DIR/probe-codex-state.sh" 2>/dev/null || echo '{}')
+  codex_emoji_state=$(jq -r '.emoji_state // "unknown"' <<<"$emoji_json")
+fi
+
+# ── 5. push age & timeout ───────────────────────────────────────────────────
+push_age=0
+if push_ts=$(date -d "$PUSH_TIME" +%s 2>/dev/null); then
+  now_ts=$(date +%s)
+  push_age=$((now_ts - push_ts))
+fi
+codex_timeout_active=false
+if [ "$push_age" -lt "$CODEX_TIMEOUT" ]; then codex_timeout_active=true; fi
+
+# ── 6. Decision matrix ──────────────────────────────────────────────────────
+# cr_actionable: does CR have a real terminal state right now?
+cr_actionable=false
+codex_actionable=false
+gate="cr_wait"
+
+case "$cr_state" in
+  success)
+    cr_actionable=true
+    ;;
+  failure)
+    gate="failure"
+    cr_actionable=true
+    ;;
+  pending|error|"")
+    # No terminal state yet → fall through to cr_wait (Step 6 polling).
+    ;;
+esac
+
+# Rate-limit overrides everything except failure.
+if [ "$rate_limit_source" != "none" ] && [ "$gate" != "failure" ]; then
+  gate="rate_limited"
+fi
+
+# Codex actionability is independent of CR state.
+if [ -n "$codex_latest_id" ]; then
+  codex_actionable=true
+fi
+
+# Codex state classification.
+codex_state="unknown"
+if [ "$codex_actionable" = "true" ]; then
+  codex_state="actionable"
+elif [ "$codex_emoji_state" = "clean" ] && [ "$push_age" -ge 60 ]; then
+  # 60s minimum guard against the false-clean check-run race
+  # (see references/codex-parsing-rules.md).
+  codex_state="clean"
+elif [ "$codex_emoji_state" = "findings" ] || [ "$codex_emoji_state" = "in_progress" ]; then
+  codex_state="arriving"
+elif [ "$codex_timeout_active" = "false" ]; then
+  codex_state="clean"
+else
+  codex_state="arriving"
+fi
+
+# Gate refinement: only refine when not already pinned to rate_limited/failure.
+if [ "$gate" != "rate_limited" ] && [ "$gate" != "failure" ]; then
+  if [ "$cr_actionable" = "true" ]; then
+    case "$codex_state" in
+      actionable|clean) gate="proceed" ;;
+      arriving|unknown) gate="codex_wait" ;;
+    esac
+  fi
+fi
+
+# ── 7. Emit ─────────────────────────────────────────────────────────────────
+jq -nc \
+  --arg cr_state "$cr_state_out" \
+  --argjson cr_actionable "$cr_actionable" \
+  --arg cr_desc "$cr_desc" \
+  --arg codex_state "$codex_state" \
+  --argjson codex_actionable "$codex_actionable" \
+  --arg codex_latest_id "$codex_latest_id" \
+  --arg codex_emoji_state "$codex_emoji_state" \
+  --arg gate "$gate" \
+  --argjson codex_timeout_active "$codex_timeout_active" \
+  --argjson push_age "$push_age" \
+  --arg rate_limit_source "$rate_limit_source" \
+  '{
+    cr_state: $cr_state,
+    cr_actionable: $cr_actionable,
+    cr_desc: $cr_desc,
+    codex_state: $codex_state,
+    codex_actionable: $codex_actionable,
+    codex_latest_id: ( if $codex_latest_id == "" then null else ($codex_latest_id | tonumber) end ),
+    codex_emoji_state: $codex_emoji_state,
+    gate: $gate,
+    codex_timeout_active: $codex_timeout_active,
+    push_age_seconds: $push_age,
+    rate_limit_source: $rate_limit_source
+  }'

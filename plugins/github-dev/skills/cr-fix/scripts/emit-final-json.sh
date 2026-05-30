@@ -13,7 +13,15 @@ set -euo pipefail
 : "${CODEX_STATE:=unknown}"; : "${FINAL_STATE:=unknown}"; : "${MERGED:=false}"
 : "${PR_NUM:=0}"; : "${LAST_SHA:=}"
 : "${CR_SOURCE:=auto}"; : "${CLI_INVOCATIONS:=0}"; : "${RATE_LIMIT_HITS:=0}"
+: "${AUTO_JUDGE_APPLY:=0}"; : "${AUTO_JUDGE_DEFER:=0}"; : "${AUTO_JUDGE_SKIP:=0}"
 : "${TRACK_FILE:=}"; : "${STATE_FILE:=}"
+
+# Capture the LAST pre-flight decision before STATE_FILE is archived; the full
+# history remains in the archive copy for audit.
+PRE_FLIGHT_LAST='null'
+if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
+  PRE_FLIGHT_LAST=$(jq -c '.pre_flight_decisions // [] | .[-1] // null' "$STATE_FILE" 2>/dev/null || echo 'null')
+fi
 
 if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
   mkdir -p "$(dirname "$STATE_FILE")/archive"
@@ -39,6 +47,10 @@ jq -nc \
   --arg     src       "$CR_SOURCE" \
   --argjson cli_inv   "$CLI_INVOCATIONS" \
   --argjson rl_hits   "$RATE_LIMIT_HITS" \
+  --argjson aj_apply  "$AUTO_JUDGE_APPLY" \
+  --argjson aj_defer  "$AUTO_JUDGE_DEFER" \
+  --argjson aj_skip   "$AUTO_JUDGE_SKIP" \
+  --argjson pf_last   "$PRE_FLIGHT_LAST" \
   '{
     iterations: $iters,
     applied_total: $applied,
@@ -51,5 +63,7 @@ jq -nc \
     last_sha: $sha,
     cr_source: $src,
     cli_invocations: $cli_inv,
-    rate_limit_hits: $rl_hits
+    rate_limit_hits: $rl_hits,
+    auto_judge_stats: { apply: $aj_apply, defer: $aj_defer, skip: $aj_skip },
+    pre_flight_last: $pf_last
   }'

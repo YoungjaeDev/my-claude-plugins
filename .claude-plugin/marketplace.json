@@ -18,8 +18,8 @@
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
-      "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline (now a multi-file skill: wait + auto-fetch + apply + push loop with branch-protection-gated auto-merge, CR-engagement guard, Codex review-id discovery + dedupe, CR Nitpick + Codex P3 silent skip, optional --skip-minor; rate-limit early-escape with auto fallback to local CodeRabbit CLI or Codex-only via --cr-source), project tracking, release",
-      "version": "1.23.1",
+      "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; --auto-merge + --skip-minor + --cr-source retained), project tracking, release",
+      "version": "1.24.0",
       "category": "github"
     },
     {

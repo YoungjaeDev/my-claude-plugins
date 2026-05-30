@@ -573,7 +573,8 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
       "./plugins/workflow-viz",
       "./plugins/tcrei-prompt",
       "./plugins/llm-wiki",
-      "./plugins/spec-state"
+      "./plugins/spec-state",
+      "./plugins/project-init"
     ]
   }
 }

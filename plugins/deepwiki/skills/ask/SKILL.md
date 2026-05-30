@@ -1,22 +1,19 @@
 ---
-description: Deep query on GitHub repositories using DeepWiki
+name: ask
+description: Deep-query a GitHub repository's architecture and internals via DeepWiki's AI-powered documentation. Use whenever the user asks how something works inside a specific named GitHub repo (owner/repo), wants to explore or understand an unfamiliar codebase, or compares implementations across repos — e.g. "how does reconciliation work in facebook/react", "explain vercel/next.js app router architecture", "compare reactivity in vuejs/vue vs facebook/react". Prefer this over guessing from training data for repo-internal questions.
 ---
 
 # DeepWiki Repository Query
 
 Query GitHub repositories in-depth using DeepWiki's AI-powered documentation system.
 
-## Arguments
+## Identify the repo and question
 
-`$ARGUMENTS` parsing:
-- Format: `owner/repo "question"` or `owner/repo question text`
-- Repository: Extract `owner/repo` pattern
-- Question: Remaining text after repository
-
-Examples:
-- `/deepwiki:ask facebook/react "How does the reconciliation algorithm work?"`
-- `/deepwiki:ask vercel/next.js explain the app router architecture`
-- `/deepwiki:ask pytorch/pytorch what are the autograd internals`
+Infer the target `owner/repo` and the question from the user's request and the
+conversation — there is no explicit argument string. Disambiguate bare names
+(e.g. "react" → confirm `facebook/react`); ask the user only if the repo is
+genuinely unresolvable. The question is whatever the user wants to understand
+about that repo's internals.
 
 ## Workflow
 
@@ -150,6 +147,6 @@ Use for:
 
 ## Guidelines
 
-- Follow CLAUDE.md project guidelines
+- Follow the project's CLAUDE.md guidelines if present
 - Cite specific documentation sections when possible
 - Provide actionable insights, not just summaries

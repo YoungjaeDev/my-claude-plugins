@@ -2,24 +2,28 @@
 
 AI-powered deep queries on GitHub repositories.
 
-## Commands
+## Skills
 
-| Command | Description |
-|---------|-------------|
-| `/deepwiki:ask` | Query any GitHub repo with AI-powered documentation |
-| `/deepwiki:generate-llmstxt` | Generate llms.txt from URL or local directory |
+| Skill | Description |
+|-------|-------------|
+| `ask` | Query any GitHub repo with AI-powered documentation |
+| `generate-llmstxt` | Generate llms.txt from a URL or local directory |
+
+These are auto-triggering skills (not slash commands) — describe your intent in
+natural language and Claude invokes them. They are also exported to Codex as
+native `$ask` / `$generate-llmstxt`.
 
 ## Usage
 
-```bash
-# Basic query
-/deepwiki:ask facebook/react "How does reconciliation work?"
+```text
+# Basic query — just describe intent, naming the repo
+How does reconciliation work in facebook/react?
 
 # Architecture questions
-/deepwiki:ask vercel/next.js explain the app router
+Explain the app router architecture in vercel/next.js
 
 # Compare repositories
-/deepwiki:ask pytorch/pytorch,tensorflow/tensorflow "Compare eager vs graph execution"
+Compare eager vs graph execution in pytorch/pytorch and tensorflow/tensorflow
 ```
 
 ## How It Works

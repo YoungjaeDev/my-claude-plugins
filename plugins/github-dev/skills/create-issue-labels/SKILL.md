@@ -1,10 +1,12 @@
 ---
-description: Create Issue Labels
+name: create-issue-labels
+description: Analyze a project's tech stack and create a sensible set of GitHub issue labels (type / area / complexity) for it. Use whenever the user wants to set up, create, bootstrap, or standardize GitHub issue labels for a repository — especially on a fresh repo or when establishing a label taxonomy. Triggers on "create issue labels", "set up GitHub labels", "label scheme for this repo".
 ---
 
-## Create Issue Labels
+# Create Issue Labels
 
-Analyze project structure and create appropriate GitHub issue labels. Follow project guidelines in `@CLAUDE.md`.
+Analyze project structure and create appropriate GitHub issue labels. If the
+project has a CLAUDE.md, read it at runtime and follow its guidelines.
 
 ## Workflow
 

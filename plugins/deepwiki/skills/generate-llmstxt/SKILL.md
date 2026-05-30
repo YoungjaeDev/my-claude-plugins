@@ -1,10 +1,17 @@
 ---
-description: Generate llms.txt from URL or local directory
+name: generate-llmstxt
+description: Generate an llms.txt documentation index (the llms.txt standard) from a website URL or a local docs directory. Use whenever the user wants to create, build, or produce an llms.txt file, generate an LLM-readable index of a site or docs folder, or summarize a documentation website/directory into the llms.txt format. Triggers on "make an llms.txt", "generate llms.txt for this site/repo".
 ---
 
 # Generate llms.txt
 
 Generate well-structured llms.txt documentation following the llms.txt standard specification.
+
+## Determine the source
+
+Infer from the user's request whether the source is a **website URL** or a
+**local directory**, and which one, from the conversation — there is no explicit
+argument string. If both or neither is clear, ask once.
 
 ## llms.txt Format
 

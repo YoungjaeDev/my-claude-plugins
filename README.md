@@ -142,7 +142,7 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 | `/github-dev:post-merge` | 브랜치 정리, PR 학습 내용을 설정 파일/Serena/README에 통합 |
 | `/github-dev:merge-worktree` | worktree에서 base 브랜치로 squash merge + 학습 반영 |
 | `/github-dev:decompose-issue` | 이슈를 하위 작업으로 분해 |
-| `/github-dev:create-issue-label` | 표준화된 이슈 라벨 생성 |
+| `create-issue-labels` (skill) | 표준화된 이슈 라벨 생성 (자동 트리거 skill, Codex `$create-issue-labels`) |
 | `/github-dev:update-progress` | 마일스톤/이슈 진행 상황 동기화 |
 | `/github-dev:release` | 버전 릴리스 + 자동 CHANGELOG 생성 |
 
@@ -209,15 +209,15 @@ WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
 <details>
 <summary><strong>deepwiki</strong> - AI 기반 레포 문서화</summary>
 
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/deepwiki:ask` | 레포에 AI로 질문 |
-| `/deepwiki:generate-llmstxt` | llms.txt 생성 |
+**Skills:** (자동 트리거 — slash command 아님, Codex `$ask` / `$generate-llmstxt`)
+| Skill | Description |
+|-------|-------------|
+| `ask` | 레포에 AI로 질문 |
+| `generate-llmstxt` | llms.txt 생성 |
 
 **Usage:**
-```bash
-/deepwiki:ask facebook/react "reconciliation은 어떻게 동작하나요?"
+```text
+facebook/react에서 reconciliation은 어떻게 동작하나요?
 ```
 
 </details>

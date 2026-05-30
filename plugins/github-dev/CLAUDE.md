@@ -7,7 +7,7 @@ GitHub workflow automation commands for Claude Code.
 | Command | Description |
 |---------|-------------|
 | `/github-dev:commit-and-push` | Analyze changes, commit with conventional message, push |
-| `/github-dev:create-issue-label` | Create standardized issue labels |
+| `create-issue-labels` (skill) | Analyze the project and create standardized issue labels — auto-triggering skill (migrated from `/github-dev:create-issue-label`), also exported to Codex as `$create-issue-labels` |
 | `/github-dev:decompose-issue` | Break down large issues into sub-tasks, define architecture mapping |
 | `/github-dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |

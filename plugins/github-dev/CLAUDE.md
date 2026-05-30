@@ -1,33 +1,39 @@
 # GitHub Dev Plugin
 
-GitHub workflow automation commands for Claude Code.
+GitHub workflow automation for Claude Code.
 
-## Commands
+## Skills
 
-| Command | Description |
-|---------|-------------|
-| `/github-dev:commit-and-push` | Analyze changes, commit with conventional message, push |
-| `create-issue-labels` (skill) | Analyze the project and create standardized issue labels — auto-triggering skill (migrated from `/github-dev:create-issue-label`), also exported to Codex as `$create-issue-labels` |
-| `/github-dev:decompose-issue` | Break down large issues into sub-tasks, define architecture mapping |
-| `/github-dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
-| `/github-dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
-| `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
-| `/github-dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex pipeline (multi-file skill at `skills/cr-fix/`): wait + fetch + apply + push loop until clean, with optional auto-merge (default OFF; pass `--auto-merge` to enroll). Gates merge on branch-protection presence and on actual CR engagement. CR Refactor suggestions at Minor/Trivial/Info auto-apply; CR substantive items (Bug, Potential issue, Security, Critical/High/Major) and Codex P1/P2 are gated per-issue. CR Nitpicks and Codex P3 are silently skipped. Codex is auto-detected per PR (engaged at least once → ON; never engaged → OFF). `--skip-minor` opt-in demotes CR Minor severity (excluding Bug/Security) + Codex P2 to skip. `--cr-source <auto\|pr-bot\|cli\|codex-only>` controls review source; `auto` falls back to the local `coderabbit` CLI or Codex-only when the PR-bot is rate-limited (early-escape ~30s, no more 1800s spin). |
-| `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |
+All workflows are auto-triggering skills (not slash commands) — describe your
+intent in natural language and Claude invokes them. They are also exported to
+Codex as native `$<name>` skills.
 
-## resolve-issue Flags
+| Skill | Description |
+|-------|-------------|
+| `commit-and-push` | Analyze the named files, commit with a conventional message, push |
+| `create-issue-labels` | Analyze the project and create standardized issue labels |
+| `decompose-issue` | Break down a large work item into sub-issues, define architecture mapping (gated GitHub creation) |
+| `post-merge` | Clean up the merged branch, integrate PR learnings, sync milestone progress (destructive: previews + confirms) |
+| `resolve-issue` | Resolve a GitHub issue end-to-end (review + verification + cr-fix loop; auto-merge OFF by default) |
+| `update-progress` | Sync project progress to GitHub milestones/issues with diagrams (write-back gated) |
+| `cr-fix` | Unified CodeRabbit + ChatGPT-Codex pipeline (multi-file skill at `skills/cr-fix/`): wait + fetch + apply + push loop until clean, with optional auto-merge (default OFF). Gates merge on branch-protection presence and on actual CR engagement. CR Refactor suggestions at Minor/Trivial/Info auto-apply; CR substantive items (Bug, Potential issue, Security, Critical/High/Major) and Codex P1/P2 are gated per-issue. CR Nitpicks and Codex P3 are silently skipped. Codex is auto-detected per PR. The skip-minor option demotes CR Minor severity (excluding Bug/Security) + Codex P2 to skip. The review source (`auto`/`pr-bot`/`cli`/`codex-only`) falls back to the local `coderabbit` CLI or Codex-only when the PR-bot is rate-limited (early-escape ~30s). |
+| `release` | Create a versioned GitHub release with auto-generated changelog (previews + confirms before tagging/pushing) |
 
-| Flag | Description |
-|------|-------------|
-| `--skip-review` | Skip 2-stage review (for trusted changes) |
-| `--strict` | Treat lint failures as blocking errors |
-| `--skip-cr-fix` | Skip the auto cr-fix loop after PR creation (default ON) |
-| `--cr-fix-max <n>` | Cap iterations on the auto cr-fix loop (default: 5) |
-| `--auto-merge` | Pass through to cr-fix; auto-merge after convergence (default OFF) |
-| `--codex-grace <sec>` | Pass through to cr-fix; Codex grace window after CR completes (default: 90) |
-| `--no-codex` | Pass through to cr-fix; force-disable Codex auto-detect for the run |
-| `--skip-minor` | Pass through to cr-fix; demote CR Minor (excluding Bug/Security) + Codex P2 to skip |
-| `--cr-source <mode>` | Pass through to cr-fix; review source: `auto` (default, fall back to CLI/codex-only on PR-bot rate-limit), `pr-bot`, `cli`, `codex-only` |
+## resolve-issue options
+
+`resolve-issue` infers these from your wording (conservative defaults):
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| 2-stage review | ON | Spec + quality review before PR (say "skip review" to disable) |
+| Strict lint | OFF (warn) | Treat lint failures as blocking |
+| Auto cr-fix loop | ON | Run cr-fix after PR creation (say "skip cr-fix" to disable) |
+| cr-fix max iterations | 5 | Cap the cr-fix loop |
+| **Auto-merge** | **OFF** | Only on an explicit auto-merge request; merges only after convergence |
+| Codex grace window | 90s | Extra wait after CodeRabbit for ChatGPT-Codex comments |
+| Codex auto-detect | ON | Disable to force-skip Codex |
+| Skip minor CR severities | OFF | Shrink the gated queue on lint-heavy PRs |
+| cr-fix review source | `auto` | `auto` (fallback to CLI/codex-only on rate-limit), `pr-bot`, `cli`, `codex-only` |
 
 ## Worktree Workflow (PR-based)
 
@@ -35,12 +41,12 @@ Use Claude Code's built-in worktree (`claude --worktree <name>`) for isolated PR
 
 ```bash
 claude --worktree feature-auth
-# inside the worktree
-/github-dev:resolve-issue 42       # creates branch + PR + drives cr-fix
+# inside the worktree: "resolve issue 42" -> resolve-issue skill
+#   (creates branch + PR + drives cr-fix)
 # after PR is merged on GitHub, exit and switch contexts:
 /exit                              # cleanup option for the worktree
-# in a fresh session at the main repo
-/github-dev:post-merge <PR>        # cleanup + integrate learnings
+# in a fresh session at the main repo: "post-merge cleanup for PR <PR>"
+#   -> post-merge skill (cleanup + integrate learnings)
 ```
 
 **Note:** `post-merge` aborts when run from a worktree (Step 3 checks out the base branch, which conflicts with the original repo's checkout). Exit the worktree first.

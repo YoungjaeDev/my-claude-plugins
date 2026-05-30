@@ -1,10 +1,25 @@
 ---
-description: Decompose Work
+name: decompose-issue
+description: Break a large work item, feature, or epic into independent, context-completable GitHub issues — analyze requirements, map issues onto a 10-20 node architecture workflow diagram, define dependencies, and (with explicit confirmation) create the milestone + sub-issues + a project-tracking state file. Use when the user wants to decompose / break down a big task or feature into GitHub issues, plan a milestone, or set up issue tracking for a body of work. Creates GitHub issues/milestones only after an explicit confirmation step — never silently.
 ---
 
-## Decompose Work
+# Decompose Work
 
-Break down large work items into manageable, independent issues. Follow project guidelines in `@CLAUDE.md`.
+Break down large work items into manageable, independent issues. Read the project
+CLAUDE.md at runtime and follow it.
+
+## What to decompose
+
+There is no explicit argument string — take the work item to decompose from the
+user's request and the conversation (a feature description, an epic, a milestone
+goal). If it is genuinely unclear what body of work to break down, ask once.
+
+## Safety: GitHub creation is gated
+
+Steps 1-9.5 are local analysis and interviews. Milestone + issue creation
+(Step 10) happens **only after the explicit AskUserQuestion confirmation** — show
+the full proposed issue list and milestone first, and create nothing on GitHub
+until the user approves.
 
 ## Workflow
 
@@ -19,7 +34,7 @@ Break down large work items into manageable, independent issues. Follow project 
    - If non-code work (docs/infra) → Inform: "TDD not required. (Reason: Non-code work)"
    - If TDD selected: Add `<!-- TDD: enabled -->` marker to each issue body
 4. Analyze work: Understand core requirements and objectives
-5. Decompose work: Split major tasks into **context-completable units** - each issue should be completable in a single Claude session without context switching. Group related features together rather than splitting by individual functions
+5. Decompose work: Split major tasks into **context-completable units** — each issue should be completable in a single Claude session without context switching. Group related features together rather than splitting by individual functions
 6. Analyze dependencies: Identify prerequisite tasks
 7. Suggest milestone name: Propose a milestone to group decomposed tasks
 8. Check related PRs (optional): Run `gh pr list --state closed --limit 20` for similar work references (skip if none)
@@ -31,7 +46,7 @@ Break down large work items into manageable, independent issues. Follow project 
 
    Analyze the codebase and design a **10-20 node flowchart** of the project's core workflow. Store as Mermaid in the state file, but present to the user as an ASCII diagram.
 
-   - **Interview: Project Workflow** -- Use AskUserQuestion:
+   - **Interview: Project Workflow** — Use AskUserQuestion:
      > "프로젝트의 전체 워크플로우를 다이어그램으로 정리했습니다. 수정할 부분이 있나요?"
      - Present the proposed workflow as an **ASCII diagram** (terminal cannot render Mermaid)
      - The diagram should capture the main data/control flow (not just layers)
@@ -69,7 +84,7 @@ Break down large work items into manageable, independent issues. Follow project 
 
    #### Step B: Select Scope Nodes
 
-   - **Interview: Milestone Scope** -- Use AskUserQuestion:
+   - **Interview: Milestone Scope** — Use AskUserQuestion:
      > "이 마일스톤이 커버하는 노드를 선택해 주세요."
      - Present all node IDs from the workflow diagram
      - User selects which nodes are in scope for this milestone (`scopeNodes`)
@@ -78,7 +93,7 @@ Break down large work items into manageable, independent issues. Follow project 
    #### Step C: Module Grouping & Issue Mapping
 
    - Analyze decomposed issues and propose module groupings based on workflow areas
-   - **Interview: Issue-Module-Node Mapping** -- Use AskUserQuestion:
+   - **Interview: Issue-Module-Node Mapping** — Use AskUserQuestion:
      > "이슈-모듈-노드 매핑이 맞나요?"
      - Show each issue with: proposed module, mapped architecture node
      - User can reassign issues between modules or change node mappings
@@ -86,7 +101,7 @@ Break down large work items into manageable, independent issues. Follow project 
    #### Step D: Issue Dependencies
 
    - Analyze issue order and propose dependency chains
-   - **Interview: Issue Dependencies** -- Use AskUserQuestion:
+   - **Interview: Issue Dependencies** — Use AskUserQuestion:
      > "이슈 간 의존성(실행 순서)이 맞나요?"
      - Show proposed dependency graph: `#1 -> #2 -> #3`, `#2 -> #4`
      - User can add/remove dependencies
@@ -96,7 +111,7 @@ Break down large work items into manageable, independent issues. Follow project 
 
    - Generate slug from milestone name: lowercase, spaces to hyphens, remove special chars
      - Example: `"v1.0 Auth System"` -> `"v1-0-auth-system"`
-   - Save initial state file:
+   - Save the initial state file (schema documented in the `update-progress` skill):
      ```bash
      mkdir -p .claude/state
      cat > .claude/state/project-tracking-${SLUG}.json << 'STATEEOF'
@@ -142,12 +157,12 @@ Break down large work items into manageable, independent issues. Follow project 
      STATEEOF
      ```
 
-10. **Ask about GitHub creation**: Use AskUserQuestion to let user decide on milestone and issue creation
-    - Create milestone with **Markdown Table** in description.
+10. **Ask about GitHub creation**: Use AskUserQuestion to let the user decide on milestone and issue creation (this is the create gate — create nothing before approval).
+    - Create milestone with a **Markdown Table** in the description.
 
-      > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `update-progress.md` "Type M-2"), never in the milestone description.
+      > **CRITICAL — DO NOT include Mermaid in the milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2), never in the milestone description.
 
-      Build `$MILESTONE_TABLE` with the required table block below (canonical spec at `update-progress.md:160`).
+      Build `$MILESTONE_TABLE` with the required table block below (canonical spec in `../update-progress/references/diagram-spec.md` — see "Milestone Format: Markdown Table" and "Type M-2").
       You may prepend objective/scope and dependency-order summary sections required by this file's milestone guidelines.
 
       ```markdown
@@ -178,8 +193,8 @@ Break down large work items into manageable, independent issues. Follow project 
 
 11. **Add issues to GitHub Project (optional)**
    - Check for existing projects: `gh project list --owner <owner> --format json`
-   - If no project exists: Display "No project found. You can create one with `/gh:init-project`" and skip
-   - If project exists: Ask user via AskUserQuestion whether to add issues
+   - If no project exists: inform the user they can create one first, then skip
+   - If a project exists: Ask user via AskUserQuestion whether to add issues
    - If yes: Run `gh project item-add <project-number> --owner <owner> --url <issue-url>` for each issue
 
 ## Issue Sizing Principle
@@ -188,8 +203,8 @@ Break down large work items into manageable, independent issues. Follow project 
 Each issue should be designed to be **completable in a single Claude session**:
 
 - **Group related features** rather than splitting by individual functions
-- **Minimize context switching** - all necessary information should be within the issue
-- **Include implementation details** - specific enough that no external lookup is needed during execution
+- **Minimize context switching** — all necessary information should be within the issue
+- **Include implementation details** — specific enough that no external lookup is needed during execution
 
 ### Sizing Guidelines
 
@@ -202,12 +217,10 @@ Each issue should be designed to be **completable in a single Claude session**:
 ### Issue Content Depth
 Since issues are larger, content must be **more detailed**:
 
-1. **Implementation order** - numbered steps for execution sequence
-2. **File-by-file changes** - specific modifications per file
-3. **Code snippets** - key patterns or structures to implement
-4. **Edge cases** - known gotchas or considerations
-
----
+1. **Implementation order** — numbered steps for execution sequence
+2. **File-by-file changes** — specific modifications per file
+3. **Code snippets** — key patterns or structures to implement
+4. **Edge cases** — known gotchas or considerations
 
 ## Milestone Description Guidelines
 
@@ -262,8 +275,6 @@ Examples (vary by project, for reference only):
 **References** (optional):
 - Add related PRs if available (e.g., PR #36 - brief description)
 - Omit this section if none
-
----
 
 ## Verification Guidelines
 

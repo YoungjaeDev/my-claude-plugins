@@ -135,7 +135,14 @@ for ITER in $(seq 1 $MAX_ITER); do
         # Both reviewers actionable (or one actionable + the other clean).
         # Carry Codex review id forward; skip Step 6/6b/7 entirely.
         [ -n "$codex_latest_id_pf" ] && codex_review_id_to_process="$codex_latest_id_pf"
-        codex_active=active  # pre-flight saw an unprocessed id or definite emoji state
+        # Only flip codex_active to "active" when there is a real Codex signal —
+        # otherwise NO_CODEX=true (codex_state=disabled) gets silently revived
+        # and Step 6b/8b would fetch Codex comments the user opted out of.
+        if [ "$codex_state_pf" = "disabled" ]; then
+          codex_active=disabled
+        elif [ -n "$codex_latest_id_pf" ] || [ "$codex_state_pf" = "actionable" ]; then
+          codex_active=active
+        fi
         ;;
       cr_wait)
         : # fall through to Step 6 polling (legacy v1 behavior).

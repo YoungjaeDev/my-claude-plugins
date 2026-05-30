@@ -18,6 +18,8 @@ How to use the exa MCP tools (`mcp__exa__web_search_exa`, `mcp__exa__web_fetch_e
 | `mcp__exa__web_search_exa` | semantic web search returning ranked results with highlights | low | always start here |
 | `mcp__exa__web_fetch_exa` | full-page extraction for a single URL | medium | when highlights aren't enough |
 | `WebSearch` (built-in) | keyword web search | low | exa fallback only |
+| `mcp__firecrawl__firecrawl_scrape` | JS-aware fetch | medium | Tier 3 — `web_fetch_exa` failed on SPA / Cloudflare |
+| `Skill("insane-search:insane-search", url=...)` | WAF / anti-bot transport fallback | high | Tier 4 — `firecrawl_scrape` also blocked (WAF / 403 / challenge); URL must already be known |
 
 ## `web_search_exa` call shape
 
@@ -105,6 +107,19 @@ Do **not** use other firecrawl tools from this skill:
 - `firecrawl_deep_research` — runs its own multi-step research; competes with `research-orchestrator`'s own flow. Strict no.
 - `firecrawl_crawl` / `firecrawl_map` — site-wide crawls are out of scope for a research scout.
 - `firecrawl_extract` — structured-field extraction (prices, ratings) is a different domain.
+
+## Tier-4 fetch fallback — `insane-search`
+
+When `web_fetch_exa` returns 403/challenge **and** `firecrawl_scrape` also fails (typical pattern: X/Twitter, Reddit, Coupang, gated dashboards behind WAF), retry once with `Skill("insane-search:insane-search", url=...)`. **`insane-search` is an optional plugin** (see `plugins/code-scout/CLAUDE.md` requirements section): if the skill is not installed, or the invocation errors with skill-not-found / load failure, skip the tier-4 retry entirely and emit the finding from `Highlights` alone, recording `insane_search: not_installed` (or the error string) in `errors[]`. Otherwise it runs its own 5-phase transport escalation internally (official API index → lightweight probes → TLS impersonation → real browser → parallel) and returns a single verdict — caller only consumes it:
+
+| verdict | meaning | action |
+|---|---|---|
+| `strong_ok` | clean full body extracted | use the body as a `web_fetch_exa` replacement |
+| `weak_ok` | partial / approximate body | use cautiously, mark `reliability: medium` |
+| `challenge` | WAF interstitial returned | terminal; emit finding from `Highlights` only |
+| `blocked` | hard block, no body | terminal; emit finding from `Highlights` only |
+
+Record `insane_search` in `fetch_tools_used` and append the verdict to `errors[]` when it's `challenge` / `blocked`. `insane-search` is a **transport** fallback, not a search axis — it does not surface new URLs, only fetches a URL you already have. Do not call it instead of exa / WebSearch.
 
 ## Citation hygiene
 

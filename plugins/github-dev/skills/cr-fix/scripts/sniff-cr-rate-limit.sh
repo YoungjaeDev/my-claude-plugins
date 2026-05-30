@@ -59,10 +59,13 @@ total=$((hits + desc_hit))
 if [ "$total" -eq 0 ]; then exit 1; fi
 
 # Determine reset estimate from any source.
-reset=$(jq -r '[ .[] | capture("More reviews will be available in (?<m>[0-9]+) minutes?"; "i").m // empty ] | first // empty' <<<"$bodies")
+# jq `capture()` THROWS on non-match (not null) — `// empty` only catches null/false.
+# Wrap in `try ... catch empty` so non-matching bodies don't kill the script under
+# `set -euo pipefail`.
+reset=$(jq -r '[ .[] | (try capture("More reviews will be available in (?<m>[0-9]+) minutes?"; "i").m catch empty) ] | first // empty' <<<"$bodies")
 if [ -z "$reset" ] && [ -n "$status_desc" ]; then
   reset=$(jq -nr --arg d "$status_desc" \
-    '($d | capture("More reviews will be available in (?<m>[0-9]+) minutes?"; "i").m // empty)' 2>/dev/null || true)
+    'try ($d | capture("More reviews will be available in (?<m>[0-9]+) minutes?"; "i").m) catch empty')
 fi
 reset="${reset:-null}"
 

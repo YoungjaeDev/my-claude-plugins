@@ -42,37 +42,57 @@ if [ "$cr_desc" != "" ] \
   rate_limit_source="description"
 fi
 if [ "$rate_limit_source" = "none" ] \
-   && bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" >/dev/null 2>&1; then
-  rate_limit_source="comment"
+   && sniff_json=$(bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
+  # Honor the actual channel the sniffer detected instead of always writing "comment".
+  # The sniffer emits {channel: "comment"|"description"|"both"} — propagate verbatim.
+  sniff_channel=$(jq -r '.channel // "comment"' <<<"$sniff_json" 2>/dev/null || echo comment)
+  rate_limit_source="$sniff_channel"
 fi
 
 # ── 3. Codex review submission (unprocessed id) ─────────────────────────────
+# Honor NO_CODEX from the SKILL.md per-iter cache so --no-codex shuts off the
+# Codex probe entirely. Without this guard, codex_latest_id gets populated and
+# downstream codex_actionable=true revives Codex paths the user explicitly
+# disabled. (references/arguments.md contract)
 PROCESSED='[]'
 if [ -f "$STATE_FILE" ]; then
   PROCESSED=$(jq -c '.codex_processed_reviews // []' "$STATE_FILE" 2>/dev/null || echo '[]')
 fi
 codex_latest_id=""
-if codex_pages=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null); then
-  codex_latest_id=$(jq -rs --argjson p "$PROCESSED" 'add // []
-      | [ .[]
-          | select(.user.login == "chatgpt-codex-connector[bot]")
-          | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
-          | select(.id as $i | $p | index($i) | not) ]
-      | sort_by(.submitted_at) | last | .id // ""' <<<"$codex_pages")
-fi
-[ "$codex_latest_id" = "null" ] && codex_latest_id=""
-
-# ── 4. Codex emoji probe (best-effort, 3 channels) ──────────────────────────
 codex_emoji_state="unknown"
-if [ -x "$SCRIPT_DIR/probe-codex-state.sh" ]; then
-  emoji_json=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" PUSH_TIME="$PUSH_TIME" \
-               bash "$SCRIPT_DIR/probe-codex-state.sh" 2>/dev/null || echo '{}')
-  codex_emoji_state=$(jq -r '.emoji_state // "unknown"' <<<"$emoji_json")
+if [ "${NO_CODEX:-false}" != "true" ]; then
+  if codex_pages=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null); then
+    codex_latest_id=$(jq -rs --argjson p "$PROCESSED" 'add // []
+        | [ .[]
+            | select(.user.login == "chatgpt-codex-connector[bot]")
+            | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
+            | select(.id as $i | $p | index($i) | not) ]
+        | sort_by(.submitted_at) | last | .id // ""' <<<"$codex_pages")
+  fi
+  [ "$codex_latest_id" = "null" ] && codex_latest_id=""
+
+  # ── 4. Codex emoji probe (best-effort, 3 channels) ────────────────────────
+  if [ -x "$SCRIPT_DIR/probe-codex-state.sh" ]; then
+    emoji_json=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" PUSH_TIME="$PUSH_TIME" \
+                 bash "$SCRIPT_DIR/probe-codex-state.sh" 2>/dev/null || echo '{}')
+    codex_emoji_state=$(jq -r '.emoji_state // "unknown"' <<<"$emoji_json")
+  fi
 fi
 
 # ── 5. push age & timeout ───────────────────────────────────────────────────
+# Portable ISO-8601 → epoch: GNU `date -d` first, then BSD `date -j -f`.
+# Without the BSD fallback push_age stays at 0 on macOS, codex_timeout_active
+# stays true forever, and gate decisions skew toward codex_wait. (CR Major, Codex P1)
+iso_to_epoch() {
+  local iso="$1" ts
+  ts=$(date -d "$iso" +%s 2>/dev/null) && { printf '%s\n' "$ts"; return 0; }
+  # BSD date: accept either `2026-05-30T01:49:10Z` or `...+00:00`.
+  ts=$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$iso" +%s 2>/dev/null) && { printf '%s\n' "$ts"; return 0; }
+  ts=$(date -j -u -f '%Y-%m-%dT%H:%M:%S%z' "${iso/Z/+0000}" +%s 2>/dev/null) && { printf '%s\n' "$ts"; return 0; }
+  return 1
+}
 push_age=0
-if push_ts=$(date -d "$PUSH_TIME" +%s 2>/dev/null); then
+if push_ts=$(iso_to_epoch "$PUSH_TIME"); then
   now_ts=$(date +%s)
   push_age=$((now_ts - push_ts))
 fi
@@ -110,7 +130,11 @@ fi
 
 # Codex state classification.
 codex_state="unknown"
-if [ "$codex_actionable" = "true" ]; then
+if [ "${NO_CODEX:-false}" = "true" ]; then
+  # User opted out of Codex; report disabled so the gate decision treats
+  # Codex as a no-op rather than waiting for a signal that will never arrive.
+  codex_state="disabled"
+elif [ "$codex_actionable" = "true" ]; then
   codex_state="actionable"
 elif [ "$codex_emoji_state" = "clean" ] && [ "$push_age" -ge 60 ]; then
   # 60s minimum guard against the false-clean check-run race
@@ -128,8 +152,8 @@ fi
 if [ "$gate" != "rate_limited" ] && [ "$gate" != "failure" ]; then
   if [ "$cr_actionable" = "true" ]; then
     case "$codex_state" in
-      actionable|clean) gate="proceed" ;;
-      arriving|unknown) gate="codex_wait" ;;
+      actionable|clean|disabled) gate="proceed" ;;
+      arriving|unknown)          gate="codex_wait" ;;
     esac
   fi
 fi

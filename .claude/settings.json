@@ -17,7 +17,6 @@
       "./plugins/workflow-viz",
       "./plugins/rules-forge",
       "./plugins/tcrei-prompt",
-      "./plugins/codex-bridge",
       "./plugins/llm-wiki",
       "./plugins/spec-state",
       "./plugins/project-init",

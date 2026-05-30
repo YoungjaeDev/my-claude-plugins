@@ -1,0 +1,179 @@
+{
+  "name": "my-claude-plugins",
+  "interface": {
+    "displayName": "My Claude Plugins (Codex)"
+  },
+  "plugins": [
+    {
+      "name": "code-scout",
+      "source": {
+        "source": "local",
+        "path": "./plugins/code-scout"
+      },
+      "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, firecrawl tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate).",
+      "category": "research"
+    },
+    {
+      "name": "council",
+      "source": {
+        "source": "local",
+        "path": "./plugins/council"
+      },
+      "description": "Multi-model deliberation: Claude, Codex, Gemini",
+      "category": "ai-models"
+    },
+    {
+      "name": "deepwiki",
+      "source": {
+        "source": "local",
+        "path": "./plugins/deepwiki"
+      },
+      "description": "AI-powered GitHub repo documentation. ask + generate-llmstxt as native skills (dual-tool: Claude + Codex)",
+      "category": "documentation"
+    },
+    {
+      "name": "docs-forge",
+      "source": {
+        "source": "local",
+        "path": "./plugins/docs-forge"
+      },
+      "description": "README/CHANGELOG generation with CRO best practices",
+      "category": "documentation"
+    },
+    {
+      "name": "github-dev",
+      "source": {
+        "source": "local",
+        "path": "./plugins/github-dev"
+      },
+      "description": "GitHub workflow (all native skills): commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; auto-merge + skip-minor + cr-source retained), project tracking, release. All workflows are skills (Claude auto-discovery + Codex shared-source)",
+      "category": "github"
+    },
+    {
+      "name": "humanizer",
+      "source": {
+        "source": "local",
+        "path": "./plugins/humanizer"
+      },
+      "description": "Remove AI writing patterns from text",
+      "category": "content"
+    },
+    {
+      "name": "interview",
+      "source": {
+        "source": "local",
+        "path": "./plugins/interview"
+      },
+      "description": "Structured requirements gathering",
+      "category": "planning"
+    },
+    {
+      "name": "llm-wiki",
+      "source": {
+        "source": "local",
+        "path": "./plugins/llm-wiki"
+      },
+      "description": "Karpathy LLM-Wiki 3-layer: 6 skills (query/ingest/lint/bootstrap/migrate/post-merge-wiki) + 3 soft-hint hooks + bootstrap templates. Neutral .llmwiki/ root (codex-bridge .claude/->.codex/ can't fork it); resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki.",
+      "category": "memory"
+    },
+    {
+      "name": "ml-toolkit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ml-toolkit"
+      },
+      "description": "GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration",
+      "category": "development"
+    },
+    {
+      "name": "notebook",
+      "source": {
+        "source": "local",
+        "path": "./plugins/notebook"
+      },
+      "description": "Safe Jupyter notebook editing",
+      "category": "development"
+    },
+    {
+      "name": "notion",
+      "source": {
+        "source": "local",
+        "path": "./plugins/notion"
+      },
+      "description": "Markdown to Notion upload",
+      "category": "integration"
+    },
+    {
+      "name": "paper-search-tools",
+      "source": {
+        "source": "local",
+        "path": "./plugins/paper-search-tools"
+      },
+      "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
+      "category": "research"
+    },
+    {
+      "name": "project-init",
+      "source": {
+        "source": "local",
+        "path": "./plugins/project-init"
+      },
+      "description": "One-shot first-day project bootstrap: interview, .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines (general/ml/web variants), README/CHANGELOG seed, gh repo create + initial push. Single `new` skill.",
+      "category": "planning"
+    },
+    {
+      "name": "rules-forge",
+      "source": {
+        "source": "local",
+        "path": "./plugins/rules-forge"
+      },
+      "description": "CLAUDE.md generation and .claude/rules/ modular structure with auto mode detection (NEW/TIGHTEN/SPLIT/REORGANIZE), single write-rules skill entrypoint",
+      "category": "documentation"
+    },
+    {
+      "name": "slidev",
+      "source": {
+        "source": "local",
+        "path": "./plugins/slidev"
+      },
+      "description": "Slidev markdown presentation generator with interview workflow and KubeCon-level visual enhancement",
+      "category": "content"
+    },
+    {
+      "name": "spec-state",
+      "source": {
+        "source": "local",
+        "path": "./plugins/spec-state"
+      },
+      "description": "Spec/issue/PR work-pipeline aggregate. state-tracker skill manages .claude/state/spec.json (read/init/start/complete). Called by github-dev:post-merge.",
+      "category": "workflow"
+    },
+    {
+      "name": "tcrei-prompt",
+      "source": {
+        "source": "local",
+        "path": "./plugins/tcrei-prompt"
+      },
+      "description": "Rewrite prompts using Google's TCREI structure for next-session reuse",
+      "category": "content"
+    },
+    {
+      "name": "translator",
+      "source": {
+        "source": "local",
+        "path": "./plugins/translator"
+      },
+      "description": "Web article translation to Korean",
+      "category": "content"
+    },
+    {
+      "name": "workflow-viz",
+      "source": {
+        "source": "local",
+        "path": "./plugins/workflow-viz"
+      },
+      "description": "System workflow Mermaid diagrams and ASCII progress tracking",
+      "category": "visualization"
+    }
+  ]
+}

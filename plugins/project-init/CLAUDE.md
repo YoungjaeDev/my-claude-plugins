@@ -1,12 +1,12 @@
 # Project-Init Plugin
 
-새 프로젝트의 Day-1 셋업 (`.claude/`, CLAUDE.md, AGENTS.md, README/CHANGELOG, gh repo create+push) 을 단일 `/project-init:new` 명령으로 orchestrate.
+새 프로젝트의 Day-1 셋업 (`.claude/`, CLAUDE.md, AGENTS.md, README/CHANGELOG, gh repo create+push) 을 단일 `new` 스킬로 orchestrate.
 
-## Command
+## Skill
 
-| Command | Description |
-|---------|-------------|
-| `/project-init:new` | 인터뷰 → 로컬 시드 → gh repo 생성 → 초기 커밋/푸시. 명시적 호출 only (자동 트리거 없음). |
+| Skill | Description |
+|-------|-------------|
+| `new` | 인터뷰 → 로컬 시드 → gh repo 생성 → 초기 커밋/푸시. 명시적 의도에서만 동작하며 Phase 0 에서 작업 디렉토리/의도를 확인하는 게이트를 거친다 (비가역 `gh repo create` 포함). Codex 에는 `$new` 로 노출. |
 
 ## 원칙
 
@@ -20,20 +20,21 @@
 ```text
 plugins/project-init/
 ├── .claude-plugin/plugin.json
-├── commands/new.md                     # 단일 orchestration command
-├── assets/                             # 출력물에 직접 들어가는 템플릿
-│   ├── AGENTS.review-guidelines.md     # general variant (base)
-│   ├── AGENTS.review-guidelines.ml.md  # ML/data variant
-│   ├── AGENTS.review-guidelines.web.md # 웹/풀스택 variant
-│   ├── README.minimal.md
-│   └── CHANGELOG.initial.md
-├── references/                         # 의사결정 context
-│   ├── codex-review-discovery.md       # AGENTS.md vs /review CLI
-│   └── gh-repo-create-flow.md          # owner 추론 + visibility 결정
-├── scripts/
-│   ├── infer-github-context.sh         # gh api user + orgs
-│   └── idempotent-seed.sh              # 충돌 가드 + .claude/ + .llmwiki/ 시드
-└── CLAUDE.md                           # this file
+├── skills/new/                             # 단일 orchestration skill
+│   ├── SKILL.md
+│   ├── assets/                             # 출력물에 직접 들어가는 템플릿
+│   │   ├── AGENTS.review-guidelines.md     # general variant (base)
+│   │   ├── AGENTS.review-guidelines.ml.md  # ML/data variant
+│   │   ├── AGENTS.review-guidelines.web.md # 웹/풀스택 variant
+│   │   ├── README.minimal.md
+│   │   └── CHANGELOG.initial.md
+│   ├── references/                         # 의사결정 context
+│   │   ├── codex-review-discovery.md       # AGENTS.md vs review CLI
+│   │   └── gh-repo-create-flow.md          # owner 추론 + visibility 결정
+│   └── scripts/
+│       ├── infer-github-context.sh         # gh api user + orgs
+│       └── idempotent-seed.sh              # 충돌 가드 + .claude/ + .llmwiki/ 시드
+└── CLAUDE.md                               # this file
 ```
 
 ## Placeholder 규약
@@ -48,7 +49,7 @@ assets/ 의 템플릿은 다음 placeholder 만 사용한다 (sed 치환):
 | `{{LICENSE}}` | MIT / Apache-2.0 / GPL-3.0 / None |
 | `{{YEAR}}` | 현재 연도 |
 
-추가 placeholder 도입 시 `commands/new.md` Phase 4/5 의 sed 라인을 함께 업데이트.
+추가 placeholder 도입 시 `skills/new/SKILL.md` Phase 4/5 의 sed 라인을 함께 업데이트.
 
 ## AGENTS.md Variant 정책
 
@@ -68,11 +69,11 @@ variant 차이는 `### Domain-specific` 섹션 + `### P0` / `### P1` 에 도메�
 
 - CI/CD workflow seed (`.github/workflows/`) — variant 별 다양성 너무 큼
 - Pre-commit hook seed — 같은 이유
-- Boilerplate auto-download (cookiecutter, copier) — `/code-scout:scout` 별도 호출
+- Boilerplate auto-download (cookiecutter, copier) — `code-scout:research-orchestrator` 스킬 별도 호출
 - Multi-language 인터뷰 분기 — 한/영 혼용 단일 버전 유지
 
 ## 참조
 
 - Plugin versioning rules: `.claude/rules/plugin-versioning.md`
 - Codex GitHub integration: https://developers.openai.com/codex/integrations/github
-- 관련 follow-up: `/rules-forge:write-rules`, `/llm-wiki:bootstrap-wiki`
+- 관련 follow-up: `rules-forge:write-rules` 스킬, `llm-wiki:bootstrap-wiki` 스킬

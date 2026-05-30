@@ -1,0 +1,6 @@
+{
+  "name": "docs-forge",
+  "version": "0.3.0",
+  "description": "README and CHANGELOG generation with CRO best practices",
+  "skills": "./skills/"
+}

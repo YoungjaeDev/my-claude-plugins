@@ -6,15 +6,15 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 
 | Skill | Description |
 |-------|-------------|
-| `readme-guide` | README patterns and templates reference |
-| `changelog-guide` | CHANGELOG format and automation guide |
+| `readme` | **Generate or analyze** a README file (writes/edits) |
+| `changelog` | **Generate or update** a CHANGELOG file (writes/edits) |
+| `readme-guide` | README patterns and templates — reference only |
+| `changelog-guide` | CHANGELOG format and automation — reference only |
 
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `/docs-forge:readme` | Generate or analyze README |
-| `/docs-forge:changelog` | Generate or analyze CHANGELOG |
+These are auto-triggering skills (not slash commands) — describe your intent in
+natural language and Claude invokes them. The action skills (`readme`,
+`changelog`) perform edits; the `-guide` skills are read-only references. They
+are also exported to Codex as native `$readme` / `$changelog` etc.
 
 ## References
 
@@ -46,24 +46,21 @@ Based on awesome-readme curated list:
 
 ### Generate README
 
-```
-/docs-forge:readme generate --type cli
-/docs-forge:readme generate --type library
-/docs-forge:readme generate --type react-component
-/docs-forge:readme generate --type mcp-plugin
-/docs-forge:readme generate --type saas
-/docs-forge:readme generate --type desktop
+```text
+Generate a README for this CLI tool
+Generate a README for this library / React component / MCP plugin / SaaS / desktop app
 ```
 
 ### Analyze Existing README
 
-```
-/docs-forge:readme analyze
+```text
+Analyze and score my README, suggest improvements
 ```
 
-### Generate CHANGELOG
+### Generate / update CHANGELOG
 
-```
-/docs-forge:changelog init
-/docs-forge:changelog add "Added new feature"
+```text
+Start a CHANGELOG for this project
+Add a changelog entry: "Added new feature"
+Cut a changelog release
 ```

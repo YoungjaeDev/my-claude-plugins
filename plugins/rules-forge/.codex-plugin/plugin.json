@@ -1,0 +1,6 @@
+{
+  "name": "rules-forge",
+  "version": "2.1.0",
+  "description": "Generate and restructure CLAUDE.md systems into modular .claude/rules/ delegation. Auto-detects project state and proposes one of four modes (NEW/TIGHTEN/SPLIT/REORGANIZE). Single skill entrypoint.",
+  "skills": "./skills/"
+}

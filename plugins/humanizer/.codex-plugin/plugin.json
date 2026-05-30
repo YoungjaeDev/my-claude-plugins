@@ -1,0 +1,6 @@
+{
+  "name": "humanizer",
+  "version": "2.1.1",
+  "description": "Remove signs of AI-generated writing from text based on Wikipedia's AI writing patterns guide",
+  "skills": "./skills/"
+}

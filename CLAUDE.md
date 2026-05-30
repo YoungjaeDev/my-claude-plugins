@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration.
 
-## Plugins (22)
+## Plugins (21)
 
 ### Core
 | Plugin | Description |
@@ -63,11 +63,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 |--------|-------------|
 | `workflow-viz` | System workflow Mermaid diagrams and ASCII progress tracking |
 
-### Integration
-| Plugin | Description |
-|--------|-------------|
-| `codex-bridge` | Sync OMC plugin skills to Codex `~/.agents/skills/` with body-only transform |
-
 ### Memory & Lore
 | Plugin | Description |
 |--------|-------------|
@@ -103,7 +98,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── slidev/             # Presentation generator
 │   ├── workflow-viz/       # Workflow visualization
 │   ├── tcrei-prompt/       # TCREI prompt structuring
-│   ├── codex-bridge/       # OMC → Codex skill sync
 │   ├── llm-wiki/           # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/         # spec/issue/PR work-pipeline aggregate
 │   └── project-init/       # Day-1 project bootstrap (interview + .claude/ + AGENTS.md + gh repo)
@@ -118,4 +112,4 @@ Plugins auto-load from `settings.json`. See README.md for detailed usage of each
 ## Modular Rules
 
 - See @.claude/rules/plugin-versioning.md for plugin version bump contract and cache-refresh workflow.
-- See @.claude/rules/codex-bridge-sync.md for codex-bridge sync invariants (SSOT, body-only transform, `bridge_source` marker, collision guard).
+- See @.claude/rules/codex-manifests.md for the Codex shared-source manifest sync (`scripts/sync-codex-manifests.mjs`).

@@ -4,15 +4,18 @@ LLM Council - Query multiple AI models and synthesize collective wisdom.
 
 Inspired by Andrej Karpathy's LLM Council concept.
 
-## Commands
+## Skills
 
-| Command | Description |
-|---------|-------------|
-| `/council` | Start multi-model deliberation |
-| `/council --quick` | Quick mode (single round, faster) |
-| `/council-setup` | Setup Codex/Gemini CLI |
-| `/council:ask-codex` | Query Codex directly with Claude cross-check |
-| `/council:ask-gemini` | Query Gemini directly with Claude cross-check |
+| Skill | Description |
+|-------|-------------|
+| `council` | Start multi-model deliberation (say "quick" for single-round mode) |
+| `council-setup` | Setup Codex/Gemini CLI |
+| `ask-codex` | Query Codex directly with Claude cross-check |
+| `ask-gemini` | Query Gemini directly with Claude cross-check |
+
+These are auto-triggering skills (not slash commands) — describe your intent in
+natural language and Claude invokes them. They are also exported to Codex as
+native `$council` / `$ask-codex` / `$ask-gemini`.
 
 ## How It Works
 
@@ -28,22 +31,22 @@ Inspired by Andrej Karpathy's LLM Council concept.
 |-------|--------|-------|
 | Claude Opus | Built-in | Always available |
 | Claude Sonnet | Built-in | Always available |
-| Codex | Optional | Run `/council-setup` to install |
-| Gemini | Optional | Run `/council-setup` to install |
+| Codex | Optional | Run the `council-setup` skill to install |
+| Gemini | Optional | Run the `council-setup` skill to install |
 
 **Minimum**: 2 models required (Opus + Sonnet always available)
 
 ## Usage Examples
 
-```bash
+```text
 # Architecture question
-/council What's the best way to structure this microservice?
+Ask the council: what's the best way to structure this microservice?
 
 # Quick opinion poll
-/council --quick Should we use Redis or Memcached for caching?
+Quick council on whether to use Redis or Memcached for caching
 
 # Code review
-/council Review the authentication flow and suggest improvements
+Get the council to review the authentication flow and suggest improvements
 ```
 
 ## Modes
@@ -61,10 +64,8 @@ command -v codex && echo "Codex: ✅" || echo "Codex: ❌"
 command -v gemini && echo "Gemini: ✅" || echo "Gemini: ❌"
 ```
 
-Install additional models:
-```
-/council-setup
-```
+Install additional models by invoking the `council-setup` skill (e.g. "set up the
+council CLIs").
 
 ## Output
 

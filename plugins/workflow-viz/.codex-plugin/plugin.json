@@ -1,0 +1,6 @@
+{
+  "name": "workflow-viz",
+  "version": "1.0.0",
+  "description": "System workflow visualization with Mermaid diagrams and ASCII progress tracking",
+  "skills": "./skills/"
+}

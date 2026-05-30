@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
+Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지
 
-[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -41,7 +41,7 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 /plugin install code-scout@my-claude-plugins
 ```
 
-설치 후 `/github-dev:resolve-issue 123` 같은 명령어로 바로 사용 가능합니다.
+설치 후 "이슈 123 해결해줘" 처럼 자연어로 의도를 말하면 해당 skill 이 자동 트리거됩니다 (대부분의 워크플로우가 slash command 가 아니라 skill 로 동작).
 
 ## 플러그인 업데이트
 
@@ -80,7 +80,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
-| **Integration** | `codex-bridge` | OMC skill을 Codex `~/.agents/skills/`로 body-only 변환 동기화 |
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/migrate/post-merge-wiki + 3 hooks) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 
@@ -131,22 +130,19 @@ Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 
 <details>
 <summary><strong>github-dev</strong> - GitHub 워크플로우 자동화</summary>
 
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/github-dev:commit-and-push` | 분석, 커밋, 푸시 |
-| `/github-dev:resolve-issue` | 이슈 해결 E2E (worktree, 리뷰, 검증) |
-| `/github-dev:cr-fix` | CodeRabbit + Codex 통합 파이프라인 (skill, wait + fetch + apply + push 루프, --auto-merge 옵션, resolve-issue 기본 ON). `--cr-source <auto\|pr-bot\|cli\|codex-only>` 로 소스 선택; `auto` 는 PR-bot rate-limit 감지 시 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback (1800s spin 해소). |
-| `/github-dev:code-review` | (1.10 deprecated) CodeRabbit 피드백 자동 fetch + 수동 paste fallback |
-| `/github-dev:cr-wait` | (1.10 deprecated) CodeRabbit commit status 백그라운드 폴링 |
-| `/github-dev:post-merge` | 브랜치 정리, PR 학습 내용을 설정 파일/Serena/README에 통합 |
-| `/github-dev:merge-worktree` | worktree에서 base 브랜치로 squash merge + 학습 반영 |
-| `/github-dev:decompose-issue` | 이슈를 하위 작업으로 분해 |
-| `create-issue-labels` (skill) | 표준화된 이슈 라벨 생성 (자동 트리거 skill, Codex `$create-issue-labels`) |
-| `/github-dev:update-progress` | 마일스톤/이슈 진행 상황 동기화 |
-| `/github-dev:release` | 버전 릴리스 + 자동 CHANGELOG 생성 |
+**Skills** (auto-triggering; describe intent in natural language. Also exported to Codex as `$<name>`):
+| Skill | Description |
+|-------|-------------|
+| `commit-and-push` | 분석, 커밋, 푸시 (지정한 파일만) |
+| `resolve-issue` | 이슈 해결 E2E (worktree, 리뷰, 검증; auto-merge 기본 OFF) |
+| `cr-fix` | CodeRabbit + Codex 통합 파이프라인 (wait + fetch + apply + push 루프, auto-merge 옵션, resolve-issue 기본 ON). 소스 선택(`auto`/`pr-bot`/`cli`/`codex-only`); `auto` 는 PR-bot rate-limit 감지 시 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback (1800s spin 해소). |
+| `post-merge` | 브랜치 정리, PR 학습 내용을 설정 파일/Serena/README에 통합 (비가역 단계는 미리보기+확인) |
+| `decompose-issue` | 이슈를 하위 작업으로 분해 (GitHub 생성은 확인 게이트) |
+| `create-issue-labels` | 표준화된 이슈 라벨 생성 |
+| `update-progress` | 마일스톤/이슈 진행 상황 동기화 (write-back 게이트) |
+| `release` | 버전 릴리스 + 자동 CHANGELOG 생성 (태깅/푸시 전 미리보기+확인) |
 
-**Flags:** `--skip-review`, `--strict`
+**resolve-issue 옵션:** 검토 생략 / strict lint / cr-fix 생략 / auto-merge (기본 OFF) 등은 요청 표현에서 추론. 자세한 내용은 플러그인 CLAUDE.md 참조.
 
 **Requirements:** `gh` CLI
 
@@ -240,13 +236,13 @@ facebook/react에서 reconciliation은 어떻게 동작하나요?
 
 여러 AI 모델에 질문하고 집단 지혜 합성.
 
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/council` | 멀티모델 심의 |
-| `/council --quick` | 퀵 모드 (1라운드) |
-| `/council:ask-codex` | Codex 직접 질문 |
-| `/council:ask-gemini` | Gemini 직접 질문 |
+**Skills** (auto-triggering; also exported to Codex as `$<name>`):
+| Skill | Description |
+|-------|-------------|
+| `council` | 멀티모델 심의 ("quick" 이라고 하면 1라운드 퀵 모드) |
+| `council-setup` | Codex/Gemini CLI 설치 |
+| `ask-codex` | Codex 직접 질문 |
+| `ask-gemini` | Gemini 직접 질문 |
 
 **Models:** Claude Opus, Sonnet, Codex, Gemini
 
@@ -348,28 +344,25 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 
 </details>
 
-### Integration
+### Codex (shared-source)
 
 <details>
-<summary><strong>codex-bridge</strong> - OMC → Codex skill 동기화</summary>
+<summary><strong>Codex 네이티브 설치</strong> - 같은 repo, 한 줄 설치</summary>
 
-OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네이티브로 로드하는 `~/.agents/skills/` (OpenAI 공식 USER scope) 로 idempotent 변환·복사.
+이 repo 는 Claude 마켓플레이스(`.claude-plugin/marketplace.json`)와 Codex 마켓플레이스(`.agents/plugins/marketplace.json`)를 **한 트리에 공존**시킨다. Codex 는 Claude 와 **동일한** `plugins/<name>/skills/` 를 그대로 로드한다 — 변환·복제 없음(shared-source).
 
-**핵심 원칙:**
-- **SSOT**: OMC source 는 단일 소스, `~/.agents/skills/` 는 derived artifact (양방향 sync 아님)
-- **Safety**: `bridge_source` 마커 없는 파일은 절대 건드리지 않음 (OMX / 사용자 파일 보호)
-- **Body-only transform**: frontmatter 는 불변, body 만 7개 rule 치환
-- **Orphan prune**: `bridge_source` 있고 source 없어진 skill 자동 삭제
+```bash
+# 원격 1줄 설치
+codex plugin marketplace add YoungjaeDev/my-claude-plugins
+codex plugin add <plugin>@my-claude-plugins
+codex plugin marketplace upgrade   # git pull 로 업데이트
+```
 
-**Transform rules (body-only, 7개):** `.omc/` → `.omx/`, `CLAUDE.md` → `AGENTS.md`, `/oh-my-claudecode:` → `$`, `oh-my-claudecode` → `oh-my-codex`, `~/.claude/` → `~/.codex/`, word-boundary `omc` → `omx`, `OMC` → `OMX`
+- Codex 전용 산출물은 작은 커밋 매니페스트 둘뿐: 플러그인별 `.codex-plugin/plugin.json` + 루트 `.agents/plugins/marketplace.json`.
+- 둘 다 `node scripts/sync-codex-manifests.mjs` 가 Claude `.claude-plugin/` 소스에서 생성한다(`--check` 로 drift 검출).
+- skill 1개 이상인 plugin 만 Codex 카탈로그에 포함(command-only plugin·`midjourney` 제외 — Claude 전용). Codex 는 plugin.json 에 `commands`/`agents` 필드가 없어 command/subagent 를 로드하지 않는다.
 
-**진입점:**
-- Claude Code: `$codex-sync [options]`
-- Direct CLI: `node plugins/codex-bridge/scripts/sync.mjs [options]`
-
-**CLI options:** `--dry-run`, `--verbose`, `--config <path>`, `--plugin <list>`, `--no-prune`, `--report <path>`
-
-**Requirements:** Node 18+, Codex CLI 0.120.0+
+**Requirements:** Node 18+, Codex CLI 0.131.0+ (the `codex plugin marketplace` subcommands used above were added in 0.131.0)
 
 </details>
 
@@ -448,7 +441,7 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 <details>
 <summary><strong>project-init</strong> - Day-1 프로젝트 부트스트랩</summary>
 
-새 디렉토리에서 단일 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료.
+새 디렉토리에서 `new` 스킬 ("이 프로젝트 부트스트랩해줘") 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료. 명시적 의도에서만 동작하며 Phase 0 에서 작업 디렉토리/의도를 확인한다 (Codex `$new`).
 
 **시드 결과:**
 - `.claude/{spec,rules}/` + `.llmwiki/{raw,wiki}/` 빈 구조 (`.gitkeep`)
@@ -462,10 +455,10 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 - Owner gate — personal vs 조직 결정은 `AskUserQuestion` 으로 명시 선택
 - Idempotent — 같은 디렉토리 재호출 시 기존 파일 보존
 
-**Next actions** (`/project-init:new` 완료 후):
-1. 코드 쌓이면 → `/rules-forge:write-rules`
-2. 첫 도메인 lore → `/llm-wiki:bootstrap-wiki`
-3. 첫 PR merge 후 → `/github-dev:post-merge` (자동 `/llm-wiki:post-merge-wiki` 체이닝)
+**Next actions** (`new` 스킬 완료 후):
+1. 코드 쌓이면 → `rules-forge:write-rules` 스킬
+2. 첫 도메인 lore → `llm-wiki:bootstrap-wiki` 스킬
+3. 첫 PR merge 후 → `github-dev:post-merge` 스킬 (자동 `llm-wiki:post-merge-wiki` 체이닝)
 
 **Requirements:** `gh` CLI authenticated, `git`, `jq`
 
@@ -498,12 +491,12 @@ OMC 플러그인 skill 들 (`plugins/*/skills/**/SKILL.md`)을 Codex CLI 가 네
 
 CRO 분석 기반 README/CHANGELOG 생성.
 
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/docs-forge:readme generate` | 템플릿에서 README 생성 |
-| `/docs-forge:readme analyze` | 기존 README 분석 |
-| `/docs-forge:changelog init` | CHANGELOG 초기화 |
+**Skills** (auto-triggering; also exported to Codex as `$<name>`):
+| Skill | Description |
+|-------|-------------|
+| `readme` | README 생성/분석 (writes/edits) |
+| `changelog` | CHANGELOG 생성/갱신 (writes/edits) |
+| `readme-guide` / `changelog-guide` | 패턴 레퍼런스 (read-only) |
 
 **Templates:** CLI, Library, React Component, MCP Plugin, SaaS, Desktop
 
@@ -579,9 +572,9 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
       "./plugins/rules-forge",
       "./plugins/workflow-viz",
       "./plugins/tcrei-prompt",
-      "./plugins/codex-bridge",
       "./plugins/llm-wiki",
-      "./plugins/spec-state"
+      "./plugins/spec-state",
+      "./plugins/project-init"
     ]
   }
 }
@@ -595,8 +588,8 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 | `gh` | GitHub 플러그인 | github-dev |
 | `uv` | Python MCP 서버 | core-config |
 | `ruff` | Python 포매팅 | core-config |
-| Node 18+ | sync 엔진 런타임 | codex-bridge |
-| Codex CLI 0.120.0+ | `~/.agents/skills/` 네이티브 로드 | codex-bridge (실행시) |
+| Node 18+ | Codex 매니페스트 동기화 스크립트 | `scripts/sync-codex-manifests.mjs` |
+| Codex CLI 0.131.0+ | Codex 네이티브 설치 (shared-source; `codex plugin marketplace` 하위명령 필요) | Codex 사용 시 |
 
 ## 프로젝트 구조
 
@@ -623,7 +616,6 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 │   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)
 │   ├── workflow-viz/          # 워크플로우 시각화
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
-│   ├── codex-bridge/          # OMC → Codex skill 동기화
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
 │   └── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)

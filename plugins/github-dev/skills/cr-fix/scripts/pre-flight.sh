@@ -131,6 +131,9 @@ if [ -n "$codex_latest_id" ]; then
 fi
 
 # Codex state classification.
+# When NO_CODEX is unset AND all Codex signals are absent (no latest id, no emoji,
+# no past engagement), short-circuit to `clean` so CR-only PRs never burn the
+# CODEX_PREFLIGHT_TIMEOUT window waiting for a Codex review that will never come.
 codex_state="unknown"
 if [ "${NO_CODEX:-false}" = "true" ]; then
   # User opted out of Codex; report disabled so the gate decision treats
@@ -146,6 +149,15 @@ elif [ "$codex_emoji_state" = "findings" ] || [ "$codex_emoji_state" = "in_progr
   codex_state="arriving"
 elif [ "$codex_timeout_active" = "false" ]; then
   codex_state="clean"
+elif [ "$codex_emoji_state" = "unknown" ] && [ -z "$codex_latest_id" ]; then
+  # Last resort: ask "has Codex EVER reviewed this PR?". If no — treat as
+  # inactive (clean) so CR-only PRs return gate=proceed instead of codex_wait.
+  if [ -x "$SCRIPT_DIR/probe-codex-engagement.sh" ] \
+     && [ "$(bash "$SCRIPT_DIR/probe-codex-engagement.sh" "$OWNER" "$REPO" "$PR_NUM" 2>/dev/null)" = "inactive" ]; then
+    codex_state="clean"
+  else
+    codex_state="arriving"
+  fi
 else
   codex_state="arriving"
 fi

@@ -16,7 +16,8 @@
     "last_sha",
     "cr_source",
     "cli_invocations",
-    "rate_limit_hits"
+    "rate_limit_hits",
+    "auto_judge_stats"
   ],
   "properties": {
     "iterations":      { "type": "integer", "minimum": 0 },

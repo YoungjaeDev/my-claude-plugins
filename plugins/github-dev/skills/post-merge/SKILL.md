@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: Run post-merge cleanup after a PR is merged — switch to the base branch, delete the merged local branch (with confirmation), sync milestone/issue tracking, and weave PR learnings into config files (CLAUDE.md / AGENTS.md / rules / Serena memory). Use when the user says a PR was merged and wants cleanup/integration, or names a merged PR number for post-merge. Destructive (branch deletion, base checkout): always previews and confirms before deleting. Aborts if run inside a git worktree.
+description: Run post-merge cleanup after a PR is merged — switch to the base branch, delete the merged local branch (with confirmation), sync milestone/issue tracking, and weave PR learnings into config files (CLAUDE.md / AGENTS.md / rules / Serena memory). Use when the user says a PR was merged and wants cleanup/integration, or names a merged PR number for post-merge. Destructive (branch deletion, base checkout) — always previews and confirms before deleting. Aborts if run inside a git worktree.
 ---
 
 # Post-Merge Cleanup

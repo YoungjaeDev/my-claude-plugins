@@ -2,23 +2,18 @@
 name: research-orchestrator
 description: |
   Multi-axis research orchestrator for code, ML, docs, web, and academic-paper
-  sources. Routes a natural-language query to one or more specialized scouts
-  (github, hf, web, docs, paper) running in parallel, then dispatches
-  synthesis-scout to dedup, trust-rank, and emit a final Markdown report. Use
-  when the user asks "research X", "find best practices for Y", "compare A vs B",
-  "what's the consensus on Z", wants a cross-source technical brief, OR asks to
-  refine prior research ("이전 조사 보완", "재실행", "결과 업데이트", "follow up on
-  previous research"). Triggers — "research", "조사해줘", "조사", "보완", "재실행",
-  "다시 실행", "업데이트", "이전 결과 기반", "best practices", "compare frameworks",
-  "what does the community say", "deep dive", "find boilerplate", "follow up",
-  "refine research".
-  Do NOT trigger for: single-repo GitHub PR/issue work (use github-dev),
-  single-question repo Q&A (use deepwiki:ask), one-off library docs lookup (use
-  context7 MCP directly), single-paper PDF download (use paper-search-tools
-  download_* directly), general non-code/ML topic research — politics, market,
-  history, biographies — (use /deep-research, which has 7-phase + adversarial
-  verify built for that domain), Notion uploads, translations, or slide
-  generation.
+  sources. Routes a natural-language query to specialized scouts (github, hf,
+  web, docs, paper) in parallel, then dispatches synthesis-scout to dedup,
+  trust-rank, and emit a final Markdown report. Use when the user wants a
+  cross-source technical brief or to refine prior research — "research X",
+  "find best practices for Y", "compare A vs B", "what's the consensus on Z",
+  "조사해줘", "보완", "재실행", "업데이트", "이전 결과 기반", "deep dive",
+  "follow up", "find boilerplate".
+  Do NOT trigger for: single-repo GitHub PR/issue work (github-dev),
+  single-question repo Q&A (deepwiki:ask), one-off library docs (context7 MCP),
+  single-paper download (paper-search-tools), general non-code/ML topics —
+  politics, market, history — (/deep-research), Notion uploads, translations,
+  or slide generation.
 ---
 
 # Research Orchestrator

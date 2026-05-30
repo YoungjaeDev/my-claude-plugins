@@ -241,7 +241,19 @@ if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
   if [ -n "$candidate" ] && [ "$candidate" != "null" ]; then
     codex_review_id_to_process="$candidate"
   elif [ "$CODEX_GRACE" -gt 0 ] && [ "$gate" = "codex_wait" -o "$gate" = "cr_wait" -o "$gate" = "bypass" ]; then
-    # Bash(run_in_background=true, timeout=CODEX_GRACE*1000):
+    # Pick the polling cap to honor whichever budget is bigger:
+    #   - CODEX_GRACE         — explicit per-iter user knob (default 30s)
+    #   - PRE-FLIGHT remaining — gate=codex_wait promised codex won't be assumed
+    #                            clean until push_age >= CODEX_PREFLIGHT_TIMEOUT
+    # Without the second term the grace poll drops to 30s and Step 8c
+    # fall-through can mark `clean` while a slower Codex review is still
+    # in flight. (codex_wait promise violation, Codex P2 iter 6.)
+    pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
+    push_age=$(jq -r '.push_age_seconds // 0' <<<"$pf")
+    pf_remaining=$(( pf_timeout - push_age ))
+    [ "$pf_remaining" -lt 0 ] && pf_remaining=0
+    [ "$gate" = "codex_wait" ] && [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
+    # Bash(run_in_background=true, timeout=grace_cap*1000):
     #   OWNER=... REPO=... PR_NUM=... PROCESSED=... INTERVAL=15 \
     #     bash $SKILL_DIR/scripts/poll-codex-grace.sh
     # Monitor returns one JSON line: {codex_review_id:N, pr:N} or grace timeout (no line).

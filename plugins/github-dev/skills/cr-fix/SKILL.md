@@ -118,7 +118,7 @@ for ITER in $(seq 1 $MAX_ITER); do
 
   if [ "$CR_SOURCE" = "auto" ] || [ "$CR_SOURCE" = "pr-bot" ]; then
     pf=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" \
-         PUSH_TIME="$PUSH_TIME" STATE_FILE="$STATE_FILE" \
+         PUSH_TIME="$PUSH_TIME" STATE_FILE="$STATE_FILE" NO_CODEX="$NO_CODEX" \
          bash $SKILL_DIR/scripts/pre-flight.sh 2>/dev/null || echo '{"gate":"cr_wait"}')
     gate=$(jq -r '.gate' <<<"$pf")
     cr_state_pf=$(jq -r '.cr_state' <<<"$pf")

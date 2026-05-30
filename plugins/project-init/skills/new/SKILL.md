@@ -36,6 +36,15 @@ seed → `gh` repo create → initial commit/push.
 중단한다.
 
 ```bash
+# 이 스킬의 자기 디렉토리 해석 — 번들된 scripts/ · assets/ 는 모두 여기 기준.
+# Claude Code 는 ${CLAUDE_PLUGIN_ROOT} 를 주입하지만 Codex 등 다른 런타임은 주입하지
+# 않으므로, 미설정이면 이 SKILL.md 가 로드된 절대 디렉토리(스킬 로드 시 표시됨)로
+# SKILL_DIR 을 직접 설정한다. 절대 `${CLAUDE_PLUGIN_ROOT}` 만 의존하지 말 것.
+SKILL_DIR="${CLAUDE_PLUGIN_ROOT:+${CLAUDE_PLUGIN_ROOT}/skills/new}"
+# CLAUDE_PLUGIN_ROOT 미설정(Codex 등): SKILL_DIR 를 이 스킬 디렉토리 절대경로로 지정.
+[ -n "$SKILL_DIR" ] || SKILL_DIR="<이 SKILL.md 가 위치한 skills/new 디렉토리의 절대경로>"
+[ -f "$SKILL_DIR/scripts/infer-github-context.sh" ] || { echo "[abort] SKILL_DIR resolution failed: $SKILL_DIR"; exit 1; }
+
 # 인증 확인
 gh auth status || { echo "[abort] gh CLI not authenticated. Run: gh auth login"; exit 1; }
 
@@ -51,7 +60,7 @@ HAS_CLAUDE=$([ -d .claude ] && echo "yes" || echo "no")
 HAS_CODE=$(find . -maxdepth 2 -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.go" -o -name "*.rs" -o -name "*.java" \) 2>/dev/null | head -1 | wc -l)
 
 # GitHub owner 후보 수집
-bash ${CLAUDE_PLUGIN_ROOT}/skills/new/scripts/infer-github-context.sh
+bash $SKILL_DIR/scripts/infer-github-context.sh
 # 출력: JSON { "personal": "<login>", "orgs": ["<org1>", "<org2>", ...] }
 ```
 
@@ -84,7 +93,7 @@ Question 4: **License**
 ## Phase 2 — `.claude/` Scaffold (structure only)
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/skills/new/scripts/idempotent-seed.sh ensure-claude-dirs
+bash $SKILL_DIR/scripts/idempotent-seed.sh ensure-claude-dirs
 # 생성: .claude/{spec,rules}/.gitkeep + .llmwiki/{raw,wiki}/.gitkeep
 ```
 
@@ -161,9 +170,9 @@ case "$variant_lower" in
   *) echo "[abort] Unknown variant: $VARIANT"; exit 1 ;;
 esac
 
-SRC="${CLAUDE_PLUGIN_ROOT}/skills/new/assets/AGENTS.review-guidelines.${VARIANT_FLAG}.md"
+SRC="$SKILL_DIR/assets/AGENTS.review-guidelines.${VARIANT_FLAG}.md"
 # Variant 가 general 이면 base 파일
-[ "$VARIANT_FLAG" = "general" ] && SRC="${CLAUDE_PLUGIN_ROOT}/skills/new/assets/AGENTS.review-guidelines.md"
+[ "$VARIANT_FLAG" = "general" ] && SRC="$SKILL_DIR/assets/AGENTS.review-guidelines.md"
 
 # sed replacement 컨텍스트에서 위험한 문자 (\, &, |) escape — 사용자 입력에
 # "Frontend & Backend" 같은 `&` 가 있으면 sed 가 매치 전체를 다시 삽입한다.
@@ -193,11 +202,11 @@ AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 �
 # placeholder 가 변조되지 않도록 cp 한 파일에만 치환을 적용한다.
 SEEDED_FILES=()
 if [ ! -f README.md ]; then
-  cp "${CLAUDE_PLUGIN_ROOT}/skills/new/assets/README.minimal.md" README.md
+  cp "$SKILL_DIR/assets/README.minimal.md" README.md
   SEEDED_FILES+=("README.md")
 fi
 if [ ! -f CHANGELOG.md ]; then
-  cp "${CLAUDE_PLUGIN_ROOT}/skills/new/assets/CHANGELOG.initial.md" CHANGELOG.md
+  cp "$SKILL_DIR/assets/CHANGELOG.initial.md" CHANGELOG.md
   SEEDED_FILES+=("CHANGELOG.md")
 fi
 

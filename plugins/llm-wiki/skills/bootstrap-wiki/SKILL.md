@@ -7,7 +7,17 @@ description: Use to scaffold the Karpathy 3-layer `.claude/` system (rules + wik
 
 Karpathy LLM-Wiki 3-layer = `.claude/rules/` (schema invariants) + `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence). This skill drops the empty layout into any repo so the per-PR workflow (spec → resolve-issue → post-merge → ingest) has a place to land. The wiki + raw layers live under the neutral `.llmwiki/` root so `codex-bridge`'s `.claude/`→`.codex/` body transform can never fork them per-agent; the schema layer stays at `.claude/rules/`, the only verified auto-load path.
 
-> Ships with `llm-wiki` plugin; install via marketplace. Templates bundled at `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/`.
+> Ships with `llm-wiki` plugin; install via marketplace. Templates bundled at `$SKILL_DIR/assets/templates/`, where `$SKILL_DIR` is this skill's own directory.
+>
+> **Resolve `$SKILL_DIR` first.** Claude Code injects `${CLAUDE_PLUGIN_ROOT}`, but Codex and other runtimes do not — so don't depend on it directly. Set it once at the start of Step 3:
+> ```bash
+> SKILL_DIR="${CLAUDE_PLUGIN_ROOT:+${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki}"
+> # If unset (Codex etc.), set SKILL_DIR to the absolute path of this skill's
+> # directory (the base directory shown when this skill loads).
+> [ -n "$SKILL_DIR" ] || SKILL_DIR="<이 SKILL.md 가 위치한 skills/bootstrap-wiki 디렉토리의 절대경로>"
+> [ -d "$SKILL_DIR/assets/templates" ] || { echo "[abort] SKILL_DIR resolution failed: $SKILL_DIR"; exit 1; }
+> ```
+> All `$SKILL_DIR/...` references below (Steps 3, 4, 6) resolve against it.
 
 ## When to use
 
@@ -30,23 +40,29 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
 
 3. **Create layout** (idempotent — use `cp --update=none` / `mkdir -p`):
    ```bash
+   # Resolve this skill's own directory (see the note above) — Claude injects
+   # ${CLAUDE_PLUGIN_ROOT}; Codex etc. do not, so fall back to the skill's load dir.
+   SKILL_DIR="${CLAUDE_PLUGIN_ROOT:+${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki}"
+   [ -n "$SKILL_DIR" ] || SKILL_DIR="<이 SKILL.md 가 위치한 skills/bootstrap-wiki 디렉토리의 절대경로>"
+   [ -d "$SKILL_DIR/assets/templates" ] || { echo "[abort] SKILL_DIR resolution failed: $SKILL_DIR"; exit 1; }
+
    mkdir -p .llmwiki/raw .llmwiki/wiki .claude/rules .claude/skills .claude/spec .claude/hooks
    : > .llmwiki/raw/.gitkeep
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/index.md  .llmwiki/wiki/index.md
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/log.md    .llmwiki/wiki/log.md
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/rules-skeleton/_entrypoint.md .claude/rules/_entrypoint.md
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/rules-skeleton/code-map.md    .claude/rules/code-map.md
+   cp --update=none $SKILL_DIR/assets/templates/wiki-skeleton/index.md  .llmwiki/wiki/index.md
+   cp --update=none $SKILL_DIR/assets/templates/wiki-skeleton/log.md    .llmwiki/wiki/log.md
+   cp --update=none $SKILL_DIR/assets/templates/rules-skeleton/_entrypoint.md .claude/rules/_entrypoint.md
+   cp --update=none $SKILL_DIR/assets/templates/rules-skeleton/code-map.md    .claude/rules/code-map.md
    ```
 
 4. **Per-domain stubs**: for each domain name the user gave, create:
    - `.llmwiki/wiki/<domain>/.gitkeep` (so the empty dir is tracked)
-   - Optionally `.claude/rules/<domain>.md` from `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/rules-skeleton/_domain-template.md`, with `paths:` left as a TODO comment
+   - Optionally `.claude/rules/<domain>.md` from `$SKILL_DIR/assets/templates/rules-skeleton/_domain-template.md`, with `paths:` left as a TODO comment
 
 5. **CLAUDE.md** at repo root:
    - If missing, write a ~30-line slim version: project pitch + a pointer to `.llmwiki/wiki/index.md` (lore) and `.claude/rules/` (schema) + note that the user's global `CLAUDE.md` (under their home `.claude/` directory) takes precedence
    - If existing, do not overwrite — print a diff suggestion for the user to merge manually
 
-6. **First spec template**: copy `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/spec-template.md` to `.claude/spec/_template.md` (rename of-the-day). Tell the user the workflow: copy template to `<YYYY-MM-DD>-<short-name>.md` → `github-dev:decompose-issue` → `github-dev:resolve-issue` skills → merge → `github-dev:post-merge` → `llm-wiki:post-merge-wiki` skills.
+6. **First spec template**: copy `$SKILL_DIR/assets/templates/wiki-skeleton/spec-template.md` to `.claude/spec/_template.md` (rename of-the-day). Tell the user the workflow: copy template to `<YYYY-MM-DD>-<short-name>.md` → `github-dev:decompose-issue` → `github-dev:resolve-issue` skills → merge → `github-dev:post-merge` → `llm-wiki:post-merge-wiki` skills.
 
 7. **`.llmwiki/wiki/log.md` initial entry**: append `## YYYY-MM-DD — bootstrap (bootstrap-wiki)` with the domain list created.
 

@@ -44,4 +44,4 @@ cd {{PROJECT_NAME}}
 
 ---
 
-> 이 README 는 `/project-init:new` 가 만든 minimal 시드다. 기능이 쌓이면 `/docs-forge:readme` 로 CRO 베스트 프랙티스 적용 + `/humanizer:humanize` 로 AI 패턴 제거를 권장한다.
+> 이 README 는 `project-init:new` 가 만든 minimal 시드다. 기능이 쌓이면 `docs-forge:readme` 로 CRO 베스트 프랙티스 적용 + `humanizer:humanize` 로 AI 패턴 제거를 권장한다.

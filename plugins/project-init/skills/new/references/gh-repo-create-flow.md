@@ -1,6 +1,6 @@
 # gh repo create — Owner 추론 + Visibility 결정 트리
 
-`/project-init:new` Phase 1 인터뷰와 Phase 6 레포 생성의 의사결정 컨텍스트.
+`project-init:new` Phase 1 인터뷰와 Phase 6 레포 생성의 의사결정 컨텍스트.
 
 ## Owner 추론 (자동 X, 인터뷰 필수)
 
@@ -106,7 +106,7 @@ gh repo create "${OWNER}/${PROJECT_NAME}" \
 
 ## Idempotency
 
-같은 디렉토리에서 `/project-init:new` 두 번째 호출 시:
+같은 디렉토리에서 `project-init:new` 두 번째 호출 시:
 1. `.git` 이 이미 존재하면 `git init` skip.
 2. AGENTS.md / CLAUDE.md / README.md / CHANGELOG.md 중 어느 하나라도 이미 존재하면 Phase 4 / 5 에서 해당 파일은 skip + 안내.
 3. `.claude/` 가 이미 있으면 Phase 2 의 `.gitkeep` 만 추가 (디렉토리 구조 자체는 보존).

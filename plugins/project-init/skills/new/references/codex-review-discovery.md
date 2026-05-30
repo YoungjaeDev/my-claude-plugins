@@ -1,6 +1,6 @@
 # Codex Review Discovery — AGENTS.md vs `/review` CLI
 
-이 문서는 `/project-init:new` 의 Phase 4 (AGENTS.md seed) 가 왜 레포 생성 시점에 시드해야 효과적인지 정리한다.
+이 문서는 `project-init:new` 의 Phase 4 (AGENTS.md seed) 가 왜 레포 생성 시점에 시드해야 효과적인지 정리한다.
 
 ## 두 가지 Codex review 경로
 
@@ -38,13 +38,13 @@ CodeRabbit 은 `AGENTS.md` 를 읽지 않는다 — 자체 `.coderabbit.yaml` �
 
 - AGENTS.md 의 review guidelines 는 Codex 만을 1차 타겟.
 - CodeRabbit instruction (필요 시) 은 별도 `.coderabbit.yaml` 또는 `.github/CODEOWNERS` 와 함께 관리.
-- `/github-dev:cr-fix` 명령이 두 봇의 결과를 동시에 처리하며 tier 정책으로 noise 를 정리.
+- `github-dev:cr-fix` 명령이 두 봇의 결과를 동시에 처리하며 tier 정책으로 noise 를 정리.
 
 > 참고: `.claude/spec/2026-05-06-codex-review-integration.md` — `cr-fix` 의 CR + Codex 통합 세부 내용.
 
 ## AGENTS.md 가 이미 존재하는 경우
 
-`/project-init:new` 의 Phase 4 는 idempotent 가드를 가진다:
+`project-init:new` 의 Phase 4 는 idempotent 가드를 가진다:
 
 - AGENTS.md 가 이미 있으면 덮어쓰지 않음 + 사용자에게 "기존 AGENTS.md 에 `## Review guidelines` 섹션이 없으면 manual 추가 권장" 안내.
 - 기존 AGENTS.md 에 review guidelines 섹션이 없는지 grep 으로 확인 후 사용자 결정 게이트.

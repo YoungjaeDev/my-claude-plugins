@@ -9,7 +9,7 @@
 Owner: {{OWNER}}
 Domain: Web / fullstack — frontend + backend API 통합 프로젝트.
 
-> 코드 일정 수준 쌓이면 `/rules-forge:write-rules` 로 tech-stack 기반 CLAUDE.md + `.claude/rules/*.md` 를 재생성하고, 이 파일도 그 결과에 맞춰 업데이트한다.
+> 코드 일정 수준 쌓이면 `rules-forge:write-rules` 로 tech-stack 기반 CLAUDE.md + `.claude/rules/*.md` 를 재생성하고, 이 파일도 그 결과에 맞춰 업데이트한다.
 
 ## Build / Test / Lint
 
@@ -75,7 +75,7 @@ Domain: Web / fullstack — frontend + backend API 통합 프로젝트.
 
 ## CodeRabbit / Codex 조율
 
-이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/github-dev:cr-fix` 명령이 양쪽을 동시에 처리한다.
+이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `github-dev:cr-fix` 명령이 양쪽을 동시에 처리한다.
 
 | Source | Tier 정책 |
 |--------|-----------|

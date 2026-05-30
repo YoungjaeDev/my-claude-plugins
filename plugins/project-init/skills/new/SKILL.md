@@ -1,16 +1,23 @@
 ---
-description: First-day project bootstrap — interview, .claude/ scaffold, CLAUDE.md + AGENTS.md (Codex reviewer guidelines) + README + CHANGELOG seed, gh repo create + initial push
+name: new
+description: Bootstrap a brand-new project from scratch in the current directory and create its GitHub repo — interview for name/owner/visibility/license, scaffold `.claude/`, seed a minimal CLAUDE.md (LLM-Wiki entrypoint) + AGENTS.md (Codex reviewer guidelines) + README + CHANGELOG, then `gh repo create` + initial push. Use ONLY when the user explicitly wants to initialize/bootstrap a NEW project or create a new GitHub repo for the current directory (e.g. "bootstrap this new project", "set up a new repo here", "project-init"). Do NOT trigger for existing projects or casual mentions of "new" — it runs `gh repo create` and seeds files, so it always confirms the working directory and intent first.
 ---
 
-# /project-init:new
+# project-init: new
 
-새 디렉토리에서 한 번 호출해 "Day 1 ready" 프로젝트를 만든다 — 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시.
+Bootstrap a "Day 1 ready" project in the current directory — interview → local
+seed → `gh` repo create → initial commit/push.
 
-> **Trigger surface**: 명시적 user invocation 만. 자동 트리거 없음 (잘못된 디렉토리에서 실행되면 위험).
+> **High-stakes / not auto-run silently**: this seeds files into the current
+> directory and creates a real GitHub repo. It must NOT proceed on a vague
+> mention. Always run the Phase 0 directory + intent confirmation gate first;
+> if the user has not clearly asked to bootstrap a new project HERE, stop and
+> confirm. **Residual risk**: triggering in the wrong directory would seed files
+> and create a repo for the wrong project — the Phase 0 gate exists to prevent this.
 
 ## 핵심 원칙
 
-- **Minimal seeding, explicit follow-ups**: Day 1 에 진짜 필요한 것 (`.claude/` 빈 구조, CLAUDE.md stub, AGENTS.md review guidelines, README/CHANGELOG, gh 레포) 만 시드. tech-stack 기반 rules 생성 (`/rules-forge:write-rules`) 와 wiki domain 인터뷰 (`/llm-wiki:bootstrap-wiki`) 는 **호출하지 않고 Phase 7 안내만**. 빈 프로젝트에 generic 콘텐츠 생성하면 사용자가 덮어쓰는 비용 발생.
+- **Minimal seeding, explicit follow-ups**: Day 1 에 진짜 필요한 것 (`.claude/` 빈 구조, CLAUDE.md stub, AGENTS.md review guidelines, README/CHANGELOG, gh 레포) 만 시드. tech-stack 기반 rules 생성 (`rules-forge:write-rules` 스킬) 와 wiki domain 인터뷰 (`llm-wiki:bootstrap-wiki` 스킬) 는 **호출하지 않고 Phase 7 안내만**. 빈 프로젝트에 generic 콘텐츠 생성하면 사용자가 덮어쓰는 비용 발생.
 - **Owner gate is mandatory**: 사용자가 부업 컨텍스트 (개인 + 조직 레포) 를 가져 owner 결정은 자동화 금지 — Phase 1 인터뷰에서 반드시 묻는다.
 - **Codex GitHub reviewer surface**: `AGENTS.md` 의 `## Review guidelines` 섹션이 Codex GitHub cloud reviewer 가 자동으로 읽는 영역. 레포 생성 시점에 시드해야 첫 PR 부터 효과.
 
@@ -21,7 +28,12 @@ description: First-day project bootstrap — interview, .claude/ scaffold, CLAUD
 - `jq` 설치 (Phase 0 의 `infer-github-context.sh` 와 일부 placeholder 치환 헬퍼가 의존)
 - 현재 디렉토리가 작업 대상 — `pwd` 출력을 사용자에게 보여주고 진행 확인
 
-## Phase 0 — Preflight (자동, no prompt)
+## Phase 0 — Preflight + intent gate
+
+먼저 **현재 디렉토리와 의도를 반드시 확인**한다. `pwd` 를 출력하고, 이 디렉토리에서
+새 프로젝트를 부트스트랩 + gh 레포 생성할 의도가 맞는지 `AskUserQuestion` 으로
+확인한 뒤에만 진행한다. 사용자가 명시적으로 요청하지 않았거나 디렉토리가 의심스러우면
+중단한다.
 
 ```bash
 # 인증 확인
@@ -39,7 +51,7 @@ HAS_CLAUDE=$([ -d .claude ] && echo "yes" || echo "no")
 HAS_CODE=$(find . -maxdepth 2 -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.go" -o -name "*.rs" -o -name "*.java" \) 2>/dev/null | head -1 | wc -l)
 
 # GitHub owner 후보 수집
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/infer-github-context.sh
+bash ${CLAUDE_PLUGIN_ROOT}/skills/new/scripts/infer-github-context.sh
 # 출력: JSON { "personal": "<login>", "orgs": ["<org1>", "<org2>", ...] }
 ```
 
@@ -72,11 +84,11 @@ Question 4: **License**
 ## Phase 2 — `.claude/` Scaffold (structure only)
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
+bash ${CLAUDE_PLUGIN_ROOT}/skills/new/scripts/idempotent-seed.sh ensure-claude-dirs
 # 생성: .claude/{spec,rules}/.gitkeep + .llmwiki/{raw,wiki}/.gitkeep
 ```
 
-`bootstrap-wiki` / `write-rules` 는 호출하지 않는다 — 빈 프로젝트에는 적을 lore 도, tech-stack signal 도 없다.
+`bootstrap-wiki` / `write-rules` 스킬은 호출하지 않는다 — 빈 프로젝트에는 적을 lore 도, tech-stack signal 도 없다.
 
 ## Phase 3 — CLAUDE.md Minimal Stub
 
@@ -93,17 +105,17 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
 
 - **진입점**: `.llmwiki/wiki/index.md` (Map of Content). 페이지 직접 grep 금지.
 - **사용 순서**:
-  1. lore 가 필요할 때 → `/llm-wiki:query-wiki` 먼저
-  2. 새 발견 → `/llm-wiki:ingest-finding`
-  3. PR merge 후 → `/github-dev:post-merge` 가 자동으로 `/llm-wiki:post-merge-wiki` 체이닝
-- **현재 상태**: wiki 비어있음. 적극 채워라. 첫 도메인 lore 가 쌓이기 시작하면 `/llm-wiki:bootstrap-wiki` 호출로 도메인 구조 인터뷰를 받는다.
+  1. lore 가 필요할 때 → `llm-wiki:query-wiki` 스킬 먼저
+  2. 새 발견 → `llm-wiki:ingest-finding` 스킬
+  3. PR merge 후 → `github-dev:post-merge` 스킬이 자동으로 `llm-wiki:post-merge-wiki` 체이닝
+- **현재 상태**: wiki 비어있음. 적극 채워라. 첫 도메인 lore 가 쌓이기 시작하면 `llm-wiki:bootstrap-wiki` 스킬로 도메인 구조 인터뷰를 받는다.
 
 ## Setup Status
 
-이 파일은 `/project-init:new` 가 만든 minimal stub 이다. 코드가 어느 정도 쌓이면 다음을 호출해라:
+이 파일은 project-init 의 `new` 스킬이 만든 minimal stub 이다. 코드가 어느 정도 쌓이면 다음을 호출해라:
 
-- `/rules-forge:write-rules` — tech-stack 기반 CLAUDE.md + `.claude/rules/*.md` 재생성
-- `/llm-wiki:bootstrap-wiki` — 첫 wiki 도메인 인터뷰 + 템플릿 시드
+- `rules-forge:write-rules` 스킬 — tech-stack 기반 CLAUDE.md + `.claude/rules/*.md` 재생성
+- `llm-wiki:bootstrap-wiki` 스킬 — 첫 wiki 도메인 인터뷰 + 템플릿 시드
 
 > 사용자의 global `~/.claude/CLAUDE.md` 가 항상 우선한다. 이 파일은 프로젝트 한정 규칙만 보관한다.
 ```
@@ -149,9 +161,9 @@ case "$variant_lower" in
   *) echo "[abort] Unknown variant: $VARIANT"; exit 1 ;;
 esac
 
-SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.${VARIANT_FLAG}.md"
+SRC="${CLAUDE_PLUGIN_ROOT}/skills/new/assets/AGENTS.review-guidelines.${VARIANT_FLAG}.md"
 # Variant 가 general 이면 base 파일
-[ "$VARIANT_FLAG" = "general" ] && SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.md"
+[ "$VARIANT_FLAG" = "general" ] && SRC="${CLAUDE_PLUGIN_ROOT}/skills/new/assets/AGENTS.review-guidelines.md"
 
 # sed replacement 컨텍스트에서 위험한 문자 (\, &, |) escape — 사용자 입력에
 # "Frontend & Backend" 같은 `&` 가 있으면 sed 가 매치 전체를 다시 삽입한다.
@@ -172,7 +184,7 @@ else
 fi
 ```
 
-AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 자동으로 읽는다 ([OpenAI Codex GitHub integration](https://developers.openai.com/codex/integrations/github)) — 사용자에게 한 줄 안내.
+AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 자동으로 읽는다 ([OpenAI Codex GitHub integration](https://developers.openai.com/codex/integrations/github)) — 사용자에게 한 줄 안내. 배경은 `references/codex-review-discovery.md` 참조.
 
 ## Phase 5 — README + CHANGELOG
 
@@ -181,11 +193,11 @@ AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 �
 # placeholder 가 변조되지 않도록 cp 한 파일에만 치환을 적용한다.
 SEEDED_FILES=()
 if [ ! -f README.md ]; then
-  cp "${CLAUDE_PLUGIN_ROOT}/assets/README.minimal.md" README.md
+  cp "${CLAUDE_PLUGIN_ROOT}/skills/new/assets/README.minimal.md" README.md
   SEEDED_FILES+=("README.md")
 fi
 if [ ! -f CHANGELOG.md ]; then
-  cp "${CLAUDE_PLUGIN_ROOT}/assets/CHANGELOG.initial.md" CHANGELOG.md
+  cp "${CLAUDE_PLUGIN_ROOT}/skills/new/assets/CHANGELOG.initial.md" CHANGELOG.md
   SEEDED_FILES+=("CHANGELOG.md")
 fi
 
@@ -201,6 +213,8 @@ done
 게이트: README.md 첫 30줄 미리보기 후 수정 기회. 한 번 더 호출하지 않고 inline `Edit` 로 즉시 수정.
 
 ## Phase 6 — GitHub Repo Creation
+
+배경 의사결정 컨텍스트는 `references/gh-repo-create-flow.md` 참조.
 
 ```bash
 # Git init if needed
@@ -219,7 +233,7 @@ else
 fi
 ```
 
-`AskUserQuestion`: dry-run 미리보기 후 confirm.
+`AskUserQuestion`: dry-run 미리보기 후 confirm (gh repo create 는 비가역 — 반드시 미리보기 + 확인 후 실행).
 
 ```bash
 # AskUserQuestion 라벨 ("Private (Recommended)", "Public", "Internal") 을
@@ -269,15 +283,15 @@ Files seeded:
 
 GitHub repo: https://github.com/<owner>/<name>
 
-Next actions (call when ready):
-  1. 코드가 쌓이면        → /rules-forge:write-rules
+Next actions (invoke the skill when ready):
+  1. 코드가 쌓이면        → rules-forge:write-rules 스킬
      (tech-stack 기반 CLAUDE.md + .claude/rules/*.md 재생성)
 
-  2. 첫 도메인 lore 쌓이면 → /llm-wiki:bootstrap-wiki
+  2. 첫 도메인 lore 쌓이면 → llm-wiki:bootstrap-wiki 스킬
      (도메인 인터뷰 + .llmwiki/wiki/<domain>/ 구조 시드)
 
-  3. 첫 PR merge 후        → /github-dev:post-merge
-     (자동으로 /llm-wiki:post-merge-wiki 체이닝)
+  3. 첫 PR merge 후        → github-dev:post-merge 스킬
+     (자동으로 llm-wiki:post-merge-wiki 체이닝)
 ```
 
 ## 실패 처리
@@ -285,6 +299,7 @@ Next actions (call when ready):
 | 단계 | 실패 시 동작 |
 |------|--------------|
 | Phase 0 — gh auth | abort + 안내 (`gh auth login`) |
+| Phase 0 — 디렉토리/의도 미확인 | 즉시 stop, 아무것도 시드/생성하지 않음 |
 | Phase 0 — idempotency guard 사용자 abort | 즉시 stop, partial seed 보존 |
 | Phase 6 — `gh repo create` | local 변경/커밋은 그대로, push 만 실패. 사용자에게 manual retry 명령 안내 |
 | Phase 6 — repo 이름 충돌 | gh CLI error 메시지 그대로 노출 + Phase 1 재시도 권유 |
@@ -293,5 +308,5 @@ Next actions (call when ready):
 
 - CI/CD workflow seed (`.github/workflows/`)
 - pre-commit hook seed
-- 외부 boilerplate auto-download (cookiecutter 등 — 필요하면 `/code-scout:scout` 별도 호출)
+- 외부 boilerplate auto-download (cookiecutter 등 — 필요하면 `code-scout:research-orchestrator` 스킬 별도 호출)
 - 다국어 인터뷰 분기 — 한/영 혼용 단일 버전 유지

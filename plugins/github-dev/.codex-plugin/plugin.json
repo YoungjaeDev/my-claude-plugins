@@ -6,6 +6,5 @@
     "name": "YoungjaeDev"
   },
   "license": "MIT",
-  "skills": "./skills/",
-  "commands": "./commands/"
+  "skills": "./skills/"
 }

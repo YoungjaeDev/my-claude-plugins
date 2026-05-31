@@ -6,6 +6,5 @@
     "name": "YoungjaeDev"
   },
   "license": "MIT",
-  "skills": "./skills/",
-  "agents": "./agents/"
+  "skills": "./skills/"
 }

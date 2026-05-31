@@ -41,9 +41,11 @@ if [ -z "$PLUGIN_ROOT" ]; then
   fi
   [ -n "$candidate" ] && [ -d "$candidate" ] && PLUGIN_ROOT="$candidate"
 fi
-if [ -z "$PLUGIN_ROOT" ] || [ ! -d "$PLUGIN_ROOT/scripts" ]; then
+if [ -z "$PLUGIN_ROOT" ] \
+    || [ ! -d "$PLUGIN_ROOT/scripts" ] || [ ! -r "$PLUGIN_ROOT/scripts" ] \
+    || [ ! -d "$PLUGIN_ROOT/assets" ]  || [ ! -r "$PLUGIN_ROOT/assets" ]; then
   echo "[abort] project-init could not resolve PLUGIN_ROOT." >&2
-  echo "        Export PLUGIN_ROOT to the plugin's installed directory and re-run." >&2
+  echo "        Ensure PLUGIN_ROOT has readable scripts/ and assets/ directories, then re-run." >&2
   exit 1
 fi
 

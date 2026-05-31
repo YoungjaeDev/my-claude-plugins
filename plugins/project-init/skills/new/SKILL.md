@@ -50,11 +50,14 @@ Follow the full Phase 0–7 procedure in `references/new-procedure.md` (relative
 - Phase 6 — `git init` + `gh repo create`.
 - Phase 7 — Summary + next actions.
 
-The procedure file uses `${CLAUDE_PLUGIN_ROOT}` for all asset / script references (`scripts/idempotent-seed.sh`, `scripts/infer-github-context.sh`, `assets/AGENTS.review-guidelines.*.md`, `assets/README.minimal.md`, `assets/CHANGELOG.initial.md`).
+The procedure file uses `${PLUGIN_ROOT}` for all asset / script references (`scripts/idempotent-seed.sh`, `scripts/infer-github-context.sh`, `assets/AGENTS.review-guidelines.*.md`, `assets/README.minimal.md`, `assets/CHANGELOG.initial.md`). `PLUGIN_ROOT` is resolved at the top of Phase 0 by a portable shell block:
 
-Under **Claude Code** `${CLAUDE_PLUGIN_ROOT}` is set automatically.
+1. Honors a caller-supplied `PLUGIN_ROOT` (escape hatch for unusual layouts).
+2. Falls back to `${CLAUDE_PLUGIN_ROOT:-}` — the Claude Code path.
+3. Falls back to `${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}/<marketplace>/project-init/<version>/`, picking the highest version available — the Codex 0.135 path.
+4. Aborts with an explicit message asking the user to export `PLUGIN_ROOT` manually if none of the above resolves to a directory containing readable `scripts/` and `assets/` subdirectories.
 
-Under **Codex 0.135** that env var is not currently exposed. The procedure file's Phase 0 opens with a portable resolver that derives `PLUGIN_ROOT` from `${CLAUDE_PLUGIN_ROOT:-}` first and falls back to a Codex-side lookup (`~/.codex/plugins/cache/<marketplace>/project-init/<version>/`); all subsequent bash blocks reference `${PLUGIN_ROOT}` rather than `${CLAUDE_PLUGIN_ROOT}` directly. If neither lookup succeeds the procedure aborts with an explicit message asking the user to export `PLUGIN_ROOT` manually.
+All subsequent bash blocks in `references/new-procedure.md` reference `${PLUGIN_ROOT}` rather than `${CLAUDE_PLUGIN_ROOT}` directly, so the same procedure body runs unchanged under both runtimes.
 
 ## Why this skill exists alongside the command
 

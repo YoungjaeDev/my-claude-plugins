@@ -15,11 +15,10 @@ description: First-day project bootstrap — interview, .claude/ scaffold, CLAUD
 ```bash
 # Hard guard — refuses to run if cwd contains ANYTHING beyond ignorable OS junk.
 # Walks up to 5 levels deep so deeper sources (e.g. src/app/main.py) and any
-# top-level file (Dockerfile, Makefile, .env, docs/*) trigger the abort. We
-# explicitly prune .git/, .DS_Store, Thumbs.db, and a top-level .claude/ that the
-# user might have prepared for us — keeps the guard from false-positive on a
-# pristine dir that just has Finder/Explorer metadata, while still refusing the
-# moment a real file appears.
+# top-level file (Dockerfile, Makefile, .env, docs/*) trigger the abort. Only
+# .git/ and OS metadata (.DS_Store, Thumbs.db, desktop.ini) are pruned — a
+# pre-existing top-level .claude/ deliberately makes the guard fire (it means
+# the directory has already been initialized and re-running would clash).
 FIRST_EXISTING=$(find . -mindepth 1 -maxdepth 5 \
   \( -name '.git' -o -path './.git/*' \
    -o -name '.DS_Store' -o -name 'Thumbs.db' \

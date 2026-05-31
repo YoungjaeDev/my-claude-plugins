@@ -1,0 +1,10 @@
+{
+  "name": "deepwiki",
+  "version": "1.0.0",
+  "description": "AI-powered GitHub repo documentation",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "commands": "./commands/"
+}

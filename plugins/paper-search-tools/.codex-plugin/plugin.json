@@ -1,0 +1,11 @@
+{
+  "name": "paper-search-tools",
+  "version": "1.0.1",
+  "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "skills": "./skills/",
+  "commands": "./commands/"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "translator",
+  "version": "1.0.0",
+  "description": "Web article translation to Korean",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

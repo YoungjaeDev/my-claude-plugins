@@ -1,0 +1,10 @@
+{
+  "name": "notebook",
+  "version": "1.0.0",
+  "description": "Safe Jupyter notebook editing",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

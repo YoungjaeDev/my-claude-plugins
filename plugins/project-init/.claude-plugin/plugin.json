@@ -1,6 +1,6 @@
 {
   "name": "project-init",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "One-shot first-day project bootstrap: .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines, README/CHANGELOG seed, gh repo create + push. Dual-surface: /project-init:new command and `new` skill — both gated by a preflight guard that refuses non-empty directories.",
   "author": {
     "name": "YoungjaeDev"

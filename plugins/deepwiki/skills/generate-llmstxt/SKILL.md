@@ -1,6 +1,6 @@
 ---
 name: generate-llmstxt
-description: Use when generating an llms.txt index file from a URL or local directory. Triggers on phrases like "generate llms.txt for <site>", "create an llms.txt from this docs site", or "build an llms.txt for the current repo". Follows the llms.txt standard (title, optional description, sections of `[title](URL): 10-15 word description`).
+description: Use when generating an llms.txt index file from a URL or local directory. Triggers on phrases like "generate llms.txt for <site>", "create an llms.txt from this docs site", or "build an llms.txt for the current repo". Follows the llms.txt standard — title, optional description, sections listing links followed by 10-15 word descriptions.
 ---
 
 # Generate llms.txt

@@ -50,7 +50,7 @@ node scripts/sync-codex-manifests.mjs --check
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 19 entries
+codex plugin list --marketplace my-claude-plugins   # 17 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 

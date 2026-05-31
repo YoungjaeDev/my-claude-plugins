@@ -5,7 +5,8 @@
   "author": {
     "name": "YoungjaeDev"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "skills": "./skills/",
-  "commands": "./commands/"
+  "commands": "./commands/",
+  "mcpServers": "./.mcp.json"
 }

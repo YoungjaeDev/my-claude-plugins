@@ -40,6 +40,21 @@ function isDir(path) {
   try { return statSync(path).isDirectory(); } catch { return false; }
 }
 
+function isFile(path) {
+  try { return statSync(path).isFile(); } catch { return false; }
+}
+
+function readPluginLicense(pluginDir) {
+  const claudeManifest = join(pluginDir, '.claude-plugin', 'plugin.json');
+  if (!isFile(claudeManifest)) return LICENSE;
+  try {
+    const parsed = JSON.parse(readFileSync(claudeManifest, 'utf8'));
+    return typeof parsed.license === 'string' && parsed.license.length > 0 ? parsed.license : LICENSE;
+  } catch {
+    return LICENSE;
+  }
+}
+
 function buildPluginManifest(entry) {
   const pluginDir = join(PLUGINS_DIR, entry.name);
   const manifest = {
@@ -47,12 +62,15 @@ function buildPluginManifest(entry) {
     version: entry.version,
     description: entry.description,
     author: { name: AUTHOR },
-    license: LICENSE,
+    license: readPluginLicense(pluginDir),
   };
   for (const sub of COMPONENT_DIRS) {
     if (isDir(join(pluginDir, sub))) {
       manifest[sub] = `./${sub}/`;
     }
+  }
+  if (!manifest.mcpServers && isFile(join(pluginDir, '.mcp.json'))) {
+    manifest.mcpServers = './.mcp.json';
   }
   return manifest;
 }

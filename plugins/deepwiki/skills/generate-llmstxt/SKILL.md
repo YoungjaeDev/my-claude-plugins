@@ -15,6 +15,7 @@ See `references/generate-llmstxt-procedure.md` in this plugin's installed root f
 
 ## Requirements
 
-- DeepWiki MCP must be configured in the host runtime (`mcp__deepwiki__*` tools available). If absent, surface the setup link: `https://mcp.deepwiki.com/`.
-- For URL mode, the firecrawl MCP must be available as well.
-- Internet connection (queries the DeepWiki API; URL mode scrapes external sites).
+This skill does NOT call the DeepWiki MCP — the procedure only uses firecrawl (URL mode) or Glob + Read (local mode). Pick the row for the input you pass:
+
+- **URL mode**: firecrawl MCP must be available (`mcp__firecrawl__firecrawl_map`, `mcp__firecrawl__firecrawl_scrape`). Internet connection required (the scrape hits external sites).
+- **Local directory mode**: read permission on the target directory. No MCP or network required.

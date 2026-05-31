@@ -1,6 +1,6 @@
 # project-init `new` — procedure
 
-Shared procedure body for `/project-init:new` (command) and the `new` skill. Both surfaces resolve this file via `${CLAUDE_PLUGIN_ROOT}/references/new-procedure.md`.
+Shared procedure body for `/project-init:new` (command) and the `new` skill. Both surfaces resolve this file via `references/new-procedure.md` relative to the plugin's installed root — Claude Code exposes that root as `${PLUGIN_ROOT}`; Codex 0.135 places it under `~/.codex/plugins/cache/<marketplace>/project-init/<version>/`.
 
 > **Trigger surface**: 명시적 user invocation 만. 자동 트리거 없음 (잘못된 디렉토리에서 실행되면 위험). The preflight guard below MUST run before any destructive op — both surfaces re-state the guard at the top of their body so it cannot be skipped.
 
@@ -20,6 +20,25 @@ Shared procedure body for `/project-init:new` (command) and the `new` skill. Bot
 ## Phase 0 — Preflight (자동, no prompt)
 
 ```bash
+# --- Plugin root resolution (cross-runtime) ---------------------------------
+# Claude Code exports CLAUDE_PLUGIN_ROOT. Codex 0.135 does not export an
+# equivalent variable yet, so we fall back to discovering the cached plugin
+# directory. If neither path resolves we abort early — running with a wrong
+# PLUGIN_ROOT would silently miss scripts/* and assets/* later.
+PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -z "$PLUGIN_ROOT" ]; then
+  # Best-effort Codex cache lookup. Order: latest version directory under the
+  # configured marketplace name; user override via $CODEX_PLUGIN_CACHE.
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort -V | tail -1)
+  [ -n "$candidate" ] && [ -d "$candidate" ] && PLUGIN_ROOT="$candidate"
+fi
+if [ -z "$PLUGIN_ROOT" ] || [ ! -d "$PLUGIN_ROOT/scripts" ]; then
+  echo "[abort] project-init could not resolve PLUGIN_ROOT." >&2
+  echo "        Export PLUGIN_ROOT to the plugin's installed directory and re-run." >&2
+  exit 1
+fi
+
 # 인증 확인
 gh auth status || { echo "[abort] gh CLI not authenticated. Run: gh auth login"; exit 1; }
 
@@ -35,11 +54,11 @@ HAS_CLAUDE=$([ -d .claude ] && echo "yes" || echo "no")
 HAS_CODE=$(find . -maxdepth 2 -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.go" -o -name "*.rs" -o -name "*.java" \) 2>/dev/null | head -1 | wc -l)
 
 # GitHub owner 후보 수집
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/infer-github-context.sh
+bash "$PLUGIN_ROOT/scripts/infer-github-context.sh"
 # 출력: JSON { "personal": "<login>", "orgs": ["<org1>", "<org2>", ...] }
 ```
 
-> The hard preflight guard (refusing any `.git/`, `.claude/`, or source-file presence) runs **before** this Phase 0 block — see the top of `commands/new.md` and `skills/new/SKILL.md`. The legacy Phase 0 idempotency soft-guard below is retained for backward-compatible behavior on truly-fresh runs (e.g. user removes `.gitkeep` files between attempts) but is now subordinate to the hard guard.
+> The hard preflight guard (refusing any cwd content beyond `.git/` and OS metadata) runs **before** this Phase 0 block — see the top of `commands/new.md` and `skills/new/SKILL.md`. The legacy Phase 0 idempotency soft-guard below is retained for backward-compatible behavior on truly-fresh runs (e.g. user removes `.gitkeep` files between attempts) but is now subordinate to the hard guard.
 
 만약 `HAS_CLAUDE=yes` 또는 `.git/` 안에 commit 가 이미 있는 경우 — **idempotency guard** 발동:
 - `AskUserQuestion` 으로 "이미 셋업된 디렉토리. 계속 시도하면 기존 파일은 보존되지만 일부 단계가 skip 됨. 계속?" 확인.
@@ -70,7 +89,7 @@ Question 4: **License**
 ## Phase 2 — `.claude/` Scaffold (structure only)
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
+bash ${PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
 # 생성: .claude/{spec,rules}/.gitkeep + .llmwiki/{raw,wiki}/.gitkeep
 ```
 
@@ -147,9 +166,9 @@ case "$variant_lower" in
   *) echo "[abort] Unknown variant: $VARIANT"; exit 1 ;;
 esac
 
-SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.${VARIANT_FLAG}.md"
+SRC="${PLUGIN_ROOT}/assets/AGENTS.review-guidelines.${VARIANT_FLAG}.md"
 # Variant 가 general 이면 base 파일
-[ "$VARIANT_FLAG" = "general" ] && SRC="${CLAUDE_PLUGIN_ROOT}/assets/AGENTS.review-guidelines.md"
+[ "$VARIANT_FLAG" = "general" ] && SRC="${PLUGIN_ROOT}/assets/AGENTS.review-guidelines.md"
 
 # sed replacement 컨텍스트에서 위험한 문자 (\, &, |) escape — 사용자 입력에
 # "Frontend & Backend" 같은 `&` 가 있으면 sed 가 매치 전체를 다시 삽입한다.
@@ -179,11 +198,11 @@ AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 �
 # placeholder 가 변조되지 않도록 cp 한 파일에만 치환을 적용한다.
 SEEDED_FILES=()
 if [ ! -f README.md ]; then
-  cp "${CLAUDE_PLUGIN_ROOT}/assets/README.minimal.md" README.md
+  cp "${PLUGIN_ROOT}/assets/README.minimal.md" README.md
   SEEDED_FILES+=("README.md")
 fi
 if [ ! -f CHANGELOG.md ]; then
-  cp "${CLAUDE_PLUGIN_ROOT}/assets/CHANGELOG.initial.md" CHANGELOG.md
+  cp "${PLUGIN_ROOT}/assets/CHANGELOG.initial.md" CHANGELOG.md
   SEEDED_FILES+=("CHANGELOG.md")
 fi
 

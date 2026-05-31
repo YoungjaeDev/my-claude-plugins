@@ -16,4 +16,4 @@ If `$ARGUMENTS` is empty or ambiguous, prompt the user for the input source.
 
 ## Procedure
 
-Follow the shared procedure in `${CLAUDE_PLUGIN_ROOT}/references/generate-llmstxt-procedure.md` — workflows for both input types, output format, and guidelines. The `generate-llmstxt` skill uses the same file.
+Follow the shared procedure in `references/generate-llmstxt-procedure.md` (resolves to `${CLAUDE_PLUGIN_ROOT}/references/generate-llmstxt-procedure.md` under Claude; same relative path under the Codex plugin cache) — workflows for both input types, output format, and guidelines. The `generate-llmstxt` skill uses the same file.

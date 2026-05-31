@@ -47,23 +47,43 @@ plugins/project-init/
 `commands/new.md` 와 `skills/new/SKILL.md` Step 0 에 동일한 POSIX shell 블록:
 
 ```bash
-if [ -d .git ] || [ -d .claude ] || [ -n "$(find . -maxdepth 2 -type f \
-    \( -name '*.py' -o -name '*.ts' -o -name '*.js' -o -name '*.go' \
-    -o -name '*.rs' -o -name '*.java' -o -name 'package.json' \
-    -o -name 'pyproject.toml' -o -name 'Cargo.toml' -o -name 'go.mod' \) \
-    2>/dev/null)" ]; then
+FIRST_EXISTING=$(find . -mindepth 1 -maxdepth 5 \
+  \( -name '.git' -o -path './.git/*' \
+   -o -name '.DS_Store' -o -name 'Thumbs.db' \
+   -o -name 'desktop.ini' \) -prune \
+  -o -print 2>/dev/null | head -1)
+
+if [ -d .git ] || [ -n "$FIRST_EXISTING" ]; then
   echo "[abort] project-init refuses to run in a non-empty directory."
   ...
   exit 1
 fi
 ```
 
-- **Detected sentinels**: `.git/`, `.claude/`, common source-file extensions, common manifests (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`).
-- **Search depth**: 2 levels (`find -maxdepth 2`).
-- **Abort message**: surfaces cwd + a redirect to `/rules-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for the "scaffold an existing project" case.
+- **Rejection rule**: anything in cwd that is not `.git/`, `.DS_Store`, `Thumbs.db`, or `desktop.ini` causes abort. `Dockerfile`, `Makefile`, `.env`, `docs/`, `src/app/main.py` — all of those trigger.
+- **Search depth**: 5 levels (`find -maxdepth 5`). Deep-nested source files do not slip past the guard.
+- **Abort message**: surfaces cwd + the first offending entry + a redirect to `/rules-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for the "scaffold an existing project" case.
 - **Non-POSIX hosts**: PowerShell-default environments must invoke via `bash -c '<guard>'` (Git Bash / WSL / Cygwin). The intent of the check, not the literal shell, is what matters — equivalent PowerShell rewrites are acceptable as long as they refuse the same conditions.
 
 수정할 때는 두 파일 양쪽을 동시에 업데이트해야 한다. 한쪽만 바꾸면 surface 간 동작이 갈린다.
+
+## Cross-runtime plugin root resolution
+
+`references/new-procedure.md` Phase 0 opens with a `PLUGIN_ROOT` resolver:
+
+```bash
+PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -z "$PLUGIN_ROOT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort -V | tail -1)
+  [ -n "$candidate" ] && [ -d "$candidate" ] && PLUGIN_ROOT="$candidate"
+fi
+[ -n "$PLUGIN_ROOT" ] && [ -d "$PLUGIN_ROOT/scripts" ] || { echo "[abort] ..."; exit 1; }
+```
+
+- Under **Claude Code**, `${CLAUDE_PLUGIN_ROOT}` is set automatically and the resolver short-circuits on the first branch.
+- Under **Codex 0.135**, no equivalent env var is currently exposed, so the resolver falls back to `~/.codex/plugins/cache/<marketplace>/project-init/<version>/`. Users can override with `CODEX_PLUGIN_CACHE` or set `PLUGIN_ROOT` directly.
+- All subsequent bash blocks reference `${PLUGIN_ROOT}/scripts/...` and `${PLUGIN_ROOT}/assets/...`. Adding a new asset / script means updating only the procedure file — no per-surface duplication.
 
 ## Placeholder 규약
 

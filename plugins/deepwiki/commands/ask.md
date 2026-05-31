@@ -20,4 +20,4 @@ Examples:
 
 ## Procedure
 
-Follow the shared procedure in `${CLAUDE_PLUGIN_ROOT}/references/ask-procedure.md` — four phases (structure → optional contents → ask → optional multi-query expansion), the smart-query strategy table, multi-repo patterns, and the error handling table all live there. The `ask` skill uses the same file, so any update propagates to both surfaces.
+Follow the shared procedure in `references/ask-procedure.md` (resolves to `${CLAUDE_PLUGIN_ROOT}/references/ask-procedure.md` under Claude; same relative path under the Codex plugin cache) — four phases (structure → optional contents → ask → optional multi-query expansion), the smart-query strategy table, multi-repo patterns, and the error handling table all live there. The `ask` skill uses the same file, so any update propagates to both surfaces.

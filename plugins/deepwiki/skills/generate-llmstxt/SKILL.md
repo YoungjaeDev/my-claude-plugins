@@ -11,4 +11,4 @@ Generate a well-structured `llms.txt` from a URL (via firecrawl map + scrape) or
 2. Follow the workflow in the procedure file for the matched input type.
 3. Write `llms.txt` to the current directory and report sources processed, sections created, and any errors.
 
-See `${CLAUDE_PLUGIN_ROOT}/references/generate-llmstxt-procedure.md` for the full workflow and guidelines.
+See `references/generate-llmstxt-procedure.md` in this plugin's installed root for the full workflow and guidelines. Under Claude Code this resolves to `${CLAUDE_PLUGIN_ROOT}/references/generate-llmstxt-procedure.md`; under Codex the equivalent path lives next to `skills/` in the plugin cache.

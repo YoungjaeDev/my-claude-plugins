@@ -1,6 +1,6 @@
 # DeepWiki ask — procedure
 
-Shared procedure body for `/deepwiki:ask` (command) and the `ask` skill. Both surfaces resolve this file via `${CLAUDE_PLUGIN_ROOT}/references/ask-procedure.md` so the workflow stays single-sourced.
+Shared procedure body for `/deepwiki:ask` (command) and the `ask` skill. Both surfaces resolve this file via `references/ask-procedure.md` relative to the plugin's installed root (`${CLAUDE_PLUGIN_ROOT}/...` under Claude Code; the same relative path under the Codex plugin cache) so the workflow stays single-sourced.
 
 ## Input shape
 

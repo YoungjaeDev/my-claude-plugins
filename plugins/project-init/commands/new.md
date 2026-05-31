@@ -13,15 +13,23 @@ description: First-day project bootstrap — interview, .claude/ scaffold, CLAUD
 이 가드는 `references/new-procedure.md` 의 Phase 0 보다 먼저 실행된다. 비어있지 않은 디렉토리에서는 abort 한다.
 
 ```bash
-# Hard guard — refuses to run if directory is not fresh
-if [ -d .git ] || [ -d .claude ] || [ -n "$(find . -maxdepth 2 -type f \
-    \( -name '*.py' -o -name '*.ts' -o -name '*.js' -o -name '*.go' \
-    -o -name '*.rs' -o -name '*.java' -o -name 'package.json' \
-    -o -name 'pyproject.toml' -o -name 'Cargo.toml' -o -name 'go.mod' \) \
-    2>/dev/null)" ]; then
+# Hard guard — refuses to run if cwd contains ANYTHING beyond ignorable OS junk.
+# Walks up to 5 levels deep so deeper sources (e.g. src/app/main.py) and any
+# top-level file (Dockerfile, Makefile, .env, docs/*) trigger the abort. We
+# explicitly prune .git/, .DS_Store, Thumbs.db, and a top-level .claude/ that the
+# user might have prepared for us — keeps the guard from false-positive on a
+# pristine dir that just has Finder/Explorer metadata, while still refusing the
+# moment a real file appears.
+FIRST_EXISTING=$(find . -mindepth 1 -maxdepth 5 \
+  \( -name '.git' -o -path './.git/*' \
+   -o -name '.DS_Store' -o -name 'Thumbs.db' \
+   -o -name 'desktop.ini' \) -prune \
+  -o -print 2>/dev/null | head -1)
+
+if [ -d .git ] || [ -n "$FIRST_EXISTING" ]; then
   echo "[abort] project-init refuses to run in a non-empty directory."
   echo "        cwd: $(pwd)"
-  echo "        Found existing .git/, .claude/, or source files."
+  echo "        Existing entry detected: ${FIRST_EXISTING:-.git/}"
   echo "        If you really want to add Claude/Codex scaffolding to an existing"
   echo "        project, use /rules-forge:write-rules or /llm-wiki:bootstrap-wiki"
   echo "        instead."
@@ -33,7 +41,7 @@ The legacy Phase 0 idempotency guard (in the procedure file) is now redundant fo
 
 ## Step 1 — Procedure
 
-가드를 통과하면 전체 Phase 0–7 를 따른다. 본문은 `${CLAUDE_PLUGIN_ROOT}/references/new-procedure.md` 에 있다 — 같은 파일을 `new` skill 도 참조하므로 한쪽 업데이트가 양쪽에 전파된다.
+가드를 통과하면 전체 Phase 0–7 를 따른다. 본문은 이 플러그인의 `references/new-procedure.md` 에 있다 — `new` skill 도 동일 파일을 가리킨다. Claude Code 에서는 `${CLAUDE_PLUGIN_ROOT}/references/new-procedure.md` 로 해석되고, Codex 에서는 plugin cache 디렉토리 기준 동일 상대 경로 (`references/new-procedure.md`) 로 해석된다.
 
 Reference에 포함된 내용:
 - Phase 0 — Preflight (gh auth, identity, owner candidates 추출).

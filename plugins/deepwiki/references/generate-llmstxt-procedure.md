@@ -1,6 +1,6 @@
 # Generate llms.txt — procedure
 
-Shared procedure body for `/deepwiki:generate-llmstxt` (command) and the `generate-llmstxt` skill. Both resolve this file via `${CLAUDE_PLUGIN_ROOT}/references/generate-llmstxt-procedure.md`.
+Shared procedure body for `/deepwiki:generate-llmstxt` (command) and the `generate-llmstxt` skill. Both resolve this file via `references/generate-llmstxt-procedure.md` relative to the plugin's installed root (`${CLAUDE_PLUGIN_ROOT}/...` under Claude Code; the same relative path under the Codex plugin cache).
 
 ## Input shape
 

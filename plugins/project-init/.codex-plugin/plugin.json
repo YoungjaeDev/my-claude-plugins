@@ -1,0 +1,10 @@
+{
+  "name": "project-init",
+  "version": "0.2.0",
+  "description": "One-shot first-day project bootstrap: interview, .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines (general/ml/web variants), README/CHANGELOG seed, gh repo create + initial push. Dual-surface: `/project-init:new` command and `new` skill with hardened preflight guard (refuses non-empty cwd).",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

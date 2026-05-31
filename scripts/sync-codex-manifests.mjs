@@ -7,7 +7,7 @@
 //   --check      diff against on-disk; exit 1 with diff on drift (CI guard)
 //   --dry-run    print what would be written, exit 0
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync, readdirSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync, readdirSync, rmSync, rmdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -164,7 +164,7 @@ function main() {
   let removed = 0;
   for (const path of orphans) {
     rmSync(path, { force: true });
-    try { rmSync(dirname(path), { recursive: false }); } catch { /* dir not empty — leave */ }
+    try { rmdirSync(dirname(path)); } catch { /* dir not empty — leave */ }
     removed++;
   }
   console.log(`wrote ${outputs.length} manifests: ${created} created, ${updated} updated, ${unchanged} unchanged, ${removed} orphans removed.`);

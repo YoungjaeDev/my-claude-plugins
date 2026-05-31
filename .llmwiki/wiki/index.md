@@ -1,7 +1,7 @@
 ---
 id: wiki-moc
 aliases: [moc, table-of-contents, llms-txt]
-last_verified: 2026-05-29
+last_verified: 2026-05-31
 ---
 
 # Wiki Map of Content (MOC)
@@ -72,3 +72,4 @@ The v2 design record: which rohitg00-v2 ideas were harvested vs rejected, and wh
 Operational lore for the plugin system itself — cache, loading, version resolution. Complements the schema-layer version contract in `.claude/rules/plugin-versioning.md`.
 
 - [Plugin cache version-pinning](plugin-ops/cache-version-pinning.md) — the cache holds multiple versions per plugin; a session pins the startup-resolved version, so a newer already-cached version is not served until restart (or via a `local` settings.json source).
+- [Shared-source Codex manifests](plugin-ops/shared-source-codex-manifests.md) — Claude and Codex 0.135 read the same `plugins/<name>/skills/` tree via a thin manifest generator (`scripts/sync-codex-manifests.mjs`); the retired `codex-bridge` body-transform mirror was wrong because its 275 audit hits were authorial intent, not stale references.

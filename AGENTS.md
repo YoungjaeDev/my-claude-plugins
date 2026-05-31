@@ -17,7 +17,9 @@
 - `.claude/rules/`: 특정 경로에 적용되는 상세 규칙.
 - `plugins/<name>/`: 각 플러그인의 원본 디렉터리.
 - `plugins/<name>/.claude-plugin/plugin.json`: 플러그인별 매니페스트와 버전.
-- `plugins/codex-bridge/scripts/sync.mjs`: OMC 플러그인 skill/command/guideline을 Codex용 artifact로 변환하는 동기화 엔진.
+- `plugins/<name>/.codex-plugin/plugin.json`: Codex 0.135 용 매니페스트 (generated, do not edit by hand).
+- `.agents/plugins/marketplace.json`: Codex marketplace 카탈로그 (generated).
+- `scripts/sync-codex-manifests.mjs`: Codex 매니페스트 생성기. `--check` 로 drift 가드, `--dry-run` 으로 출력 미리보기.
 
 ## 플러그인 변경 규칙
 
@@ -27,28 +29,33 @@
 - 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다.
 - Claude Code 플러그인 캐시 이슈 때문에 사용자 문서나 릴리스 안내에는 필요 시 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 후 marketplace update 및 Claude Code 재시작 절차를 유지하세요.
 
-## codex-bridge 작업 규칙
+## Known limitation — cr-fix portability
 
-- `plugins/codex-bridge/**`를 수정할 때는 `.claude/rules/codex-bridge-sync.md`를 먼저 읽고 따르세요.
-- `plugins/*/skills/**/SKILL.md`와 `plugins/*/commands/*.md`가 원본입니다. `~/.agents/skills/`는 재생성되는 산출물입니다.
-- sync 엔진은 `~/.agents/skills/`만 대상으로 합니다. `~/.codex/skills/`는 OMX 관리 영역이므로 건드리지 마세요.
-- frontmatter는 보존해야 합니다. 변환 규칙은 body에만 적용하고, `bridge_source` provenance marker를 유지하세요.
-- `bridge_source`가 없는 기존 대상 파일은 외부 소유로 보고 덮어쓰거나 삭제하지 마세요.
-- sync 엔진은 Node 18+ built-in만 사용합니다. 런타임 의존성을 추가하지 마세요.
-- `--plugin <list>`를 사용할 때는 자동 prune으로 다른 플러그인 산출물이 삭제될 수 있으므로 `--no-prune`과 함께 사용하세요.
+`plugins/github-dev/skills/cr-fix/SKILL.md` 의 36여 path 가 marketplace-repo-relative (`plugins/github-dev/skills/cr-fix/scripts/...`) 로 하드코딩되어 있어, marketplace repo 가 cwd 일 때 (dogfood) 만 동작합니다. 일반 user repo / Codex 양쪽에서 깨집니다 — 이건 shared-source bridge 이전부터 있던 cr-fix 자체의 구조적 결함이고, 별도 follow-up 으로 portable 화 예정 (`${CLAUDE_PLUGIN_ROOT}` 또는 동등한 env-var 사용으로 일관화).
+
+## Codex 통합 (shared-source)
+
+- Claude 와 Codex 0.135 가 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 별도 mirror / body transform 없음 (구 `codex-bridge` 플러그인은 1.40.0 에서 제거).
+- Codex 매니페스트는 `scripts/sync-codex-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성합니다. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `sync-codex-manifests.mjs` 가 진실의 원천입니다.
+- 새 플러그인 추가 / 기존 플러그인의 `version` / `description` / `category` 변경 시 반드시 `node scripts/sync-codex-manifests.mjs` 를 실행해 매니페스트를 재생성하세요.
+- Codex 0.135 manifest top-level 은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원합니다 (참조: `~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md`). `commands` / `agents` 는 생성기가 emit 하지 않습니다 — Claude 만 인식하는 필드입니다.
+- Codex 에서 제외할 플러그인은 `scripts/sync-codex-manifests.mjs` 의 `EXCLUDED` 셋에 등록하세요 (현재: `core-config`, `midjourney`, `deepwiki`, `project-init`). 마지막 둘은 command-only 라 Codex 에서 로드할 게 없습니다. 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
+- 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
 
 ## 검증
 
-- 전체 codex-bridge 테스트:
+- Codex 매니페스트 drift 가드 (모든 PR 에서 실행):
 
 ```bash
-node --test plugins/codex-bridge/tests/*.test.mjs
+node scripts/sync-codex-manifests.mjs --check
 ```
 
-- codex-bridge 변경 전후 dry run:
+- 로컬 Codex CLI 에서 marketplace 등록 확인:
 
 ```bash
-node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose
+codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
+codex plugin list --marketplace my-claude-plugins   # 17 entries
+codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 
 - Python 테스트가 필요한 경우 해당 플러그인 디렉터리에서 `uv run pytest`를 우선 사용하세요.
@@ -72,8 +79,7 @@ node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose
 ### P0 — Correctness / Security
 - Secret / API key / token 노출 (사용자 GitHub PAT, OpenAI/Anthropic key 등).
 - `gh api` / `gh pr merge` / `gh repo create` 류 destructive 명령이 사용자 확인 없이 실행되는 흐름.
-- Plugin SSOT 위반 — `plugins/*/skills/**` 외부에서 sync 결과물 (`~/.agents/skills/`, `~/.codex/agents/`) 을 직접 수정하는 코드.
-- `bridge_source` provenance marker 없이 sync target 파일을 prune / 덮어쓰기.
+- Codex 매니페스트 손으로 편집 — `.agents/plugins/marketplace.json` / `plugins/*/.codex-plugin/plugin.json` 는 `scripts/sync-codex-manifests.mjs` 출력. 수동 편집은 다음 `--check` 에서 drift 로 잡혀야 함.
 - Shell injection — 사용자 입력을 quote 없이 shell 명령에 합치는 경우.
 
 ### P1 — Performance / Maintainability
@@ -84,14 +90,13 @@ node plugins/codex-bridge/scripts/sync.mjs --dry-run --verbose
 - **Cross-platform shell 가정** — `sed -i 'cmd'` 는 GNU-only, BSD/macOS 는 `sed -i '' 'cmd'` 시그니처. `${VAR,,}` 는 Bash 4+ 전용이라 macOS 기본 `/bin/bash` 3.2 에서 bad substitution 으로 깨짐. 둘 다 detect+branch (`sed --version`) 또는 POSIX alternative (`tr '[:upper:]' '[:lower:]'`) 사용.
 - **사용자 입력 substitution safety** — `sed` replacement 에서 `&` 는 매치 전체로 확장되고 `\` / 구분자 (`|` 등) 도 escape 필요. 사용자 입력을 placeholder 로 sed 에 넣기 전 `sed 's/[\\&|]/\\&/g'` 류로 정화. `AskUserQuestion` 라벨 (`"X (Recommended)"`) 을 그대로 변수에 넣어 파일 경로 / CLI 플래그 토큰으로 쓰지 말 것 — case-match 로 도메인 토큰 (`general` / `private` 등) 추출 후 사용.
 - **API 실패와 빈 결과 구분** — `gh api ... || echo "[]"` 같은 패턴은 네트워크 / rate-limit / 권한 에러를 "결과 없음" 으로 삼켜 사용자가 잘못된 결정을 내리게 함. 실패 시 명시적 `exit 2` 또는 stderr 로그 + 호출자 통보.
-- Skill / command 의 frontmatter 누락 또는 잘못된 `name:` / `description:` (codex-bridge sync 가 깨짐).
+- Skill / command 의 frontmatter 누락 또는 잘못된 `name:` / `description:` (Codex 가 skill 을 인식 못 함).
 - `Read` / `Edit` 가능한 영역을 `Bash cat` / `Bash sed` 로 우회 (Claude Code 도구 우선 규칙 위반).
 - 새 dependency, GitHub Actions, CI/CD 권한 변경 — 최소 권한, lockfile, supply-chain.
 
 ### Domain-specific (Claude Code plugin marketplace)
-- 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `marketplace.json` entry + `metadata.version` 4 곳 동시 업데이트 필수.
-- `plugins/codex-bridge/scripts/sync.mjs` 변경 시 `.claude/rules/codex-bridge-sync.md` 의 invariants (SSOT, body-only transform, `bridge_source` 마커, collision guard) 위반 여부 확인.
-- Skill body 의 transform rule (`CLAUDE.md→AGENTS.md`, `.claude/→.codex/`, namespace regex) 은 frontmatter 보존이 contract. 새 rule 추가 시 `bodyOnly: true` 유지.
+- 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `marketplace.json` entry + `metadata.version`, 그리고 `node scripts/sync-codex-manifests.mjs` 재실행 5 곳 동시 업데이트 필수.
+- Codex 매니페스트 (`plugins/*/.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`) 가 `--check` 통과해야 함. 수동 편집 흔적 검토.
 - Plugin 캐시 이슈 ([anthropics/claude-code#17361](https://github.com/anthropics/claude-code/issues/17361), [anthropics/claude-code#19197](https://github.com/anthropics/claude-code/issues/19197)) — version bump 만으로는 사용자 캐시 갱신 보장 안 됨. 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차 유지.
 
 ## CodeRabbit / Codex 조율

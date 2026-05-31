@@ -1,8 +1,8 @@
 # Claude Code Settings
 
-Plugin-based configuration for Claude Code with multi-agent orchestration.
+Plugin-based configuration for Claude Code with multi-agent orchestration. The same plugin tree is loaded by Codex 0.135 via `scripts/sync-codex-manifests.mjs` — one source, two runtimes.
 
-## Plugins (22)
+## Plugins (21)
 
 ### Core
 | Plugin | Description |
@@ -63,11 +63,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 |--------|-------------|
 | `workflow-viz` | System workflow Mermaid diagrams and ASCII progress tracking |
 
-### Integration
-| Plugin | Description |
-|--------|-------------|
-| `codex-bridge` | Sync OMC plugin skills to Codex `~/.agents/skills/` with body-only transform |
-
 ### Memory & Lore
 | Plugin | Description |
 |--------|-------------|
@@ -103,7 +98,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 │   ├── slidev/             # Presentation generator
 │   ├── workflow-viz/       # Workflow visualization
 │   ├── tcrei-prompt/       # TCREI prompt structuring
-│   ├── codex-bridge/       # OMC → Codex skill sync
 │   ├── llm-wiki/           # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/         # spec/issue/PR work-pipeline aggregate
 │   └── project-init/       # Day-1 project bootstrap (interview + .claude/ + AGENTS.md + gh repo)
@@ -115,7 +109,17 @@ Plugin-based configuration for Claude Code with multi-agent orchestration.
 
 Plugins auto-load from `settings.json`. See README.md for detailed usage of each plugin.
 
+## Codex integration
+
+Codex 0.135 reads the same `plugins/<name>/` tree. Manifests are generated:
+
+```bash
+node scripts/sync-codex-manifests.mjs           # write manifests
+node scripts/sync-codex-manifests.mjs --check   # CI drift guard
+```
+
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 17 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks), `midjourney` (image-gen not portable), `deepwiki` / `project-init` (command-only, no Codex-loadable component). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+
 ## Modular Rules
 
 - See @.claude/rules/plugin-versioning.md for plugin version bump contract and cache-refresh workflow.
-- See @.claude/rules/codex-bridge-sync.md for codex-bridge sync invariants (SSOT, body-only transform, `bridge_source` marker, collision guard).

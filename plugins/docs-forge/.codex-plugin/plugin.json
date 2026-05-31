@@ -1,0 +1,10 @@
+{
+  "name": "docs-forge",
+  "version": "0.2.1",
+  "description": "README/CHANGELOG generation with CRO best practices",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

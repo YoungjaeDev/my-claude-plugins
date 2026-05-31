@@ -1,0 +1,10 @@
+{
+  "name": "notion",
+  "version": "1.0.0",
+  "description": "Markdown to Notion upload",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

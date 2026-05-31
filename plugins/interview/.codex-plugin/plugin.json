@@ -1,0 +1,10 @@
+{
+  "name": "interview",
+  "version": "1.0.0",
+  "description": "Structured requirements gathering",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

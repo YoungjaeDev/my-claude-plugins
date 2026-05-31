@@ -1,0 +1,212 @@
+{
+  "name": "my-claude-plugins",
+  "interface": {
+    "displayName": "My Claude Plugins"
+  },
+  "plugins": [
+    {
+      "name": "github-dev",
+      "source": {
+        "source": "local",
+        "path": "./plugins/github-dev"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "github"
+    },
+    {
+      "name": "code-scout",
+      "source": {
+        "source": "local",
+        "path": "./plugins/code-scout"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "research"
+    },
+    {
+      "name": "council",
+      "source": {
+        "source": "local",
+        "path": "./plugins/council"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "ai-models"
+    },
+    {
+      "name": "notebook",
+      "source": {
+        "source": "local",
+        "path": "./plugins/notebook"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "development"
+    },
+    {
+      "name": "ml-toolkit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ml-toolkit"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "development"
+    },
+    {
+      "name": "translator",
+      "source": {
+        "source": "local",
+        "path": "./plugins/translator"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "content"
+    },
+    {
+      "name": "interview",
+      "source": {
+        "source": "local",
+        "path": "./plugins/interview"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "planning"
+    },
+    {
+      "name": "notion",
+      "source": {
+        "source": "local",
+        "path": "./plugins/notion"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "integration"
+    },
+    {
+      "name": "humanizer",
+      "source": {
+        "source": "local",
+        "path": "./plugins/humanizer"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "content"
+    },
+    {
+      "name": "paper-search-tools",
+      "source": {
+        "source": "local",
+        "path": "./plugins/paper-search-tools"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "research"
+    },
+    {
+      "name": "docs-forge",
+      "source": {
+        "source": "local",
+        "path": "./plugins/docs-forge"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "documentation"
+    },
+    {
+      "name": "slidev",
+      "source": {
+        "source": "local",
+        "path": "./plugins/slidev"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "content"
+    },
+    {
+      "name": "workflow-viz",
+      "source": {
+        "source": "local",
+        "path": "./plugins/workflow-viz"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "visualization"
+    },
+    {
+      "name": "rules-forge",
+      "source": {
+        "source": "local",
+        "path": "./plugins/rules-forge"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "documentation"
+    },
+    {
+      "name": "tcrei-prompt",
+      "source": {
+        "source": "local",
+        "path": "./plugins/tcrei-prompt"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "content"
+    },
+    {
+      "name": "llm-wiki",
+      "source": {
+        "source": "local",
+        "path": "./plugins/llm-wiki"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "memory"
+    },
+    {
+      "name": "spec-state",
+      "source": {
+        "source": "local",
+        "path": "./plugins/spec-state"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "workflow"
+    }
+  ]
+}

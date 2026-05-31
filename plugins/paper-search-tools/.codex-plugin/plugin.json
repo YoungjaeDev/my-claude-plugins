@@ -1,0 +1,11 @@
+{
+  "name": "paper-search-tools",
+  "version": "1.0.1",
+  "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "Apache-2.0",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

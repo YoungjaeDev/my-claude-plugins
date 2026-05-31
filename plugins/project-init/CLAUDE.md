@@ -1,40 +1,93 @@
 # Project-Init Plugin
 
-새 프로젝트의 Day-1 셋업 (`.claude/`, CLAUDE.md, AGENTS.md, README/CHANGELOG, gh repo create+push) 을 단일 `/project-init:new` 명령으로 orchestrate.
+새 프로젝트의 Day-1 셋업 (`.claude/`, CLAUDE.md, AGENTS.md, README/CHANGELOG, gh repo create+push) 을 orchestrate. **Dual-surface**: 명시적 슬래시 호출 (`/project-init:new`) 과 capability-discovery 용 skill (`new`) 양쪽으로 노출, 본문은 `references/new-procedure.md` 한 곳.
 
-## Command
+## Surfaces
 
-| Command | Description |
-|---------|-------------|
-| `/project-init:new` | 인터뷰 → 로컬 시드 → gh repo 생성 → 초기 커밋/푸시. 명시적 호출 only (자동 트리거 없음). |
+| Surface | Entry | Description |
+|---------|-------|-------------|
+| Command | `/project-init:new` | 명시적 사용자 호출 — primary surface. |
+| Skill | `new` | Codex (및 Claude Code) 의 capability-discovery 용. description 이 좁게 잡혀 "bootstrap a new project in this empty dir" 류만 매치. |
+
+두 surface 모두 본문 첫 블록에 **preflight hard guard** 를 둔다 — `.git/` / `.claude/` / source-file 이 cwd 에 하나라도 있으면 abort. description 기반 매칭에만 기대지 않고 runtime 에서 강제.
 
 ## 원칙
 
+- **Preflight hard guard is non-negotiable**: `commands/new.md` 와 `skills/new/SKILL.md` 양쪽 Step 0 에 동일한 가드가 박혀 있다. description 만으로 잘못된 트리거를 막을 수 없다는 전제 — 모델이 description 을 잘못 해석해도 runtime 이 막는다. 가드 제거는 사용자의 명시적 (high-friction, 의도적) 결정이어야 한다.
 - **Minimal seeding, explicit follow-ups**: Day-1 에 필요한 것만 시드. tech-stack 기반 rules 생성과 wiki 도메인 인터뷰는 **호출 X, 안내만**. 빈 프로젝트에 generic 콘텐츠 만들면 사용자 덮어쓰기 비용 발생.
 - **Owner gate is mandatory**: 사용자가 personal + 다중 org 컨텍스트라 owner 자동 결정 금지. `AskUserQuestion` 으로 명시 선택.
 - **Codex GitHub reviewer surface**: AGENTS.md `## Review guidelines` 섹션이 Codex GitHub cloud reviewer 가 자동으로 읽는 영역. **레포 생성 시점에 시드**해야 첫 PR 부터 효과.
-- **Idempotent re-runs**: 같은 디렉토리에서 두 번째 호출 시 기존 파일 보존 + 단계 skip + 안내 메시지. 절대 덮어쓰지 않음.
+- **Idempotent re-runs**: 같은 디렉토리에서 두 번째 호출 시 기존 파일 보존 + 단계 skip + 안내 메시지. 절대 덮어쓰지 않음. (단, hard guard 가 .git/.claude 존재만으로도 abort 시키므로 일반 경로에서는 idempotent 재실행이 발생하지 않는다 — 가드를 우회한 partial seed 회복 경로에서만 의미.)
 
 ## 파일 구성
 
 ```text
 plugins/project-init/
 ├── .claude-plugin/plugin.json
-├── commands/new.md                     # 단일 orchestration command
+├── commands/new.md                     # 명시적 슬래시 surface (preflight guard + 포인터)
+├── skills/new/SKILL.md                 # 스킬 surface (동일 preflight guard + 포인터)
+├── references/
+│   ├── new-procedure.md                # 본문 (Phase 0–7) — 두 surface 가 공유
+│   ├── codex-review-discovery.md       # AGENTS.md vs /review CLI
+│   └── gh-repo-create-flow.md          # owner 추론 + visibility 결정
 ├── assets/                             # 출력물에 직접 들어가는 템플릿
 │   ├── AGENTS.review-guidelines.md     # general variant (base)
 │   ├── AGENTS.review-guidelines.ml.md  # ML/data variant
 │   ├── AGENTS.review-guidelines.web.md # 웹/풀스택 variant
 │   ├── README.minimal.md
 │   └── CHANGELOG.initial.md
-├── references/                         # 의사결정 context
-│   ├── codex-review-discovery.md       # AGENTS.md vs /review CLI
-│   └── gh-repo-create-flow.md          # owner 추론 + visibility 결정
 ├── scripts/
 │   ├── infer-github-context.sh         # gh api user + orgs
 │   └── idempotent-seed.sh              # 충돌 가드 + .claude/ + .llmwiki/ 시드
 └── CLAUDE.md                           # this file
 ```
+
+## Preflight guard contract
+
+`commands/new.md` 와 `skills/new/SKILL.md` Step 0 에 동일한 POSIX shell 블록:
+
+```bash
+FIRST_EXISTING=$(find . -mindepth 1 -maxdepth 5 \
+  \( -name '.git' -o -path './.git/*' \
+   -o -name '.DS_Store' -o -name 'Thumbs.db' \
+   -o -name 'desktop.ini' \) -prune \
+  -o -print 2>/dev/null | head -1)
+
+if [ -d .git ] || [ -n "$FIRST_EXISTING" ]; then
+  echo "[abort] project-init refuses to run in a non-empty directory."
+  ...
+  exit 1
+fi
+```
+
+- **Rejection rule**: anything in cwd that is not `.git/`, `.DS_Store`, `Thumbs.db`, or `desktop.ini` causes abort. `Dockerfile`, `Makefile`, `.env`, `docs/`, `src/app/main.py` — all of those trigger.
+- **Search depth**: 5 levels (`find -maxdepth 5`). Deep-nested source files do not slip past the guard.
+- **Abort message**: surfaces cwd + the first offending entry + a redirect to `/rules-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for the "scaffold an existing project" case.
+- **Non-POSIX hosts**: PowerShell-default environments must invoke via `bash -c '<guard>'` (Git Bash / WSL / Cygwin). The intent of the check, not the literal shell, is what matters — equivalent PowerShell rewrites are acceptable as long as they refuse the same conditions.
+
+수정할 때는 두 파일 양쪽을 동시에 업데이트해야 한다. 한쪽만 바꾸면 surface 간 동작이 갈린다.
+
+## Cross-runtime plugin root resolution
+
+`references/new-procedure.md` Phase 0 opens with a `PLUGIN_ROOT` resolver:
+
+```bash
+PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -z "$PLUGIN_ROOT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  if sort -V </dev/null >/dev/null 2>&1; then
+    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort -V | tail -1)
+  else
+    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort | tail -1)
+  fi
+  [ -n "$candidate" ] && [ -d "$candidate" ] && PLUGIN_ROOT="$candidate"
+fi
+[ -n "$PLUGIN_ROOT" ] && [ -d "$PLUGIN_ROOT/scripts" ] || { echo "[abort] ..."; exit 1; }
+```
+
+- Under **Claude Code**, `${CLAUDE_PLUGIN_ROOT}` is set automatically and the resolver short-circuits on the first branch.
+- Under **Codex 0.135**, no equivalent env var is currently exposed, so the resolver falls back to `~/.codex/plugins/cache/<marketplace>/project-init/<version>/`. Users can override with `CODEX_PLUGIN_CACHE` or set `PLUGIN_ROOT` directly.
+- All subsequent bash blocks reference `${PLUGIN_ROOT}/scripts/...` and `${PLUGIN_ROOT}/assets/...`. Adding a new asset / script means updating only the procedure file — no per-surface duplication.
 
 ## Placeholder 규약
 
@@ -48,7 +101,7 @@ assets/ 의 템플릿은 다음 placeholder 만 사용한다 (sed 치환):
 | `{{LICENSE}}` | MIT / Apache-2.0 / GPL-3.0 / None |
 | `{{YEAR}}` | 현재 연도 |
 
-추가 placeholder 도입 시 `commands/new.md` Phase 4/5 의 sed 라인을 함께 업데이트.
+추가 placeholder 도입 시 `references/new-procedure.md` Phase 4/5 의 sed 라인을 함께 업데이트.
 
 ## AGENTS.md Variant 정책
 
@@ -74,5 +127,5 @@ variant 차이는 `### Domain-specific` 섹션 + `### P0` / `### P1` 에 도메�
 ## 참조
 
 - Plugin versioning rules: `.claude/rules/plugin-versioning.md`
-- Codex GitHub integration: https://developers.openai.com/codex/integrations/github
+- Codex GitHub integration: <https://developers.openai.com/codex/integrations/github>
 - 관련 follow-up: `/rules-forge:write-rules`, `/llm-wiki:bootstrap-wiki`

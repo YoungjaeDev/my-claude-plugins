@@ -1,10 +1,10 @@
 ---
 id: neutral-llmwiki-root
 aliases: [llmwiki-root, neutral-root, codex-fork-fix, dot-llmwiki]
-last_verified: 2026-05-29
+last_verified: 2026-05-31
 status: active
 volatility: stable
-sources: 2
+sources: 3
 ---
 
 # Neutral `.llmwiki/` root
@@ -57,6 +57,24 @@ deployments keep working until migrated:
 New repos get `.llmwiki/`; old repos keep functioning until a migration
 consolidates them into the neutral root.
 
+## Vindication: the transform was the problem, not stale references
+
+A pre-retirement audit grepped the three `codex-bridge` body transforms
+(`.claude/`→`.codex/`, `CLAUDE.md`→`AGENTS.md`, `/plugin:skill`→`$skill`)
+across the entire skill tree and found ~275 hits. Spot-checking revealed that
+nearly all hits were **legitimate documentation of Claude's filesystem**, not
+stale references that needed rewriting: `llm-wiki` bootstraps `.claude/rules/`
+literally (the only verified session-start auto-load path), `github-dev/cr-fix`
+iterates `CONFIG_FILES="CLAUDE.md AGENTS.md"`, `rules-forge` explains the
+semantics of `CLAUDE.md` to its readers. The transforms were corrupting
+authorial intent rather than translating it.
+
+The fork bug is now eliminated structurally: the `codex-bridge` plugin (the
+transform source) is retired, and both runtimes read the same source via a
+manifest generator that emits *outside* the skill bodies — see
+[[shared-source-codex-manifests]]. The neutral-root data layout remains the
+correct defense against any future mirror that might re-emerge.
+
 ## Sources
 
 - `.llmwiki/raw/perplexity-llm-wiki-survey-2026-05.md` — 2026-05 ecosystem
@@ -66,7 +84,14 @@ consolidates them into the neutral root.
 - `.claude/spec/2026-05-29-llm-wiki-v2.md` — the design contract recording the
   literal `.claude/` -> `.codex/` body transform, the verified `.claude/rules/`
   auto-load path, the per-layer-neutral decision, and the resolution order.
+- `scripts/sync-codex-manifests.mjs` + PR #39 body — records the 275-hit
+  body-transform audit and the structural elimination of the
+  `codex-bridge` plugin (replaced by a generator that emits manifests
+  outside the skill bodies). Confirms the transform was the bug, the data
+  paths it touched were not.
 
 > Refines: [[curated-conservative]]
+> See-also: [[shared-source-codex-manifests]]
 > Evidence: .llmwiki/raw/perplexity-llm-wiki-survey-2026-05.md
 > Evidence: .claude/spec/2026-05-29-llm-wiki-v2.md
+> Evidence: scripts/sync-codex-manifests.mjs

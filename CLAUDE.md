@@ -118,7 +118,7 @@ node scripts/sync-codex-manifests.mjs           # write manifests
 node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
-Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 17 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks), `midjourney` (image-gen not portable), `deepwiki` / `project-init` (command-only, no Codex-loadable component). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 19 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `midjourney` (image-gen execution model differs). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
 
 ## Modular Rules
 

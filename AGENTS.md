@@ -39,7 +39,7 @@
 - Codex 매니페스트는 `scripts/sync-codex-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성합니다. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `sync-codex-manifests.mjs` 가 진실의 원천입니다.
 - 새 플러그인 추가 / 기존 플러그인의 `version` / `description` / `category` 변경 시 반드시 `node scripts/sync-codex-manifests.mjs` 를 실행해 매니페스트를 재생성하세요.
 - Codex 0.135 manifest top-level 은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원합니다 (참조: `~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md`). `commands` / `agents` 는 생성기가 emit 하지 않습니다 — Claude 만 인식하는 필드입니다.
-- Codex 에서 제외할 플러그인은 `scripts/sync-codex-manifests.mjs` 의 `EXCLUDED` 셋에 등록하세요 (현재: `core-config`, `midjourney`, `deepwiki`, `project-init`). 마지막 둘은 command-only 라 Codex 에서 로드할 게 없습니다. 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
+- Codex 에서 제외할 플러그인은 `scripts/sync-codex-manifests.mjs` 의 `EXCLUDED` 셋에 등록하세요 (현재: `core-config`, `midjourney`). `core-config` 는 Claude-only hooks 라 Codex 에 대응 surface 가 없고, `midjourney` 는 image-gen workflow 가 Codex 실행 모델과 맞지 않습니다. 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
 - 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
 
 ## 검증
@@ -54,7 +54,7 @@ node scripts/sync-codex-manifests.mjs --check
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 17 entries
+codex plugin list --marketplace my-claude-plugins   # 19 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 

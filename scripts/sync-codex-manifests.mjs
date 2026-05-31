@@ -17,11 +17,11 @@ const CATALOG_OUT = join(ROOT, '.agents', 'plugins', 'marketplace.json');
 const PLUGINS_DIR = join(ROOT, 'plugins');
 
 // Plugins intentionally not bridged to Codex.
-//   core-config  — Claude-only hooks / settings
-//   midjourney   — image-gen workflow not portable
-//   deepwiki     — command-only; Codex manifest has no `commands` field, so plugin would be empty
-//   project-init — command-only; same reason
-const EXCLUDED = new Set(['core-config', 'midjourney', 'deepwiki', 'project-init']);
+//   core-config — Claude-only hooks / settings (no Codex hook surface for the same patterns)
+//   midjourney  — image-gen workflow not portable (Codex execution model differs)
+// deepwiki and project-init were here but are now dual-surface (command + skill);
+// the skill side is what Codex loads, so they leave the EXCLUDED set.
+const EXCLUDED = new Set(['core-config', 'midjourney']);
 
 // Codex 0.135 manifest top-level supports only `skills`, `hooks`, `mcpServers`, `apps`
 // (see ~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md). `commands`

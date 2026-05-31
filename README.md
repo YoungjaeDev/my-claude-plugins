@@ -576,7 +576,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks), `midjourney` (image-gen workflow not portable), `deepwiki` / `project-init` (command-only — Codex 0.135 manifest는 `commands` 필드를 지원하지 않아 로드할 컴포넌트가 없음). 즉 17 / 21 플러그인이 양쪽에서 skill 단위로 동작.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이). 즉 19 / 21 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`github-dev`, `paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다.
 

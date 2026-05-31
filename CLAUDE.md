@@ -118,7 +118,7 @@ node scripts/sync-codex-manifests.mjs           # write manifests
 node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
-Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 19 eligible plugins (excludes `codex-bridge`, `core-config`, `midjourney`). Skill bodies are read in place — no mirror, no transform.
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 19 eligible plugins (excludes `core-config`, `midjourney`). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
 
 ## Modular Rules
 

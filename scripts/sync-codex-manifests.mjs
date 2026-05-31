@@ -7,7 +7,7 @@
 //   --check      diff against on-disk; exit 1 with diff on drift (CI guard)
 //   --dry-run    print what would be written, exit 0
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,10 +17,9 @@ const CATALOG_OUT = join(ROOT, '.agents', 'plugins', 'marketplace.json');
 const PLUGINS_DIR = join(ROOT, 'plugins');
 
 // Plugins intentionally not bridged to Codex.
-//   codex-bridge — being retired by this very generator
-//   core-config  — Claude-only hooks / settings
-//   midjourney   — image-gen workflow not portable
-const EXCLUDED = new Set(['codex-bridge', 'core-config', 'midjourney']);
+//   core-config — Claude-only hooks / settings
+//   midjourney  — image-gen workflow not portable
+const EXCLUDED = new Set(['core-config', 'midjourney']);
 
 const COMPONENT_DIRS = ['skills', 'commands', 'agents', 'mcpServers'];
 
@@ -102,6 +101,17 @@ function compare(path, next) {
   return current === next ? { drift: false } : { drift: true, reason: 'changed', current };
 }
 
+function findOrphanManifests(expectedPaths) {
+  if (!isDir(PLUGINS_DIR)) return [];
+  const expected = new Set(expectedPaths);
+  const orphans = [];
+  for (const name of readdirSync(PLUGINS_DIR)) {
+    const manifest = join(PLUGINS_DIR, name, '.codex-plugin', 'plugin.json');
+    if (isFile(manifest) && !expected.has(manifest)) orphans.push(manifest);
+  }
+  return orphans;
+}
+
 function main() {
   const source = readJSON(SOURCE);
   const eligible = source.plugins.filter((p) => !EXCLUDED.has(p.name));
@@ -113,19 +123,22 @@ function main() {
   }
   outputs.push({ path: CATALOG_OUT, content: serialize(buildCatalog(eligible)) });
 
+  const orphans = findOrphanManifests(outputs.map((o) => o.path));
+
   if (MODE === 'check') {
     const drifted = [];
     for (const { path, content } of outputs) {
       const cmp = compare(path, content);
       if (cmp.drift) drifted.push({ path, reason: cmp.reason });
     }
+    for (const path of orphans) drifted.push({ path, reason: 'orphan' });
     if (drifted.length === 0) {
       console.log(`up to date (${outputs.length} manifests)`);
       return;
     }
     console.error(`drift detected in ${drifted.length} file(s):`);
     for (const d of drifted) console.error(`  ${d.reason}: ${d.path}`);
-    console.error('\nrun without --check to regenerate.');
+    console.error('\nrun without --check to regenerate (orphans will be removed).');
     process.exit(1);
   }
 
@@ -135,7 +148,8 @@ function main() {
       const tag = cmp.drift ? (cmp.reason === 'missing' ? 'CREATE' : 'UPDATE') : 'OK    ';
       console.log(`${tag} ${path} (${content.length} bytes)`);
     }
-    console.log(`\n${outputs.length} manifests (dry-run, no writes).`);
+    for (const path of orphans) console.log(`REMOVE ${path} (orphan)`);
+    console.log(`\n${outputs.length} manifests, ${orphans.length} orphans (dry-run, no writes).`);
     return;
   }
 
@@ -147,7 +161,13 @@ function main() {
     writeFileSync(path, content);
     if (cmp.reason === 'missing') created++; else updated++;
   }
-  console.log(`wrote ${outputs.length} manifests: ${created} created, ${updated} updated, ${unchanged} unchanged.`);
+  let removed = 0;
+  for (const path of orphans) {
+    rmSync(path, { force: true });
+    try { rmSync(dirname(path), { recursive: false }); } catch { /* dir not empty — leave */ }
+    removed++;
+  }
+  console.log(`wrote ${outputs.length} manifests: ${created} created, ${updated} updated, ${unchanged} unchanged, ${removed} orphans removed.`);
 }
 
 main();

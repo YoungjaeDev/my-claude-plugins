@@ -30,7 +30,15 @@ if [ -z "$PLUGIN_ROOT" ]; then
   # Best-effort Codex cache lookup. Order: latest version directory under the
   # configured marketplace name; user override via $CODEX_PLUGIN_CACHE.
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-  candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort -V | tail -1)
+  # Prefer `sort -V` (GNU) for proper semver ordering; macOS / BSD sort lacks
+  # -V and would fail silently, so fall back to plain lexicographic sort.
+  # Picks fine for typical X.Y.Z under 10 — covers the realistic version range
+  # the plugin cache will ever hold for a single plugin.
+  if sort -V </dev/null >/dev/null 2>&1; then
+    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort -V | tail -1)
+  else
+    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort | tail -1)
+  fi
   [ -n "$candidate" ] && [ -d "$candidate" ] && PLUGIN_ROOT="$candidate"
 fi
 if [ -z "$PLUGIN_ROOT" ] || [ ! -d "$PLUGIN_ROOT/scripts" ]; then

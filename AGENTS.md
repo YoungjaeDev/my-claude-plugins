@@ -29,6 +29,10 @@
 - 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다.
 - Claude Code 플러그인 캐시 이슈 때문에 사용자 문서나 릴리스 안내에는 필요 시 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 후 marketplace update 및 Claude Code 재시작 절차를 유지하세요.
 
+## Known limitation — cr-fix portability
+
+`plugins/github-dev/skills/cr-fix/SKILL.md` 의 36여 path 가 marketplace-repo-relative (`plugins/github-dev/skills/cr-fix/scripts/...`) 로 하드코딩되어 있어, marketplace repo 가 cwd 일 때 (dogfood) 만 동작합니다. 일반 user repo / Codex 양쪽에서 깨집니다 — 이건 shared-source bridge 이전부터 있던 cr-fix 자체의 구조적 결함이고, 별도 follow-up 으로 portable 화 예정 (`${CLAUDE_PLUGIN_ROOT}` 또는 동등한 env-var 사용으로 일관화).
+
 ## Codex 통합 (shared-source)
 
 - Claude 와 Codex 0.135 가 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 별도 mirror / body transform 없음 (구 `codex-bridge` 플러그인은 1.40.0 에서 제거).

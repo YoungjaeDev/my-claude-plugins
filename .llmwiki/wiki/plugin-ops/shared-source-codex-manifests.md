@@ -4,7 +4,7 @@ aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, r
 last_verified: 2026-05-31
 status: active
 volatility: stable
-sources: 3
+sources: 4
 ---
 
 # Shared-source Codex manifests
@@ -65,9 +65,15 @@ skills | hooks | mcpServers | apps
 by the generator — Codex does not recognize them. Plugins whose value is
 entirely in `commands` or `agents` therefore have nothing to load on the Codex
 side. The generator excludes them via an `EXCLUDED` set; the current entries
-are `core-config` (Claude-only hooks), `midjourney` (image-gen workflow not
-portable), `deepwiki` and `project-init` (command-only, no Codex-loadable
-component). That yields 17 of 21 plugins eligible for Codex.
+are `core-config` (Claude-only hooks; Codex has no equivalent hook surface)
+and `midjourney` (image-gen workflow does not fit Codex's execution model).
+That yields **19 of 21** plugins eligible for Codex.
+
+`deepwiki` and `project-init` were in the EXCLUDED set before 1.41.0 because
+they shipped only `commands/`. The 1.41.0 dual-surface conversion (see
+[[dual-surface-command-skill-pattern]]) added `skills/` directories whose
+bodies point at the same `references/` procedures the commands use, so the
+plugins now have something for Codex to load and leave the exclusion list.
 
 `.mcp.json` is treated as a *file* path in the Codex manifest, not a directory
 — a subtle schema difference from Claude's behavior that the generator handles
@@ -92,9 +98,14 @@ does NOT need to retain removed plugins — orphan detection covers that case.
 - PR #39 body — records the 275-hit body-transform audit and the three
   audited rewrites (`CLAUDE.md`→`AGENTS.md`, `.claude/`→`.codex/`,
   `/plugin:skill`→`$skill`) that were found to corrupt authorial intent.
+- PR #41 body — records the EXCLUDED-set shrink from 4 to 2 after the
+  dual-surface conversion of `deepwiki` + `project-init`, plus the
+  cross-runtime portability discoveries (`${CLAUDE_PLUGIN_ROOT}` does not
+  expand under Codex 0.135) that the conversion surfaced.
 
 > Supersedes: (retired plugin `codex-bridge` 1.0.0)
 > See-also: [[neutral-llmwiki-root]]
 > See-also: [[cache-version-pinning]]
+> See-also: [[dual-surface-command-skill-pattern]]
 > Evidence: scripts/sync-codex-manifests.mjs
 > Evidence: AGENTS.md

@@ -123,3 +123,4 @@ Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.j
 ## Modular Rules
 
 - See @.claude/rules/plugin-versioning.md for plugin version bump contract and cache-refresh workflow.
+- See @.claude/rules/dual-integration.md for keeping the Claude Code and Codex surfaces in sync when editing guidance, hooks, or derived artifacts (mirrored into `AGENTS.md` since Codex cannot `@import` `.claude/rules/`).

@@ -8,6 +8,24 @@
 - 파일 탐색과 검색은 우선 `rg`, `rg --files`를 사용하세요.
 - 문서와 매니페스트가 함께 움직이는 저장소이므로 코드 변경뿐 아니라 README, 루트 `CLAUDE.md`, marketplace manifest의 동기화 필요성을 항상 확인하세요.
 
+## 듀얼 통합 (Claude Code ↔ Codex)
+
+이 저장소는 Claude Code 와 Codex CLI 둘 다로 구동된다. 지침/hook/lore 를 한쪽 표면에만 두면 다른 도구체인에는 안 보인다. 동작에 영향을 주는 변경은 짝 표면을 같은 변경에서 점검한다. (Claude 쪽 SSOT: `.claude/rules/dual-integration.md` — Codex 는 `.claude/rules/` 를 `@import` 못 하므로 이 블록이 미러다.)
+
+| 관심사 | Claude Code 표면 | Codex 표면 |
+|---|---|---|
+| 최상위 지침 | `CLAUDE.md`, `.claude/rules/*.md` | `AGENTS.md` (inline / mirror) |
+| 프롬프트 주입 hook | 플러그인 `UserPromptSubmit` (`plugin.json` → `hooks/*.sh`) | `~/.codex/hooks.json` → 같은 스크립트, `codex` 포맷 인자 |
+| skill | `plugins/*/skills` (native) | 같은 `plugins/<name>/` 트리 in-place + generated `.codex-plugin/plugin.json` (아래 "Codex 통합 (shared-source)" 참조) |
+| command / subagent | `plugins/*/{commands,agents}` (native) | Codex 0.135 미지원 (Claude-only — 매니페스트에 미방출) |
+| 공유 중립 lore | `.llmwiki/` (양 에이전트 동일 루트, fork 금지) | `.llmwiki/` |
+
+- 양 에이전트가 따라야 할 behavioral 지침은 `CLAUDE.md` 와 `AGENTS.md` 를 짝으로 수정한다.
+- Claude hook 을 추가/변경하면 Codex `~/.codex/hooks.json` 대응을 점검한다 (Codex hook 은 별도 `/hooks` trust 필요, 자동 등록 안 됨).
+- skill / 버전 / description 을 바꾸면 Codex 매니페스트 재생성(`node scripts/sync-codex-manifests.mjs`)이 필요한지 점검한다 ("Codex 통합 (shared-source)" 섹션 + `plugin-versioning.md`).
+- wiki lore 는 `.claude/rules/` 로 승격하지 않는다 — Codex 가 못 읽는다. cross-agent insight 는 `.llmwiki/insight/` 로 graduate 후 공유 주입 hook 으로 노출한다.
+- `.llmwiki/` 를 per-agent 로 fork 하지 않는다.
+
 ## 저장소 구조
 
 - `CLAUDE.md`: 플러그인 목록과 전체 구조 요약.

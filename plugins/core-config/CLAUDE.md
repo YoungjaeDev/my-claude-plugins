@@ -7,7 +7,7 @@ Development workflow essentials: Python formatting and notifications.
 | Hook | Trigger | Description |
 |------|---------|-------------|
 | `auto-format-python.py` | Post Write/Edit | Auto-format Python with ruff |
-| `notify_osc.sh` | Stop/Notification | Terminal OSC 777 notifications |
+| `notify_osc.py` | Stop/Notification | Terminal OSC 777 notifications (cross-platform: Windows/Linux/macOS) |
 | `prompt_inject.sh` | UserPromptSubmit | Per-prompt compact behavioral block (Korean default + core rules + `.llmwiki/insight/`·wiki pointer). Shared Claude + Codex. |
 | `memory_nudge.sh` | UserPromptSubmit | Soft memory-discipline reminder (rate-limited ~3h per cwd) |
 

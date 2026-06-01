@@ -77,3 +77,15 @@ Operational lore for the plugin system itself — cache, loading, version resolu
 - [Plugin cache version-pinning](plugin-ops/cache-version-pinning.md) — the cache holds multiple versions per plugin; a session pins the startup-resolved version, so a newer already-cached version is not served until restart (or via a `local` settings.json source).
 - [Shared-source Codex manifests](plugin-ops/shared-source-codex-manifests.md) — Claude and Codex 0.135 read the same `plugins/<name>/skills/` tree via a thin manifest generator (`scripts/sync-codex-manifests.mjs`); the retired `codex-bridge` body-transform mirror was wrong because its 275 audit hits were authorial intent, not stale references. 19 of 21 plugins eligible after the 1.41.0 dual-surface conversion of `deepwiki` + `project-init`.
 - [Dual-surface command + skill pattern](plugin-ops/dual-surface-command-skill-pattern.md) — how a plugin ships both an explicit `/plugin:command` and a Codex-loadable `skill` from a single `references/<name>-procedure.md` body; documents the runtime preflight guard required for destructive plugins and the `PLUGIN_ROOT` resolver pattern that handles Codex's lack of `${CLAUDE_PLUGIN_ROOT}`.
+
+## cr-fix-ops
+
+Per-plugin operational lore for `github-dev:cr-fix` — rate-limit semantics, dogfood-derived design rationale that overturns intuition. Distinct from `plugin-ops/` (Claude Code runtime) and from the cr-fix references files (active design contract).
+
+- [CR rate-limit progressive refill](cr-fix-ops/cr-rate-limit-progressive-refill.md) — `cr_desc: "Review skipped: free tier disabled"` does NOT mean the org reverted to Free plan; it signals CR trial/Pro progressive-refill quota exhaustion. Do NOT add a sniff cooldown; treat `--max-iter` as a CR quota budget (default 5 = Pro 5-rev/hour).
+
+## research-harness
+
+Cross-plugin research harness boundary contracts (code-scout, `/deep-research`, paper-search-tools). Captures inter-harness routing rules that span plugins.
+
+- [code-scout vs /deep-research boundary](research-harness/code-scout-vs-deep-research-boundary.md) — code-scout owns code / ML / docs / papers; `/deep-research` owns generic topics; `research-orchestrator` does NOT delegate to `/deep-research`. Boundary is intentional — the two harnesses tune their fan-out for incompatible domains.

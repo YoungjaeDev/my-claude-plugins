@@ -9,8 +9,6 @@ sources: 3
 
 # Neutral `.llmwiki/` root
 
-> See-also: [[insight-layer-via-hook]]
-
 > **Refinement note (2026-06-01).** The "schema layer stays at `.claude/rules/`"
 > decision below holds for Claude's session-start auto-load, but does NOT extend
 > to *promoting* cross-agent rules: Codex never reads `.claude/rules/`, so
@@ -99,6 +97,7 @@ correct defense against any future mirror that might re-emerge.
   paths it touched were not.
 
 > Refines: [[curated-conservative]]
+> See-also: [[insight-layer-via-hook]]
 > See-also: [[shared-source-codex-manifests]]
 > Evidence: .llmwiki/raw/perplexity-llm-wiki-survey-2026-05.md
 > Evidence: .claude/spec/2026-05-29-llm-wiki-v2.md

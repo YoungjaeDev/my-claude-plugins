@@ -27,14 +27,15 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
    - One-line project pitch (will go into `CLAUDE.md`)
    - 1-3 initial wiki domains (e.g., `frontend`, `backend`, `data-pipeline`) — these become subdirs of `.llmwiki/wiki/`
 
-3. **Create layout** (idempotent — use `cp --update=none` / `mkdir -p`):
+3. **Create layout** (idempotent — `mkdir -p` + existence guards; avoid GNU-only `cp --update=none` so it works on macOS/BSD too):
    ```bash
    mkdir -p .llmwiki/raw .llmwiki/wiki .llmwiki/insight .claude/skills .claude/spec
    : > .llmwiki/raw/.gitkeep
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/index.md      .llmwiki/wiki/index.md
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/log.md        .llmwiki/wiki/log.md
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/insight-skeleton/index.md            .llmwiki/insight/index.md
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/insight-skeleton/_insight-template.md .llmwiki/insight/_template.md
+   T="${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates"
+   [ -f .llmwiki/wiki/index.md ]        || cp "$T/wiki-skeleton/index.md"                 .llmwiki/wiki/index.md
+   [ -f .llmwiki/wiki/log.md ]          || cp "$T/wiki-skeleton/log.md"                   .llmwiki/wiki/log.md
+   [ -f .llmwiki/insight/index.md ]     || cp "$T/insight-skeleton/index.md"              .llmwiki/insight/index.md
+   [ -f .llmwiki/insight/_template.md ] || cp "$T/insight-skeleton/_insight-template.md"  .llmwiki/insight/_template.md
    ```
    Replace `TODO-INITIAL-DATE` in `.llmwiki/insight/index.md` with today's date. (`.claude/rules/` is intentionally NOT created here — see the intro.)
 

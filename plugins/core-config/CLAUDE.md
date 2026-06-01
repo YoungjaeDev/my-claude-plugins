@@ -20,7 +20,7 @@ Both are quiet-friendly; output becomes `additionalContext`. Disable either by r
 
 ### Codex CLI parity (`prompt_inject.sh codex`)
 
-Codex CLI is a sibling runtime for this marketplace (see `.claude/rules/dual-integration.md`). Codex supports `UserPromptSubmit` hooks with `additionalContext`, so the *same* script serves both agents — pass `codex` to get JSON instead of plain stdout:
+Codex CLI is a sibling runtime for this marketplace (Claude and Codex read the same `plugins/<name>/` tree — see the `Codex 통합 (shared-source)` section in the root `AGENTS.md`). Codex supports `UserPromptSubmit` hooks with `additionalContext`, so the *same* script serves both agents — pass `codex` to get JSON instead of plain stdout:
 
 ```bash
 bash prompt_inject.sh        # Claude: plain stdout → additionalContext
@@ -31,7 +31,10 @@ The Claude plugin loader cannot write `~/.codex/`, so the Codex side is a manual
 
 ```bash
 mkdir -p ~/.codex/hooks
-cp "$(echo ~/.claude/plugins/cache/my-claude-plugins/core-config/*/hooks/prompt_inject.sh)" ~/.codex/hooks/prompt_inject.sh
+# pick the newest cached version (glob may match several) and fail if none exist
+latest_hook="$(ls -1dt ~/.claude/plugins/cache/my-claude-plugins/core-config/*/hooks/prompt_inject.sh 2>/dev/null | head -n1)"
+[ -n "$latest_hook" ] || { echo "prompt_inject.sh not found in Claude plugin cache" >&2; exit 1; }
+cp "$latest_hook" ~/.codex/hooks/prompt_inject.sh
 chmod +x ~/.codex/hooks/prompt_inject.sh
 ```
 

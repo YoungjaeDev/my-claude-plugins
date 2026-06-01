@@ -24,7 +24,7 @@ Codex CLI is a sibling runtime for this marketplace (Claude and Codex read the s
 
 ```bash
 bash prompt_inject.sh        # Claude: plain stdout → additionalContext
-bash prompt_inject.sh codex  # Codex:  {"additionalContext": "..."}
+bash prompt_inject.sh codex  # Codex:  {"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"..."}}
 ```
 
 The Claude plugin loader cannot write `~/.codex/`, so the Codex side is a manual one-time setup. Copy the script to a stable path (the plugin cache path is version-pinned and churns on every bump) and register a `UserPromptSubmit` hook:
@@ -44,7 +44,7 @@ Then add to `~/.codex/hooks.json` (create it if absent):
 {
   "hooks": {
     "UserPromptSubmit": [
-      { "type": "command", "command": "bash ~/.codex/hooks/prompt_inject.sh codex" }
+      { "hooks": [{ "type": "command", "command": "bash ~/.codex/hooks/prompt_inject.sh codex" }] }
     ]
   }
 }

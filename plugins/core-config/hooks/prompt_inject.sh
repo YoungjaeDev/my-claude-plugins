@@ -2,7 +2,10 @@
 # UserPromptSubmit hook — compact behavioral block injected on EVERY prompt.
 # Shared by Claude Code and Codex CLI:
 #   - no arg  → plain stdout (Claude: stdout becomes additionalContext)
-#   - `codex` → JSON {"additionalContext": "..."} (Codex UserPromptSubmit format)
+#   - `codex` → JSON {"hookSpecificOutput":{"hookEventName":"UserPromptSubmit",
+#               "additionalContext":"..."}} — the UserPromptSubmit envelope Codex
+#               reads model-visible context from (a top-level additionalContext is
+#               NOT read).
 #
 # Unlike memory_nudge.sh (rate-limited ~3h, recall/save nudge), this block is
 # fixed and fires every turn: Korean-default + a few core behavioral one-liners +
@@ -36,7 +39,7 @@ if [ "$FMT" = "codex" ]; then
   esc=${BLOCK//\\/\\\\}
   esc=${esc//\"/\\\"}
   esc=${esc//$'\n'/\\n}
-  printf '{"additionalContext":"%s"}\n' "$esc"
+  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"%s"}}\n' "$esc"
 else
   printf '%s\n' "$BLOCK"
 fi

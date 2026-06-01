@@ -65,21 +65,19 @@ consolidates them into the neutral root.
 
 ## Vindication: the transform was the problem, not stale references
 
-A pre-retirement audit grepped the three `codex-bridge` body transforms
-(`.claude/`→`.codex/`, `CLAUDE.md`→`AGENTS.md`, `/plugin:skill`→`$skill`)
-across the entire skill tree and found ~275 hits. Spot-checking revealed that
-nearly all hits were **legitimate documentation of Claude's filesystem**, not
-stale references that needed rewriting: `llm-wiki` bootstraps `.claude/rules/`
-literally (the only verified session-start auto-load path), `github-dev/cr-fix`
-iterates `CONFIG_FILES="CLAUDE.md AGENTS.md"`, `rules-forge` explains the
-semantics of `CLAUDE.md` to its readers. The transforms were corrupting
-authorial intent rather than translating it.
+A pre-retirement audit of the three `codex-bridge` body transforms found ~275
+hits that were nearly all **legitimate documentation of Claude's filesystem**,
+not stale references — the transforms corrupted authorial intent rather than
+translating it. The full account (the three transforms and the three worked
+examples) is the canonical record on [[shared-source-codex-manifests]] under
+`## Why the body-transform mirror was wrong`; it is not restated here to keep a
+single source of truth.
 
 The fork bug is now eliminated structurally: the `codex-bridge` plugin (the
 transform source) is retired, and both runtimes read the same source via a
-manifest generator that emits *outside* the skill bodies — see
-[[shared-source-codex-manifests]]. The neutral-root data layout remains the
-correct defense against any future mirror that might re-emerge.
+manifest generator that emits *outside* the skill bodies. The neutral-root data
+layout remains the correct defense against any future mirror that might
+re-emerge.
 
 ## Sources
 

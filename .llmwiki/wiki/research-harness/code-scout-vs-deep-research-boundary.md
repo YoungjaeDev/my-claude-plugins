@@ -1,7 +1,7 @@
 ---
-id: code-scout-deep-research-boundary
-aliases: [research-harness-boundary, code-scout-vs-deep-research, orchestrator-non-delegation]
-last_verified: 2026-05-30
+id: code-scout-vs-deep-research-boundary
+aliases: [research-harness-boundary, code-scout-vs-deep-research, code-scout-deep-research-boundary, orchestrator-non-delegation]
+last_verified: 2026-06-01
 status: active
 volatility: stable
 sources: 2

@@ -49,6 +49,9 @@ Insight is the most aggressively consolidated layer. Before adding an entry: gre
 
 ## Entries
 
-<!-- No insights promoted yet. Graduate findings here via `/llm-wiki:ingest-finding`
-     (its graduation step), one entry per `## <id>` heading with a 1-line hook:
-     `- [title](<slug>.md) — rule + when-to-apply (promoted_from [[wiki-id]])` -->
+<!-- Graduate findings here via `/llm-wiki:ingest-finding` (its graduation step).
+     One hook per entry: `- [title](<slug>.md) — rule + when-to-apply (promoted_from [[wiki-id]])` -->
+
+- [Regenerate Codex manifests on surface change](codex-manifest-regen.md) — run `node scripts/sync-codex-manifests.mjs` after any plugin skills/version/description/category change; `--check` is the CI drift gate; never hand-edit generated manifests or reintroduce a body transform (promoted_from [[shared-source-codex-manifests]]).
+- [CR "free tier disabled" = quota refill](cr-rate-limit-budget.md) — CR `Review skipped: free tier disabled` is progressive-refill exhaustion, not a plan downgrade; no sniff cooldown; treat `--max-iter` as a CR quota budget (promoted_from [[cr-rate-limit-progressive-refill]]).
+- [Plugin versions pin at session start](plugin-cache-restart.md) — a session pins each plugin's version at startup; restart to pick up a cached update; mid-migration, drive work from repo source not the pinned skill (promoted_from [[cache-version-pinning]]).

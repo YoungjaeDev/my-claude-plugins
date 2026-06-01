@@ -8,6 +8,26 @@ Every `/ingest-finding` and `/post-merge-wiki` run writes a block here **before*
 
 <!-- New entries go directly under this line -->
 
+## 2026-06-01 — insight promotion (3 entries) + body-transform dedup + code-scout id fix (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Full insight-layer pass over the existing wiki: promote 3 stabilized findings to `.llmwiki/insight/`, compress one duplicated narrative, fix one identity-rot id. No wiki page deleted; each insight entry condenses (never copies) its `promoted_from:` source.
+
+- insight/codex-manifest-regen.md: new insight entry (id `codex-manifest-regen`, tier insight, promoted_from [[shared-source-codex-manifests]], evidence_count 2, volatility stable, sources 2) — rule: regenerate Codex manifests (`node scripts/sync-codex-manifests.mjs`) on any plugin skills/version/description/category change; `--check` is the CI drift gate; never hand-edit generated manifests or reintroduce a body-transform mirror.
+- insight/cr-rate-limit-budget.md: new insight entry (id `cr-rate-limit-budget`, tier insight, promoted_from [[cr-rate-limit-progressive-refill]], evidence_count 2, volatility stable — stable core only; the source page stays volatile, sources 2) — rule: CR `Review skipped: free tier disabled` = progressive-refill quota exhaustion, NOT a plan downgrade; do not add a sniff cooldown; treat `--max-iter` as a CR quota budget. (The planned-v3 `--push-spacing` detail is intentionally left in the wiki, not promoted.)
+- insight/plugin-cache-restart.md: new insight entry (id `plugin-cache-restart`, tier insight, promoted_from [[cache-version-pinning]], evidence_count 2, volatility stable, sources 2) — rule: a session pins each plugin's version at startup; mid-session marketplace updates are invisible until restart; during a migration window drive work from repo source, not the pinned skill; refresh via restart or `rm -rf` of the plugin cache.
+- insight/index.md: registered the 3 entries under `## Entries`; last_verified 2026-06-01.
+- llm-wiki-design/neutral-llmwiki-root.md: consolidation — compressed the `## Vindication` section (a full re-telling of the 275-hit body-transform audit + the same 3 examples) to a short pointer at the canonical account in [[shared-source-codex-manifests]] (`## Why the body-transform mirror was wrong`). Kept the conclusion; removed the duplicated body. last_verified 2026-06-01 (sources unchanged).
+- research-harness/code-scout-vs-deep-research-boundary.md: identity-rot fix — `id: code-scout-deep-research-boundary` → `code-scout-vs-deep-research-boundary` (now matches the filename and the `code-scout-vs-deep-research` alias); no cross-page `[[ref]]` pointed at the old id. last_verified 2026-06-01.
+- Evidence: `.llmwiki/wiki/plugin-ops/{shared-source-codex-manifests,cache-version-pinning}.md`, `.llmwiki/wiki/cr-fix-ops/cr-rate-limit-progressive-refill.md`, `.llmwiki/insight/index.md`.
+
+## 2026-06-01 — post-merge #42 + #43 (post-merge-wiki)
+
+Scanned the merge diffs `f6efe50` (#42 dual-integration rule) + `799a9bb` (#43 insight layer + prompt-inject hook) per `git show --name-only`. No new wiki page ingested — both PRs were already self-documenting:
+
+- #43 shipped its own wiki lore in-PR: `llm-wiki-design/insight-layer-via-hook.md` (new) + `neutral-llmwiki-root.md` / `curated-conservative.md` updates + a `log.md` entry (the 2026-06-01 insight-layer entry below).
+- #42's `.claude/rules/dual-integration.md` is a normative Claude↔Codex surface-sync checklist whose design rationale already lives in `plugin-ops/shared-source-codex-manifests.md` (the rule cites it at its Source-of-Truth line) + `llm-wiki-design/{neutral-llmwiki-root,insight-layer-via-hook}.md`. A dedicated page would duplicate that, so none was added.
+- rules/*.md flags: none — dual-integration.md is a new rule file, not an invariant change.
+
 ## 2026-06-01 — insight layer + refine design record (ingest-finding)
 
 Diff log written before applying the page edits (git-revertible). Captures the WS2 insight-layer migration (the `.llmwiki/insight/` promoted layer + the `.claude/rules/`-as-promotion-target retirement).

@@ -22,6 +22,17 @@ The wiki is only useful if it stays current. Conversations end, audit mds accumu
 
 ## Core patterns
 
+### Consolidate, don't append (governing rule)
+
+Ingest is **not** an append operation. Before writing anything, dedup and decide whether this is an update, a supersede, or (last resort) a new page. Naive accumulation — a new page or a new paragraph for every finding — is the dominant rot mode ("naive accumulation → bloat"): the wiki swells, cross-refs go stale, and the synthesis value collapses into a junk drawer. Every ingest must leave the wiki *more consolidated*, not just *longer*.
+
+The dedup gate, run before any add:
+
+- Grep `index.md` aliases + page bodies + `id:`/`aliases:` for the concept.
+- If an existing page's scope this *refines* / *contradicts* / extends → **edit that page** (or supersede it), don't add.
+- Condense to the claim; push long reasoning down to `> Evidence:` (a `.llmwiki/raw/` or external citation), never inline a wall of justification.
+- Only add a new page if the finding is a genuinely new top-level concept inside an existing `wiki/<domain>/`.
+
 ### Prefer updating existing pages over adding new ones
 
 Karpathy's original observation: **one finding usually touches 10–15 wiki pages** via cross-references, not just one. Append-only wiki growth (the "junk drawer" rot mode) appears when every new finding becomes a new page. Before adding a page:
@@ -70,9 +81,17 @@ This is cheap and gives `git log log.md` (at the resolved root) as the single au
      - Add a one-line entry to `index.md` under the matching domain heading.
    - **If a finding contradicts a page with historical value**: apply the supersede pattern above — new page/section gets `> Supersedes: [[old-id]]`; old page gets `status: stale` + `> Superseded-by: [[new-id]]` (kept, not deleted).
 5. **Update cross-refs**: any page that previously linked to or contradicted the updated page may need a touch. Use typed grammar — `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — never raw `[[wikilink]]`.
-6. **Decide if `rules/` needs an update**:
-   - If the finding turns a previously-soft pattern into a hard test-pin → also update the matching `rules/*.md` invariant section.
-   - Otherwise rules/ stays out of it (lore goes to wiki, not rules).
+6. **Decide whether to graduate to `.llmwiki/insight/`** (the promoted cross-agent layer — NOT `.claude/rules/`):
+   - The wiki is the default home. Graduate a finding up to `.llmwiki/insight/` **only when ALL four hold**:
+     1. **Recurs across sessions** — observed in 2+ independent sessions/PRs, not a one-off.
+     2. **Generalizable** — applies beyond the one file/bug that surfaced it.
+     3. **Costly to violate** — getting it wrong breaks a build/release/reproducibility gate or wastes a review cycle.
+     4. **Stabilized** — settled, not under active debate or still being designed.
+   - Do NOT graduate: one-offs, undecided/contested points, things already known going in, or reusable *procedures* (those become a skill).
+   - **Why insight, not `.claude/rules/`**: Codex never reads `.claude/rules/`, so a rule promoted there is invisible to half the toolchain. Insight lives at `.llmwiki/insight/` (neutral root) and reaches both agents via the `core-config` prompt-injection hook. llm-wiki no longer promotes lore to `.claude/rules/` at all. See `.llmwiki/insight/index.md`.
+   - **Insight is consolidate-first too**: dedup against existing insight entries (`id`/`aliases`/body grep) before adding; prefer update/supersede; keep each entry to rule + apply-when + why, with the long story left in the wiki page via `promoted_from:` + `> Evidence:`.
+   - When graduating, write the insight entry with the insight frontmatter (`tier: insight`, `promoted_from: [[wiki-id]]`, `evidence_count: N`, plus the standard `id`/`aliases`/`last_verified`/`status`/`volatility`/`sources`), add a hook to `.llmwiki/insight/index.md`, and log it in the diff-log block like any other page touch.
+   - If nothing meets the bar, insight stays out of it (lore stays in the wiki).
 
 ## LLM autonomy boundaries
 
@@ -82,10 +101,10 @@ This is cheap and gives `git log log.md` (at the resolved root) as the single au
 | Bump `last_verified:` after actually re-checking against code | ✅ | — |
 | Add new page inside existing `wiki/<domain>/` | ✅ | — |
 | Supersede a page (new page `> Supersedes:` + old page `status: stale` + `> Superseded-by:`) | ✅ (after diff log) | — |
+| Graduate a finding to `.llmwiki/insight/` (all 4 promotion criteria met) | ✅ (after diff log) | — |
 | Add new `wiki/<domain>/` directory | ❌ | ✅ |
 | Delete or merge pages | ❌ | ✅ |
 | Resolve a `> Contradicts:` link (pick a winner) | ❌ | ✅ |
-| Change a `rules/` invariant | ❌ (alert only) | ✅ |
 | Cross-ref insertion/update | ✅ (typed grammar) | — |
 | Append to the resolved root's `log.md` | ✅ (always) | — |
 
@@ -136,8 +155,10 @@ Page-edit summary:
 
 - **Copying audit-md contents verbatim** — wiki *synthesizes*; raw belongs in `.llmwiki/raw/` (or audits dir).
 - **Single-page ingest** when the finding touches multiple pages → cross-refs go stale silently.
-- **New page for every finding** → append-only rot. Update existing pages first.
+- **New page for every finding** → append-only rot ("naive accumulation → bloat"). Run the dedup gate; update/supersede existing pages first.
 - **Silently overwriting a contradicted page with historical value** — supersede instead (new page `> Supersedes:`, old page `status: stale` + `> Superseded-by:`).
+- **Promoting lore to `.claude/rules/`** — Codex can't read it. Graduate cross-agent rules to `.llmwiki/insight/` (all 4 criteria), surfaced via the prompt-injection hook.
+- **Graduating one-offs to insight** — insight is the most consolidated layer; promote only recurring + generalizable + costly-to-violate + stabilized findings.
 - **3rd-depth directory** without approval — wiki is 2-depth (domain/page) by design.
 - **Edit without log entry first** — silent corruption risk; no audit trail.
 

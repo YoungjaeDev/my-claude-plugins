@@ -10,6 +10,8 @@ This file is the entry point for the LLM-maintained lore layer. Every wiki page 
 
 > **For LLMs**: when answering a "why" or "how" question that isn't a code invariant, read this file first, follow the hook to the right page, and cite the wiki page (not the underlying audit md). When you discover new lore, use `/ingest-finding` to update.
 
+> **Insight layer**: the promoted, cross-agent rules live one level up at `.llmwiki/insight/index.md` (the `core-config` prompt-inject hook points there first). Check it before this MOC; graduate findings up to it via `/ingest-finding`.
+
 ## Page frontmatter (mini-legend)
 
 Every wiki page (not this MOC, not `log.md`) carries:
@@ -62,7 +64,8 @@ All wiki edits append one line to `log.md` (`## YYYY-MM-DD — <summary>` header
 The v2 design record: which rohitg00-v2 ideas were harvested vs rejected, and why.
 
 - [Curated-conservative v2 upgrade](llm-wiki-design/curated-conservative.md) — hub: harvest the git-auditable kernel of each v2 idea, reject the heavyweight machinery (steal the ideas, not the plan).
-- [Neutral `.llmwiki/` root](llm-wiki-design/neutral-llmwiki-root.md) — wiki/raw move out of `.claude/` so codex-bridge's `.claude/`->`.codex/` body transform can never fork the wiki per-agent.
+- [Insight layer via hook](llm-wiki-design/insight-layer-via-hook.md) — promoted rules graduate to `.llmwiki/insight/` delivered by the shared prompt-inject hook (Claude + Codex), NOT `.claude/rules/` (Codex can't read it). Refines neutral-`.llmwiki/`-root (promotion target) + curated-conservative (the one justified new dir).
+- [Neutral `.llmwiki/` root](llm-wiki-design/neutral-llmwiki-root.md) — wiki/raw move out of `.claude/` so the retired codex-bridge `.claude/`->`.codex/` body transform could never fork the wiki per-agent; schema-home claim refined by insight-layer-via-hook.
 - [Volatility over decay](llm-wiki-design/volatility-over-decay.md) — a `volatility:` class with a fixed window replaces Ebbinghaus decay math; old is not stale.
 - [Provenance over confidence](llm-wiki-design/provenance-over-confidence.md) — `sources: N` + a named `## Sources` list replaces fabricated float confidence.
 - [Post-merge wiki trigger](llm-wiki-design/post-merge-trigger.md) — post-merge-wiki fires from two complementary triggers: github-dev:post-merge Step 5.8 (workflow + GitHub-UI merges) and the wiki_post_commit_hint hook (local CLI merges only).

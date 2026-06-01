@@ -8,19 +8,19 @@ Karpathy LLM-Wiki 3-layer system packaged as a plugin. Universal — works in an
 |-----------|------|---------|
 | **6 skills** | `skills/{query,ingest,lint,bootstrap,migrate,post-merge}-wiki/` | wiki query, finding ingest, health audit, repo bootstrap, v1→v2 migration, post-merge ingest chain |
 | **3 hooks** | `hooks/wiki_{stale_check,post_commit_hint,session_start_lint_hint}.sh` | UserPromptSubmit + PostToolUse(Bash) + SessionStart soft hints |
-| **bootstrap templates** | `skills/bootstrap-wiki/assets/templates/` | wiki-skeleton (index, log, spec) + rules-skeleton (_entrypoint, code-map, _domain) |
+| **bootstrap templates** | `skills/bootstrap-wiki/assets/templates/` | wiki-skeleton (index, log, spec) + insight-skeleton (index, _insight-template) |
 
 ## Layer model
 
 | Layer | Path | Loaded? | Purpose |
 |-------|------|---------|---------|
-| **Schema** | `.claude/rules/*.md` | auto | trip-wire invariants only |
+| **Insight (promoted)** | `.llmwiki/insight/**` | via `core-config` `prompt_inject.sh` hook (Claude + Codex), every prompt | cross-agent promoted rules: recurring, generalizable, costly-to-violate, stabilized |
 | **Wiki (lore)** | `.llmwiki/wiki/**` | on-demand | LLM-maintained domain knowledge |
 | **Raw evidence** | `.llmwiki/raw/**` (+ external docs) | direct read | append-only immutable evidence — wiki cites, never copies |
 
-The wiki + raw layers live under the neutral `.llmwiki/` root specifically so `codex-bridge`'s `.claude/`→`.codex/` body transform can never rewrite them into a per-agent `.codex/wiki/` fork. The schema layer stays at `.claude/rules/` — the only verified session-start auto-load path.
+All three layers live under the neutral `.llmwiki/` root — one copy, both agents (Claude + Codex 0.135 read the same tree in place; the old `codex-bridge` `.claude/`→`.codex/` body transform that motivated the neutral root was retired in 1.40.0, and the root stays neutral as defense against any future mirror). llm-wiki no longer maintains a `.claude/rules/` schema layer: Codex never reads `.claude/rules/`, so cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes via the prompt-injection hook instead of Claude's `paths:`-glob auto-load. `.claude/rules/` stays reserved for mechanical tool-operation rules (versioning, dual-integration), not wiki lore. See `> See-also: [[insight-layer-via-hook]]` in `.llmwiki/wiki/llm-wiki-design/`.
 
-Karpathy analogy: rules = `__init__.py` public contract, wiki = module docstrings + design notes, skills = CLI subcommands.
+Karpathy analogy: insight = `__init__.py` public contract, wiki = module docstrings + design notes, skills = CLI subcommands.
 
 ## Resolution order
 

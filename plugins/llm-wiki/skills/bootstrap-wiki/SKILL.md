@@ -1,11 +1,11 @@
 ---
 name: bootstrap-wiki
-description: Use to scaffold the Karpathy 3-layer `.claude/` system (rules + wiki + skills + spec + hooks) in a new repo that doesn't have it yet. Copies templates from the plugin's bundled assets, prompts for project pitch and 1-3 first domains, writes a slim CLAUDE.md.
+description: Use to scaffold the LLM-Wiki knowledge system (`.llmwiki/` insight + wiki + raw, plus spec) in a new repo that doesn't have it yet. Copies templates from the plugin's bundled assets, prompts for project pitch and 1-3 first domains, writes a slim CLAUDE.md.
 ---
 
 # bootstrap-wiki
 
-Karpathy LLM-Wiki 3-layer = `.claude/rules/` (schema invariants) + `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence). This skill drops the empty layout into any repo so the per-PR workflow (spec → resolve-issue → post-merge → ingest) has a place to land. The wiki + raw layers live under the neutral `.llmwiki/` root so `codex-bridge`'s `.claude/`→`.codex/` body transform can never fork them per-agent; the schema layer stays at `.claude/rules/`, the only verified auto-load path.
+LLM-Wiki 3-layer = `.llmwiki/insight/` (promoted cross-agent rules) + `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence). This skill drops the empty layout into any repo so the per-PR workflow (spec → resolve-issue → post-merge → ingest) has a place to land. All three layers live under the neutral `.llmwiki/` root so `codex-bridge`'s `.claude/`→`.codex/` body transform can never fork them per-agent — one copy, both agents (Claude Code + Codex). This skill does **not** scaffold a `.claude/rules/` schema layer: Codex can't read it, so cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes via the `core-config` prompt-injection hook instead. `.claude/rules/` stays reserved for mechanical tool-operation rules (not wiki lore), which this skill leaves to the project.
 
 > Ships with `llm-wiki` plugin; install via marketplace. Templates bundled at `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/`.
 
@@ -26,24 +26,23 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
 2. **Gather project info via AskUserQuestion**:
    - One-line project pitch (will go into `CLAUDE.md`)
    - 1-3 initial wiki domains (e.g., `frontend`, `backend`, `data-pipeline`) — these become subdirs of `.llmwiki/wiki/`
-   - Whether to also create matching `.claude/rules/<domain>.md` stubs
 
 3. **Create layout** (idempotent — use `cp --update=none` / `mkdir -p`):
    ```bash
-   mkdir -p .llmwiki/raw .llmwiki/wiki .claude/rules .claude/skills .claude/spec .claude/hooks
+   mkdir -p .llmwiki/raw .llmwiki/wiki .llmwiki/insight .claude/skills .claude/spec
    : > .llmwiki/raw/.gitkeep
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/index.md  .llmwiki/wiki/index.md
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/log.md    .llmwiki/wiki/log.md
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/rules-skeleton/_entrypoint.md .claude/rules/_entrypoint.md
-   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/rules-skeleton/code-map.md    .claude/rules/code-map.md
+   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/index.md      .llmwiki/wiki/index.md
+   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/log.md        .llmwiki/wiki/log.md
+   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/insight-skeleton/index.md            .llmwiki/insight/index.md
+   cp --update=none ${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/insight-skeleton/_insight-template.md .llmwiki/insight/_template.md
    ```
+   Replace `TODO-INITIAL-DATE` in `.llmwiki/insight/index.md` with today's date. (`.claude/rules/` is intentionally NOT created here — see the intro.)
 
 4. **Per-domain stubs**: for each domain name the user gave, create:
    - `.llmwiki/wiki/<domain>/.gitkeep` (so the empty dir is tracked)
-   - Optionally `.claude/rules/<domain>.md` from `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/rules-skeleton/_domain-template.md`, with `paths:` left as a TODO comment
 
 5. **CLAUDE.md** at repo root:
-   - If missing, write a ~30-line slim version: project pitch + a pointer to `.llmwiki/wiki/index.md` (lore) and `.claude/rules/` (schema) + note that the user's global `CLAUDE.md` (under their home `.claude/` directory) takes precedence
+   - If missing, write a ~30-line slim version: project pitch + a pointer to `.llmwiki/insight/index.md` (promoted cross-agent rules, read first) and `.llmwiki/wiki/index.md` (lore) + note that the user's global `CLAUDE.md` (under their home `.claude/` directory) takes precedence
    - If existing, do not overwrite — print a diff suggestion for the user to merge manually
 
 6. **First spec template**: copy `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/spec-template.md` to `.claude/spec/_template.md` (rename of-the-day). Tell the user the workflow: copy template to `<YYYY-MM-DD>-<short-name>.md` → `/github-dev:decompose-issue` → `/github-dev:resolve-issue` → merge → `/github-dev:post-merge` → `/llm-wiki:post-merge-wiki`.
@@ -55,10 +54,11 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
 After bootstrap:
 - `.llmwiki/wiki/index.md` exists and has 1+ domain headings (even if empty)
 - `.llmwiki/raw/.gitkeep` exists
-- `.claude/rules/_entrypoint.md` exists
+- `.llmwiki/insight/index.md` exists (with `TODO-INITIAL-DATE` replaced by today's date)
 - `.claude/spec/_template.md` exists
 - `.llmwiki/wiki/log.md` has its first entry
-- New `CLAUDE.md` (or merge suggestion) points to `.llmwiki/wiki/index.md` (lore) + `.claude/rules/` (schema)
+- New `CLAUDE.md` (or merge suggestion) points to `.llmwiki/insight/index.md` (promoted rules) + `.llmwiki/wiki/index.md` (lore)
+- No `.claude/rules/` schema layer was created by this skill
 - `git status` shows expected new files (run `git add -n .llmwiki/ .claude/` to preview)
 
 ## What NOT to do

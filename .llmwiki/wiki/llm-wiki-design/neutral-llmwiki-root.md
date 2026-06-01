@@ -1,13 +1,19 @@
 ---
 id: neutral-llmwiki-root
 aliases: [llmwiki-root, neutral-root, codex-fork-fix, dot-llmwiki]
-last_verified: 2026-05-31
+last_verified: 2026-06-01
 status: active
 volatility: stable
 sources: 3
 ---
 
 # Neutral `.llmwiki/` root
+
+> **Refinement note (2026-06-01).** The "schema layer stays at `.claude/rules/`"
+> decision below holds for Claude's session-start auto-load, but does NOT extend
+> to *promoting* cross-agent rules: Codex never reads `.claude/rules/`, so
+> promoted insight lives at `.llmwiki/insight/` and is delivered via the shared
+> prompt-injection hook. See `[[insight-layer-via-hook]]` for that refinement.
 
 The wiki and raw-evidence layers live under a neutral top-level `.llmwiki/` root
 rather than under `.claude/`. This is a data-layout choice that defends against
@@ -59,21 +65,19 @@ consolidates them into the neutral root.
 
 ## Vindication: the transform was the problem, not stale references
 
-A pre-retirement audit grepped the three `codex-bridge` body transforms
-(`.claude/`→`.codex/`, `CLAUDE.md`→`AGENTS.md`, `/plugin:skill`→`$skill`)
-across the entire skill tree and found ~275 hits. Spot-checking revealed that
-nearly all hits were **legitimate documentation of Claude's filesystem**, not
-stale references that needed rewriting: `llm-wiki` bootstraps `.claude/rules/`
-literally (the only verified session-start auto-load path), `github-dev/cr-fix`
-iterates `CONFIG_FILES="CLAUDE.md AGENTS.md"`, `rules-forge` explains the
-semantics of `CLAUDE.md` to its readers. The transforms were corrupting
-authorial intent rather than translating it.
+A pre-retirement audit of the three `codex-bridge` body transforms found ~275
+hits that were nearly all **legitimate documentation of Claude's filesystem**,
+not stale references — the transforms corrupted authorial intent rather than
+translating it. The full account (the three transforms and the three worked
+examples) is the canonical record on [[shared-source-codex-manifests]] under
+`## Why the body-transform mirror was wrong`; it is not restated here to keep a
+single source of truth.
 
 The fork bug is now eliminated structurally: the `codex-bridge` plugin (the
 transform source) is retired, and both runtimes read the same source via a
-manifest generator that emits *outside* the skill bodies — see
-[[shared-source-codex-manifests]]. The neutral-root data layout remains the
-correct defense against any future mirror that might re-emerge.
+manifest generator that emits *outside* the skill bodies. The neutral-root data
+layout remains the correct defense against any future mirror that might
+re-emerge.
 
 ## Sources
 
@@ -91,6 +95,7 @@ correct defense against any future mirror that might re-emerge.
   paths it touched were not.
 
 > Refines: [[curated-conservative]]
+> See-also: [[insight-layer-via-hook]]
 > See-also: [[shared-source-codex-manifests]]
 > Evidence: .llmwiki/raw/perplexity-llm-wiki-survey-2026-05.md
 > Evidence: .claude/spec/2026-05-29-llm-wiki-v2.md

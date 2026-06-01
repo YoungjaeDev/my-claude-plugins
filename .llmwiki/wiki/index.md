@@ -10,6 +10,8 @@ This file is the entry point for the LLM-maintained lore layer. Every wiki page 
 
 > **For LLMs**: when answering a "why" or "how" question that isn't a code invariant, read this file first, follow the hook to the right page, and cite the wiki page (not the underlying audit md). When you discover new lore, use `/ingest-finding` to update.
 
+> **Insight layer**: the promoted, cross-agent rules live one level up at `.llmwiki/insight/index.md` (the `core-config` prompt-inject hook points there first). Check it before this MOC; graduate findings up to it via `/ingest-finding`.
+
 ## Page frontmatter (mini-legend)
 
 Every wiki page (not this MOC, not `log.md`) carries:
@@ -62,7 +64,8 @@ All wiki edits append one line to `log.md` (`## YYYY-MM-DD — <summary>` header
 The v2 design record: which rohitg00-v2 ideas were harvested vs rejected, and why.
 
 - [Curated-conservative v2 upgrade](llm-wiki-design/curated-conservative.md) — hub: harvest the git-auditable kernel of each v2 idea, reject the heavyweight machinery (steal the ideas, not the plan).
-- [Neutral `.llmwiki/` root](llm-wiki-design/neutral-llmwiki-root.md) — wiki/raw move out of `.claude/` so codex-bridge's `.claude/`->`.codex/` body transform can never fork the wiki per-agent.
+- [Insight layer via hook](llm-wiki-design/insight-layer-via-hook.md) — promoted rules graduate to `.llmwiki/insight/` delivered by the shared prompt-inject hook (Claude + Codex), NOT `.claude/rules/` (Codex can't read it). Refines neutral-`.llmwiki/`-root (promotion target) + curated-conservative (the one justified new dir).
+- [Neutral `.llmwiki/` root](llm-wiki-design/neutral-llmwiki-root.md) — wiki/raw move out of `.claude/` so the retired codex-bridge `.claude/`->`.codex/` body transform could never fork the wiki per-agent; schema-home claim refined by insight-layer-via-hook.
 - [Volatility over decay](llm-wiki-design/volatility-over-decay.md) — a `volatility:` class with a fixed window replaces Ebbinghaus decay math; old is not stale.
 - [Provenance over confidence](llm-wiki-design/provenance-over-confidence.md) — `sources: N` + a named `## Sources` list replaces fabricated float confidence.
 - [Post-merge wiki trigger](llm-wiki-design/post-merge-trigger.md) — post-merge-wiki fires from two complementary triggers: github-dev:post-merge Step 5.8 (workflow + GitHub-UI merges) and the wiki_post_commit_hint hook (local CLI merges only).
@@ -74,3 +77,15 @@ Operational lore for the plugin system itself — cache, loading, version resolu
 - [Plugin cache version-pinning](plugin-ops/cache-version-pinning.md) — the cache holds multiple versions per plugin; a session pins the startup-resolved version, so a newer already-cached version is not served until restart (or via a `local` settings.json source).
 - [Shared-source Codex manifests](plugin-ops/shared-source-codex-manifests.md) — Claude and Codex 0.135 read the same `plugins/<name>/skills/` tree via a thin manifest generator (`scripts/sync-codex-manifests.mjs`); the retired `codex-bridge` body-transform mirror was wrong because its 275 audit hits were authorial intent, not stale references. 19 of 21 plugins eligible after the 1.41.0 dual-surface conversion of `deepwiki` + `project-init`.
 - [Dual-surface command + skill pattern](plugin-ops/dual-surface-command-skill-pattern.md) — how a plugin ships both an explicit `/plugin:command` and a Codex-loadable `skill` from a single `references/<name>-procedure.md` body; documents the runtime preflight guard required for destructive plugins and the `PLUGIN_ROOT` resolver pattern that handles Codex's lack of `${CLAUDE_PLUGIN_ROOT}`.
+
+## cr-fix-ops
+
+Per-plugin operational lore for `github-dev:cr-fix` — rate-limit semantics, dogfood-derived design rationale that overturns intuition. Distinct from `plugin-ops/` (Claude Code runtime) and from the cr-fix references files (active design contract).
+
+- [CR rate-limit progressive refill](cr-fix-ops/cr-rate-limit-progressive-refill.md) — `cr_desc: "Review skipped: free tier disabled"` does NOT mean the org reverted to Free plan; it signals CR trial/Pro progressive-refill quota exhaustion. Do NOT add a sniff cooldown; treat `--max-iter` as a CR quota budget (default 5 = Pro 5-rev/hour).
+
+## research-harness
+
+Cross-plugin research harness boundary contracts (code-scout, `/deep-research`, paper-search-tools). Captures inter-harness routing rules that span plugins.
+
+- [code-scout vs /deep-research boundary](research-harness/code-scout-vs-deep-research-boundary.md) — code-scout owns code / ML / docs / papers; `/deep-research` owns generic topics; `research-orchestrator` does NOT delegate to `/deep-research`. Boundary is intentional — the two harnesses tune their fan-out for incompatible domains.

@@ -7,7 +7,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 ### Core
 | Plugin | Description |
 |--------|-------------|
-| `core-config` | Python auto-format + cross-platform notifications (work guidelines live in `~/.claude/CLAUDE.md`) |
+| `core-config` | Python auto-format + cross-platform notifications + per-prompt behavioral block (`prompt_inject.sh`, shared Claude + Codex; points at `.llmwiki/insight/`) (work guidelines live in `~/.claude/CLAUDE.md`) |
 
 ### GitHub
 | Plugin | Description |
@@ -66,7 +66,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 ### Memory & Lore
 | Plugin | Description |
 |--------|-------------|
-| `llm-wiki` | Karpathy LLM-Wiki 3-layer (6 skills + 3 hooks + bootstrap templates) for the neutral `.llmwiki/` root (+ legacy `.claude/wiki/`) |
+| `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral `.llmwiki/`): 6 skills + 3 hooks + bootstrap templates. Promoted cross-agent rules graduate to `.llmwiki/insight/` (surfaced via core-config prompt-inject hook), not `.claude/rules/` |
 
 ### Workflow State
 | Plugin | Description |
@@ -123,3 +123,4 @@ Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.j
 ## Modular Rules
 
 - See @.claude/rules/plugin-versioning.md for plugin version bump contract and cache-refresh workflow.
+- See @.claude/rules/dual-integration.md for keeping the Claude Code and Codex surfaces in sync when editing guidance, hooks, or derived artifacts (mirrored into `AGENTS.md` since Codex cannot `@import` `.claude/rules/`).

@@ -70,10 +70,10 @@ and `midjourney` (image-gen workflow does not fit Codex's execution model).
 That yields **19 of 21** plugins eligible for Codex.
 
 `deepwiki` and `project-init` were in the EXCLUDED set before 1.41.0 because
-they shipped only `commands/`. The 1.41.0 dual-surface conversion (see
-[[dual-surface-command-skill-pattern]]) added `skills/` directories whose
-bodies point at the same `references/` procedures the commands use, so the
-plugins now have something for Codex to load and leave the exclusion list.
+they shipped only `commands/`. The 1.41.0 dual-surface conversion added
+`skills/` directories whose bodies point at the same `references/` procedures
+the commands use, so the plugins now have something for Codex to load and leave
+the exclusion list (the layout is the `> See-also:` page below).
 
 `.mcp.json` is treated as a *file* path in the Codex manifest, not a directory
 — a subtle schema difference from Claude's behavior that the generator handles

@@ -22,11 +22,11 @@ The wiki is the lore layer — LLM-maintained domain knowledge that doesn't belo
 
 ## Steps
 
-1. **Read `index.md` at the resolved wiki root first.** It's the MOC — every page listed with a 1-line hook. Skim hooks; pick page(s). If `index.md` is missing, the wiki layer is not initialized — suggest `/llm-wiki:bootstrap-wiki`.
+1. **Check `.llmwiki/insight/index.md` first (if present), then the wiki `index.md`.** Insight is the promoted, most-consolidated layer — the `core-config` prompt-injection hook already points both agents here first. If an insight entry covers your question, it is the authoritative condensed rule; follow its `promoted_from: [[wiki-id]]` down to the wiki page only when you need the full story. Then read the wiki MOC (`index.md` at the resolved root) — every page listed with a 1-line hook; skim hooks, pick page(s). If neither `index.md` exists, the layer is not initialized — suggest `/llm-wiki:bootstrap-wiki`.
 2. **Read the matching page(s).** Each page is a single concept, ≤5KB.
 3. **Follow typed cross-refs (authoritative grammar).** `> Refines: [[id]]` means deeper detail; `> Contradicts: [[id]]` means conflict to resolve before action; `> Evidence: .llmwiki/raw/<file>` (or external `docs/...md`) means raw citation; `> See-also: [[id]]` is lateral; `> Supersedes: [[id]]` / `> Superseded-by: [[id]]` mark lifecycle replacement; `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` are typed relations. These typed refs are the only authoritative link form.
 4. **Check `status:` and `last_verified:` frontmatter.** If `status: stale`, the page is superseded — follow its `> Superseded-by: [[id]]` to the active replacement and read that instead. Then check `last_verified:`: older than the page's volatility window (stable 180d / volatile 30d) = treat as possibly stale; verify against code before acting on the lore. Soft-hint hook may already have flagged it.
-5. If the wiki doesn't cover what you need, the answer is either in code (grep), in rules (invariants), or genuinely missing → trigger `/llm-wiki:ingest-finding` after you figure it out.
+5. If neither insight nor wiki covers what you need, the answer is either in code (grep), in `.claude/rules/` (mechanical tool invariants — not wiki lore), or genuinely missing → trigger `/llm-wiki:ingest-finding` after you figure it out (it decides wiki vs insight graduation).
 
 ## Verification
 

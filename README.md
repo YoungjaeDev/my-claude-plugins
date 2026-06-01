@@ -61,7 +61,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 
 | 카테고리 | 플러그인 | 설명 |
 |---------|---------|------|
-| **Core** | `core-config` | Python 포매팅, 알림 (work guidelines 는 `~/.claude/CLAUDE.md`) |
+| **Core** | `core-config` | Python 포매팅, 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh`, Claude+Codex 공유, `.llmwiki/insight/` 포인터) (work guidelines 는 `~/.claude/CLAUDE.md`) |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
 | **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음) |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
@@ -80,7 +80,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
-| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (query/ingest/lint/bootstrap/migrate/post-merge-wiki + 3 hooks) |
+| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate/post-merge-wiki + 3 hooks) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 
 ## 설치 옵션
@@ -113,7 +113,7 @@ claude  # .claude/settings.json에서 자동 로드
 <details>
 <summary><strong>core-config</strong> - 개발 필수 설정</summary>
 
-Python 자동 포매팅 + 크로스 플랫폼 알림. 작업 가이드라인은 `~/.claude/CLAUDE.md` (SSOT) 가 담당.
+Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh` — 한국어 기본 + 핵심 규율 + `.llmwiki/insight/`·wiki 참고 포인터; Claude `UserPromptSubmit` plain stdout / Codex `hookSpecificOutput` JSON 공유). 작업 가이드라인은 `~/.claude/CLAUDE.md` (SSOT) 가 담당.
 
 **Hooks:**
 | Hook | Trigger | Description |
@@ -352,7 +352,7 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 <details>
 <summary><strong>llm-wiki</strong> - Karpathy LLM-Wiki 3-layer</summary>
 
-`.claude/rules/` (invariants) + 중립 `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence) 패키지. 어느 repo 든 `/plugin install llm-wiki` 한 번이면 6 skill + 3 hook + bootstrap 템플릿 즉시 사용 가능. wiki 해석 순서: `.llmwiki/wiki/` → legacy `.claude/wiki/` → `.codex/wiki/` (중립 root 라 codex-bridge `.claude/`→`.codex/` 변환이 fork 못 함).
+중립 `.llmwiki/` 루트의 3-layer: `.llmwiki/insight/` (승격된 cross-agent 규율 — `.claude/rules/` 가 아니라 여기로 graduate, Codex 가 `.claude/rules/` 를 못 읽기 때문; core-config `prompt_inject.sh` 훅이 매 프롬프트 가리킴) + `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence). 어느 repo 든 `/plugin install llm-wiki` 한 번이면 6 skill + 3 hook + bootstrap 템플릿 즉시 사용 가능. wiki 해석 순서: `.llmwiki/wiki/` → legacy `.claude/wiki/` → `.codex/wiki/` (중립 root 라 어떤 mirror 변환도 fork 못 함).
 
 **Skills:**
 | Skill | Description |

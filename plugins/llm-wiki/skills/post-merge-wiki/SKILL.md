@@ -49,7 +49,7 @@ Do NOT use:
    - Is the *cause* of this change non-obvious from the diff alone?
    - Did the PR review surface a provider quirk, race condition, or design rationale?
    - Did a new file/module appear that the wiki's code-map should reference?
-   - Did an invariant in `rules/*.md` change (alert user separately)?
+   - Does the finding meet the `.llmwiki/insight/` graduation bar (recurring + generalizable + costly-to-violate + stabilized)? If so, `ingest-finding`'s graduation step handles it.
 
    List candidates as `(page-to-touch, finding-summary, evidence-file)` tuples — `evidence-file` must come from `git show --name-only`. Map to:
    - Existing wiki pages to update (preferred — see `ingest-finding`'s append-only-rot warning)
@@ -61,7 +61,7 @@ Do NOT use:
    - **Gate via `AskUserQuestion`** only the candidates that cross an autonomy boundary:
      - a new domain dir (`ingest-finding` would create a top-level domain)
      - a `> Contradicts:` that needs resolution against an existing page
-     - a `rules/*.md` invariant change (alert only — never auto-edit)
+   - Insight graduation (a finding meeting all 4 criteria) is **not** gated — `ingest-finding` graduates it autonomously after the diff log, and it appears in the Step 6 report.
    - Show 1-line summaries; multi-select OK. If nothing is gated, skip the prompt and proceed straight to ingest.
 
 5. **For each candidate cleared to ingest** (auto-ingested within-domain candidates + any gated candidate the user accepted): invoke `/llm-wiki:ingest-finding` (or call its steps inline if already loaded). The ingest skill handles the diff-log + cross-update discipline, and applies v2 frontmatter defaults (`status: active`, inferred `volatility:`, `sources:`) to any new page it creates.
@@ -69,8 +69,8 @@ Do NOT use:
 6. **Final report**:
    - Pages updated (with `last_verified:` bump count)
    - New pages added (with their `status` / `volatility` / `sources` defaults from `ingest-finding`)
+   - Insight graduations, if any (`.llmwiki/insight/` entries created, with `promoted_from:`)
    - Resolved root's `log.md` entry written (header: `## YYYY-MM-DD — post-merge <PR#> (post-merge-wiki)`)
-   - Any `rules/*.md` invariant flag for the user to resolve manually
 
 ## LLM autonomy boundaries
 
@@ -80,9 +80,9 @@ Do NOT use:
 | Derive ingest candidate list | ✅ | — |
 | Update existing wiki page (via `ingest-finding`) | ✅ | — |
 | Add new wiki page inside existing domain | ✅ | — |
+| Graduate a finding to `.llmwiki/insight/` (all 4 criteria, via `ingest-finding`) | ✅ | — |
 | Add new wiki domain dir | ❌ | ✅ |
 | Resolve a `> Contradicts:` against an existing page | ❌ | ✅ |
-| Modify `rules/*.md` invariant | ❌ (alert only) | ✅ |
 | Skip a *gated* candidate the user didn't review | ❌ | ✅ |
 
 ## Output format
@@ -99,8 +99,8 @@ Auto-ingested: <list> | Gated→accepted: <list> | Skipped: <list>
 Result:
 - Pages updated: <domain>/<page>.md (last_verified bumped)
 - Pages added: <domain>/<page>.md (status: active, volatility: <inferred>, sources: N)
+- Insight graduated: <slug>.md (promoted_from <wiki-id>) | none
 - log.md: ## YYYY-MM-DD — post-merge #<N> (post-merge-wiki)
-- rules/*.md flags: <none | list>
 ```
 
 ### Worked example
@@ -117,8 +117,8 @@ Auto-ingested: backend/provider-x.md | Gated→accepted: (none) | Skipped: cache
 Result:
 - Pages updated: (none)
 - Pages added: backend/provider-x.md (status: active, volatility: volatile, sources: 1)
+- Insight graduated: none
 - log.md: ## 2026-05-29 — post-merge #132 (post-merge-wiki)
-- rules/*.md flags: none
 ```
 
 ## Verification
@@ -127,12 +127,12 @@ Result:
 - Pages touched have `last_verified: <today>`
 - New pages carry v2 frontmatter defaults (`status: active`, inferred `volatility:`, `sources:`)
 - No raw `[[wikilink]]` introduced (typed grammar only)
-- User approved any *gated* candidate (new domain / contradiction / `rules/*.md`); within-domain ingests proceed autonomously and appear in the Step 6 final report
+- User approved any *gated* candidate (new domain / contradiction); within-domain ingests and insight graduations proceed autonomously and appear in the Step 6 final report
 - Every ingested candidate maps to a concrete file in `git show --name-only`
 
 ## Anti-patterns
 
-- **Auto-create a new domain / resolve a contradiction / change a `rules/*.md` invariant without review** — these cross an autonomy boundary and erode trust. (Within-domain ingests — existing-page updates and new pages inside an existing domain — are *intended* to proceed autonomously; see the autonomy table.)
+- **Auto-create a new domain / resolve a contradiction without review** — these cross an autonomy boundary and erode trust. (Within-domain ingests — existing-page updates and new pages inside an existing domain — and insight graduations meeting all 4 criteria are *intended* to proceed autonomously; see the autonomy table.)
 - **Ingest every trivial fix** — wiki becomes a churn log instead of a synthesis layer.
 - **Skip the diff log** — `ingest-finding` requires the resolved root's `log.md` entry first; don't shortcut it here either.
 - **Run before `github-dev:post-merge`** — branch cleanup + milestone state must settle first.

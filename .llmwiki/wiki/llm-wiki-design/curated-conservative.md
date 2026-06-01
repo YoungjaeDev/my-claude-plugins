@@ -1,7 +1,7 @@
 ---
 id: curated-conservative
 aliases: [curated-conservative-upgrade, steal-the-ideas-not-the-plan, v2-harvest]
-last_verified: 2026-05-29
+last_verified: 2026-06-01
 status: active
 volatility: stable
 sources: 2
@@ -64,7 +64,11 @@ of its heavyweight implementation:
 - Literal Ebbinghaus / exponential decay math (wrong axis: old is not stale).
 - Four physical memory directories (`working/`, `episodic/`, `semantic/`,
   `procedural/`); v2 keeps a documentation-only conceptual overlay onto existing
-  artifacts, no new dirs.
+  artifacts, no new dirs. (Refined: `.llmwiki/insight/` is the one carved-out
+  exception — a new physical directory justified as the only cross-agent,
+  hook-delivered surface for promoted rules, not a memory-tier mirror. The
+  no-new-dir default still governs everything else. See
+  `> See-also: [[insight-layer-via-hook]]`.)
 - Vector / BM25 / graph hybrid search and the entity-extraction graph (the
   `index.md` MOC suffices at this scale).
 - Event-driven auto-writes, quality-score auto-rewrite, mesh-sync, and
@@ -85,6 +89,7 @@ write path.
   "wiki is just a git repo" framing that grounds the git-auditable kernel.
 
 > See-also: [[neutral-llmwiki-root]]
+> See-also: [[insight-layer-via-hook]]
 > See-also: [[provenance-over-confidence]]
 > See-also: [[volatility-over-decay]]
 > Evidence: .llmwiki/raw/rohitg00-llm-wiki-v2-gist.md

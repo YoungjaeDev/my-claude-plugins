@@ -1,13 +1,19 @@
 ---
 id: neutral-llmwiki-root
 aliases: [llmwiki-root, neutral-root, codex-fork-fix, dot-llmwiki]
-last_verified: 2026-05-31
+last_verified: 2026-06-01
 status: active
 volatility: stable
 sources: 3
 ---
 
 # Neutral `.llmwiki/` root
+
+> **Refinement note (2026-06-01).** The "schema layer stays at `.claude/rules/`"
+> decision below holds for Claude's session-start auto-load, but does NOT extend
+> to *promoting* cross-agent rules: Codex never reads `.claude/rules/`, so
+> promoted insight lives at `.llmwiki/insight/` and is delivered via the shared
+> prompt-injection hook. See `[[insight-layer-via-hook]]` for that refinement.
 
 The wiki and raw-evidence layers live under a neutral top-level `.llmwiki/` root
 rather than under `.claude/`. This is a data-layout choice that defends against
@@ -91,6 +97,7 @@ correct defense against any future mirror that might re-emerge.
   paths it touched were not.
 
 > Refines: [[curated-conservative]]
+> See-also: [[insight-layer-via-hook]]
 > See-also: [[shared-source-codex-manifests]]
 > Evidence: .llmwiki/raw/perplexity-llm-wiki-survey-2026-05.md
 > Evidence: .claude/spec/2026-05-29-llm-wiki-v2.md

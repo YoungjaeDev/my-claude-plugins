@@ -89,6 +89,29 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
 
 9. **Sources sanity** (soft, report-only): the `sources: N` count should roughly match the number of entries under each page's `## Sources` section. Large divergence (e.g. `sources: 3` with one bullet under `## Sources`) is a flag, not a fail.
 
+10. **Insight layer integrity** (the promoted `.llmwiki/insight/` layer; skip if absent):
+    ```bash
+    [ -d .llmwiki/insight ] || echo "no insight layer (skip)"
+
+    # 10a. promoted_from resolves to an existing wiki page that is NOT stale
+    LC_ALL=C.UTF-8 grep -rhoP '^promoted_from:\s*\[\[\K[^\]]+' .llmwiki/insight/ 2>/dev/null | sort -u | while IFS= read -r id; do
+      [[ -z "$id" ]] && continue
+      tgt=$(LC_ALL=C.UTF-8 grep -rl "^id:\s*$id\b" .llmwiki/wiki/ | head -1)
+      [[ -z "$tgt" ]] && { printf 'promoted_from target missing: %s\n' "$id"; continue; }
+      LC_ALL=C.UTF-8 grep -q '^status:\s*stale' "$tgt" && printf 'promoted_from target is stale: %s (%s)\n' "$id" "$tgt"
+    done
+
+    # 10b. conciseness — insight entries must stay condensed (tip, not body)
+    find .llmwiki/insight -name '*.md' -not -name 'index.md' -size +2k -print 2>/dev/null
+
+    # 10c. every insight entry declares tier + promoted_from
+    while IFS= read -r f; do
+      LC_ALL=C.UTF-8 grep -q '^tier:\s*insight' "$f" || printf 'insight entry missing tier: %s\n' "$f"
+      LC_ALL=C.UTF-8 grep -q '^promoted_from:' "$f" || printf 'insight entry missing promoted_from: %s\n' "$f"
+    done < <(find .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name '_insight-template.md' 2>/dev/null)
+    ```
+    Report-only. Beyond the mechanical checks, eyeball each insight entry against its `promoted_from:` wiki page: the insight must *condense* the page, not contradict it, and must not restate the page's full body (dedup — the long story stays in the wiki). Flag any insight whose rule conflicts with its now-`active` source page, or that has grown into a second copy of the wiki page.
+
 ## Output format
 
 Produce a Markdown report:
@@ -103,6 +126,7 @@ Produce a Markdown report:
 - Status: <n status: stale pages / clean>
 - Supersession: <n broken Supersedes/Superseded-by pairs / clean>
 - Sources: <n pages with sources:N mismatched vs ## Sources count / clean>
+- Insight: <n promoted_from unresolved / oversize / missing-frontmatter / clean | no insight layer>
 - Orphans: <list>
 - Broken refs: <list>
 - Open contradictions: <list>
@@ -122,6 +146,7 @@ Report only — do not auto-fix. User reviews and triggers `/llm-wiki:ingest-fin
 - Status: 1 stale page (backend/old-quirk.md)
 - Supersession: 1 broken pair (backend/old-quirk.md is status: stale but has no > Superseded-by:)
 - Sources: clean
+- Insight: clean (2 entries, promoted_from resolves, all condensed)
 - Orphans: none
 - Broken refs: none
 - Open contradictions: 1 (design/cache.md > Contradicts: [[design/cache-v2]])

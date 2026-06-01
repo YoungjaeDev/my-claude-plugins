@@ -108,7 +108,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
     while IFS= read -r f; do
       LC_ALL=C.UTF-8 grep -q '^tier:\s*insight' "$f" || printf 'insight entry missing tier: %s\n' "$f"
       LC_ALL=C.UTF-8 grep -q '^promoted_from:' "$f" || printf 'insight entry missing promoted_from: %s\n' "$f"
-    done < <(find .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name '_template.md' 2>/dev/null)
+    done < <(find .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name '_insight-template.md' 2>/dev/null)
     ```
     Report-only. Beyond the mechanical checks, eyeball each insight entry against its `promoted_from:` wiki page: the insight must *condense* the page, not contradict it, and must not restate the page's full body (dedup — the long story stays in the wiki). Flag any insight whose rule conflicts with its now-`active` source page, or that has grown into a second copy of the wiki page.
 

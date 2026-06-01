@@ -35,7 +35,7 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
    [ -f .llmwiki/wiki/index.md ]        || cp "$T/wiki-skeleton/index.md"                 .llmwiki/wiki/index.md
    [ -f .llmwiki/wiki/log.md ]          || cp "$T/wiki-skeleton/log.md"                   .llmwiki/wiki/log.md
    [ -f .llmwiki/insight/index.md ]     || cp "$T/insight-skeleton/index.md"              .llmwiki/insight/index.md
-   [ -f .llmwiki/insight/_template.md ] || cp "$T/insight-skeleton/_insight-template.md"  .llmwiki/insight/_template.md
+   [ -f .llmwiki/insight/_insight-template.md ] || cp "$T/insight-skeleton/_insight-template.md"  .llmwiki/insight/_insight-template.md
    ```
    Replace `TODO-INITIAL-DATE` in `.llmwiki/insight/index.md` with today's date. (`.claude/rules/` is intentionally NOT created here — see the intro.)
 

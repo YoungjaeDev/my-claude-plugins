@@ -119,7 +119,7 @@ Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavior
 | Hook | Trigger | Description |
 |------|---------|-------------|
 | `auto-format-python.py` | Post Write/Edit | ruff로 Python 포매팅 |
-| `notify_osc.sh` | Stop/Notification | 터미널 알림 |
+| `notify_osc.py` | Stop/Notification | 터미널 알림 |
 
 **Requirements:** `uv`, `ruff`
 

@@ -1,6 +1,6 @@
 {
   "name": "core-config",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Core development configuration: Python auto-format + cross-platform notifications + per-prompt behavioral block (prompt_inject.sh, shared Claude + Codex). Work guidelines live in ~/.claude/CLAUDE.md (SSOT).",
   "hooks": {
     "UserPromptSubmit": [

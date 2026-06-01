@@ -46,7 +46,7 @@ hook-delivered parity across agents — a deliberate, full migration, not a
 straddle.
 
 `.claude/rules/` survives only for **mechanical tool-operation rules**
-(`plugin-versioning.md`, `dual-integration.md`) — repo machinery, not wiki lore.
+(e.g. `plugin-versioning.md`) — repo machinery, not wiki lore.
 
 ## `.llmwiki/insight/` is the one justified new physical directory
 

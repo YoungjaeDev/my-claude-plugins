@@ -103,11 +103,13 @@ If the PR changed features/commands/install/usage/deps and a README exists: draf
 
 ### 10. Commit changes (optional)
 
-If config files were modified, confirm with the user, then commit using Conventional Commits. Stage only modified files:
+If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **or `.llmwiki/` from the Step 8 wiki ingest** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed) must still commit, or the ingest is left uncommitted in the working tree. Stage only modified files:
 
 ```bash
 git add CLAUDE.md AGENTS.md GEMINI.md README.md .serena/memories/ .llmwiki/ 2>/dev/null || true
 ```
+
+Skip the commit only when `git status --porcelain` shows nothing staged after the `git add`.
 
 ## References
 

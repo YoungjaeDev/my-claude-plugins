@@ -105,14 +105,17 @@ If the PR changed features/commands/install/usage/deps and a README exists: draf
 
 ### 10. Commit changes (optional)
 
-If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **or `.llmwiki/` from the Step 8 wiki ingest** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed) must still commit, or the ingest is left uncommitted in the working tree. Stage only modified files:
+If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **or `.llmwiki/` from the Step 8 wiki ingest** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed) must still commit, or the ingest is left uncommitted in the working tree.
+
+Stage **only the exact files this run created or modified** — collect them as you go through Steps 5.7-9 (each config file you edited, the `.claude/state/spec.json` + spec file from Step 5.7, README, Serena memory files, and the specific wiki pages `ingest-finding` created/updated). Build that explicit list as `RUN_TOUCHED` and add only those paths — **never `git add` a whole directory** (`.llmwiki/`, `.claude/spec/`, …): a pre-existing untracked draft (e.g. a user's `.llmwiki/wiki/draft.md`) would otherwise be swept into this commit, and Step 2 already decided to leave untracked files alone.
 
 ```bash
-# Stage only the paths that exist — `git add a b c` is atomic: one missing
-# pathspec aborts the whole add (and `|| true` would hide it), leaving real
-# .llmwiki/README changes unstaged so the commit is wrongly skipped.
-for p in CLAUDE.md AGENTS.md GEMINI.md README.md .claude/rules .serena/memories .llmwiki .claude/state/spec.json .claude/spec; do
-  [ -e "$p" ] && git add "$p"
+# RUN_TOUCHED = the exact paths this run wrote, gathered across Steps 5.7-9.
+# Existence-checked + added one at a time: `git add a b c` is atomic, so one
+# stale path would abort the whole add (and `|| true` would hide it), leaving
+# real changes unstaged.
+for p in "${RUN_TOUCHED[@]}"; do
+  [ -e "$p" ] && git add -- "$p"
 done
 ```
 

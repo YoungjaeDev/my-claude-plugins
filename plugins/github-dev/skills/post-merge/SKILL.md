@@ -39,8 +39,9 @@ fi
 ```
 
 - Use the PR number argument if given; else infer from context; else `gh pr list --state merged --limit 5` and prompt.
-- `gh pr view <PR_NUMBER> --json number,title,baseRefName,headRefName,body,state,files`.
+- `gh pr view <PR_NUMBER> --json number,title,baseRefName,headRefName,body,state,files,mergeCommit`.
 - Verify `state` is `MERGED`. This result is the **authoritative merge signal** (see Guidelines) — no later SHA comparison.
+- Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')` — this is **this PR's** merge commit. Step 8 reads the merged file list from `MERGE_SHA`, not from `git log -1` after the base pull (which would point at whatever last landed on base).
 
 ### 2. Check local changes
 

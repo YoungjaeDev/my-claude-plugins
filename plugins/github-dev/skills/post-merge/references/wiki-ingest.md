@@ -16,25 +16,26 @@ Unlike the old optional Step 5.8, there is **no `AskUserQuestion` "shall I run t
 
 ## Steps
 
-### 1. Identify the merge commit
+### 1. Use this PR's merge commit
+
+Use `MERGE_SHA` — **this PR's** merge commit, captured in SKILL.md Step 1 from `gh pr view <N> --json mergeCommit --jq '.mergeCommit.oid'`. Do **not** rederive it with `git log --merges -1` / `git log -1`: after Step 3 pulls the base branch, those grab whatever merge/squash commit last landed on base, which is the wrong PR when post-merge runs late or another PR merged in between — and Step 8 would then build wiki candidates from an unrelated file list.
 
 ```bash
-git log --merges -1 --pretty=format:'%H %s'   # or, if squash-merged:
-git log -1 --pretty=format:'%H %s'
+# MERGE_SHA was set in SKILL.md Step 1 from gh pr view <N> --json mergeCommit
+[ -n "$MERGE_SHA" ] || MERGE_SHA=$(gh pr view <N> --json mergeCommit --jq '.mergeCommit.oid')
 ```
-Capture the SHA + PR number (from the squash message or Step 1's `gh pr view`).
 
 ### 2. Read the diff + PR body + comments
 
 ```bash
-git show --stat <SHA>          # files touched
-git show --name-only <SHA>     # authoritative file list
+git show --stat "$MERGE_SHA"          # files touched
+git show --name-only "$MERGE_SHA"     # authoritative file list
 gh pr view <N> --json title,body,comments,reviews
 ```
 
 ### 3. Derive ingest candidates — file-list-first
 
-**Always start from `git show --name-only <SHA>` (actual touched files), never from the PR title/body alone.** Concept-based guessing produces false candidates (e.g. inferring a "cloud-sync.md" page from the phrase "manifest source tag" in a title whose diff touched no cloud-sync code). Walk the file list; for each file ask whether the change introduced lore. If you cannot tie a candidate page to a concrete file in the diff, **drop the candidate**.
+**Always start from `git show --name-only "$MERGE_SHA"` (actual touched files), never from the PR title/body alone.** Concept-based guessing produces false candidates (e.g. inferring a "cloud-sync.md" page from the phrase "manifest source tag" in a title whose diff touched no cloud-sync code). Walk the file list; for each file ask whether the change introduced lore. If you cannot tie a candidate page to a concrete file in the diff, **drop the candidate**.
 
 For each meaningful change, ask:
 - Is the *cause* of this change non-obvious from the diff alone?
@@ -75,7 +76,7 @@ For each candidate cleared to ingest (auto-ingested within-domain + any gated ca
 - `log.md` entry written, header: `## YYYY-MM-DD — post-merge <PR#> (post-merge)`
 
 ```text
-## Post-merge ingest — PR #<N> (<SHA>)
+## Post-merge ingest — PR #<N> (<MERGE_SHA>)
 
 Candidates (file → finding → evidence):
 - <touched-file> → <1-line finding> → <evidence-file>

@@ -85,7 +85,7 @@ Before showing the proposal, self-check **every added or modified line** against
 **If any check fails**, do not show the proposal — rewrite first and self-loop until every checkbox is ✓.
 
 Present the integration proposal as a diff-style summary before applying:
-```
+```text
 CLAUDE.md changes:
   Golden Rules > Don'ts: + "Never reintroduce preview branching (Dispatcher is direct-send only)"
   Key Modules > electron-admin: "4 nav tabs" -> "3 nav tabs: Dashboard / AI / Settings"
@@ -162,14 +162,14 @@ Clean these on sight:
 - **Self-check before `edit_memory`**: verify the added text contains no Core Principle forbidden patterns. If it does, rewrite first.
 
 **Good (PR fixed a graceful-shutdown race):**
-```
+```text
 ## Process Lifecycle
 - `start()` initializes polling loop and resets `isShuttingDown` flag
 - `gracefulShutdown()` is async; awaits shutdown handlers before exit
 - `isShuttingDown` flag prevents double-shutdown race conditions
 ```
 **Bad (what NOT to do):**
-```
+```text
 ## Post-Merge (2026-02-16, PR #132)
 - Graceful shutdown race condition fixed (Issue #69)
 ```

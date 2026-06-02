@@ -46,7 +46,7 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
    - If missing, write a ~30-line slim version: project pitch + a pointer to `.llmwiki/insight/index.md` (promoted cross-agent rules, read first) and `.llmwiki/wiki/index.md` (lore) + note that the user's global `CLAUDE.md` (under their home `.claude/` directory) takes precedence
    - If existing, do not overwrite — print a diff suggestion for the user to merge manually
 
-6. **First spec template**: copy `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/spec-template.md` to `.claude/spec/_template.md` (rename of-the-day). Tell the user the workflow: copy template to `<YYYY-MM-DD>-<short-name>.md` → `/github-dev:decompose-issue` → `/github-dev:resolve-issue` → merge → `/github-dev:post-merge` (its mandatory wiki step ingests merged lore — no separate skill needed).
+6. **First spec template**: copy `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/spec-template.md` to `.claude/spec/_template.md` (rename of-the-day). Tell the user the workflow: copy template to `<YYYY-MM-DD>-<short-name>.md` → `/github-dev:decompose-issue` → `/github-dev:resolve-issue` → merge → `/github-dev:post-merge` (requires the `github-dev` plugin; its mandatory wiki step ingests merged lore — no separate skill needed). If `github-dev` is not installed, run `/llm-wiki:ingest-finding` manually after merging instead.
 
 7. **`.llmwiki/wiki/log.md` initial entry**: append `## YYYY-MM-DD — bootstrap (bootstrap-wiki)` with the domain list created.
 

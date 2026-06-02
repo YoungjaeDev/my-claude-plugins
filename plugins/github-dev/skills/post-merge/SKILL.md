@@ -43,7 +43,7 @@ esac
 - Use the PR number argument if given; else infer from context; else `gh pr list --state merged --limit 5` and prompt.
 - `gh pr view <PR_NUMBER> --json number,title,baseRefName,headRefName,body,state,files,mergeCommit`.
 - Verify `state` is `MERGED`. This result is the **authoritative merge signal** (see Guidelines) — no later SHA comparison.
-- Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')` — this is **this PR's** merge commit, used to label the wiki log entry and read diff content. Step 8 derives the merged **file list** from the PR `files` field (merge-method-agnostic), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
+- Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')` — this is **this PR's** merge commit, used to label the wiki log entry and read diff content. Step 8 derives the merged **file list** from `gh pr diff <N> --name-only` (PR-scoped, merge-method-agnostic, uncapped), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
 
 ### 2. Check local changes
 
@@ -97,7 +97,7 @@ If Serena MCP is available, integrate PR learnings into existing memory files as
 
 Absorbs the former `post-merge-wiki` skill as a required step. Runs **after** Steps 6-7 so the config integration is already settled and the wiki step can dedup against it (knowledge routing).
 
-Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`); if none resolves, skip silently (no wiki layer — no hard dependency). Otherwise derive ingest candidates **from the merged file list** (`gh pr view <N> --json files`), triage by autonomy boundary, and delegate the heavy lifting (diff-log, multi-page cross-update, insight graduation) to `llm-wiki:ingest-finding`. Full procedure — candidate derivation, the autonomy-boundary triage table, the trivial-merge skip list, the `log.md` entry format, and the Step 6/7 routing-dedup rule — lives in **`references/wiki-ingest.md`**.
+Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`); if none resolves, skip silently (no wiki layer — no hard dependency). Otherwise derive ingest candidates **from the merged file list** (`gh pr diff <N> --name-only`), triage by autonomy boundary, and delegate the heavy lifting (diff-log, multi-page cross-update, insight graduation) to `llm-wiki:ingest-finding`. Full procedure — candidate derivation, the autonomy-boundary triage table, the trivial-merge skip list, the `log.md` entry format, and the Step 6/7 routing-dedup rule — lives in **`references/wiki-ingest.md`**.
 
 ### 9. Update README.md (if needed — humanizer/docs-forge are Claude-only)
 

@@ -19,7 +19,8 @@ prompts a wiki ingest and sometimes does not.
   required step inside the post-merge *skill*, not an optional gate and not a
   separate skill. It resolves the wiki root (`.llmwiki/wiki/` -> `.claude/wiki/`
   -> `.codex/wiki/`), skips trivial merges, derives candidates file-list-first
-  from `git show --name-only`, triages by autonomy boundary, and delegates to
+  from `gh pr diff <N> --name-only` (PR-scoped, merge-method-agnostic, uncapped),
+  triages by autonomy boundary, and delegates to
   `llm-wiki:ingest-finding`. Because it lives in the workflow rather than
   reacting to a git event, it runs for **GitHub-UI merges** too — the user
   drives `github-dev:post-merge` after merging in the web UI, and Step 8 fires

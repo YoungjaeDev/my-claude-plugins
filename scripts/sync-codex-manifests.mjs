@@ -164,13 +164,13 @@ function extractFrontmatterDescription(md) {
   return null;
 }
 
-// Walk plugins/<name>/skills/*/SKILL.md for Codex-eligible plugins (reusing EXCLUDED so
-// the check mirrors exactly what Codex loads) and collect any over-length descriptions.
-function validateSkillDescriptions() {
+// Walk plugins/<name>/skills/*/SKILL.md for the given plugins (the marketplace-listed,
+// non-excluded set — exactly what Codex generates manifests for) and collect any
+// over-length descriptions. Scoping to marketplace entries (not all on-disk dirs) keeps
+// an unpublished local plugin dir from failing --check for a skill Codex never loads.
+function validateSkillDescriptions(pluginNames) {
   const violations = [];
-  if (!isDir(PLUGINS_DIR)) return violations;
-  for (const name of readdirSync(PLUGINS_DIR)) {
-    if (EXCLUDED.has(name)) continue;
+  for (const name of pluginNames) {
     const skillsDir = join(PLUGINS_DIR, name, 'skills');
     if (!isDir(skillsDir)) continue;
     for (const skill of readdirSync(skillsDir)) {
@@ -184,17 +184,17 @@ function validateSkillDescriptions() {
 }
 
 function main() {
+  const source = readJSON(SOURCE);
+  const eligible = source.plugins.filter((p) => !EXCLUDED.has(p.name));
+
   // Codex skill-description length guard — runs in every mode, fails fast before the
   // manifest drift logic so `node sync-codex-manifests.mjs` and `--check` both catch it.
-  const violations = validateSkillDescriptions();
+  const violations = validateSkillDescriptions(eligible.map((p) => p.name));
   if (violations.length > 0) {
     console.error(`skill description length violation(s) — Codex 0.135 limit is ${SKILL_DESC_MAX} chars:`);
     for (const v of violations) console.error(`  ${v.len} chars (limit ${SKILL_DESC_MAX}): ${v.path}`);
     process.exit(1);
   }
-
-  const source = readJSON(SOURCE);
-  const eligible = source.plugins.filter((p) => !EXCLUDED.has(p.name));
 
   const outputs = [];
   for (const entry of eligible) {

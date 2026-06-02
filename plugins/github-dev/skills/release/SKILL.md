@@ -1,5 +1,7 @@
 ---
-description: Create versioned GitHub release with auto-generated changelog
+name: release
+description: Create a versioned GitHub release — detect the current version, bump by semver, update version manifest files, commit, tag, push, and run gh release create with auto-generated notes. Use ONLY when the user explicitly types /github-dev:release or asks to cut, publish, or tag a release. Do NOT auto-fire from incidental mentions of releases or version numbers — this creates a git tag and a public GitHub release. Supports --dry-run, --patch/--minor/--major, --draft, --prerelease, and --init for the first baseline tag, and validates build/test before releasing.
+allowed-tools: Read Edit Bash AskUserQuestion
 ---
 
 # Release

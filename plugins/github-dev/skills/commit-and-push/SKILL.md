@@ -1,5 +1,7 @@
 ---
-description: Analyze Git changes and commit with appropriate message, then push
+name: commit-and-push
+description: Analyze the Git changes in the files given as arguments, write a Conventional Commits message, commit, and push. Use when the user types /github-dev:commit-and-push, says "commit and push", or asks to commit specific files. Analyzes only the provided files (one logical change per commit), writes a type-prefixed imperative subject under 50 chars, then runs git add → git commit → git push. Follows the project CLAUDE.md commit guidelines and adds no AI attribution.
+allowed-tools: Read Bash
 ---
 
 # Commit & Push
@@ -15,7 +17,7 @@ Analyze only the files provided as arguments, create an appropriate commit messa
    - Documentation update
    - Style/formatting
 2. **Write commit message**: Write clearly in Conventional Commits format
-3. **Commit & Push**: `git add` -> `git commit` -> `git push`
+3. **Commit & Push**: `git add <provided files>` -> `git commit` -> `git push` (stage only the files passed as arguments, never `git add -A` / `git add .`)
 
 ## Commit Message Format
 
@@ -48,4 +50,3 @@ Follow Conventional Commits rules:
 - **Clarity**: Clearly communicate what was changed and why
 - **Follow CLAUDE.md**: Check project guidelines in `@CLAUDE.md`
 - **Single purpose**: One commit should contain only one logical change
-

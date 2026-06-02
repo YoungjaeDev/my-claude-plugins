@@ -1,5 +1,7 @@
 ---
-description: Resolve GitHub Issue
+name: resolve-issue
+description: Resolve a GitHub issue end-to-end — analyze the issue, create a feature branch, implement the fix (TDD when the issue is marked), run verification gates, open a PR, and drive the cr-fix review loop to convergence. Use ONLY when the user explicitly types /github-dev:resolve-issue <number> or asks to resolve or implement a specific issue. Do NOT auto-fire from incidental issue mentions — this creates a branch, commits, and opens a GitHub PR. Flags pass through to cr-fix — --skip-review, --strict, --skip-cr-fix, --cr-fix-max, --auto-merge, --codex-grace, --no-codex, --skip-minor, --cr-source.
+allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion Task
 ---
 
 # Resolve GitHub Issue

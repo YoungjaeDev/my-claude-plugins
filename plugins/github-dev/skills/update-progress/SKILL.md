@@ -1,5 +1,7 @@
 ---
-description: Sync project progress to GitHub milestones/issues
+name: update-progress
+description: Sync project progress to GitHub milestones and issues — recompute module progress, regenerate the milestone table and Type M-2 architecture diagrams, and update the tracked sections in issue and milestone bodies. Use when the user types /github-dev:update-progress, says "update progress", or asks to sync milestone or issue tracking. Reads .claude/state/project-tracking-{slug}.json (run decompose-issue first to create it). Supports --all to process every active milestone and --local to skip the GitHub write and print to the terminal only.
+allowed-tools: Read Edit Bash Glob Grep AskUserQuestion
 ---
 
 # Update Progress

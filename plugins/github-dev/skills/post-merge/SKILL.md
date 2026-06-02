@@ -75,7 +75,7 @@ git pull origin <baseRefName>
 
 ### 5.5. Sync milestone progress (if issues have milestones)
 
-For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `commands/update-progress.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
+For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `skills/update-progress/SKILL.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
 
 ### 5.7. Update `.claude/state/spec.json` (if present)
 
@@ -126,7 +126,7 @@ Skip the commit only when `git diff --cached --quiet` reports nothing staged aft
 - **No-stamp Core Principle + knowledge-routing boundary**: `references/core-principle.md`
 - **Config + Serena learning integration** (Pre-Audit, classification, history rotation, size audit, memory mapping): `references/learning-integration.md`
 - **Mandatory wiki ingest** (absorbed post-merge-wiki — candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
-- Milestone / Type M-2 diagram mechanics: `commands/update-progress.md`
+- Milestone / Type M-2 diagram mechanics: `skills/update-progress/SKILL.md`
 - spec.json schema + ops: `plugins/spec-state/skills/state-tracker/SKILL.md`
 
 > Follow ~/.claude/CLAUDE.md and the project CLAUDE.md.

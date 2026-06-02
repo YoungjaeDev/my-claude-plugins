@@ -1,10 +1,10 @@
 # GitHub Dev Plugin
 
-GitHub workflow automation commands for Claude Code.
+GitHub workflow automation skills for Claude Code. All workflows are skills (no command surface), so `/github-dev:<name>` slash calls resolve to the skill and run under both Claude Code and Codex.
 
-## Commands
+## Skills
 
-| Command | Description |
+| Skill | Description |
 |---------|-------------|
 | `/github-dev:commit-and-push` | Analyze changes, commit with conventional message, push |
 | `/github-dev:create-issue-label` | Create standardized issue labels |

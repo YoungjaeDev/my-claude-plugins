@@ -111,7 +111,7 @@ If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGEN
 git add CLAUDE.md AGENTS.md GEMINI.md README.md .claude/rules/ .serena/memories/ .llmwiki/ .claude/state/spec.json .claude/spec/ 2>/dev/null || true
 ```
 
-Skip the commit only when `git status --porcelain` shows nothing staged after the `git add`.
+Skip the commit only when `git diff --cached --quiet` reports nothing staged after the `git add` — a staged-only check; `git status --porcelain` would also count pre-existing untracked files and wrongly attempt an empty-index commit.
 
 ## References
 

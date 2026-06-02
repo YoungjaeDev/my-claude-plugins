@@ -30,7 +30,7 @@ prompts a wiki ingest and sometimes does not.
 - **`wiki_post_commit_hint.sh`** — a `PostToolUse(Bash)` soft-hint hook that
   fires on a **local CLI merge commit**. It now nudges toward
   `/github-dev:post-merge` (whose Step 8 does the ingest); for non-merge commits
-  it still nudges toward `/ingest-finding`. It never fires for a web-UI merge,
+  it still nudges toward `/llm-wiki:ingest-finding`. It never fires for a web-UI merge,
   because no merge `git` command runs on the local machine.
 
 ## Why two

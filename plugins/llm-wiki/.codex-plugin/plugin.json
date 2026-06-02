@@ -1,7 +1,7 @@
 {
   "name": "llm-wiki",
-  "version": "1.4.0",
-  "description": "Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral .llmwiki/): 6 skills (query/ingest/lint/bootstrap/migrate/post-merge-wiki) + 3 soft-hint hooks + bootstrap templates. Promoted cross-agent rules graduate to .llmwiki/insight/ (via core-config prompt-inject hook), not .claude/rules/. Resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki.",
+  "version": "2.0.0",
+  "description": "Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral .llmwiki/): 5 skills (query/ingest/lint/bootstrap/migrate) + 3 soft-hint hooks + bootstrap templates. Post-merge wiki ingest is a mandatory step inside github-dev:post-merge (the standalone post-merge-wiki skill was removed — breaking, hence the 2.0.0 major bump). Promoted cross-agent rules graduate to .llmwiki/insight/ (via core-config prompt-inject hook), not .claude/rules/. Resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki.",
   "author": {
     "name": "YoungjaeDev"
   },

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PostToolUse hook (matcher: Bash) — soft-hint when a git commit/push touched files
 # the wiki should know about. Reads tool_input JSON from stdin.
-# Quiet unless we're confident the LLM should consider /ingest-finding or /post-merge-wiki.
+# Quiet unless we're confident the LLM should consider /llm-wiki:ingest-finding or /github-dev:post-merge.
 
 set -u
 exec 2>/dev/null
@@ -64,9 +64,9 @@ printf '[wiki-ingest-hint] last commit touched %s file(s), ~%s line(s)' "$files_
 [[ -n "$is_merge" ]] && printf ' (merge commit)'
 printf '.\n'
 if [[ -n "$is_merge" ]]; then
-  printf 'Consider /post-merge-wiki to scan the merged diff for wiki ingest candidates.\n'
+  printf 'Consider /github-dev:post-merge (if the github-dev plugin is installed) — its mandatory wiki step scans the merged diff for ingest candidates. Without github-dev, run /llm-wiki:ingest-finding manually.\n'
 else
-  printf 'Consider /ingest-finding if the commit surfaced non-obvious lore (provider quirks, debugging stories, design rationale).\n'
+  printf 'Consider /llm-wiki:ingest-finding if the commit surfaced non-obvious lore (provider quirks, debugging stories, design rationale).\n'
 fi
 
 exit 0

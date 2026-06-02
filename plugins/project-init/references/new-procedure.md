@@ -122,7 +122,7 @@ bash ${PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
 - **사용 순서**:
   1. lore 가 필요할 때 → `/llm-wiki:query-wiki` 먼저
   2. 새 발견 → `/llm-wiki:ingest-finding`
-  3. PR merge 후 → `/github-dev:post-merge` 가 자동으로 `/llm-wiki:post-merge-wiki` 체이닝
+  3. PR merge 후 → `/github-dev:post-merge` 가 wiki 적재까지 내장 (별도 skill 불필요)
 - **현재 상태**: wiki 비어있음. 적극 채워라. 첫 도메인 lore 가 쌓이기 시작하면 `/llm-wiki:bootstrap-wiki` 호출로 도메인 구조 인터뷰를 받는다.
 
 ## Setup Status
@@ -304,7 +304,7 @@ Next actions (call when ready):
      (도메인 인터뷰 + .llmwiki/wiki/<domain>/ 구조 시드)
 
   3. 첫 PR merge 후        → /github-dev:post-merge
-     (자동으로 /llm-wiki:post-merge-wiki 체이닝)
+     (wiki 적재까지 내장 — 별도 skill 불필요)
 ```
 
 ## 실패 처리

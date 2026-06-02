@@ -97,7 +97,7 @@ If Serena MCP is available, integrate PR learnings into existing memory files as
 
 Absorbs the former `post-merge-wiki` skill as a required step. Runs **after** Steps 6-7 so the config integration is already settled and the wiki step can dedup against it (knowledge routing).
 
-Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`); if none resolves, skip silently (no wiki layer — no hard dependency). Otherwise derive ingest candidates **from the merged file list** (`git show --name-only`), triage by autonomy boundary, and delegate the heavy lifting (diff-log, multi-page cross-update, insight graduation) to `llm-wiki:ingest-finding`. Full procedure — candidate derivation, the autonomy-boundary triage table, the trivial-merge skip list, the `log.md` entry format, and the Step 6/7 routing-dedup rule — lives in **`references/wiki-ingest.md`**.
+Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`); if none resolves, skip silently (no wiki layer — no hard dependency). Otherwise derive ingest candidates **from the merged file list** (`git show --diff-merges=first-parent --name-only`), triage by autonomy boundary, and delegate the heavy lifting (diff-log, multi-page cross-update, insight graduation) to `llm-wiki:ingest-finding`. Full procedure — candidate derivation, the autonomy-boundary triage table, the trivial-merge skip list, the `log.md` entry format, and the Step 6/7 routing-dedup rule — lives in **`references/wiki-ingest.md`**.
 
 ### 9. Update README.md (if needed — humanizer/docs-forge are Claude-only)
 

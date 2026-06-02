@@ -28,14 +28,14 @@ Use `MERGE_SHA` — **this PR's** merge commit, captured in SKILL.md Step 1 from
 ### 2. Read the diff + PR body + comments
 
 ```bash
-git show --stat "$MERGE_SHA"          # files touched
-git show --name-only "$MERGE_SHA"     # authoritative file list
+git show --diff-merges=first-parent --stat "$MERGE_SHA"       # files touched
+git show --diff-merges=first-parent --name-only "$MERGE_SHA"  # authoritative file list (first-parent: a non-squash merge commit otherwise shows an empty combined diff)
 gh pr view <N> --json title,body,comments,reviews
 ```
 
 ### 3. Derive ingest candidates — file-list-first
 
-**Always start from `git show --name-only "$MERGE_SHA"` (actual touched files), never from the PR title/body alone.** Concept-based guessing produces false candidates (e.g. inferring a "cloud-sync.md" page from the phrase "manifest source tag" in a title whose diff touched no cloud-sync code). Walk the file list; for each file ask whether the change introduced lore. If you cannot tie a candidate page to a concrete file in the diff, **drop the candidate**.
+**Always start from `git show --diff-merges=first-parent --name-only "$MERGE_SHA"` (actual touched files), never from the PR title/body alone.** Concept-based guessing produces false candidates (e.g. inferring a "cloud-sync.md" page from the phrase "manifest source tag" in a title whose diff touched no cloud-sync code). Walk the file list; for each file ask whether the change introduced lore. If you cannot tie a candidate page to a concrete file in the diff, **drop the candidate**.
 
 For each meaningful change, ask:
 - Is the *cause* of this change non-obvious from the diff alone?
@@ -43,7 +43,7 @@ For each meaningful change, ask:
 - Did a new file/module appear that the wiki's code-map should reference?
 - Does the finding meet the `.llmwiki/insight/` graduation bar (recurring + generalizable + costly-to-violate + stabilized)? If so, `ingest-finding`'s graduation step handles it.
 
-List candidates as `(page-to-touch, finding-summary, evidence-file)` tuples — `evidence-file` must come from `git show --name-only`. Map each to: an existing wiki page to update (preferred), a new page inside an existing domain (rare), or a new domain dir (needs user approval — surface as a question, never auto-create).
+List candidates as `(page-to-touch, finding-summary, evidence-file)` tuples — `evidence-file` must come from `git show --diff-merges=first-parent --name-only`. Map each to: an existing wiki page to update (preferred), a new page inside an existing domain (rare), or a new domain dir (needs user approval — surface as a question, never auto-create).
 
 ### 4. Triage candidates by autonomy boundary
 
@@ -105,12 +105,12 @@ This step runs after config + Serena integration so it can avoid double-recordin
 - New pages carry v2 frontmatter defaults.
 - No raw `[[wikilink]]` introduced (typed grammar only).
 - The user approved any *gated* candidate (new domain / contradiction); within-domain ingests and insight graduations proceed autonomously.
-- Every ingested candidate maps to a concrete file in `git show --name-only`.
+- Every ingested candidate maps to a concrete file in `git show --diff-merges=first-parent --name-only`.
 
 ## Anti-patterns
 
 - **Auto-create a new domain / resolve a contradiction without review** — these cross an autonomy boundary.
 - **Ingest every trivial fix** — the wiki becomes a churn log instead of a synthesis layer.
 - **Skip the diff log** — `ingest-finding` requires the `log.md` entry first; don't shortcut it.
-- **Concept-based candidate derivation** — never propose a page from PR title/body phrasing alone; tie every candidate to a file in `git show --name-only`.
+- **Concept-based candidate derivation** — never propose a page from PR title/body phrasing alone; tie every candidate to a file in `git show --diff-merges=first-parent --name-only`.
 - **Re-record a config rule as lore** — respect the routing boundary; each fact has one home.

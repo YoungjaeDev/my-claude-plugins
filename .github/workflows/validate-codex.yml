@@ -1,0 +1,17 @@
+name: validate-codex
+
+# Catch Codex manifest drift and skill-description length violations at PR time,
+# even if a contributor skipped the local .githooks pre-commit hook.
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/sync-codex-manifests.mjs --check

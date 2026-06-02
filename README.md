@@ -580,6 +580,15 @@ Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Cod
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`github-dev`, `paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다.
 
+`--check` 는 manifest drift 외에 **skill `description` 길이**도 검증합니다 (Codex 0.135 는 1024자 초과 description 을 가진 skill 을 silent 하게 skip). 이 가드는 로컬 pre-commit 훅과 CI 양쪽에서 동일하게 실행됩니다:
+
+```bash
+# 클론당 1회: 버전 관리되는 .githooks/pre-commit 활성화
+git config core.hooksPath .githooks
+```
+
+활성화하면 매 커밋 전에 `node scripts/sync-codex-manifests.mjs --check` 가 돌아 drift / 길이 위반을 차단합니다. 훅을 건너뛴 기여자도 PR 시 `.github/workflows/validate-codex.yml` 이 동일 명령으로 잡습니다.
+
 ## 요구사항
 
 | 도구 | 용도 | 필수 |

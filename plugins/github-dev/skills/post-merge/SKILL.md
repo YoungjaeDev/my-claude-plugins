@@ -49,7 +49,7 @@ esac
 
 `git status --porcelain`:
 - Untracked (`??`) — ignore, proceed.
-- Modified/staged (`M`/`A`/`D`) — prompt via `AskUserQuestion`: **stash** (`git stash push -m "post-merge: temp save"`) / **discard** (`git checkout -- . && git clean -fd`) / **abort**.
+- Modified/staged (`M`/`A`/`D`) — prompt via `AskUserQuestion`: **stash** (`git stash push -m "post-merge: temp save"`) / **discard** (`git restore --staged --worktree -- .` — reverts tracked changes only; never `git clean`, so pre-existing untracked files/drafts are preserved per the rule above) / **abort**.
 - If stashed, prompt at the end of the run for **pop** / **apply** / **later**.
 
 ### 3. Switch to base branch

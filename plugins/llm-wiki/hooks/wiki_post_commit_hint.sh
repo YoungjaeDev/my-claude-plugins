@@ -64,7 +64,7 @@ printf '[wiki-ingest-hint] last commit touched %s file(s), ~%s line(s)' "$files_
 [[ -n "$is_merge" ]] && printf ' (merge commit)'
 printf '.\n'
 if [[ -n "$is_merge" ]]; then
-  printf 'Consider /github-dev:post-merge — its mandatory wiki step scans the merged diff for ingest candidates.\n'
+  printf 'Consider /github-dev:post-merge (if the github-dev plugin is installed) — its mandatory wiki step scans the merged diff for ingest candidates. Without github-dev, run /ingest-finding manually.\n'
 else
   printf 'Consider /ingest-finding if the commit surfaced non-obvious lore (provider quirks, debugging stories, design rationale).\n'
 fi

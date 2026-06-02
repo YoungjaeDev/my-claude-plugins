@@ -16,26 +16,27 @@ Unlike the old optional Step 5.8, there is **no `AskUserQuestion` "shall I run t
 
 ## Steps
 
-### 1. Use this PR's merge commit
+### 1. Use this PR's authoritative file list
 
-Use `MERGE_SHA` — **this PR's** merge commit, captured in SKILL.md Step 1 from `gh pr view <N> --json mergeCommit --jq '.mergeCommit.oid'`. Do **not** rederive it with `git log --merges -1` / `git log -1`: after Step 3 pulls the base branch, those grab whatever merge/squash commit last landed on base, which is the wrong PR when post-merge runs late or another PR merged in between — and Step 8 would then build wiki candidates from an unrelated file list.
+Derive the touched-file list from `gh pr view <N> --json files` (captured in SKILL.md Step 1), **not** from a merge SHA. The PR `files` field is PR-scoped and merge-method-agnostic — it returns every file the PR changed under squash, merge-commit, or rebase merges alike. A merge SHA is unreliable as a file-list source: a `--no-ff` merge commit shows an empty combined diff, and a multi-commit rebase merge's SHA points only at the last replayed commit — both silently drop files and skip Step 8 ingest. `MERGE_SHA` (also from Step 1) is still used to label the `log.md` entry and to read diff *content*, never as the file-list source.
 
 ```bash
-# MERGE_SHA was set in SKILL.md Step 1 from gh pr view <N> --json mergeCommit
+# Both captured in SKILL.md Step 1: gh pr view <N> --json files,mergeCommit
+PR_FILES=$(gh pr view <N> --json files --jq '.files[].path')   # authoritative, merge-method-agnostic
 [ -n "$MERGE_SHA" ] || MERGE_SHA=$(gh pr view <N> --json mergeCommit --jq '.mergeCommit.oid')
 ```
 
 ### 2. Read the diff + PR body + comments
 
 ```bash
-git show --diff-merges=first-parent --stat "$MERGE_SHA"       # files touched
-git show --diff-merges=first-parent --name-only "$MERGE_SHA"  # authoritative file list (first-parent: a non-squash merge commit otherwise shows an empty combined diff)
+echo "$PR_FILES"                              # authoritative file list (from Step 1)
+gh pr diff <N>                                # full PR diff content — PR-scoped, merge-method-agnostic
 gh pr view <N> --json title,body,comments,reviews
 ```
 
 ### 3. Derive ingest candidates — file-list-first
 
-**Always start from `git show --diff-merges=first-parent --name-only "$MERGE_SHA"` (actual touched files), never from the PR title/body alone.** Concept-based guessing produces false candidates (e.g. inferring a "cloud-sync.md" page from the phrase "manifest source tag" in a title whose diff touched no cloud-sync code). Walk the file list; for each file ask whether the change introduced lore. If you cannot tie a candidate page to a concrete file in the diff, **drop the candidate**.
+**Always start from the PR file list (`gh pr view <N> --json files`, i.e. `$PR_FILES`), never from the PR title/body alone.** Concept-based guessing produces false candidates (e.g. inferring a "cloud-sync.md" page from the phrase "manifest source tag" in a title whose diff touched no cloud-sync code). Walk the file list; for each file ask whether the change introduced lore. If you cannot tie a candidate page to a concrete file in the diff, **drop the candidate**.
 
 For each meaningful change, ask:
 - Is the *cause* of this change non-obvious from the diff alone?
@@ -43,7 +44,7 @@ For each meaningful change, ask:
 - Did a new file/module appear that the wiki's code-map should reference?
 - Does the finding meet the `.llmwiki/insight/` graduation bar (recurring + generalizable + costly-to-violate + stabilized)? If so, `ingest-finding`'s graduation step handles it.
 
-List candidates as `(page-to-touch, finding-summary, evidence-file)` tuples — `evidence-file` must come from `git show --diff-merges=first-parent --name-only`. Map each to: an existing wiki page to update (preferred), a new page inside an existing domain (rare), or a new domain dir (needs user approval — surface as a question, never auto-create).
+List candidates as `(page-to-touch, finding-summary, evidence-file)` tuples — `evidence-file` must come from the PR file list (`gh pr view <N> --json files`). Map each to: an existing wiki page to update (preferred), a new page inside an existing domain (rare), or a new domain dir (needs user approval — surface as a question, never auto-create).
 
 ### 4. Triage candidates by autonomy boundary
 
@@ -105,12 +106,12 @@ This step runs after config + Serena integration so it can avoid double-recordin
 - New pages carry v2 frontmatter defaults.
 - No raw `[[wikilink]]` introduced (typed grammar only).
 - The user approved any *gated* candidate (new domain / contradiction); within-domain ingests and insight graduations proceed autonomously.
-- Every ingested candidate maps to a concrete file in `git show --diff-merges=first-parent --name-only`.
+- Every ingested candidate maps to a concrete file in the PR file list (`gh pr view <N> --json files`).
 
 ## Anti-patterns
 
 - **Auto-create a new domain / resolve a contradiction without review** — these cross an autonomy boundary.
 - **Ingest every trivial fix** — the wiki becomes a churn log instead of a synthesis layer.
 - **Skip the diff log** — `ingest-finding` requires the `log.md` entry first; don't shortcut it.
-- **Concept-based candidate derivation** — never propose a page from PR title/body phrasing alone; tie every candidate to a file in `git show --diff-merges=first-parent --name-only`.
+- **Concept-based candidate derivation** — never propose a page from PR title/body phrasing alone; tie every candidate to a file in the PR file list (`gh pr view <N> --json files`).
 - **Re-record a config rule as lore** — respect the routing boundary; each fact has one home.

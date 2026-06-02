@@ -43,7 +43,7 @@ esac
 - Use the PR number argument if given; else infer from context; else `gh pr list --state merged --limit 5` and prompt.
 - `gh pr view <PR_NUMBER> --json number,title,baseRefName,headRefName,body,state,files,mergeCommit`.
 - Verify `state` is `MERGED`. This result is the **authoritative merge signal** (see Guidelines) — no later SHA comparison.
-- Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')` — this is **this PR's** merge commit. Step 8 reads the merged file list from `MERGE_SHA`, not from `git log -1` after the base pull (which would point at whatever last landed on base).
+- Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')` — this is **this PR's** merge commit, used to label the wiki log entry and read diff content. Step 8 derives the merged **file list** from the PR `files` field (merge-method-agnostic), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
 
 ### 2. Check local changes
 
@@ -108,7 +108,12 @@ If the PR changed features/commands/install/usage/deps and a README exists: draf
 If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **or `.llmwiki/` from the Step 8 wiki ingest** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed) must still commit, or the ingest is left uncommitted in the working tree. Stage only modified files:
 
 ```bash
-git add CLAUDE.md AGENTS.md GEMINI.md README.md .claude/rules/ .serena/memories/ .llmwiki/ .claude/state/spec.json .claude/spec/ 2>/dev/null || true
+# Stage only the paths that exist — `git add a b c` is atomic: one missing
+# pathspec aborts the whole add (and `|| true` would hide it), leaving real
+# .llmwiki/README changes unstaged so the commit is wrongly skipped.
+for p in CLAUDE.md AGENTS.md GEMINI.md README.md .claude/rules .serena/memories .llmwiki .claude/state/spec.json .claude/spec; do
+  [ -e "$p" ] && git add "$p"
+done
 ```
 
 Skip the commit only when `git diff --cached --quiet` reports nothing staged after the `git add` — a staged-only check; `git status --porcelain` would also count pre-existing untracked files and wrongly attempt an empty-index commit.

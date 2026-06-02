@@ -1,5 +1,7 @@
 ---
-description: Decompose Work
+name: decompose-issue
+description: Break a large work item into context-completable GitHub sub-issues, define a 10-20 node architecture and workflow mapping, propose a milestone, and create the issues with gh. Use ONLY when the user explicitly types /github-dev:decompose-issue or asks to decompose or break down work into issues. Do NOT auto-fire from incidental mentions of issues or planning — this creates GitHub issues, a milestone, and a project-tracking state file. Detects TDD applicability, captures dependencies, and writes .claude/state/project-tracking-{slug}.json for the milestone and diagram pipeline.
+allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
 ## Decompose Work

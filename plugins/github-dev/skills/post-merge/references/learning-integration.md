@@ -11,7 +11,7 @@ Before integrating new learnings, scrub existing stamps out of the target files.
 1. Build the target file candidate list: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.claude/rules/*.md` — whichever exist.
 2. For each file, grep for the Core Principle's forbidden patterns:
    ```bash
-   rg -nP '(\(?#\d+\)?|\b(PR|pr) ?#?\d+\b|\b([Ii]ssue|이슈) ?#?\d+\b|\b(Added|Removed|Fixed|Changed|Introduced) in (PR|#)|## Post-Merge)' <file>
+   rg -nP '(\(?#\d+\)?|\b(PR|pr|Pull Request) ?#?\d+\b|\b([Ii]ssue|이슈) ?#?\d+\b|\b(Added|Removed|Fixed|Changed|Introduced) in (PR|#)|## Post-Merge|<(YYYY-MM-DD|\d{4}-\d{2}-\d{2})>)' <file>
    ```
 3. **Marker filter**: for each hit, walk back to the nearest preceding H2/H3 heading. If a line `<!-- history-allowed [...] -->` appears between that heading and the next H2/H3 (the hit lives inside a marked section), drop the hit. Only hits outside marker sections proceed.
 4. If the hit count is 0, skip Pre-Audit and proceed to read the PR diff.

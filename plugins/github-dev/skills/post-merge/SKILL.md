@@ -30,12 +30,14 @@ For worktree removal, use `/exit` with its cleanup option.
 **Worktree guard (P0)** — run first:
 
 ```bash
-if [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
-  MAIN_REPO=$(cd "$(git rev-parse --git-common-dir)/.." && pwd -P)
-  echo "[abort] post-merge cannot run inside a worktree."
-  echo "Run /exit (cleanup option), then re-run /github-dev:post-merge from $MAIN_REPO"
-  exit 1
-fi
+case "$(git rev-parse --absolute-git-dir)" in
+  */worktrees/*)
+    MAIN_REPO=$(cd "$(git rev-parse --git-common-dir)/.." && pwd -P)
+    echo "[abort] post-merge cannot run inside a worktree."
+    echo "Run /exit (cleanup option), then re-run /github-dev:post-merge from $MAIN_REPO"
+    exit 1
+    ;;
+esac
 ```
 
 - Use the PR number argument if given; else infer from context; else `gh pr list --state merged --limit 5` and prompt.
@@ -106,7 +108,7 @@ If the PR changed features/commands/install/usage/deps and a README exists: draf
 If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **or `.llmwiki/` from the Step 8 wiki ingest** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed) must still commit, or the ingest is left uncommitted in the working tree. Stage only modified files:
 
 ```bash
-git add CLAUDE.md AGENTS.md GEMINI.md README.md .serena/memories/ .llmwiki/ 2>/dev/null || true
+git add CLAUDE.md AGENTS.md GEMINI.md README.md .claude/rules/ .serena/memories/ .llmwiki/ .claude/state/spec.json .claude/spec/ 2>/dev/null || true
 ```
 
 Skip the commit only when `git status --porcelain` shows nothing staged after the `git add`.

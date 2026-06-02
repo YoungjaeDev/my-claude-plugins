@@ -17,7 +17,7 @@ Analyze only the files provided as arguments, create an appropriate commit messa
    - Documentation update
    - Style/formatting
 2. **Write commit message**: Write clearly in Conventional Commits format
-3. **Commit & Push**: `git add` -> `git commit` -> `git push`
+3. **Commit & Push**: `git add <provided files>` -> `git commit` -> `git push` (stage only the files passed as arguments, never `git add -A` / `git add .`)
 
 ## Commit Message Format
 

@@ -6,7 +6,7 @@ Karpathy LLM-Wiki 3-layer system packaged as a plugin. Universal — works in an
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| **6 skills** | `skills/{query,ingest,lint,bootstrap,migrate,post-merge}-wiki/` | wiki query, finding ingest, health audit, repo bootstrap, v1→v2 migration, post-merge ingest chain |
+| **5 skills** | `skills/{query,ingest,lint,bootstrap,migrate}-wiki/` | wiki query, finding ingest, health audit, repo bootstrap, v1→v2 migration. (Post-merge ingest moved into `github-dev:post-merge` as a mandatory step.) |
 | **3 hooks** | `hooks/wiki_{stale_check,post_commit_hint,session_start_lint_hint}.sh` | UserPromptSubmit + PostToolUse(Bash) + SessionStart soft hints |
 | **bootstrap templates** | `skills/bootstrap-wiki/assets/templates/` | wiki-skeleton (index, log, spec) + insight-skeleton (index, _insight-template) |
 

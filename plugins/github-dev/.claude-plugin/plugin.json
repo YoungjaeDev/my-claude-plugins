@@ -1,17 +1,15 @@
 {
   "name": "github-dev",
-  "version": "1.25.0",
+  "version": "2.0.0",
   "description": "GitHub workflow automation commands for Claude Code",
-  "commands": [
-    "./commands/commit-and-push.md",
-    "./commands/create-issue-label.md",
-    "./commands/decompose-issue.md",
-    "./commands/resolve-issue.md",
-    "./commands/update-progress.md",
-    "./commands/release.md"
-  ],
   "skills": [
     "./skills/cr-fix",
-    "./skills/post-merge"
+    "./skills/post-merge",
+    "./skills/commit-and-push",
+    "./skills/create-issue-label",
+    "./skills/decompose-issue",
+    "./skills/update-progress",
+    "./skills/resolve-issue",
+    "./skills/release"
   ]
 }

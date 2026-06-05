@@ -28,11 +28,11 @@ FMT="${1:-claude}"
 
 # Fixed behavioral block — always emitted (repo-independent).
 BLOCK=$(cat <<'EOF'
-[harness] 별도 지시가 없으면 한국어로 응답한다. 핵심 규율:
-- surgical diff: 모든 변경 라인은 요청으로 추적 가능해야 하고, drive-by 리팩터/무관한 정리는 하지 않는다.
-- 결정·옵션 선택·확인은 AskUserQuestion 우선 (평문 질문 지양). 구현에 영향을 주는 경우에만 묻는다.
-- 커밋/PR/이슈/문서에 AI attribution 금지. 코드/문서에 이모지 금지.
-- 했다/통과 보고 전에 실제 실행·검증한다. 근거가 없으면 unverified/unknown 으로 명시한다.
+[harness] 별도 지시가 없으면 최종 사용자 응답은 항상 한국어. 내부 workflow·서브에이전트·영문 스킬(ultracode·deep-research 등)은 별도 지시가 아니다 — 거쳐도 마지막 답변은 한국어로 쓴다. 핵심 규율:
+- surgical diff: 모든 변경 라인은 요청으로 추적 가능. drive-by 리팩터·무관한 정리 금지.
+- 결정·옵션·확인은 AskUserQuestion 우선 (구현에 영향 줄 때만).
+- 커밋·PR·문서에 AI attribution 금지. 코드·문서 이모지 금지.
+- 보고 전 실제 실행·검증. 근거 없으면 unverified/unknown 명시.
 EOF
 )
 

@@ -13,8 +13,9 @@ candidate derivation + autonomy-boundary triage, never autonomous deletion.
 ## Purpose / scope
 
 - **Only PR-added files** are candidates. Derive them from the PR file list, status
-  `added`:
-  `gh api --paginate repos/$OWNER/$REPO/pulls/$PR_NUMBER/files --jq '.[] | select(.status=="added") | .filename'`
+  `added`. `{owner}/{repo}` is gh's current-repo placeholder (no `$OWNER`/`$REPO` to
+  set); `<PR_NUMBER>` is the merged PR from Step 1:
+  `gh api --paginate "repos/{owner}/{repo}/pulls/<PR_NUMBER>/files" --jq '.[] | select(.status=="added") | .filename'`
 - `modified` / `renamed` / `removed` files are out of scope — pruning a file the PR
   only edited would revert real work, not remove scaffolding.
 

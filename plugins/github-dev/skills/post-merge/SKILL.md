@@ -79,8 +79,10 @@ a real repo change (`git rm` + commit), not local-junk cleanup. Surface only fil
 Skip silently when: the PR added no files, no candidate survives filtering, or the
 user selects skip-all.
 
-1. List PR-added files (status `added`, paginated):
-   `ADDED=$(gh api --paginate repos/$OWNER/$REPO/pulls/$PR_NUMBER/files --jq '.[] | select(.status=="added") | .filename')`
+1. List PR-added files (status `added`, paginated). `{owner}/{repo}` is gh's
+   current-repo placeholder — no need to set `$OWNER`/`$REPO`; `<PR_NUMBER>` is the
+   merged PR from Step 1:
+   `ADDED=$(gh api --paginate "repos/{owner}/{repo}/pulls/<PR_NUMBER>/files" --jq '.[] | select(.status=="added") | .filename')`
 2. Filter to candidates via the heuristics + hard exclusions + the `git grep`
    reference check in `references/ephemeral-heuristics.md`. A file imported or
    referenced by any other tracked file is never a candidate.
@@ -136,7 +138,7 @@ If the PR changed features/commands/install/usage/deps and a README exists: draf
 
 ### 10. Commit changes (optional)
 
-If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **or `.llmwiki/` from the Step 8 wiki ingest** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed) must still commit, or the ingest is left uncommitted in the working tree.
+If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **`.llmwiki/` from the Step 8 wiki ingest**, **or a Step 4.5 ephemeral-prune `git rm` deletion** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed), or a prune-only post-merge (Step 4.5 `git rm`'d a file but no config/wiki change landed), must still commit, or the change is left uncommitted in the working tree. The `git diff --cached --quiet` check below catches the staged deletion even though it is not in `RUN_TOUCHED`.
 
 Stage **only the exact files this run created or modified** — collect them as you go through Steps 5.7-9 (each config file you edited, the `.claude/state/spec.json` + spec file from Step 5.7, README, Serena memory files, and the specific wiki pages `ingest-finding` created/updated). Build that explicit list as `RUN_TOUCHED` and add only those paths — **never `git add` a whole directory** (`.llmwiki/`, `.claude/spec/`, …): a pre-existing untracked draft (e.g. a user's `.llmwiki/wiki/draft.md`) would otherwise be swept into this commit, and Step 2 already decided to leave untracked files alone.
 

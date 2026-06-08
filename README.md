@@ -68,16 +68,16 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
 | **AI Models** | `council` | Claude, Codex, Gemini 멀티모델 심의 |
 | | `midjourney` | Midjourney V7 이미지 생성 |
+| | `codex-image` | Claude->Codex 이미지 생성 브리지 (ChatGPT OAuth, OpenAI API key 불필요) |
 | **Dev Tools** | `notebook` | Jupyter 노트북 안전 편집 |
 | | `ml-toolkit` | GPU 병렬 처리, Gradio CV 앱 |
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
 | | `notion` | Markdown을 Notion으로 업로드 |
-| | `humanizer` | AI 글쓰기 패턴 제거 |
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
-| **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
+| **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) + 배포 문서 템플릿 + MOC 인덱스 |
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 3 hooks; post-merge ingest built into `github-dev:post-merge`) |
@@ -265,6 +265,21 @@ Midjourney V7 프롬프트 최적화 및 생성.
 
 </details>
 
+<details>
+<summary><strong>codex-image</strong> - Claude->Codex 이미지 생성 브리지</summary>
+
+`/codex-image` 호출 시 Codex CLI 의 이미지 생성 기능에 위임해 이미지를 만들거나 편집합니다. OpenAI REST API 나 API key 없이 ChatGPT OAuth 만으로 동작합니다.
+
+**Features:**
+- 수동 호출 전용 (`/codex-image`) — 생성 비용/부수효과 때문
+- 기본 출력: `assets/generated/codex-image/`, non-destructive 파일명
+- `--size` / `--quality` / `--out` / `-n` / `--edit` 옵션
+- Claude-only 브리지 — Codex sync 에서 제외 (순환 방지)
+
+**Requirements:** Codex CLI 설치 + ChatGPT OAuth 로그인
+
+</details>
+
 ### Development Tools
 
 <details>
@@ -315,17 +330,6 @@ Markdown을 Notion에 포매팅하여 업로드.
 - Dry run 미리보기
 
 **Requirements:** Notion API key
-
-</details>
-
-<details>
-<summary><strong>humanizer</strong> - AI 글쓰기 패턴 제거</summary>
-
-AI 생성 글의 패턴 제거.
-
-**Triggers:** "humanize this", "make it sound human"
-
-**24가지 패턴 감지:** 중요성 과장, 홍보적 언어, AI 어휘, 대시 남용 등
 
 </details>
 
@@ -407,14 +411,16 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 
 스펙 기반 개발을 위한 구조화된 인터뷰.
 
-**Phases:**
+**Modes:** breadth-first (5-phase 전수) + depth-first / Socratic (가장 큰 불확실성 1개씩 focused). 코드베이스로 답할 수 있는 건 묻지 않고, 이미 구체적인 요청엔 인터뷰 생략.
+
+**Phases (breadth-first):**
 1. Context Gathering
 2. Deep Dive
 3. Edge Case Exploration
 4. Prioritization
 5. Validation
 
-**Output:** `.claude/spec/{date}-{feature}.md`
+**Output:** 작은 인터뷰는 lightweight 요약 (결정 + 열린 질문), 큰 건은 full spec `.claude/spec/{date}-{feature}.md`
 
 </details>
 
@@ -467,9 +473,9 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 ### Documentation & Rules
 
 <details>
-<summary><strong>docs-forge</strong> - README & CHANGELOG 생성</summary>
+<summary><strong>docs-forge</strong> - README & CHANGELOG & 배포 문서 & MOC 생성</summary>
 
-CRO 분석 기반 README/CHANGELOG 생성.
+CRO 분석 기반 README/CHANGELOG 생성, 배포 / 절차 문서 템플릿, 임의 폴더 MOC 인덱스 생성.
 
 **Commands:**
 | Command | Description |
@@ -477,6 +483,8 @@ CRO 분석 기반 README/CHANGELOG 생성.
 | `/docs-forge:readme generate` | 템플릿에서 README 생성 |
 | `/docs-forge:readme analyze` | 기존 README 분석 |
 | `/docs-forge:changelog init` | CHANGELOG 초기화 |
+| `/docs-forge:deploy-doc generate` | 배포 / 절차 문서 생성 (요약 + 전제조건 + 번호 단계) |
+| `/docs-forge:moc docs/` | 문서 폴더 MOC 인덱스 생성 (경량 / `--strict`) |
 
 **Templates:** CLI, Library, React Component, MCP Plugin, SaaS, Desktop
 
@@ -546,7 +554,6 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
       "./plugins/midjourney",
       "./plugins/interview",
       "./plugins/notion",
-      "./plugins/humanizer",
       "./plugins/slidev",
       "./plugins/docs-forge",
       "./plugins/rules-forge",
@@ -575,9 +582,18 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이). 즉 19 / 21 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 18 / 21 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
+
+`--check` 는 manifest drift 외에 **skill `description` 길이**도 검증합니다 (Codex 0.135 는 1024자 초과 description 을 가진 skill 을 silent 하게 skip). 이 가드는 로컬 pre-commit 훅과 CI 양쪽에서 동일하게 실행됩니다:
+
+```bash
+# 클론당 1회: 버전 관리되는 .githooks/pre-commit 활성화
+git config core.hooksPath .githooks
+```
+
+활성화하면 매 커밋 전에 `node scripts/sync-codex-manifests.mjs --check` 가 돌아 drift / 길이 위반을 차단합니다. 훅을 건너뛴 기여자도 PR 시 `.github/workflows/validate-codex.yml` 이 동일 명령으로 잡습니다.
 
 ## 요구사항
 
@@ -607,11 +623,11 @@ Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만
 │   ├── ml-toolkit/            # ML 개발
 │   ├── translator/            # 번역
 │   ├── midjourney/            # 이미지 생성
+│   ├── codex-image/           # Claude->Codex 이미지 생성 브리지
 │   ├── interview/             # 요구사항 수집
 │   ├── notion/                # Notion 연동
-│   ├── humanizer/             # AI 패턴 제거
 │   ├── slidev/                # 프레젠테이션 생성
-│   ├── docs-forge/            # README/CHANGELOG 생성
+│   ├── docs-forge/            # README/CHANGELOG + 배포 문서 + MOC 생성
 │   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)
 │   ├── workflow-viz/          # 워크플로우 시각화
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화

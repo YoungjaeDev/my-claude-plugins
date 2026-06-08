@@ -8,6 +8,8 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 |-------|-------------|
 | `readme-guide` | README patterns and templates reference |
 | `changelog-guide` | CHANGELOG format and automation guide |
+| `deploy-doc-guide` | Deployment / procedure doc skeleton (summary + prerequisites + numbered steps) |
+| `moc-guide` | MOC index generation spec (hook precedence, lightweight vs strict) |
 
 ## Commands
 
@@ -15,6 +17,8 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 |---------|-------------|
 | `/docs-forge:readme` | Generate or analyze README |
 | `/docs-forge:changelog` | Generate or analyze CHANGELOG |
+| `/docs-forge:deploy-doc` | Generate or restructure a deployment / procedure doc |
+| `/docs-forge:moc` | Generate a Map of Content index for a docs folder |
 
 ## References
 
@@ -27,6 +31,8 @@ Comprehensive reference documents in `references/`:
 | `TEMPLATES.md` | Copy-paste templates for 6 project types |
 | `CRO_CHECKLIST.md` | Conversion optimization checklist |
 | `EXAMPLES_ANALYSIS.md` | Detailed analysis of each example project |
+| `DEPLOY_DOC_PATTERNS.md` | Deployment-doc skeleton, filled example, anti-patterns (Korean) |
+| `MOC_PATTERNS.md` | MOC hook-sourcing ladder, lightweight + strict examples (Korean) |
 
 ## Analyzed Examples
 
@@ -66,4 +72,20 @@ Based on awesome-readme curated list:
 ```
 /docs-forge:changelog init
 /docs-forge:changelog add "Added new feature"
+```
+
+### Generate Deployment Doc
+
+```
+/docs-forge:deploy-doc generate docs/deploy/inference.md --title "추론 서비스 배포"
+/docs-forge:deploy-doc generate docs/deploy/inference.md --links deploy/spec.md
+/docs-forge:deploy-doc rewrite docs/legacy-procedure.md
+```
+
+### Generate MOC
+
+```
+/docs-forge:moc docs/
+/docs-forge:moc docs/ --strict
+/docs-forge:moc docs/ --out docs/CONTENTS.md
 ```

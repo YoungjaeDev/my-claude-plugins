@@ -1,0 +1,156 @@
+---
+name: codex-image
+description: Generate or edit bitmap images from Claude Code by delegating to Codex CLI image generation. Use only when the user explicitly invokes /codex-image to create project-bound raster assets without managing OpenAI API keys.
+argument-hint: "[--size auto|WIDTHxHEIGHT] [--quality low|medium|high|auto] [--out <dir>] [-n <count>] [--edit <image-path>] <prompt>"
+disable-model-invocation: true
+allowed-tools: Bash(codex *) Bash(git rev-parse *) Bash(pwd) Bash(mkdir *) Bash(ls *) Read AskUserQuestion
+---
+
+# Codex Image
+
+Generate or edit raster images by asking Codex CLI to use its image generation capability. This skill is a Claude Code bridge: do not call the OpenAI REST API, do not ask for an API key, and do not clone or run third-party skill code.
+
+## Defaults
+
+- Invocation is manual only because image generation has cost and side effects.
+- Default output directory: `assets/generated/codex-image/` under the project root.
+- Default size: `auto`.
+- Default quality: `auto`.
+- Default count: `1`.
+- Keep generated filenames unique and non-destructive: `codex-image-YYYYMMDD-HHMMSS[-N].png`.
+- Treat `-n` as variations of one prompt. For distinct assets, run separate generations.
+
+## Argument Handling
+
+Invocation arguments:
+
+```text
+$ARGUMENTS
+```
+
+Parse the invocation arguments manually:
+
+- `--size`: `auto` or `WIDTHxHEIGHT`.
+- `--quality`: `low`, `medium`, `high`, or `auto`.
+- `--out`: output directory. Resolve relative paths from the project root.
+- `-n`: number of variants. Use `1` through `4` without extra confirmation; ask before generating more.
+- `--edit`: local image path to edit. Verify it exists and read it before delegating.
+- Remaining text is the image prompt.
+
+If the prompt is missing, ask the user for one concise image prompt. If the request asks for true/native transparent output, explain that the Codex CLI bridge may not expose a guaranteed transparent-background control; ask before switching to any API-key fallback.
+
+## Validation
+
+Before generating:
+
+1. Run `codex --version`. If missing, stop and tell the user to install Codex CLI and run `codex login`.
+2. Run `codex login status`. If not logged in, stop and tell the user to run `codex login`.
+3. Find the project root with `git rev-parse --show-toplevel`; if that fails, use the current working directory and add `--skip-git-repo-check` to `codex exec`.
+4. Create the output directory if needed.
+5. Validate size:
+   - `auto` is valid.
+   - For `WIDTHxHEIGHT`, both dimensions must be positive integers.
+   - Prefer Codex imagegen-compatible sizes: both edges multiples of 16, max edge <= 3840, aspect ratio <= 3:1, and total pixels from 655360 to 8294400.
+   - If the requested size fails these constraints, ask for a valid size instead of silently changing it.
+6. Validate quality and count. Do not silently downgrade quality or reduce count.
+
+## Prompt Handoff
+
+Pass instructions to Codex through stdin with `codex exec -`. Do not interpolate the raw user prompt inside a shell command argument.
+
+Use host-appropriate stdin syntax. Append `--skip-git-repo-check` to `codex exec` only when no git root was found.
+
+For bash-like shells:
+
+```bash
+codex exec - -C "<project-root>" -s workspace-write <<'EOF'
+Use the built-in image generation capability to create the requested image.
+
+Prompt:
+<exact user prompt>
+
+Options:
+- size: <size>
+- quality: <quality>
+- count: <count>
+- edit target: <image path or none>
+- output directory: <absolute output directory>
+- filename base: <codex-image timestamp base>
+
+Requirements:
+1. Generate exactly the requested count unless the tool reports it cannot.
+2. Save final PNG file(s) in the output directory with the requested filename base.
+3. Never overwrite existing files.
+4. Print the saved file path(s), file size(s), and any tool/model limitation encountered.
+5. If image generation is unavailable in this Codex CLI session, say so directly and do not create placeholders.
+EOF
+```
+
+For PowerShell, set the native-pipe encoding to UTF-8 first, otherwise PowerShell 5.1 transcodes the pipe to ASCII and corrupts non-ASCII text (e.g. Korean becomes `??`):
+
+```powershell
+$OutputEncoding = [System.Text.Encoding]::UTF8
+@'
+Use the built-in image generation capability to create the requested image.
+
+Prompt:
+<exact user prompt>
+
+Options:
+- size: <size>
+- quality: <quality>
+- count: <count>
+- edit target: <image path or none>
+- output directory: <absolute output directory>
+- filename base: <codex-image timestamp base>
+
+Requirements:
+1. Generate exactly the requested count unless the tool reports it cannot.
+2. Save final PNG file(s) in the output directory with the requested filename base.
+3. Never overwrite existing files.
+4. Print the saved file path(s), file size(s), and any tool/model limitation encountered.
+5. If image generation is unavailable in this Codex CLI session, say so directly and do not create placeholders.
+'@ | codex exec - -C "<project-root>" -s workspace-write
+```
+
+If `--edit` is provided, also pass the image via Codex CLI's image attachment option when available:
+
+```bash
+codex exec - -i "<edit-image-path>" -C "<project-root>" -s workspace-write ...
+```
+
+## Prompt Quality
+
+Shape vague prompts into a short production spec without inventing unrelated content:
+
+- Intended use: asset, mockup, slide visual, product photo, illustration, etc.
+- Subject and setting.
+- Style or medium.
+- Composition and framing.
+- Lighting and mood.
+- Exact text, quoted verbatim, if any.
+- Constraints and avoid list.
+
+For edits, preserve invariants explicitly: say what must change and what must remain unchanged.
+
+## Transparent Output
+
+Use the Codex CLI bridge first for ordinary image generation. For transparent-background requests:
+
+1. If simple cutout quality is acceptable, ask Codex to generate the subject on a flat chroma-key background such as `#00ff00`, then remove the background locally only if a suitable helper exists in the active environment.
+2. If the user asks for true/native transparency, or the subject is complex (hair, glass, smoke, translucent material, soft shadows, reflections), ask before using any fallback that requires `OPENAI_API_KEY`.
+3. Do not claim that `gpt-image-2` supports `background=transparent`.
+
+## Result Handling
+
+After `codex exec` finishes:
+
+1. Verify every reported file exists under the requested output directory.
+   - Observed on Windows (codex-cli 0.136.0; not documented upstream, treat as environment-specific): the `codex exec` sandbox can block all shell spawns with `windows sandbox: spawn setup refresh`. When that happens the image is still generated but Codex cannot copy it into the output directory; it stays at `~/.codex/generated_images/<session-id>/ig_*.png`. Codex prints `session id: <UUID>` near the top of its output. Recover the file from outside the sandbox: take the newest `ig_*.png` under that session folder and copy it to the output directory with the requested filename base, refusing to overwrite an existing file. Do not re-run generation just because the in-sandbox copy failed.
+2. Read/display the generated image file(s) for review.
+3. Report:
+   - saved path(s)
+   - size and quality requested
+   - count requested and count produced
+   - whether this used Codex CLI bridge mode
+4. If generation failed, report the Codex CLI version, the relevant error text, and the next concrete command for the user (`codex login`, Codex update, or retry with lower quality). Do not fabricate images or write placeholder files.

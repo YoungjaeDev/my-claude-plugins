@@ -19,6 +19,10 @@ set -euo pipefail
 # Honor the documented CODEX_PREFLIGHT_TIMEOUT alias (references/arguments.md);
 # fall through to the internal CODEX_TIMEOUT name otherwise. Default 600s.
 : "${CODEX_TIMEOUT:=${CODEX_PREFLIGHT_TIMEOUT:-600}}"
+# Grace window during which a transient `success` + "Review skipped: free tier
+# disabled" placeholder is held as cr_wait rather than rate_limited. See
+# references/pre-flight-rules.md. Mirrors poll-cr-status.sh CR_SKIP_GRACE.
+: "${CR_SKIP_GRACE:=300}"
 
 SCRIPT_DIR="${SKIP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
@@ -31,19 +35,78 @@ if cr_pages=$(gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" 2
 fi
 cr_state=$(jq -r '.state // ""' <<<"$cr_status")
 cr_desc=$(jq -r '.description // ""' <<<"$cr_status")
+cr_created_at=$(jq -r '.created_at // ""' <<<"$cr_status")
 
 # Normalize empty state → "none" for the output JSON; the matrix treats both
 # as "no status row yet" but downstream tooling reads strings, not blanks.
 cr_state_out="${cr_state:-none}"
 
+# ── 1b. push age & timeout ──────────────────────────────────────────────────
+# Computed before the rate-limit sniff because the free-tier grace guard (§2)
+# needs push_age to decide transient-vs-genuine.
+# Portable ISO-8601 → epoch: GNU `date -d` first, then BSD `date -j -f`.
+# Without the BSD fallback push_age stays at 0 on macOS, codex_timeout_active
+# stays true forever, and gate decisions skew toward codex_wait. (CR Major, Codex P1)
+iso_to_epoch() {
+  local iso="$1" ts
+  ts=$(date -d "$iso" +%s 2>/dev/null) && { printf '%s\n' "$ts"; return 0; }
+  # BSD date: accept either `2026-05-30T01:49:10Z` or `...+00:00`.
+  ts=$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$iso" +%s 2>/dev/null) && { printf '%s\n' "$ts"; return 0; }
+  ts=$(date -j -u -f '%Y-%m-%dT%H:%M:%S%z' "${iso/Z/+0000}" +%s 2>/dev/null) && { printf '%s\n' "$ts"; return 0; }
+  return 1
+}
+now_ts=$(date +%s)
+push_age=0
+if push_ts=$(iso_to_epoch "$PUSH_TIME"); then
+  push_age=$((now_ts - push_ts))
+  # Clock skew (push timestamp ahead of local now) can make this negative; the
+  # output schema floors push_age_seconds at 0, so clamp at the source.
+  [ "$push_age" -lt 0 ] && push_age=0
+fi
+codex_timeout_active=false
+if [ "$push_age" -lt "$CODEX_TIMEOUT" ]; then codex_timeout_active=true; fi
+
+# Grace clock for the free-tier transient is anchored to WHEN THE CR STATUS ROW
+# APPEARED (created_at), not push time — a bot that queues the placeholder more
+# than CR_SKIP_GRACE after the push must still get the full grace to flip to
+# "Review completed", or pre-flight would lock it to rate_limited prematurely.
+# Falls back to push_age when the status carries no parseable timestamp.
+cr_skip_age="$push_age"
+if [ -n "$cr_created_at" ] && cr_created_ts=$(iso_to_epoch "$cr_created_at"); then
+  cr_skip_age=$((now_ts - cr_created_ts))
+  [ "$cr_skip_age" -lt 0 ] && cr_skip_age=0
+fi
+
 # ── 2. CR rate-limit sniff (comment body + commit-status description) ───────
+# "Review skipped: free tier disabled" is a TRANSIENT quota-refill placeholder,
+# not a genuine rate-limit. Within CR_SKIP_GRACE of the push it is held as
+# cr_wait (§6) so CR can finish; only past grace does it route to rate_limited.
+# Genuine patterns (`Review limit reached`/`rate limited`) route immediately.
 rate_limit_source="none"
-if [ "$cr_desc" != "" ] \
-   && jq -nr --arg d "$cr_desc" '$d | test("Review skipped: free tier disabled|Review limit reached|rate limited"; "i")' \
+cr_free_tier_skip=false
+# All three description classifiers require cr_state == "success": the documented
+# decision matrix only routes description-derived signals on a success row, and a
+# non-success status (pending/error) carrying these strings must not promote to
+# rate_limited or skip the sniff.
+if [ "$cr_state" = "success" ] && [ "$cr_desc" != "" ] \
+   && jq -nr --arg d "$cr_desc" '$d | test("^Review skipped: free tier disabled"; "i")' \
+        | grep -q true 2>/dev/null; then
+  cr_free_tier_skip=true
+fi
+if [ "$cr_state" = "success" ] && [ "$cr_desc" != "" ] \
+   && jq -nr --arg d "$cr_desc" '$d | test("Review limit reached|rate limited"; "i")' \
         | grep -q true 2>/dev/null; then
   rate_limit_source="description"
 fi
+# Free-tier transient that has outlived its grace window → genuine disable.
+if [ "$cr_free_tier_skip" = "true" ] && [ "$cr_skip_age" -ge "$CR_SKIP_GRACE" ]; then
+  rate_limit_source="description"
+fi
+# Skip the body sniff while a free-tier transient is still within grace — the
+# sniffer also inspects the commit-status description and would re-flag the
+# same placeholder, masking the cr_wait hold. (sniffer itself is unmodified.)
 if [ "$rate_limit_source" = "none" ] \
+   && ! { [ "$cr_free_tier_skip" = "true" ] && [ "$cr_skip_age" -lt "$CR_SKIP_GRACE" ]; } \
    && sniff_json=$(bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
   # Honor the actual channel the sniffer detected instead of always writing "comment".
   # The sniffer emits {channel: "comment"|"description"|"both"} — propagate verbatim.
@@ -81,26 +144,6 @@ if [ "${NO_CODEX:-false}" != "true" ]; then
   fi
 fi
 
-# ── 5. push age & timeout ───────────────────────────────────────────────────
-# Portable ISO-8601 → epoch: GNU `date -d` first, then BSD `date -j -f`.
-# Without the BSD fallback push_age stays at 0 on macOS, codex_timeout_active
-# stays true forever, and gate decisions skew toward codex_wait. (CR Major, Codex P1)
-iso_to_epoch() {
-  local iso="$1" ts
-  ts=$(date -d "$iso" +%s 2>/dev/null) && { printf '%s\n' "$ts"; return 0; }
-  # BSD date: accept either `2026-05-30T01:49:10Z` or `...+00:00`.
-  ts=$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$iso" +%s 2>/dev/null) && { printf '%s\n' "$ts"; return 0; }
-  ts=$(date -j -u -f '%Y-%m-%dT%H:%M:%S%z' "${iso/Z/+0000}" +%s 2>/dev/null) && { printf '%s\n' "$ts"; return 0; }
-  return 1
-}
-push_age=0
-if push_ts=$(iso_to_epoch "$PUSH_TIME"); then
-  now_ts=$(date +%s)
-  push_age=$((now_ts - push_ts))
-fi
-codex_timeout_active=false
-if [ "$push_age" -lt "$CODEX_TIMEOUT" ]; then codex_timeout_active=true; fi
-
 # ── 6. Decision matrix ──────────────────────────────────────────────────────
 # cr_actionable: does CR have a real terminal state right now?
 cr_actionable=false
@@ -109,7 +152,15 @@ gate="cr_wait"
 
 case "$cr_state" in
   success)
-    cr_actionable=true
+    if [ "$cr_free_tier_skip" = "true" ] && [ "$cr_skip_age" -lt "$CR_SKIP_GRACE" ]; then
+      # Transient free-tier placeholder still within grace → not terminal yet.
+      # Keep waiting (cr_wait) for the real "Review completed"; the gate
+      # refinement below is skipped because cr_actionable stays false.
+      cr_actionable=false
+      gate="cr_wait"
+    else
+      cr_actionable=true
+    fi
     ;;
   failure)
     gate="failure"

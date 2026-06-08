@@ -12,7 +12,7 @@ v2 changes:
 
 - **Step 5 Pre-flight**: one parallel fetch across CR commit-status + comments + Codex reviews + Codex emoji (3 channels) routes the iter to `proceed | cr_wait | codex_wait | rate_limited | failure`. Removes the "always poll" hang.
 - **Step 9 autonomous judgment**: the per-finding `AskUserQuestion` gate is gone. The LLM reads the affected code, judges real-vs-spurious + severity + fix size, and applies / defers / skips by itself. Reasoning is surfaced in the final JSON so the user can audit decisions, not micromanage them.
-- **Rate-limit channel widened**: commit-status `description` (`Review skipped: free tier disabled`) plus comment `updated_at` (in-place edits) are now sniffed in addition to `created_at` bodies.
+- **Rate-limit channel widened**: commit-status `description` (`Review limit reached` / `rate limited`) plus comment `updated_at` (in-place edits) are now sniffed in addition to `created_at` bodies. `Review skipped: free tier disabled` is now treated as **transient** — CR briefly posts it (an hourly fair-usage quota refill) before the real `Review completed`, so it is held non-terminal for `CR_SKIP_GRACE` (default 300s) and only routed to `rate_limited` once that window expires.
 - **Polling interval default** dropped from `60s` → `8s` — wakeup latency ~5s = a pseudo-interrupt, made viable because pre-flight absorbs the cold-start round trip.
 
 ## Guidelines

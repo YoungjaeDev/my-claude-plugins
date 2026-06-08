@@ -15,6 +15,11 @@ set -euo pipefail
 
 : "${OWNER:?}"; : "${REPO:?}"; : "${SHA:?}"; : "${PR_NUM:?}"; : "${INTERVAL:=8}"; : "${PUSH_TIME:?}"
 EARLY_CHECK_WINDOW="${EARLY_CHECK_WINDOW:-30}"
+# CodeRabbit briefly posts `success` + "Review skipped: free tier disabled" (an
+# hourly fair-usage quota refill, transient ~5min) before the real "Review
+# completed". Hold that row non-terminal for CR_SKIP_GRACE seconds; only if it
+# never flips do we route to rate_limited (so we never wait forever).
+CR_SKIP_GRACE="${CR_SKIP_GRACE:-300}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Wall-clock start: the EARLY_CHECK_WINDOW must compare against real seconds
@@ -37,6 +42,27 @@ fetch_cr_state() {
 while true; do
   cr_obj=$(fetch_cr_state)
   s=$(jq -r '.state // ""' <<<"$cr_obj")
+  desc=$(jq -r '.description // ""' <<<"$cr_obj")
+
+  # Free-tier transient: success row whose description is the quota-refill
+  # placeholder (NOT genuine `Review limit reached`/`rate limited`). Keep
+  # polling until it flips to `Review completed`, or grace expires.
+  if [ "$s" = "success" ] && printf '%s' "$desc" | grep -qiE '^Review skipped: free tier disabled'; then
+    now_ts=$(date +%s)
+    : "${skip_first_ts:=$now_ts}"
+    if [ "$((now_ts - skip_first_ts))" -ge "$CR_SKIP_GRACE" ]; then
+      reset=null; hits=null
+      if rl=$(bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
+        reset=$(jq -r '.reset_minutes_estimate // "null"' <<<"$rl")
+        hits=$(jq -r '.hits // "null"' <<<"$rl")
+      fi
+      printf '{"state":"rate_limited","sha":"%s","pr":%s,"reset_minutes_estimate":%s,"hits":%s,"source":"poll"}\n' \
+        "$SHA" "$PR_NUM" "$reset" "$hits"
+      exit 0
+    fi
+    sleep "$INTERVAL"
+    continue
+  fi
 
   if [ "$s" = "success" ] || [ "$s" = "failure" ]; then
     target=$(jq -r '.target_url // ""' <<<"$cr_obj")

@@ -26,6 +26,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 |--------|-------------|
 | `council` | Multi-model deliberation (Claude, Codex, Gemini) |
 | `midjourney` | Midjourney V7 image generation |
+| `codex-image` | Claude->Codex image generation bridge (delegates to Codex CLI image gen via ChatGPT OAuth, no OpenAI API key). Claude-only — excluded from Codex sync |
 
 ### Development Tools
 | Plugin | Description |
@@ -38,7 +39,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 |--------|-------------|
 | `translator` | Web article translation to Korean |
 | `notion` | Markdown to Notion upload |
-| `humanizer` | Remove AI writing patterns from text |
 | `tcrei-prompt` | Rewrite prompts using Google's TCREI structure for next-session reuse |
 
 ### Planning
@@ -55,7 +55,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 ### Documentation
 | Plugin | Description |
 |--------|-------------|
-| `docs-forge` | README/CHANGELOG generation with CRO best practices |
+| `docs-forge` | README/CHANGELOG generation with CRO best practices, plus deployment-doc templates (`/docs-forge:deploy-doc`) and MOC index generation (`/docs-forge:moc`) |
 | `rules-forge` | CLAUDE.md + .claude/rules/ generation with auto mode detection (single write-rules skill) |
 
 ### Visualization
@@ -90,10 +90,10 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 │   ├── ml-toolkit/         # ML tools
 │   ├── translator/         # Translation
 │   ├── midjourney/         # Image gen
+│   ├── codex-image/        # Claude->Codex image gen bridge
 │   ├── interview/          # Requirements
 │   ├── notion/             # Notion
-│   ├── humanizer/          # AI text humanizer
-│   ├── docs-forge/         # README/CHANGELOG
+│   ├── docs-forge/         # README/CHANGELOG + deploy-doc + MOC
 │   ├── rules-forge/        # write-rules skill (auto mode detection)
 │   ├── slidev/             # Presentation generator
 │   ├── workflow-viz/       # Workflow visualization
@@ -118,7 +118,7 @@ node scripts/sync-codex-manifests.mjs           # write manifests
 node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
-Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 19 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `midjourney` (image-gen execution model differs). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 18 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `midjourney` (image-gen execution model differs), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
 
 ## Modular Rules
 

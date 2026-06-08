@@ -45,7 +45,6 @@ flowchart TB
         subgraph Content["Content & Docs"]
             SL[slidev<br/>Presentations]
             TR[translator<br/>Translation]
-            HU[humanizer<br/>AI text humanizer]
             NO[notion<br/>Notion upload]
         end
 
@@ -84,7 +83,7 @@ flowchart TB
     class GD,DF devStyle
     class CS,DW,PS researchStyle
     class CO,MJ aiStyle
-    class SL,TR,HU,NO contentStyle
+    class SL,TR,NO contentStyle
     class NB,ML,IV toolStyle
 ```
 
@@ -96,7 +95,7 @@ flowchart TB
 | **Development** | github-dev, docs-forge | Code workflow |
 | **Research** | code-scout, deepwiki, paper-search-tools | Information gathering |
 | **AI Models** | council, midjourney | External AI services |
-| **Content** | slidev, translator, humanizer, notion | Document creation |
+| **Content** | slidev, translator, notion | Document creation |
 | **Tools** | notebook, ml-toolkit, interview | Specialized utilities |
 
 ## Data Flow

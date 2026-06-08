@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Shared, version-controlled pre-commit hook (lives in the repo, not .git/hooks/).
+# Enforce the Codex manifest-drift guard AND the skill-description length guard
+# (both run inside sync-codex-manifests.mjs --check) before every commit.
+#
+# Activate once per clone:  git config core.hooksPath .githooks
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+node "$repo_root/scripts/sync-codex-manifests.mjs" --check

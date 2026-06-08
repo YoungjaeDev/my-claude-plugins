@@ -36,6 +36,7 @@ cr_desc=$(jq -r '.description // ""'  <<<"$cr_status")
 
 - `cr_state ∈ {success, failure, pending, "", error}` (`""` → no status row yet).
 - `cr_desc` carries the free-tier-disabled and `Review limit reached` text in newer CR versions (this is the **new channel** Step 7b previously missed).
+- **`Review skipped: free tier disabled` is transient, not terminal.** CodeRabbit briefly posts `success` + this description (an hourly fair-usage quota refill, observed ~5 min) before replacing it with `Review completed`. It is held non-terminal for `CR_SKIP_GRACE` seconds (default `300`) and only routed to `rate_limited` past that window — distinct from genuine `Review limit reached` / `rate limited`, which route immediately.
 
 ## CR rate-limit signal (consolidated)
 
@@ -82,7 +83,8 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
 | `success` | none | no | empty | `in_progress` | < timeout | `codex_wait` |
 | `success` | none | no | empty | `unknown` | < timeout | `codex_wait` |
 | `success` | none | no | empty | any | ≥ timeout | `proceed` (Codex assumed clean) |
-| `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | n/a | `rate_limited` |
+| `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | `cr_skip_age < CR_SKIP_GRACE` | `cr_wait` (transient, hold for the real `Review completed`) |
+| `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | `cr_skip_age ≥ CR_SKIP_GRACE` | `rate_limited` (genuine disable) |
 | `success` | `Review limit reached` / `rate limited` | n/a | n/a | n/a | n/a | `rate_limited` |
 | `success` | none | yes | n/a | n/a | n/a | `rate_limited` |
 | `pending` / `in_progress` / `""` | n/a | n/a | n/a | n/a | n/a | `cr_wait` |
@@ -90,6 +92,8 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
 | `error` | n/a | n/a | n/a | n/a | n/a | `cr_wait` (treat as transient, retry-by-polling) |
 
 `codex_timeout_seconds` defaults to `600`. Override per-run via env var `CODEX_PREFLIGHT_TIMEOUT` if a CI pattern shows Codex routinely lands later.
+
+`CR_SKIP_GRACE` defaults to `300` (seconds). It bounds how long a transient `success` + `Review skipped: free tier disabled` row is held as `cr_wait` before being treated as a genuine disable (`rate_limited`). The grace clock (`cr_skip_age`) is anchored to the CR status row's own `created_at` — i.e. how long *that placeholder* has existed — so a bot that queues the row late (more than the grace after the push) still gets the full window to flip to `Review completed`; it falls back to `push_age` only when the status carries no parseable timestamp. The background `poll-cr-status.sh` anchors the same window to the first moment it *sees* the skip row — both measure placeholder age, not push age. Env-only, no `--flag` — mirrors `EARLY_CHECK_WINDOW`.
 
 ## Output JSON contract
 

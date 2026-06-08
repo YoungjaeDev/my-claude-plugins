@@ -1,7 +1,7 @@
 {
   "name": "docs-forge",
-  "version": "0.2.1",
-  "description": "README/CHANGELOG generation with CRO best practices",
+  "version": "0.3.0",
+  "description": "README/CHANGELOG generation with CRO best practices, plus deployment-doc templates and MOC index generation",
   "author": {
     "name": "YoungjaeDev"
   },

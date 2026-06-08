@@ -8,6 +8,18 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 <!-- New entries go directly under this line -->
 
+## 2026-06-08 — post-merge #56 (post-merge)
+
+Merge `6dd72e5` (squash). Issue #55 fix: cr-fix mistook the transient `success / "Review skipped: free tier disabled"` placeholder for a terminal status and dropped the real review. Scanned the PR file list (`gh pr diff 56 --name-only`): cr-fix `poll-cr-status.sh` + `pre-flight.sh` + `SKILL.md` + `references/pre-flight-rules.md`, github-dev 2.2.0→2.2.1, marketplace metadata 1.51.0→1.52.0 (two-step advance past the concurrent #54 release, per `.claude/rules/plugin-versioning.md`). This is a **code-level correction** of existing volatile lore — no new page; no config/CLAUDE.md mechanical rule (the `CR_SKIP_GRACE` knob is self-documented in the cr-fix skill; the lore home is the wiki).
+
+- cr-fix-ops/cr-rate-limit-progressive-refill.md: UPDATED (sources 3→4, last_verified stays 2026-06-08). Added `## Code-level fix (PR #56)` section: pre-flight/poll no longer route `success / "Review skipped: free tier disabled"` straight to `rate_limited`; they hold it non-terminal for `CR_SKIP_GRACE` seconds (default 300, env-only, mirrors `EARLY_CHECK_WINDOW`). Within grace → `cr_wait` (sniff guarded so the placeholder can't re-flag); past grace → `rate_limited`; grace anchored to status `created_at` / `push_age` (a one-shot probe has no prior observation). `poll-cr-status.sh` records first-seen-skip and keeps polling until the row flips to `Review completed` or grace expires. Genuine `Review limit reached` / `rate limited` route immediately, unchanged. Resolves the page's own open note that the gate "should distinguish progressive-refill from hard-cap" and the content-empty `cr_state: success` false-clean caveat (poll now holds instead of returning premature success). Open follow-up noted (not asserted): sniffer comment-channel false-positive (#57).
+
+## 2026-06-08 — post-merge #54 (post-merge)
+
+Merge `582cfa6` (squash). Scanned the PR file list (`gh pr diff 54 --name-only`): docs-forge gains `/docs-forge:deploy-doc` + `/docs-forge:moc` (command + guide-skill SSOT + reference each), version 0.2.1→0.3.0, marketplace metadata 1.50.0→1.51.0, Codex manifests regenerated. Merged diff applies already-documented patterns (`[[dual-surface-command-skill-pattern]]`, `[[shared-source-codex-manifests]]`, `.claude/rules/plugin-versioning`) — no NEW lore from the diff; no config/CLAUDE.md mechanical rule needed (conventions already captured). One process finding from the 5-iter cr-fix loop ties to existing lore.
+
+- cr-fix-ops/cr-rate-limit-progressive-refill.md: UPDATED (sources 2→3, last_verified→2026-06-08). Added a 3rd confirming dogfood instance (PR #54): a 5-push burst where CR skipped early commits (`"Review skipped: free tier disabled"`) and completed the final one (progressive refill), with Codex co-reviewing throughout. Establishes the **co-reviewer recovery path** (distinct from the PR #50 CLI fallback) and the caveat that `cr_state: success` is content-empty during the CR skip window — a false "clean" if CR is the only reviewer.
+
 ## 2026-06-05 — post-merge #50 (post-merge)
 
 Merge `ffab9c7` (squash). Scanned the PR file list (`gh pr diff 50 --name-only`): prompt_inject.sh block strengthen + post-merge Step 4.5 ephemeral pruning + versioning. Two findings tie to lore; one existing page re-verified. The gh `{owner}/{repo}` invariant surfaced by Codex review was routed to `plugins/github-dev/CLAUDE.md` (mechanical rule) — NOT duplicated here.
@@ -116,3 +128,19 @@ Diff log written before applying the page edits (git-revertible).
 ## 2026-05-29 — bootstrap llm-wiki-design domain (bootstrap-wiki)
 
 - llm-wiki-design/: domain directory established under `.llmwiki/wiki/` (2-depth domain/page layout) to hold the v2 design record.
+
+## 2026-06-08 — Codex 1024-char skill-description silent-skip guard (ingest-finding)
+
+- plugin-ops/shared-source-codex-manifests.md: added `## Skill-description length guard` section (Codex 0.135 silently skips skills with `description` > 1024 chars; `--check` now validates length via SKILL_DESC_MAX before drift; 3-layer enforcement: sync-script guard + `.githooks/pre-commit` + `validate-codex.yml` CI). Updated `--check` mode bullet to note length validation. Added PR #46 source; sources 4 -> 5; last_verified 2026-06-08.
+- index.md: extended the shared-source-codex-manifests hook to mention the 1024-char description guard.
+
+## 2026-06-08 — codex-image joins EXCLUDED set (Claude->Codex bridge) (ingest-finding)
+
+- plugin-ops/shared-source-codex-manifests.md: EXCLUDED entries 2 -> 3 (added `codex-image` with circular-bridge rationale, distinct from the schema-driven exclusion of core-config/midjourney); eligible count 19 of 21 -> 19 of 22; added PR #49 source; sources 5 -> 6; last_verified 2026-06-08.
+- index.md: shared-source hook eligible count 19 of 21 -> 19 of 22.
+
+## 2026-06-08 — graduate Codex 1024-char skill-desc limit to insight (ingest-finding)
+
+- insight/codex-skill-desc-1024.md: new insight entry (tier insight, promoted_from shared-source-codex-manifests, evidence_count 2 — PR #46 research-orchestrator 1214 chars dropped + PR #51 post-merge skill near-miss at 1019/1024 during humanizer->humanize-korean swap). Recurrence across 2 independent PRs met the graduation bar.
+- insight/index.md: added codex-skill-desc-1024 hook.
+- plugin-ops/shared-source-codex-manifests.md: added PR #51 near-miss evidence to the length-guard section + `> Promoted-to:` backlink; last_verified 2026-06-08.

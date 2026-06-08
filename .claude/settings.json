@@ -12,7 +12,6 @@
       "./plugins/midjourney",
       "./plugins/interview",
       "./plugins/notion",
-      "./plugins/humanizer",
       "./plugins/slidev",
       "./plugins/workflow-viz",
       "./plugins/rules-forge",

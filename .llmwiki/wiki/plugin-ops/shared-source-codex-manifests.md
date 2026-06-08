@@ -1,10 +1,10 @@
 ---
 id: shared-source-codex-manifests
 aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, retired-codex-bridge]
-last_verified: 2026-05-31
+last_verified: 2026-06-08
 status: active
 volatility: stable
-sources: 4
+sources: 5
 ---
 
 # Shared-source Codex manifests
@@ -46,8 +46,9 @@ runtime requires *outside* the source body.
 - default: write `.agents/plugins/marketplace.json` + per-plugin
   `plugins/<name>/.codex-plugin/plugin.json`
 - `--check`: CI drift guard, exits 1 if any manifest disagrees with the
-  marketplace catalog or if an orphan `.codex-plugin/` directory exists for a
-  plugin no longer in `.claude-plugin/marketplace.json`
+  marketplace catalog, if an orphan `.codex-plugin/` directory exists for a
+  plugin no longer in `.claude-plugin/marketplace.json`, or if any skill
+  `description` exceeds the Codex length cap (see the guard section below)
 - `--dry-run`: print the would-be writes without touching disk
 
 `.agents/` and `plugins/<name>/.codex-plugin/` are **generated**. Hand edits
@@ -79,6 +80,36 @@ the exclusion list (the layout is the `> See-also:` page below).
 — a subtle schema difference from Claude's behavior that the generator handles
 when reading per-plugin entries.
 
+## Skill-description length guard
+
+Codex 0.135 silently **skips** any skill whose `description` frontmatter exceeds
+1024 characters — no warning, no manifest error, the skill just never loads on
+the Codex side. Claude Code has no such cap, so a too-long description is
+invisible from the Claude surface: the skill works for Claude while quietly
+vanishing for Codex. `research-orchestrator` (1214 chars) was lost this way until
+PR #46 surfaced it.
+
+The structural failure is the asymmetry — one runtime enforces a limit the other
+ignores, so the shared-source model needs an enforced floor rather than relying
+on either runtime to complain. The guard is three-layered so a violation is
+caught at the earliest point a contributor touches it:
+
+- **Generator** — `sync-codex-manifests.mjs` runs `validateSkillDescriptions`
+  (via `extractFrontmatterDescription`) against `SKILL_DESC_MAX = 1024` in
+  *every* mode, before the drift check. It is scoped to the
+  marketplace-listed plugin set, not all on-disk `plugins/` dirs, so an
+  unpublished local plugin can't false-fail `--check`.
+- **Pre-commit** — the shared `.githooks/pre-commit` runs `--check` on every
+  commit. It lives in-repo (not `.git/hooks/`), so it is version-controlled;
+  activate once per clone with `git config core.hooksPath .githooks`.
+- **CI** — `.github/workflows/validate-codex.yml` runs `--check` on push/PR with
+  `permissions: contents: read`, catching anyone who skipped the local hook.
+
+The fix when a description trips the cap is **not** to truncate meaning: move the
+full trigger list and per-tool rationale into the skill *body* (and
+`references/`), keeping the `description` to a tight routing summary. Codex reads
+the body in place, so nothing is lost.
+
 ## Orphan manifest detection
 
 `--check`'s drift guard also catches the inverse failure: a manifest file left
@@ -102,6 +133,9 @@ does NOT need to retain removed plugins — orphan detection covers that case.
   dual-surface conversion of `deepwiki` + `project-init`, plus the
   cross-runtime portability discoveries (`${CLAUDE_PLUGIN_ROOT}` does not
   expand under Codex 0.135) that the conversion surfaced.
+- PR #46 body — records the 1024-char Codex skill-description silent-skip quirk
+  (`research-orchestrator` at 1214 chars) and the three-layer length guard
+  (generator `SKILL_DESC_MAX`, `.githooks/pre-commit`, `validate-codex.yml`).
 
 > Supersedes: (retired plugin `codex-bridge` 1.0.0)
 > See-also: [[neutral-llmwiki-root]]

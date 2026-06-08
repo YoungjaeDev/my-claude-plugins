@@ -68,6 +68,39 @@ git pull origin <baseRefName>
   - For squash merges expect `warning: not yet merged to HEAD` — normal; `-d` detects the merge via `origin/<branch>` tracking and still succeeds. Do NOT escalate to `-D`, do NOT treat as data loss, do NOT open a "missing commits" PR.
 - If worktrees remain for the branch, tell the user to run `/exit` with cleanup.
 
+### 4.5. Prune ephemeral artifacts merged by this PR (optional)
+
+Some PRs merge throwaway files (one-off analysis scripts, scratch/debug output,
+root clutter) useful during the work but not meant to live in the repo. After the
+merge these are **tracked, committed** files on the base branch, so removing one is
+a real repo change (`git rm` + commit), not local-junk cleanup. Surface only files
+**added by this PR** and remove only what the user confirms — never auto-delete.
+
+Skip silently when: the PR added no files, no candidate survives filtering, or the
+user selects skip-all.
+
+1. List PR-added files (status `added`, paginated). `{owner}/{repo}` is gh's
+   current-repo placeholder — no need to set `$OWNER`/`$REPO`; `<PR_NUMBER>` is the
+   merged PR from Step 1:
+   `ADDED=$(gh api --paginate "repos/{owner}/{repo}/pulls/<PR_NUMBER>/files" --jq '.[] | select(.status=="added") | .filename')`
+2. Filter to candidates via the heuristics + hard exclusions + the `git grep`
+   reference check in `references/ephemeral-heuristics.md`. A file imported or
+   referenced by any other tracked file is never a candidate.
+3. Gate via `AskUserQuestion` (multi-select): each candidate with its path + reason
+   ("named scratch_*", "root-level analysis script", ...). Options: pick files to
+   remove / skip all. Read each candidate's head first; if it looks load-bearing,
+   drop it before prompting.
+4. For each confirmed file: `git rm -- "$path"` (stages the removal immediately).
+   Report each. Step 10's staged-diff gate then commits the deletion — do NOT add
+   removed paths to `RUN_TOUCHED` (Step 10's `[ -e "$p" ]` add-loop cannot stage a
+   deletion; `git rm` already staged it).
+
+**Codex**: runs identically under Claude and Codex (gh/git/AskUserQuestion only —
+no Serena/rules-forge).
+
+Full heuristics, confidence tiers, hard exclusions, and the Step 10 staging
+interaction: `references/ephemeral-heuristics.md`.
+
 ### 5. Update GitHub Project status (optional)
 
 - Extract issue refs from the PR body (`Closes #N` / `Fixes #N` / `Resolves #N`).
@@ -75,7 +108,7 @@ git pull origin <baseRefName>
 
 ### 5.5. Sync milestone progress (if issues have milestones)
 
-For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `commands/update-progress.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
+For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `skills/update-progress/SKILL.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
 
 ### 5.7. Update `.claude/state/spec.json` (if present)
 
@@ -105,7 +138,7 @@ If the PR changed features/commands/install/usage/deps and a README exists: draf
 
 ### 10. Commit changes (optional)
 
-If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **or `.llmwiki/` from the Step 8 wiki ingest** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed) must still commit, or the ingest is left uncommitted in the working tree.
+If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **`.llmwiki/` from the Step 8 wiki ingest**, **or a Step 4.5 ephemeral-prune `git rm` deletion** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed), or a prune-only post-merge (Step 4.5 `git rm`'d a file but no config/wiki change landed), must still commit, or the change is left uncommitted in the working tree. The `git diff --cached --quiet` check below catches the staged deletion even though it is not in `RUN_TOUCHED`.
 
 Stage **only the exact files this run created or modified** — collect them as you go through Steps 5.7-9 (each config file you edited, the `.claude/state/spec.json` + spec file from Step 5.7, README, Serena memory files, and the specific wiki pages `ingest-finding` created/updated). Build that explicit list as `RUN_TOUCHED` and add only those paths — **never `git add` a whole directory** (`.llmwiki/`, `.claude/spec/`, …): a pre-existing untracked draft (e.g. a user's `.llmwiki/wiki/draft.md`) would otherwise be swept into this commit, and Step 2 already decided to leave untracked files alone.
 
@@ -126,7 +159,8 @@ Skip the commit only when `git diff --cached --quiet` reports nothing staged aft
 - **No-stamp Core Principle + knowledge-routing boundary**: `references/core-principle.md`
 - **Config + Serena learning integration** (Pre-Audit, classification, history rotation, size audit, memory mapping): `references/learning-integration.md`
 - **Mandatory wiki ingest** (absorbed post-merge-wiki — candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
-- Milestone / Type M-2 diagram mechanics: `commands/update-progress.md`
+- **Ephemeral artifact pruning** (Step 4.5 — heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
+- Milestone / Type M-2 diagram mechanics: `skills/update-progress/SKILL.md`
 - spec.json schema + ops: `plugins/spec-state/skills/state-tracker/SKILL.md`
 
 > Follow ~/.claude/CLAUDE.md and the project CLAUDE.md.

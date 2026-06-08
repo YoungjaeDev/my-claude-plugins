@@ -29,6 +29,12 @@ const EXCLUDED = new Set(['core-config', 'midjourney', 'codex-image']);
 // and `agents` are Claude-only — emitting them lies to Codex (silently ignored).
 const COMPONENT_DIRS = ['skills'];
 
+// Codex 0.135 rejects any skill whose frontmatter `description` exceeds this many
+// characters ("invalid description: exceeds maximum length of 1024 characters") and
+// silently skips loading the skill. Claude Code has no such limit, so the guard below
+// is the only place this constraint is enforced on the shared source tree.
+const SKILL_DESC_MAX = 1024;
+
 const MARKETPLACE_NAME = 'my-claude-plugins';
 const MARKETPLACE_DISPLAY = 'My Claude Plugins';
 const AUTHOR = 'YoungjaeDev';
@@ -118,9 +124,78 @@ function findOrphanManifests(expectedPaths) {
   return orphans;
 }
 
+// Minimal frontmatter `description` extractor — zero-dep, no YAML lib (matching this
+// file's style). Returns the semantic string Codex measures, or null if absent.
+// Handles the two shapes used in this repo:
+//   - block scalar (`|` literal / `>` folded): collect the indented continuation lines,
+//     strip the common block indent, join with "\n" (literal) or " " (folded).
+//   - single-line, optionally quoted: strip surrounding quotes.
+function extractFrontmatterDescription(md) {
+  if (!md.startsWith('---')) return null;
+  const end = md.indexOf('\n---', 3);
+  if (end === -1) return null;
+  const lines = md.slice(3, end).split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^(\s*)description:\s*(.*)$/);
+    if (!m) continue;
+    const keyIndent = m[1].length;
+    const rest = m[2];
+    const block = rest.match(/^([|>])[+-]?\d*\s*$/);
+    if (block) {
+      const literal = block[1] === '|';
+      const collected = [];
+      let blockIndent = null;
+      for (let j = i + 1; j < lines.length; j++) {
+        const line = lines[j];
+        if (line.trim() === '') { collected.push(''); continue; }
+        const indent = line.match(/^\s*/)[0].length;
+        if (indent <= keyIndent) break; // dedent ends the block scalar
+        if (blockIndent === null) blockIndent = indent;
+        collected.push(line.slice(blockIndent));
+      }
+      while (collected.length && collected[collected.length - 1] === '') collected.pop();
+      return literal ? collected.join('\n') : collected.join(' ').replace(/\s+/g, ' ').trim();
+    }
+    let val = rest.trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    return val;
+  }
+  return null;
+}
+
+// Walk plugins/<name>/skills/*/SKILL.md for the given plugins (the marketplace-listed,
+// non-excluded set — exactly what Codex generates manifests for) and collect any
+// over-length descriptions. Scoping to marketplace entries (not all on-disk dirs) keeps
+// an unpublished local plugin dir from failing --check for a skill Codex never loads.
+function validateSkillDescriptions(pluginNames) {
+  const violations = [];
+  for (const name of pluginNames) {
+    const skillsDir = join(PLUGINS_DIR, name, 'skills');
+    if (!isDir(skillsDir)) continue;
+    for (const skill of readdirSync(skillsDir)) {
+      const skillMd = join(skillsDir, skill, 'SKILL.md');
+      if (!isFile(skillMd)) continue;
+      const desc = extractFrontmatterDescription(readFileSync(skillMd, 'utf8'));
+      if (desc && desc.length > SKILL_DESC_MAX) violations.push({ path: skillMd, len: desc.length });
+    }
+  }
+  return violations;
+}
+
 function main() {
   const source = readJSON(SOURCE);
   const eligible = source.plugins.filter((p) => !EXCLUDED.has(p.name));
+
+  // Codex skill-description length guard — runs in every mode, fails fast before the
+  // manifest drift logic so `node sync-codex-manifests.mjs` and `--check` both catch it.
+  const violations = validateSkillDescriptions(eligible.map((p) => p.name));
+  if (violations.length > 0) {
+    console.error(`skill description length violation(s) — Codex 0.135 limit is ${SKILL_DESC_MAX} chars:`);
+    for (const v of violations) console.error(`  ${v.len} chars (limit ${SKILL_DESC_MAX}): ${v.path}`);
+    process.exit(1);
+  }
 
   const outputs = [];
   for (const entry of eligible) {

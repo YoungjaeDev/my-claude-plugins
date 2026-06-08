@@ -1,7 +1,7 @@
 ---
 id: cr-rate-limit-progressive-refill
 aliases: [cr-free-tier-disabled, cr-quota-budget, cr-burst-push]
-last_verified: 2026-05-30
+last_verified: 2026-06-05
 status: active
 volatility: volatile
 sources: 2
@@ -39,9 +39,14 @@ Per CR's [Fair Usage Limits Policy](https://docs.coderabbit.ai/management/plans#
 - 3 skipped reviews (`cr_state: success`, `cr_desc: "Review skipped: free tier disabled"`)
 - Skip:complete oscillation matches progressive-refill semantics — not a hard cap.
 
+## Confirming dogfood (PR #50)
+
+A 2nd independent instance: pre-flight returned `cr_desc: "Review skipped: free tier disabled"` → `gate=rate_limited`. With `--cr-source auto`, cr-fix fell back to the local CodeRabbit CLI (v0.5.2, authed) per the rate-limit fallback table — the CLI produced a full review and the loop converged. Confirms the signal is recoverable (fallback path), not a hard failure.
+
 > Evidence: plugins/github-dev/skills/cr-fix/references/lessons-from-dogfood.md
 > Evidence: plugins/github-dev/skills/cr-fix/scripts/sniff-cr-rate-limit.sh
 > See-also: [[curated-conservative]]
+> See-also: [[cr-cli-false-positive-generated-files]]
 
 ## Sources
 

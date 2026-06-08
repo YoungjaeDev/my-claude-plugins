@@ -87,5 +87,5 @@ Based on awesome-readme curated list:
 ```
 /docs-forge:moc docs/
 /docs-forge:moc docs/ --strict
-/docs-forge:moc docs/ --out docs/INDEX.md
+/docs-forge:moc docs/ --out docs/CONTENTS.md
 ```

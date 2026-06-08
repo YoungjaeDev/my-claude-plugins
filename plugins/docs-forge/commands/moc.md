@@ -21,14 +21,14 @@ Generate a Map of Content (MOC) index for a docs folder: a one-line hook per fil
 ## Options
 
 - `--strict` - Wiki style (domain groups, `[[id]]`, typed cross-ref scaffolding). Default OFF (lightweight).
-- `--out FILE` - Output path. Default `<folder>/MOC.md`. If the basename is `README.md` or `index.md`, refuse (or confirm, then route to `MOC.md`) — never clobber a protected entry document.
+- `--out FILE` - Output path. Default `<folder>/MOC.md`. If the basename case-insensitively matches `readme.md` or `index.md`, refuse (or confirm, then route to `MOC.md`) — never clobber a protected entry document (case-insensitive filesystems alias `INDEX.md` to `index.md`).
 - `--depth N` - Domain-group depth. Default `2`.
 - `--lang ko|en` - Output language. Default `ko`.
 
 ## Instructions
 
 1. Load the `moc-guide` Skill — its `## Quick Reference` is the binding output spec (hook precedence, lightweight vs strict, conflict rules).
-2. `Glob folder/**/*.md`. **Exclude** the output file itself and any existing `index.md` / `README.md` in scope (conflict guard — never overwrite those). The same guard applies to the output target: if `--out` resolves to a `README.md` / `index.md`, refuse or confirm-then-route to `MOC.md` rather than writing over it.
+2. `Glob folder/**/*.md`. **Exclude** the output file itself and any existing `index.md` / `README.md` in scope (conflict guard — never overwrite those). The same guard applies to the output target: if `--out`'s basename case-insensitively matches `readme.md` / `index.md`, refuse or confirm-then-route to `MOC.md` rather than writing over it.
 3. Detect domains: each first-level subdirectory of `folder` is a domain (`##` group); root-level files go under `## (root)`. Respect `--depth`. Only when the folder is flat (no subdirectories) AND `--strict` is set, ask the user how to group.
 4. Compute a one-line hook per file using the precedence ladder (first hit wins):
    1. frontmatter `description:` / `summary:`
@@ -36,12 +36,12 @@ Generate a Map of Content (MOC) index for a docs folder: a one-line hook per fil
    3. first `## ` subheading text
    4. fallback: humanized filename + hook = `(요약 없음)` flag
    Link text = frontmatter `title:` -> first `# H1` -> filename. In strict mode, prefer `[[id]]` when frontmatter `id` exists.
-5. Build Output 1 (per-file hook bullets) and Output 2 (per-domain MOC table) into the single output file. Do not fan out per-file hook files.
-6. If `--strict`: read optional frontmatter (`id` / `title` / `summary`) where present, mirror the llm-wiki `index.md` bullet style, and add typed cross-ref scaffolding. Do NOT enforce the llm-wiki frontmatter/staleness schema — a frontmatter-less plain-Markdown folder must not produce failures. If lightweight: omit all wiki machinery (no frontmatter reads, no `[[id]]`, no typed cross-refs).
+5. **Lightweight only** — build Output 1 (per-file hook bullets) and Output 2 (per-domain MOC table) into the single output file. Do not fan out per-file hook files. Skip this step entirely in `--strict` mode (Step 6 produces the sole strict output — do not also emit the lightweight bullets, or the file list duplicates).
+6. If `--strict`: produce ONLY the strict format (intro paragraph + typed-cross-ref legend + per-domain llm-wiki bullets), in place of Output 1/2. Read optional frontmatter (`id` / `title` / `summary`) where present and add typed cross-ref scaffolding. Do NOT enforce the llm-wiki frontmatter/staleness schema — a frontmatter-less plain-Markdown folder must not produce failures. Lightweight mode (no `--strict`) uses Step 5 only and omits all wiki machinery (no frontmatter reads, no `[[id]]`, no typed cross-refs).
 
 ## Output Format
 
-Write to `--out` (default `<folder>/MOC.md`), subject to the protected-name guard above (never overwrite a `README.md` / `index.md`). Both outputs go in that one file.
+Write to `--out` (default `<folder>/MOC.md`), subject to the protected-name guard above (never overwrite a `README.md` / `index.md`). In lightweight mode both outputs below go in that one file; in `--strict` mode the strict format below is the sole content (no lightweight bullets).
 
 ### Output 1 — per-file hook bullets (lightweight)
 
@@ -63,6 +63,6 @@ Write to `--out` (default `<folder>/MOC.md`), subject to the protected-name guar
 
 ### Strict mode
 
-Replace Output 2 with the llm-wiki bullet style (`- [title](domain/slug.md) — hook`), an MOC intro paragraph, and a typed-cross-ref legend. See `moc-guide` and `references/MOC_PATTERNS.md`.
+Replaces Output 1 AND Output 2 (not added alongside them): an MOC intro paragraph, a typed-cross-ref legend, and per-domain llm-wiki bullets (`- [title](domain/slug.md) — hook`). See `moc-guide` and `references/MOC_PATTERNS.md`.
 
 Report what was written: output path, file count, domains detected, and how many files fell back to `(요약 없음)`.

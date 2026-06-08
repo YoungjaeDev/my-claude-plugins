@@ -126,3 +126,9 @@ Diff log written before applying the page edits (git-revertible).
 
 - plugin-ops/shared-source-codex-manifests.md: EXCLUDED entries 2 -> 3 (added `codex-image` with circular-bridge rationale, distinct from the schema-driven exclusion of core-config/midjourney); eligible count 19 of 21 -> 19 of 22; added PR #49 source; sources 5 -> 6; last_verified 2026-06-08.
 - index.md: shared-source hook eligible count 19 of 21 -> 19 of 22.
+
+## 2026-06-08 — graduate Codex 1024-char skill-desc limit to insight (ingest-finding)
+
+- insight/codex-skill-desc-1024.md: new insight entry (tier insight, promoted_from shared-source-codex-manifests, evidence_count 2 — PR #46 research-orchestrator 1214 chars dropped + PR #51 post-merge skill near-miss at 1019/1024 during humanizer->humanize-korean swap). Recurrence across 2 independent PRs met the graduation bar.
+- insight/index.md: added codex-skill-desc-1024 hook.
+- plugin-ops/shared-source-codex-manifests.md: added PR #51 near-miss evidence to the length-guard section + `> Promoted-to:` backlink; last_verified 2026-06-08.

@@ -4,7 +4,7 @@ aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, r
 last_verified: 2026-06-08
 status: active
 volatility: stable
-sources: 6
+sources: 7
 ---
 
 # Shared-source Codex manifests
@@ -114,6 +114,14 @@ full trigger list and per-tool rationale into the skill *body* (and
 `references/`), keeping the `description` to a tight routing summary. Codex reads
 the body in place, so nothing is lost.
 
+The guard has already paid for itself a second time: in PR #51 the `post-merge`
+skill description sat at 1019 chars, and swapping its `humanizer` reference for
+the longer `humanize-korean` would have pushed it to 1026 — a silent Codex drop
+of the whole skill. The author offset the +7 by trimming `gracefully skip` →
+`skip` elsewhere in the same description, landing at 1014. Two independent
+recurrences (PR #46 hard-fail, PR #51 near-miss) graduated this rule to the
+insight layer.
+
 ## Orphan manifest detection
 
 `--check`'s drift guard also catches the inverse failure: a manifest file left
@@ -142,8 +150,12 @@ does NOT need to retain removed plugins — orphan detection covers that case.
   (generator `SKILL_DESC_MAX`, `.githooks/pre-commit`, `validate-codex.yml`).
 - PR #49 body — adds `codex-image` (Claude->Codex image-gen bridge) as the 22nd
   plugin and the 3rd EXCLUDED entry, with the circular-bridge exclusion rationale.
+- PR #51 body — the length-guard near-miss (post-merge skill 1019 → would-be 1026
+  on the `humanize-korean` swap, offset to 1014); the second recurrence that
+  graduated the rule to insight.
 
 > Supersedes: (retired plugin `codex-bridge` 1.0.0)
+> Promoted-to: [[codex-skill-desc-1024]]
 > See-also: [[neutral-llmwiki-root]]
 > See-also: [[cache-version-pinning]]
 > See-also: [[dual-surface-command-skill-pattern]]

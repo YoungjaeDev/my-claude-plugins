@@ -43,7 +43,7 @@ Link text precedence: frontmatter `title:` -> first `# H1` -> filename.
 
 ### Conflict rules
 
-- Output is `<folder>/MOC.md` (or `--out`). **Never** overwrite an existing `index.md` or `README.md` — exclude them from the scan and route to `MOC.md` instead.
+- Output is `<folder>/MOC.md` (or `--out`). **Never** overwrite an existing `index.md` or `README.md` — exclude them from the scan AND from the output target: if `--out` resolves to a `README.md` / `index.md` basename, refuse or confirm-then-route to `MOC.md` instead of clobbering it.
 - If `MOC.md` already exists, confirm and update in place.
 
 ## References

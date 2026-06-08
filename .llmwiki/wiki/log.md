@@ -116,3 +116,8 @@ Diff log written before applying the page edits (git-revertible).
 ## 2026-05-29 — bootstrap llm-wiki-design domain (bootstrap-wiki)
 
 - llm-wiki-design/: domain directory established under `.llmwiki/wiki/` (2-depth domain/page layout) to hold the v2 design record.
+
+## 2026-06-08 — Codex 1024-char skill-description silent-skip guard (ingest-finding)
+
+- plugin-ops/shared-source-codex-manifests.md: added `## Skill-description length guard` section (Codex 0.135 silently skips skills with `description` > 1024 chars; `--check` now validates length via SKILL_DESC_MAX before drift; 3-layer enforcement: sync-script guard + `.githooks/pre-commit` + `validate-codex.yml` CI). Updated `--check` mode bullet to note length validation. Added PR #46 source; sources 4 -> 5; last_verified 2026-06-08.
+- index.md: extended the shared-source-codex-manifests hook to mention the 1024-char description guard.

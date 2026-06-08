@@ -1,6 +1,6 @@
 {
   "name": "github-dev",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "GitHub workflow automation skills for Claude Code",
   "skills": [
     "./skills/cr-fix",

@@ -1,7 +1,7 @@
 ---
 name: interview-methodology
 description: This skill should be used when conducting in-depth user interviews, "gathering requirements", "interview me", "ask me questions", "understand my needs before implementing", "spec-based development", or when preparing comprehensive specifications before implementation.
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Interview Methodology
@@ -36,9 +36,29 @@ Explicit interview request - direct trigger.
 4. **Probe deeper on every answer** - each response should spawn follow-up questions
 5. **Write the final spec to a file** when the interview is complete
 
+## When NOT to Interview
+
+Interviewing has a cost — it interrupts the user and delays the work. Skip it (or
+drop to a single clarifying `AskUserQuestion`) when the task is already
+well-specified or low-stakes:
+
+- The request is already concrete and unambiguous (clear inputs, outputs, and
+  acceptance criteria stated).
+- It is a typo fix, a small config/copy change, a dependency bump, or adding
+  tests to existing behavior.
+- The scope is one obvious file/function and the change is mechanical.
+- The user explicitly said "just do it" / "no questions".
+
+When in doubt between "ask nothing" and "full interview", prefer the middle:
+2-3 targeted questions that resolve the decisions that actually change the
+implementation. A full multi-phase interview is for genuinely under-specified,
+multi-decision work — not a reflex for every request.
+
 ## Core Principle: Non-Obvious Questions
 
 **Never ask questions the user has already implicitly answered.** Instead, probe the gaps, assumptions, and unstated requirements.
+
+**Verify against the codebase first — don't ask what the repo can answer.** Before adding a question, check whether the existing code, config, tests, git history, or docs already settle it (which framework, which DB, the current error-handling pattern, existing naming conventions). Asking the user to restate something discoverable from the repo wastes their time and signals you didn't look. Reserve questions for what is genuinely *non-obvious from the code* — intent, priorities, future direction, and trade-offs only the user holds.
 
 ### Bad Questions (Obvious)
 - "What feature do you want?" (they already told you)
@@ -89,6 +109,43 @@ Explicit interview request - direct trigger.
 - What's the cost of NOT doing this?
 - Are there regulatory or legal considerations?
 
+## Two Interview Modes
+
+Pick the mode that fits the uncertainty, and say which you're using:
+
+### Breadth-first (the 5-phase flow below)
+Systematically sweep every category. Best when the work is large, multi-decision,
+and you need full coverage before a comprehensive spec. Batch related questions
+(the Phase 2 "5-10 questions" cadence) so the user answers efficiently.
+
+### Depth-first / Socratic (focused mode)
+Target the **single biggest uncertainty** and resolve it before moving on — one
+question (or one tight `AskUserQuestion`) at a time, each chosen by "what is the
+one unknown that most changes the implementation right now?". The user's answer
+determines the next question. Best when one or two decisions dominate the design,
+or when a broad questionnaire would feel like a wall of forms. This mode aligns
+with "narrow to 2-3 interpretations and confirm" — you are not firing 10 questions,
+you are walking down the decision that matters.
+
+The two modes compose: open breadth-first to map the territory, then switch to
+focused mode when one answer opens a deep, consequential branch.
+
+### Per-question scaffold
+
+Whichever mode, frame a substantive question so the user can answer in one glance
+— state your current understanding, name the decision, and offer a recommended
+default (so a low-stakes call can be a single confirmation, not an essay):
+
+```
+현재 이해 (Current understanding): what you already know / inferred from the code
+막힌 결정 (Stuck decision):        the specific fork you can't resolve yourself
+추천 답안 (Recommended answer):    your default + a one-line why (mark it Recommended)
+질문 (Question):                   the crisp ask, as AskUserQuestion options
+```
+
+Leading with a recommended default lets the user accept low-risk decisions with a
+single click and spend their attention on the calls that genuinely need them.
+
 ## Interview Flow
 
 ### Phase 1: Context Gathering (2-3 questions)
@@ -137,7 +194,18 @@ Each option should explain implications, not just the choice itself.
 
 ## Interview Completion
 
-When you've gathered sufficient information:
+Scale the output to the interview's weight — don't force a full spec file onto a
+two-question focused session:
+
+- **Lightweight close (small / focused interviews):** summarize inline as
+  **Decisions made** + **Open questions** and proceed. No spec file. Use this when
+  the focused mode resolved one or two decisions and implementation can start
+  immediately.
+- **Full spec (large / multi-decision interviews):** write the comprehensive spec
+  file as below. Use this when breadth-first coverage produced enough requirements
+  that they need to persist for implementation and review.
+
+When the interview warrants a full spec:
 1. Summarize all requirements back to the user
 2. Ask for confirmation using AskUserQuestion
 3. Write the comprehensive spec to `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`

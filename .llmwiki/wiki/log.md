@@ -2,11 +2,21 @@
 
 Append-only event log for the resolved wiki root (`.llmwiki/wiki/`, or a legacy `.claude/wiki/` if that is what the repo has). Each entry under a `## YYYY-MM-DD — <one-line summary>` header. Newest first.
 
-Every `/ingest-finding` and `/post-merge-wiki` run writes a block here **before** touching the page, so `git revert` of the resulting commit cleanly reverses both. See `ingest-finding` skill for the diff-log discipline.
+Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes the wiki ingest step writes a block here **before** touching the page, so `git revert` of the resulting commit cleanly reverses both. (Post-merge skips the ingest — and this log — for trivial merges or when no wiki root resolves.) See `ingest-finding` skill for the diff-log discipline.
 
 ---
 
 <!-- New entries go directly under this line -->
+
+## 2026-06-05 — post-merge #50 (post-merge)
+
+Merge `ffab9c7` (squash). Scanned the PR file list (`gh pr diff 50 --name-only`): prompt_inject.sh block strengthen + post-merge Step 4.5 ephemeral pruning + versioning. Two findings tie to lore; one existing page re-verified. The gh `{owner}/{repo}` invariant surfaced by Codex review was routed to `plugins/github-dev/CLAUDE.md` (mechanical rule) — NOT duplicated here.
+
+- plugin-ops/prompt-inject-korean-persistence.md: NEW page (id `prompt-inject-korean-persistence`, status active, volatility stable, sources 2) — why the per-prompt block must explicitly name internal workflow / subagent / English-skill paths (ultracode, deep-research) as NOT a "별도 지시"; otherwise an English skill body downstream reads as the override the Korean-default line defers to, and the final user answer regresses to English. Evidence: `plugins/core-config/hooks/prompt_inject.sh`.
+- cr-fix-ops/cr-cli-false-positive-generated-files.md: NEW page (id `cr-cli-false-positive-generated-files`, status active, volatility stable, sources 2) — the local CodeRabbit CLI flags a *correctly regenerated* `.codex-plugin/plugin.json` as "manually edited, revert + regenerate" (Major). It is a false positive: the canonical edits were in `plugin.json` + `marketplace.json` and the generator was run. `node scripts/sync-codex-manifests.mjs --check` passing proves the file is generator-consistent → skip the finding. `> See-also: [[codex-manifest-regen]]`. Evidence: `plugins/github-dev/.codex-plugin/plugin.json`.
+- cr-fix-ops/cr-rate-limit-progressive-refill.md: UPDATE — PR #50 is a 2nd independent dogfood confirming `cr_desc: "Review skipped: free tier disabled"` → `gate=rate_limited` → auto→cli fallback (CLI v0.5.2 gave a full review). Added as a confirming data point; last_verified 2026-05-30 → 2026-06-05 (sources unchanged).
+- index.md: registered the 2 new pages under their domains; last_verified bump.
+- Evidence: `plugins/core-config/hooks/prompt_inject.sh`, `plugins/github-dev/.codex-plugin/plugin.json`, `scripts/sync-codex-manifests.mjs`.
 
 ## 2026-06-01 — insight promotion (3 entries) + body-transform dedup + code-scout id fix (ingest-finding)
 

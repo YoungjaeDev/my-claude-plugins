@@ -1,5 +1,7 @@
 ---
-description: Create Issue Labels
+name: create-issue-label
+description: Analyze the project's tech stack and structure, then create a standardized set of GitHub issue labels via gh label create. Use when the user types /github-dev:create-issue-label, says "create issue labels", or sets up a label taxonomy for a repo. Examines package.json, README, and code layout to classify labels by type, area, and complexity, then creates them with gh. Follows the project CLAUDE.md.
+allowed-tools: Read Bash Glob Grep
 ---
 
 ## Create Issue Labels

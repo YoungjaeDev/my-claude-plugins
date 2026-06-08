@@ -1,7 +1,7 @@
 ---
 id: wiki-moc
 aliases: [moc, table-of-contents, llms-txt]
-last_verified: 2026-05-31
+last_verified: 2026-06-05
 ---
 
 # Wiki Map of Content (MOC)
@@ -68,7 +68,7 @@ The v2 design record: which rohitg00-v2 ideas were harvested vs rejected, and wh
 - [Neutral `.llmwiki/` root](llm-wiki-design/neutral-llmwiki-root.md) — wiki/raw move out of `.claude/` so the retired codex-bridge `.claude/`->`.codex/` body transform could never fork the wiki per-agent; schema-home claim refined by insight-layer-via-hook.
 - [Volatility over decay](llm-wiki-design/volatility-over-decay.md) — a `volatility:` class with a fixed window replaces Ebbinghaus decay math; old is not stale.
 - [Provenance over confidence](llm-wiki-design/provenance-over-confidence.md) — `sources: N` + a named `## Sources` list replaces fabricated float confidence.
-- [Post-merge wiki trigger](llm-wiki-design/post-merge-trigger.md) — post-merge-wiki fires from two complementary triggers: github-dev:post-merge Step 5.8 (workflow + GitHub-UI merges) and the wiki_post_commit_hint hook (local CLI merges only).
+- [Post-merge wiki trigger](llm-wiki-design/post-merge-trigger.md) — wiki ingest reaches the wiki two ways: github-dev:post-merge Step 8 (mandatory built-in, absorbed post-merge-wiki, covers workflow + GitHub-UI merges) and the wiki_post_commit_hint hook (local CLI merges only).
 
 ## plugin-ops
 
@@ -77,12 +77,14 @@ Operational lore for the plugin system itself — cache, loading, version resolu
 - [Plugin cache version-pinning](plugin-ops/cache-version-pinning.md) — the cache holds multiple versions per plugin; a session pins the startup-resolved version, so a newer already-cached version is not served until restart (or via a `local` settings.json source).
 - [Shared-source Codex manifests](plugin-ops/shared-source-codex-manifests.md) — Claude and Codex 0.135 read the same `plugins/<name>/skills/` tree via a thin manifest generator (`scripts/sync-codex-manifests.mjs`); the retired `codex-bridge` body-transform mirror was wrong because its 275 audit hits were authorial intent, not stale references. 19 of 21 plugins eligible after the 1.41.0 dual-surface conversion of `deepwiki` + `project-init`.
 - [Dual-surface command + skill pattern](plugin-ops/dual-surface-command-skill-pattern.md) — how a plugin ships both an explicit `/plugin:command` and a Codex-loadable `skill` from a single `references/<name>-procedure.md` body; documents the runtime preflight guard required for destructive plugins and the `PLUGIN_ROOT` resolver pattern that handles Codex's lack of `${CLAUDE_PLUGIN_ROOT}`.
+- [prompt-inject Korean-persistence](plugin-ops/prompt-inject-korean-persistence.md) — the per-prompt block must explicitly name internal workflow / subagent / English-skill paths (ultracode, deep-research) as NOT a "별도 지시"; otherwise a downstream English skill body reads as the override the bare Korean-default line defers to, and the final user answer regresses to English.
 
 ## cr-fix-ops
 
 Per-plugin operational lore for `github-dev:cr-fix` — rate-limit semantics, dogfood-derived design rationale that overturns intuition. Distinct from `plugin-ops/` (Claude Code runtime) and from the cr-fix references files (active design contract).
 
 - [CR rate-limit progressive refill](cr-fix-ops/cr-rate-limit-progressive-refill.md) — `cr_desc: "Review skipped: free tier disabled"` does NOT mean the org reverted to Free plan; it signals CR trial/Pro progressive-refill quota exhaustion. Do NOT add a sniff cooldown; treat `--max-iter` as a CR quota budget (default 5 = Pro 5-rev/hour).
+- [CR CLI false positive on generated files](cr-fix-ops/cr-cli-false-positive-generated-files.md) — the local CodeRabbit CLI flags a correctly-regenerated `.codex-plugin/plugin.json` as "manually edited, revert + regenerate" (Major); it is spurious — `node scripts/sync-codex-manifests.mjs --check` passing proves generator-consistency, so skip the finding instead of reverting.
 
 ## research-harness
 

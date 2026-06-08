@@ -411,14 +411,16 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 
 스펙 기반 개발을 위한 구조화된 인터뷰.
 
-**Phases:**
+**Modes:** breadth-first (5-phase 전수) + depth-first / Socratic (가장 큰 불확실성 1개씩 focused). 코드베이스로 답할 수 있는 건 묻지 않고, 이미 구체적인 요청엔 인터뷰 생략.
+
+**Phases (breadth-first):**
 1. Context Gathering
 2. Deep Dive
 3. Edge Case Exploration
 4. Prioritization
 5. Validation
 
-**Output:** `.claude/spec/{date}-{feature}.md`
+**Output:** 작은 인터뷰는 lightweight 요약 (결정 + 열린 질문), 큰 건은 full spec `.claude/spec/{date}-{feature}.md`
 
 </details>
 

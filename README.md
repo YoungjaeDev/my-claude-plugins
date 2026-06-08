@@ -77,7 +77,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
-| **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) |
+| **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) + 배포 문서 템플릿 + MOC 인덱스 |
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 3 hooks; post-merge ingest built into `github-dev:post-merge`) |
@@ -473,9 +473,9 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 ### Documentation & Rules
 
 <details>
-<summary><strong>docs-forge</strong> - README & CHANGELOG 생성</summary>
+<summary><strong>docs-forge</strong> - README & CHANGELOG & 배포 문서 & MOC 생성</summary>
 
-CRO 분석 기반 README/CHANGELOG 생성.
+CRO 분석 기반 README/CHANGELOG 생성, 배포 / 절차 문서 템플릿, 임의 폴더 MOC 인덱스 생성.
 
 **Commands:**
 | Command | Description |
@@ -483,6 +483,8 @@ CRO 분석 기반 README/CHANGELOG 생성.
 | `/docs-forge:readme generate` | 템플릿에서 README 생성 |
 | `/docs-forge:readme analyze` | 기존 README 분석 |
 | `/docs-forge:changelog init` | CHANGELOG 초기화 |
+| `/docs-forge:deploy-doc generate` | 배포 / 절차 문서 생성 (요약 + 전제조건 + 번호 단계) |
+| `/docs-forge:moc docs/` | 문서 폴더 MOC 인덱스 생성 (경량 / `--strict`) |
 
 **Templates:** CLI, Library, React Component, MCP Plugin, SaaS, Desktop
 

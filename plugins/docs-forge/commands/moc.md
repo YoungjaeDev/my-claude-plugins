@@ -33,7 +33,7 @@ Generate a Map of Content (MOC) index for a docs folder: a one-line hook per fil
 4. Compute a one-line hook per file using the precedence ladder (first hit wins):
    1. frontmatter `description:` / `summary:`
    2. first non-empty paragraph after the first `# H1` (truncate ~100-120 chars)
-   3. first `## ` subheading text
+   3. first `##` subheading text
    4. fallback: humanized filename + hook = `(요약 없음)` flag
    Link text = frontmatter `title:` -> first `# H1` -> filename. In strict mode, prefer `[[id]]` when frontmatter `id` exists.
 5. **Lightweight only** — build Output 1 (per-file hook bullets) and Output 2 (per-domain MOC table) into the single output file. Do not fan out per-file hook files. Skip this step entirely in `--strict` mode (Step 6 produces the sole strict output — do not also emit the lightweight bullets, or the file list duplicates).

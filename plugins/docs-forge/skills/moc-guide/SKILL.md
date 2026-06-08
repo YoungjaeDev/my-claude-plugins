@@ -36,7 +36,7 @@ Mirror the llm-wiki `index.md` convention:
 
 1. frontmatter `description:` / `summary:`
 2. first non-empty paragraph after the first `# H1` (truncate ~100-120 chars)
-3. first `## ` subheading text
+3. first `##` subheading text
 4. fallback: humanized filename + hook = `(요약 없음)` flag
 
 Link text precedence: frontmatter `title:` -> first `# H1` -> filename.

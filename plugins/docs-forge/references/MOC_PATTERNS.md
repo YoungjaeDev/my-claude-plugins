@@ -8,7 +8,7 @@
 
 1. frontmatter `description:` 또는 `summary:`
 2. 첫 `# H1` 다음 첫 비어있지 않은 단락 (~100-120자 절단)
-3. 첫 `## ` 소제목 텍스트
+3. 첫 `##` 소제목 텍스트
 4. 최후: 휴머나이즈한 파일명 + hook = `(요약 없음)` 플래그
 
 링크 텍스트는 frontmatter `title:` → 첫 `# H1` → 파일명 순. strict 모드에서 frontmatter `id`가 있으면 `[[id]]` 링크 형태 선호.

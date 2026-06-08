@@ -13,6 +13,7 @@ v2 changes:
 - **Step 5 Pre-flight**: one parallel fetch across CR commit-status + comments + Codex reviews + Codex emoji (3 channels) routes the iter to `proceed | cr_wait | codex_wait | rate_limited | failure`. Removes the "always poll" hang.
 - **Step 9 autonomous judgment**: the per-finding `AskUserQuestion` gate is gone. The LLM reads the affected code, judges real-vs-spurious + severity + fix size, and applies / defers / skips by itself. Reasoning is surfaced in the final JSON so the user can audit decisions, not micromanage them.
 - **Rate-limit channel widened**: commit-status `description` (`Review skipped: free tier disabled`) plus comment `updated_at` (in-place edits) are now sniffed in addition to `created_at` bodies.
+- **Transient free-tier-disabled grace** (`CR_SKIP_GRACE`, default 300s): CodeRabbit publishes a `success` status with `description = "Review skipped: free tier disabled"` for a few minutes before the real `"Review completed"` row lands on a paid private repo. Both `pre-flight.sh` and `poll-cr-status.sh` now treat that success+free-tier row as NON-terminal within the grace (gate stays `cr_wait` / the poller keeps polling) and only fall back to `rate_limited` once it persists past `CR_SKIP_GRACE`. Without this the skill fetched threads before any finding existed and reported false convergence. See `references/pre-flight-rules.md`.
 - **Polling interval default** dropped from `60s` → `8s` — wakeup latency ~5s = a pseudo-interrupt, made viable because pre-flight absorbs the cold-start round trip.
 
 ## Guidelines

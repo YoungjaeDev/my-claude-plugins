@@ -37,13 +37,24 @@ cr_desc=$(jq -r '.description // ""' <<<"$cr_status")
 cr_state_out="${cr_state:-none}"
 
 # ── 2. CR rate-limit sniff (comment body + commit-status description) ───────
+# "free tier disabled" is split off from the genuine rate-limit patterns: it is
+# a KNOWN-TRANSIENT CodeRabbit status that flips to "Review completed" within a
+# few minutes on a paid private repo, so it is only treated as a real skip once
+# the push is older than CR_SKIP_GRACE (applied after push_age is known, §6).
+# Genuine "Review limit reached" / "rate limited" route to fallback immediately.
+SKIP_GRACE="${CR_SKIP_GRACE:-300}"
 rate_limit_source="none"
-if [ "$cr_desc" != "" ] \
-   && jq -nr --arg d "$cr_desc" '$d | test("Review skipped: free tier disabled|Review limit reached|rate limited"; "i")' \
+cr_free_tier_skip=false
+if [ "$cr_desc" != "" ]; then
+  if jq -nr --arg d "$cr_desc" '$d | test("Review limit reached|rate limited"; "i")' \
         | grep -q true 2>/dev/null; then
-  rate_limit_source="description"
+    rate_limit_source="description"
+  elif jq -nr --arg d "$cr_desc" '$d | test("free tier disabled"; "i")' \
+        | grep -q true 2>/dev/null; then
+    cr_free_tier_skip=true
+  fi
 fi
-if [ "$rate_limit_source" = "none" ] \
+if [ "$rate_limit_source" = "none" ] && [ "$cr_free_tier_skip" = "false" ] \
    && sniff_json=$(bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
   # Honor the actual channel the sniffer detected instead of always writing "comment".
   # The sniffer emits {channel: "comment"|"description"|"both"} — propagate verbatim.
@@ -119,6 +130,20 @@ case "$cr_state" in
     # No terminal state yet → fall through to cr_wait (Step 6 polling).
     ;;
 esac
+
+# Transient "free tier disabled": the row carries state=success, which would
+# otherwise make CR look actionable and flip the gate to proceed before the real
+# review lands. Within CR_SKIP_GRACE, force it back to a non-actionable cr_wait
+# so Step 6 polling waits the "Review completed" row out; past the grace, treat
+# it as a genuine skip → rate-limited fallback (Step 7c).
+if [ "$cr_free_tier_skip" = "true" ] && [ "$gate" != "failure" ]; then
+  if [ "$push_age" -lt "$SKIP_GRACE" ]; then
+    cr_actionable=false
+    gate="cr_wait"
+  else
+    rate_limit_source="description"
+  fi
+fi
 
 # Rate-limit overrides everything except failure.
 if [ "$rate_limit_source" != "none" ] && [ "$gate" != "failure" ]; then

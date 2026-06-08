@@ -82,7 +82,8 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
 | `success` | none | no | empty | `in_progress` | < timeout | `codex_wait` |
 | `success` | none | no | empty | `unknown` | < timeout | `codex_wait` |
 | `success` | none | no | empty | any | ≥ timeout | `proceed` (Codex assumed clean) |
-| `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | n/a | `rate_limited` |
+| `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | `push_age` < `CR_SKIP_GRACE` | `cr_wait` (transient — poll the real review out) |
+| `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | `push_age` ≥ `CR_SKIP_GRACE` | `rate_limited` (genuine skip) |
 | `success` | `Review limit reached` / `rate limited` | n/a | n/a | n/a | n/a | `rate_limited` |
 | `success` | none | yes | n/a | n/a | n/a | `rate_limited` |
 | `pending` / `in_progress` / `""` | n/a | n/a | n/a | n/a | n/a | `cr_wait` |
@@ -90,6 +91,8 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
 | `error` | n/a | n/a | n/a | n/a | n/a | `cr_wait` (treat as transient, retry-by-polling) |
 
 `codex_timeout_seconds` defaults to `600`. Override per-run via env var `CODEX_PREFLIGHT_TIMEOUT` if a CI pattern shows Codex routinely lands later.
+
+`CR_SKIP_GRACE` defaults to `300` (seconds). CodeRabbit briefly publishes a `success` commit-status with `description = "Review skipped: free tier disabled"` before replacing it with `"Review completed"` once the real review lands on a paid private repo (observed ~5 min gap; "free tier disabled" is the [fair-usage hourly-quota refill](https://docs.coderabbit.ai/management/plans#fair-usage-limits-policy) wording, NOT a plan downgrade). Treating that transient row as terminal makes the skill fetch threads before any finding exists and report false convergence, so within `CR_SKIP_GRACE` the gate stays `cr_wait`; only a row still skipped past the grace routes to `rate_limited`. Both `pre-flight.sh` and `poll-cr-status.sh` honor `CR_SKIP_GRACE`.
 
 ## Output JSON contract
 

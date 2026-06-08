@@ -142,7 +142,7 @@ Whichever mode, frame a substantive question so the user can answer in one glanc
 — state your current understanding, name the decision, and offer a recommended
 default (so a low-stakes call can be a single confirmation, not an essay):
 
-```
+```text
 현재 이해 (Current understanding): what you already know / inferred from the code
 막힌 결정 (Stuck decision):        the specific fork you can't resolve yourself
 추천 답안 (Recommended answer):    your default + a one-line why (mark it Recommended)

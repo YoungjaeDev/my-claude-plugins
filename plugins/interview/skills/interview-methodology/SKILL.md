@@ -30,11 +30,17 @@ Explicit interview request - direct trigger.
 
 ## Critical Rules
 
+These govern a full interview once you've decided one is warranted. They are
+explicitly relaxed by the two scoping sections that follow — **"When NOT to
+Interview"** (whether to interview at all) and the lightweight close in
+**"Interview Completion"** (how much to write). When those apply, they override
+rules 3-5 below.
+
 1. **Use AskUserQuestion tool** for all questions - never just ask in plain text
 2. **Questions must NOT be obvious** - avoid basic questions the user has already answered
-3. **Continue interviewing until complete** - don't stop after 2-3 questions
-4. **Probe deeper on every answer** - each response should spawn follow-up questions
-5. **Write the final spec to a file** when the interview is complete
+3. **Don't stop a full interview early** - once committed to a full (breadth-first) interview, cover it; don't bail after 2-3 questions. (Doesn't apply when "When NOT to Interview" already capped the scope at 2-3 targeted questions.)
+4. **Probe deeper on substantive answers** - each response can spawn follow-ups; in depth-first mode this is the primary loop. (Not a mandate to follow up on every trivial confirmation.)
+5. **Write a spec file for substantial interviews** - large/multi-decision interviews persist a spec; small/focused ones use the lightweight close instead (see "Interview Completion").
 
 ## When NOT to Interview
 

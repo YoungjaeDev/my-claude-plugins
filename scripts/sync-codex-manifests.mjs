@@ -21,7 +21,8 @@ const PLUGINS_DIR = join(ROOT, 'plugins');
 //   midjourney  — image-gen workflow not portable (Codex execution model differs)
 // deepwiki and project-init were here but are now dual-surface (command + skill);
 // the skill side is what Codex loads, so they leave the EXCLUDED set.
-const EXCLUDED = new Set(['core-config', 'midjourney']);
+//   codex-image — Claude->Codex bridge (delegates to codex exec); bridging into Codex is circular
+const EXCLUDED = new Set(['core-config', 'midjourney', 'codex-image']);
 
 // Codex 0.135 manifest top-level supports only `skills`, `hooks`, `mcpServers`, `apps`
 // (see ~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md). `commands`

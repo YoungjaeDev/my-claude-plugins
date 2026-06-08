@@ -4,7 +4,7 @@ aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, r
 last_verified: 2026-06-08
 status: active
 volatility: stable
-sources: 5
+sources: 6
 ---
 
 # Shared-source Codex manifests
@@ -66,9 +66,13 @@ skills | hooks | mcpServers | apps
 by the generator — Codex does not recognize them. Plugins whose value is
 entirely in `commands` or `agents` therefore have nothing to load on the Codex
 side. The generator excludes them via an `EXCLUDED` set; the current entries
-are `core-config` (Claude-only hooks; Codex has no equivalent hook surface)
-and `midjourney` (image-gen workflow does not fit Codex's execution model).
-That yields **19 of 21** plugins eligible for Codex.
+are `core-config` (Claude-only hooks; Codex has no equivalent hook surface),
+`midjourney` (image-gen workflow does not fit Codex's execution model), and
+`codex-image`. The last has a different reason from the other two: it is a
+Claude->Codex *bridge* (it delegates image generation to `codex exec`), so
+syncing it back into Codex would be circular — Codex would be asked to load a
+skill whose only job is to call Codex. That yields **19 of 22** plugins
+eligible for Codex.
 
 `deepwiki` and `project-init` were in the EXCLUDED set before 1.41.0 because
 they shipped only `commands/`. The 1.41.0 dual-surface conversion added
@@ -136,6 +140,8 @@ does NOT need to retain removed plugins — orphan detection covers that case.
 - PR #46 body — records the 1024-char Codex skill-description silent-skip quirk
   (`research-orchestrator` at 1214 chars) and the three-layer length guard
   (generator `SKILL_DESC_MAX`, `.githooks/pre-commit`, `validate-codex.yml`).
+- PR #49 body — adds `codex-image` (Claude->Codex image-gen bridge) as the 22nd
+  plugin and the 3rd EXCLUDED entry, with the circular-bridge exclusion rationale.
 
 > Supersedes: (retired plugin `codex-bridge` 1.0.0)
 > See-also: [[neutral-llmwiki-root]]

@@ -121,3 +121,8 @@ Diff log written before applying the page edits (git-revertible).
 
 - plugin-ops/shared-source-codex-manifests.md: added `## Skill-description length guard` section (Codex 0.135 silently skips skills with `description` > 1024 chars; `--check` now validates length via SKILL_DESC_MAX before drift; 3-layer enforcement: sync-script guard + `.githooks/pre-commit` + `validate-codex.yml` CI). Updated `--check` mode bullet to note length validation. Added PR #46 source; sources 4 -> 5; last_verified 2026-06-08.
 - index.md: extended the shared-source-codex-manifests hook to mention the 1024-char description guard.
+
+## 2026-06-08 — codex-image joins EXCLUDED set (Claude->Codex bridge) (ingest-finding)
+
+- plugin-ops/shared-source-codex-manifests.md: EXCLUDED entries 2 -> 3 (added `codex-image` with circular-bridge rationale, distinct from the schema-driven exclusion of core-config/midjourney); eligible count 19 of 21 -> 19 of 22; added PR #49 source; sources 5 -> 6; last_verified 2026-06-08.
+- index.md: shared-source hook eligible count 19 of 21 -> 19 of 22.

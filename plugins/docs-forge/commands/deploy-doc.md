@@ -21,7 +21,7 @@ Produce a consistent client-facing deployment / procedure document (`.md`): a to
 
 ## Options
 
-- `--title TITLE` - Document title (the `# H1`). If omitted, ask or infer from input.
+- `--title TITLE` - Document title, emitted as the `# H1` on the first line (above the untitled summary paragraph). If omitted, ask or infer from input.
 - `--lang ko|en` - Output language. Default `ko`.
 - `--links <doc1,doc2>` - SSOT documents the procedure links to instead of redefining (detailed contracts / specs that must NOT be inlined).
 
@@ -32,7 +32,8 @@ Produce a consistent client-facing deployment / procedure document (`.md`): a to
 1. Load the `deploy-doc-guide` Skill — its `## Quick Reference` is the binding skeleton + self-verify checklist.
 2. Collect: title, a 2-3 line core summary, prerequisite items, and the ordered procedure steps.
 3. Emit the skeleton in this order:
-   - Top-of-file **untitled** summary paragraph (2-3 lines, no heading).
+   - `# H1` document title from `--title` (first line). Omit only when no title is given/inferable.
+   - Untitled summary paragraph (2-3 lines, no section heading) directly below the title and above the first `##`.
    - `## 전제조건` (or `## Prerequisites` for `--lang en`) — every item as a `- [ ]` checklist line.
    - `## 절차` (or `## Procedure`) — each step as `### 1.` / `### 2.` / `### N.`, contiguous numbering from 1.
 4. **Number-match rule**: the count of steps named/implied in the summary MUST equal the number of `### N.` headings.

@@ -55,7 +55,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 ### Documentation
 | Plugin | Description |
 |--------|-------------|
-| `docs-forge` | README/CHANGELOG generation with CRO best practices |
+| `docs-forge` | README/CHANGELOG generation with CRO best practices, plus deployment-doc templates (`/docs-forge:deploy-doc`) and MOC index generation (`/docs-forge:moc`) |
 | `rules-forge` | CLAUDE.md + .claude/rules/ generation with auto mode detection (single write-rules skill) |
 
 ### Visualization
@@ -93,7 +93,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 │   ├── codex-image/        # Claude->Codex image gen bridge
 │   ├── interview/          # Requirements
 │   ├── notion/             # Notion
-│   ├── docs-forge/         # README/CHANGELOG
+│   ├── docs-forge/         # README/CHANGELOG + deploy-doc + MOC
 │   ├── rules-forge/        # write-rules skill (auto mode detection)
 │   ├── slidev/             # Presentation generator
 │   ├── workflow-viz/       # Workflow visualization

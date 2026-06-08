@@ -627,7 +627,7 @@ git config core.hooksPath .githooks
 │   ├── interview/             # 요구사항 수집
 │   ├── notion/                # Notion 연동
 │   ├── slidev/                # 프레젠테이션 생성
-│   ├── docs-forge/            # README/CHANGELOG 생성
+│   ├── docs-forge/            # README/CHANGELOG + 배포 문서 + MOC 생성
 │   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)
 │   ├── workflow-viz/          # 워크플로우 시각화
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화

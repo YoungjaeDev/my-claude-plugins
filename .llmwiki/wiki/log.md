@@ -8,6 +8,12 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 <!-- New entries go directly under this line -->
 
+## 2026-06-08 — post-merge #54 (post-merge)
+
+Merge `582cfa6` (squash). Scanned the PR file list (`gh pr diff 54 --name-only`): docs-forge gains `/docs-forge:deploy-doc` + `/docs-forge:moc` (command + guide-skill SSOT + reference each), version 0.2.1→0.3.0, marketplace metadata 1.50.0→1.51.0, Codex manifests regenerated. Merged diff applies already-documented patterns (`[[dual-surface-command-skill-pattern]]`, `[[shared-source-codex-manifests]]`, `.claude/rules/plugin-versioning`) — no NEW lore from the diff; no config/CLAUDE.md mechanical rule needed (conventions already captured). One process finding from the 5-iter cr-fix loop ties to existing lore.
+
+- cr-fix-ops/cr-rate-limit-progressive-refill.md: UPDATED (sources 2→3, last_verified→2026-06-08). Added a 3rd confirming dogfood instance (PR #54): a 5-push burst where CR skipped early commits (`"Review skipped: free tier disabled"`) and completed the final one (progressive refill), with Codex co-reviewing throughout. Establishes the **co-reviewer recovery path** (distinct from the PR #50 CLI fallback) and the caveat that `cr_state: success` is content-empty during the CR skip window — a false "clean" if CR is the only reviewer.
+
 ## 2026-06-05 — post-merge #50 (post-merge)
 
 Merge `ffab9c7` (squash). Scanned the PR file list (`gh pr diff 50 --name-only`): prompt_inject.sh block strengthen + post-merge Step 4.5 ephemeral pruning + versioning. Two findings tie to lore; one existing page re-verified. The gh `{owner}/{repo}` invariant surfaced by Codex review was routed to `plugins/github-dev/CLAUDE.md` (mechanical rule) — NOT duplicated here.

@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration. The same plugin tree is loaded by Codex 0.135 via `scripts/sync-codex-manifests.mjs` — one source, two runtimes.
 
-## Plugins (22)
+## Plugins (21)
 
 ### Core
 | Plugin | Description |
@@ -39,7 +39,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 |--------|-------------|
 | `translator` | Web article translation to Korean |
 | `notion` | Markdown to Notion upload |
-| `humanizer` | Remove AI writing patterns from text |
 | `tcrei-prompt` | Rewrite prompts using Google's TCREI structure for next-session reuse |
 
 ### Planning
@@ -94,7 +93,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 │   ├── codex-image/        # Claude->Codex image gen bridge
 │   ├── interview/          # Requirements
 │   ├── notion/             # Notion
-│   ├── humanizer/          # AI text humanizer
 │   ├── docs-forge/         # README/CHANGELOG
 │   ├── rules-forge/        # write-rules skill (auto mode detection)
 │   ├── slidev/             # Presentation generator
@@ -120,7 +118,7 @@ node scripts/sync-codex-manifests.mjs           # write manifests
 node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
-Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 19 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `midjourney` (image-gen execution model differs), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 18 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `midjourney` (image-gen execution model differs), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
 
 ## Modular Rules
 

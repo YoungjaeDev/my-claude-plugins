@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: Run after a PR merges — clean up the local branch, sync tracking, integrate what merged into config + wiki, commit. Use when the user types /github-dev:post-merge, says "post-merge cleanup", "integrate PR learnings", or merged a PR. Identifies the merged PR (gh pr view is the authoritative merge signal — never compare git SHAs), switches to base, deletes the merged branch, syncs GitHub Project/milestone + .claude/state/spec.json, integrates learnings into CLAUDE.md/AGENTS.md/.claude/rules + Serena memory under a no-stamp current-state-only rule, then runs a MANDATORY wiki-lore ingest (absorbed post-merge-wiki, file-list-first candidates + autonomy triage, delegating to llm-wiki:ingest-finding), updates README, commits. Knowledge routing — mechanical tool rules → CLAUDE.md/.claude/rules; cross-agent lore → .llmwiki via the wiki step, recorded once. Runs from the main repo, not a worktree. Codex note — Serena/rules-forge/claude-md-improver/humanizer/docs-forge sub-steps are Claude-only and gracefully skip.
+description: Run after a PR merges — clean up the local branch, sync tracking, integrate what merged into config + wiki, commit. Use when the user types /github-dev:post-merge, says "post-merge cleanup", "integrate PR learnings", or merged a PR. Identifies the merged PR (gh pr view is the authoritative merge signal — never compare git SHAs), switches to base, deletes the merged branch, syncs GitHub Project/milestone + .claude/state/spec.json, integrates learnings into CLAUDE.md/AGENTS.md/.claude/rules + Serena memory under a no-stamp current-state-only rule, then runs a MANDATORY wiki-lore ingest (absorbed post-merge-wiki, file-list-first candidates + autonomy triage, delegating to llm-wiki:ingest-finding), updates README, commits. Knowledge routing — mechanical tool rules → CLAUDE.md/.claude/rules; cross-agent lore → .llmwiki via the wiki step, recorded once. Runs from the main repo, not a worktree. Codex note — Serena/rules-forge/claude-md-improver/humanize-korean/docs-forge sub-steps are Claude-only and skip.
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -17,7 +17,7 @@ For worktree removal, use `/exit` with its cleanup option.
 - **Never use SHA-level merge comparison.** `git log <base>..<branch>`, `git cherry`, `git rev-list --left-right` all false-positive after squash merge (base gets one new SHA) and rebase merge (branch SHAs rewritten). If unsure content landed, diff content not SHAs (Step 4).
 - **No stamps, current-state only.** Normative docs hold current rules; provenance lives in git/PR/blame. No `(#N)` / `PR #N` / `이슈 #N` citations, no `## Post-Merge` headers. Full rules + the `<!-- history-allowed [max=N] -->` opt-out + language consistency + SSOT cross-file dedup + content-first: see `references/core-principle.md`.
 - **Knowledge routing (no double-recording).** Mechanical / tool-operation rules → `CLAUDE.md` / `AGENTS.md` / `.claude/rules/` / Serena memory (Steps 6-7). Cross-agent *lore* (provider quirks, design rationale, debugging stories) → `.llmwiki/` via the wiki step (Step 8). Each fact is recorded in exactly one home; the wiki step (run *after* config integration) dedups against what Steps 6-7 already absorbed. Cross-agent rules that graduate do so to `.llmwiki/insight/` via the wiki step, never to `.claude/rules/` (Codex can't read it).
-- **Codex partial-execution.** Under Codex 0.135 the Serena (Step 7), `rules-forge:split` / `claude-md-management:claude-md-improver` (Step 6.5), and `humanizer` / `docs-forge:readme` (Step 9) sub-steps are Claude-only — gracefully skip them and note the skip rather than failing.
+- **Codex partial-execution.** Under Codex 0.135 the Serena (Step 7), `rules-forge:split` / `claude-md-management:claude-md-improver` (Step 6.5), and `humanize-korean` / `docs-forge:readme` (Step 9) sub-steps are Claude-only — gracefully skip them and note the skip rather than failing.
 
 ## Arguments
 
@@ -101,6 +101,39 @@ no Serena/rules-forge).
 Full heuristics, confidence tiers, hard exclusions, and the Step 10 staging
 interaction: `references/ephemeral-heuristics.md`.
 
+### 4.6. Surface deprecated-marker cleanup candidates (optional)
+
+A merged PR sometimes makes previously-deprecated code removable, or lands a
+deprecation pointer whose target is already gone. Scan what this PR touched for
+deprecation markers and **surface** removal candidates — never auto-delete, and
+never escalate to `-D`. Same confirm-only / `git rm` / Step 10 staged-diff
+discipline as Step 4.5.
+
+Skip silently when: no marker is found, or the user selects skip-all.
+
+1. Scan the merged file list (`gh pr diff <PR_NUMBER> --name-only`) for markers
+   in the **current base-branch content** (not the diff): `@deprecated`,
+   `DEPRECATED`, `deprecated alias`, `Deprecated:`, doc-only "deprecated pointer"
+   stubs. `git grep -nE 'deprecated|DEPRECATED' -- <merged-files>` is enough.
+2. **Distinguish intent before surfacing** — a marker the PR *added* usually means
+   "deprecated but kept on purpose" (a grace-period alias); that is NOT a removal
+   candidate. Only surface a marker as removable when its target is already gone,
+   its grace window is documented as elapsed, or the PR body explicitly says it is
+   now safe to drop. When unsure, surface it as **review-only** (show, don't
+   stage).
+3. Read each candidate's surrounding lines; if other tracked files still reference
+   the deprecated symbol (`git grep` the name), drop it from the removal set —
+   removing it would break a live caller.
+4. Gate via `AskUserQuestion` (multi-select): each candidate with path + marker +
+   reason. Options: pick items to clean up / skip all.
+5. For each confirmed item: remove the deprecated block via `Edit` (in-file) or
+   `git rm` (whole stub file). `Edit`ed files go into `RUN_TOUCHED` (Step 10
+   stages them); `git rm` already stages the deletion — do NOT add it to
+   `RUN_TOUCHED`. Report each.
+
+**Codex**: runs identically (gh/git/grep/AskUserQuestion only — no
+Serena/rules-forge).
+
 ### 5. Update GitHub Project status (optional)
 
 - Extract issue refs from the PR body (`Closes #N` / `Fixes #N` / `Resolves #N`).
@@ -120,6 +153,8 @@ For each related issue with a milestone, recompute module progress and regenerat
 
 Read `gh pr diff <PR_NUMBER>` + the PR body, then weave each learning into the **appropriate existing section** of `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `.claude/rules/*.md`. **Never append a "Post-Merge Notes" section.**
 
+**6.1 Cross-file dedup gate (run before writing any learning).** For each fact, first grep the SSOT set (`CLAUDE.md`, `AGENTS.md`, the relevant `.claude/rules/*.md`) for an existing home. If one exists, **update that line in place** — do not add a parallel statement in a second file. A rule that must bind both runtimes lives once in `.claude/rules/<x>.md` (Claude) with a concise mirror block in `AGENTS.md` (Codex), tied by a one-line pointer in `CLAUDE.md` `## Modular Rules` — that pairing is the SSOT pattern, not duplication. When the same fact already appears in two files, collapse to one authoritative home + pointer rather than editing both copies. This is the config-side twin of the Step 8 wiki dedup gate; together they keep each fact in exactly one home.
+
 Full procedure — Pre-Audit (scrub existing stamps first), the classification/placement table, the integration process, modular-rule-file structure, the pre-presentation stamp self-check, History Rotation (6.4), and the Normative Doc Size Audit (6.5, with `rules-forge:split` / `claude-md-improver` routing) — lives in **`references/learning-integration.md`**. Apply its Core Principle (`references/core-principle.md`) to every added/modified line; present a diff-style proposal before applying.
 
 ### 7. Update Serena memory (Claude-only — Codex skips)
@@ -132,15 +167,21 @@ Absorbs the former `post-merge-wiki` skill as a required step. Runs **after** St
 
 Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`); if none resolves, skip silently (no wiki layer — no hard dependency). Otherwise derive ingest candidates **from the merged file list** (`gh pr diff <N> --name-only`), triage by autonomy boundary, and delegate the heavy lifting (diff-log, multi-page cross-update, insight graduation) to `llm-wiki:ingest-finding`. Full procedure — candidate derivation, the autonomy-boundary triage table, the trivial-merge skip list, the `log.md` entry format, and the Step 6/7 routing-dedup rule — lives in **`references/wiki-ingest.md`**.
 
-### 9. Update README.md (if needed — humanizer/docs-forge are Claude-only)
+### 9. Update README.md (if needed — humanize-korean/docs-forge are Claude-only)
 
-If the PR changed features/commands/install/usage/deps and a README exists: draft the changes, apply `/humanizer:humanize` then `/docs-forge:readme` guidelines (Claude-only — skip the skill passes under Codex, keep the manual edit), present for confirmation. Skip if no README-relevant changes.
+If the PR changed features/commands/install/usage/deps and a README exists: draft the changes, then refine. If the README is Korean and the `humanize-korean` plugin is installed, apply `/humanize-korean:humanize-korean` to strip AI-writing tells; if it is not installed (it is a user-external plugin, not bundled here), do the equivalent pass by manual edit. Then apply `/docs-forge:readme` guidelines. Both skill passes are Claude-only — under Codex skip them and keep the manual edit. Present for confirmation. Skip if no README-relevant changes.
+
+### 9.5. Update CHANGELOG (if present)
+
+If a `CHANGELOG.md` (or `CHANGELOG`) exists at the repo root **and** the merged PR is changelog-worthy (a user-visible feature / fix / breaking change — not a pure docs/test/chore merge), reflect the merge into it. Mirror Step 9's guide-driven approach: read the `docs-forge:changelog-guide` skill + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md` and apply the patterns **manually** (Keep-a-Changelog grouping, the `Unreleased` section, semantic-version discipline, no per-PR stamp noise in normative entries). Derive the entry from `gh pr diff <PR_NUMBER>` + the PR body, place it under the right `Unreleased` heading (Added / Changed / Fixed / Removed), present a diff-style proposal before applying, and add the file to `RUN_TOUCHED` for Step 10.
+
+The `/docs-forge:changelog` **command** is Claude-only (Codex 0.135 emits no command surface) — under Codex, skip the command and do the same edit manually from the `changelog-guide` skill patterns. Skip silently when no CHANGELOG exists or the merge is not changelog-worthy.
 
 ### 10. Commit changes (optional)
 
-If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, Serena memory, **`.llmwiki/` from the Step 8 wiki ingest**, **or a Step 4.5 ephemeral-prune `git rm` deletion** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed), or a prune-only post-merge (Step 4.5 `git rm`'d a file but no config/wiki change landed), must still commit, or the change is left uncommitted in the working tree. The `git diff --cached --quiet` check below catches the staged deletion even though it is not in `RUN_TOUCHED`.
+If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, `CHANGELOG.md` (Step 9.5), Serena memory, **`.llmwiki/` from the Step 8 wiki ingest**, **or a Step 4.5 / Step 4.6 `git rm` deletion** — confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed), or a prune-only post-merge (Step 4.5 / 4.6 `git rm`'d a file but no config/wiki change landed), must still commit, or the change is left uncommitted in the working tree. The `git diff --cached --quiet` check below catches the staged deletion even though it is not in `RUN_TOUCHED`.
 
-Stage **only the exact files this run created or modified** — collect them as you go through Steps 5.7-9 (each config file you edited, the `.claude/state/spec.json` + spec file from Step 5.7, README, Serena memory files, and the specific wiki pages `ingest-finding` created/updated). Build that explicit list as `RUN_TOUCHED` and add only those paths — **never `git add` a whole directory** (`.llmwiki/`, `.claude/spec/`, …): a pre-existing untracked draft (e.g. a user's `.llmwiki/wiki/draft.md`) would otherwise be swept into this commit, and Step 2 already decided to leave untracked files alone.
+Stage **only the exact files this run created or modified** — collect them as you go through Steps 4.6-9.5 (each config file you edited, the `.claude/state/spec.json` + spec file from Step 5.7, README, `CHANGELOG.md` from Step 9.5, any Step 4.6 in-file deprecated-block `Edit`, Serena memory files, and the specific wiki pages `ingest-finding` created/updated). Build that explicit list as `RUN_TOUCHED` and add only those paths — **never `git add` a whole directory** (`.llmwiki/`, `.claude/spec/`, …): a pre-existing untracked draft (e.g. a user's `.llmwiki/wiki/draft.md`) would otherwise be swept into this commit, and Step 2 already decided to leave untracked files alone.
 
 ```bash
 # RUN_TOUCHED = the exact paths this run wrote, gathered across Steps 5.7-9.
@@ -162,5 +203,6 @@ Skip the commit only when `git diff --cached --quiet` reports nothing staged aft
 - **Ephemeral artifact pruning** (Step 4.5 — heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
 - Milestone / Type M-2 diagram mechanics: `skills/update-progress/SKILL.md`
 - spec.json schema + ops: `plugins/spec-state/skills/state-tracker/SKILL.md`
+- CHANGELOG patterns (Step 9.5): `docs-forge:changelog-guide` skill + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md`
 
 > Follow ~/.claude/CLAUDE.md and the project CLAUDE.md.

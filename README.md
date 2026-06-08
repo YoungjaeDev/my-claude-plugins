@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -73,7 +73,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `ml-toolkit` | GPU 병렬 처리, Gradio CV 앱 |
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
 | | `notion` | Markdown을 Notion으로 업로드 |
-| | `humanizer` | AI 글쓰기 패턴 제거 |
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
@@ -335,17 +334,6 @@ Markdown을 Notion에 포매팅하여 업로드.
 </details>
 
 <details>
-<summary><strong>humanizer</strong> - AI 글쓰기 패턴 제거</summary>
-
-AI 생성 글의 패턴 제거.
-
-**Triggers:** "humanize this", "make it sound human"
-
-**24가지 패턴 감지:** 중요성 과장, 홍보적 언어, AI 어휘, 대시 남용 등
-
-</details>
-
-<details>
 <summary><strong>tcrei-prompt</strong> - TCREI 프롬프트 구조화</summary>
 
 Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프트 재작성.
@@ -562,7 +550,6 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
       "./plugins/midjourney",
       "./plugins/interview",
       "./plugins/notion",
-      "./plugins/humanizer",
       "./plugins/slidev",
       "./plugins/docs-forge",
       "./plugins/rules-forge",
@@ -591,7 +578,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 19 / 22 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 18 / 21 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -635,7 +622,6 @@ git config core.hooksPath .githooks
 │   ├── codex-image/           # Claude->Codex 이미지 생성 브리지
 │   ├── interview/             # 요구사항 수집
 │   ├── notion/                # Notion 연동
-│   ├── humanizer/             # AI 패턴 제거
 │   ├── slidev/                # 프레젠테이션 생성
 │   ├── docs-forge/            # README/CHANGELOG 생성
 │   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)

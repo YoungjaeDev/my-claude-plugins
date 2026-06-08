@@ -113,18 +113,6 @@
       "category": "integration"
     },
     {
-      "name": "humanizer",
-      "source": {
-        "source": "local",
-        "path": "./plugins/humanizer"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "content"
-    },
-    {
       "name": "paper-search-tools",
       "source": {
         "source": "local",

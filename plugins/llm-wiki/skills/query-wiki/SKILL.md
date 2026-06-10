@@ -24,8 +24,8 @@ The wiki is the lore layer — LLM-maintained domain knowledge that doesn't belo
 
 1. **Check `.llmwiki/insight/index.md` first (if present), then the wiki `index.md`.** Insight is the promoted, most-consolidated layer — the `core-config` prompt-injection hook already points both agents here first. If an insight entry covers your question, it is the authoritative condensed rule; follow its `promoted_from: [[wiki-id]]` down to the wiki page only when you need the full story. Then read the wiki MOC (`index.md` at the resolved root) — every page listed with a 1-line hook; skim hooks, pick page(s). If neither `index.md` exists, the layer is not initialized — suggest `/llm-wiki:bootstrap-wiki`.
 2. **Read the matching page(s).** Each page is a single concept, ≤5KB.
-3. **Follow typed cross-refs (authoritative grammar).** `> Refines: [[id]]` means deeper detail; `> Contradicts: [[id]]` means conflict to resolve before action; `> Evidence: .llmwiki/raw/<file>` (or external `docs/...md`) means raw citation; `> See-also: [[id]]` is lateral; `> Supersedes: [[id]]` / `> Superseded-by: [[id]]` mark lifecycle replacement; `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` are typed relations. These typed refs are the only authoritative link form.
-4. **Check `status:` and `last_verified:` frontmatter.** If `status: stale`, the page is superseded — follow its `> Superseded-by: [[id]]` to the active replacement and read that instead. Then check `last_verified:`: older than the page's volatility window (stable 180d / volatile 30d) = treat as possibly stale; verify against code before acting on the lore. Soft-hint hook may already have flagged it.
+3. **Follow typed cross-refs (authoritative grammar).** The typed token set — `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — is the only authoritative link form; never raw `[[wikilink]]`. Two gate action: `> Contradicts: [[id]]` is a conflict to resolve before acting; `> Superseded-by: [[id]]` redirects you to the active replacement. Per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar.
+4. **Check `status:` and `last_verified:` frontmatter.** If `status: stale`, the page is superseded — follow its `> Superseded-by: [[id]]` to the active replacement and read that instead. Then check `last_verified:`: older than the page's volatility window (stable 180d / volatile 30d) = treat as possibly stale; verify against code before acting on the lore. `volatile` (bug/transient) lore needs re-checking sooner; `stable` (design/rationale) lore stays trustworthy longer. Soft-hint hook may already have flagged it.
 5. If neither insight nor wiki covers what you need, the answer is either in code (grep), in `.claude/rules/` (mechanical tool invariants — not wiki lore), or genuinely missing → trigger `/llm-wiki:ingest-finding` after you figure it out (it decides wiki vs insight graduation).
 
 ## Verification
@@ -42,3 +42,7 @@ The wiki is the lore layer — LLM-maintained domain knowledge that doesn't belo
 ## See also
 
 > All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in the resolved wiki root's `log.md` (e.g. `.llmwiki/wiki/log.md`) with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`.
+
+## References
+
+- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `references/wiki-conventions.md`.

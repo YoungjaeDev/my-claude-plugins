@@ -22,12 +22,40 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
 
 ## Steps
 
-1. **Identity scan** (duplicate concepts):
+1. **Identity scan + dedup scoring** (duplicate concepts):
    ```bash
    grep -rh "^id:" .llmwiki/wiki/ | sort | uniq -d
    grep -rh "^aliases:" .llmwiki/wiki/ | tr ',' '\n' | sort | uniq -d
+   # For each duplicate id AND each duplicate alias, list the pages forming the
+   # cluster (to score + remedy). $tok is PCRE-quoted with \Q...\E so an id or
+   # alias containing regex metacharacters (. + ( ...) can't break the search.
+   dup_ids=$(LC_ALL=C.UTF-8 grep -rhoP '^id:\s*\K\S+' .llmwiki/wiki/ | sort | uniq -d)
+   dup_aliases=$(LC_ALL=C.UTF-8 grep -rhoP '^aliases:\s*\[\K[^\]]+' .llmwiki/wiki/ \
+                 | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+                 | grep -v '^$' | sort | uniq -d)
+   for tok in $dup_ids; do
+     printf '== id cluster: %s ==\n' "$tok"
+     LC_ALL=C.UTF-8 grep -rlP "^id:\s*\Q$tok\E\b" .llmwiki/wiki/
+   done
+   for tok in $dup_aliases; do
+     printf '== alias cluster: %s ==\n' "$tok"   # Low-overlap row: same alias, distinct ids
+     LC_ALL=C.UTF-8 grep -rlP "^aliases:.*\Q$tok\E" .llmwiki/wiki/
+   done
    ```
-   For any duplicate, propose merge or alias.
+   For each duplicate cluster, **score the overlap and propose one concrete
+   remedy** — borrowing mem0's memory-reviewer triage *pattern* (the pattern, not
+   its data; no mem0 call). The score is a coarse band, never a fabricated float
+   (consistent with the wiki's provenance-over-confidence rule):
+
+   | Overlap | Signal | Suggest |
+   |---------|--------|---------|
+   | **High** | same `id`, or near-identical concept + overlapping body claims | **merge** — fold into the stronger page, redirect the other's aliases |
+   | **Medium** | same concept, different facet / partial claim overlap | **supersede** — keep both, mark the older `status: stale` + `> Superseded-by:` the newer |
+   | **Low** | shared alias but genuinely distinct concepts | **alias** — disambiguate the colliding alias (rename/scope), keep both pages |
+
+   Report-only — surface `<cluster> — overlap: <band> — suggest: <remedy>` for the
+   user; never merge/supersede/alias automatically (you may delete load-bearing
+   content — see Anti-patterns).
 
 2. **Level scan** (pages too big):
    ```bash
@@ -39,7 +67,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
    ```bash
    rg -nP '^\[\[' .llmwiki/wiki/ || echo "OK"
    ```
-   Any hits → must convert to typed `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:`. Only a bare line starting with `[[` is flagged; typed refs are never flagged.
+   Any hits → must convert to typed `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` (per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar). Only a bare line starting with `[[` is flagged; typed refs are never flagged.
 
 4. **Staleness scan** (per-page volatility window — `volatile` 30d / `stable` or absent 180d):
    ```bash
@@ -119,7 +147,7 @@ Produce a Markdown report:
 ```text
 ## Wiki Health Report — YYYY-MM-DD
 
-- Identity: <n duplicates / clean>
+- Identity: <n duplicate clusters, each with overlap band + merge/supersede/alias suggestion / clean>
 - Level: <n pages > 5KB>
 - Relationship: <n bare wikilinks / clean>
 - Staleness: <n pages past their volatility window>
@@ -139,7 +167,7 @@ Report only — do not auto-fix. User reviews and triggers `/llm-wiki:ingest-fin
 ```text
 ## Wiki Health Report — 2026-05-29
 
-- Identity: clean
+- Identity: 1 duplicate cluster (backend/cache.md + backend/caching.md share id `cache-policy` — overlap: High — suggest: merge into backend/cache.md, redirect `caching` alias)
 - Level: 1 page > 5KB (backend/provider-x.md, 6.2 KB → propose split)
 - Relationship: clean
 - Staleness: 2 past window (backend/old-quirk.md 41 days, volatile 30d window; design/layout.md 190 days, stable 180d window)
@@ -176,3 +204,7 @@ For large wikis (>~30 pages), dispatch one read-only agent per `wiki/<domain>/` 
 ## See also
 
 > All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in the resolved wiki root's `log.md` (e.g. `.llmwiki/wiki/log.md`) with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`.
+
+## References
+
+- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `references/wiki-conventions.md`.

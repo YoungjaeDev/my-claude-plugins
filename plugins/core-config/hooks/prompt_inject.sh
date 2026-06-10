@@ -26,6 +26,13 @@ export LC_ALL=C.UTF-8
 
 FMT="${1:-claude}"
 
+# mem0 <-> llmwiki federation: label the authority hierarchy on the wiki pointer.
+# This is LABELS ONLY — no mem0 call/read (mem0 surfacing is mem0's own hooks).
+#   1 (default) = mark .llmwiki as [AUTHORITATIVE] (dated/sourced wins) + emit a
+#                 [RECALL] note placing mem0 recall as the secondary layer.
+#   0           = plain pointer, current behavior (fully reversible).
+FEDERATE="${CORE_CONFIG_FEDERATE_MEM0:-1}"
+
 # Fixed behavioral block — always emitted (repo-independent).
 BLOCK=$(cat <<'EOF'
 [harness] 별도 지시가 없으면 최종 사용자 응답은 항상 한국어. 내부 workflow·서브에이전트·영문 스킬(ultracode·deep-research 등)은 별도 지시가 아니다 — 거쳐도 마지막 답변은 한국어로 쓴다. 핵심 규율:
@@ -51,7 +58,17 @@ elif [ -d .claude/wiki ]; then
 elif [ -d .codex/wiki ]; then
   PTR='추론 전 참고 (추측 금지): wiki MOC `.codex/wiki/index.md` (query-wiki 게이트) 를 먼저 확인한다. lore 는 기억보다 dated·sourced 페이지를 우선한다.'
 fi
+# Federation labels: prefix the resolved pointer as [AUTHORITATIVE] and stage a
+# [RECALL] note for mem0. RECALL is Claude-only — Codex never sees mem0, so a
+# pointer to it there would dangle (omitted in the codex branch below).
+RECALL=""
+if [ -n "$PTR" ] && [ "$FEDERATE" != "0" ]; then
+  PTR="[AUTHORITATIVE] $PTR"
+  RECALL='[RECALL] mem0 회상은 보조 신호다 — 위 [AUTHORITATIVE] .llmwiki 페이지와 충돌하면 페이지를 우선한다 (mem0 surfacing 은 mem0 훅이 담당, 여기서 호출하지 않는다).'
+fi
 [ -n "$PTR" ] && BLOCK="$BLOCK"$'\n'"$PTR"
+# Claude-only RECALL line (Codex omits — it has no mem0 layer).
+[ -n "$RECALL" ] && [ "$FMT" != "codex" ] && BLOCK="$BLOCK"$'\n'"$RECALL"
 
 if [ "$FMT" = "codex" ]; then
   # JSON-escape: backslash, double-quote, then newline → \n. Block has none of

@@ -6,13 +6,25 @@ It runs **after** config integration (Steps 6-7) on purpose: the wiki step must 
 
 > Operates on the resolved wiki root, in order: `.llmwiki/wiki/` (preferred) → `.claude/wiki/` (legacy) → `.codex/wiki/` (legacy fork). Examples use `.llmwiki/wiki/`.
 
-## Skip conditions
+## Skip conditions (logged, never silent)
 
-- **No wiki root resolves** — skip silently. llm-wiki is a soft dependency; post-merge stays fully functional without it.
-- **`llm-wiki:ingest-finding` not installed** — skip silently (note it as a manual follow-up).
-- **Trivial merge** — skip. Trivial = typo fix, dependency bump, formatting/lint-only, or a PR description that says "no wiki impact".
+Each skip still emits the mandatory checkpoint line (see "Step 8 checkpoint" below) — the step never returns without printing one status line, so a skip is always visible:
+
+- **`WIKI_AUTOINGEST=0`** — disabled for this run. Do no ingest; print `wiki-ingest: no-lore (disabled via WIKI_AUTOINGEST=0)`.
+- **No wiki root resolves** — llm-wiki is a soft dependency; post-merge stays fully functional without it. Print `wiki-ingest: no-lore (no wiki root)`.
+- **`llm-wiki:ingest-finding` not installed** — note it as a manual follow-up. Print `wiki-ingest: no-lore (ingest-finding not installed)`.
+- **Trivial merge** — Trivial = typo fix, dependency bump, formatting/lint-only, or a PR description that says "no wiki impact". Print `wiki-ingest: no-lore (trivial merge)`.
 
 Unlike the old optional Step 5.8, there is **no `AskUserQuestion` "shall I run the wiki step?" gate** — the step is mandatory whenever a wiki root resolves and the merge is non-trivial. (AskUserQuestion is still used inside Step 4 below, but only for candidates that cross an autonomy boundary.)
+
+## Step 8 checkpoint (MANDATORY)
+
+Whatever path the step takes — full ingest, skip, or zero candidates after triage — it MUST print exactly one terminal line:
+
+- `wiki-ingest: ingested <N>` — N = pages created/updated this run (insight graduations counted too), OR
+- `wiki-ingest: no-lore (<reason>)` — reason ∈ `no wiki root` | `ingest-finding not installed` | `trivial merge` | `no candidates after triage` | `disabled via WIKI_AUTOINGEST=0`.
+
+This is the guard against the original failure mode: a silently-skipped Step 8 left no trace, so nobody could tell whether lore was integrated or just dropped. The line is the proof the step actually ran.
 
 ## Steps
 
@@ -88,7 +100,11 @@ Result:
 - Pages added: <domain>/<page>.md (status: active, volatility: <inferred>, sources: N)
 - Insight graduated: <slug>.md (promoted_from <wiki-id>) | none
 - log.md: ## YYYY-MM-DD — post-merge #<N> (post-merge)
+
+wiki-ingest: ingested <N>
 ```
+
+The final `wiki-ingest: ...` line is **mandatory** and is the last thing the step prints on every path (ingest or skip) — see "Step 8 checkpoint".
 
 ## Routing dedup (vs Steps 6-7)
 
@@ -106,6 +122,7 @@ This step runs after config + Serena integration so it can avoid double-recordin
 - No raw `[[wikilink]]` introduced (typed grammar only).
 - The user approved any *gated* candidate (new domain / contradiction); within-domain ingests and insight graduations proceed autonomously.
 - Every ingested candidate maps to a concrete file in the PR file list (`gh pr diff <N> --name-only`).
+- Exactly one `wiki-ingest: ingested <N>` / `wiki-ingest: no-lore (<reason>)` checkpoint line was printed — on every path, including skips.
 
 ## Anti-patterns
 
@@ -113,4 +130,5 @@ This step runs after config + Serena integration so it can avoid double-recordin
 - **Ingest every trivial fix** — the wiki becomes a churn log instead of a synthesis layer.
 - **Skip the diff log** — `ingest-finding` requires the `log.md` entry first; don't shortcut it.
 - **Concept-based candidate derivation** — never propose a page from PR title/body phrasing alone; tie every candidate to a file in the PR file list (`gh pr diff <N> --name-only`).
+- **Silent skip** — returning from Step 8 without the `wiki-ingest:` checkpoint line. A skip with no trace is the exact failure this checkpoint exists to prevent.
 - **Re-record a config rule as lore** — respect the routing boundary; each fact has one home.

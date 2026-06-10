@@ -75,12 +75,12 @@ This is cheap and gives `git log log.md` (at the resolved root) as the single au
      - Place under correct `wiki/<domain>/` (2-depth max — don't make a new dir unless explicitly approved).
      - Use full v2 frontmatter (`id`, `aliases`, `last_verified`, `status: active`, inferred `volatility:`, `sources:`).
        - `status:` defaults to `active`.
-       - Infer `volatility:`: arch/design/decision lore → `stable` (180d window); bug/debug/quirk/transient lore → `volatile` (30d window); default `stable`.
+       - Infer `volatility:`: arch/design/decision lore → `stable` (180d window); bug/debug/quirk/transient lore → `volatile` (30d window); default `stable`. `volatile` = transient/bug lore (re-verified often), `stable` = recurring/architectural (trusted longer) — but either way the body is a *rule*, not a *one-off log*.
        - `sources:` = the count of `## Sources` entries on the page.
      - End with `## Sources` citing the raw evidence (preferred path `.llmwiki/raw/<file>`, or external `docs/...`).
      - Add a one-line entry to `index.md` under the matching domain heading.
    - **If a finding contradicts a page with historical value**: apply the supersede pattern above — new page/section gets `> Supersedes: [[old-id]]`; old page gets `status: stale` + `> Superseded-by: [[new-id]]` (kept, not deleted).
-5. **Update cross-refs**: any page that previously linked to or contradicted the updated page may need a touch. Use typed grammar — `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — never raw `[[wikilink]]`.
+5. **Update cross-refs**: any page that previously linked to or contradicted the updated page may need a touch. Use typed grammar — `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — never raw `[[wikilink]]` (per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar).
 6. **Decide whether to graduate to `.llmwiki/insight/`** (the promoted cross-agent layer — NOT `.claude/rules/`):
    - The wiki is the default home. Graduate a finding up to `.llmwiki/insight/` **only when ALL four hold**:
      1. **Recurs across sessions** — observed in 2+ independent sessions/PRs, not a one-off.
@@ -156,6 +156,7 @@ Page-edit summary:
 - **Copying audit-md contents verbatim** — wiki *synthesizes*; raw belongs in `.llmwiki/raw/` (or audits dir).
 - **Single-page ingest** when the finding touches multiple pages → cross-refs go stale silently.
 - **New page for every finding** → append-only rot ("naive accumulation → bloat"). Run the dedup gate; update/supersede existing pages first.
+- **Wiki page body as PR diary** — do NOT stack a new `## PR #X did this` section onto a page for every PR that touches the topic. The body is the distilled rule / mechanism; per-PR observations compress into one `## Evidence` section (one bullet each) or move to `> Evidence:` / `## Sources`. A run of `## Confirming dogfood (PR #N)` sections is a variant of `naive accumulation → bloat` — the distilled rule drowns in one-off detail. (See `### Consolidate, don't append`. PR *citations* under `## Sources` are provenance and stay; PR *narratives* in the body do not.)
 - **Silently overwriting a contradicted page with historical value** — supersede instead (new page `> Supersedes:`, old page `status: stale` + `> Superseded-by:`).
 - **Promoting lore to `.claude/rules/`** — Codex can't read it. Graduate cross-agent rules to `.llmwiki/insight/` (all 4 criteria), surfaced via the prompt-injection hook.
 - **Graduating one-offs to insight** — insight is the most consolidated layer; promote only recurring + generalizable + costly-to-violate + stabilized findings.
@@ -165,3 +166,7 @@ Page-edit summary:
 ## See also
 
 > All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in the resolved wiki root's `log.md` (e.g. `.llmwiki/wiki/log.md`) with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`.
+
+## References
+
+- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `references/wiki-conventions.md`.

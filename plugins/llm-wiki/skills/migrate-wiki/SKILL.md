@@ -31,13 +31,13 @@ Do NOT use:
 
 3. **Add v2 frontmatter defaults** to each migrated page (only if absent — never overwrite an existing value):
    - `status: active`
-   - `volatility:` inferred by heuristic on the page path / title / aliases:
+   - `volatility:` inferred by heuristic on the page path / title / aliases (the keyword split tracks the general-vs-one-off distinction — recurring/architectural lore is `stable`, transient/bug lore is `volatile`):
      - matches `design|arch|architecture|decision|adr|rationale` → `stable`
      - matches `bug|debug|fix|race|quirk|transient|incident|flaky` → `volatile`
      - else → `stable`
    - `sources:` counted from the existing `## Sources` section (0 if none)
 
-4. **Additive grammar only**: never rewrite existing cross-refs. Only add new typed refs (§3 grammar — `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:`) where clearly applicable. Leave existing `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` untouched.
+4. **Additive grammar only**: never rewrite existing cross-refs. Only add new typed refs (`> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:`) where clearly applicable. Leave existing `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` untouched. (Per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar.)
 
 5. **Idempotent + diff-log-first**: re-running on a v2 wiki is a no-op. BEFORE applying edits, append ONE entry to the resolved root's `log.md` — `## YYYY-MM-DD — migrate v1->v2 (migrate-wiki)` — listing every page touched. This makes the whole migration git-revertible (`git revert` the commit that includes both log + page edits).
 
@@ -120,3 +120,7 @@ Legacy dirs kept (not removed): .claude/wiki/, .codex/wiki/  (run removal only a
 ## See also
 
 > All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in the resolved wiki root's `log.md` (e.g. `.llmwiki/wiki/log.md`) with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`.
+
+## References
+
+- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `references/wiki-conventions.md`.

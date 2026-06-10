@@ -113,7 +113,7 @@ claude  # .claude/settings.json에서 자동 로드
 <details>
 <summary><strong>core-config</strong> - 개발 필수 설정</summary>
 
-Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh` — 한국어 기본 + 핵심 규율 + `.llmwiki/insight/`·wiki 참고 포인터; Claude `UserPromptSubmit` plain stdout / Codex `hookSpecificOutput` JSON 공유). 작업 가이드라인은 `~/.claude/CLAUDE.md` (SSOT) 가 담당.
+Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh` — 한국어 기본 + 핵심 규율 + `.llmwiki/insight/`·wiki 참고 포인터; Claude `UserPromptSubmit` plain stdout / Codex `hookSpecificOutput` JSON 공유). wiki 포인터에는 권위 라벨이 붙는다 — `.llmwiki/` = `[AUTHORITATIVE]` (dated·sourced 우선), mem0 = `[RECALL]` (보조, 라벨일 뿐 mem0 호출 0). Codex 는 `[RECALL]` 생략, `CORE_CONFIG_FEDERATE_MEM0=0` 이면 plain 포인터로 복귀. 작업 가이드라인은 `~/.claude/CLAUDE.md` (SSOT) 가 담당.
 
 **Hooks:**
 | Hook | Trigger | Description |

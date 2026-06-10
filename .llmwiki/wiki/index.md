@@ -69,6 +69,7 @@ The v2 design record: which rohitg00-v2 ideas were harvested vs rejected, and wh
 - [Provenance over confidence](llm-wiki-design/provenance-over-confidence.md) — `sources: N` + a named `## Sources` list replaces fabricated float confidence.
 - [Post-merge wiki trigger](llm-wiki-design/post-merge-trigger.md) — wiki ingest reaches the wiki two ways: github-dev:post-merge Step 8 (mandatory built-in, absorbed post-merge-wiki, covers workflow + GitHub-UI merges) and the wiki_post_commit_hint hook (local CLI merges only). Step 8 now force-logs `ingested N`/`no-lore` (no silent skip; `WIKI_AUTOINGEST=0` disables).
 - [Capture/curation split](llm-wiki-design/capture-curation-split.md) — the session-boundary auto-trigger: a mechanical Stop-hook capture (flag + transcript pointer to `.staging/`) split from an LLM SessionStart-drain curation (dedup + ingest). A shell hook can't dedup, so over-capture is safe and curation waits one session.
+- [mem0 <-> llmwiki federation](llm-wiki-design/mem0-llmwiki-federation.md) — the two memory systems federate by labels only (`.llmwiki/` = `[AUTHORITATIVE]`, mem0 = `[RECALL]`), never runtime coupling. prompt_inject.sh never calls mem0; Codex omits `[RECALL]`; `CORE_CONFIG_FEDERATE_MEM0=0` reverts. Borrow patterns, not data.
 
 ## plugin-ops
 

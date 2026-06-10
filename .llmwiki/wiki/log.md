@@ -8,6 +8,13 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 <!-- New entries go directly under this line -->
 
+## 2026-06-10 — post-merge #61 (post-merge)
+
+Merge `0d08b9e` (squash). Issue #59 (PR 2 of 2): borrow two mem0 *patterns* (not data, not runtime) into llmwiki, mem0 fully decoupled. Scanned the PR file list (`gh pr diff 61 --name-only`): `core-config/hooks/prompt_inject.sh` (authority label + CORE_CONFIG_FEDERATE_MEM0 flag), `llm-wiki/skills/lint-wiki/SKILL.md` (Step 1 dedup scoring), core-config 1.7.0→1.8.0, llm-wiki 2.2.0→2.3.0, marketplace metadata 1.54.0→1.55.0. cr-fix converged clean after iter 1 (2 real findings applied: CR Minor — PCRE-quote `$tok` with `\Q\E`; Codex P2 — map alias clusters to files; iter 2 CR clean + Codex no re-review). Mechanical facts (the flag + labels, the llm-wiki hook count 3→5 straggler) routed to `plugins/core-config/CLAUDE.md` + `plugins/llm-wiki/CLAUDE.md` (NOT re-recorded here). One design-lore finding lands in the wiki.
+
+- llm-wiki-design/mem0-llmwiki-federation.md: NEW page (id `mem0-llmwiki-federation`, status active, volatility stable, sources 2) — why mem0 and llmwiki coexist by **labels only**, never runtime coupling. prompt_inject.sh labels the `.llmwiki/` pointer `[AUTHORITATIVE]` (dated/sourced wins) and emits a `[RECALL]` note placing mem0 recall as secondary — it never calls/reads mem0 (mem0 surfacing stays mem0's own hooks). Codex omits `[RECALL]` (no mem0 layer there), so durable cross-agent lore must still reach `.llmwiki/`. The borrow is conceptual: an authority *label* and (in lint-wiki) a scoring *rubric* — coarse High/Medium/Low band, never a fabricated float (provenance-over-confidence). `CORE_CONFIG_FEDERATE_MEM0=0` reverts to the plain pointer. Evidence: `plugins/core-config/hooks/prompt_inject.sh`, `plugins/llm-wiki/skills/lint-wiki/SKILL.md`.
+- index.md: registered the new page under llm-wiki-design; last_verified bump.
+
 ## 2026-06-10 — post-merge #60 (post-merge)
 
 Merge `83e075c` (squash). Issue #58: make llmwiki actually auto-trigger by splitting mechanical capture (Stop hook) from LLM curation (next SessionStart drain). Scanned the PR file list (`gh pr diff 60 --name-only`): llm-wiki gains `hooks/wiki_session_capture.sh` (Stop) + `hooks/wiki_session_start_drain.sh` (SessionStart), plugin.json hook registration 2.0.0→2.2.0, post-merge Step 8 forced-logging contract (github-dev 2.2.1→2.3.0), `.gitignore` staging entry, marketplace metadata 1.52.0→1.54.0 (two-step advance past the concurrent #56 release, per `.claude/rules/plugin-versioning.md`). Mechanical fact (llm-wiki hook count 3→5) routed to root `CLAUDE.md` (NOT re-recorded here). Two design-lore findings land in the wiki.

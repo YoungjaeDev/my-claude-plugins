@@ -22,12 +22,30 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
 
 ## Steps
 
-1. **Identity scan** (duplicate concepts):
+1. **Identity scan + dedup scoring** (duplicate concepts):
    ```bash
    grep -rh "^id:" .llmwiki/wiki/ | sort | uniq -d
    grep -rh "^aliases:" .llmwiki/wiki/ | tr ',' '\n' | sort | uniq -d
+   # For each duplicate id, list the pages forming the cluster (to score + remedy):
+   for tok in $(LC_ALL=C.UTF-8 grep -rhoP '^id:\s*\K\S+' .llmwiki/wiki/ | sort | uniq -d); do
+     printf '== cluster: %s ==\n' "$tok"
+     LC_ALL=C.UTF-8 grep -rlP "^id:\s*$tok\b" .llmwiki/wiki/
+   done
    ```
-   For any duplicate, propose merge or alias.
+   For each duplicate cluster, **score the overlap and propose one concrete
+   remedy** — borrowing mem0's memory-reviewer triage *pattern* (the pattern, not
+   its data; no mem0 call). The score is a coarse band, never a fabricated float
+   (consistent with the wiki's provenance-over-confidence rule):
+
+   | Overlap | Signal | Suggest |
+   |---------|--------|---------|
+   | **High** | same `id`, or near-identical concept + overlapping body claims | **merge** — fold into the stronger page, redirect the other's aliases |
+   | **Medium** | same concept, different facet / partial claim overlap | **supersede** — keep both, mark the older `status: stale` + `> Superseded-by:` the newer |
+   | **Low** | shared alias but genuinely distinct concepts | **alias** — disambiguate the colliding alias (rename/scope), keep both pages |
+
+   Report-only — surface `<cluster> — overlap: <band> — suggest: <remedy>` for the
+   user; never merge/supersede/alias automatically (you may delete load-bearing
+   content — see Anti-patterns).
 
 2. **Level scan** (pages too big):
    ```bash
@@ -119,7 +137,7 @@ Produce a Markdown report:
 ```text
 ## Wiki Health Report — YYYY-MM-DD
 
-- Identity: <n duplicates / clean>
+- Identity: <n duplicate clusters, each with overlap band + merge/supersede/alias suggestion / clean>
 - Level: <n pages > 5KB>
 - Relationship: <n bare wikilinks / clean>
 - Staleness: <n pages past their volatility window>
@@ -139,7 +157,7 @@ Report only — do not auto-fix. User reviews and triggers `/llm-wiki:ingest-fin
 ```text
 ## Wiki Health Report — 2026-05-29
 
-- Identity: clean
+- Identity: 1 duplicate cluster (backend/cache.md + backend/caching.md share id `cache-policy` — overlap: High — suggest: merge into backend/cache.md, redirect `caching` alias)
 - Level: 1 page > 5KB (backend/provider-x.md, 6.2 KB → propose split)
 - Relationship: clean
 - Staleness: 2 past window (backend/old-quirk.md 41 days, volatile 30d window; design/layout.md 190 days, stable 180d window)

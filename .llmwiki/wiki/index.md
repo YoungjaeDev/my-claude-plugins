@@ -44,6 +44,8 @@ Pages link to each other using **typed** references only — never raw `[[wikili
 - `> Caused-by: [[page-id]]`
 - `> Fixed-by: [[page-id]]`
 
+A wiki page may cross-layer reference a promoted insight entry the same way (`[[insight-id]]`) — the id resolves in either layer.
+
 ## Maintenance ops
 
 | Op | Skill | When |
@@ -55,9 +57,6 @@ Pages link to each other using **typed** references only — never raw `[[wikili
 All wiki edits append one line to `log.md` (`## YYYY-MM-DD — <summary>` header).
 
 ## Domains
-
-<!-- Add domain sections below. Each section is `## <domain>` followed by a bulleted list:
-     `- [page-title](<domain>/<slug>.md) — 1-line hook` -->
 
 ## llm-wiki-design
 

@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Karpathy LLM-Wiki 3-layer system (insight + wiki + raw under neutral .llmwiki/): 5 skills (query/ingest/lint/bootstrap/migrate) + 3 soft-hint hooks (stale check, post-commit hint, session-start lint hint). Post-merge wiki ingest is now a mandatory step inside github-dev:post-merge (the standalone post-merge-wiki skill was absorbed). Promoted cross-agent rules graduate to .llmwiki/insight/ (surfaced via core-config prompt-inject hook for Claude + Codex), NOT .claude/rules/. Neutral root defeats codex-bridge's .claude/->.codex/ fork; resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. For spec/issue/PR work-pipeline state see the spec-state plugin.",
   "hooks": {
     "UserPromptSubmit": [

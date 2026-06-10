@@ -39,7 +39,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
    ```bash
    rg -nP '^\[\[' .llmwiki/wiki/ || echo "OK"
    ```
-   Any hits → must convert to typed `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:`. Only a bare line starting with `[[` is flagged; typed refs are never flagged.
+   Any hits → must convert to typed `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` (per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar). Only a bare line starting with `[[` is flagged; typed refs are never flagged.
 
 4. **Staleness scan** (per-page volatility window — `volatile` 30d / `stable` or absent 180d):
    ```bash
@@ -176,3 +176,7 @@ For large wikis (>~30 pages), dispatch one read-only agent per `wiki/<domain>/` 
 ## See also
 
 > All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in the resolved wiki root's `log.md` (e.g. `.llmwiki/wiki/log.md`) with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`.
+
+## References
+
+- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `references/wiki-conventions.md`.

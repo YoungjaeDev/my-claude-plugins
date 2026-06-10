@@ -144,3 +144,8 @@ Diff log written before applying the page edits (git-revertible).
 - insight/codex-skill-desc-1024.md: new insight entry (tier insight, promoted_from shared-source-codex-manifests, evidence_count 2 — PR #46 research-orchestrator 1214 chars dropped + PR #51 post-merge skill near-miss at 1019/1024 during humanizer->humanize-korean swap). Recurrence across 2 independent PRs met the graduation bar.
 - insight/index.md: added codex-skill-desc-1024 hook.
 - plugin-ops/shared-source-codex-manifests.md: added PR #51 near-miss evidence to the length-guard section + `> Promoted-to:` backlink; last_verified 2026-06-08.
+
+## 2026-06-08 — distill cr-rate-limit page from PR diary to rule + index lint cleanup (ingest-finding)
+
+- cr-fix-ops/cr-rate-limit-progressive-refill.md: collapsed three per-PR narrative sections (`## Trial dogfood data (PR #33)` / `## Confirming dogfood (PR #50)` / `## Confirming dogfood (PR #54)`) and the `## Code-level fix (PR #56)` section into a single distilled `## The rule` (CR_SKIP_GRACE non-terminal semantics) + one `## Evidence across dogfood runs` (1 bullet per run); inline PR #56 narratives in `## Why this matters` rewritten as rule statements; `## Sources` retains PR #33/#50/#54/#56 + policy provenance; sources 4 -> 5 (PR #50 given its own citation); page dropped 8.0K -> ~5K (resolves lint Level >5KB). last_verified 2026-06-08.
+- index.md: removed leftover `(<domain>/<slug>.md)` template-comment artifact (was a phantom orphan-scan hit); added 1 line allowing wiki->insight `[[insight-id]]` cross-layer refs.

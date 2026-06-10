@@ -69,10 +69,20 @@ for f in "${pending[@]}"; do list+=$'\n'"- $f"; done
 msg="[wiki-drain] ${n} pending wiki-ingest candidate(s) were captured at the end of prior session(s) and await curation:${list}"
 msg+=$'\n'"BEFORE other work this session, process each through the llm-wiki:ingest-finding dedup gate: read the file (it points at the source transcript + detected signals), decide ingest / update / supersede / skip per the diff-log-first rule, then DELETE the consumed file. The Stop hook only captured mechanically — nothing has entered the wiki yet, so this is the step that actually curates it."
 
-# JSON-escape: backslash, double-quote, then newline -> \n.
-esc=${msg//\\/\\\\}
-esc=${esc//\"/\\\"}
-esc=${esc//$'\n'/\\n}
-printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$esc"
+# Emit SessionStart additionalContext. Prefer jq — it escapes ALL control chars,
+# quotes, and arbitrary staging filenames correctly (a manually-dropped pending file
+# with a quote/newline in its name cannot break the JSON). Fall back to
+# parameter-expansion escaping when jq is absent (extended to \r and \t beyond the
+# core \ " \n), mirroring core-config's prompt_inject.sh encoder.
+if command -v jq >/dev/null 2>&1; then
+  jq -nc --arg ctx "$msg" '{hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:$ctx}}'
+else
+  esc=${msg//\\/\\\\}
+  esc=${esc//\"/\\\"}
+  esc=${esc//$'\r'/\\r}
+  esc=${esc//$'\t'/\\t}
+  esc=${esc//$'\n'/\\n}
+  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$esc"
+fi
 
 exit 0

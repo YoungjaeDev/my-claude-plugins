@@ -165,7 +165,14 @@ If Serena MCP is available, integrate PR learnings into existing memory files as
 
 Absorbs the former `post-merge-wiki` skill as a required step. Runs **after** Steps 6-7 so the config integration is already settled and the wiki step can dedup against it (knowledge routing).
 
-Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`); if none resolves, skip silently (no wiki layer — no hard dependency). Otherwise derive ingest candidates **from the merged file list** (`gh pr diff <N> --name-only`), triage by autonomy boundary, and delegate the heavy lifting (diff-log, multi-page cross-update, insight graduation) to `llm-wiki:ingest-finding`. Full procedure — candidate derivation, the autonomy-boundary triage table, the trivial-merge skip list, the `log.md` entry format, and the Step 6/7 routing-dedup rule — lives in **`references/wiki-ingest.md`**.
+Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`); if none resolves, the step still runs to its checkpoint (below) but does no ingest. Otherwise derive ingest candidates **from the merged file list** (`gh pr diff <N> --name-only`), triage by autonomy boundary, and delegate the heavy lifting (diff-log, multi-page cross-update, insight graduation) to `llm-wiki:ingest-finding`. Full procedure — candidate derivation, the autonomy-boundary triage table, the trivial-merge skip list, the `log.md` entry format, and the Step 6/7 routing-dedup rule — lives in **`references/wiki-ingest.md`**.
+
+**Mandatory checkpoint (no silent skip).** This step must ALWAYS print exactly one terminal status line so a skip can never pass unnoticed (a silently-skipped Step 8 was the original failure mode — nobody could tell whether lore was integrated or just dropped):
+
+- `wiki-ingest: ingested <N>` — N pages created/updated (+ any insight graduations), OR
+- `wiki-ingest: no-lore (<reason>)` — where reason ∈ `no wiki root` | `ingest-finding not installed` | `trivial merge` | `no candidates after triage` | `disabled via WIKI_AUTOINGEST=0`.
+
+Set `WIKI_AUTOINGEST=0` to disable the ingest work for a run; the checkpoint line still prints (`no-lore (disabled via WIKI_AUTOINGEST=0)`), so disabling is visible, not silent.
 
 ### 9. Update README.md (if needed — humanize-korean/docs-forge are Claude-only)
 

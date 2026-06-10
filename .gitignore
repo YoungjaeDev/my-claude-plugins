@@ -6,6 +6,11 @@ dist/
 .serena/
 .sisyphus/
 
+# Ephemeral llm-wiki Stop-capture staging (consumed by the next session's drain hook)
+.llmwiki/.staging/
+.claude/.staging/
+.codex/.staging/
+
 # Python bytecode (regenerated on every run)
 __pycache__/
 *.pyc

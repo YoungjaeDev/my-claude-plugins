@@ -26,10 +26,20 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
    ```bash
    grep -rh "^id:" .llmwiki/wiki/ | sort | uniq -d
    grep -rh "^aliases:" .llmwiki/wiki/ | tr ',' '\n' | sort | uniq -d
-   # For each duplicate id, list the pages forming the cluster (to score + remedy):
-   for tok in $(LC_ALL=C.UTF-8 grep -rhoP '^id:\s*\K\S+' .llmwiki/wiki/ | sort | uniq -d); do
-     printf '== cluster: %s ==\n' "$tok"
-     LC_ALL=C.UTF-8 grep -rlP "^id:\s*$tok\b" .llmwiki/wiki/
+   # For each duplicate id AND each duplicate alias, list the pages forming the
+   # cluster (to score + remedy). $tok is PCRE-quoted with \Q...\E so an id or
+   # alias containing regex metacharacters (. + ( ...) can't break the search.
+   dup_ids=$(LC_ALL=C.UTF-8 grep -rhoP '^id:\s*\K\S+' .llmwiki/wiki/ | sort | uniq -d)
+   dup_aliases=$(LC_ALL=C.UTF-8 grep -rhoP '^aliases:\s*\[\K[^\]]+' .llmwiki/wiki/ \
+                 | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+                 | grep -v '^$' | sort | uniq -d)
+   for tok in $dup_ids; do
+     printf '== id cluster: %s ==\n' "$tok"
+     LC_ALL=C.UTF-8 grep -rlP "^id:\s*\Q$tok\E\b" .llmwiki/wiki/
+   done
+   for tok in $dup_aliases; do
+     printf '== alias cluster: %s ==\n' "$tok"   # Low-overlap row: same alias, distinct ids
+     LC_ALL=C.UTF-8 grep -rlP "^aliases:.*\Q$tok\E" .llmwiki/wiki/
    done
    ```
    For each duplicate cluster, **score the overlap and propose one concrete

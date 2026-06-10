@@ -6,7 +6,9 @@ dist/
 .serena/
 .sisyphus/
 
-# Ephemeral llm-wiki Stop-capture staging (consumed by the next session's drain hook)
+# Ephemeral llm-wiki Stop-capture staging (consumed by the next session's drain hook).
+# Three roots mirror the wiki resolution order .llmwiki -> .claude -> .codex; the hooks
+# write to dirname(wiki_root)/.staging, so a legacy root yields .claude/.staging or .codex/.staging.
 .llmwiki/.staging/
 .claude/.staging/
 .codex/.staging/

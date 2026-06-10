@@ -42,7 +42,10 @@ extract() { # $1=key
 cwd=$(extract cwd)
 transcript=$(extract transcript_path)
 session_id=$(extract session_id)
-[[ -n "$cwd" && -d "$cwd" ]] && cd "$cwd"
+# cd into the event cwd when given; exit gracefully if the cd itself fails (race /
+# permission) so we never scan from the wrong directory. Empty cwd is intentional —
+# fall through to PWD (the harness launches the hook there).
+[[ -n "$cwd" && -d "$cwd" ]] && { cd "$cwd" || exit 0; }
 
 # --- canonical wiki-root resolver (llm-wiki v2) ---
 # Resolution order: .llmwiki/wiki (preferred) -> .claude/wiki (legacy) -> .codex/wiki (legacy fork)

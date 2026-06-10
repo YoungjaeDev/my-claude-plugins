@@ -28,7 +28,9 @@ exec 2>/dev/null  # discard stderr — hooks should never spam the user
 input_json=$(cat 2>/dev/null || true)
 if [[ -n "$input_json" ]] && command -v jq >/dev/null 2>&1; then
   cwd=$(printf '%s' "$input_json" | jq -r '.cwd // empty' 2>/dev/null)
-  [[ -n "$cwd" && -d "$cwd" ]] && cd "$cwd"
+  # exit gracefully if the cd itself fails (race / permission); empty cwd falls
+  # through to PWD intentionally.
+  [[ -n "$cwd" && -d "$cwd" ]] && { cd "$cwd" || exit 0; }
 fi
 
 # --- canonical wiki-root resolver (llm-wiki v2) ---

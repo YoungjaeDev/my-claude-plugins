@@ -1,10 +1,10 @@
 ---
 id: post-merge-trigger
 aliases: [post-merge-wiki-trigger, wiki-ingest-trigger, post-merge-step-8]
-last_verified: 2026-06-02
+last_verified: 2026-06-10
 status: active
 volatility: stable
-sources: 3
+sources: 4
 ---
 
 # Post-merge wiki trigger
@@ -26,7 +26,10 @@ prompts a wiki ingest and sometimes does not.
   drives `github-dev:post-merge` after merging in the web UI, and Step 8 fires
   there. There is no "shall I run the wiki step?" `AskUserQuestion` gate any
   more; the step is unconditional whenever a wiki root resolves and the merge is
-  non-trivial.
+  non-trivial. Every run emits a single mandatory checkpoint — `wiki-ingest:
+  ingested N` or `no-lore (<reason>)` — so a skip is always *logged*, never
+  silent; `WIKI_AUTOINGEST=0` disables the auto-ingest while still logging the
+  skip reason.
 - **`wiki_post_commit_hint.sh`** — a `PostToolUse(Bash)` soft-hint hook that
   fires on a **local CLI merge commit**. It now nudges toward
   `/github-dev:post-merge` (whose Step 8 does the ingest); for non-merge commits
@@ -69,7 +72,11 @@ Each fact is recorded in exactly one home.
   post-merge-wiki body (candidate derivation, autonomy triage, ingest delegation).
 - `plugins/llm-wiki/hooks/wiki_post_commit_hint.sh` — the PostToolUse(Bash)
   soft-hint hook that fires on local CLI merge commits.
+- `plugins/github-dev/skills/post-merge/SKILL.md` Step 8 + `references/wiki-ingest.md`
+  — the forced `wiki-ingest: ingested N` / `no-lore (<reason>)` checkpoint and the
+  `WIKI_AUTOINGEST=0` disable knob.
 
+> See-also: [[capture-curation-split]]
 > See-also: [[curated-conservative]]
 > See-also: [[insight-layer-via-hook]]
 > Evidence: plugins/github-dev/skills/post-merge/SKILL.md

@@ -40,7 +40,7 @@ Default behavior is unchanged for users who don't pass `--cr-source`. Polling in
 eval "$(bash plugins/github-dev/skills/cr-fix/scripts/parse-args.sh $ARGUMENTS)"
 ```
 
-Sets: `MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
+Sets: `MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, MINOR_STOP, GENERALIZE, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
 
 `SKILL_DIR=plugins/github-dev/skills/cr-fix` — all `scripts/` and `references/` paths below resolve relative to this.
 
@@ -113,7 +113,7 @@ Run at the top of every iteration BEFORE any wait/polling. Skip entirely when `C
 ```bash
 for ITER in $(seq 1 $MAX_ITER); do
   CUR_SHA=$(git rev-parse HEAD)
-  applied_this_cycle=0; deferred_this_cycle=0
+  applied_this_cycle=0; deferred_this_cycle=0; high_sev_this_cycle=0
   PUSH_TIME=$(bash $SKILL_DIR/scripts/push-time.sh "$OWNER" "$REPO" "$CUR_SHA")
 
   if [ "$CR_SOURCE" = "auto" ] || [ "$CR_SOURCE" = "pr-bot" ]; then
@@ -407,7 +407,9 @@ For each non-skip finding, in severity order (CR/CLI CRITICAL → HIGH → MAJOR
 
 6. **Apply / defer / skip**:
    - **apply** → Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
+     - **9c.6 — Bounded same-file generalization** — after the flagged-line fix lands, when `GENERALIZE=true` AND `is_real=="real"` AND `confidence=="high"` AND the finding is a *mechanically grep-able* pattern (a literal/regex-matchable construct, not a judgement call), grep the **same file** (or, when the finding is scoped to one symbol, that symbol's body only) for sibling occurrences of the same pattern and apply the identical fix in the **same commit**. **Never cross-file** — cross-file or speculative matches stay deferred per the existing matrix. Record the extra edits in the log entry's `generalized_to: [<line>...]` field (audit-only). Do NOT re-increment `applied_this_cycle` / `auto_judge_apply` — the finding still counts as 1; only the extra lines are logged. Full scope + cross-file hard-exclusion + surgical-diff trade-off: `references/autonomous-judgment.md` ("Bounded same-file generalization").
    - **defer** → `deferred_this_cycle=$((deferred_this_cycle+1))`; `auto_judge_defer=$((auto_judge_defer+1))`; log judgment.
+   - **High-severity accumulator (Step 13 soft-stop signal)** — for any `apply` or `defer` whose `severity_reassess=="high"`, `high_sev_this_cycle=$((high_sev_this_cycle+1))`. This feeds the Step 13 `minor_floor` soft-stop: a cycle that applied only low-severity fixes and deferred nothing can stop early.
    - **skip** → `auto_judge_skip=$((auto_judge_skip+1))`; log judgment. Does NOT touch `applied_this_cycle` or `deferred_this_cycle`.
 
 7. **Log entry** (append to STATE_FILE.auto_judge_log):
@@ -425,9 +427,11 @@ For each non-skip finding, in severity order (CR/CLI CRITICAL → HIGH → MAJOR
        "fix_size": "small-safe|large-risky|ambiguous"
      },
      "action": "apply|defer|skip",
-     "reason": "<one-line rationale>"
+     "reason": "<one-line rationale>",
+     "generalized_to": [<line>, ...]
    }
    ```
+   `generalized_to` is optional — present only on an `apply` where Step 9c.6 same-file generalization fired; lists the sibling lines patched in the same commit.
 
 8. **9c-review tier** (CR Verification agent / CR Outside diff range / Codex no-badge): surface in the Step 9a table only. No edit, no judgment, no counter increment.
 
@@ -461,11 +465,20 @@ git push 2>&1
 ```bash
 applied_total=$((applied_total + applied_this_cycle))
 deferred_total=$((deferred_total + deferred_this_cycle))
-if [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ]; then final_state=clean; break
+# Minor soft-stop (B): from iter 2 on, if this cycle applied only low-severity
+# fixes (no high reassessed, nothing deferred), stop the low-value tail. Safe
+# because Step 12 already pushed those fixes; not auto-merge eligible (the latest
+# push has not been CR-re-reviewed yet), so it is treated like user_declined.
+if [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$applied_this_cycle" -gt 0 ] \
+   && [ "$high_sev_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ]; then
+  final_state=minor_floor; break
+elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ]; then final_state=clean; break
 elif [ "$applied_this_cycle" = 0 ]; then final_state=user_declined; break
 fi
 done  # end of for-iter
 ```
+
+`final_state=minor_floor` means the loop stopped at the low-severity floor (default-on; disable with `--no-minor-stop`). It is **not** auto-merge eligible — Step 15 runs only on `final_state=clean`, so `minor_floor` is excluded automatically, same as `user_declined`.
 
 `final_state=user_declined` no longer implies the user actively rejected — in v2 it means the LLM autonomously deferred everything in that iter. The label is retained for backward compatibility with downstream tooling.
 

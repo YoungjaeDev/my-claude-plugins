@@ -196,9 +196,10 @@ Before starting the workflow:
 
     - Print one banner line at start: `CR auto-fix loop starting; pass --skip-cr-fix to disable.`
     - On non-success exit:
-      - `final_state` ∈ {failure, iteration_cap, user_declined, cr_inactive}: cr-fix emits a final JSON line via its EXIT trap (Step 16). Surface that JSON's diagnostic to the user.
+      - `final_state` ∈ {failure, iteration_cap, user_declined, minor_floor, cr_inactive}: cr-fix emits a final JSON line via its EXIT trap (Step 16). Surface that JSON's diagnostic to the user.
       - `final_state="timeout"`: cr-fix's trap still emits the JSON line (with `final_state="timeout"` and `merged=false`), but the user-facing message should additionally mention exit code 124 if the underlying poller hit the wall-clock cap. Surface "cr-fix timed out — re-run with a larger `--cr-fix-max` or `--timeout`, or check the CodeRabbit dashboard."
       - `final_state="cr_inactive"`: CodeRabbit never engaged with the PR within the iteration budget. Surface "CodeRabbit did not review the PR; merge not attempted. Check the CodeRabbit dashboard or re-run with a larger `--cr-fix-max`."
+      - `final_state="minor_floor"`: cr-fix stopped at the low-severity floor (default on; `--no-minor-stop` disables) — the last cycle applied only minor fixes with nothing deferred. Those fixes were pushed but the latest push has not been CR-re-reviewed. Surface "cr-fix stopped at minor_floor — low-severity fixes pushed, latest push not yet re-reviewed; re-run cr-fix to confirm clean or merge via GitHub UI." Pass `--no-minor-stop` to keep looping.
       - In all non-success cases, resolve-issue still considers itself complete (PR is open and reviewable). Do NOT auto-merge in any non-clean exit.
     - On `final_state="clean"` and `--auto-merge` flag set: cr-fix's Step 15 branches on branch-protection presence. With protection, `gh pr merge --auto --squash --delete-branch` queues the merge until protection requirements are met. Without protection, cr-fix prompts the user (Merge now / Skip merge / Cancel) — `--auto` would otherwise collapse to immediate merge and bypass any external review.
     - Save checkpoint: phase="cr-fix"

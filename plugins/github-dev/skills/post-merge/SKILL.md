@@ -50,17 +50,19 @@ esac
 
 A merge can land while `cr-fix` still left findings unresolved — items it autonomously **deferred** (real + high-severity + too invasive for autopilot), or a loop that exited on a cap/timeout rather than converging clean. That signal sits in `cr-fix`'s state file and nobody reads it. This step surfaces it **once, right after the merge is confirmed**. It is **informational — it never blocks cleanup**; like the Step 8 wiki checkpoint it ALWAYS prints exactly one terminal status line so a skip can't pass unnoticed.
 
-**Primary signal — the cr-fix state file.** cr-fix archives its live state on exit (`emit-final-json.sh` moves `.claude/state/cr-fix-<PR>.json` → `.claude/state/archive/cr-fix-<PR>-<ts>.json`), so the archived copy is the usual hit; check the live path first, then the latest archive:
+**Primary signal — the cr-fix state file.** cr-fix archives its live state on exit (`emit-final-json.sh` persists the final `final_state` + `auto_judge_stats` into the file, then moves `.claude/state/cr-fix-<PR>.json` → `.claude/state/archive/cr-fix-<PR>-<ts>.json`), so the archived copy is the usual hit and is self-describing; check the live path first, then the latest archive:
 
 ```bash
 CRF=".claude/state/cr-fix-${PR_NUMBER}.json"
 [ -f "$CRF" ] || CRF=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUMBER}-"*.json 2>/dev/null | head -1)
 if [ -n "${CRF:-}" ] && [ -f "$CRF" ]; then
   CRF_FINAL=$(jq -r '.final_state // "unknown"' "$CRF")
-  DEFER_N=$(jq -r '.auto_judge_stats.defer // 0' "$CRF")
   # deferred findings, audit detail: path:line + severity + reason
   DEFERS=$(jq -c '[.auto_judge_log[]? | select(.action=="defer")
     | {path, line, sev: .badge_or_sev, reason}]' "$CRF")
+  # prefer the persisted stat; fall back to counting defer entries in the log for
+  # archives written before cr-fix persisted final fields (auto_judge_stats absent).
+  DEFER_N=$(jq -r '.auto_judge_stats.defer // ([.auto_judge_log[]? | select(.action=="defer")] | length)' "$CRF")
 else
   CRF_FINAL=""; DEFER_N=0; DEFERS='[]'
 fi
@@ -69,8 +71,11 @@ fi
 **Secondary signal (advisory) — open CR review threads on the merged PR.** Top-level (non-reply) review comments are a coarse proxy for unresolved threads; it is NOT the primary gate:
 
 ```bash
-OPEN_THREADS=$(gh api --paginate "repos/{owner}/{repo}/pulls/${PR_NUMBER}/comments" \
-  --jq '[.[] | select(.in_reply_to_id == null)] | length' 2>/dev/null || echo 0)
+# --paginate emits one JSON array PER page; piping to `jq -s 'add'` slurps every
+# page into a single array before counting. Using `--jq length` here would instead
+# print a per-page count ("30\n5") and break the OPEN_THREADS > 0 test below.
+OPEN_THREADS=$(gh api --paginate "repos/{owner}/{repo}/pulls/${PR_NUMBER}/comments" 2>/dev/null \
+  | jq -s 'add // [] | [.[] | select(.in_reply_to_id == null)] | length' 2>/dev/null || echo 0)
 ```
 
 **Decide the checkpoint line.** The primary trigger is a non-empty defer list OR a `final_state` that means the loop stopped with work potentially outstanding (`iteration_cap`, `timeout`, `cli_failed`, `rate_limited`). `user_declined` always carries `defer > 0`, so the defer list catches it; `minor_floor` deferred nothing by definition and its low-severity fixes were already pushed, so it is not a trigger on its own:

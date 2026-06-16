@@ -25,7 +25,7 @@
     "deferred_total":  { "type": "integer", "minimum": 0 },
     "skipped_total":   { "type": "integer", "minimum": 0, "description": "CR Nitpicks + Codex P3 + (when --skip-minor) Minor severity + Codex P2" },
     "codex_state":     { "type": "string", "enum": ["active", "inactive", "disabled", "unknown"] },
-    "final_state":     { "type": "string", "enum": ["clean", "user_declined", "iteration_cap", "timeout", "failure", "cr_inactive", "rate_limited", "cli_failed", "unknown"] },
+    "final_state":     { "type": "string", "enum": ["clean", "user_declined", "minor_floor", "iteration_cap", "timeout", "failure", "cr_inactive", "rate_limited", "cli_failed", "unknown"] },
     "merged":          { "type": "boolean" },
     "pr":              { "type": "integer", "minimum": 0 },
     "last_sha":        { "type": "string" },

@@ -17,6 +17,7 @@ For worktree removal, use `/exit` with its cleanup option.
 - **Never use SHA-level merge comparison.** `git log <base>..<branch>`, `git cherry`, `git rev-list --left-right` all false-positive after squash merge (base gets one new SHA) and rebase merge (branch SHAs rewritten). If unsure content landed, diff content not SHAs (Step 4).
 - **No stamps, current-state only.** Normative docs hold current rules; provenance lives in git/PR/blame. No `(#N)` / `PR #N` / `이슈 #N` citations, no `## Post-Merge` headers. Full rules + the `<!-- history-allowed [max=N] -->` opt-out + language consistency + SSOT cross-file dedup + content-first: see `references/core-principle.md`.
 - **Knowledge routing (no double-recording).** Mechanical / tool-operation rules → `CLAUDE.md` / `AGENTS.md` / `.claude/rules/` / Serena memory (Steps 6-7). Cross-agent *lore* (provider quirks, design rationale, debugging stories) → `.llmwiki/` via the wiki step (Step 8). Each fact is recorded in exactly one home; the wiki step (run *after* config integration) dedups against what Steps 6-7 already absorbed. Cross-agent rules that graduate do so to `.llmwiki/insight/` via the wiki step, never to `.claude/rules/` (Codex can't read it).
+- **Leftover-review surface (Step 1.5) is informational.** The run reads cr-fix's state file (`.claude/state/cr-fix-<PR>.json`, else the latest `.claude/state/archive/` copy) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line (mirroring the Step 8 wiki checkpoint) so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
 - **Codex partial-execution.** Under Codex 0.135 the Serena (Step 7), `rules-forge:split` / `claude-md-management:claude-md-improver` (Step 6.5), and `humanize-korean` / `docs-forge:readme` (Step 9) sub-steps are Claude-only — gracefully skip them and note the skip rather than failing.
 
 ## Arguments
@@ -44,6 +45,57 @@ esac
 - `gh pr view <PR_NUMBER> --json number,title,baseRefName,headRefName,body,state,files,mergeCommit`.
 - Verify `state` is `MERGED`. This result is the **authoritative merge signal** (see Guidelines) — no later SHA comparison.
 - Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')` — this is **this PR's** merge commit, used to label the wiki log entry and read diff content. Step 8 derives the merged **file list** from `gh pr diff <N> --name-only` (PR-scoped, merge-method-agnostic, uncapped), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
+
+### 1.5. Surface unresolved review items (informational)
+
+A merge can land while `cr-fix` still left findings unresolved — items it autonomously **deferred** (real + high-severity + too invasive for autopilot), or a loop that exited on a cap/timeout rather than converging clean. That signal sits in `cr-fix`'s state file and nobody reads it. This step surfaces it **once, right after the merge is confirmed**. It is **informational — it never blocks cleanup**; like the Step 8 wiki checkpoint it ALWAYS prints exactly one terminal status line so a skip can't pass unnoticed.
+
+**Primary signal — the cr-fix state file.** cr-fix archives its live state on exit (`emit-final-json.sh` persists the final `final_state` + `auto_judge_stats` into the file, then moves `.claude/state/cr-fix-<PR>.json` → `.claude/state/archive/cr-fix-<PR>-<ts>.json`), so the archived copy is the usual hit and is self-describing; check the live path first, then the latest archive:
+
+```bash
+CRF=".claude/state/cr-fix-${PR_NUMBER}.json"
+[ -f "$CRF" ] || CRF=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUMBER}-"*.json 2>/dev/null | head -1)
+if [ -n "${CRF:-}" ] && [ -f "$CRF" ]; then
+  CRF_FINAL=$(jq -r '.final_state // "unknown"' "$CRF")
+  # deferred findings, audit detail: path:line + severity + reason
+  DEFERS=$(jq -c '[.auto_judge_log[]? | select(.action=="defer")
+    | {path, line, sev: .badge_or_sev, reason}]' "$CRF")
+  # prefer the persisted stat; fall back to counting defer entries in the log for
+  # archives written before cr-fix persisted final fields (auto_judge_stats absent).
+  DEFER_N=$(jq -r '.auto_judge_stats.defer // ([.auto_judge_log[]? | select(.action=="defer")] | length)' "$CRF")
+else
+  CRF_FINAL=""; DEFER_N=0; DEFERS='[]'
+fi
+```
+
+**Secondary signal (advisory) — open CR review threads on the merged PR.** Top-level (non-reply) review comments are a coarse proxy for unresolved threads; it is NOT the primary gate:
+
+```bash
+# --paginate emits one JSON array PER page; piping to `jq -s 'add'` slurps every
+# page into a single array before counting. Using `--jq length` here would instead
+# print a per-page count ("30\n5") and break the OPEN_THREADS > 0 test below.
+OPEN_THREADS=$(gh api --paginate "repos/{owner}/{repo}/pulls/${PR_NUMBER}/comments" 2>/dev/null \
+  | jq -s 'add // [] | [.[] | select(.in_reply_to_id == null)] | length' 2>/dev/null || echo 0)
+```
+
+**Decide the checkpoint line.** The primary trigger is a non-empty defer list OR a `final_state` that means the loop stopped with work potentially outstanding (`iteration_cap`, `timeout`, `cli_failed`, `rate_limited`). `user_declined` always carries `defer > 0`, so the defer list catches it; `minor_floor` deferred nothing by definition and its low-severity fixes were already pushed, so it is not a trigger on its own:
+
+```bash
+case "$CRF_FINAL" in
+  iteration_cap|timeout|cli_failed|rate_limited) CAP_TRIGGER=1 ;;
+  *) CAP_TRIGGER=0 ;;
+esac
+if [ "$DEFER_N" -gt 0 ] || [ "$CAP_TRIGGER" = 1 ]; then
+  echo "leftover-reviews: ${DEFER_N} deferred (final_state=${CRF_FINAL:-none})"
+else
+  echo "leftover-reviews: none"
+fi
+```
+
+- **Leftover present** — after the `leftover-reviews: <N> deferred (final_state=<X>)` line, render the `$DEFERS` items as a table (`Path:Line · Severity · Reason`), and append the open-thread count when `OPEN_THREADS > 0`. Tell the user these were **not** auto-applied — review them on the PR page (`gh pr view <PR_NUMBER> --comments`) or in a follow-up; do not silently drop them.
+- **None** — print `leftover-reviews: none` when no cr-fix state file resolves, or it shows `defer == 0` with a non-trigger `final_state`.
+
+**Codex**: runs identically under Claude and Codex — `gh` / `jq` / `Read` only (no Serena / rules-forge).
 
 ### 2. Check local changes
 
@@ -206,6 +258,7 @@ Skip the commit only when `git diff --cached --quiet` reports nothing staged aft
 
 - **No-stamp Core Principle + knowledge-routing boundary**: `references/core-principle.md`
 - **Config + Serena learning integration** (Pre-Audit, classification, history rotation, size audit, memory mapping): `references/learning-integration.md`
+- **Unresolved review surface** (Step 1.5 — cr-fix state-file defer list + `final_state`, open-thread proxy): reads `.claude/state/cr-fix-<PR>.json` / `.claude/state/archive/`; field schema in `plugins/github-dev/skills/cr-fix/assets/final-output.schema.json`.
 - **Mandatory wiki ingest** (absorbed post-merge-wiki — candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
 - **Ephemeral artifact pruning** (Step 4.5 — heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
 - Milestone / Type M-2 diagram mechanics: `skills/update-progress/SKILL.md`

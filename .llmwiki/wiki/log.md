@@ -8,6 +8,11 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 <!-- New entries go directly under this line -->
 
+## 2026-06-16 — cr-fix state-file not self-describing until emit-final-json persists final fields (ingest-finding)
+
+- cr-fix-ops/state-file-self-describing.md: new page, status active, volatility stable, sources 1 — emit-final-json assembled final_state + auto_judge_stats into stdout only, never into the archived state file; post-merge Step 1.5 reading the archive saw final_state=unknown / defer=0 and silently hid deferred reviews. Caught by Codex P1 in the PR #62 dogfood. Fixed by persisting final fields before the archive mv. Active design contract (minor_floor / same-file generalization) deliberately NOT duplicated — it lives in cr-fix `references/`.
+- index.md: added cr-fix-ops/state-file-self-describing.md hook
+
 ## 2026-06-10 — post-merge #61 (post-merge)
 
 Merge `0d08b9e` (squash). Issue #59 (PR 2 of 2): borrow two mem0 *patterns* (not data, not runtime) into llmwiki, mem0 fully decoupled. Scanned the PR file list (`gh pr diff 61 --name-only`): `core-config/hooks/prompt_inject.sh` (authority label + CORE_CONFIG_FEDERATE_MEM0 flag), `llm-wiki/skills/lint-wiki/SKILL.md` (Step 1 dedup scoring), core-config 1.7.0→1.8.0, llm-wiki 2.2.0→2.3.0, marketplace metadata 1.54.0→1.55.0. cr-fix converged clean after iter 1 (2 real findings applied: CR Minor — PCRE-quote `$tok` with `\Q\E`; Codex P2 — map alias clusters to files; iter 2 CR clean + Codex no re-review). Mechanical facts (the flag + labels, the llm-wiki hook count 3→5 straggler) routed to `plugins/core-config/CLAUDE.md` + `plugins/llm-wiki/CLAUDE.md` (NOT re-recorded here). One design-lore finding lands in the wiki.

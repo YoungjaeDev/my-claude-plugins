@@ -24,6 +24,20 @@ if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
 fi
 
 if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
+  # Persist the final summary fields into the state file BEFORE archiving so the
+  # archived copy is self-describing — post-merge Step 1.5 reads final_state +
+  # auto_judge_stats from it (otherwise they are only assembled into stdout below,
+  # never written back, and the archived file would surface "0 deferred / unknown").
+  tmp=$(mktemp)
+  if jq --arg final "$FINAL_STATE" \
+        --argjson apply "$AUTO_JUDGE_APPLY" --argjson defer "$AUTO_JUDGE_DEFER" --argjson skip "$AUTO_JUDGE_SKIP" \
+        --argjson applied "$APPLIED_TOTAL" --argjson deferred "$DEFERRED_TOTAL" \
+        '.final_state=$final | .auto_judge_stats={apply:$apply,defer:$defer,skip:$skip} | .applied_total=$applied | .deferred_total=$deferred' \
+        "$STATE_FILE" > "$tmp" 2>/dev/null; then
+    mv "$tmp" "$STATE_FILE"
+  else
+    rm -f "$tmp"  # keep the un-enriched state file rather than lose it (trap context)
+  fi
   mkdir -p "$(dirname "$STATE_FILE")/archive"
   mv "$STATE_FILE" "$(dirname "$STATE_FILE")/archive/$(basename "$STATE_FILE" .json)-$(date +%Y%m%d-%H%M%S).json"
 fi

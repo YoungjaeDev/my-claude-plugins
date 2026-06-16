@@ -86,6 +86,7 @@ Per-plugin operational lore for `github-dev:cr-fix` — rate-limit semantics, do
 
 - [CR rate-limit progressive refill](cr-fix-ops/cr-rate-limit-progressive-refill.md) — `cr_desc: "Review skipped: free tier disabled"` does NOT mean the org reverted to Free plan; it signals CR trial/Pro progressive-refill quota exhaustion. Do NOT add a sniff cooldown; treat `--max-iter` as a CR quota budget (default 5 = Pro 5-rev/hour).
 - [CR CLI false positive on generated files](cr-fix-ops/cr-cli-false-positive-generated-files.md) — the local CodeRabbit CLI flags a correctly-regenerated `.codex-plugin/plugin.json` as "manually edited, revert + regenerate" (Major); it is spurious — `node scripts/sync-codex-manifests.mjs --check` passing proves generator-consistency, so skip the finding instead of reverting.
+- [cr-fix state file not self-describing](cr-fix-ops/state-file-self-describing.md) — `emit-final-json.sh` assembled `final_state` + `auto_judge_stats` into stdout only, never the archived state file, so `post-merge` Step 1.5 reading the archive saw `final_state=unknown` / `defer=0` and silently hid deferred reviews. Fix: persist final fields before the archive `mv` (self-describing) + consumer falls back to counting `auto_judge_log` defers. Test the real producer→archive→consumer chain, not a hand-built fixture.
 
 ## research-harness
 

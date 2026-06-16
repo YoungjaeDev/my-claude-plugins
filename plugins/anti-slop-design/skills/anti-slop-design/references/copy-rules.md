@@ -57,5 +57,5 @@ stop-slop/huashu 수렴: **5차원 1-10, /50, 35 미만이면 수정.** 차원: 
 ### 핸드오프
 - 영문 카피: 위 banned list/structure로 탐지·스코어링하고 직접 수정.
 - **한국어 카피 재작성: `humanize-korean:humanize-korean` 호출**(기본 fast 모드; >=8000자 또는 정밀 필요 시 strict). 출력 `final.md` 본문만 회수(HTML 주석 메타 제외). humanize-korean이 10 category/40+ 한국어 AI-tell(번역투, 영어 인용 과다, 기계적 병렬, 피동태 남용, 리듬 균일성 등)을 담당.
-- stop-slop 영문 리스트는 한국어 translationese에 매핑되지 않음(자체 caveat). 한국어 corpus 커버리지 0 -> 반드시 humanize-korean로.
+- stop-slop 영문 리스트는 한국어 translationese에 매핑되지 않음(자체 caveat). 한국어 corpus 커버리지 0 -> humanize-korean 우선. 단 humanize-korean은 이 marketplace 미번들 외부 의존이므로 미설치 시 본 파일의 한국어 카피 원칙으로 직접 수동 재작성(lane 중단 금지, hard-require 아님).
 - caveat: stop-slop의 `examples.md`조차 자기가 금지한 em-dash를 씀 — 예시를 ground truth로 그대로 복사 금지.

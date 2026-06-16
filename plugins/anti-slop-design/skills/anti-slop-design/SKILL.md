@@ -1,6 +1,6 @@
 ---
 name: anti-slop-design
-description: Anti-AI-slop design guard for websites/SaaS landing, presentation decks (PPT), dashboards/admin UI, and marketing/UI copy. Detects and blocks the AI-generated look before generation and audits it after: purple/gradient palettes, gradient text, Inter/Geist single-font pages, side-stripe cards, card-in-card, icon-tile 3-col grids, centered-hero macrostructure, fabricated metrics, emoji icons, over-animation, buzzword copy. Runs a clarify->context->plan->run->audit->revise flow with a two-phase audit gate (pre-emit self-critique + binary slop checklist) and hands Korean copy rewriting to humanize-korean. Triggers: 'AI 티 안 나게', 'slop 제거', 'anti-slop', '디자인 감사', '랜딩/덱/대시보드/카피 디자인', 'enterprise 디자인', 'make it not look AI-generated', 'audit this design', even when this skill is not named.
+description: "Anti-AI-slop design guard for websites/SaaS landing, presentation decks (PPT), dashboards/admin UI, and marketing/UI copy. Detects and blocks the AI-generated look before generation and audits it after: purple/gradient palettes, gradient text, Inter/Geist single-font pages, side-stripe cards, card-in-card, icon-tile 3-col grids, centered-hero macrostructure, fabricated metrics, emoji icons, over-animation, buzzword copy. Runs a clarify->context->plan->run->audit->revise flow with a two-phase audit gate (pre-emit self-critique + binary slop checklist) and hands Korean copy rewriting to humanize-korean. Triggers: 'AI 티 안 나게', 'slop 제거', 'anti-slop', '디자인 감사', '랜딩/덱/대시보드/카피 디자인', 'enterprise 디자인', 'make it not look AI-generated', 'audit this design', even when this skill is not named."
 ---
 
 # anti-slop-design
@@ -115,4 +115,5 @@ artifact 종류(web / ppt / dashboard / copy), 청중, 브랜드, 결정맥락�
 
 - 경계: anti-slop-design = 시각/구조 + **영문 카피 탐지·스코어링** 소유. humanize-korean = **한국어 산문 재작성** 소유.
 - 호출: 한국어 카피 재작성이 필요하면 `humanize-korean:humanize-korean`을 호출(기본 fast 모드, >=8000자 또는 정밀 필요 시 strict). 출력 `final.md`의 본문만 회수(HTML 주석 메타 제외).
+- fallback (필수): `humanize-korean`은 이 marketplace에 번들되지 않은 **외부 의존**이다. 미설치 환경(또는 Codex)에서는 호출이 없어도 lane이 중단되지 않게 graceful degrade — `copy-rules.md`의 한국어 카피 원칙으로 **직접 수동 재작성**하고, humanize-korean이 있으면 그쪽을 우선한다. 의존을 hard-require 하지 않는다.
 - 금지: stop-slop류 무딘 절대금지(부사 전면금지, em-dash 전면금지, 3항목 리스트 금지)를 한국어로 복제하지 않는다 — 전역 가이드·humanize-korean의 한국어 친화 완화 스탠스를 따른다.

@@ -1,6 +1,6 @@
 ---
 name: resolve-issue
-description: Resolve a GitHub issue end-to-end — analyze the issue, create a feature branch, implement the fix (TDD when the issue is marked), run verification gates, open a PR, and drive the cr-fix review loop to convergence. Use ONLY when the user explicitly types /github-dev:resolve-issue <number> or asks to resolve or implement a specific issue. Do NOT auto-fire from incidental issue mentions — this creates a branch, commits, and opens a GitHub PR. Flags pass through to cr-fix — --skip-review, --strict, --skip-cr-fix, --cr-fix-max, --auto-merge, --codex-grace, --no-codex, --skip-minor, --cr-source.
+description: Resolve a GitHub issue end-to-end — analyze the issue, create a feature branch, implement the fix (TDD when the issue is marked), run verification gates, open a PR, and drive the cr-fix review loop to convergence. Use ONLY when the user explicitly types /github-dev:resolve-issue <number> or asks to resolve or implement a specific issue. Do NOT auto-fire from incidental issue mentions — this creates a branch, commits, and opens a GitHub PR. Flags pass through to cr-fix — --skip-review, --strict, --skip-cr-fix, --cr-fix-max, --auto-merge, --codex-grace, --no-codex, --skip-minor, --no-minor-stop, --no-generalize, --cr-source.
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion Task
 ---
 
@@ -26,6 +26,8 @@ Before starting the workflow:
 | `--codex-grace <sec>` | Pass through to cr-fix; extra wait window after CodeRabbit completes for ChatGPT-Codex review comments (default: 90) |
 | `--no-codex` | Pass through to cr-fix; force-disable Codex auto-detect for the run (default: auto-detect ON) |
 | `--skip-minor` | Pass through to cr-fix; silently skip CR Minor/Trivial/Info severity (excluding Bug/Security) + Codex P2 to shrink the gated queue on lint-heavy PRs |
+| `--no-minor-stop` | Pass through to cr-fix; disable the minor soft-stop (default ON — cr-fix stops from iter 2 when a cycle applied only low-severity fixes with nothing deferred, `final_state=minor_floor`) |
+| `--no-generalize` | Pass through to cr-fix; disable bounded same-file generalization (default ON — a real + high-confidence + grep-able finding also patches sibling occurrences of the same pattern in the same file) |
 | `--cr-source <mode>` | Pass through to cr-fix; review source selector. `auto` (default) falls back to local `coderabbit` CLI or Codex-only on PR-bot rate-limit. `pr-bot` / `cli` / `codex-only` lock the source. |
 
 > **Note**: For parallel development, create worktrees manually before starting Claude sessions. See CLAUDE.md for the recommended worktree workflow.
@@ -186,7 +188,7 @@ Before starting the workflow:
     - **[NEW] Save checkpoint**: phase="pr"
 
 10.5. **[NEW] Auto cr-fix loop (default ON)**:
-    - Unless `--skip-cr-fix` is passed, invoke the `/github-dev:cr-fix` skill (`plugins/github-dev/skills/cr-fix/SKILL.md`) and let it run its 16-step lifecycle in this same Claude turn. Pass through the resolve-issue flags: `--cr-fix-max <n>` becomes cr-fix's `--max-iterations`; `--auto-merge`, `--codex-grace <sec>`, `--no-codex`, `--skip-minor`, `--cr-source <auto|pr-bot|cli|codex-only>` are forwarded as-is. CodeRabbit auto-review takes ~7-30 min per cycle; ChatGPT-Codex (when present) typically posts within 5 min after CR; cr-fix's wait phase uses `Bash(run_in_background) + Monitor` so token cost during waits is ~0. Codex auto-detect is enabled by default — repos without Codex installed see no behavior change. PR-bot rate-limit detection (~30s) auto-flips to local `coderabbit` CLI or Codex-only when `--cr-source=auto`.
+    - Unless `--skip-cr-fix` is passed, invoke the `/github-dev:cr-fix` skill (`plugins/github-dev/skills/cr-fix/SKILL.md`) and let it run its 16-step lifecycle in this same Claude turn. Pass through the resolve-issue flags: `--cr-fix-max <n>` becomes cr-fix's `--max-iterations`; `--auto-merge`, `--codex-grace <sec>`, `--no-codex`, `--skip-minor`, `--no-minor-stop`, `--no-generalize`, `--cr-source <auto|pr-bot|cli|codex-only>` are forwarded as-is. CodeRabbit auto-review takes ~7-30 min per cycle; ChatGPT-Codex (when present) typically posts within 5 min after CR; cr-fix's wait phase uses `Bash(run_in_background) + Monitor` so token cost during waits is ~0. Codex auto-detect is enabled by default — repos without Codex installed see no behavior change. PR-bot rate-limit detection (~30s) auto-flips to local `coderabbit` CLI or Codex-only when `--cr-source=auto`.
 
     > **Ambiguous user phrase handling**:
     >
@@ -194,9 +196,10 @@ Before starting the workflow:
 
     - Print one banner line at start: `CR auto-fix loop starting; pass --skip-cr-fix to disable.`
     - On non-success exit:
-      - `final_state` ∈ {failure, iteration_cap, user_declined, cr_inactive}: cr-fix emits a final JSON line via its EXIT trap (Step 16). Surface that JSON's diagnostic to the user.
+      - `final_state` ∈ {failure, iteration_cap, user_declined, minor_floor, cr_inactive}: cr-fix emits a final JSON line via its EXIT trap (Step 16). Surface that JSON's diagnostic to the user.
       - `final_state="timeout"`: cr-fix's trap still emits the JSON line (with `final_state="timeout"` and `merged=false`), but the user-facing message should additionally mention exit code 124 if the underlying poller hit the wall-clock cap. Surface "cr-fix timed out — re-run with a larger `--cr-fix-max` or `--timeout`, or check the CodeRabbit dashboard."
       - `final_state="cr_inactive"`: CodeRabbit never engaged with the PR within the iteration budget. Surface "CodeRabbit did not review the PR; merge not attempted. Check the CodeRabbit dashboard or re-run with a larger `--cr-fix-max`."
+      - `final_state="minor_floor"`: cr-fix stopped at the low-severity floor (default on; `--no-minor-stop` disables) — the last cycle applied only minor fixes with nothing deferred. Those fixes were pushed but the latest push has not been CR-re-reviewed. Surface "cr-fix stopped at minor_floor — low-severity fixes pushed, latest push not yet re-reviewed; re-run cr-fix to confirm clean or merge via GitHub UI." Pass `--no-minor-stop` to keep looping.
       - In all non-success cases, resolve-issue still considers itself complete (PR is open and reviewable). Do NOT auto-merge in any non-clean exit.
     - On `final_state="clean"` and `--auto-merge` flag set: cr-fix's Step 15 branches on branch-protection presence. With protection, `gh pr merge --auto --squash --delete-branch` queues the merge until protection requirements are met. Without protection, cr-fix prompts the user (Merge now / Skip merge / Cancel) — `--auto` would otherwise collapse to immediate merge and bypass any external review.
     - Save checkpoint: phase="cr-fix"

@@ -1,0 +1,6 @@
+{
+  "name": "anti-slop-design",
+  "version": "0.1.0",
+  "description": "Anti-AI-slop design guard for websites/SaaS landing, presentation decks (PPT), dashboards/admin UI, and marketing/UI copy. Detects and blocks the AI-generated look before generation and audits it after: purple/gradient palettes, gradient text, Inter/Geist single-font pages, side-stripe cards, card-in-card, icon-tile 3-col grids, centered-hero macrostructure, fabricated metrics, emoji icons, over-animation, buzzword copy. Runs a clarify->context->plan->run->audit->revise flow with a two-phase audit gate (pre-emit self-critique + binary slop checklist) and hands Korean copy rewriting to humanize-korean. Triggers: 'AI 티 안 나게', 'slop 제거', 'anti-slop', '디자인 감사', '랜딩/덱/대시보드/카피 디자인', 'enterprise 디자인', 'make it not look AI-generated', 'audit this design', even when this skill is not named.",
+  "skills": ["./skills/anti-slop-design"]
+}

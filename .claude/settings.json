@@ -21,7 +21,8 @@
       "./plugins/project-init",
       "./plugins/paper-search-tools",
       "./plugins/docs-forge",
-      "./plugins/anti-slop-design"
+      "./plugins/anti-slop-design",
+      "./plugins/tally-form"
     ]
   }
 }

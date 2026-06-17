@@ -8,6 +8,14 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 <!-- New entries go directly under this line -->
 
+## 2026-06-17 — post-merge #66 + #67: github-dev TDD uplift + e2e-harness plugin (post-merge)
+
+- e2e-harness-ops/playwright-ai-harness.md: new page (domain e2e-harness-ops, parallel to cr-fix-ops/tally-form-ops). Captures Playwright 1.61 `init-agents --loop=claude` actual output (prefixed `playwright-test-*` agent files, `.mcp.json` IS generated with `playwright run-test-mcp-server`, root `seed.spec.ts`, no `playwright.config`, no `copilot` loop value), headless `npx playwright trace` (1.59+) subcommands, burn-in vs CI retries, and GH Actions gotchas (native `paths:` ⊥ `labeled` event, `gh pr comment` needs `issues: write`, no official PR-comment step). sources 2 (playwright.dev + direct 1.61 execution). `> See-also: cr-cli-false-positive-generated-files`.
+- index.md: added e2e-harness-ops domain + hook; bumped MOC last_verified 2026-06-10 -> 2026-06-17; rewrote the shared-source hook's stale "19 of 22 eligible" to the durable "all but 3 EXCLUDED" form.
+- plugin-ops/shared-source-codex-manifests.md: replaced the hard "19 of 22" eligible count with the durable "total − 3 EXCLUDED" invariant (count shifts on every plugin add/remove); last_verified -> 2026-06-17.
+- Config (not wiki, recorded here for the routing trail): added the "update the Codex-eligible count on plugin add/remove" rule to `.claude/rules/plugin-versioning.md` + its `AGENTS.md` mirror — the gap Codex P1 caught on PR #67 (total count bumped, eligible count left stale).
+- Staging drain: 7 mechanical Stop-hook captures from prior sessions (PRs 36/62/63/64/65/66/67/68 etc.) skipped — those PRs' post-merge Step 8 already ingested their lore (cr-fix-ops/tally-form-ops/etc. pages exist); the #66/#67 lore is this entry. Consumed files deleted.
+
 ## 2026-06-17 — post-merge #65: tally-form v1.1.0 images/redirect — wiki update (post-merge)
 
 - tally-form-ops/tally-api-schema-vs-live.md: consolidated the v2 image/redirect findings into the existing no-media-upload bullet — image URLs must be **https** (http blocked as mixed content on HTTPS forms), and live-confirmed that `logo` (png) + `cover` (animated gif) + inline `IMAGE` + `redirectOnCompletion` publish clean (form `QKEZog`). Extended Evidence + Sources with that form. No new section/page (consolidate-not-append); sources stays 3, last_verified 2026-06-17.

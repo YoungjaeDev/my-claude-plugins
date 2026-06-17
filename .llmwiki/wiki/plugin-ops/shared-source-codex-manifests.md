@@ -1,7 +1,7 @@
 ---
 id: shared-source-codex-manifests
 aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, retired-codex-bridge]
-last_verified: 2026-06-08
+last_verified: 2026-06-17
 status: active
 volatility: stable
 sources: 7
@@ -71,8 +71,10 @@ are `core-config` (Claude-only hooks; Codex has no equivalent hook surface),
 `codex-image`. The last has a different reason from the other two: it is a
 Claude->Codex *bridge* (it delegates image generation to `codex exec`), so
 syncing it back into Codex would be circular — Codex would be asked to load a
-skill whose only job is to call Codex. That yields **19 of 22** plugins
-eligible for Codex.
+skill whose only job is to call Codex. So **all plugins except those 3 are
+eligible** for Codex (eligible count = total − 3); the absolute number shifts on
+every plugin add/remove, so the durable invariant is the 3-member EXCLUDED set,
+not a fixed count.
 
 `deepwiki` and `project-init` were in the EXCLUDED set before 1.41.0 because
 they shipped only `commands/`. The 1.41.0 dual-surface conversion added

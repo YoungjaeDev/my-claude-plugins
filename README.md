@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 23개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-23-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -63,6 +63,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 |---------|---------|------|
 | **Core** | `core-config` | Python 포매팅, 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh`, Claude+Codex 공유, `.llmwiki/insight/` 포인터) (work guidelines 는 `~/.claude/CLAUDE.md`) |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
+| **Testing** | `e2e-harness` | Playwright E2E 테스트 하네스 엔지니어링 — 공식 planner/generator/healer AI 에이전트 래핑 (`npx playwright init-agents --loop=claude`). e2e-setup(하네스 온보딩 + 인증 분리 + route 모킹 + CI 트레이스 아티팩트/PR 코멘트/게이팅), e2e-author(planner→generator + `--repeat-each` 번인 플래키 게이트), e2e-debug(헤드리스 trace 분석 + healer 자가수리 루프). Playwright 부재 시 graceful degrade |
 | **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음) |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
@@ -150,6 +151,25 @@ Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavior
 **Flags:** `--skip-review`, `--strict`
 
 **Requirements:** `gh` CLI
+
+</details>
+
+### Testing
+
+<details>
+<summary><strong>e2e-harness</strong> - Playwright E2E 테스트 하네스 엔지니어링</summary>
+
+Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑해 **planner → generator → healer 자가개선 루프**를 구성합니다. 테스트 코드는 실행하면 센서, 읽으면 명세 — 에이전트의 자기검증 수단.
+
+| 스킬 | 설명 |
+|------|------|
+| `/e2e-harness:e2e-setup` | 풀 하네스 온보딩 — `npx playwright init-agents --loop=claude` 로 planner/generator/healer 생성, 인증 분리(`auth.setup.ts` + `storageState` + setup-project 의존), `page.route` 모킹 스캐폴드(Next.js BFF/SSR 인지), E2E 운영 SSOT 문서, GitHub Actions CI(트레이스/리포트 아티팩트 업로드 + 실패 시 PR 코멘트 + path/label 게이팅). 기존 `playwright.config` 는 덮어쓰지 않고 머지 제안 + 백업 |
+| `/e2e-harness:e2e-author` | CUF(critical user flow) 선정 → planner 계획서 → **사용자 검토 게이트** → generator 스펙 생성(semantic `getByRole` 강제) → `--repeat-each` 번인으로 플래키 차단 |
+| `/e2e-harness:e2e-debug` | 실패한 CI run/PR 입력 → 트레이스 아티팩트 다운로드 → 헤드리스 trace 분석 → healer 원인 분석·수리(최대 3회 후 skip + 사유 코멘트) → 재실행 검증 |
+
+**Requirements:** Node.js + Playwright (`npm init playwright@latest`), `gh` CLI (e2e-debug 의 CI 트레이스 fetch)
+
+**Loose coupling:** Playwright 미설치 시 graceful degrade. `github-dev` 의 resolve-issue/commit-and-push 는 이 플러그인 없이도 E2E 를 옵트인 감지만 함 (상호 부재에 안전)
 
 </details>
 
@@ -623,7 +643,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 20 / 23 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 21 / 24 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 

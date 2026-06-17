@@ -1,0 +1,98 @@
+---
+name: e2e-setup
+description: Onboard a full Playwright E2E test harness in the current project — verify/install Playwright, generate the official planner/generator/healer agents via npx playwright init-agents --loop=claude, scaffold auth separation (storageState + setup project), network route mocking, an E2E operating SSOT doc, and a gated GitHub Actions CI workflow with trace artifacts and PR-failure comments. Use when the user asks to set up E2E, add Playwright AI agents, bootstrap end-to-end testing, or wire E2E into CI. Never overwrites an existing playwright.config (merge proposal + backup). Degrades gracefully when Playwright is absent. Run from the user's project root, not this marketplace repo.
+allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
+---
+
+# E2E Setup — full Playwright harness onboarding
+
+Stand up Playwright's official AI test harness (planner -> generator -> healer) plus the surrounding engineering (auth separation, deterministic mocking, an E2E SSOT doc, gated CI). The harness is the point: a test run is a sensor, a test file is a spec, and the three agents form a self-improving loop. This skill only does **setup + orchestration + CI + integration** — it does not re-implement the agents (Playwright generates them natively).
+
+> Bundled templates live at `${CLAUDE_PLUGIN_ROOT}/assets/` under Claude Code; under Codex 0.135 the same `assets/` dir sits next to `skills/` in the plugin cache. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
+>
+> **Verified against Playwright 1.61.0** (init-agents introduced in 1.56; trace CLI in 1.59). Filenames/output below are current-version facts — Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.
+
+## Preconditions / graceful degrade
+
+- This runs in the **user's project**, not the marketplace repo. Confirm a project root with a `package.json` (or offer to `npm init`).
+- If Node/npm is missing, stop and report — do not guess an install path.
+- This skill never assumes `github-dev` or any sibling plugin is installed.
+
+## Workflow
+
+1. **Detect / install Playwright**:
+   - Check for `@playwright/test` in `package.json` and a `playwright.config.*`. If absent, propose `npm init playwright@latest` (interactive) or `npm i -D @playwright/test && npx playwright install --with-deps`.
+   - Always ensure browsers are installed: `npx playwright install --with-deps`.
+   - If the user declines installation, stop here — the rest of the harness needs Playwright.
+
+2. **Generate the official agents** (`init-agents`):
+   ```bash
+   npx playwright init-agents --loop=claude
+   ```
+   - `--loop` accepts `vscode | claude | codex | opencode`. Use `claude` for Claude Code. (There is no `copilot` value.)
+   - **Verify the actual output** (1.61 generates, at the project root):
+     - `.claude/agents/playwright-test-planner.md`
+     - `.claude/agents/playwright-test-generator.md`
+     - `.claude/agents/playwright-test-healer.md`
+     - `.mcp.json` — MCP config for the `playwright-test` server (`npx playwright run-test-mcp-server`). **Confirm this file exists**; init-agents creates it for the claude loop. If it is missing (older Playwright), write it manually:
+       ```json
+       { "mcpServers": { "playwright-test": { "command": "npx", "args": ["playwright", "run-test-mcp-server"] } } }
+       ```
+       Then tell the user to approve the MCP server (`/mcp` or restart) so the agents can drive the browser.
+     - `seed.spec.ts` at the **repo root** (default environment seed the planner runs first) and `specs/README.md` (test-plan directory).
+   - `init-agents` does **not** generate `playwright.config.*` — handle that in Step 3.
+
+3. **playwright.config — never clobber**:
+   - If a `playwright.config.*` already exists: **do not overwrite.** Back it up (`cp playwright.config.ts playwright.config.ts.bak`) and propose a *merge* (add the `setup` project + `dependencies`, a `webServer` if local, `trace: 'on-first-retry'`, `retries` for CI). Show the diff and let the user accept.
+   - If none exists, create one with the setup-project pattern from Step 4 plus sensible reporter/trace defaults:
+     ```ts
+     import { defineConfig, devices } from "@playwright/test";
+     export default defineConfig({
+       testDir: "./e2e",
+       retries: process.env.CI ? 2 : 0,
+       reporter: [["html"], ["list"]],
+       use: { baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000", trace: "on-first-retry" },
+       projects: [
+         { name: "setup", testMatch: /.*\.setup\.ts/ },
+         { name: "chromium", use: { ...devices["Desktop Chrome"], storageState: "playwright/.auth/user.json" }, dependencies: ["setup"] },
+       ],
+       // webServer: { command: "npm run dev", url: "http://localhost:3000", reuseExistingServer: !process.env.CI },
+     });
+     ```
+
+4. **Auth separation scaffold** (one-time login, reused via `storageState`):
+   - Create `e2e/auth.setup.ts` (a `setup` project test that logs in once and saves state). Canonical pattern:
+     ```ts
+     import { test as setup, expect } from "@playwright/test";
+     import path from "path";
+     const authFile = path.join(__dirname, "../playwright/.auth/user.json");
+     setup("authenticate", async ({ page }) => {
+       await page.goto("/login");
+       await page.getByLabel("Email").fill(process.env.E2E_USER!);
+       await page.getByLabel("Password").fill(process.env.E2E_PASS!);
+       await page.getByRole("button", { name: "Sign in" }).click();
+       await expect(page.getByRole("button", { name: /account|profile/i })).toBeVisible();
+       await page.context().storageState({ path: authFile });
+     });
+     ```
+   - Add `playwright/.auth/` to `.gitignore` (never commit session state). Credentials come from env (`E2E_USER` / `E2E_PASS`), never hardcoded.
+
+5. **E2E operating SSOT doc**:
+   - Copy `${CLAUDE_PLUGIN_ROOT}/assets/e2e-guidelines.template.md` to the project (default `e2e/AGENTS.md`; offer `.claude/e2e-guidelines.md` as an alternative). This is the single source of truth for *what* to test (CUFs), auth scenarios, environments, mocking policy, conventions, flake policy, CI gating — **distinct** from the repo-wide `AGENTS.md`/`CLAUDE.md`.
+   - Walk the user through filling the `<...>` placeholders, at minimum the CUF list (used by `e2e-author`).
+
+6. **Network route-mock scaffold**:
+   - Copy `${CLAUDE_PLUGIN_ROOT}/assets/route-mock.scaffold.ts` to `e2e/` (e.g. `e2e/_route-mock.example.ts`) as a reference for `page.route` + `route.fulfill`.
+   - **Detect framework**: if Next.js (or another SSR/BFF stack — check `next` in `package.json`), surface the caveat prominently: `page.route` only intercepts **browser** requests; server-side fetches (Server Components, route handlers, `getServerSideProps`) bypass it. Mock those with an E2E-only env flag at the data layer, a stubbed upstream, or a seeded test DB. The scaffold documents all three.
+
+7. **Gated CI workflow**:
+   - Copy `${CLAUDE_PLUGIN_ROOT}/assets/playwright-ci.yml` to `.github/workflows/e2e.yml`.
+   - Customize the `paths:` filter to the project's app/test dirs (keep it narrow — avoid running the suite on every push). The template also supports `e2e`-label force-run.
+   - It uploads `playwright-report/` + `test-results/` as artifacts and posts a **PR comment on failure** via `gh pr comment` (no official Playwright PR-comment step exists — this is custom). Remind the user to set `E2E_USER` / `E2E_PASS` secrets and the `E2E_BASE_URL` variable.
+   - Validate the YAML if `actionlint` is available; otherwise note it is unvalidated.
+
+8. **Report**: list every file created/modified, whether `.mcp.json` was present or written, the SSOT doc location, and the next step — author CUF tests with `e2e-harness:e2e-author`.
+
+## Out of scope
+
+This skill does not write tests (that is `e2e-author`) or repair failures (that is `e2e-debug`). It does not configure non-GitHub CI.

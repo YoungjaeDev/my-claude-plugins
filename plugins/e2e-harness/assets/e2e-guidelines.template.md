@@ -54,6 +54,7 @@ E2E must be deterministic. Decide per-flow whether to hit real backends or mock.
 - **Test step naming:** `<test.step('...') with English | Korean step names — pick one and be consistent>`.
 - **File layout:** `<e2e/<feature>.spec.ts>`; plans in `<specs/<feature>.md>`.
 - **No conditional assertions / no waits on arbitrary timeouts** — use web-first assertions (`expect(locator).toBeVisible()`).
+- **Test independence via API state-setup:** each test starts at *its branch's* start state, set through a test API — do NOT replay a shared UI prefix (e.g. consent -> phone auth) in every test. `<which test API / endpoint puts a user at each branch start>`. This prevents cascade failures and cumulative runtime, and matches Playwright's "tests must be independent" (distinct from `storageState`, which only carries auth, not mid-flow app state).
 
 ## 6. Flake & burn-in policy
 

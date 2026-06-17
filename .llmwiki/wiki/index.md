@@ -99,6 +99,7 @@ Per-plugin operational lore for `tally-form` — Tally API contract quirks the p
 
 Per-plugin operational lore for `e2e-harness` — Playwright AI-agent harness facts the docs/blogs get wrong, plus GitHub Actions CI gotchas. Parallel to `cr-fix-ops/` and `tally-form-ops/` (per-plugin runtime lore), distinct from `plugin-ops/` (Claude Code plugin system).
 
+- [Harness-engineering principles (why E2E for agents)](e2e-harness-ops/harness-engineering-principles.md) — verification is the bottleneck; AI-era bugs cluster at component boundaries (units pass, the composed flow breaks); test code is a sensor (run) + spec (read); the self-improvement loop (guide before + sensor after) is the delegation criterion; onboard the official agents like a new hire; independent tests via API state-setup; thinking is delegable but understanding is not. Promoted the loop principle to [[harness-loop-guide-sensor]].
 - [Playwright AI test-harness facts (1.61)](e2e-harness-ops/playwright-ai-harness.md) — `init-agents --loop=claude` actually generates `playwright-test-{planner,generator,healer}.md` (prefixed) + `.mcp.json` (`playwright run-test-mcp-server`) + root `seed.spec.ts`, NOT a `playwright.config`; `--loop` has no `copilot`. Headless `npx playwright trace <sub>` (1.59+). GH Actions: native `paths:` filter is incompatible with the `labeled` event; `gh pr comment` needs `issues: write`; no official PR-comment step. Verified by direct 1.61 execution (secondary sources are stale).
 
 ## research-harness

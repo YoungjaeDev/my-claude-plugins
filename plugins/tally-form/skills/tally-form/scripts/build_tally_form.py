@@ -192,9 +192,12 @@ def _resolve_image_url(ref):
 
 
 def _image_field(key, raw):
-    """url/link get inline-comment stripping (a `#` fragment survives — it is not
-    whitespace-separated); caption/name are free text kept verbatim."""
-    return _strip_inline_comment(raw) if key in ("url", "link") else raw.strip()
+    """url/link get inline-comment + surrounding-quote stripping (a `#` fragment
+    survives — it is not whitespace-separated), matching frontmatter handling so
+    a quoted `"https://..."` resolves; caption/name are free text kept verbatim."""
+    if key in ("url", "link"):
+        return _strip_quotes(_strip_inline_comment(raw))
+    return raw.strip()
 
 
 def parse_md(path):

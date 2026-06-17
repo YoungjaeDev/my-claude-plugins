@@ -155,6 +155,6 @@ redirect: https://example.com/thanks     # (선택) 제출 후 리다이렉트
 
 ## 범위 밖
 
-- 폼 이미지/cover/logo/IMAGE(URL 참조 + 호스팅 갭) — 후속.
+- GIF 생성(별도 프로젝트 — 이미지 *참조*는 지원, 생성은 안 함), 화면에 뜨는 thank-you 문구(create API 미지원 — `redirect` 대안), 응답자 확인 이메일(Tally Pro).
 - 제출(submission) 수신·집계, 전원-겹침 히트맵(when2meet Lv2+) — 1:1 상담 범위 밖.
 - 커스텀 CSS·폰트(Tally 유료).

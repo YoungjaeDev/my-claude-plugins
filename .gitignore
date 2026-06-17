@@ -6,6 +6,10 @@ dist/
 .serena/
 .sisyphus/
 
+# Secrets — e.g. tally-form reads TALLY_API_KEY from a .env (never commit keys)
+.env
+.env.local
+
 # Ephemeral llm-wiki Stop-capture staging (consumed by the next session's drain hook).
 # Three roots mirror the wiki resolution order .llmwiki -> .claude -> .codex; the hooks
 # write to dirname(wiki_root)/.staging, so a legacy root yields .claude/.staging or .codex/.staging.

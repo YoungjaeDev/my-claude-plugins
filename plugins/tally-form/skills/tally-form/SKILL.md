@@ -1,6 +1,6 @@
 ---
 name: tally-form
-description: "Build a Tally questionnaire/survey form from a checklist markdown — parse the md, run a copy-voice + humanize pass, build blocks with theme presets, section dividers and paragraph-split intros, plus native scheduling (matrix grid, date, time), then create or idempotently publish via the Tally API and return the share URL. Reusable per project or client. Use when the user wants to '설문 폼 만들어', 'Tally 폼 만들어', 'questionnaire', '체크리스트를 폼으로', '상담 신청 폼', '일정 조율 설문', 'dev survey form', or 'lecture consultation form'."
+description: "Build a Tally questionnaire/survey form from a checklist markdown — parse the md, run a copy-voice + humanize pass, build blocks with theme presets, section dividers, paragraph-split intros, native scheduling (matrix grid, date, time), and form images (logo/cover/inline, URL-hosted) plus redirect-on-completion, then create or idempotently publish via the Tally API and return the share URL. Reusable per project or client. Use when the user wants to '설문 폼 만들어', 'Tally 폼 만들어', 'questionnaire', '체크리스트를 폼으로', '상담 신청 폼', '일정 조율 설문', '폼에 로고/이미지', 'dev survey form', or 'lecture consultation form'."
 argument-hint: "--md <checklist.md> [--update <formId>] [--theme neutral|hermes|none|<styles.json>] [--no-dividers] [--no-humanize]"
 allowed-tools: Bash(uv run *) Bash(curl *) Read AskUserQuestion
 ---
@@ -74,6 +74,27 @@ select: single        # single(행마다 1개) | multi(여러 개)
 - `%%matrix … %%` → MATRIX 그리드 한 문항. `%%date`/`%%time` → INPUT_DATE/INPUT_TIME 한 문항.
 - `select: single` 은 행마다 열 1개로 제한. `format` enum = `MM/dd/yyyy | dd/MM/yyyy | yyyy/MM/dd`. 세밀한 날짜 제약(min-date)은 현재 Tally 스키마에 단일 필드가 없어 v1 범위 밖.
 
+## 이미지 & 제출 후 리다이렉트
+
+Tally 는 미디어 업로드 API 가 없어 이미지는 **호스팅된 공개 URL** 만 받는다. 빌더는 전체 `https://` URL 을 그대로 쓰고, `owner/repo[@ref]:path` 숏핸드는 `raw.githubusercontent.com` URL 로 변환한다(public GitHub repo 의 `assets/` 가 무인프라 호스트). `.gif` URL 도 그대로 들어가며 애니메이션 렌더는 폼을 열어 육안 확인.
+
+```markdown
+---
+logo:  YoungjaeDev/my-claude-plugins@main:assets/logo.png   # 원형 200x200 / 숏핸드 OR 전체 URL
+cover: https://example.com/cover.jpg                         # 전폭 1500px+
+redirect: https://yoursite.com/thanks                        # 제출 후 이동 (무료)
+---
+# 제목
+...
+%%image url: owner/repo@main:assets/banner.png
+caption: (선택) 캡션
+%%
+%%image https://example.com/inline.png                       # 단일 라인 약식
+```
+
+- `logo`·`cover` → `FORM_TITLE` payload. `%%image` → 본문 `IMAGE` 블록(`caption`/`link` 옵션). `redirect` → `settings.redirectOnCompletion`.
+- 화면에 뜨는 thank-you 문구 커스터마이즈는 create API 에 필드가 없음(에디터 전용) — 대안은 `redirect`. 응답자 확인 이메일은 Tally Pro.
+
 ## humanize 기본 라우팅
 
 - **카피를 새로 쓰거나 수정할 때**: 기본적으로 한글 카피를 `/humanize-korean:humanize-korean`(fast)에 윤문 위임 후 빌드.
@@ -103,6 +124,9 @@ options:                 # (선택) 기본 = 네, 해주세요 / 나중에 / 설
 theme: neutral           # (선택) neutral(기본) | hermes | none | <styles.json>
 dividers: true           # (선택) 섹션 구분선, 기본 on
 form_id: vGWGr0          # (선택) 기존 폼 갱신 대상 (= --update)
+logo: owner/repo@main:assets/logo.png   # (선택) 로고 (숏핸드 OR 전체 URL)
+cover: https://example.com/cover.jpg     # (선택) 커버 이미지
+redirect: https://example.com/thanks     # (선택) 제출 후 리다이렉트
 ---
 # 폼 제목                  → FORM_TITLE
 > 인트로 문단 1            → 인트로 TEXT (제목 직후 첫 blockquote run)
@@ -131,6 +155,6 @@ form_id: vGWGr0          # (선택) 기존 폼 갱신 대상 (= --update)
 
 ## 범위 밖
 
-- 폼 이미지/cover/logo/IMAGE(URL 참조 + 호스팅 갭) — 후속.
+- GIF 생성(별도 프로젝트 — 이미지 *참조*는 지원, 생성은 안 함), 화면에 뜨는 thank-you 문구(create API 미지원 — `redirect` 대안), 응답자 확인 이메일(Tally Pro).
 - 제출(submission) 수신·집계, 전원-겹침 히트맵(when2meet Lv2+) — 1:1 상담 범위 밖.
 - 커스텀 CSS·폰트(Tally 유료).

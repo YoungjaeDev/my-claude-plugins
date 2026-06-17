@@ -74,7 +74,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
 | | `notion` | Markdown을 Notion으로 업로드 |
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
-| | `tally-form` | 체크리스트 md → Tally 설문/상담 폼 빌드·게시 (테마 프리셋, 구분선, matrix/date/time 일정 조율, idempotent) |
+| | `tally-form` | 체크리스트 md → Tally 설문/상담 폼 빌드·게시 (테마 프리셋, 구분선, matrix/date/time 일정 조율, 이미지·redirect, idempotent) |
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
@@ -361,6 +361,7 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 **Features:**
 - 테마 프리셋 (neutral 기본 / hermes) + 섹션 구분선 + 문단 분리 인트로
 - 네이티브 일정 조율 (matrix 그리드 / date / time)
+- 폼 이미지 (logo/cover/본문 IMAGE, URL 호스팅 + GitHub raw 숏핸드) + 제출 후 redirect
 - humanize-korean 카피 윤문 라우팅 (미설치 시 graceful degrade)
 - dev-survey / lecture-consultation 프리셋 + 빌드 가능한 예시 fixture 번들
 

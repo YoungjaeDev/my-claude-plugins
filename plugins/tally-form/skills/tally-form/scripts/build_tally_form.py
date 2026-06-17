@@ -160,6 +160,46 @@ def _split_csv(v):
     return [x.strip() for x in v.split(",") if x.strip()]
 
 
+def _resolve_image_url(ref):
+    """Resolve an image reference to a public URL (Tally has no upload endpoint).
+
+    - Full https:// URL -> used as-is. http:// is rejected (mixed content is
+      blocked on Tally's HTTPS-served forms).
+    - `owner/repo[@ref]:path` shorthand -> a raw.githubusercontent.com URL (git
+      ref defaults to `main`), so a public GitHub repo's assets/ can host form
+      images with no extra infra.
+    """
+    if not ref:
+        return None
+    ref = ref.strip()
+    if ref.startswith("https://"):
+        return ref
+    if ref.startswith("http://"):
+        raise ValueError(
+            f"insecure image URL {ref!r} — use https:// "
+            "(http is blocked as mixed content on HTTPS forms)"
+        )
+    m = re.match(r"^([^/\s]+)/([^/@:\s]+)(?:@([^:\s]+))?:(.+)$", ref)
+    if m:
+        owner, repo = m.group(1), m.group(2)
+        gitref = m.group(3) or "main"
+        path = m.group(4).strip().lstrip("/")
+        return f"https://raw.githubusercontent.com/{owner}/{repo}/{gitref}/{path}"
+    raise ValueError(
+        f"unrecognized image reference {ref!r} "
+        "(use a full https:// URL or owner/repo[@ref]:path)"
+    )
+
+
+def _image_field(key, raw):
+    """url/link get inline-comment + surrounding-quote stripping (a `#` fragment
+    survives — it is not whitespace-separated), matching frontmatter handling so
+    a quoted `"https://..."` resolves; caption/name are free text kept verbatim."""
+    if key in ("url", "link"):
+        return _strip_quotes(_strip_inline_comment(raw))
+    return raw.strip()
+
+
 def parse_md(path):
     """Parse a checklist markdown into a form spec.
 
@@ -174,8 +214,10 @@ def parse_md(path):
       %%matrix ... %%          -> matrix/grid question (rows x cols, single/multi)
       %%date label: ...        -> INPUT_DATE question
       %%time label: ...        -> INPUT_TIME question
+      %%image url: ...         -> IMAGE block (hosted URL or owner/repo[@ref]:path)
     Frontmatter overrides: options (list), theme (str), form_id (str),
-                           title (str), intro (str), dividers (bool, default on).
+                           title (str), intro (str), dividers (bool, default on),
+                           logo / cover (image ref), redirect (URL on completion).
     """
     with open(path, encoding="utf-8") as f:
         raw = f.read()
@@ -187,6 +229,9 @@ def parse_md(path):
     if not isinstance(options, list) or not options:
         options = DEFAULT_OPTIONS
     dividers = _truthy(fm.get("dividers"), True)
+    logo = fm.get("logo")
+    cover = fm.get("cover")
+    redirect = fm.get("redirect")
 
     lines = body.splitlines()
     nlines = len(lines)
@@ -286,6 +331,41 @@ def parse_md(path):
             i += 1
             continue
 
+        # image directive: `%%image <url>` (single-line bare ref/URL) or a block
+        # of `url:`/`caption:`/`link:`/`name:` lines (optionally closed with `%%`).
+        # The block read stops at the first non-key line, so it never swallows a
+        # following heading even when the `%%` close is omitted.
+        im = re.match(r"^%%image\b\s*(.*)$", s, re.I)
+        if im:
+            rest = im.group(1).strip()
+            cfg = {}
+            kv0 = re.match(r"^(url|caption|link|name)\s*:\s*(.*)$", rest, re.I)
+            if rest and not kv0:
+                cfg["url"] = _image_field("url", rest)  # single-line bare ref/URL
+                i += 1
+            else:
+                if kv0:
+                    cfg[kv0.group(1).lower()] = _image_field(
+                        kv0.group(1).lower(), kv0.group(2)
+                    )
+                i += 1
+                while i < nlines:
+                    ln = lines[i].strip()
+                    if ln == "%%":
+                        i += 1
+                        break
+                    kv = re.match(r"^(url|caption|link|name)\s*:\s*(.*)$", ln, re.I)
+                    if not kv:
+                        break
+                    cfg[kv.group(1).lower()] = _image_field(
+                        kv.group(1).lower(), kv.group(2)
+                    )
+                    i += 1
+            if cfg.get("url"):
+                cur = _ensure_section(cur, sections)
+                cur["items"].append(("image", cfg))
+            continue
+
         if s.startswith("> "):
             i += 1  # stray blockquote after the intro run -> ignore
             continue
@@ -327,6 +407,9 @@ def parse_md(path):
         "theme": fm.get("theme"),
         "form_id": fm.get("form_id"),
         "dividers": dividers,
+        "logo": logo,
+        "cover": cover,
+        "redirect": redirect,
     }
 
 
@@ -343,13 +426,18 @@ def _intro_paras(spec):
 
 def build_blocks(spec):
     b = []
+    title_payload = {"html": spec["title"]}
+    if spec.get("logo"):
+        title_payload["logo"] = _resolve_image_url(spec["logo"])
+    if spec.get("cover"):
+        title_payload["cover"] = _resolve_image_url(spec["cover"])
     b.append(
         {
             "uuid": u(),
             "type": "FORM_TITLE",
             "groupUuid": u(),
             "groupType": "TEXT",
-            "payload": {"html": spec["title"]},
+            "payload": title_payload,
         }
     )
     # Intro: one TEXT block per paragraph (readability — no <br> dependency).
@@ -455,6 +543,8 @@ def build_blocks(spec):
                 b.extend(_input_blocks("INPUT_DATE", item, "날짜"))
             elif kind == "time":
                 b.extend(_input_blocks("INPUT_TIME", item, "시간"))
+            elif kind == "image":
+                b.append(_image_block(item))
     return b
 
 
@@ -551,6 +641,27 @@ def _input_blocks(block_type, cfg, fallback_label):
             "payload": payload,
         },
     ]
+
+
+def _image_block(cfg):
+    """An inline IMAGE block. payload.images is exactly one {name, url}."""
+    url = _resolve_image_url(cfg.get("url"))
+    name = cfg.get("name") or url.rsplit("/", 1)[-1]
+    payload = {"images": [{"name": name, "url": url}]}
+    if cfg.get("caption"):
+        payload["hasCaption"] = True
+        payload["caption"] = cfg["caption"]
+    if cfg.get("link"):
+        payload["hasLink"] = True
+        payload["link"] = cfg["link"]
+    g = u()
+    return {
+        "uuid": g,
+        "type": "IMAGE",
+        "groupUuid": g,
+        "groupType": "IMAGE",
+        "payload": payload,
+    }
 
 
 def resolve_styles(theme, trusted=True):
@@ -697,6 +808,8 @@ def main():
 
     styles = resolve_styles(theme, trusted=theme_trusted)
     settings = {"styles": styles} if styles else {}
+    if spec.get("redirect"):
+        settings["redirectOnCompletion"] = {"html": spec["redirect"], "mentions": []}
     blocks = build_blocks(spec)
     body = {"status": "PUBLISHED", "blocks": blocks, "settings": settings}
 
@@ -709,6 +822,7 @@ def main():
     n_free = sum(1 for k, _ in items if k == "free")
     n_date = sum(1 for k, _ in items if k == "date")
     n_time = sum(1 for k, _ in items if k == "time")
+    n_image = sum(1 for k, _ in items if k == "image")
     n_matrix_blocks = sum(
         2 + len(it.get("rows") or []) + len(it.get("cols") or [])
         for k, it in items
@@ -718,7 +832,8 @@ def main():
         f"built payload: {len(blocks)} blocks "
         f"(title=1, intro={n_intro}, headings={n_headings}, dividers={n_dividers}, "
         f"choices={n_mc}x{1 + len(spec['options'])}, textareas={n_free}x2, "
-        f"date={n_date}x2, time={n_time}x2, matrix_blocks={n_matrix_blocks})"
+        f"date={n_date}x2, time={n_time}x2, image={n_image}, "
+        f"matrix_blocks={n_matrix_blocks})"
     )
 
     out = args.out or (os.path.splitext(in_path)[0] + "_tally_payload.json")

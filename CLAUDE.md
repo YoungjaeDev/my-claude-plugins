@@ -40,7 +40,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | `translator` | Web article translation to Korean |
 | `notion` | Markdown to Notion upload |
 | `tcrei-prompt` | Rewrite prompts using Google's TCREI structure for next-session reuse |
-| `tally-form` | Checklist markdown to Tally questionnaire/survey form — deterministic urllib builder, theme presets, section dividers, native scheduling (matrix/date/time), idempotent publish, humanize routing. Dev-survey + lecture-consultation presets |
+| `tally-form` | Checklist markdown to Tally questionnaire/survey form — deterministic urllib builder, theme presets, section dividers, native scheduling (matrix/date/time), form images (logo/cover/IMAGE) + redirect, idempotent publish, humanize routing. Dev-survey + lecture-consultation presets |
 
 ### Planning
 | Plugin | Description |

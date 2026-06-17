@@ -45,5 +45,6 @@ Turn a critical user flow into a reliable Playwright spec by driving Playwright'
 
 ## Notes
 
+- **Test independence — set state via API, don't replay shared prefixes.** When flows share a long common prefix (e.g. consent -> phone auth) before branching, do NOT make each test re-run that prefix through the UI. Have the generator put the user at the branch's start state via a test API, then assert only that branch. This avoids cascade failures (a prefix change failing every test) and cumulative runtime, and keeps tests independent. This is distinct from `storageState` (auth only) — it sets mid-flow app state. Capture the available state-setup endpoints in the E2E SSOT doc.
 - The planner/generator drive the browser through the `playwright-test` MCP server; if their tool calls fail, verify `.mcp.json` is approved (`/mcp`).
 - This skill does not set up the harness (`e2e-setup`) or repair CI failures (`e2e-debug`).

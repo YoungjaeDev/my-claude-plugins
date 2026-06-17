@@ -8,6 +8,8 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 Stand up Playwright's official AI test harness (planner -> generator -> healer) plus the surrounding engineering (auth separation, deterministic mocking, an E2E SSOT doc, gated CI). The harness is the point: a test run is a sensor, a test file is a spec, and the three agents form a self-improving loop. This skill only does **setup + orchestration + CI + integration** — it does not re-implement the agents (Playwright generates them natively).
 
+> **Why this skill exists (the harness-engineering point).** Installing the official agents is NOT enough — out of the box they skip auth setup, can't resolve project-known API errors, and don't know test-account usage, because they lack codebase context. Steps 3-7 below *onboard them like a new hire*: the config, auth scaffold, route-mock guidance, and especially the E2E SSOT doc are the context an agent needs to work autonomously. Skipping them is the usual reason "the official agents didn't just work."
+
 > Bundled templates live at `${CLAUDE_PLUGIN_ROOT}/assets/` under Claude Code; under Codex 0.135 the same `assets/` dir sits next to `skills/` in the plugin cache. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
 >
 > **Verified against Playwright 1.61.0** (init-agents introduced in 1.56; trace CLI in 1.59). Filenames/output below are current-version facts — Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.

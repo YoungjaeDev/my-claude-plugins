@@ -17,7 +17,7 @@ description: "Anti-AI-slop design guard for websites/SaaS landing, presentation 
 
 ## 안 하는 것 (scope)
 
-- 디자인 "생성기"가 아니다. 방향·구조·게이트를 제공하고, 실제 구현은 호출자(또는 frontend-design 등)가 한다.
+- 디자인 "생성기"가 아니다. 방향·구조·게이트를 제공하고, 실제 구현은 호출자(또는 frontend-design, ppt-master, taste-skill 등)가 한다.
 - 실행형 detection 엔진/편집 차단 hook 없음 — 리포트·권고만 한다.
 - 덱 빌드 파이프라인(md->SVG->pptx) 미포함 — 원칙만, 빌드는 기존 도구(ppt-master/codex-image).
 - 브랜드 색·폰트를 **기억으로 추측하지 않는다**. 자료 있으면 읽고, 없으면 `references/house-style.md` 기본값, 그래도 없으면 placeholder로 두고 사용자에게 묻는다.
@@ -25,7 +25,7 @@ description: "Anti-AI-slop design guard for websites/SaaS landing, presentation 
 ## 흐름 (clarify -> context -> plan -> run -> audit -> revise)
 
 ### 1. Clarify
-artifact 종류(web / ppt / dashboard / copy), 청중, 브랜드, 결정맥락을 식별. 모호하면 `AskUserQuestion`으로 좁힌다. 자동 가정 금지.
+artifact 종류(web / ppt / dashboard / copy), 청중, 브랜드, 결정맥락을 식별. 모호하면 `AskUserQuestion` 및 'interview skill'을 통해 좁힌다. 자동 가정 금지.
 
 ### 2. Context
 - 해당 lane 규칙(`references/slop-taxonomy.md`의 lane 섹션) + `references/house-style.md` + `references/slop-taxonomy.md`의 VISUAL/STRUCTURAL을 로드.
@@ -74,13 +74,13 @@ artifact 종류(web / ppt / dashboard / copy), 청중, 브랜드, 결정맥락�
 | # | tell (답이 "no"여야 함) | fix |
 |---|---|---|
 | 1 | purple/rainbow/mesh gradient, 또는 gradient text? | flat committed accent, `bg-clip:text` 금지 |
-| 2 | 단일 과용 font(Inter/Roboto/Geist/Space Grotesk) 또는 one-font 페이지? | display+body 의도적 pairing |
-| 3 | side-stripe card / card-in-card / icon-tile-above-heading 3-col grid? | bg·weight 대비, stripe 제거, 카드 크기 변주 |
+| 2 | 단일 과용 font(Inter/Roboto/Geist/Space Grotesk)/one-font 페이지, 또는 italic serif/display 헤더(h1-h6/hero/stat — hallmark "top AI tell")? | display+body 의도적 pairing, 헤더는 roman weight |
+| 3 | side-stripe card / card-in-card / icon-tile-above-heading 3-col grid / glassmorphism-as-default·목적없는 shadow? | bg·weight 대비, stripe 제거, 카드 변주, shadow는 elevation 의미 있을 때만 |
 | 4 | cream-default / `#0D1117`-neon / 순수 `#000`·`#fff` base? | anchor hue로 tint한 committed palette |
 | 5 | full-viewport centered hero / 전부 centered? | centered 요소 <=2, 비대칭 도입 |
 | 6 | 장식용 `01/02/03` 번호 / 모든 섹션에 eyebrow chip? | 실제 sequence일 때만, 내용을 encode |
 | 7 | generic Hero->3 features->testimonials->CTA->footer 골격? | 브리프 특정 macrostructure |
-| 8 | 지어낸 metric / 가짜 testimonial / placeholder명(Acme/Jane Doe)? | 실제 수치, 라벨된 placeholder, 또는 사용자에게 질문 |
+| 8 | 지어낸 metric / 가짜 testimonial / placeholder명(Acme/Jane Doe), 또는 hero가 big-number+small-label+보조stat 템플릿(실수치라도)? | 실제 수치+실제 narrative, 라벨된 placeholder, 또는 질문 |
 | 9 | emoji as icon / icon library 혼용? | 하나의 real icon set |
 | 10 | 손그림 figurative SVG / 재그린 browser·phone·terminal chrome? | 실제 screenshot 또는 회색 placeholder |
 | 11 | over-animation / `transition-all` / 균일 `hover:scale` / `prefers-reduced-motion` 없음? | 하나의 orchestrated moment + reduced-motion |

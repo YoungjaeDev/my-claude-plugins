@@ -28,7 +28,7 @@ AI-slop 시각/구조 지문 카탈로그. 6개 OSS repo(impeccable 44-rule / ha
 - **>3 font families** — "2+1 rule": `--font-display` + `--font-body` + outlier 최대 1(비코드 맥락에선 mono도 family로 카운트).
 - **extreme negative tracking** — body letter-spacing <=-0.05em(글자 붙음), display floor >=-0.04em. body wide-tracking >0.05em도 tell.
 - **all-caps display, line-height <1.0** — wrap 시 cap-top 충돌. floor 1.0(권장 1.02-1.08). all-caps body는 word-shape 인식 상실로 ban.
-- tiny text(body <12px), tight leading(line-height <1.3x).
+- tiny text(body <12px = 확실한 tell; 권장 floor는 14px — §4 numeric floor 참조), tight leading(line-height <1.3x).
 
 ### Visual Details (component cliches)
 - **[CORE] side-stripe / left-border-accent card** — 가장 많이 지목된 컴포넌트 tell("AI UI의 가장 식별 가능한 지문"). 시그니처: `border-radius:12px; border-left:4px solid #3b82f6`(border >=3px 또는 rounded 요소의 모든 border-width). Instead: bg/weight 대비로 구분, stripe 제거.

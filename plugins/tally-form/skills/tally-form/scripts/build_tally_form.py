@@ -192,14 +192,16 @@ def parse_md(path):
     nlines = len(lines)
     idx = 0
 
-    # 1) Title: first `# ` line (unless frontmatter already set it).
-    if title is None:
-        while idx < nlines:
-            s = lines[idx].strip()
-            idx += 1
-            if s.startswith("# "):
-                title = s[2:].strip()
-                break
+    # 1) Title: locate the first `# ` line. A frontmatter title (if set) wins as
+    #    the value, but either way advance past the body title line so intro
+    #    detection starts after it. No `# ` line -> idx stays 0.
+    title_idx = next(
+        (k for k in range(nlines) if lines[k].strip().startswith("# ")), None
+    )
+    if title_idx is not None:
+        if title is None:
+            title = lines[title_idx].strip()[2:].strip()
+        idx = title_idx + 1
 
     # 2) Intro: first contiguous blockquote run after the title. Blank `>` lines
     #    split paragraphs; a non-quote line ends the run, so later separate

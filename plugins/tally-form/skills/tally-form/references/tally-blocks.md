@@ -19,8 +19,9 @@
 
 | 논리 요소 | block `type` | `groupType` | 비고 |
 |-----------|--------------|-------------|------|
-| 폼 제목 | `FORM_TITLE` | `TEXT` | 자기 `groupUuid` (입력 블록과 분리) |
+| 폼 제목 | `FORM_TITLE` | `TEXT` | 자기 `groupUuid`; payload 에 `logo`/`cover` URL 옵션 |
 | 인트로/설명 | `TEXT` | `TEXT` | `payload.html`, 문단당 1블록 |
+| 이미지(본문) | `IMAGE` | `IMAGE` | `payload.images:[{name,url}]` 1장 + caption/link |
 | 구분선 | `DIVIDER` | `DIVIDER` | `payload {}`, 섹션 사이 시각 분리 |
 | 섹션 제목 | `HEADING_2` | `HEADING_2` | `payload.html` |
 | 문항 제목 | `TITLE` | `QUESTION` | 모든 문항 공통, 자기 `groupUuid` |
@@ -57,6 +58,17 @@ Tally OpenAPI 스키마는 입력 계열 블록(`TEXTAREA`/`INPUT_*`)의 `groupT
 - `INPUT_DATE` payload = `{isRequired, placeholder?, format?}`. `format` enum = `MM/dd/yyyy | dd/MM/yyyy | yyyy/MM/dd`.
   - 현재 OpenAPI `InputDatePayload` 에 min-date 류(afterDate/dateRange) 단일 필드는 없다. 세밀한 날짜 제약은 v1 범위 밖.
 - `INPUT_TIME` payload = `{isRequired, placeholder?}`.
+
+## 이미지 & 리다이렉트 (라이브 검증)
+
+Tally 는 미디어 업로드 엔드포인트가 없다(경로는 `/forms` 하나) — 이미지는 전부 **호스팅된 공개 URL 참조**. public GitHub repo 의 `assets/` + `raw.githubusercontent.com` 링크가 무인프라 호스트로 동작한다(실측). 빌더는 `owner/repo[@ref]:path` 숏핸드를 raw URL 로 변환하고, 전체 `https://` URL 은 그대로 쓴다.
+
+- **로고 / 커버**: `FORM_TITLE.payload` 에 `logo`(원형, 200x200 권장) / `cover`(전폭, 1500px+) URL. 둘 다 `format: uri`.
+- **본문 이미지**: `IMAGE` 블록 = `{type:IMAGE, groupType:IMAGE, payload:{images:[{name,url}], hasCaption?, caption?, hasLink?, link?}}`. `images` 는 정확히 1장.
+- **GIF**: `.gif` URL 도 그대로 들어간다(라이브 POST 통과 확인). 애니메이션 렌더 여부는 Tally 프론트 동작이라 폼 열어 육안 확인.
+- **제출 후 리다이렉트**: `settings.redirectOnCompletion = {html:<url>, mentions:[]}` (무료). 화면에 뜨는 thank-you 문구 커스터마이즈는 create API 에 필드가 없다(에디터 전용).
+
+> 실측 2026-06-17: logo(png)+cover(animated gif)+IMAGE(png)+redirect 한 폼이 `status:PUBLISHED, hasDraftBlocks:false` 로 생성됨.
 
 ## 테마
 
@@ -98,7 +110,10 @@ total = 1(제목)
       + 서술 항목 수 × 2
       + 날짜 항목 수 × 2
       + 시간 항목 수 × 2
+      + 이미지(%%image) 항목 수
       + Σ 매트릭스 (2 + 행 수 + 열 수)
 ```
+
+`logo`/`cover`(FORM_TITLE payload)와 `redirect`(settings)는 블록을 추가하지 않는다.
 
 예(번들 `assets/example-matrix-schedule.md` 류): 제목 1 + 인트로 1 + 섹션 1 + 구분선 0 + 매트릭스(2+5+3) + 날짜 1×2 + 시간 1×2 = **17 블록**. `--dry-run` 출력의 `built payload: N blocks` 와 분해 항목 합이 일치해야 한다(회귀 게이트).

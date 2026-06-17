@@ -27,6 +27,21 @@ options:
 4. **희망 일정** (`%%date` / `%%matrix`) — 상담 가능 날짜·요일×시간대.
 5. **목표·메모** (`### ` 자유 입력) — 이 강의로 이루고 싶은 것.
 
+## 문항별 보기 · 단답 · 필수 동의 (선택)
+
+전역 옵션과 다른 보기·필수 동의·단답이 필요한 문항은 directive 로(상세 `references/tally-blocks.md`):
+
+```markdown
+%%phone label: 연락받을 번호 (required) (placeholder: 010-0000-0000)
+%%choice
+title: 개인정보 수집·이용 동의
+options: 동의합니다
+select: single
+required: true
+desc: 상담 연락을 위해 연락처를 수집합니다
+%%
+```
+
 ## 카피 규칙
 
 `form-copy-style.md` 공통 규칙 적용 + 강의 도메인:

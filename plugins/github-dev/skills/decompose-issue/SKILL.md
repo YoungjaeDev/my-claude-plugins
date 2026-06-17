@@ -175,6 +175,7 @@ Break down large work items into manageable, independent issues. Follow project 
       STATE_FILE=".claude/state/project-tracking-${SLUG}.json"
       jq --arg mid "$MILESTONE_NUMBER" '.milestoneId = ($mid | tonumber)' "$STATE_FILE" > tmp.$$.json && mv tmp.$$.json "$STATE_FILE"
       ```
+    - **Inject the TDD marker (if TDD was enabled in Step 3)**: when creating each issue, prepend `<!-- TDD: enabled -->` as the first line of the issue body (before `**Purpose**:`). This is the exact marker `resolve-issue` Step 1 detects to switch on the TDD workflow. If TDD was not selected in Step 3, omit the prepend entirely — do not write the marker.
     - Assign issues with `--milestone` option
     - After issue creation, update the state file `issues` map with actual GitHub issue numbers
 

@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration. The same plugin tree is loaded by Codex 0.135 via `scripts/sync-codex-manifests.mjs` — one source, two runtimes.
 
-## Plugins (23)
+## Plugins (24)
 
 ### Core
 | Plugin | Description |
@@ -13,6 +13,11 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | Plugin | Description |
 |--------|-------------|
 | `github-dev` | GitHub workflow (commit, PR, issue, unified cr-fix CodeRabbit + Codex skill with PR-bot → CLI → codex-only auto-fallback on rate-limit) |
+
+### Testing
+| Plugin | Description |
+|--------|-------------|
+| `e2e-harness` | Playwright E2E test-harness engineering — wraps Playwright's official planner/generator/healer AI agents (`npx playwright init-agents --loop=claude`). 3 skills: `e2e-setup` (full harness onboarding — agents, auth via storageState, route mocking, CI with trace artifacts + PR comment + path/label gating), `e2e-author` (planner→generator orchestration, semantic `getByRole` locators, `--repeat-each` burn-in flake gate), `e2e-debug` (headless trace analysis + healer self-healing loop, skip-after-3). Loose coupling — degrades gracefully when Playwright is absent. |
 
 ### Research & Search
 | Plugin | Description |
@@ -88,6 +93,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 ├── plugins/
 │   ├── core-config/        # Guidelines + hooks
 │   ├── github-dev/         # GitHub workflow
+│   ├── e2e-harness/        # Playwright E2E test-harness (setup/author/debug)
 │   ├── code-scout/         # Resource discovery
 │   ├── council/            # LLM Council
 │   ├── deepwiki/           # Repo docs

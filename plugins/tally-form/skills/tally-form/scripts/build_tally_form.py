@@ -362,7 +362,8 @@ def parse_md(path):
                     re.I,
                 )
                 if kv:
-                    k, v = kv.group(1).lower(), kv.group(2).strip()
+                    k = kv.group(1).lower()
+                    v = _strip_quotes(_strip_inline_comment(kv.group(2)))
                     if k in ("title", "label"):
                         ctitle = v
                     elif k == "options":
@@ -671,6 +672,8 @@ def _choice_blocks(cfg, fallback_label):
     single -> MULTIPLE_CHOICE_OPTION. required rides on the option payloads."""
     title = cfg.get("title") or fallback_label or "선택"
     options = cfg.get("options") or []
+    if not options:
+        raise ValueError(f"%%choice {title!r} requires at least one option")
     required = bool(cfg.get("required"))
     multi = cfg.get("select") == "multi"
     tg = u()

@@ -57,6 +57,7 @@
 - Codex 매니페스트는 `scripts/sync-codex-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성합니다. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `sync-codex-manifests.mjs` 가 진실의 원천입니다.
 - 새 플러그인 추가 / 기존 플러그인의 `version` / `description` / `category` 변경 시 반드시 `node scripts/sync-codex-manifests.mjs` 를 실행해 매니페스트를 재생성하세요.
 - Skill `description` frontmatter 는 1024자 미만으로 유지하세요. Codex 0.135 는 1024자 초과 description 을 가진 skill 을 **silent 하게 skip** 합니다 (Claude Code 는 제한이 없어 위반이 안 보임). `--check` 가 drift 외에 description 길이도 검증하고, 공유 `.githooks/pre-commit` 이 매 커밋마다 실행합니다 — clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화하세요. 전체 trigger 목록 / per-tool rationale 는 description 이 아니라 skill 본문에 두세요.
+- Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
 - Codex 0.135 manifest top-level 은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원합니다 (참조: `~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md`). `commands` / `agents` 는 생성기가 emit 하지 않습니다 — Claude 만 인식하는 필드입니다.
 - Codex 에서 제외할 플러그인은 `scripts/sync-codex-manifests.mjs` 의 `EXCLUDED` 셋에 등록하세요 (현재: `core-config`, `midjourney`, `codex-image`). `core-config` 는 Claude-only hooks 라 Codex 에 대응 surface 가 없고, `midjourney` 는 image-gen workflow 가 Codex 실행 모델과 맞지 않으며, `codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환입니다. 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
 - 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
@@ -114,7 +115,7 @@ codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 - 새 dependency, GitHub Actions, CI/CD 권한 변경 — 최소 권한, lockfile, supply-chain.
 
 ### Domain-specific (Claude Code plugin marketplace)
-- 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `marketplace.json` entry + `metadata.version`, 그리고 `node scripts/sync-codex-manifests.mjs` 재실행 5 곳 동시 업데이트 필수.
+- 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `marketplace.json` entry + `metadata.version`, `.claude/settings.json` 의 `plugins.local` entry, 그리고 `node scripts/sync-codex-manifests.mjs` 재실행 6 곳 동시 업데이트 필수.
 - Codex 매니페스트 (`plugins/*/.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`) 가 `--check` 통과해야 함. 수동 편집 흔적 검토.
 - Plugin 캐시 이슈 ([anthropics/claude-code#17361](https://github.com/anthropics/claude-code/issues/17361), [anthropics/claude-code#19197](https://github.com/anthropics/claude-code/issues/19197)) — version bump 만으로는 사용자 캐시 갱신 보장 안 됨. 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차 유지.
 

@@ -16,12 +16,14 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 - `.claude-plugin/marketplace.json` — marketplace registry. Contains per-plugin `version` (must match `plugin.json`) and top-level `metadata.version` (bumped once per marketplace release).
 - `CLAUDE.md` (root) — plugin count summary (keep in sync when adding/removing plugins).
 - `README.md` — user-facing plugin count + badge.
+- `.claude/settings.json` — tracked local-load list (`plugins.local`). A plugin absent here is registered in the marketplace but does NOT auto-load in local dev.
 
 ## Do's
 
 - **Sync both version files on every bump**: update `plugins/<name>/.claude-plugin/plugin.json` AND the matching entry in `.claude-plugin/marketplace.json` in the same commit.
 - **Bump `metadata.version` in marketplace.json** whenever any plugin version changes. This signals a marketplace release to users.
 - **Update plugin count** in root `CLAUDE.md` (`## Plugins (N)` + structure tree) AND `README.md` (description sentence + badge + detail section) when adding or removing a plugin.
+- **Register new plugins in `.claude/settings.json`** (`plugins.local` array, `./plugins/<name>`) when adding a plugin — this tracked file is what auto-loads plugins locally; marketplace registration alone does not. Neither the version files nor `sync-codex-manifests.mjs --check` catch this omission.
 - **Adhere to semver** at the plugin level: `MAJOR.MINOR.PATCH`. PATCH for fixes, MINOR for backward-compatible features, MAJOR for breaking changes.
 - **Document cache workaround** in release notes and user docs — the manual `rm -rf` is the only reliable refresh path until the Claude Code plugin cache bugs are fixed upstream.
 
@@ -37,7 +39,7 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 1. Update `version` in `plugins/<name>/.claude-plugin/plugin.json`.
 2. Update the matching `version` in `.claude-plugin/marketplace.json`.
 3. Bump `metadata.version` in `.claude-plugin/marketplace.json`.
-4. (If adding/removing a plugin) update plugin counts in `CLAUDE.md` and `README.md`.
+4. (If adding/removing a plugin) update plugin counts in `CLAUDE.md` and `README.md`, and add/remove its `./plugins/<name>` entry in `.claude/settings.json` (`plugins.local`).
 5. Commit all changes together.
 
 ## User Update Workflow

@@ -8,6 +8,13 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 <!-- New entries go directly under this line -->
 
+## 2026-06-17 — post-merge #63: anti-slop-design skill + source-grounded/coverage-audit methodology (post-merge)
+
+Merge `1ea9f41` (squash). New `anti-slop-design` plugin (v0.1.0): cross-agent guidance skill blocking the AI-generated look (slop) across web/PPT/dashboard/copy, source-grounded in 6 OSS repos. The plugin's WHAT lives in-repo (`plugins/anti-slop-design/skills/anti-slop-design/SKILL.md` + spec + synthesis) — NOT duplicated here. Mechanical tool-rules (YAML frontmatter colon-quote; `.claude/settings.json` `plugins.local` registration surface) routed to `.claude/rules/{dual-integration,plugin-versioning}.md` + `AGENTS.md` (NOT re-recorded here, per knowledge routing). One reusable methodology lesson lands in the wiki.
+
+- plugin-ops/skill-authoring-source-grounded-then-audit.md: NEW page (id `skill-authoring-source-grounded-then-audit`, status active, volatility stable, sources 1) — build a reference/guidance skill from source-grounded OSS investigation (read the repos, not summaries-of-summaries — counts drift: impeccable README "27" vs registry 44, hallmark "57" vs 58), then run a COVERAGE AUDIT of the distillation whose key axis is documented-vs-enforced (anti-slop-design: 21/21 patterns in the reference taxonomy but only 19/21 in the binary ship-gate until patched). Build and verify as separate passes.
+- index.md: added plugin-ops/skill-authoring-source-grounded-then-audit.md hook
+
 ## 2026-06-16 — cr-fix state-file not self-describing until emit-final-json persists final fields (ingest-finding)
 
 - cr-fix-ops/state-file-self-describing.md: new page, status active, volatility stable, sources 1 — emit-final-json assembled final_state + auto_judge_stats into stdout only, never into the archived state file; post-merge Step 1.5 reading the archive saw final_state=unknown / defer=0 and silently hid deferred reviews. Caught by Codex P1 in the PR #62 dogfood. Fixed by persisting final fields before the archive mv. Active design contract (minor_floor / same-file generalization) deliberately NOT duplicated — it lives in cr-fix `references/`.

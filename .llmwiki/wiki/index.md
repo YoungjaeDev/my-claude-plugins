@@ -89,6 +89,12 @@ Per-plugin operational lore for `github-dev:cr-fix` — rate-limit semantics, do
 - [CR CLI false positive on generated files](cr-fix-ops/cr-cli-false-positive-generated-files.md) — the local CodeRabbit CLI flags a correctly-regenerated `.codex-plugin/plugin.json` as "manually edited, revert + regenerate" (Major); it is spurious — `node scripts/sync-codex-manifests.mjs --check` passing proves generator-consistency, so skip the finding instead of reverting.
 - [cr-fix state file not self-describing](cr-fix-ops/state-file-self-describing.md) — `emit-final-json.sh` assembled `final_state` + `auto_judge_stats` into stdout only, never the archived state file, so `post-merge` Step 1.5 reading the archive saw `final_state=unknown` / `defer=0` and silently hid deferred reviews. Fix: persist final fields before the archive `mv` (self-describing) + consumer falls back to counting `auto_judge_log` defers. Test the real producer→archive→consumer chain, not a hand-built fixture.
 
+## tally-form-ops
+
+Per-plugin operational lore for `tally-form` — Tally API contract quirks the published OpenAPI doesn't predict. Parallel to `cr-fix-ops/` (per-plugin runtime lore), distinct from `plugin-ops/` (Claude Code plugin system).
+
+- [Tally API schema vs live contract](tally-form-ops/tally-api-schema-vs-live.md) — the vendor OpenAPI diverges from the live `/forms` API: `groupType` is lenient (FORM_TITLE→TEXT, inputs→own type; two Codex P1s were false positives), matrix `maxChoices` goes on the MATRIX container not the rows (live 400 on rows), no media-upload endpoint (image fields take hosted URLs — public-repo `assets/` + raw link works), no create-API thank-you-message field; API + theme colors + matrix/date/time are all free, email notifications are Pro.
+
 ## research-harness
 
 Cross-plugin research harness boundary contracts (code-scout, `/deep-research`, paper-search-tools). Captures inter-harness routing rules that span plugins.

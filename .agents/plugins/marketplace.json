@@ -219,6 +219,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "planning"
+    },
+    {
+      "name": "anti-slop-design",
+      "source": {
+        "source": "local",
+        "path": "./plugins/anti-slop-design"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "design"
     }
   ]
 }

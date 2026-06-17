@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -82,6 +82,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
+| **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
 
 ## 설치 옵션
 
@@ -536,6 +537,25 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 
 </details>
 
+### Design
+
+<details>
+<summary><strong>anti-slop-design</strong> - anti-AI-slop 디자인 가드</summary>
+
+웹/SaaS 랜딩, 발표 덱(PPT), 대시보드/admin UI, 마케팅·UI 카피의 "AI가 만든 티(slop)"를 생성 전 차단하고 생성 후 감사합니다. 핵심 명제: slop = 브리프와 무관한 default-not-choice.
+
+**Flow:** clarify → context → plan → run → audit → revise
+
+**Audit gate (2단계):**
+- Phase A — 생성 전 self-similarity probe + 6축 self-critique (Philosophy/Hierarchy/Specificity/Restraint/Variety/Honesty)
+- Phase B — 납품 전 12항목 binary 체크리스트 + numeric floor sweep
+
+**카피:** 영문 탐지·스코어링은 자체, 한국어 재작성은 `humanize-korean` 위임.
+
+**근거:** 6개 OSS anti-slop repo (impeccable 44-rule / hallmark 58-gate / frontend-design / huashu / stop-slop / frontend-slides) source-grounded 합성.
+
+</details>
+
 ## Configuration
 
 ### settings.json
@@ -584,7 +604,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 18 / 21 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 19 / 22 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -635,6 +655,7 @@ git config core.hooksPath .githooks
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
+│   ├── anti-slop-design/      # anti-AI-slop 디자인 가드 (web/ppt/dashboard/copy)
 │   └── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 ├── CLAUDE.md
 └── README.md

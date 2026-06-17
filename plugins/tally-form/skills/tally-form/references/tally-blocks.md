@@ -39,17 +39,18 @@
 
 ### groupType 규약 주의 (실측 vs OpenAPI)
 
-Tally OpenAPI 스키마는 입력 계열 블록(`TEXTAREA`/`INPUT_*`)의 `groupType` 을 일괄 `QUESTION` 으로 적지만, **실측·공식 예제는 `groupType == type`(예: `INPUT_EMAIL`→`INPUT_EMAIL`) 로 동작**한다. 이 빌더는 검증된 `groupType == type` 규약을 따른다(`TEXTAREA`/`INPUT_DATE`/`INPUT_TIME`). `MATRIX` 컨테이너만 예외로 `groupType == QUESTION`(`MatrixPayload` 에 라벨 필드가 없어 컨테이너로 분류됨).
+Tally OpenAPI 스키마는 입력 계열 블록(`TEXTAREA`/`INPUT_*`)의 `groupType` 을 일괄 `QUESTION` 으로 적지만, **실측·공식 예제는 `groupType == type`(예: `INPUT_EMAIL`→`INPUT_EMAIL`) 로 동작**한다. 이 빌더는 검증된 `groupType == type` 규약을 따른다(`TEXTAREA`/`INPUT_DATE`/`INPUT_TIME`). `MATRIX` 컨테이너만 예외로 `groupType == QUESTION`(`MatrixPayload` 에 라벨 필드가 없어 컨테이너로 분류됨). 라이브 생성으로 `FORM_TITLE`→`TEXT`, `INPUT_DATE`/`INPUT_TIME`→자기 type, `MATRIX`→`QUESTION` 모두 `status:PUBLISHED, hasDraftBlocks:false` 로 확인됨.
 
 ## 매트릭스 (일정 조율 그리드)
 
 행×열 그리드 한 문항 = `TITLE` 1 + `MATRIX` 1 + `MATRIX_ROW` ×N + `MATRIX_COLUMN` ×M.
 
-- `MATRIX` 블록: `uuid == groupUuid`(= `mg`), `groupType QUESTION`, `payload {isRequired}`.
+- `MATRIX` 블록: `uuid == groupUuid`(= `mg`), `groupType QUESTION`, `payload {isRequired}` (+ 단일 선택이면 `hasMaxChoices/maxChoices`, 아래).
 - `MATRIX_ROW`/`MATRIX_COLUMN`: `groupUuid = mg`(부모 MATRIX uuid), `groupType MATRIX`.
 - 행/열 payload = `{index, isFirst, isLast, isRequired, text, html}`.
-- **단일 선택**(행마다 열 1개): 행 payload 에 `hasMaxChoices:true, maxChoices:1`. **복수 선택**: 미설정.
-- TITLE 은 자기 group 으로 매트릭스 앞에 둔다(검증된 객관식 `TITLE`+입력그룹 패턴 미러). 라이브 렌더로 최종 확인 권장.
+- **단일 선택**(행마다 열 1개): **`MATRIX` 블록 payload** 에 `hasMaxChoices:true, maxChoices:1`. **복수 선택**: 미설정.
+  - **함정(실측)**: 같은 키를 `MATRIX_ROW` payload 에 넣으면 live API 가 `400 "payload.hasMaxChoices is not allowed"` 로 거부한다 — OpenAPI `MatrixRowPayload` 가 해당 키를 *나열*하지만 실제로는 행에서 허용 안 됨. 컨테이너(MATRIX) 레벨에 둔다.
+- TITLE 은 자기 group 으로 매트릭스 앞에 둔다(검증된 객관식 `TITLE`+입력그룹 패턴 미러). 라이브 생성 검증 완료 — `/questions` 가 MATRIX 를 1문항으로 반환.
 
 ## 날짜 / 시간 입력
 

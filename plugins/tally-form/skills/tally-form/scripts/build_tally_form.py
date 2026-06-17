@@ -460,11 +460,17 @@ def _matrix_blocks(cfg, fallback_label):
     """Matrix/grid question: TITLE(QUESTION) + MATRIX(QUESTION container) +
     MATRIX_ROW xN + MATRIX_COLUMN xM. Rows/cols borrow the MATRIX block's uuid as
     their groupUuid (Tally's child-block grouping rule). select=single caps each
-    row at one column (hasMaxChoices/maxChoices)."""
+    row at one column via the MATRIX block's hasMaxChoices/maxChoices (the live
+    API rejects those keys on MATRIX_ROW even though the OpenAPI schema lists
+    them — verified empirically)."""
     label = cfg.get("label") or fallback_label or "선택"
     rows, cols = cfg.get("rows") or [], cfg.get("cols") or []
     single = cfg.get("select") == "single"
     mg = u()
+    matrix_payload = {"isRequired": False}
+    if single:
+        matrix_payload["hasMaxChoices"] = True
+        matrix_payload["maxChoices"] = 1
     out = [
         {
             "uuid": u(),
@@ -478,28 +484,24 @@ def _matrix_blocks(cfg, fallback_label):
             "type": "MATRIX",
             "groupUuid": mg,
             "groupType": "QUESTION",
-            "payload": {"isRequired": False},
+            "payload": matrix_payload,
         },
     ]
     for ri, text in enumerate(rows):
-        payload = {
-            "index": ri,
-            "isFirst": ri == 0,
-            "isLast": ri == len(rows) - 1,
-            "isRequired": False,
-            "text": text,
-            "html": text,
-        }
-        if single:
-            payload["hasMaxChoices"] = True
-            payload["maxChoices"] = 1
         out.append(
             {
                 "uuid": u(),
                 "type": "MATRIX_ROW",
                 "groupUuid": mg,
                 "groupType": "MATRIX",
-                "payload": payload,
+                "payload": {
+                    "index": ri,
+                    "isFirst": ri == 0,
+                    "isLast": ri == len(rows) - 1,
+                    "isRequired": False,
+                    "text": text,
+                    "html": text,
+                },
             }
         )
     for ci, text in enumerate(cols):

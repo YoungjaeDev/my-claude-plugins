@@ -163,7 +163,8 @@ def _split_csv(v):
 def _resolve_image_url(ref):
     """Resolve an image reference to a public URL (Tally has no upload endpoint).
 
-    - Full http(s) URL -> used as-is.
+    - Full https:// URL -> used as-is. http:// is rejected (mixed content is
+      blocked on Tally's HTTPS-served forms).
     - `owner/repo[@ref]:path` shorthand -> a raw.githubusercontent.com URL (git
       ref defaults to `main`), so a public GitHub repo's assets/ can host form
       images with no extra infra.
@@ -171,8 +172,13 @@ def _resolve_image_url(ref):
     if not ref:
         return None
     ref = ref.strip()
-    if ref.startswith("http://") or ref.startswith("https://"):
+    if ref.startswith("https://"):
         return ref
+    if ref.startswith("http://"):
+        raise ValueError(
+            f"insecure image URL {ref!r} — use https:// "
+            "(http is blocked as mixed content on HTTPS forms)"
+        )
     m = re.match(r"^([^/\s]+)/([^/@:\s]+)(?:@([^:\s]+))?:(.+)$", ref)
     if m:
         owner, repo = m.group(1), m.group(2)
@@ -183,6 +189,12 @@ def _resolve_image_url(ref):
         f"unrecognized image reference {ref!r} "
         "(use a full https:// URL or owner/repo[@ref]:path)"
     )
+
+
+def _image_field(key, raw):
+    """url/link get inline-comment stripping (a `#` fragment survives — it is not
+    whitespace-separated); caption/name are free text kept verbatim."""
+    return _strip_inline_comment(raw) if key in ("url", "link") else raw.strip()
 
 
 def parse_md(path):
@@ -326,11 +338,13 @@ def parse_md(path):
             cfg = {}
             kv0 = re.match(r"^(url|caption|link|name)\s*:\s*(.*)$", rest, re.I)
             if rest and not kv0:
-                cfg["url"] = rest  # single-line bare ref/URL
+                cfg["url"] = _image_field("url", rest)  # single-line bare ref/URL
                 i += 1
             else:
                 if kv0:
-                    cfg[kv0.group(1).lower()] = kv0.group(2).strip()
+                    cfg[kv0.group(1).lower()] = _image_field(
+                        kv0.group(1).lower(), kv0.group(2)
+                    )
                 i += 1
                 while i < nlines:
                     ln = lines[i].strip()
@@ -340,7 +354,9 @@ def parse_md(path):
                     kv = re.match(r"^(url|caption|link|name)\s*:\s*(.*)$", ln, re.I)
                     if not kv:
                         break
-                    cfg[kv.group(1).lower()] = kv.group(2).strip()
+                    cfg[kv.group(1).lower()] = _image_field(
+                        kv.group(1).lower(), kv.group(2)
+                    )
                     i += 1
             if cfg.get("url"):
                 cur = _ensure_section(cur, sections)

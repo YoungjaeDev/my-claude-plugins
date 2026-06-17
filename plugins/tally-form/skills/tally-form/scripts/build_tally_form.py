@@ -33,6 +33,26 @@ import uuid
 DEFAULT_OPTIONS = ["네, 해주세요", "나중에", "설명 듣고 정할게요"]
 DEFAULT_THEME = "neutral"
 
+# Single-line short-answer directives (%%text/%%number/...) -> Tally INPUT_*
+# block. groupType == the block's own type (the live API is lenient — see
+# references/tally-blocks.md).
+INPUT_DIRECTIVE_TYPES = {
+    "text": "INPUT_TEXT",
+    "number": "INPUT_NUMBER",
+    "email": "INPUT_EMAIL",
+    "phone": "INPUT_PHONE_NUMBER",
+    "link": "INPUT_LINK",
+}
+
+# Checkbox (multi-select) option block. The OpenAPI lists both CHECKBOXES/
+# CHECKBOX and MULTI_SELECT/MULTI_SELECT_OPTION; CHECKBOX(ES) is the live-
+# verified pair for an all-options-visible multi-select (see references/
+# tally-blocks.md). Single-select reuses MULTIPLE_CHOICE_OPTION.
+CHECKBOX_OPTION_TYPE = "CHECKBOX"
+CHECKBOX_GROUP_TYPE = "CHECKBOXES"
+MC_OPTION_TYPE = "MULTIPLE_CHOICE_OPTION"
+MC_GROUP_TYPE = "MULTIPLE_CHOICE"
+
 # Neutral theme (generic): clean monochrome ink-on-white, no slop palette.
 NEUTRAL_STYLES = {
     "theme": "CUSTOM",
@@ -140,16 +160,23 @@ def _ensure_section(cur, sections):
 
 
 def _parse_dt_directive(rest):
-    """Parse the tail of a `%%date`/`%%time` directive into a config dict.
+    """Parse the tail of a single-line directive (`%%date`/`%%time` and the
+    short-answer `%%text`/`%%number`/`%%email`/`%%phone`/`%%link`) into a config
+    dict.
 
     Forms accepted (label is everything before any parenthetical option):
       label: 희망 상담일  (format: yyyy/MM/dd)
+      label: 이메일 (required) (placeholder: name@example.com)
       희망 시간
-    Recognized parentheticals map to real Tally payload fields only (`format`).
+    Recognized `(key: val)` parentheticals map to real Tally payload fields
+    (`format`/`placeholder`/`desc`); a bare `(required)` flag marks the field
+    required. Parsing is additive — date/time tails without these read unchanged.
     """
     cfg = {}
     for k, v in re.findall(r"\(\s*([A-Za-z]+)\s*:\s*([^)]*)\)", rest):
         cfg[k.lower()] = v.strip()
+    if re.search(r"\(\s*required\s*\)", rest, re.I):
+        cfg["required"] = True
     body = re.sub(r"\([^)]*\)", "", rest).strip()
     lm = re.match(r"^label\s*:\s*(.*)$", body, re.I)
     cfg["label"] = lm.group(1).strip() if lm else body
@@ -211,6 +238,11 @@ def parse_md(path):
       - [ ] item               -> multiple-choice question (globally numbered)
       ### Free section         -> HEADING_2; following `- label: ___` are TEXTAREA
       - label: ___             -> free-text (TEXTAREA) question (not numbered)
+      %%choice ... %%          -> single/multi-choice question with per-question
+                                  options (override global), required, desc
+      %%text/%%number/...      -> short-answer INPUT_* (text/number/email/phone/
+                                  link); tail `label:`, `(required)`,
+                                  `(placeholder: ...)`, `(desc: ...)`
       %%matrix ... %%          -> matrix/grid question (rows x cols, single/multi)
       %%date label: ...        -> INPUT_DATE question
       %%time label: ...        -> INPUT_TIME question
@@ -317,6 +349,52 @@ def parse_md(path):
             )
             continue
 
+        # choice directive block: %%choice ... %% (per-question options that
+        # override the global frontmatter options; select single/multi; required;
+        # optional desc helper line).
+        if s == "%%choice":
+            i += 1
+            ctitle, copts, cselect, crequired, cdesc = None, [], "single", False, None
+            while i < nlines and lines[i].strip() != "%%":
+                kv = re.match(
+                    r"^(title|label|options|select|required|desc)\s*:\s*(.*)$",
+                    lines[i].strip(),
+                    re.I,
+                )
+                if kv:
+                    k, v = kv.group(1).lower(), kv.group(2).strip()
+                    if k in ("title", "label"):
+                        ctitle = v
+                    elif k == "options":
+                        copts = _split_csv(v)
+                    elif k == "select":
+                        cselect = "multi" if v.lower().startswith("m") else "single"
+                    elif k == "required":
+                        crequired = _truthy(v, False)
+                    elif k == "desc":
+                        cdesc = v
+                i += 1
+            if i >= nlines:
+                print(
+                    "WARN: unclosed %%choice directive (missing closing %%)",
+                    file=sys.stderr,
+                )
+            i += 1  # skip the closing %%
+            cur = _ensure_section(cur, sections)
+            cur["items"].append(
+                (
+                    "choice",
+                    {
+                        "title": ctitle,
+                        "options": copts,
+                        "select": cselect,
+                        "required": crequired,
+                        "desc": cdesc,
+                    },
+                )
+            )
+            continue
+
         # single-line directives: %%date / %%time
         dm = re.match(r"^%%date\b\s*(.*)$", s, re.I)
         if dm:
@@ -328,6 +406,16 @@ def parse_md(path):
         if tm:
             cur = _ensure_section(cur, sections)
             cur["items"].append(("time", _parse_dt_directive(tm.group(1))))
+            i += 1
+            continue
+
+        # short-answer directives: %%text / %%number / %%email / %%phone / %%link
+        km = re.match(r"^%%(text|number|email|phone|link)\b\s*(.*)$", s, re.I)
+        if km:
+            cfg = _parse_dt_directive(km.group(2))
+            cfg["block_type"] = INPUT_DIRECTIVE_TYPES[km.group(1).lower()]
+            cur = _ensure_section(cur, sections)
+            cur["items"].append(("input", cfg))
             i += 1
             continue
 
@@ -454,7 +542,6 @@ def build_blocks(spec):
         )
 
     options = spec["options"]
-    n = len(options)
     qi = 1
     dividers = spec.get("dividers", True)
     headings_emitted = 0
@@ -496,22 +583,9 @@ def build_blocks(spec):
                         "payload": {"html": f"{qi}. {item}"},
                     }
                 )
-                for i, opt in enumerate(options):
-                    b.append(
-                        {
-                            "uuid": u(),
-                            "type": "MULTIPLE_CHOICE_OPTION",
-                            "groupUuid": og,
-                            "groupType": "MULTIPLE_CHOICE",
-                            "payload": {
-                                "text": opt,
-                                "index": i,
-                                "isFirst": i == 0,
-                                "isLast": i == n - 1,
-                                "isRequired": False,
-                            },
-                        }
-                    )
+                b.extend(
+                    _option_blocks(options, MC_OPTION_TYPE, MC_GROUP_TYPE, og, False)
+                )
                 qi += 1
             elif kind == "free":
                 tg = u()
@@ -537,6 +611,10 @@ def build_blocks(spec):
                         },
                     }
                 )
+            elif kind == "choice":
+                b.extend(_choice_blocks(item, sec["heading"]))
+            elif kind == "input":
+                b.extend(_input_blocks(item["block_type"], item, item.get("label")))
             elif kind == "matrix":
                 b.extend(_matrix_blocks(item, sec["heading"]))
             elif kind == "date":
@@ -546,6 +624,75 @@ def build_blocks(spec):
             elif kind == "image":
                 b.append(_image_block(item))
     return b
+
+
+def _option_blocks(options, opt_type, group_type, group_uuid, required):
+    """Emit the answer-option blocks for a choice question (single or multi).
+    Options share one groupUuid (Tally's child-grouping rule); `required` rides
+    on each option payload (the verified position — see references/tally-blocks.md)."""
+    n = len(options)
+    out = []
+    for i, opt in enumerate(options):
+        out.append(
+            {
+                "uuid": u(),
+                "type": opt_type,
+                "groupUuid": group_uuid,
+                "groupType": group_type,
+                "payload": {
+                    "text": opt,
+                    "index": i,
+                    "isFirst": i == 0,
+                    "isLast": i == n - 1,
+                    "isRequired": required,
+                },
+            }
+        )
+    return out
+
+
+def _desc_block(desc):
+    """A helper/sub-title TEXT block placed right under a question TITLE (the
+    per-question newline aid). groupType TEXT — no <br> dependency."""
+    g = u()
+    return {
+        "uuid": u(),
+        "type": "TEXT",
+        "groupUuid": g,
+        "groupType": "TEXT",
+        "payload": {"html": desc},
+    }
+
+
+def _choice_blocks(cfg, fallback_label):
+    """A single/multi-choice question: TITLE(QUESTION) + optional desc TEXT + N
+    answer options. Options come from the directive (per-question), overriding
+    the global frontmatter options. select=multi -> checkbox option blocks;
+    single -> MULTIPLE_CHOICE_OPTION. required rides on the option payloads."""
+    title = cfg.get("title") or fallback_label or "선택"
+    options = cfg.get("options") or []
+    required = bool(cfg.get("required"))
+    multi = cfg.get("select") == "multi"
+    tg = u()
+    og = u()
+    out = [
+        {
+            "uuid": u(),
+            "type": "TITLE",
+            "groupUuid": tg,
+            "groupType": "QUESTION",
+            "payload": {"html": title},
+        }
+    ]
+    if cfg.get("desc"):
+        out.append(_desc_block(cfg["desc"]))
+    opt_type, group_type = (
+        (CHECKBOX_OPTION_TYPE, CHECKBOX_GROUP_TYPE)
+        if multi
+        else (MC_OPTION_TYPE, MC_GROUP_TYPE)
+    )
+    out.extend(_option_blocks(options, opt_type, group_type, og, required))
+    return out
 
 
 def _matrix_blocks(cfg, fallback_label):
@@ -617,30 +764,39 @@ def _matrix_blocks(cfg, fallback_label):
 
 
 def _input_blocks(block_type, cfg, fallback_label):
-    """A labelled single-input question: TITLE(QUESTION) + INPUT_* block.
-    Mirrors the verified TEXTAREA pattern (groupType == block type)."""
+    """A labelled single-input question: TITLE(QUESTION) + optional desc TEXT +
+    INPUT_* block. Mirrors the verified TEXTAREA pattern (groupType == block
+    type). placeholder/required/desc come from the directive; required defaults
+    off, so date/time tails without `(required)` build unchanged."""
     label = cfg.get("label") or fallback_label
     tg = u()
     ig = u()
-    payload = {"isRequired": False}
+    payload = {"isRequired": bool(cfg.get("required"))}
+    if cfg.get("placeholder"):
+        payload["placeholder"] = cfg["placeholder"]
     if block_type == "INPUT_DATE" and cfg.get("format"):
         payload["format"] = cfg["format"]
-    return [
+    out = [
         {
             "uuid": u(),
             "type": "TITLE",
             "groupUuid": tg,
             "groupType": "QUESTION",
             "payload": {"html": label},
-        },
+        }
+    ]
+    if cfg.get("desc"):
+        out.append(_desc_block(cfg["desc"]))
+    out.append(
         {
             "uuid": u(),
             "type": block_type,
             "groupUuid": ig,
             "groupType": block_type,
             "payload": payload,
-        },
-    ]
+        }
+    )
+    return out
 
 
 def _image_block(cfg):
@@ -828,12 +984,22 @@ def main():
         for k, it in items
         if k == "matrix"
     )
+    # choice: TITLE + (desc?1:0) + N options ; input: TITLE + input + (desc?1:0)
+    n_choice_blocks = sum(
+        1 + (1 if it.get("desc") else 0) + len(it.get("options") or [])
+        for k, it in items
+        if k == "choice"
+    )
+    n_input_blocks = sum(
+        2 + (1 if it.get("desc") else 0) for k, it in items if k == "input"
+    )
     print(
         f"built payload: {len(blocks)} blocks "
         f"(title=1, intro={n_intro}, headings={n_headings}, dividers={n_dividers}, "
         f"choices={n_mc}x{1 + len(spec['options'])}, textareas={n_free}x2, "
         f"date={n_date}x2, time={n_time}x2, image={n_image}, "
-        f"matrix_blocks={n_matrix_blocks})"
+        f"matrix_blocks={n_matrix_blocks}, choice_blocks={n_choice_blocks}, "
+        f"input_blocks={n_input_blocks})"
     )
 
     out = args.out or (os.path.splitext(in_path)[0] + "_tally_payload.json")

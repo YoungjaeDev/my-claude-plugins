@@ -1,6 +1,6 @@
 ---
 name: tally-form
-description: "Build a Tally questionnaire/survey form from a checklist markdown — parse the md, run a copy-voice + humanize pass, build blocks with theme presets, section dividers, paragraph-split intros, native scheduling (matrix grid, date, time), and form images (logo/cover/inline, URL-hosted) plus redirect-on-completion, then create or idempotently publish via the Tally API and return the share URL. Reusable per project or client. Use when the user wants to '설문 폼 만들어', 'Tally 폼 만들어', 'questionnaire', '체크리스트를 폼으로', '상담 신청 폼', '일정 조율 설문', '폼에 로고/이미지', 'dev survey form', or 'lecture consultation form'."
+description: "Build a Tally questionnaire/survey form from a checklist markdown — parse the md, run a copy-voice + humanize pass, build blocks with theme presets, section dividers, paragraph-split intros, per-question choices with required + checkbox (multi-select), short-answer inputs (text/number/email/phone/link), native scheduling (matrix grid, date, time), and form images (logo/cover/inline, URL-hosted) plus redirect-on-completion, then create or idempotently publish via the Tally API and return the share URL. Reusable per project or client. Use when the user wants to '설문 폼 만들어', 'Tally 폼 만들어', 'questionnaire', '체크리스트를 폼으로', '상담 신청 폼', '일정 조율 설문', '폼에 로고/이미지', '필수/복수선택/단답 문항', 'dev survey form', or 'lecture consultation form'."
 argument-hint: "--md <checklist.md> [--update <formId>] [--theme neutral|hermes|none|<styles.json>] [--no-dividers] [--no-humanize]"
 allowed-tools: Bash(uv run *) Bash(curl *) Read AskUserQuestion
 ---
@@ -9,11 +9,11 @@ allowed-tools: Bash(uv run *) Bash(curl *) Read AskUserQuestion
 
 체크리스트 markdown 을 Tally 설문 폼으로 빌드해 생성/게시하고 공유 URL 을 돌려준다. 개발 인테이크·강의 상담 등 매 프로젝트/클라이언트마다 재사용. 결정적·무의존성(stdlib-only urllib)·idempotent 빌더다.
 
-- 검증된 블록·테마·게시 규칙 + Matrix/DIVIDER/INPUT_DATE/INPUT_TIME 스키마: `references/tally-blocks.md`
+- 검증된 블록·테마·게시 규칙 + Matrix/DIVIDER/INPUT_*/CHECKBOX·문항별보기/필수/단답 스키마: `references/tally-blocks.md`
 - 제네릭 카피 톤: `references/form-copy-style.md`
 - 도메인 보이스 프리셋: `references/preset-dev-survey.md`, `references/preset-lecture-consultation.md`
 - 템플릿 레퍼런스 인덱스: `references/tally-templates.md`
-- 바로 빌드 가능한 예시 md: `assets/example-{dev-survey,lecture-consultation,matrix-schedule}.md`
+- 바로 빌드 가능한 예시 md: `assets/example-{dev-survey,lecture-consultation,matrix-schedule,with-images,intake}.md`
 
 ## 워크플로우
 
@@ -49,12 +49,36 @@ uv run ~/.agents/skills/tally-form/scripts/build_tally_form.py --md <checklist.m
 
 - **테마 프리셋** — `neutral`(기본, 클린 모노크롬) / `hermes`(웜 오프화이트 브랜드). 커스텀은 `<styles.json>`.
 - **도메인 프리셋** — 새 폼의 보이스·기본 옵션·섹션 골격: `preset-dev-survey.md`(개발/프로젝트 인테이크), `preset-lecture-consultation.md`(강의/코칭 상담). 프리셋만으론 빌드 불가(이 스킬은 입력 md 기반) — `assets/example-*.md` 를 시작점으로 편집한다.
-- 모든 `## ` 객관식 문항은 frontmatter `options` 하나를 공유한다. 다른 척도가 필요한 문항은 서술(`### ` + `- 라벨: ___`)이나 매트릭스로 둔다.
+- `## ` 객관식 문항은 frontmatter `options` 하나를 공유한다. **문항마다 다른 보기·필수·복수선택**이 필요하면 `%%choice` directive 로 override(아래 "문항별 보기 · 필수 · 복수선택 · 단답"). 단답은 `%%text`/`%%email` 등, 자유 서술은 `### ` + `- 라벨: ___`, 매트릭스/날짜/시간은 일정 조율 참조.
 
 ## 가독성
 
 - **문단 분리** — 인트로(제목 직후 첫 blockquote run)는 빈 `>` 줄로 문단을 나누면 문단당 별도 TEXT 블록으로 렌더. `<br>` 비의존.
 - **섹션 구분선** — `## 섹션` 사이에 DIVIDER 블록 자동 삽입(기본 on, 첫 섹션 앞에는 없음). frontmatter `dividers: false` 또는 `--no-dividers` 로 끔.
+
+## 문항별 보기 · 필수 · 복수선택 · 단답 (%%choice / 단답 directive)
+
+전역 `options` 공유 객관식(`## `+`- [ ]`)과 별개로, 문항마다 다른 보기/필수/복수선택/단답을 directive 로 둔다(전역 경로 비파괴). 상세·실측 근거는 `references/tally-blocks.md`.
+
+```markdown
+%%choice
+title: 관심 분야 (복수 선택)
+options: 브랜딩, 웹사이트, 마케팅, 기타   # 이 문항 전용 보기 (전역 options override)
+select: multi             # single → 단일선택(기본) | multi → 체크박스
+required: true            # 기본 false
+desc: 해당 항목 모두 선택   # (선택) 제목 아래 보조 줄(문항 개행)
+%%
+
+%%text  label: 이름 (required) (placeholder: 홍길동)
+%%email label: 이메일 (required)
+%%phone label: 연락처 (desc: 010-0000-0000 형식)
+%%number label: 인원수
+%%link  label: 포트폴리오 URL
+```
+
+- `%%choice` → 문항별 보기 객관식. `select:multi` = 체크박스(복수), `required:true` = 필수, `desc:` = 제목 직후 보조 줄.
+- 단답 `%%text`/`%%number`/`%%email`/`%%phone`/`%%link` → `INPUT_*` 한 줄 입력. tail 은 `label:` + bare `(required)` + `(placeholder: …)` + `(desc: …)`(`%%date`/`%%time` 와 동형).
+- directive 문항은 자동 번호 미부여(제목 그대로). 전역 `- [ ]` 만 `{n}.` 번호.
 
 ## 일정 조율 (matrix / date / time)
 
@@ -139,6 +163,7 @@ redirect: https://example.com/thanks     # (선택) 제출 후 리다이렉트
 ### 자유 의견             → HEADING_2 (이하 - 라벨: ___ 은 서술)
 - 라벨: ___               → 서술(TEXTAREA) 문항 (번호 없음)
 
+%%choice / %%text / %%number / %%email / %%phone / %%link → 위 "문항별 보기 · 필수 · 복수선택 · 단답" 참조
 %%matrix / %%date / %%time → 위 "일정 조율" 참조
 ```
 

@@ -27,6 +27,19 @@ options:
 4. **일정·예산** (`### ` 자유 입력) — 목표 일정, 예산 범위.
 5. **추가 메모** (`### ` 자유 입력).
 
+## 문항별 보기 · 단답 (선택)
+
+전역 옵션과 다른 보기나 단답이 필요한 문항은 directive 로(상세 `references/tally-blocks.md`):
+
+```markdown
+%%choice
+title: 사용 중인/희망 기술 스택 (복수 선택)
+options: React, Vue, Next.js, Node, Python, 기타
+select: multi
+%%
+%%email label: 연락받을 이메일 (required)
+```
+
 ## 카피 규칙
 
 `form-copy-style.md` 공통 규칙 적용 + 개발 도메인:

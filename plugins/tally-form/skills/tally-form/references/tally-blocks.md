@@ -25,8 +25,11 @@
 | 구분선 | `DIVIDER` | `DIVIDER` | `payload {}`, 섹션 사이 시각 분리 |
 | 섹션 제목 | `HEADING_2` | `HEADING_2` | `payload.html` |
 | 문항 제목 | `TITLE` | `QUESTION` | 모든 문항 공통, 자기 `groupUuid` |
-| 객관식 옵션 | `MULTIPLE_CHOICE_OPTION` | `MULTIPLE_CHOICE` | 옵션들이 한 `groupUuid` 공유 |
+| 문항 보조줄(desc) | `TEXT` | `TEXT` | 제목 직후 배치, `payload.html` (문항 개행/도움말) |
+| 객관식 옵션(단일) | `MULTIPLE_CHOICE_OPTION` | `MULTIPLE_CHOICE` | 옵션들이 한 `groupUuid` 공유 |
+| 복수선택 옵션 | `CHECKBOX` | `CHECKBOXES` | 체크박스(여러 개 선택), 한 `groupUuid` 공유 (실측) |
 | 서술 입력 | `TEXTAREA` | `TEXTAREA` | 자기 `groupUuid` |
+| 단답 입력 | `INPUT_TEXT`·`INPUT_NUMBER`·`INPUT_EMAIL`·`INPUT_PHONE_NUMBER`·`INPUT_LINK` | =`type` | 자기 `groupUuid`, `payload {isRequired, placeholder?}` |
 | 날짜 입력 | `INPUT_DATE` | `INPUT_DATE` | 자기 `groupUuid` |
 | 시간 입력 | `INPUT_TIME` | `INPUT_TIME` | 자기 `groupUuid` |
 | 매트릭스(그리드) | `MATRIX` | `QUESTION` | 행·열의 부모 컨테이너 |
@@ -41,6 +44,45 @@
 ### groupType 규약 주의 (실측 vs OpenAPI)
 
 Tally OpenAPI 스키마는 입력 계열 블록(`TEXTAREA`/`INPUT_*`)의 `groupType` 을 일괄 `QUESTION` 으로 적지만, **실측·공식 예제는 `groupType == type`(예: `INPUT_EMAIL`→`INPUT_EMAIL`) 로 동작**한다. 이 빌더는 검증된 `groupType == type` 규약을 따른다(`TEXTAREA`/`INPUT_DATE`/`INPUT_TIME`). `MATRIX` 컨테이너만 예외로 `groupType == QUESTION`(`MatrixPayload` 에 라벨 필드가 없어 컨테이너로 분류됨). 라이브 생성으로 `FORM_TITLE`→`TEXT`, `INPUT_DATE`/`INPUT_TIME`→자기 type, `MATRIX`→`QUESTION` 모두 `status:PUBLISHED, hasDraftBlocks:false` 로 확인됨.
+
+## 문항별 보기 · 필수 · 복수선택 · 단답 (%%choice / 단답 directive)
+
+전역 `options` 1세트를 공유하는 `## `+`- [ ]` 객관식과 별개로, 문항마다 다른 보기·필수·복수선택·단답을 directive 로 둔다(전역 경로는 비파괴 유지).
+
+### `%%choice … %%` — 문항별 객관식/복수선택
+
+```markdown
+%%choice
+title: 관심 분야 (복수 선택)
+options: 브랜딩, 웹사이트, 마케팅, 기타   # CSV, 이 문항 전용 보기 (전역 options override)
+select: multi             # single → MULTIPLE_CHOICE(기본) | multi → CHECKBOX
+required: true            # 기본 false
+desc: 해당 항목 모두 선택   # (선택) 제목 아래 보조 줄(TEXT) = 문항 개행
+%%
+```
+
+- 블록: `TITLE`(QUESTION) + (`desc` 있으면 `TEXT` 1) + 보기 N개. `select:single` → `MULTIPLE_CHOICE_OPTION`/`MULTIPLE_CHOICE`, `select:multi` → `CHECKBOX`/`CHECKBOXES`.
+- directive 문항은 matrix/date/time 처럼 **자동 번호 미부여**(제목 그대로). 전역 `## `+`- [ ]` 만 `{n}.` 번호 유지.
+
+### 단답 directive — `%%text`/`%%number`/`%%email`/`%%phone`/`%%link`
+
+```markdown
+%%text  label: 이름 (required) (placeholder: 홍길동)
+%%email label: 이메일 (required)
+%%phone label: 연락처 (desc: 010-0000-0000 형식)
+%%number label: 인원수
+%%link  label: 포트폴리오 URL
+```
+
+- 키워드→block_type: `text→INPUT_TEXT, number→INPUT_NUMBER, email→INPUT_EMAIL, phone→INPUT_PHONE_NUMBER, link→INPUT_LINK`.
+- 블록: `TITLE`(QUESTION) + (`desc` 있으면 `TEXT` 1) + 입력 1. tail 문법은 `%%date`/`%%time` 와 동형 — `label:` + bare `(required)` + `(placeholder: …)` + `(desc: …)`.
+
+### required / desc 위치 (실측 확정)
+
+- **required** 는 **답변 블록 payload** 에 실린다 — `%%choice` 는 각 옵션(`MULTIPLE_CHOICE_OPTION`/`CHECKBOX`) `payload.isRequired`, 단답은 입력 블록 `payload.isRequired`. 기존 MC/matrix 패턴과 동일 위치(라이브에서 `isRequired:true` persist 확인).
+- **desc** 는 `TEXT`(groupType TEXT) 블록으로 **제목 직후·답변 직전** 에 둔다. `payload.html` 로 보내면 Tally 가 `safeHTMLSchema` 로 저장(round-trip) — `<br>` 비의존.
+
+> 실측 2026-06-17: `%%choice`(single+multi/CHECKBOX, required, desc) + 단답 5종(text/number/email/phone/link, required/placeholder/desc) + 전역 `- [ ]` 1섹션을 한 폼에 POST → 32블록 `status:PUBLISHED, hasDraftBlocks:false`; GET 으로 CHECKBOX/CHECKBOXES·option/input `isRequired:true`·desc TEXT(safeHTMLSchema) round-trip 확인 후 폼 DELETE.
 
 ## 매트릭스 (일정 조율 그리드)
 
@@ -112,6 +154,8 @@ total = 1(제목)
       + 시간 항목 수 × 2
       + 이미지(%%image) 항목 수
       + Σ 매트릭스 (2 + 행 수 + 열 수)
+      + Σ %%choice (1 + (desc?1:0) + 옵션 수)
+      + Σ 단답 directive (1 + 1 + (desc?1:0))
 ```
 
 `logo`/`cover`(FORM_TITLE payload)와 `redirect`(settings)는 블록을 추가하지 않는다.

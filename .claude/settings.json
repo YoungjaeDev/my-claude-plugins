@@ -20,7 +20,8 @@
       "./plugins/spec-state",
       "./plugins/project-init",
       "./plugins/paper-search-tools",
-      "./plugins/docs-forge"
+      "./plugins/docs-forge",
+      "./plugins/anti-slop-design"
     ]
   }
 }

@@ -8,6 +8,10 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 <!-- New entries go directly under this line -->
 
+## 2026-06-17 — post-merge #65: tally-form v1.1.0 images/redirect — wiki update (post-merge)
+
+- tally-form-ops/tally-api-schema-vs-live.md: consolidated the v2 image/redirect findings into the existing no-media-upload bullet — image URLs must be **https** (http blocked as mixed content on HTTPS forms), and live-confirmed that `logo` (png) + `cover` (animated gif) + inline `IMAGE` + `redirectOnCompletion` publish clean (form `QKEZog`). Extended Evidence + Sources with that form. No new section/page (consolidate-not-append); sources stays 3, last_verified 2026-06-17.
+
 ## 2026-06-17 — post-merge #64: tally-form plugin + Tally API schema-vs-live lore (post-merge)
 
 - tally-form-ops/tally-api-schema-vs-live.md: new page + new domain (id `tally-api-schema-vs-live`, status active, volatility volatile, sources 3). Tally OpenAPI diverges from the live `/forms` contract — `groupType` lenient (input blocks accept own type, FORM_TITLE accepts TEXT; two Codex P1s false-positive), matrix single-select `maxChoices` belongs on the `MATRIX` container not `MATRIX_ROW` (live 400 on rows despite the schema listing it), no media-upload endpoint (logo/cover/IMAGE need hosted URLs — public-repo `assets/` + raw link is a host), no create-API thank-you-message field (redirect/email only, email = Pro), API + theme colors + matrix/date/time all free. Field-level specifics stay in the plugin's `references/tally-blocks.md` (not duplicated). last_verified 2026-06-17.

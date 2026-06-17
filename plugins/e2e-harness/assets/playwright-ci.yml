@@ -4,8 +4,11 @@
 #
 # Gating (avoid running the full suite on every push):
 #   - `paths:` filter — only PRs that touch app/test code trigger this workflow.
-#   - `labeled` trigger + job `if` — adding the `e2e` label force-runs it even
-#     when no gated path changed. Remove either mechanism if you want only one.
+#     NOTE: GitHub's native `paths:` filter is NOT compatible with the `labeled`
+#     event — a label-only PR (no path change) would never trigger. So label-based
+#     force-run is intentionally NOT combined with `paths:` here. If you want an
+#     `e2e`-label override that runs even when no gated path changed, drop `paths:`
+#     and detect changes at the job level with `dorny/paths-filter` instead.
 #
 # Action pins below are a recent, coherent set. Playwright's own docs currently
 # disagree across pages (checkout@v5, setup-node@v5/@v6, upload-artifact@v4/@v5).
@@ -13,9 +16,15 @@
 
 name: E2E
 
+# `gh pr comment` (failure step) posts an issue comment — needs `issues: write`.
+# `contents: read` is for checkout.
+permissions:
+  contents: read
+  issues: write
+
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened]
     paths:
       # <-- Adjust to your app/test code. Keep narrow so unrelated PRs skip E2E.
       - "src/**"
@@ -33,12 +42,8 @@ concurrency:
 
 jobs:
   e2e:
-    # Run when a gated path changed (the `paths:` filter already ensures this for
-    # non-label events) OR when the PR carries the `e2e` label.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.action != 'labeled' ||
-      contains(github.event.pull_request.labels.*.name, 'e2e')
+    # Gating is handled by the trigger above (`paths:` for PRs + manual dispatch),
+    # so no job-level `if:` is needed.
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:

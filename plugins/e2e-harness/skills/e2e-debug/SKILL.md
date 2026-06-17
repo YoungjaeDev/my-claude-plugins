@@ -14,6 +14,7 @@ The third leg of the harness. A CI failure is a sensor reading; this skill turns
 
 - Confirm the healer exists: `.claude/agents/playwright-test-healer.md`. If missing, route to `e2e-harness:e2e-setup`.
 - Need `gh` CLI authenticated to fetch CI artifacts.
+- **Requires Playwright >= 1.59** for the headless `npx playwright trace` CLI used in Step 2 (`npx playwright --version` to check). On older versions there is no headless trace CLI — fall back to the GUI viewer `npx playwright show-trace <trace.zip>`.
 
 ## Workflow
 

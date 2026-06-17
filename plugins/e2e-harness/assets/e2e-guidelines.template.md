@@ -63,6 +63,6 @@ E2E must be deterministic. Decide per-flow whether to hit real backends or mock.
 
 ## 7. CI gating
 
-- E2E runs on: `<PRs touching app code (path filter) OR PRs labeled `e2e`>` — not every push.
+- E2E runs on: `<PRs touching app code (path filter) OR PRs labeled "e2e">` — not every push.
 - Artifacts on failure: `<playwright-report/ + trace.zip uploaded>`.
 - Failure surfaces as: `<a PR comment with the report/trace link>`.

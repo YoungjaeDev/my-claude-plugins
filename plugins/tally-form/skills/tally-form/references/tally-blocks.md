@@ -88,11 +88,11 @@ Tally OpenAPI 스키마는 입력 계열 블록(`TEXTAREA`/`INPUT_*`)의 `groupT
 
 ## 블록 카운트 (파싱 검증용)
 
-```
+```text
 total = 1(제목)
       + 인트로 문단 수
       + ## 섹션 수
-      + max(0, 섹션 수 - 1)            # dividers on 일 때 섹션 사이 구분선
+      + max(0, heading 있는 섹션 수 - 1)  # dividers on 일 때 섹션 사이 구분선
       + 객관식 항목 수 × (1 + 옵션 수)
       + 서술 항목 수 × 2
       + 날짜 항목 수 × 2

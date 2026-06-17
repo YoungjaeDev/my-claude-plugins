@@ -101,7 +101,7 @@ def _parse_frontmatter(text):
             continue
         kv = re.match(r"^([A-Za-z0-9_]+)\s*:\s*(.*)$", line)
         if kv:
-            key, val = kv.group(1), kv.group(2).strip()
+            key, val = kv.group(1), _strip_inline_comment(kv.group(2))
             if val == "":
                 fm[key] = []  # opening a block list
                 cur_key = key
@@ -115,6 +115,20 @@ def _strip_quotes(s):
     if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
         return s[1:-1]
     return s
+
+
+def _strip_inline_comment(val):
+    """Drop a YAML-style inline `#` comment from a frontmatter scalar.
+
+    A `#` only opens a comment when it starts the value or follows whitespace
+    (matching YAML), so a quoted value or a `value#literal` token is preserved.
+    Without this, `theme: neutral # note` would yield `neutral # note` and be
+    read as a (missing) styles-file path."""
+    val = val.strip()
+    if val and val[0] in "\"'":
+        end = val.find(val[0], 1)
+        return val[: end + 1].strip() if end != -1 else val
+    return re.sub(r"(^|\s)#.*$", "", val).strip()
 
 
 def _ensure_section(cur, sections):
@@ -241,6 +255,11 @@ def parse_md(path):
                     elif k in ("label", "title"):
                         label = v
                 i += 1
+            if i >= nlines:
+                print(
+                    "WARN: unclosed %%matrix directive (missing closing %%)",
+                    file=sys.stderr,
+                )
             i += 1  # skip the closing %%
             cur = _ensure_section(cur, sections)
             cur["items"].append(

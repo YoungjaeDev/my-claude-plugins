@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -63,6 +63,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 |---------|---------|------|
 | **Core** | `core-config` | Python 포매팅, 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh`, Claude+Codex 공유, `.llmwiki/insight/` 포인터) (work guidelines 는 `~/.claude/CLAUDE.md`) |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
+| **Testing** | `e2e-harness` | Playwright E2E 테스트 하네스 엔지니어링 — 공식 planner/generator/healer AI 에이전트 래핑 (`npx playwright init-agents --loop=claude`). e2e-setup(하네스 온보딩 + 인증 분리 + route 모킹 + CI 트레이스 아티팩트/PR 코멘트/게이팅), e2e-author(planner→generator + `--repeat-each` 번인 플래키 게이트), e2e-debug(헤드리스 trace 분석 + healer 자가수리 루프). Playwright 부재 시 graceful degrade |
 | **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음) |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
@@ -74,6 +75,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
 | | `notion` | Markdown을 Notion으로 업로드 |
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
+| | `tally-form` | 체크리스트 md → Tally 설문/상담 폼 빌드·게시 (테마 프리셋, 구분선, 문항별 보기·필수·복수선택·단답, matrix/date/time 일정 조율, 이미지·redirect, idempotent) |
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
@@ -82,6 +84,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
+| **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
 
 ## 설치 옵션
 
@@ -148,6 +151,25 @@ Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavior
 **Flags:** `--skip-review`, `--strict`
 
 **Requirements:** `gh` CLI
+
+</details>
+
+### Testing
+
+<details>
+<summary><strong>e2e-harness</strong> - Playwright E2E 테스트 하네스 엔지니어링</summary>
+
+Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑해 **planner → generator → healer 자가개선 루프**를 구성합니다. 테스트 코드는 실행하면 센서, 읽으면 명세 — 에이전트의 자기검증 수단.
+
+| 스킬 | 설명 |
+|------|------|
+| `/e2e-harness:e2e-setup` | 풀 하네스 온보딩 — `npx playwright init-agents --loop=claude` 로 planner/generator/healer 생성, 인증 분리(`auth.setup.ts` + `storageState` + setup-project 의존), `page.route` 모킹 스캐폴드(Next.js BFF/SSR 인지), E2E 운영 SSOT 문서, GitHub Actions CI(트레이스/리포트 아티팩트 업로드 + 실패 시 PR 코멘트 + path/label 게이팅). 기존 `playwright.config` 는 덮어쓰지 않고 머지 제안 + 백업 |
+| `/e2e-harness:e2e-author` | CUF(critical user flow) 선정 → planner 계획서 → **사용자 검토 게이트** → generator 스펙 생성(semantic `getByRole` 강제) → `--repeat-each` 번인으로 플래키 차단 |
+| `/e2e-harness:e2e-debug` | 실패한 CI run/PR 입력 → 트레이스 아티팩트 다운로드 → 헤드리스 trace 분석 → healer 원인 분석·수리(최대 3회 후 skip + 사유 코멘트) → 재실행 검증 |
+
+**Requirements:** Node.js + Playwright (`npm init playwright@latest`), `gh` CLI (e2e-debug 의 CI 트레이스 fetch)
+
+**Loose coupling:** Playwright 미설치 시 graceful degrade. `github-dev` 의 resolve-issue/commit-and-push 는 이 플러그인 없이도 E2E 를 옵트인 감지만 함 (상호 부재에 안전)
 
 </details>
 
@@ -351,6 +373,25 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 
 </details>
 
+<details>
+<summary><strong>tally-form</strong> - 체크리스트 md → Tally 폼</summary>
+
+체크리스트 markdown 을 Tally 설문/상담 폼으로 빌드해 생성·게시. 결정적·무의존성(stdlib urllib) idempotent 빌더.
+
+**Features:**
+- 테마 프리셋 (neutral 기본 / hermes) + 섹션 구분선 + 문단 분리 인트로
+- 문항별 보기 객관식 (필수 / 복수선택 체크박스) + 단답 입력 (text/number/email/phone/link)
+- 네이티브 일정 조율 (matrix 그리드 / date / time)
+- 폼 이미지 (logo/cover/본문 IMAGE, URL 호스팅 + GitHub raw 숏핸드) + 제출 후 redirect
+- humanize-korean 카피 윤문 라우팅 (미설치 시 graceful degrade)
+- dev-survey / lecture-consultation 프리셋 + 빌드 가능한 예시 fixture 번들
+
+**Triggers:** "설문 폼 만들어", "Tally 폼 만들어", "상담 신청 폼", "일정 조율 설문"
+
+**Requirements:** `TALLY_API_KEY` (없으면 payload-only)
+
+</details>
+
 ### Memory & Lore
 
 <details>
@@ -536,6 +577,25 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 
 </details>
 
+### Design
+
+<details>
+<summary><strong>anti-slop-design</strong> - anti-AI-slop 디자인 가드</summary>
+
+웹/SaaS 랜딩, 발표 덱(PPT), 대시보드/admin UI, 마케팅·UI 카피의 "AI가 만든 티(slop)"를 생성 전 차단하고 생성 후 감사합니다. 핵심 명제: slop = 브리프와 무관한 default-not-choice.
+
+**Flow:** clarify → context → plan → run → audit → revise
+
+**Audit gate (2단계):**
+- Phase A — 생성 전 self-similarity probe + 6축 self-critique (Philosophy/Hierarchy/Specificity/Restraint/Variety/Honesty)
+- Phase B — 납품 전 12항목 binary 체크리스트 + numeric floor sweep
+
+**카피:** 영문 탐지·스코어링은 자체, 한국어 재작성은 `humanize-korean` 위임.
+
+**근거:** 6개 OSS anti-slop repo (impeccable 44-rule / hallmark 58-gate / frontend-design / huashu / stop-slop / frontend-slides) source-grounded 합성.
+
+</details>
+
 ## Configuration
 
 ### settings.json
@@ -584,7 +644,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 18 / 21 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 21 / 24 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -635,6 +695,7 @@ git config core.hooksPath .githooks
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
+│   ├── anti-slop-design/      # anti-AI-slop 디자인 가드 (web/ppt/dashboard/copy)
 │   └── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 ├── CLAUDE.md
 └── README.md

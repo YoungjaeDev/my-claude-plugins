@@ -1,0 +1,185 @@
+---
+name: tally-form
+description: "Build a Tally questionnaire/survey form from a checklist markdown — parse the md, run a copy-voice + humanize pass, build blocks with theme presets, section dividers, paragraph-split intros, per-question choices with required + checkbox (multi-select), short-answer inputs (text/number/email/phone/link), native scheduling (matrix grid, date, time), and form images (logo/cover/inline, URL-hosted) plus redirect-on-completion, then create or idempotently publish via the Tally API and return the share URL. Reusable per project or client. Use when the user wants to '설문 폼 만들어', 'Tally 폼 만들어', 'questionnaire', '체크리스트를 폼으로', '상담 신청 폼', '일정 조율 설문', '폼에 로고/이미지', '필수/복수선택/단답 문항', 'dev survey form', or 'lecture consultation form'."
+argument-hint: "--md <checklist.md> [--update <formId>] [--theme neutral|hermes|none|<styles.json>] [--no-dividers] [--no-humanize]"
+allowed-tools: Bash(uv run *) Bash(curl *) Read AskUserQuestion
+---
+
+# Tally Form
+
+체크리스트 markdown 을 Tally 설문 폼으로 빌드해 생성/게시하고 공유 URL 을 돌려준다. 개발 인테이크·강의 상담 등 매 프로젝트/클라이언트마다 재사용. 결정적·무의존성(stdlib-only urllib)·idempotent 빌더다.
+
+- 검증된 블록·테마·게시 규칙 + Matrix/DIVIDER/INPUT_*/CHECKBOX·문항별보기/필수/단답 스키마: `references/tally-blocks.md`
+- 제네릭 카피 톤: `references/form-copy-style.md`
+- 도메인 보이스 프리셋: `references/preset-dev-survey.md`, `references/preset-lecture-consultation.md`
+- 템플릿 레퍼런스 인덱스: `references/tally-templates.md`
+- 바로 빌드 가능한 예시 md: `assets/example-{dev-survey,lecture-consultation,matrix-schedule,with-images,intake}.md`
+
+## 워크플로우
+
+1. **입력 확인** — `--md <checklist.md>`(기본) 또는 `--json <spec.json>`. 기존 폼 갱신이면 `--update <formId>` 또는 frontmatter `form_id`. 새 폼이면 도메인에 맞는 프리셋(`preset-*.md`)으로 보이스·옵션·섹션 골격을 잡고, 필요하면 `assets/example-*.md` 를 복사·편집해 시작한다.
+2. **카피 보이스 + humanize 패스** (md 작성·수정 시) — `references/form-copy-style.md` 적용 후, 기본적으로 한글 카피를 `/humanize-korean:humanize-korean`(fast)에 윤문 위임. 상세 라우팅은 아래 "humanize 기본 라우팅".
+3. **빌드 + 미리보기** — `--dry-run` 으로 블록 수 먼저 확인(파싱 검증). 출력 `built payload: N blocks (...)` 의 분해 항목 합 = N 이어야 한다(`references/tally-blocks.md` 카운트 공식과 일치).
+4. **생성/게시** — 키가 있으면 `--update` 없을 때 POST 생성, 있으면 PATCH 게시(공유 URL 유지).
+5. **결과 반환** — EDIT/SHARE URL 출력. 게시 후 `GET /forms/{id}` 로 `status=PUBLISHED`·`hasDraftBlocks=false` 확인 권장.
+
+## 실행
+
+`uv run <abs>/scripts/build_tally_form.py` — `<abs>` 는 Claude Code 에서 `plugins/tally-form/skills/tally-form`(repo 루트 기준), Codex 에서 `~/.agents/skills/tally-form`(sync 후). 절대 경로로 cwd 의존 회피. stdlib-only 라 `uv run` 이 에페메랄 환경으로 그대로 실행(별도 `python` 호출 불필요).
+
+```bash
+# 미리보기 (API 호출 없음 — 블록 수 검증)
+uv run plugins/tally-form/skills/tally-form/scripts/build_tally_form.py --md <checklist.md> --dry-run
+
+# 신규 생성
+uv run plugins/tally-form/skills/tally-form/scripts/build_tally_form.py --md <checklist.md>
+
+# 기존 폼 갱신·게시 (공유 URL 유지, idempotent)
+uv run plugins/tally-form/skills/tally-form/scripts/build_tally_form.py --md <checklist.md> --update <formId>
+
+# Codex (sync 후)
+uv run ~/.agents/skills/tally-form/scripts/build_tally_form.py --md <checklist.md> --dry-run
+```
+
+- `--theme neutral`(기본) | `hermes` | `none`(Tally 기본 테마) | `<styles.json>`(커스텀 `settings.styles`).
+- `--dividers`/`--no-dividers` — 섹션 사이 구분선(기본 on). `--no-humanize` — humanize 패스 skip(아래 참조).
+- `--out <path>` — payload 사이드카 위치(기본: 입력 옆 `<name>_tally_payload.json`).
+
+## 프리셋 / 테마
+
+- **테마 프리셋** — `neutral`(기본, 클린 모노크롬) / `hermes`(웜 오프화이트 브랜드). 커스텀은 `<styles.json>`.
+- **도메인 프리셋** — 새 폼의 보이스·기본 옵션·섹션 골격: `preset-dev-survey.md`(개발/프로젝트 인테이크), `preset-lecture-consultation.md`(강의/코칭 상담). 프리셋만으론 빌드 불가(이 스킬은 입력 md 기반) — `assets/example-*.md` 를 시작점으로 편집한다.
+- `## ` 객관식 문항은 frontmatter `options` 하나를 공유한다. **문항마다 다른 보기·필수·복수선택**이 필요하면 `%%choice` directive 로 override(아래 "문항별 보기 · 필수 · 복수선택 · 단답"). 단답은 `%%text`/`%%email` 등, 자유 서술은 `### ` + `- 라벨: ___`, 매트릭스/날짜/시간은 일정 조율 참조.
+
+## 가독성
+
+- **문단 분리** — 인트로(제목 직후 첫 blockquote run)는 빈 `>` 줄로 문단을 나누면 문단당 별도 TEXT 블록으로 렌더. `<br>` 비의존.
+- **섹션 구분선** — `## 섹션` 사이에 DIVIDER 블록 자동 삽입(기본 on, 첫 섹션 앞에는 없음). frontmatter `dividers: false` 또는 `--no-dividers` 로 끔.
+
+## 문항별 보기 · 필수 · 복수선택 · 단답 (%%choice / 단답 directive)
+
+전역 `options` 공유 객관식(`## `+`- [ ]`)과 별개로, 문항마다 다른 보기/필수/복수선택/단답을 directive 로 둔다(전역 경로 비파괴). 상세·실측 근거는 `references/tally-blocks.md`.
+
+```markdown
+%%choice
+title: 관심 분야 (복수 선택)
+options: 브랜딩, 웹사이트, 마케팅, 기타   # 이 문항 전용 보기 (전역 options override)
+select: multi             # single → 단일선택(기본) | multi → 체크박스
+required: true            # 기본 false
+desc: 해당 항목 모두 선택   # (선택) 제목 아래 보조 줄(문항 개행)
+%%
+
+%%text  label: 이름 (required) (placeholder: 홍길동)
+%%email label: 이메일 (required)
+%%phone label: 연락처 (desc: 010-0000-0000 형식)
+%%number label: 인원수
+%%link  label: 포트폴리오 URL
+```
+
+- `%%choice` → 문항별 보기 객관식. `select:multi` = 체크박스(복수), `required:true` = 필수, `desc:` = 제목 직후 보조 줄.
+- 단답 `%%text`/`%%number`/`%%email`/`%%phone`/`%%link` → `INPUT_*` 한 줄 입력. tail 은 `label:` + bare `(required)` + `(placeholder: …)` + `(desc: …)`(`%%date`/`%%time` 와 동형).
+- directive 문항은 자동 번호 미부여(제목 그대로). 전역 `- [ ]` 만 `{n}.` 번호.
+
+## 일정 조율 (matrix / date / time)
+
+외부 스케줄러 임베드 대신 네이티브 블록으로 처리(외부 스케줄러는 oEmbed 비대상 → 링크아웃만). 1:1 상담 수준(Lv1).
+
+```markdown
+## 가능한 상담 시간
+%%matrix
+rows: 월요일, 화요일, 수요일, 목요일, 금요일
+cols: 오전, 오후, 저녁
+select: single        # single(행마다 1개) | multi(여러 개)
+%%
+%%date label: 희망 상담일 (format: yyyy/MM/dd)
+%%time label: 희망 시간
+```
+
+- `%%matrix … %%` → MATRIX 그리드 한 문항. `%%date`/`%%time` → INPUT_DATE/INPUT_TIME 한 문항.
+- `select: single` 은 행마다 열 1개로 제한. `format` enum = `MM/dd/yyyy | dd/MM/yyyy | yyyy/MM/dd`. 세밀한 날짜 제약(min-date)은 현재 Tally 스키마에 단일 필드가 없어 v1 범위 밖.
+
+## 이미지 & 제출 후 리다이렉트
+
+Tally 는 미디어 업로드 API 가 없어 이미지는 **호스팅된 공개 URL** 만 받는다. 빌더는 전체 `https://` URL 을 그대로 쓰고, `owner/repo[@ref]:path` 숏핸드는 `raw.githubusercontent.com` URL 로 변환한다(public GitHub repo 의 `assets/` 가 무인프라 호스트). `.gif` URL 도 그대로 들어가며 애니메이션 렌더는 폼을 열어 육안 확인.
+
+```markdown
+---
+logo:  YoungjaeDev/my-claude-plugins@main:assets/logo.png   # 원형 200x200 / 숏핸드 OR 전체 URL
+cover: https://example.com/cover.jpg                         # 전폭 1500px+
+redirect: https://yoursite.com/thanks                        # 제출 후 이동 (무료)
+---
+# 제목
+...
+%%image url: owner/repo@main:assets/banner.png
+caption: (선택) 캡션
+%%
+%%image https://example.com/inline.png                       # 단일 라인 약식
+```
+
+- `logo`·`cover` → `FORM_TITLE` payload. `%%image` → 본문 `IMAGE` 블록(`caption`/`link` 옵션). `redirect` → `settings.redirectOnCompletion`.
+- 화면에 뜨는 thank-you 문구 커스터마이즈는 create API 에 필드가 없음(에디터 전용) — 대안은 `redirect`. 응답자 확인 이메일은 Tally Pro.
+
+## humanize 기본 라우팅
+
+- **카피를 새로 쓰거나 수정할 때**: 기본적으로 한글 카피를 `/humanize-korean:humanize-korean`(fast)에 윤문 위임 후 빌드.
+- **`--update` 재빌드**(문구 변화 없이 게시만): humanize skip.
+- **`--no-humanize`**: 명시적 escape(스크립트 패스스루 플래그 — 윤문 호출 자체를 main 세션에서 생략). 스크립트는 윤문을 호출하지 않는다.
+- **`humanize-korean` 미설치**: graceful degrade — `form-copy-style.md` 규칙만 수동 적용하고 계속 진행.
+
+## 키 처리
+
+- API 키 = env `TALLY_API_KEY` → 없으면 repo `.env`(`TALLY_API_KEY=...`) 자동 탐색(CWD 부터 상위로).
+- `.env` 는 gitignore. **키를 출력·로그·커밋하지 않는다.**
+- 키가 없으면 스크립트는 payload 만 만들고 `NO_KEY` 출력(안전).
+
+## 게시 & idempotent 갱신 (중요)
+
+- 게시 = `PATCH /forms/{id}` 에 `status:"PUBLISHED"` 포함. `/forms/{id}/blocks` 만 PATCH 하면 draft 잔류 → 공유 URL 미반영. (`references/tally-blocks.md`.)
+- `--update <formId>` 는 같은 md 로 여러 번 돌려도 같은 폼을 덮어쓰므로 안전(idempotent). 공유 URL 불변.
+
+## 체크리스트 md 규약
+
+```markdown
+---
+options:                 # (선택) 기본 = 네, 해주세요 / 나중에 / 설명 듣고 정할게요
+  - 네, 해주세요
+  - 나중에
+  - 설명 듣고 정할게요
+theme: neutral           # (선택) neutral(기본) | hermes | none | <styles.json>
+dividers: true           # (선택) 섹션 구분선, 기본 on
+form_id: vGWGr0          # (선택) 기존 폼 갱신 대상 (= --update)
+logo: owner/repo@main:assets/logo.png   # (선택) 로고 (숏핸드 OR 전체 URL)
+cover: https://example.com/cover.jpg     # (선택) 커버 이미지
+redirect: https://example.com/thanks     # (선택) 제출 후 리다이렉트
+---
+# 폼 제목                  → FORM_TITLE
+> 인트로 문단 1            → 인트로 TEXT (제목 직후 첫 blockquote run)
+>
+> 인트로 문단 2            → 빈 `>` 줄로 분리 시 별도 TEXT 블록
+
+## 섹션 제목              → HEADING_2 (이하 - [ ] 항목은 객관식)
+- [ ] 항목 (예: …)        → 객관식 문항 (전역 번호 자동, 공유 options)
+
+### 자유 의견             → HEADING_2 (이하 - 라벨: ___ 은 서술)
+- 라벨: ___               → 서술(TEXTAREA) 문항 (번호 없음)
+
+%%choice / %%text / %%number / %%email / %%phone / %%link → 위 "문항별 보기 · 필수 · 복수선택 · 단답" 참조
+%%matrix / %%date / %%time → 위 "일정 조율" 참조
+```
+
+- frontmatter 가 본문보다 우선(`title`/`intro` 도 override 가능). CLI `--theme`/`--update`/`--dividers` 는 frontmatter 보다 우선.
+- 제목 직후 첫 blockquote run 만 인트로. 이후 빈 줄로 끊긴 별도 blockquote(옵션 안내·공유 URL·내부 메모)는 무시.
+
+## 템플릿 레퍼런스
+
+새 폼 구조를 잡을 때 `references/tally-templates.md` 의 6종 공식 Tally 템플릿(인테이크·수강신청·코칭·온보딩) URL·구조 메모 참고. 임포트는 안 하고 패턴만 참고한다.
+
+## 대안: 공식 Tally MCP (채택 X)
+
+대화형 편집이 필요하면 공식 Tally MCP(`claude mcp add tally --transport http https://api.tally.so/mcp`, beta)도 있으나 이 스킬은 채택하지 않는다 — 결정성·idempotent·무의존성 보존을 위해 urllib 빌더를 유지.
+
+## 범위 밖
+
+- GIF 생성(별도 프로젝트 — 이미지 *참조*는 지원, 생성은 안 함), 화면에 뜨는 thank-you 문구(create API 미지원 — `redirect` 대안), 응답자 확인 이메일(Tally Pro).
+- 제출(submission) 수신·집계, 전원-겹침 히트맵(when2meet Lv2+) — 1:1 상담 범위 밖.
+- 커스텀 CSS·폰트(Tally 유료).

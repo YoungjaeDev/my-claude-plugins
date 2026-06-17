@@ -6,7 +6,43 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-17 — harness-engineering principles from the Naver Financial E2E talk (ingest-finding)
+
+- e2e-harness-ops/harness-engineering-principles.md: new page (sources 2 — the talk transcript + the e2e-harness build). Transferable design rationale behind `e2e-harness`: verification is the bottleneck; AI-era bugs cluster at component boundaries (units pass, composed flow breaks); test code = sensor (run) + spec (read); the self-improvement loop (guide before + sensor after) is the delegation criterion; onboard the official agents like a new hire; independent tests via API state-setup; mock by call-site; flake-at-authoring; thinking is delegable but understanding is not; the harness evolves with the model. `> See-also: playwright-ai-harness`.
+- insight/harness-loop-guide-sensor.md: promoted the loop principle to insight (promoted_from harness-engineering-principles, evidence_count 2 = talk + e2e-harness build) — "build a self-improvement loop: guide before, sensor after; that question is the delegation criterion." insight/index.md hook added.
+- index.md (wiki MOC): added the harness-engineering-principles hook under e2e-harness-ops.
+- e2e-harness plugin (recorded for trail, not wiki): enriched e2e-author + the E2E SSOT template with the API state-setup test-independence pattern, and e2e-setup with the "onboard agents like a new hire" rationale; version 0.1.0 -> 0.1.1.
+
+## 2026-06-17 — tally-form per-question choice/required/desc live-verified (PR #68) (ingest-finding)
+
+- tally-form-ops/tally-api-schema-vs-live.md: added a divergence bullet — multi-select checkbox is `CHECKBOX`/`CHECKBOXES` (not `MULTI_SELECT`); `isRequired` rides on each answer block (option / `INPUT_*`), same position as MC/matrix; per-question `desc` is a `TEXT` block after the TITLE (`payload.html`→`safeHTMLSchema` round-trip); short-answer `INPUT_*` follow the lenient `groupType==type` rule. aliases += `tally-checkbox-grouptype`, `tally-required-on-option`; `## Sources` += PR #68 live verification; sources 3 -> 4. last_verified 2026-06-17.
+- index.md: hook left unchanged — the existing "OpenAPI diverges from the live /forms API" hook still covers it, and index.md carries an unrelated uncommitted e2e-harness edit in the working tree that must not be bundled into this commit.
+
 <!-- New entries go directly under this line -->
+
+## 2026-06-17 — post-merge #66 + #67: github-dev TDD uplift + e2e-harness plugin (post-merge)
+
+- e2e-harness-ops/playwright-ai-harness.md: new page (domain e2e-harness-ops, parallel to cr-fix-ops/tally-form-ops). Captures Playwright 1.61 `init-agents --loop=claude` actual output (prefixed `playwright-test-*` agent files, `.mcp.json` IS generated with `playwright run-test-mcp-server`, root `seed.spec.ts`, no `playwright.config`, no `copilot` loop value), headless `npx playwright trace` (1.59+) subcommands, burn-in vs CI retries, and GH Actions gotchas (native `paths:` ⊥ `labeled` event, `gh pr comment` needs `issues: write`, no official PR-comment step). sources 2 (playwright.dev + direct 1.61 execution). `> See-also: cr-cli-false-positive-generated-files`.
+- index.md: added e2e-harness-ops domain + hook; bumped MOC last_verified 2026-06-10 -> 2026-06-17; rewrote the shared-source hook's stale "19 of 22 eligible" to the durable "all but 3 EXCLUDED" form.
+- plugin-ops/shared-source-codex-manifests.md: replaced the hard "19 of 22" eligible count with the durable "total − 3 EXCLUDED" invariant (count shifts on every plugin add/remove); last_verified -> 2026-06-17.
+- Config (not wiki, recorded here for the routing trail): added the "update the Codex-eligible count on plugin add/remove" rule to `.claude/rules/plugin-versioning.md` + its `AGENTS.md` mirror — the gap Codex P1 caught on PR #67 (total count bumped, eligible count left stale).
+- Staging drain: 7 mechanical Stop-hook captures from prior sessions (PRs 36/62/63/64/65/66/67/68 etc.) skipped — those PRs' post-merge Step 8 already ingested their lore (cr-fix-ops/tally-form-ops/etc. pages exist); the #66/#67 lore is this entry. Consumed files deleted.
+
+## 2026-06-17 — post-merge #65: tally-form v1.1.0 images/redirect — wiki update (post-merge)
+
+- tally-form-ops/tally-api-schema-vs-live.md: consolidated the v2 image/redirect findings into the existing no-media-upload bullet — image URLs must be **https** (http blocked as mixed content on HTTPS forms), and live-confirmed that `logo` (png) + `cover` (animated gif) + inline `IMAGE` + `redirectOnCompletion` publish clean (form `QKEZog`). Extended Evidence + Sources with that form. No new section/page (consolidate-not-append); sources stays 3, last_verified 2026-06-17.
+
+## 2026-06-17 — post-merge #64: tally-form plugin + Tally API schema-vs-live lore (post-merge)
+
+- tally-form-ops/tally-api-schema-vs-live.md: new page + new domain (id `tally-api-schema-vs-live`, status active, volatility volatile, sources 3). Tally OpenAPI diverges from the live `/forms` contract — `groupType` lenient (input blocks accept own type, FORM_TITLE accepts TEXT; two Codex P1s false-positive), matrix single-select `maxChoices` belongs on the `MATRIX` container not `MATRIX_ROW` (live 400 on rows despite the schema listing it), no media-upload endpoint (logo/cover/IMAGE need hosted URLs — public-repo `assets/` + raw link is a host), no create-API thank-you-message field (redirect/email only, email = Pro), API + theme colors + matrix/date/time all free. Field-level specifics stay in the plugin's `references/tally-blocks.md` (not duplicated). last_verified 2026-06-17.
+- index.md: new `## tally-form-ops` domain heading + 1-line hook.
+
+## 2026-06-17 — post-merge #63: anti-slop-design skill + source-grounded/coverage-audit methodology (post-merge)
+
+Merge `1ea9f41` (squash). New `anti-slop-design` plugin (v0.1.0): cross-agent guidance skill blocking the AI-generated look (slop) across web/PPT/dashboard/copy, source-grounded in 6 OSS repos. The plugin's WHAT lives in-repo (`plugins/anti-slop-design/skills/anti-slop-design/SKILL.md` + spec + synthesis) — NOT duplicated here. Mechanical tool-rules (YAML frontmatter colon-quote; `.claude/settings.json` `plugins.local` registration surface) routed to `.claude/rules/{dual-integration,plugin-versioning}.md` + `AGENTS.md` (NOT re-recorded here, per knowledge routing). One reusable methodology lesson lands in the wiki.
+
+- plugin-ops/skill-authoring-source-grounded-then-audit.md: NEW page (id `skill-authoring-source-grounded-then-audit`, status active, volatility stable, sources 1) — build a reference/guidance skill from source-grounded OSS investigation (read the repos, not summaries-of-summaries — counts drift: impeccable README "27" vs registry 44, hallmark "57" vs 58), then run a COVERAGE AUDIT of the distillation whose key axis is documented-vs-enforced (anti-slop-design: 21/21 patterns in the reference taxonomy but only 19/21 in the binary ship-gate until patched). Build and verify as separate passes.
+- index.md: added plugin-ops/skill-authoring-source-grounded-then-audit.md hook
 
 ## 2026-06-16 — cr-fix state-file not self-describing until emit-final-json persists final fields (ingest-finding)
 

@@ -1,7 +1,7 @@
 ---
 id: wiki-moc
 aliases: [moc, table-of-contents, llms-txt]
-last_verified: 2026-06-10
+last_verified: 2026-06-17
 ---
 
 # Wiki Map of Content (MOC)
@@ -76,9 +76,10 @@ The v2 design record: which rohitg00-v2 ideas were harvested vs rejected, and wh
 Operational lore for the plugin system itself — cache, loading, version resolution. Complements the schema-layer version contract in `.claude/rules/plugin-versioning.md`.
 
 - [Plugin cache version-pinning](plugin-ops/cache-version-pinning.md) — the cache holds multiple versions per plugin; a session pins the startup-resolved version, so a newer already-cached version is not served until restart (or via a `local` settings.json source).
-- [Shared-source Codex manifests](plugin-ops/shared-source-codex-manifests.md) — Claude and Codex 0.135 read the same `plugins/<name>/skills/` tree via a thin manifest generator (`scripts/sync-codex-manifests.mjs`); the retired `codex-bridge` body-transform mirror was wrong because its 275 audit hits were authorial intent, not stale references. 19 of 22 plugins eligible (3 EXCLUDED: core-config, midjourney, codex-image — the last a circular Claude->Codex bridge). `--check` also guards the Codex 1024-char skill-`description` cap (Codex silently skips longer ones).
+- [Shared-source Codex manifests](plugin-ops/shared-source-codex-manifests.md) — Claude and Codex 0.135 read the same `plugins/<name>/skills/` tree via a thin manifest generator (`scripts/sync-codex-manifests.mjs`); the retired `codex-bridge` body-transform mirror was wrong because its 275 audit hits were authorial intent, not stale references. All plugins eligible except 3 EXCLUDED (core-config, midjourney, codex-image — the last a circular Claude->Codex bridge); the eligible count = total − 3, so it shifts on every plugin add/remove. `--check` also guards the Codex 1024-char skill-`description` cap (Codex silently skips longer ones).
 - [Dual-surface command + skill pattern](plugin-ops/dual-surface-command-skill-pattern.md) — how a plugin ships both an explicit `/plugin:command` and a Codex-loadable `skill` from a single `references/<name>-procedure.md` body; documents the runtime preflight guard required for destructive plugins and the `PLUGIN_ROOT` resolver pattern that handles Codex's lack of `${CLAUDE_PLUGIN_ROOT}`.
 - [prompt-inject Korean-persistence](plugin-ops/prompt-inject-korean-persistence.md) — the per-prompt block must explicitly name internal workflow / subagent / English-skill paths (ultracode, deep-research) as NOT a "별도 지시"; otherwise a downstream English skill body reads as the override the bare Korean-default line defers to, and the final user answer regresses to English.
+- [Skill authoring: source-ground then coverage-audit](plugin-ops/skill-authoring-source-grounded-then-audit.md) — build a reference/guidance skill from source-grounded OSS investigation (read repos, not summaries — counts drift), then audit the distillation on the documented-vs-enforced axis (a pattern in the reference taxonomy is not the same as one in the binary ship-gate).
 
 ## cr-fix-ops
 
@@ -87,6 +88,19 @@ Per-plugin operational lore for `github-dev:cr-fix` — rate-limit semantics, do
 - [CR rate-limit progressive refill](cr-fix-ops/cr-rate-limit-progressive-refill.md) — `cr_desc: "Review skipped: free tier disabled"` does NOT mean the org reverted to Free plan; it signals CR trial/Pro progressive-refill quota exhaustion. Do NOT add a sniff cooldown; treat `--max-iter` as a CR quota budget (default 5 = Pro 5-rev/hour).
 - [CR CLI false positive on generated files](cr-fix-ops/cr-cli-false-positive-generated-files.md) — the local CodeRabbit CLI flags a correctly-regenerated `.codex-plugin/plugin.json` as "manually edited, revert + regenerate" (Major); it is spurious — `node scripts/sync-codex-manifests.mjs --check` passing proves generator-consistency, so skip the finding instead of reverting.
 - [cr-fix state file not self-describing](cr-fix-ops/state-file-self-describing.md) — `emit-final-json.sh` assembled `final_state` + `auto_judge_stats` into stdout only, never the archived state file, so `post-merge` Step 1.5 reading the archive saw `final_state=unknown` / `defer=0` and silently hid deferred reviews. Fix: persist final fields before the archive `mv` (self-describing) + consumer falls back to counting `auto_judge_log` defers. Test the real producer→archive→consumer chain, not a hand-built fixture.
+
+## tally-form-ops
+
+Per-plugin operational lore for `tally-form` — Tally API contract quirks the published OpenAPI doesn't predict. Parallel to `cr-fix-ops/` (per-plugin runtime lore), distinct from `plugin-ops/` (Claude Code plugin system).
+
+- [Tally API schema vs live contract](tally-form-ops/tally-api-schema-vs-live.md) — the vendor OpenAPI diverges from the live `/forms` API: `groupType` is lenient (FORM_TITLE→TEXT, inputs→own type; two Codex P1s were false positives), matrix `maxChoices` goes on the MATRIX container not the rows (live 400 on rows), no media-upload endpoint (image fields take hosted URLs — public-repo `assets/` + raw link works), no create-API thank-you-message field; API + theme colors + matrix/date/time are all free, email notifications are Pro.
+
+## e2e-harness-ops
+
+Per-plugin operational lore for `e2e-harness` — Playwright AI-agent harness facts the docs/blogs get wrong, plus GitHub Actions CI gotchas. Parallel to `cr-fix-ops/` and `tally-form-ops/` (per-plugin runtime lore), distinct from `plugin-ops/` (Claude Code plugin system).
+
+- [Harness-engineering principles (why E2E for agents)](e2e-harness-ops/harness-engineering-principles.md) — verification is the bottleneck; AI-era bugs cluster at component boundaries (units pass, the composed flow breaks); test code is a sensor (run) + spec (read); the self-improvement loop (guide before + sensor after) is the delegation criterion; onboard the official agents like a new hire; independent tests via API state-setup; thinking is delegable but understanding is not. Promoted the loop principle to [[harness-loop-guide-sensor]].
+- [Playwright AI test-harness facts (1.61)](e2e-harness-ops/playwright-ai-harness.md) — `init-agents --loop=claude` actually generates `playwright-test-{planner,generator,healer}.md` (prefixed) + `.mcp.json` (`playwright run-test-mcp-server`) + root `seed.spec.ts`, NOT a `playwright.config`; `--loop` has no `copilot`. Headless `npx playwright trace <sub>` (1.59+). GH Actions: native `paths:` filter is incompatible with the `labeled` event; `gh pr comment` needs `issues: write`; no official PR-comment step. Verified by direct 1.61 execution (secondary sources are stale).
 
 ## research-harness
 

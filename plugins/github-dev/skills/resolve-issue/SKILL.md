@@ -118,9 +118,12 @@ Before starting the workflow:
    - **File edits**: For non-code files or complex multi-line changes
    - **Sub-agents**: For large-scale parallel modifications
    - **If TDD enabled** (marker detected in Step 1):
-     1. RED: Write failing tests first based on requirements
-     2. GREEN: Implement minimal code to pass tests
-     3. REFACTOR: Clean up while keeping tests green
+     - **Prefer the shared TDD skill**: If `superpowers:test-driven-development` is installed, invoke it and follow its discipline. It is the source of truth for TDD rigor (RED -> GREEN -> REFACTOR with tracer-bullet vertical slices, never refactor while RED, test behavior over implementation, mock only at boundaries).
+     - **Fallback (skill not installed)**: `superpowers` is an external plugin and MUST NOT be a hard dependency — Codex and minimal installs may lack it, and this skill must not break there. When it is absent, degrade gracefully to these four built-in rules:
+       1. **Tracer-bullet vertical slice** — one failing test -> one minimal implementation -> repeat. Do not write a batch of tests up front (no horizontal slicing).
+       2. **Strict RED -> GREEN** — watch the test fail first, then write the minimum to pass. Never refactor while a test is RED.
+       3. **Behavior over implementation** — assert through the public interface only; do not couple tests to internal structure.
+       4. **Mock at the boundary** — stub only external collaborators (network / DB / clock / filesystem); never mock internal collaborators.
    - **If TDD not enabled**: Implement features directly according to the plan
    - **Execution verification required**: For Python scripts, executables, or any runnable code, always execute to verify correct behavior. Do not rely solely on file existence or previous results.
 
@@ -171,6 +174,12 @@ Before starting the workflow:
      prompt="Run linter and report issues."
    )
    ```
+
+9.4. **[NEW] E2E suite (opt-in, auto-detected)**:
+    - **Detect E2E presence**: look for `playwright.config.*` (`.ts`/`.js`/`.mjs`/`.cts`) or an `e2e/` test directory.
+    - **If detected**: run the E2E suite (e.g. `npx playwright test`) and report pass/fail counts.
+      - **Failures are warn-only — they do NOT block PR creation.** E2E is slow and environment-dependent; surface the failures (and the trace/report path if produced) for the user to triage, then continue the workflow.
+    - **If not detected**: silent skip. resolve-issue does not require the `e2e-harness` plugin, a `playwright.config`, or any E2E setup to exist — it works whether or not E2E is configured (loose coupling).
 
 9.5. **[NEW] Verification Gates**:
     - Run BUILD, TEST, LINT checks (see "Verification Gates" section)

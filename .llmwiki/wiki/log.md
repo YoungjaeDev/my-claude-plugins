@@ -6,6 +6,11 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-17 — tally-form per-question choice/required/desc live-verified (PR #68) (ingest-finding)
+
+- tally-form-ops/tally-api-schema-vs-live.md: added a divergence bullet — multi-select checkbox is `CHECKBOX`/`CHECKBOXES` (not `MULTI_SELECT`); `isRequired` rides on each answer block (option / `INPUT_*`), same position as MC/matrix; per-question `desc` is a `TEXT` block after the TITLE (`payload.html`→`safeHTMLSchema` round-trip); short-answer `INPUT_*` follow the lenient `groupType==type` rule. aliases += `tally-checkbox-grouptype`, `tally-required-on-option`; `## Sources` += PR #68 live verification; sources 3 -> 4. last_verified 2026-06-17.
+- index.md: hook left unchanged — the existing "OpenAPI diverges from the live /forms API" hook still covers it, and index.md carries an unrelated uncommitted e2e-harness edit in the working tree that must not be bundled into this commit.
+
 <!-- New entries go directly under this line -->
 
 ## 2026-06-17 — post-merge #66 + #67: github-dev TDD uplift + e2e-harness plugin (post-merge)

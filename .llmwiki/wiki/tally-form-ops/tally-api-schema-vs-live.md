@@ -1,10 +1,10 @@
 ---
 id: tally-api-schema-vs-live
-aliases: [tally-form-api, tally-openapi-quirks, tally-grouptype-lenient, tally-matrix-maxchoices, tally-image-hosting, tally-free-vs-pro]
+aliases: [tally-form-api, tally-openapi-quirks, tally-grouptype-lenient, tally-matrix-maxchoices, tally-image-hosting, tally-free-vs-pro, tally-checkbox-grouptype, tally-required-on-option]
 last_verified: 2026-06-17
 status: active
 volatility: volatile
-sources: 3
+sources: 4
 ---
 
 # Tally form API: the published OpenAPI diverges from the live /forms contract
@@ -17,6 +17,7 @@ sources: 3
 - **Matrix single-select cap goes on the MATRIX block, not the rows.** `MatrixRowPayload` *lists* `hasMaxChoices`/`maxChoices`, yet a `POST` with those keys on a `MATRIX_ROW` returns `400 "payload.hasMaxChoices is not allowed"`. The cap must sit on the `MATRIX` container payload. Canonical "schema lists a field the live endpoint rejects" trap — only a real POST reveals it.
 - **No media-upload endpoint.** The only path is `/forms`; image fields (`FORM_TITLE.logo`/`cover`, `IMAGE` block `images[].url`) are all `format: uri` — you pass a **hosted public URL**, you cannot upload bytes. A public GitHub repo's `assets/` + a `raw.githubusercontent.com` link is a viable zero-infra host. Image URLs must be **https** (http is blocked as mixed content on Tally's HTTPS-served forms). Live-confirmed: a form with `logo` (png), `cover` (**animated gif** — accepted; animation render is a frontend behavior), inline `IMAGE`, and `redirectOnCompletion` published clean.
 - **No on-screen thank-you / confirmation message in the create API.** `FormSettings` has `redirectOnCompletion` and respondent-email fields, but no `thankYou`/`confirmation` field — the post-submit screen text is editor-only. `closeMessageTitle/Description` are for a *closed* form, not per-submission.
+- **Per-question choices: checkbox is `CHECKBOX`/`CHECKBOXES`, `required` sits on the answer block, `desc` is a `TEXT` block.** The OpenAPI lists both `CHECKBOXES`/`CHECKBOX` and `MULTI_SELECT`/`MULTI_SELECT_OPTION` for multi-select; a live POST publishes an all-options-visible checkbox question as block `type=CHECKBOX`, `groupType=CHECKBOXES` (single-select stays `MULTIPLE_CHOICE_OPTION`/`MULTIPLE_CHOICE`). `isRequired` rides on each **answer block** — every option block, or the `INPUT_*` block for a short-answer field — the same position as MC/matrix, **not** a separate QUESTION container (live GET shows `isRequired:true` persisted per option/input). A per-question helper line (`desc`) is a `TEXT` block (`groupType TEXT`) placed right after the `TITLE`; its `payload.html` is stored back as `payload.safeHTMLSchema` on read (content round-trips), the same mechanism as intro paragraphs — no `<br>`. Short-answer `INPUT_TEXT`/`INPUT_NUMBER`/`INPUT_EMAIL`/`INPUT_PHONE_NUMBER`/`INPUT_LINK` follow the lenient `groupType==type` rule with `payload {isRequired, placeholder?}`.
 
 ## Free vs Pro (tally.so/pricing)
 
@@ -27,10 +28,11 @@ Free: API access, unlimited forms/submissions, theme **colors/fonts**, and every
 Field-level build mechanics (exact block payloads, count formula, theme presets) live in the plugin reference `plugins/tally-form/skills/tally-form/references/tally-blocks.md` — the operational home; this page is the distilled cross-cutting rule, not a duplicate.
 
 > See-also: [[shared-source-codex-manifests]]
-> Evidence: live `POST /forms` of `assets/example-matrix-schedule.md` + `example-dev-survey.md` + an image/redirect form (`logo`/`cover`-gif/`IMAGE`/`redirect`) — all `status: PUBLISHED`, `hasDraftBlocks: false`, session 2026-06-17.
+> Evidence: live `POST /forms` of `assets/example-matrix-schedule.md` + `example-dev-survey.md` + an image/redirect form (`logo`/`cover`-gif/`IMAGE`/`redirect`) + a `%%choice`/short-answer probe + `assets/example-intake.md` (46 blocks) — all `status: PUBLISHED`, `hasDraftBlocks: false`, session 2026-06-17.
 
 ## Sources
 
 - Live verification (2026-06-17): created Tally forms `eqoXXk` (matrix/date/time, 17 blocks) + `A7QXgz` (divider/MC/intro, 38 blocks) + `QKEZog` (logo png / cover animated gif / inline IMAGE / redirect) — all published; `MATRIX_ROW` `maxChoices` 400 → moved to `MATRIX` block.
+- Live verification (2026-06-17, tally-form v1.2.0 / PR #68): `%%choice` (single + multi) + short-answer `INPUT_*` + `required`/`desc` probe and the shipped `assets/example-intake.md` (46 blocks) — checkbox published as `CHECKBOX`/`CHECKBOXES`, `isRequired:true` persisted on each option/input payload, `desc` `payload.html` read back as `safeHTMLSchema`; both `status: PUBLISHED`, `hasDraftBlocks: false`, then deleted.
 - Tally OpenAPI — `https://developers.tally.so/api-reference/endpoint/forms/post` (block + payload schemas).
 - Tally pricing / Pro features — `https://tally.so/pricing`, `https://tally.so/help/tally-pro`.

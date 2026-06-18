@@ -6,6 +6,10 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-18 — post-merge #71: dogfood-harvest skill-authoring discipline (post-merge)
+
+- plugin-ops/skill-authoring-source-grounded-then-audit.md: added `## 3. Dogfood harvest — interview-gate generic vs project-specific`. A reference skill can grow from your own dogfooded real-project build, not only external OSS; interview-gate each harvested learning generic (-> the shared plugin lane, marketplace-wide) vs project-specific (-> stays in the origin repo) before merging, else the shared plugin is polluted for every other caller. anti-slop-design v0.2.0 PPT lane reflected only the generic slice (color mono / presentation register / build-vs-validation scope + render-validation traps) distilled from a real 27-slide KCI 발표 덱 build; project-specific deck rules stayed in the source repo. Added PR #71 source; sources 1 -> 2; last_verified 2026-06-18.
+
 ## 2026-06-17 — harness-engineering principles from the Naver Financial E2E talk (ingest-finding)
 
 - e2e-harness-ops/harness-engineering-principles.md: new page (sources 2 — the talk transcript + the e2e-harness build). Transferable design rationale behind `e2e-harness`: verification is the bottleneck; AI-era bugs cluster at component boundaries (units pass, composed flow breaks); test code = sensor (run) + spec (read); the self-improvement loop (guide before + sensor after) is the delegation criterion; onboard the official agents like a new hire; independent tests via API state-setup; mock by call-site; flake-at-authoring; thinking is delegable but understanding is not; the harness evolves with the model. `> See-also: playwright-ai-harness`.

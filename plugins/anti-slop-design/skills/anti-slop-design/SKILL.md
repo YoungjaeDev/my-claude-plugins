@@ -19,7 +19,7 @@ description: "Anti-AI-slop design guard for websites/SaaS landing, presentation 
 
 - 디자인 "생성기"가 아니다. 방향·구조·게이트를 제공하고, 실제 구현은 호출자(또는 frontend-design, ppt-master, taste-skill 등)가 한다.
 - 실행형 detection 엔진/편집 차단 hook 없음 — 리포트·권고만 한다.
-- 덱 빌드 파이프라인(md->SVG->pptx) 미포함 — 원칙만, 빌드는 기존 도구(ppt-master/codex-image).
+- 덱 빌드 실행(md->SVG->pptx)은 기존 도구(ppt-master/codex-image)가 한다. 단 **생성 일관성·납품 전 검증 방법론**(per-slide 병렬 + BUILDKIT, 렌더 검증 함정)은 anti-slop 소관으로 포함 — `references/slop-taxonomy.md` §3 PPT lane.
 - 브랜드 색·폰트를 **기억으로 추측하지 않는다**. 자료 있으면 읽고, 없으면 `references/house-style.md` 기본값, 그래도 없으면 placeholder로 두고 사용자에게 묻는다.
 
 ## 흐름 (clarify -> context -> plan -> run -> audit -> revise)
@@ -115,5 +115,6 @@ artifact 종류(web / ppt / dashboard / copy), 청중, 브랜드, 결정맥락�
 
 - 경계: anti-slop-design = 시각/구조 + **영문 카피 탐지·스코어링** 소유. humanize-korean = **한국어 산문 재작성** 소유.
 - 호출: 한국어 카피 재작성이 필요하면 `humanize-korean:humanize-korean`을 호출(기본 fast 모드, >=8000자 또는 정밀 필요 시 strict). 출력 `final.md`의 본문만 회수(HTML 주석 메타 제외).
+- register: 산출물(특히 덱)의 발표 맥락(강연/학술/피치)에 톤앤매너를 맞춰 humanize한다 — 학술/전문가 청중이면 정착 기술용어를 유지(첫 등장 1회 한글 병기)하고 구어체로 평탄화하지 않는다(`copy-rules.md` §1).
 - fallback (필수): `humanize-korean`은 이 marketplace에 번들되지 않은 **외부 의존**이다. 미설치 환경(또는 Codex)에서는 호출이 없어도 lane이 중단되지 않게 graceful degrade — `copy-rules.md`의 한국어 카피 원칙으로 **직접 수동 재작성**하고, humanize-korean이 있으면 그쪽을 우선한다. 의존을 hard-require 하지 않는다.
 - 금지: stop-slop류 무딘 절대금지(부사 전면금지, em-dash 전면금지, 3항목 리스트 금지)를 한국어로 복제하지 않는다 — 전역 가이드·humanize-korean의 한국어 친화 완화 스탠스를 따른다.

@@ -15,7 +15,7 @@ AI-slop 시각/구조 지문 카탈로그. 6개 OSS repo(impeccable 44-rule / ha
 - **GitHub-dark lazy preset** — 균일 `#0D1117` + generic cyan/purple neon glow. (이것만 banned — authored cinematic/warm-cyber dark은 허용). Instead: 의도된 dark 팔레트.
 - **순수 `#000` / `#fff` base** — flat하게 읽힘(modern-minimal 장르는 `#fff` 예외). Instead: anchor hue로 살짝 tint.
 - **zero-chroma neutral** — 순수 grey는 죽어 보임. Instead: 모든 neutral을 anchor hue 쪽으로 >=0.005 chroma tint.
-- **too many colors** — Instead: <=3-4 (1 primary + 1 secondary + 1 accent + grays). accent footprint가 viewport의 ~5% 초과면 tell(atmospheric 장르는 ~20% radial bloom 허용).
+- **too many colors** — Instead: <=3-4 (1 primary + 1 secondary + 1 accent + grays), 또는 **monochrome(단일 hue + grays)으로 최대 절제**. 색 가짓수 자체가 많은 것도 slop(특히 슬라이드 덱은 색 절제가 신뢰도). accent footprint가 viewport의 ~5% 초과면 tell(atmospheric 장르는 ~20% radial bloom 허용).
 - gray text on colored bg, cyan-on-dark glow — washed out. Instead: 충분한 대비.
 
 ### Typography
@@ -88,6 +88,9 @@ AI-slop 시각/구조 지문 카탈로그. 6개 OSS repo(impeccable 44-rule / ha
 - **scaffolding 노출 절대 금지**(NON-NEGOTIABLE): 화면에 "preview"/"template"/"Option A/B/C"/파일경로/요구사항 노트/style-preset 이름 렌더 금지. 납품 전 보이는 텍스트 점검. real 덱 chrome(title/section/date/author/page number)만.
 - page number는 덱 셸이 소유 — 단일 페이지에 self-draw 금지(이중 번호 `02/03` + `6/16` 유발).
 - 하나의 연속 motion narrative("voiced PowerPoint" 장면별 fade-up 금지). 같은 image를 슬라이드마다 반복 금지(title/closing의 logo 제외).
+- **색 절제(슬라이드 특히)**: <=3 committed hue 또는 monochrome. 긍정/부정 델타는 hue 추가 없이 색+방향기호(↑/↓)로 인코딩. tint는 1종 zone-fill로 제한.
+- **생성 일관성 방법론**(빌드 실행은 ppt-master, 일관성은 anti-slop 소관): 다수 슬라이드를 per-slide agent로 병렬 생성할 때 literal chrome snippet 묶음(BUILDKIT) + gold reference 1-2장(앵커 슬라이드)을 공유해 동일 chrome을 복제하게 한다. chrome 고정·콘텐츠만 변주(색만 바꾼 변주는 variety 불인정과 같은 맥락).
+- **납품 전 검증 함정**(slop은 렌더에서 드러난다): (1) 레이아웃 진실은 PowerPoint/cairosvg 기준 — LibreOffice는 spAutoFit 미리보기 한계로 overflow를 숨긴다. (2) SVG는 빌드 전 XML well-formed 일괄 검사(HTML named entity `&nbsp;`·font-family 따옴표 짝 실수가 흔함). (3) 산출 pptx의 텍스트/수치 검증은 group shape **재귀** 필요(`<g>` -> PPTX group; 얕은 walk는 false-negative).
 
 ### Dashboard / Admin UI -- 증거 GAP (정직 표기)
 **6개 repo 어디도 대시보드 전용 ruleset이 없다.** 모두 landing/덱/prose lane. 따라서 이 lane은 가장 얇은 근거이며, 전용 소스 확보 시 보강 대상. 현재는 transfer되는 규칙으로 운영:

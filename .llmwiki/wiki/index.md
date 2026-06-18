@@ -1,7 +1,7 @@
 ---
 id: wiki-moc
 aliases: [moc, table-of-contents, llms-txt]
-last_verified: 2026-06-17
+last_verified: 2026-06-18
 ---
 
 # Wiki Map of Content (MOC)
@@ -79,7 +79,7 @@ Operational lore for the plugin system itself — cache, loading, version resolu
 - [Shared-source Codex manifests](plugin-ops/shared-source-codex-manifests.md) — Claude and Codex 0.135 read the same `plugins/<name>/skills/` tree via a thin manifest generator (`scripts/sync-codex-manifests.mjs`); the retired `codex-bridge` body-transform mirror was wrong because its 275 audit hits were authorial intent, not stale references. All plugins eligible except 3 EXCLUDED (core-config, midjourney, codex-image — the last a circular Claude->Codex bridge); the eligible count = total − 3, so it shifts on every plugin add/remove. `--check` also guards the Codex 1024-char skill-`description` cap (Codex silently skips longer ones).
 - [Dual-surface command + skill pattern](plugin-ops/dual-surface-command-skill-pattern.md) — how a plugin ships both an explicit `/plugin:command` and a Codex-loadable `skill` from a single `references/<name>-procedure.md` body; documents the runtime preflight guard required for destructive plugins and the `PLUGIN_ROOT` resolver pattern that handles Codex's lack of `${CLAUDE_PLUGIN_ROOT}`.
 - [prompt-inject Korean-persistence](plugin-ops/prompt-inject-korean-persistence.md) — the per-prompt block must explicitly name internal workflow / subagent / English-skill paths (ultracode, deep-research) as NOT a "별도 지시"; otherwise a downstream English skill body reads as the override the bare Korean-default line defers to, and the final user answer regresses to English.
-- [Skill authoring: source-ground then coverage-audit](plugin-ops/skill-authoring-source-grounded-then-audit.md) — build a reference/guidance skill from source-grounded OSS investigation (read repos, not summaries — counts drift), then audit the distillation on the documented-vs-enforced axis (a pattern in the reference taxonomy is not the same as one in the binary ship-gate).
+- [Skill authoring: source-ground then coverage-audit](plugin-ops/skill-authoring-source-grounded-then-audit.md) — build a reference/guidance skill from source-grounded OSS investigation (read repos, not summaries — counts drift), then audit the distillation on the documented-vs-enforced axis (a pattern in the reference taxonomy is not the same as one in the binary ship-gate); or harvest from your own dogfooded build and interview-gate generic vs project-specific before merging into the shared plugin.
 
 ## cr-fix-ops
 

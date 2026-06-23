@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration. The same plugin tree is loaded by Codex 0.135 via `scripts/sync-codex-manifests.mjs` — one source, two runtimes.
 
-## Plugins (24)
+## Plugins (25)
 
 ### Core
 | Plugin | Description |
@@ -68,6 +68,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | Plugin | Description |
 |--------|-------------|
 | `anti-slop-design` | Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. clarify→context→plan→run→audit→revise flow + two-phase audit gate (pre-emit self-critique + binary slop checklist); Korean copy handed to `humanize-korean`. Source-grounded in 6 OSS anti-slop repos (impeccable/hallmark/frontend-design/huashu/stop-slop/frontend-slides) |
+| `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약 — `ppt-master` 엔진 위에 얹는 작성 레이어. 덱 유형·md 소스 규약·작성 원칙 12종·밀도 리듬(중간 강화)·역할 기반 색·codex vs SVG 경계·공식 로고 fetch·실물 스크린샷 우선·윤문·렌더 QA. 진입점 SKILL.md + references/ 4종 + assets/injection-prompt.md |
 
 ### Visualization
 | Plugin | Description |
@@ -113,6 +114,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 │   ├── llm-wiki/           # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/         # spec/issue/PR work-pipeline aggregate
 │   ├── anti-slop-design/   # Anti-AI-slop design guard (web/ppt/dashboard/copy)
+│   ├── ppt-yeong-style/    # yeong-style lecture/proposal deck writing layer (on ppt-master)
 │   ├── tally-form/         # Checklist md -> Tally questionnaire/survey form builder
 │   └── project-init/       # Day-1 project bootstrap (interview + .claude/ + AGENTS.md + gh repo)
 ├── CLAUDE.md               # This file
@@ -132,7 +134,7 @@ node scripts/sync-codex-manifests.mjs           # write manifests
 node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
-Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 21 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `midjourney` (image-gen execution model differs), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 22 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `midjourney` (image-gen execution model differs), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
 
 ## Modular Rules
 

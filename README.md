@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 25개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-25-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -85,6 +85,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 | **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
+| | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 덱 유형·md 규약·작성 원칙 12종·밀도 리듬·역할 기반 색·codex vs SVG 경계·공식 로고 fetch·실물 스크린샷·윤문·렌더 QA. 진입점 SKILL.md + references/ 4종 + 주입 프롬프트 |
 
 ## 설치 옵션
 
@@ -596,6 +597,27 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 
 </details>
 
+<details>
+<summary><strong>ppt-yeong-style</strong> - yeong 스타일 강의·제안 덱 작성 규약</summary>
+
+강의/실습/제안/학술 덱을 yeong 스타일로 만들 때 적용하는 작성 규약. `ppt-master`(빌드 엔진) 위에 얹는 **작성 레이어** — 엔진은 손대지 않고 "무엇을·어떻게 쓸지"를 어느 repo·세션에서든 일관 적용합니다.
+
+**엔진·의존:** `ppt-master`(빌드 엔진, bare name 참조) 위 레이어. `codex-image`·`interview`·`anti-slop-design`·`humanize-korean`·`design-shotgun` 은 있으면 사용, 없으면 graceful degrade.
+
+**규약 핵심:**
+- 덱 유형(제안/실습)·파이프라인(인터뷰→색 락→md→빌드→audit→윤문→QA)
+- md 소스 규약(단일 md, `[ ]` 키 메시지, 담백한 명사구 제목)
+- 작성 원칙 12종 + 밀도 리듬(anchor/breathing/dense, **중간 강화 기본** + 본문 바닥 20pt)
+- 역할·면적 기반 색(중립 2 + 주색 1~2 + 액센트 ≤10%), 폰트 폴백 Pretendard→Noto→Malgun
+- codex-image vs SVG 경계, fade·pop은 표지/전환 한정, 실물 스크린샷 우선
+- 공식 SVG 로고 fetch→인라인→근접성
+
+**구조:** 진입점 `SKILL.md` + `references/` 4종(color-typography / images-and-pop / icons-logos / ppt-master-and-qa) + `assets/injection-prompt.md`(다른 세션 주입용 압축 페이로드).
+
+> 그냥 "PPT 만들어줘"는 `ppt-master`, "slidev 슬라이드"는 `slidev` — 이 스킬은 yeong 규약이 필요할 때만 트리거됩니다.
+
+</details>
+
 ## Configuration
 
 ### settings.json
@@ -644,7 +666,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 21 / 24 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 22 / 25 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -696,6 +718,7 @@ git config core.hooksPath .githooks
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
 │   ├── anti-slop-design/      # anti-AI-slop 디자인 가드 (web/ppt/dashboard/copy)
+│   ├── ppt-yeong-style/       # yeong 스타일 강의·제안 덱 작성 레이어 (ppt-master 위)
 │   └── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 ├── CLAUDE.md
 └── README.md

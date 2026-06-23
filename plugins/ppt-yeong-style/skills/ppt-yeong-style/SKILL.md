@@ -1,6 +1,6 @@
 ---
 name: ppt-yeong-style
-description: "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 덱 유형·md 소스 규약·작성 원칙 12종·밀도 리듬(중간 강화 기본)·역할 기반 색 팔레트·codex-image vs SVG 경계·공식 로고 fetch·실물 스크린샷 우선·윤문·렌더 QA를 한 세션·어느 repo에서든 일관 적용. ppt-master/slidev로 그냥 'PPT/슬라이드 만들기'와 달리, yeong 특유의 담백한 명사구 제목·anti-slop 본문 + 표지/목차/전환 pop 무드·일상 비유 보조선이 필요할 때. 트리거 — 'yeong 스타일 덱', '강의 덱/실습 덱 만들어줘', '제안서 슬라이드 만들어줘', 'ppt-master로 강의자료', '발표자료 yeong 스타일로', 'yeong style lecture/proposal deck', even when this skill is not named. 일반 'PPT 만들어줘'는 ppt-master, 'slidev 슬라이드'는 slidev로 — 이 스킬은 yeong 규약이 필요할 때만."
+description: "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 덱 유형·md 소스 규약·작성 원칙 15종·밀도 리듬(중간 강화 기본)·역할 기반 색 팔레트·codex-image vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 흐름 review·공식 로고 fetch·윤문·렌더 QA를 한 세션·어느 repo에서든 일관 적용. ppt-master/slidev로 그냥 'PPT/슬라이드 만들기'와 달리, yeong 특유의 담백한 명사구 제목·anti-slop 본문 + 표지/목차/전환 pop 무드·일상 비유 보조선이 필요할 때. 트리거 — 'yeong 스타일 덱', '강의 덱/실습 덱 만들어줘', '제안서 슬라이드 만들어줘', 'ppt-master로 강의자료', '발표자료 yeong 스타일로', 'yeong style lecture/proposal deck', even when this skill is not named. 일반 'PPT 만들어줘'는 ppt-master, 'slidev 슬라이드'는 slidev로 — 이 스킬은 yeong 규약이 필요할 때만."
 ---
 
 # ppt-yeong-style
@@ -34,7 +34,7 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 ```text
 (1) 인터뷰: interview 스킬 → (2) 색 락: design-shotgun + AskUserQuestion → (3) md 소스 작성
 → (4) 사용자 검토 → (5) ppt-master 빌드 → (6) anti-slop-design audit → humanize-korean 윤문
-→ 렌더 Visual QA → (7) finalize_svg → svg_to_pptx → cairosvg PDF
+→ 렌더 Visual QA + 스토리 흐름 review → (7) finalize_svg → svg_to_pptx → cairosvg PDF
 이미지 = codex-image · 산출물 = 항상 pptx + PDF
 ```
 
@@ -62,17 +62,17 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 ```
 
 - 제목은 **담백한 명사형**이되 **한두 단어로 끊지 말 것 — 주체·맥락을 담은 명사구**로. (✓ "할 수 있는 일" → "클로드 코드로 할 수 있는 일", "이미지" → "이미지 — 자동 생성이 기본") 문장형·질문형 제목은 그대로 금지.
-- `[ ... ]` = 그 장표의 키 메시지(기본 2개). **md만 봐도 핵심이 한눈에.**
+- `[ ... ]` = 그 장표의 키 메시지(기본 2개) — **소스 전용 마커.** md만 봐도 핵심이 한눈에. **렌더 출력엔 대괄호 글리프(`[`·`]`)를 절대 노출하지 않는다** — 내부 텍스트만 키 메시지 스타일(주색 리드/강조 면)로 그린다. 슬라이드에 대괄호가 그대로 보이면 버그(executor가 마커를 리터럴 렌더) → spec_lock·executor 지시에 "대괄호는 키-메시지 표식, 출력 시 strip"을 명시.
 - `<!-- layout -->` = ppt-master 레이아웃 의도. `<!-- visual -->` = codex-image 배경/사용자 이미지 필요 여부. `<!-- diagram-note -->` = 도식 구조 지시(번호 나열 금지, 화살표 박스 흐름).
 - 표·일정·범위는 **마크다운 표**로 → SVG 변환. 애매한 무드 도식만 codex-image.
 - 전역 규약(컨텍스트·톤·디자인 락·흐름 표·출처)은 단일 md면 **앞머리 블록**에, 섹션 분리면 별도 `deck_spec.md`에.
 
-## §3. 발표 덱 작성 원칙 12종
+## §3. 발표 덱 작성 원칙 15종
 
 1. **표지에 금액·수치·세부 목적·절차 금지.** 표지 = 무엇/누구/언제만. (✓ `[흩어진 업무를 정리하는 AI PM]` `[강창민 대표님 × 투디제로 · 2026.06.09]`)
 2. **AI-slop 일반론 문제제기 슬라이드 금지.** "쏟아지는데/결국 사람 손" 류 명사 나열+당위는 통째 삭제 후 솔루션 도식으로 직진.
 3. **단순 번호 나열(①②③④⑤) 대신 좌→우 흐름 도식.** `layout: diagram` + `diagram-note`로 화살표 박스 흐름, 단계/하는 일 2열 표.
-4. **기술 전제는 추측 말고 확인 후 명시.** 도식은 실제 런타임 사실 근거. 미확인은 `unverified`.
+4. **기술 전제는 추측 말고 확인 후 명시.** 도식·명령·UI는 실제 런타임 사실 근거. 사실확인은 **claude-code-guide 에이전트·공식 docs**로 — 도구 자체의 `/help`는 명령 목록일 뿐이라 기능·UX·권한모드 검증 근거로 쓰지 말 것. 미확인은 `unverified`.
 5. **비개발자 청중 = 일상어.** "구축/산정/연동" → "만들기/잡기/이어주기". `[ ]` 메시지는 발화 호흡 1줄.
 6. **제목은 담백하게, 설득은 `[ ]` 박스에.** 제목에 영업·당위 꼬리표("— 오늘 결정합니다") 금지. (✓ `## 다음 스텝` + `[오늘 환경·범위가 정해지면 → 정밀 견적 → 착수]`) 단, 담백함이 **과도한 단어 압축은 아니다** — 한두 단어로 끊지 말고 맥락 담은 명사구로(§2 제목 규약).
 7. **내부 표기·버전 라벨 청중 노출 금지.** "v4", "intake", "Option A/B" → "확정 견적", "수집·분류".
@@ -81,6 +81,9 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 10. **세로 연결 화살표 = 명시적 아래방향 삼각형 path.** 짧은 세로선에 `markerEnd` + `orient="auto"`를 쓰면 옆방향 삼각형으로 깨진다 → 세로 흐름엔 짧은 선 + 직접 그린 아래방향 삼각형 path.
 11. **개념 슬라이드는 도식 우선.** 서브에이전트(순수 컨텍스트 vs 메인 I/O)·컨텍스트 바 같은 추상 개념은 텍스트 나열보다 **막대·박스 도식**으로. 강사 비유를 보조 설명선으로(§3b 중간 강화).
 12. **과감한 삭제·통합 허용.** 중복·약한 슬라이드는 합치거나 부록으로, 장수 증감 자유. "전사/스토리 우선"이 기준 — 분량 채우기 금지.
+13. **담백·사실 우선, 오그라드는 친근·위로조 금지.** 강의 교안은 사실 + 납득되는 비유로. `[ ]`·본문에서 감정 친근화 금지: "함께 시작/함께 본다", "걱정 말고", "쉽게·금방", "같이 ~해요", "딱 ~만 알면 돼요". (✓ "막히면 설치 화면 그대로 확인" / ✗ "막히면 함께 봐요") 비유는 구조를 설명할 때만(§3b), 청중을 다독이는 어조는 아니다.
+14. **주 surface 1개 고정 — 명령·스크린샷 일관.** 한 덱은 **터미널(CLI)·데스크톱 앱·웹** 중 하나를 주 화면으로 정하고 설치·실행 명령·스크린샷·문구를 그 surface로 일관한다. "데스크톱 앱으로 시작"이라며 `claude` CLI 명령·CLI 설치를 섞으면 비개발 청중이 혼란(실측 실패). 보조 surface는 "이런 경로도 있다" 한 장으로만. 주 surface는 인터뷰에서 확정하고 원칙 4로 사실 검증.
+15. **온보딩·입문 덱은 본류에 경쟁/탈선 도구 금지.** 한 제품(예: 클로드 코드) 입문 덱에 경쟁 도구(코덱스 등)·곁가지를 본 흐름에 끼우면 청중이 길을 잃는다. 브리프가 명시 요구할 때만 끝부분 "비교/큰 그림" 1장으로 격리(본류 데모와 섞지 않음).
 
 ## §3b. 밀도·리듬 (정량 프리셋 + 기본값)
 
@@ -103,8 +106,21 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 ## 색·이미지·로고 (핵심 1줄 + 포인터)
 
 - **색**: 역할·면적 기반 팔레트("색 여러 개 = slop") — 중립 2(배경+잉크 ~85%) + 주색 1~2 + 액센트 footprint ≤10%. deck-wide 락 후 슬라이드별 색 날조 금지. 폰트 폴백 Pretendard → Noto Sans KR → Malgun Gothic. 상세 → `references/color-typography.md`.
-- **이미지**: 기본 codex-image(무드컷·배경·hero), 정확한 라벨·표·도식은 SVG. 배경 fade·마스코트·pop은 **표지·목차·전환 divider 한정**(본문은 anti-slop 미니멀). 앱 UI는 실물 스크린샷 우선. 상세 → `references/images-and-pop.md`.
+- **이미지**: 기본 codex-image(무드컷·배경·hero), 정확한 라벨·표·도식은 SVG. 배경 fade·마스코트·pop은 **표지·목차·전환 divider 한정**(본문은 anti-slop 미니멀). 앱 UI(로그인·diff·권한·설정 화면 등)는 **실물 스크린샷 또는 점선 placeholder만 — codex/AI로 앱 화면 생성 금지**(지어낸 UI는 틀린 UX를 가르쳐 placeholder보다 나쁘다). 미보유 시 playwright 실물 캡처·공식 docs 스크린샷·placeholder 순. 상세 → `references/images-and-pop.md`.
 - **로고**: 브랜드·도구 로고는 직접 그리기·codex 생성 금지 → 공식 SVG 라이브러리 fetch → 인라인 → 근접성. 상세 → `references/icons-logos.md`.
+
+## §4. ppt-master 깊이 활용 — 조합으로 차별화
+
+ppt-master를 **단순 변환기로 쓰지 말 것.** 엔진 안의 레버를 인터뷰·사양에서 **의도적으로 골라 조합**해야 "아무나 못 만드는" 덱이 나온다(레버 목록·조합 레시피·함정 전부 → `references/ppt-master-craft.md`). 핵심 레버:
+
+- **레이아웃 3축**: `page_rhythm`(anchor/dense/breathing) + `page_layouts`(per-page 템플릿) + `page_charts`(차트 템플릿)를 페이지별로 조합 → "모든 장이 카드 그리드"의 균일함 탈피.
+- **이미지 rendering×palette 매트릭스**(20 렌더링 × 14 팔레트): deck-wide로 **1조합 락** 후 per-image type만 조절 → 일관된 아트디렉션.
+- **3종 템플릿 fusion**: brand(아이덴티티) + layout(구조) + deck(중간)을 섞어 검증된 구조 위에 yeong 색·톤.
+- **아이콘 라이브러리 1종**(chunk-filled/tabler/phosphor 중 택1) + `simple-icons`는 브랜드 로고 전용.
+- **검증된 차트 템플릿**(`charts_index.json`)으로 표·도식을 — codex가 아니라 정확·편집가능한 SVG 차트. `verify-charts`로 좌표 오차(10~50px) 보정.
+- **animations.json**으로 핵심 장 등장 애니메이션만 의도 튜닝 · **live preview** 서버로 생성 중 실시간 확인.
+
+> 원칙: 레버는 '더 화려하게'가 아니라 **한 덱 안의 의도된 리듬·아트디렉션·정확도**를 위해. anti-slop·역할 기반 색은 그대로 유지.
 
 ## 다른 세션에 규칙 주입
 

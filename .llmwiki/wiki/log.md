@@ -6,6 +6,12 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-23 — stale-check enforcement covers the insight layer too (ingest-finding)
+
+- llm-wiki-design/volatility-over-decay.md: added `## Enforcement must cover every layer that shares the contract` — the `volatility:`/`last_verified:` window applies to both `.llmwiki/wiki/` and the promoted `.llmwiki/insight/` layer; `wiki_stale_check.sh` was scanning only `.llmwiki/wiki` (insight = silent-rot blind spot), now adds `.llmwiki/insight` when the resolved root is `.llmwiki/wiki`. Generalized rule: a derived layer reusing a freshness contract must sit inside the same enforcement sweep. `## Sources` += the hook script; `> See-also: [[insight-layer-via-hook]]` + `> Evidence:` hook; sources 2 -> 3; last_verified 2026-06-23.
+- index.md: volatility-over-decay hook extended to note the sweep covers wiki + insight.
+- Not graduated to insight: first occurrence (single PR #73) — fails recurs-across-2+-sessions; stays in the wiki layer.
+
 ## 2026-06-23 — skill-on-skill engine layering + cross-marketplace prerequisite-stop (ingest-finding)
 
 - plugin-ops/skill-engine-layering.md: new page (id skill-engine-layering, status active, volatility stable, sources 2). Distills the ppt-yeong-style-on-ppt-master contract — bare-name engine reference (no vendor/copy), optional deps graceful-degrade, but a HARD engine in a separate marketplace is NOT a degrade target: a fresh install of the layer alone has no engine and blocks the build, so stop-before-build + guide install (prerequisite-stop). Invisible in the author's env where the engine is already installed. `> See-also: dual-surface-command-skill-pattern`. Evidence: PR #72 merged SKILL.md §엔진·의존 + Codex P1 fresh-install block. last_verified 2026-06-23.

@@ -6,6 +6,13 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-23 — post-merge #74: ppt-yeong-style v0.2.0 lore (3 pages) (post-merge)
+
+- plugin-ops/skill-engine-layering.md: 2nd-dogfood refinement — "copy" includes reproducing the engine's internal API *in prose* (exact script names, dev-server ports, Strategist step ordinals, `design_spec` section numbers, layout enum values), not only duplicating files; reference the lever *concept* + stable spec_lock contract keys (`page_rhythm`/`page_layouts`/`image_rendering`) and mark the engine SKILL.md as SOT for exact values. Evidence: PR #74 merged ppt-master-craft.md "SOT 주의" note + SKILL.md §3b enum→concept-reference change. sources 2 -> 3; last_verified 2026-06-23. Not graduated — multi-facet wiki lore, no single crisp promotable rule.
+- plugin-ops/shared-source-codex-manifests.md: added `## Skill bodies must be runtime-portable` — a shared skill body that hard-depends on a Claude-only built-in agent (e.g. `claude-code-guide`) in a command/fact-check path is unfollowable under Codex; default to a both-runtime path (official docs), make the Claude-only agent an optional enhancement. Evidence: PR #74 ppt-yeong-style SKILL.md §원칙4 fact-check path. sources 7 -> 8; last_verified 2026-06-23.
+- insight/codex-skill-desc-1024.md: added `## CodeRabbit byte-count false positive` — the enforced limit is 1024 *characters* (`desc.length`); CR's description-length finding measures *bytes*, so a Korean (multibyte) description under the char cap but over 1024 bytes is flagged spuriously (ppt-yeong-style: 594 chars / 1049 bytes). Recurred PR #72 + #74 → cr-fix skips when `--check` already passes. last_verified 2026-06-23; evidence_count unchanged at 2 (graduation basis is the real-violation recurrences; the false positive is a complementary skip-rule).
+- index.md: extended the skill-engine-layering + shared-source-codex-manifests hooks for the new facets.
+
 ## 2026-06-23 — stale-check enforcement covers the insight layer too (ingest-finding)
 
 - llm-wiki-design/volatility-over-decay.md: added `## Enforcement must cover every layer that shares the contract` — the `volatility:`/`last_verified:` window applies to both `.llmwiki/wiki/` and the promoted `.llmwiki/insight/` layer; `wiki_stale_check.sh` was scanning only `.llmwiki/wiki` (insight = silent-rot blind spot), now adds `.llmwiki/insight` when the resolved root is `.llmwiki/wiki`. Generalized rule: a derived layer reusing a freshness contract must sit inside the same enforcement sweep. `## Sources` += the hook script; `> See-also: [[insight-layer-via-hook]]` + `> Evidence:` hook; sources 2 -> 3; last_verified 2026-06-23.

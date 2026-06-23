@@ -11,7 +11,7 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 
 ## 엔진·의존 (cross-skill 관용구)
 
-- **ppt-master** = 빌드 엔진·구현 owner. canvas init·source 변환·template·executor 스타일 등 **명시 안 한 세부는 ppt-master SKILL.md 그대로** 따른다. **bare name으로 참조**(vendor·복제 금지). ppt-master의 python 스크립트(`image_gen.py`·`finalize_svg.py`·`svg_to_pptx.py` 등)는 **`uv run`으로 실행**(시스템 python 직접 의존 금지).
+- **ppt-master** = 빌드 엔진·구현 owner. canvas init·source 변환·template·executor 스타일 등 **명시 안 한 세부는 ppt-master SKILL.md 그대로** 따른다. **bare name으로 참조**(vendor·복제 금지 — 이 repo에 동봉하지 않는 별도 marketplace 플러그인). ppt-master의 python 스크립트(`image_gen.py`·`finalize_svg.py`·`svg_to_pptx.py` 등)는 **`uv run`으로 실행**(시스템 python 직접 의존 금지). **필수 엔진이라 graceful degrade 대상이 아니다 — 미설치 시 Step 5 빌드 진입 전에 중단하고 ppt-master 설치를 먼저 안내**(수기 대체 금지).
 - 의존 스킬은 **있으면 사용, 없으면 graceful degrade**: `codex-image`(이미지)·`interview`(인터뷰)·`anti-slop-design`(영문 slop·디자인 감사)·`humanize-korean`(한국어 윤문)·`design-shotgun`(색 후보 생성). 미설치 시 그 단계는 수기로 대체하되 규약은 유지.
 
 ## 언제 쓰나 / 안 쓰나
@@ -31,7 +31,7 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 > 분량은 **고정하지 않는다 — 매 프로젝트 인터뷰로 결정.** 위 숫자는 참고치. (강의 슬라이드 수 매핑: 30분=15~18 / 60분=25~30 / 90분=35~42 / 120분=45~55 — 강의 외엔 인터뷰 우선.)
 
 **파이프라인**(내용 SOT는 사용자) — 단계별 도구:
-```
+```text
 (1) 인터뷰: interview 스킬 → (2) 색 락: design-shotgun + AskUserQuestion → (3) md 소스 작성
 → (4) 사용자 검토 → (5) ppt-master 빌드 → (6) anti-slop-design audit → humanize-korean 윤문
 → 렌더 Visual QA → (7) finalize_svg → svg_to_pptx → cairosvg PDF

@@ -15,7 +15,7 @@ yeong 스타일 강의·제안 덱 작성 규약. **ppt-master**(빌드 엔진) 
 
 ## 구조
 
-```
+```text
 ppt-yeong-style/
 ├── .claude-plugin/plugin.json
 ├── CLAUDE.md                       # 이 파일

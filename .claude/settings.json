@@ -23,7 +23,8 @@
       "./plugins/paper-search-tools",
       "./plugins/docs-forge",
       "./plugins/anti-slop-design",
-      "./plugins/tally-form"
+      "./plugins/tally-form",
+      "./plugins/ppt-yeong-style"
     ]
   }
 }

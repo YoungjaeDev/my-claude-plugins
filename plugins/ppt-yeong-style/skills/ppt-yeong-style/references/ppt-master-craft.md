@@ -9,11 +9,11 @@ ppt-master는 "md → PPTX 변환기"가 아니라 **레이어드 디자인 엔�
 | 레버 | 메커니즘 (ppt-master) | 언제 | yeong 적용 |
 |------|----------------------|------|-----------|
 | **레이아웃 3축** | `spec_lock` 의 `page_rhythm`(anchor/dense/breathing) + `page_layouts`(per-page 템플릿 basename) + `page_charts`(차트 템플릿) | 모든 덱 | 페이지별로 셋을 **다르게** 조합해 "전 장 카드 그리드" 균일함 탈피. anchor=표지/전환, breathing=실습/개념 1개, dense=표/비교 |
-| **이미지 rendering×palette** | Strategist 8번째 확인 — 20 렌더링 × 14 팔레트 매트릭스, design_spec §III.h + spec_lock `image_rendering`/`image_palette` | codex/AI 무드 이미지 쓰는 덱 | **deck-wide 1조합 락** 후 per-image type만 조절 → 아트디렉션 일관. 강의=editorial·sketch-notes·warm-scene + warm-earth·mono-ink 류 |
-| **3종 템플릿 fusion** | Step 3 Template_Dispatcher — `templates/brands/` + `templates/layouts/` + `templates/decks/` 경로 명시(fusion 규칙) | 검증된 구조/브랜드 재사용 | brand=yeong 색·로고·아이덴티티, layout=검증 구조, deck=중간 페이지. 같은 종 2개 충돌은 해소 프롬프트 |
-| **아이콘 라이브러리** | Strategist 6번째 — `chunk-filled`/`tabler-filled`/`tabler-outline`/`phosphor-duotone` 중 **택1** + `simple-icons`(브랜드 로고 전용) | 모든 덱 | 스타일 1종 deck-wide 고정(fill만, stroke 금지는 §icons-logos). 톤: chunk=tech·각짐, phosphor=부드러움 |
+| **이미지 rendering×palette** | 20 렌더링 × 14 팔레트 매트릭스(ppt-master Strategist 확인 항목) — spec_lock `image_rendering`/`image_palette`에 락 | codex/AI 무드 이미지 쓰는 덱 | **deck-wide 1조합 락** 후 per-image type만 조절 → 아트디렉션 일관. 강의=editorial·sketch-notes·warm-scene + warm-earth·mono-ink 류 |
+| **3종 템플릿 fusion** | brand + layout + deck 템플릿 fusion (경로·규칙은 ppt-master SKILL.md) | 검증된 구조/브랜드 재사용 | brand=yeong 색·로고·아이덴티티, layout=검증 구조, deck=중간 페이지. 같은 종 2개 충돌은 해소 프롬프트 |
+| **아이콘 라이브러리** | `chunk-filled`/`tabler-filled`/`tabler-outline`/`phosphor-duotone` 중 **택1** + `simple-icons`(브랜드 로고 전용) — ppt-master 아이콘 확인 항목 | 모든 덱 | 스타일 1종 deck-wide 고정(fill만, stroke 금지는 §icons-logos). 톤: chunk=tech·각짐, phosphor=부드러움 |
 | **검증 차트 + verify-charts** | `templates/charts/charts_index.json`(bar/line/pyramid/funnel/timeline/matrix/kpi 등) + `verify-charts` 워크플로(좌표 10~50px 보정) | 데이터·도식 정확도 필요 | 표·도식을 codex 무드가 아니라 **편집가능 SVG 차트 템플릿**으로. 숫자·라벨 정확. 빌드 후 verify-charts로 좌표 보정 |
-| **애니메이션 + live preview** | `animation_config.py scaffold`(animations.json) + svg_editor `server.py --live`(localhost:5050) | 발표용·핵심 장 강조 | 자동 매핑 위에 **핵심 장만** 등장 애니메이션 수동 튜닝. live preview로 생성 중 실시간 확인·주석 |
+| **애니메이션 + live preview** | 애니메이션 config(animations.json) + live preview 서버 — 정확한 명령·포트는 ppt-master SKILL.md | 발표용·핵심 장 강조 | 자동 매핑 위에 **핵심 장만** 등장 애니메이션 수동 튜닝. live preview로 생성 중 실시간 확인·주석 |
 
 ## 차별화 조합 레시피 (구체)
 

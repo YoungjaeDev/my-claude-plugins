@@ -28,7 +28,7 @@
 
 [색] 역할·면적 기반(개수 균등 금지). 중립 2 + 주색 1~2 + 액센트는 면적 ≤10%로만. deck-wide 락 후 슬라이드별 색 날조 금지.
 
-[이미지 — 기본 codex-image] 무드컷·배경·hero·표보다 이미지가 나은 도식에만. codex-image 생성 성능은 매번 반문하지 말 것(saturation). 디자인 토큰·캐릭터 참조 첨부, 생성 후 라벨 오타 검증. 정확한 한글 라벨·표·숫자·도식은 SVG. 하이브리드(codex 무드+SVG 라벨) 2안 비교 후 택1. ppt-master image_gen.py는 미사용. honesty test(빼도 손실 없으면 삭제). codex 배경 fade=표지·목차·세션 전환 divider·마무리 한정(opacity 0.12~0.16), 본문은 흰 배경. 마스코트·pop·instagram 감성도 표지·목차·전환 divider 한정(codex 마스코트+주황 pop), 본문은 anti-slop 미니멀(그라데이션·다색·icon-tile·이모지 금지). 장르 주의(기업·포멀 덱은 pop 생략 가능). **앱 UI(로그인·diff·권한·설정)는 실물 캡처 or 점선 placeholder만—codex/AI 생성 절대 금지**(지어낸 UI는 틀린 UX를 사실처럼 가르쳐 placeholder보다 나쁨, "재현 예시" 칩으로도 정당화 금지). 취득순서: 사용자제공→playwright 실물캡처(앱·공식docs)→공식docs 스크린샷→점선 placeholder.
+[이미지 — 기본 codex-image] 무드컷·배경·hero·표보다 이미지가 나은 도식에만. codex-image 생성 성능은 매번 반문하지 말 것(saturation). 디자인 토큰·캐릭터 참조 첨부, 생성 후 라벨 오타 검증. 정확한 한글 라벨·표·숫자·도식은 SVG. 하이브리드(codex 무드+SVG 라벨) 2안 비교 후 택1. ppt-master의 AI 이미지 경로는 미사용. honesty test(빼도 손실 없으면 삭제). codex 배경 fade=표지·목차·세션 전환 divider·마무리 한정(opacity 0.12~0.16), 본문은 흰 배경. 마스코트·pop·instagram 감성도 표지·목차·전환 divider 한정(codex 마스코트+주황 pop), 본문은 anti-slop 미니멀(그라데이션·다색·icon-tile·이모지 금지). 장르 주의(기업·포멀 덱은 pop 생략 가능). **앱 UI(로그인·diff·권한·설정)는 실물 캡처 or 점선 placeholder만—codex/AI 생성 절대 금지**(지어낸 UI는 틀린 UX를 사실처럼 가르쳐 placeholder보다 나쁨, "재현 예시" 칩으로도 정당화 금지). 취득순서: 사용자제공→playwright 실물캡처(앱·공식docs)→공식docs 스크린샷→점선 placeholder.
 
 [로고] 브랜드·도구 로고는 직접 그리기·codex 생성 금지 → 공식 SVG 라이브러리 fetch(devicon `cdn.jsdelivr.net/gh/devicons/devicon/icons/<name>/<name>-original.svg`·gilbarbara/logos·vectorlogo.zone·SVGL·Simple Icons[모노톤·CC0]) → `curl`로 assets/logos/ 보관 → path 인라인 + `<g transform="translate scale">`(image href 금지=래스터화 회피) → 근접성(설명 요소 바로 옆, 빈 여백 띄우기 금지) → 상표권 주의(교육 맥락, 변형 금지).
 
@@ -38,7 +38,7 @@
 
 [ppt-master 레버 조합 — 차별화] 단순 변환기로 쓰지 말 것. 레버를 인터뷰·사양서 의도적 조합(전부 spec_lock에 박아 매 장 재읽): 레이아웃 3축(page_rhythm+page_layouts+page_charts 페이지별 변주로 "전 장 카드 그리드" 탈피) · 이미지 rendering×palette(20×14) deck-wide 1조합 락 · 3종 템플릿 fusion(brand 아이덴티티+layout 구조+deck 중간) · 아이콘 1종+simple-icons 로고전용 · 차트는 charts_index 템플릿(codex 아님)+verify-charts 좌표보정 · animations.json 핵심장만+live preview. 원칙='더 화려'가 아니라 의도된 리듬·아트디렉션·정확도(anti-slop 유지).
 
-[ppt-master 파이프라인] Step4 Eight Confirmations만 BLOCKING(묶음 추천→명시 승인까지 정지)→design_spec.md(영문 I~XI 구조, 값은 한국어)+spec_lock.md. Step6 SVG 순차 수기→svg_quality_checker(error 0)→notes/total.md. Step7 finalize_svg→svg_to_pptx.
+[ppt-master 파이프라인] Step4 Eight Confirmations만 BLOCKING(묶음 추천→명시 승인까지 정지)→design_spec.md(영문 구조, 값은 한국어)+spec_lock.md. Step6 SVG 순차 수기→ppt-master 품질 체크(error 0)→notes/total.md. Step7 finalize_svg→svg_to_pptx.
 
 [윤문] humanize-korean 본문/노트 fast 자동 + 납품본 strict. 차단: 수사의문문·역설 hook·TED 슬로건·번역투(~에 대해/~를 통해)·이중피동·접속사 남발·콜론 헤더·"not X but Y"·진부표현(AI 시대/디지털 전환/매우/당연히)·오그라드는 친근/위로/응원조(함께 시작·함께 봐요·걱정 말고·쉽게·금방·같이~해요).
 

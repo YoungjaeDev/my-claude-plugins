@@ -4,7 +4,7 @@
 
 ## §5. codex-image vs ppt-master SVG
 
-- **codex-image**(기본 이미지 경로, ppt-master 밖 별도 도구): 사진·무드컷·배경(흐림/바램)·전략적 hero·표보다 이미지가 나은 도식. 한/영 레터링 품질 양호 — **생성 성능을 매번 반문하지 말 것**(saturation). 톤 통일을 명시(디자인 토큰 hex + 캐릭터 참조 이미지 첨부)하고, 생성 후 라벨 오타를 검증. ppt-master `image_gen.py`(Step 5 ai 경로)는 **기본 사용 안 함** — 이미지는 codex-image로 채운다.
+- **codex-image**(기본 이미지 경로, ppt-master 밖 별도 도구): 사진·무드컷·배경(흐림/바램)·전략적 hero·표보다 이미지가 나은 도식. 한/영 레터링 품질 양호 — **생성 성능을 매번 반문하지 말 것**(saturation). 톤 통일을 명시(디자인 토큰 hex + 캐릭터 참조 이미지 첨부)하고, 생성 후 라벨 오타를 검증. ppt-master의 AI 이미지 생성 경로(Step 5 ai)는 **기본 사용 안 함** — 이미지는 codex-image로 채운다.
 - **ppt-master SVG**: 정확한 한국어 라벨·구조·표·숫자·타임라인. 텍스트 정확·수정 가능.
 - **하이브리드**: 무드 배경(codex) + 라벨 오버레이(SVG). 도식 2안(풀 codex vs 하이브리드)을 렌더 후 사용자 선택.
 

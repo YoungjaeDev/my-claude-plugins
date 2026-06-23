@@ -10,9 +10,9 @@ ppt-master는 **빌드 엔진**이다(이 스킬은 그 위 작성 규약). 아�
 - **Step 6 Executor (HARD rules):**
   - SVG는 **메인 에이전트가 페이지 단위 순차 수기 생성.** 서브에이전트 위임 금지. 5장씩 배치 금지. **스크립트 일괄 생성 금지.**
   - 페이지마다 `spec_lock.md` 재읽기 — 색/폰트/아이콘은 거기 값만(기억·즉흥 금지). per-page `page_rhythm`(anchor/dense/breathing) 조회.
-  - `svg_quality_checker.py` 통과(error 0) 후 진행. notes/total.md 생성.
+  - ppt-master 품질 체크(error 0) 통과 후 진행. notes/total.md 생성.
 - **Step 7:** `finalize_svg.py` → `svg_to_pptx.py`(애니메이션 기본 포함). `cp`로 finalize 대체 금지.
-- design_spec.md는 영문 템플릿 구조(I~XI 섹션) 유지, 내용 값만 한국어.
+- design_spec.md는 영문 템플릿 구조 유지, 내용 값만 한국어.
 
 > 명시하지 않은 세부(canvas init·source 변환·template·executor 스타일 등)는 **ppt-master SKILL.md 그대로** 따른다. python 스크립트는 **`uv run`으로 실행.**
 
@@ -45,7 +45,7 @@ ppt-master는 **빌드 엔진**이다(이 스킬은 그 위 작성 규약). 아�
 ## 주의 / 미해결 (실사용 시 판단)
 
 - **SVG 생성 경로(결정)**: 기본 = **ppt-master 순차 수기**(레이아웃 다양성·페이지 간 일관성·anti-slop에 유리 — 생성기는 균일 레이아웃을 양산해 "일관성 과다" 불만과 충돌). 생성기 `_gen_*.py`는 **반복 구조(터미널 블록·단계 카드)가 명백하고 장수 많은 실습덱에만** 키트로 한정. ppt-master와 혼용 금지(덱 내 택1). 생성기 쓸 땐 레이아웃 균일화 위험을 별도로 의식.
-- **이미지 경로(결정)**: 기본 = codex-image(무드컷·배경·hero). 정확한 라벨·표·도식은 SVG. ppt-master `image_gen.py`는 기본 미사용. (상세 → `images-and-pop.md`.)
+- **이미지 경로(결정)**: 기본 = codex-image(무드컷·배경·hero). 정확한 라벨·표·도식은 SVG. ppt-master의 AI 이미지 생성 경로는 기본 미사용. (상세 → `images-and-pop.md`.)
 - **용어·도구명 정확성(출처 근거)**: 도구·브랜드명은 전사·출처에서 **실제 언급된 것만**, 추측 금지(예: 전사 미언급 용어는 본문 신중·부록 제외). **강사 자작 스킬 vs 일반 개념을 구분**해 표기.
 - **OS 병기 터미널 블록 = 좌우 대칭 높이 기계 적용 금지**: 병기(Win/Mac) 시 명령 줄수가 다르면 블록 높이를 내용에 맞춰 가변 처리(또는 양쪽 줄수 의도적 맞춤). "병기 = 좌우 동일 높이"를 기계적으로 강제하면 짧은 쪽 하단 여백이 뜬다.
 - **brand 팔레트** 프로젝트 전용 색은 repo 한정 격리, 전역화 금지(→ `color-typography.md`).

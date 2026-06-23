@@ -255,6 +255,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "content"
+    },
+    {
+      "name": "ppt-yeong-style",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ppt-yeong-style"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "design"
     }
   ]
 }

@@ -6,6 +6,25 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-23 — post-merge #74: ppt-yeong-style v0.2.0 lore (3 pages) (post-merge)
+
+- plugin-ops/skill-engine-layering.md: 2nd-dogfood refinement — "copy" includes reproducing the engine's internal API *in prose* (exact script names, dev-server ports, Strategist step ordinals, `design_spec` section numbers, layout enum values), not only duplicating files; reference the lever *concept* + stable spec_lock contract keys (`page_rhythm`/`page_layouts`/`image_rendering`) and mark the engine SKILL.md as SOT for exact values. Evidence: PR #74 merged ppt-master-craft.md "SOT 주의" note + SKILL.md §3b enum→concept-reference change. sources 2 -> 3; last_verified 2026-06-23. Not graduated — multi-facet wiki lore, no single crisp promotable rule.
+- plugin-ops/shared-source-codex-manifests.md: added `## Skill bodies must be runtime-portable` — a shared skill body that hard-depends on a Claude-only built-in agent (e.g. `claude-code-guide`) in a command/fact-check path is unfollowable under Codex; default to a both-runtime path (official docs), make the Claude-only agent an optional enhancement. Evidence: PR #74 ppt-yeong-style SKILL.md §원칙4 fact-check path. sources 7 -> 8; last_verified 2026-06-23.
+- insight/codex-skill-desc-1024.md: added `## CodeRabbit byte-count false positive` — the enforced limit is 1024 *characters* (`desc.length`); CR's description-length finding measures *bytes*, so a Korean (multibyte) description under the char cap but over 1024 bytes is flagged spuriously (ppt-yeong-style: 594 chars / 1049 bytes). Recurred PR #72 + #74 → cr-fix skips when `--check` already passes. last_verified 2026-06-23; evidence_count unchanged at 2 (graduation basis is the real-violation recurrences; the false positive is a complementary skip-rule).
+- index.md: extended the skill-engine-layering + shared-source-codex-manifests hooks for the new facets.
+
+## 2026-06-23 — stale-check enforcement covers the insight layer too (ingest-finding)
+
+- llm-wiki-design/volatility-over-decay.md: added `## Enforcement must cover every layer that shares the contract` — the `volatility:`/`last_verified:` window applies to both `.llmwiki/wiki/` and the promoted `.llmwiki/insight/` layer; `wiki_stale_check.sh` was scanning only `.llmwiki/wiki` (insight = silent-rot blind spot), now adds `.llmwiki/insight` when the resolved root is `.llmwiki/wiki`. Generalized rule: a derived layer reusing a freshness contract must sit inside the same enforcement sweep. `## Sources` += the hook script; `> See-also: [[insight-layer-via-hook]]` + `> Evidence:` hook; sources 2 -> 3; last_verified 2026-06-23.
+- index.md: volatility-over-decay hook extended to note the sweep covers wiki + insight.
+- Not graduated to insight: first occurrence (single PR #73) — fails recurs-across-2+-sessions; stays in the wiki layer.
+
+## 2026-06-23 — skill-on-skill engine layering + cross-marketplace prerequisite-stop (ingest-finding)
+
+- plugin-ops/skill-engine-layering.md: new page (id skill-engine-layering, status active, volatility stable, sources 2). Distills the ppt-yeong-style-on-ppt-master contract — bare-name engine reference (no vendor/copy), optional deps graceful-degrade, but a HARD engine in a separate marketplace is NOT a degrade target: a fresh install of the layer alone has no engine and blocks the build, so stop-before-build + guide install (prerequisite-stop). Invisible in the author's env where the engine is already installed. `> See-also: dual-surface-command-skill-pattern`. Evidence: PR #72 merged SKILL.md §엔진·의존 + Codex P1 fresh-install block. last_verified 2026-06-23.
+- index.md: added skill-engine-layering hook under plugin-ops.
+- Not graduated to insight: first occurrence (single PR) — fails the recurs-across-2+-sessions criterion; stays in the wiki layer.
+
 ## 2026-06-18 — post-merge #71: dogfood-harvest skill-authoring discipline (post-merge)
 
 - plugin-ops/skill-authoring-source-grounded-then-audit.md: added `## 3. Dogfood harvest — interview-gate generic vs project-specific`. A reference skill can grow from your own dogfooded real-project build, not only external OSS; interview-gate each harvested learning generic (-> the shared plugin lane, marketplace-wide) vs project-specific (-> stays in the origin repo) before merging, else the shared plugin is polluted for every other caller. anti-slop-design v0.2.0 PPT lane reflected only the generic slice (color mono / presentation register / build-vs-validation scope + render-validation traps) distilled from a real 27-slide KCI 발표 덱 build; project-specific deck rules stayed in the source repo. Added PR #71 source; sources 1 -> 2; last_verified 2026-06-18.

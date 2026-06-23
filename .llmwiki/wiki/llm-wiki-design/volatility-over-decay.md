@@ -1,10 +1,10 @@
 ---
 id: volatility-over-decay
 aliases: [volatility, staleness-window, old-is-not-stale, anti-ebbinghaus]
-last_verified: 2026-05-29
+last_verified: 2026-06-23
 status: active
 volatility: stable
-sources: 2
+sources: 3
 ---
 
 # Volatility over decay
@@ -47,6 +47,19 @@ precision it does not have. The class is legible; the score is not. `lint-wiki`
 flags a page only when its `last_verified:` is older than its class window, and
 stale pages are marked `status: stale`, never deleted.
 
+## Enforcement must cover every layer that shares the contract
+
+The `volatility:`/`last_verified:` window is shared by the wiki layer and the
+promoted `.llmwiki/insight/` layer — same frontmatter, same windows. A freshness
+*contract* is only as strong as its enforcement *coverage*: while the stale-check
+hook resolved only `.llmwiki/wiki` and skipped `.llmwiki/insight`, insight pages
+carried the freshness fields but nothing ever flagged them — they could rot
+silently. The fix makes `wiki_stale_check.sh` add `.llmwiki/insight` to the
+scanned dirs whenever the resolved root is `.llmwiki/wiki` (hint label
+`wiki/insight page(s)`), and `lint-wiki` applies the same windows across both
+layers. The rule generalizes: any derived layer that reuses a freshness contract
+must sit inside the same enforcement sweep, or the contract is decorative there.
+
 ## Sources
 
 - `.llmwiki/raw/rohitg00-llm-wiki-v2-gist.md` — the Forgetting / memory-lifecycle
@@ -55,8 +68,14 @@ stale pages are marked `status: stale`, never deleted.
 - `.llmwiki/raw/karpathy-llm-wiki-gist.md` — the lint operation, which lists
   "stale claims that newer sources have superseded" as a health check, grounding
   staleness as a lint concern rather than an automatic decay process.
+- `plugins/llm-wiki/hooks/wiki_stale_check.sh` — the stale-check hook; resolves the
+  wiki root and, when it is `.llmwiki/wiki`, scans `.llmwiki/insight` alongside it,
+  applying the same `volatility:` window to both layers (insight was previously a
+  blind spot).
 
 > Refines: [[curated-conservative]]
 > See-also: [[provenance-over-confidence]]
+> See-also: [[insight-layer-via-hook]]
 > Evidence: .llmwiki/raw/rohitg00-llm-wiki-v2-gist.md
 > Evidence: .llmwiki/raw/karpathy-llm-wiki-gist.md
+> Evidence: plugins/llm-wiki/hooks/wiki_stale_check.sh

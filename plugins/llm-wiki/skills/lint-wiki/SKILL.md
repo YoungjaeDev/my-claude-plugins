@@ -69,7 +69,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
    ```
    Any hits → must convert to typed `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` (per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar). Only a bare line starting with `[[` is flagged; typed refs are never flagged.
 
-4. **Staleness scan** (per-page volatility window — `volatile` 30d / `stable` or absent 180d):
+4. **Staleness scan** (per-page volatility window — `volatile` 30d / `stable` or absent 180d; covers the promoted `.llmwiki/insight/` layer too, matching the stale-check hook):
    ```bash
    today=$(date +%s)
    while IFS= read -r f; do
@@ -79,7 +79,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
      [[ "$vol" == "volatile" ]] && window=30 || window=180
      age_days=$(( (today - $(date -d "$d" +%s)) / 86400 ))
      [[ $age_days -gt $window ]] && printf '%s (%d days, %s window %dd)\n' "$f" "$age_days" "${vol:-stable}" "$window"
-   done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md')
+   done < <(find .llmwiki/wiki .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name 'log.md' 2>/dev/null)
    ```
    For each stale page, either re-verify against current code and bump the date, or mark for review.
 

@@ -30,6 +30,12 @@ touch "$marker"
 today_ts=$(date +%s)
 stale=()
 
+# The promoted insight layer (.llmwiki/insight/) is a sibling of .llmwiki/wiki and
+# carries the same last_verified/volatility frontmatter, but resolve_wiki_root only
+# returns the wiki root — scan insight too so its staleness isn't a blind spot.
+scan_dirs=("$wiki_root")
+[[ "$wiki_root" == ".llmwiki/wiki" && -d ".llmwiki/insight" ]] && scan_dirs+=(".llmwiki/insight")
+
 while IFS= read -r f; do
   d=$(LC_ALL=C.UTF-8 grep -oP '^last_verified:\s*\K\d{4}-\d{2}-\d{2}' "$f" 2>/dev/null | head -1)
   [[ -z "$d" ]] && continue
@@ -41,14 +47,14 @@ while IFS= read -r f; do
   if (( age_days > window )); then
     stale+=("$f ($age_days days > ${window}d ${vol:-stable})")
   fi
-done < <(find "$wiki_root" -maxdepth 3 -type f -name '*.md' \
+done < <(find "${scan_dirs[@]}" -maxdepth 3 -type f -name '*.md' \
          -not -name 'index.md' -not -name 'log.md' 2>/dev/null)
 
 n=${#stale[@]}
 (( n == 0 )) && exit 0
 
 # Cap output — show first 5
-printf '[wiki-stale-hint] %d wiki page(s) exceed their volatility window (stable 180d / volatile 30d):\n' "$n"
+printf '[wiki-stale-hint] %d wiki/insight page(s) exceed their volatility window (stable 180d / volatile 30d):\n' "$n"
 for s in "${stale[@]:0:5}"; do printf '  - %s\n' "$s"; done
 (( n > 5 )) && printf '  - ... and %d more\n' "$((n - 5))"
 printf 'Run /lint-wiki for a full report, or /query-wiki + bump last_verified after re-checking each page.\n'

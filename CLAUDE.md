@@ -68,7 +68,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | Plugin | Description |
 |--------|-------------|
 | `anti-slop-design` | Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. clarify→context→plan→run→audit→revise flow + two-phase audit gate (pre-emit self-critique + binary slop checklist); Korean copy handed to `humanize-korean`. Source-grounded in 6 OSS anti-slop repos (impeccable/hallmark/frontend-design/huashu/stop-slop/frontend-slides) |
-| `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약 — `ppt-master` 엔진 위에 얹는 작성 레이어. 덱 유형·md 소스 규약·작성 원칙 12종·밀도 리듬(중간 강화)·역할 기반 색·codex vs SVG 경계·공식 로고 fetch·실물 스크린샷 우선·윤문·렌더 QA. 진입점 SKILL.md + references/ 4종 + assets/injection-prompt.md |
+| `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약 — `ppt-master` 엔진 위에 얹는 작성 레이어. 덱 유형·md 소스 규약·작성 원칙 15종·밀도 리듬(중간 강화)·역할 기반 색·codex vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 review·공식 로고 fetch·윤문·렌더 QA. 진입점 SKILL.md + references/ 5종 + assets/injection-prompt.md |
 
 ### Visualization
 | Plugin | Description |

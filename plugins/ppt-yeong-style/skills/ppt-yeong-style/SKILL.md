@@ -113,7 +113,7 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 
 ppt-master를 **단순 변환기로 쓰지 말 것.** 엔진 안의 레버를 인터뷰·사양에서 **의도적으로 골라 조합**해야 "아무나 못 만드는" 덱이 나온다(레버 목록·조합 레시피·함정 전부 → `references/ppt-master-craft.md`). 핵심 레버:
 
-- **레이아웃 3축**: `page_rhythm`(anchor/dense/breathing) + `page_layouts`(per-page 템플릿) + `page_charts`(차트 템플릿)를 페이지별로 조합 → "모든 장이 카드 그리드"의 균일함 탈피.
+- **레이아웃 3축**: `page_rhythm`(§3b 리듬) + `page_layouts`(per-page 템플릿) + `page_charts`(차트 템플릿)를 페이지별로 변주 → "모든 장이 카드 그리드"의 균일함 탈피(`page_layouts`+`page_charts`는 호환될 때만 병용).
 - **이미지 rendering×palette 매트릭스**(20 렌더링 × 14 팔레트): deck-wide로 **1조합 락** 후 per-image type만 조절 → 일관된 아트디렉션.
 - **3종 템플릿 fusion**: brand(아이덴티티) + layout(구조) + deck(중간)을 섞어 검증된 구조 위에 yeong 색·톤.
 - **아이콘 라이브러리 1종**(chunk-filled/tabler/phosphor 중 택1) + `simple-icons`는 브랜드 로고 전용.
@@ -124,4 +124,4 @@ ppt-master를 **단순 변환기로 쓰지 말 것.** 엔진 안의 레버를 �
 
 ## 다른 세션에 규칙 주입
 
-ppt-master·codex-image 등이 설치된 **다른 서버/세션**에서 이 규약을 한 번에 쓰려면 → `assets/injection-prompt.md`의 압축 프롬프트(복붙 페이로드)를 대화 맨 앞에 붙인 뒤 실제 요청을 잇는다(위 §1~§3b + 색·이미지·로고의 1:1 압축판).
+ppt-master·codex-image 등이 설치된 **다른 서버/세션**에서 이 규약을 한 번에 쓰려면 → `assets/injection-prompt.md`의 압축 프롬프트(복붙 페이로드)를 대화 맨 앞에 붙인 뒤 실제 요청을 잇는다(위 §1~§4 + 색·이미지·로고·craft의 1:1 압축판).

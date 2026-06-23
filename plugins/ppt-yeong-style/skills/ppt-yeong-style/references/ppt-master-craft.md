@@ -3,12 +3,14 @@
 ppt-master는 "md → PPTX 변환기"가 아니라 **레이어드 디자인 엔진**이다. 대부분은 기본 경로만 써서 "그냥 잘 만든 PPT"에서 멈춘다. **"아무나 못 만드는" 덱은 엔진 안의 레버를 인터뷰·사양 단계에서 의도적으로 골라 조합할 때** 나온다. 이 문서는 그 레버 목록·조합 레시피·함정이다.
 
 > 전제: 모든 레버는 ppt-master `spec_lock.md`(페이지마다 재읽기되는 실행 계약)에 박아야 executor가 일관 적용한다. 기억·즉흥 금지. 레버를 머리로만 정하고 spec_lock에 안 박으면 긴 덱에서 드리프트한다.
+>
+> **SOT 주의:** 정확한 필드·스크립트·워크플로명·옵션은 **ppt-master SKILL.md/references가 진실**(버전에 따라 달라질 수 있음). 이 문서는 "무엇을 골라 조합할지"(판단 레이어)만 담고 엔진 내부를 복제하지 않는다 — 이름은 hook으로만 쓰고, 동작 세부는 ppt-master에서 확인.
 
 ## 레버 6종 (무엇을·언제·yeong 적용)
 
 | 레버 | 메커니즘 (ppt-master) | 언제 | yeong 적용 |
 |------|----------------------|------|-----------|
-| **레이아웃 3축** | `spec_lock` 의 `page_rhythm`(anchor/dense/breathing) + `page_layouts`(per-page 템플릿 basename) + `page_charts`(차트 템플릿) | 모든 덱 | 페이지별로 셋을 **다르게** 조합해 "전 장 카드 그리드" 균일함 탈피. anchor=표지/전환, breathing=실습/개념 1개, dense=표/비교 |
+| **레이아웃 3축** | `spec_lock`의 `page_rhythm`(anchor/dense/breathing) + `page_layouts`(per-page 템플릿 basename) + `page_charts`(차트 템플릿) | 모든 덱 | 페이지별로 의도적 변주 → "전 장 카드 그리드" 균일함 탈피. anchor=표지/전환, breathing=실습/개념 1개, dense=표/비교. **단, `page_layouts`+`page_charts`는 레이아웃이 그 차트의 호환 셸일 때만 같이 건다(ppt-master hard rule)** — 안 맞으면 그 장은 `page_layouts`에서 생략. 칸 채우려 충돌 레이아웃 강제 금지 |
 | **이미지 rendering×palette** | 20 렌더링 × 14 팔레트 매트릭스(ppt-master Strategist 확인 항목) — spec_lock `image_rendering`/`image_palette`에 락 | codex/AI 무드 이미지 쓰는 덱 | **deck-wide 1조합 락** 후 per-image type만 조절 → 아트디렉션 일관. 강의=editorial·sketch-notes·warm-scene + warm-earth·mono-ink 류 |
 | **3종 템플릿 fusion** | brand + layout + deck 템플릿 fusion (경로·규칙은 ppt-master SKILL.md) | 검증된 구조/브랜드 재사용 | brand=yeong 색·로고·아이덴티티, layout=검증 구조, deck=중간 페이지. 같은 종 2개 충돌은 해소 프롬프트 |
 | **아이콘 라이브러리** | `chunk-filled`/`tabler-filled`/`tabler-outline`/`phosphor-duotone` 중 **택1** + `simple-icons`(브랜드 로고 전용) — ppt-master 아이콘 확인 항목 | 모든 덱 | 스타일 1종 deck-wide 고정(fill만, stroke 금지는 §icons-logos). 톤: chunk=tech·각짐, phosphor=부드러움 |

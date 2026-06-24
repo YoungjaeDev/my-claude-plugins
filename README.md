@@ -679,6 +679,16 @@ git config core.hooksPath .githooks
 
 활성화하면 매 커밋 전에 `node scripts/sync-codex-manifests.mjs --check` 가 돌아 drift / 길이 위반을 차단합니다. 훅을 건너뛴 기여자도 PR 시 `.github/workflows/validate-codex.yml` 이 동일 명령으로 잡습니다.
 
+### 스킬을 Hermes / Codex 에 설치
+
+이 마켓플레이스의 skill 을 Hermes Agent 와 Codex 에 설치하는 대화형 도구. `npx skills`(vercel-labs/skills) 를 래핑하며 Node builtin 만 사용(zero-dep):
+
+```bash
+node scripts/install-skills.mjs
+```
+
+플러그인 그룹 단위로 skill 을 고른 뒤 타겟(`hermes-agent` / `codex`)·scope(global `~/` / project `./`)·Hermes profile 을 선택하면 `npx skills add` 로 설치합니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes profile 은 `HERMES_HOME` env 로 타겟팅합니다.
+
 ## 요구사항
 
 | 도구 | 용도 | 필수 |

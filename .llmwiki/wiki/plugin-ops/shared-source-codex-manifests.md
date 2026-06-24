@@ -1,7 +1,7 @@
 ---
 id: shared-source-codex-manifests
 aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, retired-codex-bridge]
-last_verified: 2026-06-23
+last_verified: 2026-06-24
 status: active
 volatility: stable
 sources: 8
@@ -74,7 +74,10 @@ syncing it back into Codex would be circular — Codex would be asked to load a
 skill whose only job is to call Codex. So **all plugins except those 3 are
 eligible** for Codex (eligible count = total − 3); the absolute number shifts on
 every plugin add/remove, so the durable invariant is the 3-member EXCLUDED set,
-not a fixed count.
+not a fixed count. EXCLUDED scopes Codex *manifest eligibility* only — it is not
+an *install* filter: the `install-skills` wrapper (which pushes these skills into
+Codex/Hermes via `npx skills`) filters by skill count, so midjourney and
+codex-image stay installable to Codex from that tool (`> See-also:` below).
 
 `deepwiki` and `project-init` were in the EXCLUDED set before 1.41.0 because
 they shipped only `commands/`. The 1.41.0 dual-surface conversion added
@@ -180,5 +183,6 @@ does NOT need to retain removed plugins — orphan detection covers that case.
 > See-also: [[neutral-llmwiki-root]]
 > See-also: [[cache-version-pinning]]
 > See-also: [[dual-surface-command-skill-pattern]]
+> See-also: [[skills-install-wrapper]]
 > Evidence: scripts/sync-codex-manifests.mjs
 > Evidence: AGENTS.md

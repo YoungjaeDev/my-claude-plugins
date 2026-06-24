@@ -4,7 +4,7 @@
 
 이 repo(`my-claude-plugins`)의 SKILL.md들을 골라 **Hermes Agent**와 **Codex**에 설치하는 in-repo 터미널(TUI) 도구. `npx skills`(vercel-labs/skills) CLI를 **래핑**한다. 자체 exporter는 만들지 않는다.
 
-> 상태: spec 취합(plan 전). 구현 미착수.
+> 상태: 구현·머지 완료. 산출물 `scripts/install-skills.mjs` (P0 설치). remove/update/미리보기/검증은 후속(P1·P2).
 
 ## Decisions made (인터뷰 + 조사 확정)
 

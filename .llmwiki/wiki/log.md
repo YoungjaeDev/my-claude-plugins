@@ -6,6 +6,15 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-24 — post-merge #79: skills install wrapper (npx skills) lore + EXCLUDED install-scope (post-merge)
+
+- plugin-ops/skills-install-wrapper.md: new page (id skills-install-wrapper, status active, volatility stable, sources 2). Distills `scripts/install-skills.mjs` wrapping `npx skills` (vercel-labs/skills): source arg `.` (reads marketplace.json, groups by plugin), skill selection via *repeated* `-s <name>` (comma fails → "No matching skills found", exit 1), codex global install lands in `~/.agents/skills/<name>/` (not `~/.codex/skills`), Hermes profile targeted by injecting `HERMES_HOME` with one spawn per (agent, profile), and the EXCLUDED-is-manifest-scoped decision (installer filters by skill count, so midjourney/codex-image ARE installable to Codex). `> See-also: skills-install-wrapper`→`shared-source-codex-manifests`. Evidence: scripts/install-skills.mjs.
+- plugin-ops/shared-source-codex-manifests.md: added one clause clarifying `EXCLUDED` governs Codex *manifest eligibility*, not *install availability*, plus `> See-also: [[skills-install-wrapper]]`; last_verified 2026-06-23 → 2026-06-24 (EXCLUDED set re-confirmed against the generator this session); sources unchanged (8).
+- index.md: added the skills-install-wrapper hook under plugin-ops.
+- Not graduated to insight: first occurrence (single PR #79) — fails recurs-across-2+-sessions; stays in the wiki layer.
+
+---
+
 ## 2026-06-24 — post-merge #76: cr-fix YAGNI/over-engineering judgment axis (post-merge)
 
 - cr-fix-ops/cr-fix-yagni-over-engineering-axis.md: new page (id cr-fix-yagni-over-engineering-axis, status active, volatility stable, sources 2). Distills the Step 9c 5th axis — a real reviewer finding can still demand unrequested complexity; `over_engineering=yes` skips and overrides `fix_size` (small-safe doesn't save a pure over-engineering suggestion); cr-fix refuses *added* complexity while `ponytail-review` (optional) deletes *existing* — division of labor, bare-name optional dep. `> See-also: skill-engine-layering`. Evidence: PR #76.

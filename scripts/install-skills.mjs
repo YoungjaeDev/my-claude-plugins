@@ -21,6 +21,9 @@ import { createInterface } from 'node:readline';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const MARKETPLACE = join(ROOT, '.claude-plugin', 'marketplace.json');
 const PLUGINS_DIR = join(ROOT, 'plugins');
+// hermes home — honor an existing HERMES_HOME (npx skills reads it too) so a
+// relocated install isn't wrongly reported as "not installed".
+const HERMES_BASE = process.env.HERMES_HOME?.trim() || join(homedir(), '.hermes');
 
 // --- tiny fs helpers (same shape as scripts/sync-codex-manifests.mjs) ---
 function readJSON(path) { return JSON.parse(readFileSync(path, 'utf8')); }
@@ -172,13 +175,13 @@ function ask(question) {
   return new Promise((res) => rl.question(question, (a) => { rl.close(); res(a.trim()); }));
 }
 
-// hermes profiles live under ~/.hermes/profiles/<name>; "default" = ~/.hermes/skills.
+// hermes profiles live under <HERMES_BASE>/profiles/<name>; "default" = <HERMES_BASE>/skills.
 function hermesProfiles() {
-  const dir = join(homedir(), '.hermes', 'profiles');
+  const dir = join(HERMES_BASE, 'profiles');
   if (!isDir(dir)) return [];
   return readdirSync(dir).filter((n) => isDir(join(dir, n))).sort();
 }
-const hermesInstalled = () => isDir(join(homedir(), '.hermes'));
+const hermesInstalled = () => isDir(HERMES_BASE);
 
 // One `npx skills add` spawn per (agent, profile). Selection passed as repeated
 // `-s <name>` flags (comma is NOT a valid separator for this CLI).
@@ -189,7 +192,7 @@ function installFor(agent, skills, globalScope, profile) {
   args.push('-y');
   const env = { ...process.env };
   if (agent === 'hermes-agent' && profile && profile !== 'default') {
-    env.HERMES_HOME = join(homedir(), '.hermes', 'profiles', profile);
+    env.HERMES_HOME = join(HERMES_BASE, 'profiles', profile);
   }
   const label = agent === 'hermes-agent' && profile ? `${agent} [${profile}]` : agent;
   out(`\n→ installing ${skills.length} skill(s) to ${label}${globalScope ? ' (global)' : ' (project)'}\n`);

@@ -1,6 +1,6 @@
 # Autonomous Judgment (Step 9c)
 
-The v2 replacement for the per-finding `AskUserQuestion` gate. The LLM main session reads the affected code, judges each finding on four axes, and decides apply / defer / skip without prompting the user.
+The v2 replacement for the per-finding `AskUserQuestion` gate. The LLM main session reads the affected code, judges each finding on five axes, and decides apply / defer / skip without prompting the user.
 
 ## Why no AskUserQuestion
 

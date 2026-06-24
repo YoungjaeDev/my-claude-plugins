@@ -203,6 +203,7 @@ async function interactive() {
     process.exit(1);
   }
   const groups = discover();
+  if (groups.length === 0) { console.log('no discoverable skills found — nothing to do.'); return; }
   const skills = await selectSkills(groups);
   if (skills === null) { console.log('cancelled.'); return; }
   if (skills.length === 0) { console.log('no skills selected — nothing to do.'); return; }

@@ -9,6 +9,13 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 
 **핵심 명제:** 덱 품질은 엔진이 아니라 *작성 규약*에서 갈린다 — 담백한 명사구 제목, 한 장=한 메시지, anti-slop 본문 + 표지/전환 pop, 역할 기반 색, 일상 비유 보조선. 이 규약을 매번 재유도 없이 일관 적용하는 게 목적.
 
+## §0. 미감 토대 (Aesthetic foundation)
+
+**시그니처 한 줄: "Editorial restraint, one committed accent."** 따뜻한 중립 에디토리얼 캔버스를 페이지당 *단 하나의* 의도된 라우드 모먼트로 깬다. anti-slop은 "하지 마"의 신뢰 바닥이고, 이 시그니처는 그 위에 얹는 "이렇게 해"의 톤 — **signature within trust**(금지는 그대로 두고 톤으로만 차별화). 그래서 규칙을 다 지켜도 "무난한 AI 톤"에서 멈추지 않는다.
+
+- **tonality는 색보다 먼저.** 인터뷰·색 락(파이프라인 (2)) 전에 *감정 온도*(절제↔pop, 권위↔즉시성)부터 합의하고, 그 톤에 맞춰 색·타입·사진을 고른다. 색을 먼저 고르고 톤을 끼워 맞추지 않는다.
+- 6축(레이아웃·여백·색·타이포·사진·pop)과 anti-slop↔하이엔드 양립표, ppt-master 레버 락은 → `references/design-language.md`. **이 파일은 색·이미지·craft 모든 결정의 상위 미감 계약이다** — 충돌 시 design-language의 톤 의도가 우선.
+
 ## 엔진·의존 (cross-skill 관용구)
 
 - **ppt-master** = 빌드 엔진·구현 owner. canvas init·source 변환·template·executor 스타일 등 **명시 안 한 세부는 ppt-master SKILL.md 그대로** 따른다. **bare name으로 참조**(vendor·복제 금지 — 이 repo에 동봉하지 않는 별도 marketplace 플러그인). ppt-master의 python 스크립트(`image_gen.py`·`finalize_svg.py`·`svg_to_pptx.py` 등)는 **`uv run`으로 실행**(시스템 python 직접 의존 금지). **필수 엔진이라 graceful degrade 대상이 아니다 — 미설치 시 Step 5 빌드 진입 전에 중단하고 ppt-master 설치를 먼저 안내**(수기 대체 금지).

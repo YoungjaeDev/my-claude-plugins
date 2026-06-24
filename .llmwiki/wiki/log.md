@@ -6,6 +6,13 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-24 — post-merge #75: core-config prompt_inject englishize + federation default off + memory_nudge retired (post-merge)
+
+- llm-wiki-design/mem0-llmwiki-federation.md: corrected the now-stale reversibility claim — `CORE_CONFIG_FEDERATE_MEM0` default flipped 1->0, so federation labels ship OFF and `=1` opts in (was "`=0` reverts", implying default-on); marked the authority section conditional on FEDERATE=1; added `## Retiring a hook that fights the enforced memory system` (memory_nudge.sh retired — its MEMORY.md save-nudge contradicts the mem0 plugin's enforced `block_memory_write.sh` PreToolUse block). `## Sources` += mem0 plugin block_memory_write.sh; sources 2 -> 3; last_verified 2026-06-24.
+- plugin-ops/prompt-inject-korean-persistence.md: noted the block was rewritten Korean->English while line 1 still mandates a Korean final reply (English wording stops the model drifting into its own English register while pinning output language); the quoted Korean directive is the original phrasing, the rule now reads in English. last_verified 2026-06-24; sources unchanged at 2.
+- index.md: updated the mem0<->llmwiki federation hook — labels off by default (`=1` opts in), not "`=0` reverts".
+- Not graduated to insight: federation default + memory_nudge retirement are single-PR design tweaks (fail recurs-across-2+-sessions); stay in the wiki layer.
+
 ## 2026-06-23 — post-merge #74: ppt-yeong-style v0.2.0 lore (3 pages) (post-merge)
 
 - plugin-ops/skill-engine-layering.md: 2nd-dogfood refinement — "copy" includes reproducing the engine's internal API *in prose* (exact script names, dev-server ports, Strategist step ordinals, `design_spec` section numbers, layout enum values), not only duplicating files; reference the lever *concept* + stable spec_lock contract keys (`page_rhythm`/`page_layouts`/`image_rendering`) and mark the engine SKILL.md as SOT for exact values. Evidence: PR #74 merged ppt-master-craft.md "SOT 주의" note + SKILL.md §3b enum→concept-reference change. sources 2 -> 3; last_verified 2026-06-23. Not graduated — multi-facet wiki lore, no single crisp promotable rule.

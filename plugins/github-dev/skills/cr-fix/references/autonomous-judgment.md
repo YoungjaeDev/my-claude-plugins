@@ -12,7 +12,7 @@ Sample of 10 PRs (PR #30 / #31 / 4-repo Explore + dogfood runs): **100%** of CR 
 
 The escape hatch: pre-flight `gate=failure` still bubbles up to the user; auto-merge gate (Step 15) still uses AskUserQuestion when branch protection is missing; rate-limit fallback (Step 7c) still asks when no fallback channel is available.
 
-## Four judgment axes
+## Five judgment axes
 
 ### 1. `is_real`
 
@@ -53,10 +53,22 @@ The reassessment matters because reviewers regularly over-flag (Codex P1 on cosm
 | `large-risky` | Refactor, signature change, cross-file impact, or change that requires broader context to validate. |
 | `ambiguous` | Unclear without reading more of the call graph. |
 
+### 5. `over_engineering`
+
+Does the *suggestion itself* demand unrequested complexity? This judges the **fix being asked for**, not the code it sits in — a finding can be entirely real and still ask for over-engineering.
+
+| Value | Trigger |
+|---|---|
+| `yes` | The suggestion adds speculative abstraction, defensive flexibility against hypotheticals, premature generalization, or unrequested configurability — complexity nobody asked for. A senior engineer would call it overcomplicated. |
+| `no` | The suggestion does not add unrequested complexity (it may even remove some, or be a pure correctness/clarity fix). |
+
+The distinction that matters: a complex *surrounding file* is not `yes`. Only a suggestion that *adds* complexity to satisfy a hypothetical is. This keeps cr-fix from importing a reviewer's speculative-generality habit into the codebase under cover of a "valid" finding.
+
 ## Decision matrix
 
 | `is_real` | `severity_reassess` | `fix_size` | action | reason field |
 |---|---|---|---|---|
+| `real` | any | any *(`over_engineering=yes`)* | **skip** | "YAGNI — suggestion adds unrequested complexity; fails the senior-engineer test" |
 | `real` | any | `small-safe` | **apply** | "real + small/safe → fix in place" |
 | `real` | `high` | `large-risky` | **defer** | "real high-severity but invasive — needs review" |
 | `real` | `low` / `cosmetic` | `large-risky` | **skip** | "low value vs. invasiveness" |
@@ -64,6 +76,10 @@ The reassessment matters because reviewers regularly over-flag (Codex P1 on cosm
 | `spurious` | any | any | **skip** | "did not match local code" |
 | `stylistic-only` | any | any | **skip** | "stylistic preference, repo convention differs" |
 | `ambiguous` | any | any | **defer** | "needs human review on intent" |
+
+**`over_engineering=yes` is checked first and overrides `fix_size`.** A real finding whose *suggestion* is pure over-engineering is skipped even at `small-safe` — the surgical-diff / senior-engineer test (no unrequested abstraction, no configurability for a value that never changes, three lines of duplication over a premature helper) outranks "the change is tiny." A reviewer's speculative-generality suggestion is cheap to apply and expensive to live with, so diff size is the wrong gate; the right gate is whether the codebase wanted that complexity at all.
+
+**Why cr-fix only refuses, never deletes.** This axis makes cr-fix *decline to add* over-engineering a reviewer proposes. It does **not** hunt for and remove over-engineering already in the code — that is `ponytail-review`'s job (an optional, separately-installed skill focused exclusively on what to delete). cr-fix's surface is reviewer findings; pairing the two covers both directions — refuse new complexity here, delete existing complexity there — without overloading either.
 
 ## Pre-condition gates
 
@@ -88,7 +104,8 @@ Every Step 9c decision appends one record to `STATE_FILE.auto_judge_log`:
     "is_real": "real",
     "confidence": "high",
     "severity_reassess": "low",
-    "fix_size": "small-safe"
+    "fix_size": "small-safe",
+    "over_engineering": "no"
   },
   "action": "apply",
   "reason": "real + small/safe → fix in place"

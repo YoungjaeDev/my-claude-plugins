@@ -6,6 +6,12 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-24 — post-merge #76: cr-fix YAGNI/over-engineering judgment axis (post-merge)
+
+- cr-fix-ops/cr-fix-yagni-over-engineering-axis.md: new page (id cr-fix-yagni-over-engineering-axis, status active, volatility stable, sources 2). Distills the Step 9c 5th axis — a real reviewer finding can still demand unrequested complexity; `over_engineering=yes` skips and overrides `fix_size` (small-safe doesn't save a pure over-engineering suggestion); cr-fix refuses *added* complexity while `ponytail-review` (optional) deletes *existing* — division of labor, bare-name optional dep. `> See-also: skill-engine-layering`. Evidence: PR #76.
+- index.md: added the cr-fix-yagni-over-engineering-axis hook under cr-fix-ops.
+- Not graduated to insight: first occurrence (single PR #76) — fails recurs-across-2+-sessions; stays in the wiki layer.
+
 ## 2026-06-24 — post-merge #75: core-config prompt_inject englishize + federation default off + memory_nudge retired (post-merge)
 
 - llm-wiki-design/mem0-llmwiki-federation.md: corrected the now-stale reversibility claim — `CORE_CONFIG_FEDERATE_MEM0` default flipped 1->0, so federation labels ship OFF and `=1` opts in (was "`=0` reverts", implying default-on); marked the authority section conditional on FEDERATE=1; added `## Retiring a hook that fights the enforced memory system` (memory_nudge.sh retired — its MEMORY.md save-nudge contradicts the mem0 plugin's enforced `block_memory_write.sh` PreToolUse block). `## Sources` += mem0 plugin block_memory_write.sh; sources 2 -> 3; last_verified 2026-06-24.

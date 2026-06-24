@@ -1,7 +1,7 @@
 ---
 id: prompt-inject-korean-persistence
 aliases: [korean-default-regression, prompt-inject-block, english-regression-workflow]
-last_verified: 2026-06-05
+last_verified: 2026-06-24
 status: active
 volatility: stable
 sources: 2
@@ -41,6 +41,14 @@ directive left open.
 
 Encoder constraint: the block is JSON-encoded by bash parameter expansion (no
 jq/python), so it must contain no literal `"` or `\` — use `·`, `()`, `—` instead.
+
+## The block is English, the answer is Korean
+
+The block *text* was later rewritten from Korean to English, but its first line still
+mandates a Korean final reply. Writing the rules in English keeps the model from
+quietly adopting an English register for the whole turn while the output-language pin
+(Korean) stays explicit and unmissable. The Korean phrasing quoted above is the
+original directive; the current block expresses the same rule in English.
 
 ## Scope boundary
 

@@ -8,15 +8,13 @@ Development workflow essentials: Python formatting and notifications.
 |------|---------|-------------|
 | `auto-format-python.py` | Post Write/Edit | Auto-format Python with ruff |
 | `notify_osc.py` | Stop/Notification | Terminal OSC 777 notifications |
-| `prompt_inject.sh` | UserPromptSubmit | Per-prompt compact behavioral block (Korean default + core rules + `.llmwiki/insight/`·wiki pointer). Shared Claude + Codex. |
-| `memory_nudge.sh` | UserPromptSubmit | Soft memory-discipline reminder (rate-limited ~3h per cwd) |
+| `prompt_inject.sh` | UserPromptSubmit | Per-prompt compact behavioral block — English rules with a Korean-output mandate + `.llmwiki/insight/`·wiki pointer. Federation labels off by default. Shared Claude + Codex. |
 
-The two `UserPromptSubmit` hooks are complementary and run in parallel:
+The single `UserPromptSubmit` hook:
 
-- `prompt_inject.sh` fires **every** prompt with a fixed ~6-line block: Korean-default response, a few core behavioral one-liners (surgical-diff, AskUserQuestion-first, no AI attribution, no emoji, verify-before-report), and a pointer to consult `.llmwiki/insight/` (promoted cross-agent rules) then the wiki MOC *before* reasoning. It does **not** inline insight/wiki content — only the instruction to read it. When a wiki root resolves, the pointer is labeled `[AUTHORITATIVE]` (dated/sourced `.llmwiki/` wins on conflict) and a `[RECALL]` line places mem0 recall as the secondary layer — **labels only, no mem0 call/read** (mem0 surfacing stays mem0's own hooks). The `codex` branch omits `[RECALL]` (Codex has no mem0 layer); `CORE_CONFIG_FEDERATE_MEM0=0` reverts to the plain pointer (default on). Claude reverts to English over long sessions, and neither agent is otherwise reminded to check the wiki/insight layer; this block fixes both. Zero deps (no `jq`/`python`) — JSON encoding is bash parameter expansion.
-- `memory_nudge.sh` does **not** re-inject `~/.claude/CLAUDE.md` — that was the `inject-guidelines` `UserPromptSubmit` hook removed in v1.4.0, because CLAUDE.md is native-loaded once per session and re-injecting it every prompt wasted context. Instead it emits a rate-limited (~3h per cwd) soft hint nudging the LLM to *recall* and *save* memory it already has loaded (MEMORY.md index + the `# Memory` section of `~/.claude/CLAUDE.md`).
+- `prompt_inject.sh` fires **every** prompt with a fixed ~6-line block: the rules are written in **English**, but the first line mandates a **Korean final reply**, followed by a few core behavioral one-liners (surgical-diff, AskUserQuestion-first, no AI attribution, no emoji, verify-before-report) and a pointer to consult `.llmwiki/insight/` (promoted cross-agent rules) then the wiki MOC *before* reasoning. It does **not** inline insight/wiki content — only the instruction to read it. mem0 federation labels are **off by default** (the pointer is plain); `CORE_CONFIG_FEDERATE_MEM0=1` restores them — the pointer becomes `[AUTHORITATIVE]` (dated/sourced `.llmwiki/` wins on conflict) plus a `[RECALL]` line placing mem0 recall as the secondary layer, **labels only, no mem0 call/read** (the `codex` branch omits `[RECALL]`; Codex has no mem0 layer). The English wording keeps the model from drifting into an English block of its own while still pinning the reply language to Korean, and the pointer is the only reminder either agent gets to check the wiki/insight layer. Zero deps (no `jq`/`python`) — JSON encoding is bash parameter expansion.
 
-Both are quiet-friendly; output becomes `additionalContext`. Disable either by removing its entry from the `UserPromptSubmit` block in `plugin.json`.
+Output is quiet-friendly and becomes `additionalContext`. Disable it by removing its entry from the `UserPromptSubmit` block in `plugin.json`.
 
 ### Codex CLI parity (`prompt_inject.sh codex`)
 

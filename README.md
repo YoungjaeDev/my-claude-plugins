@@ -117,7 +117,7 @@ claude  # .claude/settings.json에서 자동 로드
 <details>
 <summary><strong>core-config</strong> - 개발 필수 설정</summary>
 
-Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh` — 한국어 기본 + 핵심 규율 + `.llmwiki/insight/`·wiki 참고 포인터; Claude `UserPromptSubmit` plain stdout / Codex `hookSpecificOutput` JSON 공유). wiki 포인터에는 권위 라벨이 붙는다 — `.llmwiki/` = `[AUTHORITATIVE]` (dated·sourced 우선), mem0 = `[RECALL]` (보조, 라벨일 뿐 mem0 호출 0). Codex 는 `[RECALL]` 생략, `CORE_CONFIG_FEDERATE_MEM0=0` 이면 plain 포인터로 복귀. 작업 가이드라인은 `~/.claude/CLAUDE.md` (SSOT) 가 담당.
+Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh` — 한국어 기본 + 핵심 규율 + `.llmwiki/insight/`·wiki 참고 포인터; Claude `UserPromptSubmit` plain stdout / Codex `hookSpecificOutput` JSON 공유). wiki 포인터는 기본적으로 plain 이다 — federation 라벨은 off 가 기본값이고 `CORE_CONFIG_FEDERATE_MEM0=1` 로만 복원한다: 그때 `.llmwiki/` = `[AUTHORITATIVE]` (dated·sourced 우선), mem0 = `[RECALL]` (보조, 라벨일 뿐 mem0 호출 0) 라벨이 붙고 Codex 는 `[RECALL]` 을 생략한다. 작업 가이드라인은 `~/.claude/CLAUDE.md` (SSOT) 가 담당.
 
 **Hooks:**
 | Hook | Trigger | Description |
@@ -678,6 +678,16 @@ git config core.hooksPath .githooks
 ```
 
 활성화하면 매 커밋 전에 `node scripts/sync-codex-manifests.mjs --check` 가 돌아 drift / 길이 위반을 차단합니다. 훅을 건너뛴 기여자도 PR 시 `.github/workflows/validate-codex.yml` 이 동일 명령으로 잡습니다.
+
+### 스킬을 Hermes / Codex 에 설치
+
+이 마켓플레이스의 skill 을 Hermes Agent 와 Codex 에 설치하는 대화형 도구. `npx skills`(vercel-labs/skills) 를 래핑하며 Node builtin 만 사용(zero-dep):
+
+```bash
+node scripts/install-skills.mjs
+```
+
+플러그인 그룹 단위로 skill 을 고른 뒤 타겟(`hermes-agent` / `codex`)·scope(global `~/` / project `./`)·Hermes profile 을 선택하면 `npx skills add` 로 설치합니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes profile 은 `HERMES_HOME` env 로 타겟팅합니다.
 
 ## 요구사항
 

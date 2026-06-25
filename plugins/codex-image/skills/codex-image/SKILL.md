@@ -1,7 +1,7 @@
 ---
 name: codex-image
 description: Generate or edit bitmap images from Claude Code by delegating to Codex CLI image generation. Use only when the user explicitly invokes /codex-image to create project-bound raster assets without managing OpenAI API keys.
-argument-hint: "[--size auto|WIDTHxHEIGHT] [--quality low|medium|high|auto] [--out <dir>] [-n <count>] [--edit <image-path>] <prompt>"
+argument-hint: "[--size auto|WIDTHxHEIGHT] [--quality low|medium|high|auto] [--out <dir>] [-n <count>] [--edit <image-path>] [--model <id>] [--reasoning <effort>] [--sandbox <mode>] <prompt>"
 disable-model-invocation: true
 allowed-tools: Bash(codex *) Bash(git rev-parse *) Bash(pwd) Bash(mkdir *) Bash(ls *) Read AskUserQuestion
 ---
@@ -35,6 +35,9 @@ Parse the invocation arguments manually:
 - `--out`: output directory. Resolve relative paths from the project root.
 - `-n`: number of variants. Use `1` through `4` without extra confirmation; ask before generating more.
 - `--edit`: local image path to edit. Verify it exists and read it before delegating.
+- `--model`: Codex model id, passed through as `codex exec -m <id>`. Omit to use Codex's own default model — that auto-tracks the latest model, so no model pin is maintained here.
+- `--reasoning`: reasoning effort, passed through as `-c model_reasoning_effort="<effort>"` (e.g. `low`, `medium`, `high`, `xhigh`). Explicit opt-in only — image generation barely benefits from reasoning effort, so omit unless the user asks for it.
+- `--sandbox`: Codex sandbox mode for the run: `read-only`, `workspace-write` (default), or `danger-full-access`. The default stays `workspace-write` (enough to save the PNG); escalate only on explicit request. The full approval+sandbox bypass is `--dangerously-bypass-approvals-and-sandbox` — pass it only when the user explicitly asks, never by default.
 - Remaining text is the image prompt.
 
 If the prompt is missing, ask the user for one concise image prompt. If the request asks for true/native transparent output, explain that the Codex CLI bridge may not expose a guaranteed transparent-background control; ask before switching to any API-key fallback.
@@ -58,12 +61,12 @@ Before generating:
 
 Pass instructions to Codex through stdin with `codex exec -`. Do not interpolate the raw user prompt inside a shell command argument.
 
-Use host-appropriate stdin syntax. Append `--skip-git-repo-check` to `codex exec` only when no git root was found.
+Use host-appropriate stdin syntax. Append `--skip-git-repo-check` to `codex exec` only when no git root was found. Insert `-m <model>`, `-c model_reasoning_effort="<effort>"`, and a non-default `-s <mode>` only when the matching `--model` / `--reasoning` / `--sandbox` argument was supplied; with none given, the command is exactly `codex exec - -C "<project-root>" -s workspace-write` as before.
 
 For bash-like shells:
 
 ```bash
-codex exec - -C "<project-root>" -s workspace-write <<'EOF'
+codex exec - [-m <model>] [-c model_reasoning_effort="<effort>"] -C "<project-root>" -s <sandbox, default workspace-write> <<'EOF'
 Use the built-in image generation capability to create the requested image.
 
 Prompt:
@@ -110,7 +113,7 @@ Requirements:
 3. Never overwrite existing files.
 4. Print the saved file path(s), file size(s), and any tool/model limitation encountered.
 5. If image generation is unavailable in this Codex CLI session, say so directly and do not create placeholders.
-'@ | codex exec - -C "<project-root>" -s workspace-write
+'@ | codex exec - [-m <model>] [-c model_reasoning_effort="<effort>"] -C "<project-root>" -s <sandbox, default workspace-write>
 ```
 
 If `--edit` is provided, also pass the image via Codex CLI's image attachment option when available:

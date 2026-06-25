@@ -85,7 +85,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 | **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
-| | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 덱 유형·md 규약·작성 원칙 15종·밀도 리듬·역할 기반 색·codex vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 review·공식 로고 fetch·윤문·렌더 QA. 진입점 SKILL.md + references/ 5종 + 주입 프롬프트 |
+| | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 덱 유형·md 규약·작성 원칙 15종·밀도 리듬·역할 기반 색·codex vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 review·공식 로고 fetch·윤문·렌더 QA. 진입점 SKILL.md + references/ 6종 + 주입 프롬프트 |
 
 ## 설치 옵션
 
@@ -612,7 +612,7 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 - codex-image vs SVG 경계, fade·pop은 표지/전환 한정, 실물 스크린샷 우선
 - 공식 SVG 로고 fetch→인라인→근접성
 
-**구조:** 진입점 `SKILL.md` + `references/` 5종(color-typography / images-and-pop / icons-logos / ppt-master-and-qa / ppt-master-craft) + `assets/injection-prompt.md`(다른 세션 주입용 압축 페이로드).
+**구조:** 진입점 `SKILL.md` + `references/` 6종(design-language / color-typography / images-and-pop / icons-logos / ppt-master-and-qa / ppt-master-craft) + `assets/injection-prompt.md`(다른 세션 주입용 압축 페이로드).
 
 > 그냥 "PPT 만들어줘"는 `ppt-master`, "slidev 슬라이드"는 `slidev` — 이 스킬은 yeong 규약이 필요할 때만 트리거됩니다.
 

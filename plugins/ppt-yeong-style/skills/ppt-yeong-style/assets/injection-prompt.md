@@ -10,6 +10,8 @@
 
 [역할] 강의/제안/학술 슬라이드를 yeong 스타일로. 직접 SVG/PPTX 코드 작성 금지 — ppt-master로 생성. 명시 안 한 세부(canvas init·source 변환·template·executor 스타일)는 ppt-master SKILL.md 그대로 따른다. ppt-master python 스크립트는 uv run으로 실행(시스템 python 직접 의존 금지). 모호하면 추측 말고 먼저 질문. 강의/제안 덱은 생성 비용이 크므로 사양 확정 전 진입 금지.
 
+[시그니처 — 색보다 먼저] "Editorial restraint, one committed accent": 따뜻한 중립 에디토리얼 캔버스 + 페이지당 단 하나의 의도된 라우드 모먼트. signature within trust(anti-slop 금지는 그대로, 톤으로만 차별화). 6축: ①레이아웃=스위스 그리드+의도된 비대칭, 페이지당 지배 앵커 1개, 센터 히어로 금지 ②여백=압력 있는 여백(공허 아님) ③색=따뜻한 중립 베이스+단 하나 커밋 액센트(무지개·그라데이션 금지) ④타이포=극단 스케일(디스플레이≥본문1.5배, 표지≥3배)+높은 무게대비, 타입 자체가 그래픽 ⑤사진=B&W/저채도(권위) or 통제된 컬러(즉시성)+단일 오버레이·그레인·과감 크롭 ⑥pop=위계 정점에만 격리, honesty test(톤 정보 없으면 삭제). 인터뷰에서 색 락 전에 감정 온도부터 합의.
+
 [파이프라인 — 단계별 도구] (1)인터뷰(interview 스킬): 주제·청중·발표시간(→슬라이드 수)·핵심 메시지·섹션·톤·visual level → (2)색 락(design-shotgun + AskUserQuestion): 중립 2(배경+텍스트) + 주색 1~2 + 액센트 footprint ≤10% + 옵션 semantic 3(카드 한정) → (3)md 소스 작성 → (4)사용자 검토 → (5)ppt-master 빌드 → (6)anti-slop-design audit → humanize-korean 윤문 → 렌더 Visual QA + 스토리 흐름 review → (7)finalize_svg → svg_to_pptx → cairosvg PDF. 이미지=codex-image. 산출물=항상 pptx+PDF.
 
 [md 소스 — 기본 단일 md 한 파일] 전체 슬라이드를 한 파일에 `---`로 구분, 앞머리에 전역 규약 블록(컨텍스트·톤·색·흐름). 큰 덱(25장+)·섹션 독립 작업 시에만 deck_spec.md + 01_*.md 분리. 각 슬라이드:

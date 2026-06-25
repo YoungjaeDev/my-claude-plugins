@@ -70,6 +70,7 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 
 - 제목은 **담백한 명사형**이되 **한두 단어로 끊지 말 것 — 주체·맥락을 담은 명사구**로. (✓ "할 수 있는 일" → "클로드 코드로 할 수 있는 일", "이미지" → "이미지 — 자동 생성이 기본") 문장형·질문형 제목은 그대로 금지.
 - `[ ... ]` = 그 장표의 키 메시지(기본 2개) — **소스 전용 마커.** md만 봐도 핵심이 한눈에. **렌더 출력엔 대괄호 글리프(`[`·`]`)를 절대 노출하지 않는다** — 내부 텍스트만 키 메시지 스타일(주색 리드/강조 면)로 그린다. 슬라이드에 대괄호가 그대로 보이면 버그(executor가 마커를 리터럴 렌더) → ppt-master의 spec_lock·executor 지시에 "대괄호는 키-메시지 표식, 출력 시 strip"을 명시(엔진 계약이라 이 repo에 spec_lock.md를 두지 않는다).
+  - **2중 강제(규칙만으론 샌다 — 반드시 둘 다).** ① **빌드 전**: spec_lock.md(또는 executor 지시)에 strip 지시를 *명문으로* 기입. 누락 시 executor가 `[ ]`를 리터럴 렌더 — 실제로 한 덱 34장 전수가 이 누락으로 새어나간 사례 있음. ② **빌드 후**: 빌드 산출 SVG 전체에 `grep -nE '>\s*\[|\[ '`로 글리프 **0** 확인(렌더 QA 필수 항목). 1건이라도 잡히면 해당 장 재생성.
 - `<!-- layout -->` = ppt-master 레이아웃 의도. `<!-- visual -->` = codex-image 배경/사용자 이미지 필요 여부. `<!-- diagram-note -->` = 도식 구조 지시(번호 나열 금지, 화살표 박스 흐름).
 - 표·일정·범위는 **마크다운 표**로 → SVG 변환. 애매한 무드 도식만 codex-image.
 - 전역 규약(컨텍스트·톤·디자인 락·흐름 표·출처)은 단일 md면 **앞머리 블록**에, 섹션 분리면 별도 `deck_spec.md`에.
@@ -115,6 +116,13 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 - **색**: 역할·면적 기반 팔레트("색 여러 개 = slop") — 중립 2(배경+잉크 ~85%) + 주색 1~2 + 액센트 footprint ≤10%. deck-wide 락 후 슬라이드별 색 날조 금지. 폰트 폴백 Pretendard → Noto Sans KR → Malgun Gothic. 상세 → `references/color-typography.md`.
 - **이미지**: 기본 codex-image(무드컷·배경·hero), 정확한 라벨·표·도식은 SVG. 배경 fade·마스코트·pop은 **표지·목차·전환 divider 한정**(본문은 anti-slop 미니멀). 앱 UI(로그인·diff·권한·설정 화면 등)는 **실물 스크린샷 또는 점선 placeholder만 — codex/AI로 앱 화면 생성 금지**(지어낸 UI는 틀린 UX를 가르쳐 placeholder보다 나쁘다). 미보유 시 playwright 실물 캡처·공식 docs 스크린샷·placeholder 순. 상세 → `references/images-and-pop.md`.
 - **로고**: 브랜드·도구 로고는 직접 그리기·codex 생성 금지 → 공식 SVG 라이브러리 fetch → 인라인 → 근접성. 상세 → `references/icons-logos.md`.
+
+## §3c. 스크린샷 — 옆에 둘까, 위에 짚을까 (앱 UI 실물 전제)
+
+기준은 "이 화면에서 뭐가 메시지냐".
+- 화면 자체·첫 소개·분위기, 또는 설명이 길거나 화면이 빽빽 → **2단**(좌 스크린샷 + 우 설명).
+- 화면 안 특정 위치(이 버튼·이 게이지)를 "여기 보세요"로 가르칠 때 → **콜아웃**(화면 위에 짚기).
+- 콜아웃은 덱 액센트 1색만: 번호 핀 + 여백 설명에 가는 선, 또는 얇은 테두리(면 안 채움). UI를 덮지 말고 필요한 것만.
 
 ## §4. ppt-master 깊이 활용 — 조합으로 차별화
 

@@ -1,5 +1,5 @@
 {
   "name": "codex-image",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key)"
 }

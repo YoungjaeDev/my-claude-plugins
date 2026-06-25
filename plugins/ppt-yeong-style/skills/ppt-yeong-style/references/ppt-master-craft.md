@@ -4,6 +4,8 @@ ppt-master는 "md → PPTX 변환기"가 아니라 **레이어드 디자인 엔�
 
 > 전제: 모든 레버는 ppt-master `spec_lock.md`(페이지마다 재읽기되는 실행 계약)에 박아야 executor가 일관 적용한다. 기억·즉흥 금지. 레버를 머리로만 정하고 spec_lock에 안 박으면 긴 덱에서 드리프트한다.
 >
+> **레버는 시그니처를 구현하는 수단이다.** 무엇을 어떤 값으로 락할지는 `design-language.md` §0의 "ppt-master lever lock"(rendering×palette 1조합·page_rhythm 불균등·type-scale ≥1.5·icon 1종·photo B&W+오버레이·pop honesty)을 따른다 — 레버 선택 자체가 시그니처 의도의 번역이다.
+>
 > **SOT 주의:** 정확한 필드·스크립트·워크플로명·옵션은 **ppt-master SKILL.md/references가 진실**(버전에 따라 달라질 수 있음). 이 문서는 "무엇을 골라 조합할지"(판단 레이어)만 담고 엔진 내부를 복제하지 않는다 — 이름은 hook으로만 쓰고, 동작 세부는 ppt-master에서 확인.
 
 ## 레버 6종 (무엇을·언제·yeong 적용)

@@ -6,7 +6,7 @@ yeong 스타일 강의·제안 덱 작성 규약. **ppt-master**(빌드 엔진) 
 
 | Skill | Description |
 |-------|-------------|
-| `ppt-yeong-style` | 덱 유형·md 소스 규약·작성 원칙 15종·밀도 리듬(중간 강화 기본)·역할 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 흐름 review·공식 로고 fetch·윤문·렌더 QA. 진입점 = `SKILL.md`, 세부는 `references/` 5종 + `assets/injection-prompt.md` |
+| `ppt-yeong-style` | 미감 시그니처(§0)·덱 유형·md 소스 규약·작성 원칙 15종·밀도 리듬(중간 강화 기본)·역할 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 흐름 review·공식 로고 fetch·윤문·렌더 QA. 진입점 = `SKILL.md`, 세부는 `references/` 6종 + `assets/injection-prompt.md` |
 
 ## 엔진·의존 관계
 
@@ -20,9 +20,10 @@ ppt-yeong-style/
 ├── .claude-plugin/plugin.json
 ├── CLAUDE.md                       # 이 파일
 └── skills/ppt-yeong-style/
-    ├── SKILL.md                    # 진입점: 언제쓰나 + 파이프라인 + md 규약 + 원칙 15 + 밀도 리듬 + §4 레버 조합
+    ├── SKILL.md                    # 진입점: §0 미감 시그니처 + 파이프라인 + md 규약 + 원칙 15 + 밀도 리듬 + §4 레버 조합
     ├── references/
-    │   ├── color-typography.md     # 색·타이포 (역할 기반 팔레트 + 폰트 폴백 + 토큰 예)
+    │   ├── design-language.md      # §0 상세: 시그니처 6축 + anti-slop↔하이엔드 양립표 + ppt-master 레버 락 (색·이미지·craft의 상위 미감 계약)
+    │   ├── color-typography.md     # 색·타이포 (역할 기반 팔레트 + 폰트 폴백 + 타입 스케일·톤 + 토큰 예)
     │   ├── images-and-pop.md       # codex vs SVG 경계 + fade 범위 + 마스코트/pop + 스크린샷 배치(앱 UI 실물 강제)
     │   ├── icons-logos.md          # 공식 SVG fetch → 인라인 → 근접성 → 상표권
     │   ├── ppt-master-craft.md     # ppt-master 레버 6종·조합 레시피·정확도 충실도·함정 (§4 상세)

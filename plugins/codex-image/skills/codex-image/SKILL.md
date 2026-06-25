@@ -56,6 +56,11 @@ Before generating:
    - Prefer Codex imagegen-compatible sizes: both edges multiples of 16, max edge <= 3840, aspect ratio <= 3:1, and total pixels from 655360 to 8294400.
    - If the requested size fails these constraints, ask for a valid size instead of silently changing it.
 6. Validate quality and count. Do not silently downgrade quality or reduce count.
+7. Validate the passthrough overrides before they reach the shell — each is interpolated into the `codex exec` command line:
+   - `--model`: must match `^[A-Za-z0-9._:-]+$`. Refuse any other value (a model id with shell metacharacters could be parsed as a separate command).
+   - `--reasoning`: must be one of `low`, `medium`, `high`, `xhigh`.
+   - `--sandbox`: must be one of `read-only`, `workspace-write`, `danger-full-access`.
+   Do not silently drop or rewrite an invalid value — ask for a valid one, the same way size/quality are handled above.
 
 ## Prompt Handoff
 

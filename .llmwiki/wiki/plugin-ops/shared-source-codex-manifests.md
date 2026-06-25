@@ -1,10 +1,10 @@
 ---
 id: shared-source-codex-manifests
 aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, retired-codex-bridge]
-last_verified: 2026-06-17
+last_verified: 2026-06-24
 status: active
 volatility: stable
-sources: 7
+sources: 8
 ---
 
 # Shared-source Codex manifests
@@ -74,7 +74,10 @@ syncing it back into Codex would be circular — Codex would be asked to load a
 skill whose only job is to call Codex. So **all plugins except those 3 are
 eligible** for Codex (eligible count = total − 3); the absolute number shifts on
 every plugin add/remove, so the durable invariant is the 3-member EXCLUDED set,
-not a fixed count.
+not a fixed count. EXCLUDED scopes Codex *manifest eligibility* only — it is not
+an *install* filter: the `install-skills` wrapper (which pushes these skills into
+Codex/Hermes via `npx skills`) filters by skill count, so midjourney and
+codex-image stay installable to Codex from that tool (`> See-also:` below).
 
 `deepwiki` and `project-init` were in the EXCLUDED set before 1.41.0 because
 they shipped only `commands/`. The 1.41.0 dual-surface conversion added
@@ -124,6 +127,21 @@ of the whole skill. The author offset the +7 by trimming `gracefully skip` →
 recurrences (PR #46 hard-fail, PR #51 near-miss) graduated this rule to the
 insight layer.
 
+## Skill bodies must be runtime-portable
+
+Both runtimes read the same skill body **in place**, so the body itself must be
+followable on both. A body that hard-depends on a **Claude-only built-in agent**
+— e.g. routing a command or a fact-check step through `claude-code-guide` — is
+unfollowable under Codex, which has no such agent: the step silently dead-ends on
+half the toolchain, the same asymmetric-loss failure mode as the description cap.
+The rule: in a shared body the **default** path must be one *both* runtimes can
+take (official-docs lookup, a CLI, an MCP tool), and a Claude-only agent is at
+most an *optional enhancement* gated on the runtime ("Claude 런타임이면 ... 도
+활용 — 미번들·타 런타임이면 공식 docs 직접"). `commands/` and `agents/` are not
+emitted to Codex at all (above), but a Claude-only agent named inside a *skill
+body* slips past that exclusion — it ships to Codex as unfollowable prose unless
+the body demotes it to optional.
+
 ## Orphan manifest detection
 
 `--check`'s drift guard also catches the inverse failure: a manifest file left
@@ -155,11 +173,16 @@ does NOT need to retain removed plugins — orphan detection covers that case.
 - PR #51 body — the length-guard near-miss (post-merge skill 1019 → would-be 1026
   on the `humanize-korean` swap, offset to 1014); the second recurrence that
   graduated the rule to insight.
+- PR #74 body — `ppt-yeong-style` v0.2.0; the fact-check principle (SKILL.md §원칙4
+  + `references/ppt-master-and-qa.md` + `assets/injection-prompt.md`) defaults to
+  official docs and demotes the Claude-only `claude-code-guide` agent to an
+  optional, runtime-gated enhancement — the runtime-portable-body rule.
 
 > Supersedes: (retired plugin `codex-bridge` 1.0.0)
 > Promoted-to: [[codex-skill-desc-1024]]
 > See-also: [[neutral-llmwiki-root]]
 > See-also: [[cache-version-pinning]]
 > See-also: [[dual-surface-command-skill-pattern]]
+> See-also: [[skills-install-wrapper]]
 > Evidence: scripts/sync-codex-manifests.mjs
 > Evidence: AGENTS.md

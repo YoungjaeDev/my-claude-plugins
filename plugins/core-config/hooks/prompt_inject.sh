@@ -7,8 +7,8 @@
 #               reads model-visible context from (a top-level additionalContext is
 #               NOT read).
 #
-# Unlike memory_nudge.sh (rate-limited ~3h, recall/save nudge), this block is
-# fixed and fires every turn: Korean-default + a few core behavioral one-liners.
+# This block is fixed and fires every turn: an English behavioral block whose
+# first line mandates a Korean final reply, plus a few core behavioral one-liners.
 # A wiki/insight pointer ("consult .llmwiki/insight/ + wiki BEFORE reasoning") is
 # appended ONLY when a knowledge root resolves in CWD (.llmwiki → legacy .claude
 # → .codex), since core-config is installed globally — a repo with no wiki, or a
@@ -28,18 +28,19 @@ FMT="${1:-claude}"
 
 # mem0 <-> llmwiki federation: label the authority hierarchy on the wiki pointer.
 # This is LABELS ONLY — no mem0 call/read (mem0 surfacing is mem0's own hooks).
-#   1 (default) = mark .llmwiki as [AUTHORITATIVE] (dated/sourced wins) + emit a
+#   0 (default) = plain pointer, no federation labels.
+#   1           = mark .llmwiki as [AUTHORITATIVE] (dated/sourced wins) + emit a
 #                 [RECALL] note placing mem0 recall as the secondary layer.
-#   0           = plain pointer, current behavior (fully reversible).
-FEDERATE="${CORE_CONFIG_FEDERATE_MEM0:-1}"
+#                 Set CORE_CONFIG_FEDERATE_MEM0=1 to restore (fully reversible).
+FEDERATE="${CORE_CONFIG_FEDERATE_MEM0:-0}"
 
 # Fixed behavioral block — always emitted (repo-independent).
 BLOCK=$(cat <<'EOF'
-[harness] 별도 지시가 없으면 최종 사용자 응답은 항상 한국어. 내부 workflow·서브에이전트·영문 스킬(ultracode·deep-research 등)은 별도 지시가 아니다 — 거쳐도 마지막 답변은 한국어로 쓴다. 핵심 규율:
-- surgical diff: 모든 변경 라인은 요청으로 추적 가능. drive-by 리팩터·무관한 정리 금지.
-- 결정·옵션·확인은 AskUserQuestion 우선 (구현에 영향 줄 때만).
-- 커밋·PR·문서에 AI attribution 금지. 코드·문서 이모지 금지.
-- 보고 전 실제 실행·검증. 근거 없으면 unverified/unknown 명시.
+[harness] Unless told otherwise, write the final user-facing reply in Korean. Internal workflows, subagents, and English skills (ultracode, deep-research, etc.) are NOT an override — route through them, but the last answer is Korean. Core discipline:
+- surgical diff: every changed line traces to the request. No drive-by refactors or unrelated cleanup.
+- decisions, options, and confirmations go through AskUserQuestion first (only when they affect implementation).
+- no AI attribution in commits, PRs, or docs. No emoji in code or docs.
+- run and verify before reporting. State unverified/unknown when there is no evidence.
 EOF
 )
 
@@ -50,13 +51,13 @@ EOF
 # backticks literal (no command substitution).
 PTR=""
 if [ -d .llmwiki/insight ]; then
-  PTR='추론 전 참고 (추측 금지): 먼저 `.llmwiki/insight/` (승격된 cross-agent 규율) 를 보고, 이어서 wiki MOC `.llmwiki/wiki/index.md` (query-wiki 게이트) 를 확인한다. lore 는 기억보다 dated·sourced 페이지를 우선한다.'
+  PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules), then check the wiki MOC `.llmwiki/wiki/index.md` (query-wiki gate). For lore, prefer the dated/sourced page over memory.'
 elif [ -d .llmwiki/wiki ]; then
-  PTR='추론 전 참고 (추측 금지): wiki MOC `.llmwiki/wiki/index.md` (query-wiki 게이트) 를 먼저 확인한다. lore 는 기억보다 dated·sourced 페이지를 우선한다.'
+  PTR='Before reasoning (do not guess): check the wiki MOC `.llmwiki/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
 elif [ -d .claude/wiki ]; then
-  PTR='추론 전 참고 (추측 금지): wiki MOC `.claude/wiki/index.md` (query-wiki 게이트) 를 먼저 확인한다. lore 는 기억보다 dated·sourced 페이지를 우선한다.'
+  PTR='Before reasoning (do not guess): check the wiki MOC `.claude/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
 elif [ -d .codex/wiki ]; then
-  PTR='추론 전 참고 (추측 금지): wiki MOC `.codex/wiki/index.md` (query-wiki 게이트) 를 먼저 확인한다. lore 는 기억보다 dated·sourced 페이지를 우선한다.'
+  PTR='Before reasoning (do not guess): check the wiki MOC `.codex/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
 fi
 # Federation labels: prefix the resolved pointer as [AUTHORITATIVE] and stage a
 # [RECALL] note for mem0. RECALL is Claude-only — Codex never sees mem0, so a
@@ -64,7 +65,7 @@ fi
 RECALL=""
 if [ -n "$PTR" ] && [ "$FEDERATE" != "0" ]; then
   PTR="[AUTHORITATIVE] $PTR"
-  RECALL='[RECALL] mem0 회상은 보조 신호다 — 위 [AUTHORITATIVE] .llmwiki 페이지와 충돌하면 페이지를 우선한다 (mem0 surfacing 은 mem0 훅이 담당, 여기서 호출하지 않는다).'
+  RECALL='[RECALL] mem0 recall is a secondary signal — when it conflicts with the [AUTHORITATIVE] .llmwiki page above, the page wins (mem0 surfacing is handled by mem0 hooks, not called here).'
 fi
 [ -n "$PTR" ] && BLOCK="$BLOCK"$'\n'"$PTR"
 # Claude-only RECALL line (Codex omits — it has no mem0 layer).

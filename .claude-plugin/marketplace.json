@@ -12,14 +12,14 @@
       "name": "core-config",
       "source": "./plugins/core-config",
       "description": "Python auto-format + cross-platform notifications + per-prompt behavioral block (prompt_inject.sh, shared Claude + Codex). Work guidelines live in ~/.claude/CLAUDE.md (SSOT).",
-      "version": "1.8.0",
+      "version": "1.9.0",
       "category": "core"
     },
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; --auto-merge + --skip-minor + --cr-source retained), project tracking, release. All workflows are now skills (commit-and-push, create-issue-label, decompose-issue, update-progress, resolve-issue, release, cr-fix, post-merge) — no commands surface, so they run under Codex too. post-merge runs a mandatory built-in wiki-lore ingest step (absorbed llm-wiki:post-merge-wiki) plus an optional Step 4.5 ephemeral-artifact pruning gate (heuristic candidates → AskUserQuestion → git rm).",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "category": "github"
     },
     {

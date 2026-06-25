@@ -296,7 +296,7 @@ Midjourney V7 프롬프트 최적화 및 생성.
 **Features:**
 - 수동 호출 전용 (`/codex-image`) — 생성 비용/부수효과 때문
 - 기본 출력: `assets/generated/codex-image/`, non-destructive 파일명
-- `--size` / `--quality` / `--out` / `-n` / `--edit` 옵션
+- `--size` / `--quality` / `--out` / `-n` / `--edit` 옵션, opt-in `--model` / `--reasoning` / `--sandbox` (기본은 Codex 기본 모델 + workspace-write 유지)
 - Claude-only 브리지 — Codex sync 에서 제외 (순환 방지)
 
 **Requirements:** Codex CLI 설치 + ChatGPT OAuth 로그인

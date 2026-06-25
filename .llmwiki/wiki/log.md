@@ -6,6 +6,15 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-06-25 — post-merge #80: codex-image delegated-CLI bridge design (post-merge)
+
+- plugin-ops/codex-image-bridge-design.md: new page (id codex-image-bridge-design, status active, volatility stable, sources 1). Distills how a Claude skill that delegates to an external CLI (`codex exec` for image gen) is built: (1) inherit the sub-CLI's default model — omit `-m` so it auto-tracks the latest upstream model with zero per-release pin maintenance; `--model` is opt-in only; (2) least-privilege sandbox — default `-s workspace-write` (minimal mode that can still save the PNG), `danger-full-access` / `--dangerously-bypass-approvals-and-sandbox` opt-in only (codex 0.142 exposes no `--yolo` alias for `codex exec`); (3) validate passthrough at the shell trust boundary — `--model` against `^[A-Za-z0-9._:-]+$`, enum-constrain `--reasoning`/`--sandbox` (trailing `-` in a char class is literal; a Codex P2 spuriously read it as excluding hyphens, refuted with bash ERE + python re). `> See-also: codex-image-bridge-design`→`shared-source-codex-manifests`. Evidence: plugins/codex-image/skills/codex-image/SKILL.md.
+- index.md: added the codex-image-bridge-design hook under plugin-ops.
+- Not graduated to insight: first occurrence (single PR #80) — fails recurs-across-2+-sessions; stays in the wiki layer.
+- Routing note: the concurrent-release `metadata.version` collision (PR #77 + #80 both bumped 1.69.0→1.70.0; identical value = no git conflict, so main was left one release short → corrected to 1.71.0) is already covered by `.claude/rules/plugin-versioning.md` Don'ts; recorded there, not duplicated here.
+
+---
+
 ## 2026-06-24 — post-merge #79: skills install wrapper (npx skills) lore + EXCLUDED install-scope (post-merge)
 
 - plugin-ops/skills-install-wrapper.md: new page (id skills-install-wrapper, status active, volatility stable, sources 2). Distills `scripts/install-skills.mjs` wrapping `npx skills` (vercel-labs/skills): source arg `.` (reads marketplace.json, groups by plugin), skill selection via *repeated* `-s <name>` (comma fails → "No matching skills found", exit 1), codex global install lands in `~/.agents/skills/<name>/` (not `~/.codex/skills`), Hermes profile targeted by injecting `HERMES_HOME` with one spawn per (agent, profile), and the EXCLUDED-is-manifest-scoped decision (installer filters by skill count, so midjourney/codex-image ARE installable to Codex). `> See-also: skills-install-wrapper`→`shared-source-codex-manifests`. Evidence: scripts/install-skills.mjs.

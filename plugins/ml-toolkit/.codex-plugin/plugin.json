@@ -1,7 +1,7 @@
 {
   "name": "ml-toolkit",
-  "version": "1.2.1",
-  "description": "GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration",
+  "version": "1.3.0",
+  "description": "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration",
   "author": {
     "name": "YoungjaeDev"
   },

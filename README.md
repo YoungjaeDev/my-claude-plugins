@@ -71,7 +71,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `midjourney` | Midjourney V7 이미지 생성 |
 | | `codex-image` | Claude->Codex 이미지 생성 브리지 (ChatGPT OAuth, OpenAI API key 불필요) |
 | **Dev Tools** | `notebook` | Jupyter 노트북 안전 편집 |
-| | `ml-toolkit` | GPU 병렬 처리, Gradio CV 앱 |
+| | `ml-toolkit` | ML/멀티모달 개발 원칙, GPU 병렬 처리, Gradio CV 앱 |
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
 | | `notion` | Markdown을 Notion으로 업로드 |
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |

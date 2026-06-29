@@ -10,6 +10,7 @@ Machine Learning and AI development skills.
 | `gradio-cv-app` | Create professional Gradio computer vision apps |
 | `cv-notebook` | Generate production-quality Computer Vision Jupyter notebooks |
 | `cv-explorer` | Generate interactive CV data exploration notebooks with ipywidgets |
+| `ml-dev-principles` | General ML/multimodal/CV working discipline (how to work, not which library) |
 
 ## gpu-parallel-pipeline
 
@@ -57,6 +58,18 @@ Generate interactive CV data exploration notebooks with ipywidgets.
 - Side-by-side comparison, confidence threshold tuning, dataset statistics
 - Optional supervision library integration for annotation rendering
 - Level-based Korean insights (beginner/intermediate/expert)
+
+## ml-dev-principles
+
+General working discipline for ML / multimodal / CV development — how to work, not which library. Load at the start of an ML task.
+
+**Triggers**: "EDA", "error analysis", "FP/FN", "train", "fine-tune", "SFT", "DPO", "LoRA", "eval harness", "test leakage", "dataset selection", "model selection", "license filtering", "GPU utilization", "multimodal", "VLM"
+
+**Capabilities**:
+- Rule-type classification (hard-block vs process-caution) before reflexive strict reading
+- License/eligibility from actual rule text; eval-set isolation (hard rule vs flag-gated dev diagnostic)
+- Mandatory EDA + human FP/FN image review; GPU eff-batch parallel strategy
+- Liberal use of flat-rate Codex + Claude vision dual judgment
 
 ## Usage
 

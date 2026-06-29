@@ -116,6 +116,7 @@ codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 
 ### Domain-specific (Claude Code plugin marketplace)
 - 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `CLAUDE.md`/`README.md` 의 Codex-eligible count (total − 3 excluded: core-config·midjourney·codex-image), `marketplace.json` entry + `metadata.version`, `.claude/settings.json` 의 `plugins.local` entry, 그리고 `node scripts/sync-codex-manifests.mjs` 재실행 — 동시 업데이트 필수. Codex-eligible count 는 version 파일도 `--check` 도 못 잡으니 수동 확인.
+- 기존 플러그인에 **skill 추가** PR 은 plugin 수를 바꾸지 않지만 문서 동기화가 필요하다 — 해당 플러그인의 `plugins/<name>/CLAUDE.md` skill 목록, 그리고 version bump 이 `description` 도 바꿨다면 루트 `CLAUDE.md`/`README.md` 의 한 줄 설명. 매니페스트 재생성 + `metadata.version` bump 은 그대로 적용.
 - Codex 매니페스트 (`plugins/*/.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`) 가 `--check` 통과해야 함. 수동 편집 흔적 검토.
 - Plugin 캐시 이슈 ([anthropics/claude-code#17361](https://github.com/anthropics/claude-code/issues/17361), [anthropics/claude-code#19197](https://github.com/anthropics/claude-code/issues/19197)) — version bump 만으로는 사용자 캐시 갱신 보장 안 됨. 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차 유지.
 

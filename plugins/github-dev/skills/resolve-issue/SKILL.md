@@ -19,8 +19,9 @@ When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Cod
 | Glob/Grep | search_files |
 | AskUserQuestion | clarify |
 | Task | delegate_task |
+| Monitor | process |
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied after the skill name. Do not require a literal slash command; `github-dev:<skill> ...` and explicit `skill_view("github-dev:<skill>")` loads are equivalent in Hermes.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("github-dev:<skill>")` (or ask Hermes to load that qualified skill) rather than relying on bare text like `github-dev:<skill> ...`.
 
 Act as an expert developer who systematically analyzes and resolves GitHub issues. Receive a GitHub issue number as argument and resolve the issue. Follow project guidelines in `@CLAUDE.md`.
 

@@ -8,22 +8,32 @@ registers the existing SKILL.md files under the ``github-dev:<skill>`` namespace
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 
-def _description_from_skill(skill_md: Path) -> str:
-    """Extract the frontmatter description from a SKILL.md file."""
+def _frontmatter_from_skill(skill_md: Path) -> dict[str, Any]:
+    """Decode the YAML frontmatter from a SKILL.md file."""
     text = skill_md.read_text(encoding="utf-8", errors="replace")
     if not text.startswith("---"):
-        return ""
+        return {}
     try:
         _, frontmatter, _ = text.split("---", 2)
     except ValueError:
+        return {}
+    data = yaml.safe_load(frontmatter) or {}
+    return data if isinstance(data, dict) else {}
+
+
+def _description_from_skill(skill_md: Path) -> str:
+    """Extract the decoded frontmatter description from a SKILL.md file."""
+    description = _frontmatter_from_skill(skill_md).get("description", "")
+    if description is None:
         return ""
-    for line in frontmatter.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("description:"):
-            return stripped.split(":", 1)[1].strip().strip('"').strip("'")
-    return ""
+    if isinstance(description, str):
+        return description.strip()
+    return str(description).strip()
 
 
 def register(ctx) -> None:

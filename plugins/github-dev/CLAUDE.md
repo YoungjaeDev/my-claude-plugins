@@ -40,18 +40,18 @@ hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
 hermes gateway restart  # if using Hermes through a messaging gateway
 ```
 
-Hermes exposes the existing workflows as namespaced plugin skills:
+Hermes exposes the existing workflows as namespaced plugin skills. Load them explicitly with `skill_view` or ask Hermes to load the qualified skill:
 
 ```text
-github-dev:commit-and-push
-github-dev:resolve-issue <issue-number>
-github-dev:cr-fix --cr-source auto
+skill_view("github-dev:commit-and-push")
+skill_view("github-dev:resolve-issue")  # then provide the issue number in the same request
+skill_view("github-dev:cr-fix")         # then provide flags such as --cr-source auto
 ```
 
 Notes:
-- Hermes uses `github-dev:<skill>` qualified skill names rather than Claude slash commands.
+- Hermes uses `github-dev:<skill>` qualified skill names rather than Claude slash commands, and plugin-provided skills are explicit opt-in loads.
 - Start a fresh Hermes session after enabling the plugin so the plugin skill registry is rebuilt.
-- The skill bodies include a Hermes compatibility table mapping Claude/Codex tool terms (`Bash`, `Read`, `Edit`, `AskUserQuestion`, `Task`) to Hermes tools (`terminal`, `read_file`, `patch`, `clarify`, `delegate_task`).
+- The skill bodies include a Hermes compatibility table mapping Claude/Codex tool terms (`Bash`, `Read`, `Edit`, `AskUserQuestion`, `Task`, `Monitor`) to Hermes tools (`terminal`, `read_file`, `patch`, `clarify`, `delegate_task`, `process`).
 
 ## Worktree Workflow (PR-based)
 

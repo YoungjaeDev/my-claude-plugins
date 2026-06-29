@@ -43,6 +43,23 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 
 설치 후 `/github-dev:resolve-issue 123` 같은 명령어로 바로 사용 가능합니다.
 
+### Hermes Agent에서 github-dev만 설치
+
+Hermes Agent는 모노레포의 `plugins/github-dev` 서브디렉터리만 설치할 수 있습니다:
+
+```bash
+hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
+hermes gateway restart  # Slack/Telegram 등 gateway 사용 시
+```
+
+설치 후 새 Hermes 세션에서 `github-dev:<skill>` 형식으로 로드합니다:
+
+```text
+github-dev:resolve-issue <issue-number>
+github-dev:cr-fix --cr-source auto
+github-dev:commit-and-push
+```
+
 ## 플러그인 업데이트
 
 플러그인 캐시 버그로 인해 업데이트 시 캐시 삭제가 필요합니다 ([#17361](https://github.com/anthropics/claude-code/issues/17361), [#19197](https://github.com/anthropics/claude-code/issues/19197)):

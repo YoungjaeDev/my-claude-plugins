@@ -6,6 +6,22 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 ## Decompose Work
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Codex tool names to Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Bash | terminal |
+| Read | read_file |
+| Write | write_file |
+| Edit | patch |
+| Glob/Grep | search_files |
+| AskUserQuestion | clarify |
+| Task | delegate_task |
+
+Treat `$ARGUMENTS` as the natural-language arguments supplied after the skill name. Do not require a literal slash command; `github-dev:<skill> ...` and explicit `skill_view("github-dev:<skill>")` loads are equivalent in Hermes.
+
 Break down large work items into manageable, independent issues. Follow project guidelines in `@CLAUDE.md`.
 
 ## Workflow

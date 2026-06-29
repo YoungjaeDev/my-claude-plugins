@@ -6,6 +6,22 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 # CodeRabbit + Codex Fix Pipeline (v2)
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Codex tool names to Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Bash | terminal |
+| Read | read_file |
+| Write | write_file |
+| Edit | patch |
+| Glob/Grep | search_files |
+| AskUserQuestion | clarify |
+| Task | delegate_task |
+
+Treat `$ARGUMENTS` as the natural-language arguments supplied after the skill name. Do not require a literal slash command; `github-dev:<skill> ...` and explicit `skill_view("github-dev:<skill>")` loads are equivalent in Hermes.
+
 Self-contained skill that owns the full review-resolution loop. One Claude turn drives the entire pipeline; wait phases use `Bash(run_in_background=true)` + `Monitor` so token cost is ~0 during reviews.
 
 v2 changes:
@@ -38,12 +54,20 @@ Default behavior is unchanged for users who don't pass `--cr-source`. Polling in
 ## Step 1: Parse arguments
 
 ```bash
-eval "$(bash plugins/github-dev/skills/cr-fix/scripts/parse-args.sh $ARGUMENTS)"
+if [ -d "plugins/github-dev/skills/cr-fix" ]; then
+  SKILL_DIR="plugins/github-dev/skills/cr-fix"
+elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then
+  SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
+else
+  SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"
+fi
+
+eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
 ```
 
-Sets: `MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, MINOR_STOP, GENERALIZE, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
+Sets: `SKILL_DIR, MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, MINOR_STOP, GENERALIZE, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
 
-`SKILL_DIR=plugins/github-dev/skills/cr-fix` — all `scripts/` and `references/` paths below resolve relative to this.
+`SKILL_DIR` resolves to the source-tree plugin path when available, then to the active Hermes profile install (`$HERMES_HOME/plugins/github-dev/...`), then to the default `~/.hermes/plugins/github-dev/...` install. All `scripts/` and `references/` paths below resolve relative to this.
 
 ## Step 2: Resolve repo / PR / START_SHA + pre-flight setup
 

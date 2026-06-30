@@ -1,7 +1,7 @@
 ---
 id: shared-source-codex-manifests
 aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, retired-codex-bridge]
-last_verified: 2026-06-24
+last_verified: 2026-06-30
 status: active
 volatility: stable
 sources: 8
@@ -14,6 +14,12 @@ There is no mirror, no per-agent fork, and no body transform. A thin manifest
 generator (`scripts/sync-codex-manifests.mjs`, ~140 LOC, zero runtime
 dependencies) emits Codex's required catalog files from `.claude-plugin/
 marketplace.json`; both runtimes then read the same skill bodies in place.
+
+> See-also: [[hermes-plugin-adapter]]
+
+A third runtime, Hermes Agent, now consumes the same tree via a native
+`plugin.yaml` + `__init__.py` adapter (github-dev pilot) — "Claude + Codex" is
+the original pair, not the ceiling.
 
 This replaced the retired `codex-bridge` plugin, which had been a 1,214-line
 `sync.mjs` that copied skills into `~/.agents/skills/` while rewriting

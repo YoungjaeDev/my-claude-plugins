@@ -42,6 +42,7 @@
 ## 플러그인 변경 규칙
 
 - 플러그인 버전을 올릴 때는 `plugins/<name>/.claude-plugin/plugin.json`과 `.claude-plugin/marketplace.json`의 해당 항목을 같은 변경에 포함하세요.
+- github-dev 전용: `plugins/github-dev/plugin.yaml`(Hermes 어댑터 매니페스트)도 같은 `version`을 가지므로 버전 범프 시 plugin.json/marketplace.json과 함께 갱신하세요. `--check`는 Codex 매니페스트만 검증하니 이 3중 동기화는 수동 확인.
 - 어떤 플러그인 버전이든 변경하면 `.claude-plugin/marketplace.json`의 `metadata.version`도 marketplace release 버전으로 올리세요.
 - 플러그인을 추가하거나 제거하면 루트 `CLAUDE.md`의 플러그인 수와 구조, `README.md`의 플러그인 수와 목록도 갱신하세요.
 - 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다.

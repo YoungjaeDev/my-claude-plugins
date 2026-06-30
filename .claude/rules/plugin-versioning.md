@@ -1,5 +1,5 @@
 ---
-paths: .claude-plugin/marketplace.json, plugins/*/.claude-plugin/plugin.json, plugins/*/CLAUDE.md
+paths: .claude-plugin/marketplace.json, plugins/*/.claude-plugin/plugin.json, plugins/*/CLAUDE.md, plugins/github-dev/plugin.yaml
 ---
 
 # Plugin Versioning Rules
@@ -14,6 +14,7 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 
 - `plugins/<name>/.claude-plugin/plugin.json` — per-plugin manifest. Bumping `version` triggers Claude Code's plugin cache refresh.
 - `.claude-plugin/marketplace.json` — marketplace registry. Contains per-plugin `version` (must match `plugin.json`) and top-level `metadata.version` (bumped once per marketplace release).
+- `plugins/github-dev/plugin.yaml` — github-dev only: the Hermes adapter manifest carries its own `version`, which must match `plugin.json` / `marketplace.json` on every bump. `sync-codex-manifests.mjs --check` validates Codex manifests only, so this third-way sync is manual.
 - `CLAUDE.md` (root) — plugin count summary (keep in sync when adding/removing plugins).
 - `README.md` — user-facing plugin count + badge.
 - `.claude/settings.json` — tracked local-load list (`plugins.local`). A plugin absent here is registered in the marketplace but does NOT auto-load in local dev.

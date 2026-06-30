@@ -117,4 +117,4 @@ skill_view("ml-toolkit:gradio-cv-app")
 Notes:
 - Skill bodies carry a Hermes compatibility table mapping Claude/Codex tool terms (`Bash`, `Write`, `NotebookEdit`, ...) to Hermes tools (`terminal`, `write_file`, ...).
 - Notebook-authoring skills (`cv-explorer`, `cv-notebook`): Hermes has no `NotebookEdit` tool — use the Hermes "Jupyter Live Kernel" skill or write/patch the `.ipynb` JSON directly.
-- `gpu-parallel-pipeline` resolves its bundled-script directory across runtimes (repo path under Claude/Codex, `${HERMES_SKILL_DIR}` under Hermes).
+- `gpu-parallel-pipeline` resolves its bundled-script directory across runtimes (repo path under Claude/Codex; `$HERMES_HOME/plugins/...` then `~/.hermes/plugins/...` under Hermes, matching the github-dev pilot's 3-branch fallback).

@@ -104,9 +104,11 @@ def process_batch_hybrid(batch: list[dict]) -> list[dict]:
 Before implementation, check GPU memory:
 ```bash
 if [ -d "plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
-  SKILL_DIR="plugins/ml-toolkit/skills/gpu-parallel-pipeline"   # Claude/Codex (repo CWD)
+  SKILL_DIR="plugins/ml-toolkit/skills/gpu-parallel-pipeline"                  # Claude/Codex (repo CWD)
+elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
+  SKILL_DIR="$HERMES_HOME/plugins/ml-toolkit/skills/gpu-parallel-pipeline"     # Hermes profile install
 else
-  SKILL_DIR="${HERMES_SKILL_DIR}"                                # Hermes: substituted to an absolute path before the body is shown
+  SKILL_DIR="$HOME/.hermes/plugins/ml-toolkit/skills/gpu-parallel-pipeline"    # Hermes default install
 fi
 python "$SKILL_DIR/scripts/check_gpu_memory.py"
 ```

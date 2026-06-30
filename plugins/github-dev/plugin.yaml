@@ -1,0 +1,5 @@
+name: github-dev
+version: "2.7.0"
+description: "GitHub workflow automation skills for Hermes Agent, Claude Code, and Codex: commit/push, issue decomposition, issue resolution, CodeRabbit/Codex review fixing, post-merge cleanup, release, labels, and progress sync."
+author: "YoungjaeDev"
+kind: standalone

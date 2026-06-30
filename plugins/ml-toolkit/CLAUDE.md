@@ -94,3 +94,27 @@ Skills auto-activate based on trigger keywords.
 ## Related
 
 See `core-config/guidelines/ml-guidelines.md` for common ML pitfalls (BGR/RGB, batch inference anti-patterns, YOLO edge cases).
+
+## Hermes Agent
+
+Install this plugin from the monorepo subdirectory:
+
+```bash
+hermes plugins install YoungjaeDev/my-claude-plugins/plugins/ml-toolkit --enable
+hermes gateway restart  # if using Hermes through a messaging gateway
+```
+
+Load a skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes session after `--enable`):
+
+```text
+skill_view("ml-toolkit:ml-dev-principles")
+skill_view("ml-toolkit:gpu-parallel-pipeline")
+skill_view("ml-toolkit:cv-explorer")
+skill_view("ml-toolkit:cv-notebook")
+skill_view("ml-toolkit:gradio-cv-app")
+```
+
+Notes:
+- Skill bodies carry a Hermes compatibility table mapping Claude/Codex tool terms (`Bash`, `Write`, `NotebookEdit`, ...) to Hermes tools (`terminal`, `write_file`, ...).
+- Notebook-authoring skills (`cv-explorer`, `cv-notebook`): Hermes has no `NotebookEdit` tool — use the Hermes "Jupyter Live Kernel" skill or write/patch the `.ipynb` JSON directly.
+- `gpu-parallel-pipeline` resolves its bundled-script directory across runtimes (repo path under Claude/Codex, `${HERMES_SKILL_DIR}` under Hermes).

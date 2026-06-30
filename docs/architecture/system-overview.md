@@ -39,7 +39,6 @@ flowchart TB
 
         subgraph AI["AI Models"]
             CO[council<br/>Multi-model deliberation]
-            MJ[midjourney<br/>Image generation]
         end
 
         subgraph Content["Content & Docs"]
@@ -60,7 +59,6 @@ flowchart TB
         HF[(HuggingFace)]
         AR[(arXiv/PubMed)]
         NT[(Notion API)]
-        MJA[(Midjourney API)]
     end
 
     U --> System
@@ -70,7 +68,6 @@ flowchart TB
     DW --> GH
     PS --> AR
     NO --> NT
-    MJ --> MJA
 
     classDef coreStyle fill:#3B82F6,stroke:#2563EB,color:#fff
     classDef devStyle fill:#10B981,stroke:#059669,color:#fff
@@ -82,7 +79,7 @@ flowchart TB
     class CC coreStyle
     class GD,DF devStyle
     class CS,DW,PS researchStyle
-    class CO,MJ aiStyle
+    class CO aiStyle
     class SL,TR,NO contentStyle
     class NB,ML,IV toolStyle
 ```
@@ -94,7 +91,7 @@ flowchart TB
 | **Core** | core-config | Foundation: hooks, formatting, notifications |
 | **Development** | github-dev, docs-forge | Code workflow |
 | **Research** | code-scout, deepwiki, paper-search-tools | Information gathering |
-| **AI Models** | council, midjourney | External AI services |
+| **AI Models** | council | External AI services |
 | **Content** | slidev, translator, notion | Document creation |
 | **Tools** | notebook, ml-toolkit, interview | Specialized utilities |
 

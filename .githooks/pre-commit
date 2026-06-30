@@ -8,3 +8,4 @@ set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
 node "$repo_root/scripts/sync-codex-manifests.mjs" --check
+node "$repo_root/scripts/sync-hermes-manifests.mjs" --check

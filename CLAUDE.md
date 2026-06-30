@@ -1,8 +1,8 @@
 # Claude Code Settings
 
-Plugin-based configuration for Claude Code with multi-agent orchestration. The same plugin tree is loaded by Codex 0.135 via `scripts/sync-codex-manifests.mjs` — one source, two runtimes.
+Plugin-based configuration for Claude Code with multi-agent orchestration. The same plugin tree is loaded by Codex 0.135 via `scripts/sync-codex-manifests.mjs` and by Hermes Agent via `scripts/sync-hermes-manifests.mjs` — one source, three runtimes.
 
-## Plugins (25)
+## Plugins (24)
 
 ### Core
 | Plugin | Description |
@@ -30,7 +30,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | Plugin | Description |
 |--------|-------------|
 | `council` | Multi-model deliberation (Claude, Codex, Gemini) |
-| `midjourney` | Midjourney V7 image generation |
 | `codex-image` | Claude->Codex image generation bridge (delegates to Codex CLI image gen via ChatGPT OAuth, no OpenAI API key). Claude-only — excluded from Codex sync |
 
 ### Development Tools
@@ -102,7 +101,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 │   ├── notebook/           # Jupyter
 │   ├── ml-toolkit/         # ML tools
 │   ├── translator/         # Translation
-│   ├── midjourney/         # Image gen
 │   ├── codex-image/        # Claude->Codex image gen bridge
 │   ├── interview/          # Requirements
 │   ├── notion/             # Notion
@@ -134,9 +132,20 @@ node scripts/sync-codex-manifests.mjs           # write manifests
 node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
-Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 22 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `midjourney` (image-gen execution model differs), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 22 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+
+## Hermes integration
+
+Hermes Agent reads the same `plugins/<name>/` tree via generated native adapters (`plugin.yaml` + `__init__.py`):
+
+```bash
+node scripts/sync-hermes-manifests.mjs           # write adapters
+node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (also in validate-codex.yml + .githooks/pre-commit)
+```
+
+Adapter fields derive from `marketplace.json` (`plugin.yaml` name/version/description; `__init__.py` a generic skill-registration entrypoint, no per-plugin logic). Coverage is an allowlist — `HERMES_ELIGIBLE` (6 plugins this round: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`); add a name to extend. `--check` flags adapter drift + orphan adapters. Shared skill bodies carry a Hermes tool-compatibility table (Claude/Codex tool terms → Hermes tools). Skill-level install (no adapter needed) is also available via `node scripts/install-skills.mjs` (wraps `npx skills`).
 
 ## Modular Rules
 
 - See @.claude/rules/plugin-versioning.md for plugin version bump contract and cache-refresh workflow.
-- See @.claude/rules/dual-integration.md for keeping the Claude Code and Codex surfaces in sync when editing guidance, hooks, or derived artifacts (mirrored into `AGENTS.md` since Codex cannot `@import` `.claude/rules/`).
+- See @.claude/rules/dual-integration.md for keeping the Claude Code, Codex, and Hermes surfaces in sync when editing guidance, hooks, or derived artifacts (mirrored into `AGENTS.md` since Codex/Hermes cannot `@import` `.claude/rules/`).

@@ -5,6 +5,19 @@ description: Design and implement PyTorch GPU parallel processing pipelines for 
 
 # GPU Parallel Pipeline
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `ml-toolkit:gpu-parallel-pipeline`, map Claude/Codex tool names to Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Bash | terminal |
+| Read | read_file |
+| Write | write_file |
+| Edit | patch |
+
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ml-toolkit:gpu-parallel-pipeline")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+
 ## Overview
 
 This skill provides patterns for maximizing GPU throughput in data processing pipelines.
@@ -90,7 +103,12 @@ def process_batch_hybrid(batch: list[dict]) -> list[dict]:
 
 Before implementation, check GPU memory:
 ```bash
-python scripts/check_gpu_memory.py
+if [ -d "plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
+  SKILL_DIR="plugins/ml-toolkit/skills/gpu-parallel-pipeline"   # Claude/Codex (repo CWD)
+else
+  SKILL_DIR="${HERMES_SKILL_DIR}"                                # Hermes: substituted to an absolute path before the body is shown
+fi
+python "$SKILL_DIR/scripts/check_gpu_memory.py"
 ```
 
 **Rule of thumb:**

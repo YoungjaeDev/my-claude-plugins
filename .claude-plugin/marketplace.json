@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "1.74.0"
+    "description": "Personal Claude Code plugin collection with 21 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
+    "version": "1.75.0"
   },
   "plugins": [
     {
@@ -35,13 +35,6 @@
       "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, firecrawl tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate).",
       "version": "2.1.1",
       "category": "research"
-    },
-    {
-      "name": "council",
-      "source": "./plugins/council",
-      "description": "Multi-model deliberation: Claude, Codex, Gemini",
-      "version": "1.1.0",
-      "category": "ai-models"
     },
     {
       "name": "deepwiki",
@@ -79,13 +72,6 @@
       "category": "planning"
     },
     {
-      "name": "notion",
-      "source": "./plugins/notion",
-      "description": "Markdown to Notion upload",
-      "version": "1.0.0",
-      "category": "integration"
-    },
-    {
       "name": "paper-search-tools",
       "source": "./plugins/paper-search-tools",
       "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
@@ -105,13 +91,6 @@
       "description": "Slidev markdown presentation generator with interview workflow and KubeCon-level visual enhancement",
       "version": "1.2.0",
       "category": "content"
-    },
-    {
-      "name": "workflow-viz",
-      "source": "./plugins/workflow-viz",
-      "description": "System workflow Mermaid diagrams and ASCII progress tracking",
-      "version": "1.0.0",
-      "category": "visualization"
     },
     {
       "name": "rules-forge",

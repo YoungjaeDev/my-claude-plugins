@@ -5,15 +5,12 @@
       "./plugins/github-dev",
       "./plugins/e2e-harness",
       "./plugins/code-scout",
-      "./plugins/council",
       "./plugins/deepwiki",
       "./plugins/notebook",
       "./plugins/ml-toolkit",
       "./plugins/translator",
       "./plugins/interview",
-      "./plugins/notion",
       "./plugins/slidev",
-      "./plugins/workflow-viz",
       "./plugins/rules-forge",
       "./plugins/tcrei-prompt",
       "./plugins/llm-wiki",
@@ -23,7 +20,8 @@
       "./plugins/docs-forge",
       "./plugins/anti-slop-design",
       "./plugins/tally-form",
-      "./plugins/ppt-yeong-style"
+      "./plugins/ppt-yeong-style",
+      "./plugins/codex-image"
     ]
   }
 }

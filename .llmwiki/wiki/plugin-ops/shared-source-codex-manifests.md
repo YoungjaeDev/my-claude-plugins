@@ -72,18 +72,18 @@ skills | hooks | mcpServers | apps
 by the generator — Codex does not recognize them. Plugins whose value is
 entirely in `commands` or `agents` therefore have nothing to load on the Codex
 side. The generator excludes them via an `EXCLUDED` set; the current entries
-are `core-config` (Claude-only hooks; Codex has no equivalent hook surface),
-`midjourney` (image-gen workflow does not fit Codex's execution model), and
-`codex-image`. The last has a different reason from the other two: it is a
-Claude->Codex *bridge* (it delegates image generation to `codex exec`), so
-syncing it back into Codex would be circular — Codex would be asked to load a
-skill whose only job is to call Codex. So **all plugins except those 3 are
-eligible** for Codex (eligible count = total − 3); the absolute number shifts on
-every plugin add/remove, so the durable invariant is the 3-member EXCLUDED set,
-not a fixed count. EXCLUDED scopes Codex *manifest eligibility* only — it is not
-an *install* filter: the `install-skills` wrapper (which pushes these skills into
-Codex/Hermes via `npx skills`) filters by skill count, so midjourney and
-codex-image stay installable to Codex from that tool (`> See-also:` below).
+are `core-config` (Claude-only hooks; Codex has no equivalent hook surface) and
+`codex-image`. The latter is a Claude->Codex *bridge* (it delegates image
+generation to `codex exec`), so syncing it back into Codex would be circular —
+Codex would be asked to load a skill whose only job is to call Codex. So **all
+plugins except those 2 are eligible** for Codex (eligible count = total − 2); the
+absolute number shifts on every plugin add/remove, so the durable invariant is the
+EXCLUDED set, not a fixed count. (`midjourney` was a third member until PR #84
+deleted the plugin — a removed plugin needs no EXCLUDED entry; the drift guard's
+orphan detection covers any stale manifest.) EXCLUDED scopes Codex *manifest
+eligibility* only — it is not an *install* filter: the `install-skills` wrapper
+(which pushes these skills into Codex/Hermes via `npx skills`) filters by skill
+count, so codex-image stays installable to Codex from that tool (`> See-also:` below).
 
 `deepwiki` and `project-init` were in the EXCLUDED set before 1.41.0 because
 they shipped only `commands/`. The 1.41.0 dual-surface conversion added

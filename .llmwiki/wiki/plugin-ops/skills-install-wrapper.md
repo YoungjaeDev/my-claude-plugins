@@ -50,9 +50,9 @@ the profile scan — hardcoding `~/.hermes` for detection hid a relocated instal
 
 The installer filters install candidates by **skill count only** (core-config has
 0 skills → naturally dropped). It deliberately does NOT reuse the Codex manifest
-`EXCLUDED` set (core-config / midjourney / codex-image): that set governs Codex
-*manifest eligibility*, not *install availability*, so midjourney and codex-image
-ARE installable to Codex via the TUI. Known counterpoint (a Codex review flagged
+`EXCLUDED` set (core-config / codex-image): that set governs Codex
+*manifest eligibility*, not *install availability*, so codex-image is
+installable to Codex via the TUI. Known counterpoint (a Codex review flagged
 it, accepted as a deliberate decision): installing `codex-image` — a Claude→Codex
 bridge — into Codex is circular, so a per-target exclusion is a reasonable future
 refinement, not a v1 bug.

@@ -22,7 +22,10 @@ def _frontmatter_from_skill(skill_md: Path) -> dict[str, Any]:
         _, frontmatter, _ = text.split("---", 2)
     except ValueError:
         return {}
-    data = yaml.safe_load(frontmatter) or {}
+    try:
+        data = yaml.safe_load(frontmatter) or {}
+    except yaml.YAMLError:
+        return {}
     return data if isinstance(data, dict) else {}
 
 

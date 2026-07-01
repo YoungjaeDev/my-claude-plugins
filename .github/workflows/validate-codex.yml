@@ -1,7 +1,7 @@
 name: validate-codex
 
-# Catch Codex manifest drift and skill-description length violations at PR time,
-# even if a contributor skipped the local .githooks pre-commit hook.
+# Catch Codex + Hermes manifest drift and skill-description length violations at
+# PR time, even if a contributor skipped the local .githooks pre-commit hook.
 on:
   push:
   pull_request:
@@ -20,3 +20,4 @@ jobs:
         with:
           node-version: '20'
       - run: node scripts/sync-codex-manifests.mjs --check
+      - run: node scripts/sync-hermes-manifests.mjs --check

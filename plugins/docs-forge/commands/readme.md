@@ -40,7 +40,7 @@ Generate or analyze README files using patterns from awesome-readme.
    - Package name from package.json, setup.py, Cargo.toml, etc.
    - Description from package config
    - Existing commands/API
-4. **Generate visual assets** using `/midjourney-imagineapi` skill:
+4. **Generate visual assets** using the `codex-image` skill (`/codex-image:codex-image`):
    - **Logo**: Create project logo (square, minimal, tech-style)
    - **Banner**: Create header banner (wide format, includes project name)
    - Save to `assets/logo.png` and `assets/banner.png`
@@ -92,19 +92,19 @@ Provide markdown report:
 
 ## Visual Assets Generation
 
-When generating README, create logo and banner using `/midjourney-imagineapi` skill.
+When generating README, create logo and banner using the `codex-image` skill (`/codex-image:codex-image`).
 
 ### Logo Guidelines
 
 - **Style**: Minimal, modern, tech-focused
 - **Format**: Square (1:1 ratio)
-- **Prompt template**: `minimal tech logo for [project-name], [project-domain] tool, clean vector style, single color accent, white background --ar 1:1 --style raw`
+- **Prompt template**: `minimal tech logo for [project-name], [project-domain] tool, clean vector style, single color accent, white background, square 1:1 aspect`
 
 ### Banner Guidelines
 
 - **Style**: Wide header with project branding
 - **Format**: Wide (3:1 or 4:1 ratio)
-- **Prompt template**: `tech product banner for [project-name], [tagline], modern gradient background, minimal design, dark theme --ar 3:1 --style raw`
+- **Prompt template**: `tech product banner for [project-name], [tagline], modern gradient background, minimal design, dark theme, wide 3:1 aspect`
 
 ### Asset Placement
 

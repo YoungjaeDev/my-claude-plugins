@@ -5,6 +5,18 @@ description: Creates professional Gradio computer vision apps. Applies a refined
 
 # Gradio CV App Generator
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `ml-toolkit:gradio-cv-app`, map Claude/Codex tool names to Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Read | read_file |
+| Write | write_file |
+| Edit | patch |
+
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ml-toolkit:gradio-cv-app")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+
 A skill for creating professional Gradio computer vision apps.
 Combines PRITHIVSAKTHIUR's functional patterns with Editorial design principles.
 

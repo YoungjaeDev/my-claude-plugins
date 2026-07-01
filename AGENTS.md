@@ -8,22 +8,24 @@
 - 파일 탐색과 검색은 우선 `rg`, `rg --files`를 사용하세요.
 - 문서와 매니페스트가 함께 움직이는 저장소이므로 코드 변경뿐 아니라 README, 루트 `CLAUDE.md`, marketplace manifest의 동기화 필요성을 항상 확인하세요.
 
-## 듀얼 통합 (Claude Code ↔ Codex)
+## 멀티런타임 통합 (Claude Code ↔ Codex ↔ Hermes Agent)
 
-이 저장소는 Claude Code 와 Codex CLI 둘 다로 구동된다. 지침/hook/lore 를 한쪽 표면에만 두면 다른 도구체인에는 안 보인다. 동작에 영향을 주는 변경은 짝 표면을 같은 변경에서 점검한다. (Claude 쪽 SSOT: `.claude/rules/dual-integration.md` — Codex 는 `.claude/rules/` 를 `@import` 못 하므로 이 블록이 미러다.)
+이 저장소는 Claude Code, Codex CLI, Hermes Agent 세 런타임으로 구동된다. 지침/hook/lore 를 한쪽 표면에만 두면 다른 도구체인에는 안 보인다. 동작에 영향을 주는 변경은 짝 표면을 같은 변경에서 점검한다. (Claude 쪽 SSOT: `.claude/rules/dual-integration.md` — Codex/Hermes 는 `.claude/rules/` 를 `@import` 못 하므로 이 블록이 미러다.)
 
-| 관심사 | Claude Code 표면 | Codex 표면 |
-|---|---|---|
-| 최상위 지침 | `CLAUDE.md`, `.claude/rules/*.md` | `AGENTS.md` (inline / mirror) |
-| 프롬프트 주입 hook | 플러그인 `UserPromptSubmit` (`plugin.json` → `hooks/*.sh`) | `~/.codex/hooks.json` → 같은 스크립트, `codex` 포맷 인자 |
-| skill | `plugins/*/skills` (native) | 같은 `plugins/<name>/` 트리 in-place + generated `.codex-plugin/plugin.json` (아래 "Codex 통합 (shared-source)" 참조) |
-| command / subagent | `plugins/*/{commands,agents}` (native) | Codex 0.135 미지원 (Claude-only — 매니페스트에 미방출) |
-| 공유 중립 lore | `.llmwiki/` (양 에이전트 동일 루트, fork 금지) | `.llmwiki/` |
+| 관심사 | Claude Code 표면 | Codex 표면 | Hermes 표면 |
+|---|---|---|---|
+| 최상위 지침 | `CLAUDE.md`, `.claude/rules/*.md` | `AGENTS.md` (inline / mirror) | `AGENTS.md` (mirror, `@import` 불가) |
+| 프롬프트 주입 hook | 플러그인 `UserPromptSubmit` (`plugin.json` → `hooks/*.sh`) | `~/.codex/hooks.json` → 같은 스크립트, `codex` 포맷 인자 | (별도 hook surface — 현재 미사용) |
+| skill | `plugins/*/skills` (native) | 같은 트리 in-place + generated `.codex-plugin/plugin.json` (아래 "Codex 통합") | 같은 트리 in-place + generated `plugin.yaml` + `__init__.py` (아래 "Hermes 통합") |
+| command / subagent | `plugins/*/{commands,agents}` (native) | Codex 0.135 미지원 (Claude-only) | Hermes 미지원 (skill 만) |
+| skill 본문 도구명 | Claude 도구명 (`Bash`, `Read`, ...) | Claude 와 동일 (본문 그대로 읽음) | 본문의 호환 표로 Hermes 도구명 매핑 (`Bash`→`terminal`, `AskUserQuestion`→`clarify`, ...) |
+| 공유 중립 lore | `.llmwiki/` (세 에이전트 동일 루트, fork 금지) | `.llmwiki/` | `.llmwiki/` |
 
-- 양 에이전트가 따라야 할 behavioral 지침은 `CLAUDE.md` 와 `AGENTS.md` 를 짝으로 수정한다.
+- 세 에이전트가 따라야 할 behavioral 지침은 `CLAUDE.md` 와 `AGENTS.md` 를 짝으로 수정한다.
 - Claude hook 을 추가/변경하면 Codex `~/.codex/hooks.json` 대응을 점검한다 (Codex hook 은 별도 `/hooks` trust 필요, 자동 등록 안 됨).
-- skill / 버전 / description 을 바꾸면 Codex 매니페스트 재생성(`node scripts/sync-codex-manifests.mjs`)이 필요한지 점검한다 ("Codex 통합 (shared-source)" 섹션 + `plugin-versioning.md`).
-- wiki lore 는 `.claude/rules/` 로 승격하지 않는다 — Codex 가 못 읽는다. cross-agent insight 는 `.llmwiki/insight/` 로 graduate 후 공유 주입 hook 으로 노출한다.
+- skill / 버전 / description 을 바꾸면 Codex 매니페스트 재생성(`node scripts/sync-codex-manifests.mjs`) + (Hermes-eligible 이면) Hermes 어댑터 재생성(`node scripts/sync-hermes-manifests.mjs`)이 필요한지 점검한다 ("Codex 통합" / "Hermes 통합" 섹션 + `plugin-versioning.md`).
+- skill 본문을 추가/변경할 때 Hermes 호환 표(Claude/Codex 도구 용어 → Hermes 도구)를 점검한다 — 3런타임 포터블.
+- wiki lore 는 `.claude/rules/` 로 승격하지 않는다 — Codex/Hermes 가 못 읽는다. cross-agent insight 는 `.llmwiki/insight/` 로 graduate 후 공유 주입 hook 으로 노출한다.
 - `.llmwiki/` 를 per-agent 로 fork 하지 않는다.
 
 ## 저장소 구조
@@ -36,13 +38,15 @@
 - `plugins/<name>/`: 각 플러그인의 원본 디렉터리.
 - `plugins/<name>/.claude-plugin/plugin.json`: 플러그인별 매니페스트와 버전.
 - `plugins/<name>/.codex-plugin/plugin.json`: Codex 0.135 용 매니페스트 (generated, do not edit by hand).
+- `plugins/<name>/plugin.yaml` + `plugins/<name>/__init__.py`: Hermes Agent 어댑터 (HERMES_ELIGIBLE 플러그인만, generated, do not edit by hand).
 - `.agents/plugins/marketplace.json`: Codex marketplace 카탈로그 (generated).
 - `scripts/sync-codex-manifests.mjs`: Codex 매니페스트 생성기. `--check` 로 drift 가드, `--dry-run` 으로 출력 미리보기.
+- `scripts/sync-hermes-manifests.mjs`: Hermes 어댑터 생성기. `--check` drift + orphan 가드, `--dry-run` 미리보기.
 
 ## 플러그인 변경 규칙
 
 - 플러그인 버전을 올릴 때는 `plugins/<name>/.claude-plugin/plugin.json`과 `.claude-plugin/marketplace.json`의 해당 항목을 같은 변경에 포함하세요.
-- github-dev 전용: `plugins/github-dev/plugin.yaml`(Hermes 어댑터 매니페스트)도 같은 `version`을 가지므로 버전 범프 시 plugin.json/marketplace.json과 함께 갱신하세요. `--check`는 Codex 매니페스트만 검증하니 이 3중 동기화는 수동 확인.
+- Hermes-eligible 플러그인: `plugins/<name>/plugin.yaml`(Hermes 어댑터)의 `version`은 `sync-hermes-manifests.mjs` 가 marketplace 에서 파생해 생성하므로, 버전 범프 후 `node scripts/sync-hermes-manifests.mjs` 재실행으로 갱신하세요. `sync-hermes-manifests.mjs --check` 가 drift 를 가드하므로 수동 동기화는 불필요합니다 (단 Codex `--check` 는 Codex 매니페스트만 봅니다).
 - 어떤 플러그인 버전이든 변경하면 `.claude-plugin/marketplace.json`의 `metadata.version`도 marketplace release 버전으로 올리세요.
 - 플러그인을 추가하거나 제거하면 루트 `CLAUDE.md`의 플러그인 수와 구조, `README.md`의 플러그인 수와 목록도 갱신하세요.
 - 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다.
@@ -60,15 +64,26 @@
 - Skill `description` frontmatter 는 1024자 미만으로 유지하세요. Codex 0.135 는 1024자 초과 description 을 가진 skill 을 **silent 하게 skip** 합니다 (Claude Code 는 제한이 없어 위반이 안 보임). `--check` 가 drift 외에 description 길이도 검증하고, 공유 `.githooks/pre-commit` 이 매 커밋마다 실행합니다 — clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화하세요. 전체 trigger 목록 / per-tool rationale 는 description 이 아니라 skill 본문에 두세요.
 - Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
 - Codex 0.135 manifest top-level 은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원합니다 (참조: `~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md`). `commands` / `agents` 는 생성기가 emit 하지 않습니다 — Claude 만 인식하는 필드입니다.
-- Codex 에서 제외할 플러그인은 `scripts/sync-codex-manifests.mjs` 의 `EXCLUDED` 셋에 등록하세요 (현재: `core-config`, `midjourney`, `codex-image`). `core-config` 는 Claude-only hooks 라 Codex 에 대응 surface 가 없고, `midjourney` 는 image-gen workflow 가 Codex 실행 모델과 맞지 않으며, `codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환입니다. 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
+- Codex 에서 제외할 플러그인은 `scripts/sync-codex-manifests.mjs` 의 `EXCLUDED` 셋에 등록하세요 (현재: `core-config`, `codex-image`). `core-config` 는 Claude-only hooks 라 Codex 에 대응 surface 가 없고, `codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환입니다. 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
+- 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
+
+## Hermes 통합 (shared-source)
+
+- Hermes Agent 도 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 어댑터(`plugin.yaml` + `__init__.py`)는 `scripts/sync-hermes-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성합니다 — `plugins/<name>/plugin.yaml` / `__init__.py` 를 손으로 편집하지 마세요.
+- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 6개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`. 커버리지 확장은 allowlist 에 이름 추가.
+- Hermes-eligible 플러그인의 `version` / `description` 을 바꾸면 `node scripts/sync-hermes-manifests.mjs` 를 실행해 어댑터를 재생성하세요. `plugin.yaml` 의 `version` 은 marketplace 파생이므로 `--check` 가 drift + orphan 어댑터를 잡습니다 (수동 동기화 불필요 — 생성으로 해소).
+- `__init__.py` 는 `skills/*/SKILL.md` 를 `<plugin>:<skill>` 으로 등록하는 제네릭 엔트리포인트입니다 (플러그인별 로직 없음, `import yaml`=PyYAML 가정).
+- 공유 skill 본문은 3런타임 포터블이어야 합니다. Claude/Codex 는 도구명이 동일하므로, 본문에 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표(`Bash`→`terminal`, `Read`→`read_file`, `Edit`→`patch`, `AskUserQuestion`→`clarify`, `Task`→`delegate_task`, `Skill`→`skill_view`, 이미지 생성→`image_generate`, `NotebookEdit`→Hermes Jupyter Live Kernel / `write_file`·`patch` 등)를 둡니다. 새 skill 추가/도구 사용 변경 시 이 표를 점검하세요.
+- Hermes plugin 스킬은 opt-in 입니다 — `skill_view("<plugin>:<skill>")` 로 명시 로드, `--enable` 후 새 세션. 어댑터와 무관한 스킬 단위 설치는 `node scripts/install-skills.mjs` (`npx skills`) 로 가능합니다.
 - 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
 
 ## 검증
 
-- Codex 매니페스트 drift 가드 (모든 PR 에서 실행):
+- Codex / Hermes 매니페스트 drift 가드 (모든 PR 에서 실행):
 
 ```bash
 node scripts/sync-codex-manifests.mjs --check
+node scripts/sync-hermes-manifests.mjs --check
 ```
 
 - 로컬 Codex CLI 에서 marketplace 등록 확인:
@@ -116,7 +131,7 @@ codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 - 새 dependency, GitHub Actions, CI/CD 권한 변경 — 최소 권한, lockfile, supply-chain.
 
 ### Domain-specific (Claude Code plugin marketplace)
-- 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `CLAUDE.md`/`README.md` 의 Codex-eligible count (total − 3 excluded: core-config·midjourney·codex-image), `marketplace.json` entry + `metadata.version`, `.claude/settings.json` 의 `plugins.local` entry, 그리고 `node scripts/sync-codex-manifests.mjs` 재실행 — 동시 업데이트 필수. Codex-eligible count 는 version 파일도 `--check` 도 못 잡으니 수동 확인.
+- 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `CLAUDE.md`/`README.md` 의 Codex-eligible count (total − 2 excluded: core-config·codex-image), `marketplace.json` entry + `metadata.version`, `.claude/settings.json` 의 `plugins.local` entry, 그리고 `node scripts/sync-codex-manifests.mjs` + (Hermes-eligible 이면) `node scripts/sync-hermes-manifests.mjs` 재실행 — 동시 업데이트 필수. Codex-eligible count 는 version 파일도 `--check` 도 못 잡으니 수동 확인.
 - 기존 플러그인에 **skill 추가** PR 은 plugin 수를 바꾸지 않지만 문서 동기화가 필요하다 — 해당 플러그인의 `plugins/<name>/CLAUDE.md` skill 목록, 그리고 version bump 이 `description` 도 바꿨다면 루트 `CLAUDE.md`/`README.md` 의 한 줄 설명. 매니페스트 재생성 + `metadata.version` bump 은 그대로 적용.
 - Codex 매니페스트 (`plugins/*/.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`) 가 `--check` 통과해야 함. 수동 편집 흔적 검토.
 - Plugin 캐시 이슈 ([anthropics/claude-code#17361](https://github.com/anthropics/claude-code/issues/17361), [anthropics/claude-code#19197](https://github.com/anthropics/claude-code/issues/19197)) — version bump 만으로는 사용자 캐시 갱신 보장 안 됨. 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차 유지.

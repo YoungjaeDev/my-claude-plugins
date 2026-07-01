@@ -18,11 +18,10 @@ const PLUGINS_DIR = join(ROOT, 'plugins');
 
 // Plugins intentionally not bridged to Codex.
 //   core-config — Claude-only hooks / settings (no Codex hook surface for the same patterns)
-//   midjourney  — image-gen workflow not portable (Codex execution model differs)
 // deepwiki and project-init were here but are now dual-surface (command + skill);
 // the skill side is what Codex loads, so they leave the EXCLUDED set.
 //   codex-image — Claude->Codex bridge (delegates to codex exec); bridging into Codex is circular
-const EXCLUDED = new Set(['core-config', 'midjourney', 'codex-image']);
+const EXCLUDED = new Set(['core-config', 'codex-image']);
 
 // Codex 0.135 manifest top-level supports only `skills`, `hooks`, `mcpServers`, `apps`
 // (see ~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md). `commands`

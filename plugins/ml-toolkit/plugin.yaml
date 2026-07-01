@@ -1,0 +1,5 @@
+name: ml-toolkit
+version: "1.4.0"
+description: "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration"
+author: "YoungjaeDev"
+kind: standalone

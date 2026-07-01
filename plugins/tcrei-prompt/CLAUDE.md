@@ -34,3 +34,20 @@ Google's Prompting Essentials (Coursera) 5-step structure:
 - "structure this prompt"
 - "prompt enhance"
 - "make a prompt for next session"
+
+## Hermes Agent
+
+Install this plugin from the monorepo subdirectory:
+
+```bash
+hermes plugins install YoungjaeDev/my-claude-plugins/plugins/tcrei-prompt --enable
+hermes gateway restart  # if using Hermes through a messaging gateway
+```
+
+Load the skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes session after `--enable`):
+
+```text
+skill_view("tcrei-prompt:tcrei-prompt")
+```
+
+The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (`Task`, `Write`, `AskUserQuestion`, `Read`) to Hermes tools (`delegate_task`, `write_file`, `clarify`, `read_file`).

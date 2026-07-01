@@ -57,3 +57,20 @@ Full spec at `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`:
 ## Edge Cases
 ## Out of Scope
 ```
+
+## Hermes Agent
+
+Install this plugin from the monorepo subdirectory:
+
+```bash
+hermes plugins install YoungjaeDev/my-claude-plugins/plugins/interview --enable
+hermes gateway restart  # if using Hermes through a messaging gateway
+```
+
+Load the skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes session after `--enable`):
+
+```text
+skill_view("interview:interview-methodology")
+```
+
+The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (e.g. `AskUserQuestion`, `Read`, `Write`) to Hermes tools (`clarify`, `read_file`, `write_file`).

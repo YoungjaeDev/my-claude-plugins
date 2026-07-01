@@ -5,6 +5,18 @@ description: "Anti-AI-slop design guard for websites/SaaS landing, presentation 
 
 # anti-slop-design
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `anti-slop-design:anti-slop-design`, map Claude/Codex tool names to Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Read | read_file |
+| AskUserQuestion | clarify |
+| Skill | skill_view (list available via skills_list) |
+
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("anti-slop-design:anti-slop-design")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+
 웹/SaaS 랜딩, 발표 덱(PPT), 대시보드/admin UI, 마케팅·UI 카피를 만들거나 감사·개선할 때 "AI가 만든 티(slop)"를 **생성 전에 차단**하고 **생성 후에 감사**하는 enterprise anti-slop guard.
 
 **핵심 명제:** slop = 브리프와 무관하게 나오는 기본값(**default-not-choice**). 모든 판정은 "이건 *이* 브리프를 위한 선택인가, *아무* 브리프에나 나올 선택인가"로 환원된다. 색·폰트·레이아웃이 "예쁜가"가 아니라 "선택인가"를 본다.

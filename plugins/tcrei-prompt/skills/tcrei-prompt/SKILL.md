@@ -18,6 +18,19 @@ allowed-tools:
 
 # TCREI Prompt Transformer
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `tcrei-prompt:tcrei-prompt`, map Claude/Codex tool names to Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Read | read_file |
+| Write | write_file |
+| AskUserQuestion | clarify |
+| Task | delegate_task |
+
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("tcrei-prompt:tcrei-prompt")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+
 Rewrites rough prompts into Google's TCREI 5-step structure and outputs
 copy-paste-ready prompts for the next session. Based on Google's Prompting
 Essentials (Coursera): Task, Context, References, Evaluate, Iterate.

@@ -31,3 +31,21 @@ ppt-yeong-style/
     └── assets/
         └── injection-prompt.md     # 다른 세션 주입용 압축 프롬프트(복붙 페이로드)
 ```
+
+## Hermes Agent
+
+monorepo 서브디렉토리에서 플러그인을 설치:
+
+```bash
+hermes plugins install YoungjaeDev/my-claude-plugins/plugins/ppt-yeong-style --enable
+hermes gateway restart  # 메시징 게이트웨이로 Hermes를 쓰는 경우
+```
+
+스킬을 명시적으로 로드 (Hermes plugin skill은 opt-in, `--enable` 후 새 Hermes 세션 시작):
+
+```text
+skill_view("ppt-yeong-style:ppt-yeong-style")
+```
+
+- 스킬 본문은 Claude/Codex 도구 용어(`Bash`, `Read`, `AskUserQuestion`, 이미지 생성, `Skill`)를 Hermes 도구(`terminal`, `read_file`, `clarify`, `image_generate`, `skill_view`)로 매핑하는 호환 표를 포함한다.
+- 전제: 빌드 엔진인 외부 `ppt-master` 플러그인 enable + `uv` 설치가 필요하다. 미설치 시 빌드 진입 전 중단.

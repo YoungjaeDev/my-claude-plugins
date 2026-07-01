@@ -6,6 +6,18 @@ version: 0.3.0
 
 # Interview Methodology
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `interview:interview-methodology`, map Claude/Codex tool names to Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| AskUserQuestion | clarify |
+| Read | read_file |
+| Write | write_file |
+
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("interview:interview-methodology")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+
 A comprehensive framework for conducting thorough requirement-gathering interviews that uncover hidden needs, constraints, and edge cases.
 
 ## Trigger Examples

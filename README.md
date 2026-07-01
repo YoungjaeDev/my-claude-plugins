@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 25개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-25-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -26,7 +26,7 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 
 - **GitHub 워크플로우** - 이슈 분해, PR, 코드 리뷰, post-merge 정리까지 한 흐름으로
 - **리서치** - arXiv/PubMed 논문 검색, GitHub 레포 문서화, 보일러플레이트 탐색
-- **멀티모달** - Midjourney 이미지 생성, 웹 페이지 번역, Notion 업로드
+- **멀티모달** - Claude→Codex 이미지 생성 브리지, 웹 페이지 번역, Notion 업로드
 - **문서화** - README/CHANGELOG, CLAUDE.md 모듈화, PRD/Tech Spec 생성
 - **시각화** - Mermaid 다이어그램, Slidev 프레젠테이션
 
@@ -85,7 +85,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
 | **AI Models** | `council` | Claude, Codex, Gemini 멀티모델 심의 |
-| | `midjourney` | Midjourney V7 이미지 생성 |
 | | `codex-image` | Claude->Codex 이미지 생성 브리지 (ChatGPT OAuth, OpenAI API key 불필요) |
 | **Dev Tools** | `notebook` | Jupyter 노트북 안전 편집 |
 | | `ml-toolkit` | ML/멀티모달 개발 원칙, GPU 병렬 처리, Gradio CV 앱 |
@@ -288,20 +287,6 @@ WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
 | `/council:ask-gemini` | Gemini 직접 질문 |
 
 **Models:** Claude Opus, Sonnet, Codex, Gemini
-
-</details>
-
-<details>
-<summary><strong>midjourney</strong> - 이미지 생성</summary>
-
-Midjourney V7 프롬프트 최적화 및 생성.
-
-**Features:**
-- 5레이어 프롬프트 구조
-- 스타일/분위기 명확화
-- 다양한 프롬프트 변형
-
-**Requirements:** midjourney MCP 설정
 
 </details>
 
@@ -652,7 +637,6 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
       "./plugins/notebook",
       "./plugins/ml-toolkit",
       "./plugins/translator",
-      "./plugins/midjourney",
       "./plugins/interview",
       "./plugins/notion",
       "./plugins/slidev",
@@ -683,7 +667,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `midjourney` (image-gen workflow not portable — Codex 실행 모델 차이), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 22 / 25 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 22 / 24 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -696,9 +680,33 @@ git config core.hooksPath .githooks
 
 활성화하면 매 커밋 전에 `node scripts/sync-codex-manifests.mjs --check` 가 돌아 drift / 길이 위반을 차단합니다. 훅을 건너뛴 기여자도 PR 시 `.github/workflows/validate-codex.yml` 이 동일 명령으로 잡습니다.
 
-### 스킬을 Hermes / Codex 에 설치
+### Hermes Agent (shared source)
 
-이 마켓플레이스의 skill 을 Hermes Agent 와 Codex 에 설치하는 대화형 도구. `npx skills`(vercel-labs/skills) 를 래핑하며 Node builtin 만 사용(zero-dep):
+Hermes Agent 도 동일한 `plugins/<name>/` 트리를 네이티브로 읽습니다. 어댑터(`plugin.yaml` + `__init__.py`)는 `scripts/sync-hermes-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성:
+
+```bash
+# 어댑터 생성 / 재생성 (eligible 플러그인의 version·description 변경 시)
+node scripts/sync-hermes-manifests.mjs
+
+# PR drift 가드 — CI(validate-codex.yml) + .githooks/pre-commit 에서 실행
+node scripts/sync-hermes-manifests.mjs --check
+
+# Hermes 에 플러그인 단위 설치 (plugin.yaml 어댑터 필요)
+hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
+hermes gateway restart  # 메시징 게이트웨이 사용 시
+```
+
+어댑터 필드는 marketplace 엔트리에서 파생되고(`plugin.yaml` name/version/description, `__init__.py` 는 SKILL.md 를 `<plugin>:<skill>` 로 등록하는 제네릭 엔트리포인트 — 플러그인별 로직 없음), 대상은 `HERMES_ELIGIBLE` allowlist (이번 라운드 6개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`) 입니다. allowlist 에 이름을 추가하면 커버리지가 확장됩니다. `--check` 가 어댑터 drift + orphan 어댑터를 잡습니다. 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
+
+플러그인 스킬은 opt-in 이라 enable 후 `skill_view("<plugin>:<skill>")` 로 명시 로드합니다 (`--enable` 후 새 Hermes 세션 시작).
+
+**설치 두 경로:**
+- **플러그인 단위** (`hermes plugins install .../plugins/<name>` — 위 `plugin.yaml` 어댑터 필요, 이번 PR 이 5개 추가). 플러그인 전체를 Hermes 에 등록.
+- **스킬 단위** (`node scripts/install-skills.mjs` → `npx skills` — 어댑터와 무관, 어댑터 없는 플러그인도 가능). 개별 skill 만 설치.
+
+### 스킬을 Hermes / Codex 에 설치 (스킬 단위)
+
+이 마켓플레이스의 skill 을 **스킬 단위**로 Hermes Agent 와 Codex 에 설치하는 대화형 도구 (위 `plugin.yaml` 어댑터와 무관 — 어댑터 없는 플러그인도 설치 가능). `npx skills`(vercel-labs/skills) 를 래핑하며 Node builtin 만 사용(zero-dep):
 
 ```bash
 node scripts/install-skills.mjs
@@ -714,8 +722,9 @@ node scripts/install-skills.mjs
 | `gh` | GitHub 플러그인 | github-dev |
 | `uv` | Python MCP 서버 | core-config |
 | `ruff` | Python 포매팅 | core-config |
-| Node 18+ | Codex manifest 생성기 런타임 | `scripts/sync-codex-manifests.mjs` |
+| Node 18+ | Codex/Hermes 매니페스트 생성기 런타임 | `scripts/sync-{codex,hermes}-manifests.mjs` |
 | Codex CLI 0.135+ | shared-source 네이티브 로드 (`.codex-plugin/plugin.json`) | Codex 사용자 |
+| Hermes Agent | shared-source 네이티브 로드 (`plugin.yaml` + `__init__.py`) | Hermes 사용자 |
 
 ## 프로젝트 구조
 
@@ -733,7 +742,6 @@ node scripts/install-skills.mjs
 │   ├── notebook/              # Jupyter 편집
 │   ├── ml-toolkit/            # ML 개발
 │   ├── translator/            # 번역
-│   ├── midjourney/            # 이미지 생성
 │   ├── codex-image/           # Claude->Codex 이미지 생성 브리지
 │   ├── interview/             # 요구사항 수집
 │   ├── notion/                # Notion 연동

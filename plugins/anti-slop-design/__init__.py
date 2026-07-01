@@ -1,8 +1,8 @@
-"""Hermes Agent adapter for the github-dev plugin.
+"""Hermes Agent adapter for the anti-slop-design plugin.
 
 The upstream plugin already ships skills for Claude Code and Codex. Hermes loads
 plugin-provided skills through a small Python entrypoint, so this module simply
-registers the existing SKILL.md files under the ``github-dev:<skill>`` namespace.
+registers the existing SKILL.md files under the ``anti-slop-design:<skill>`` namespace.
 """
 
 from __future__ import annotations
@@ -40,9 +40,9 @@ def _description_from_skill(skill_md: Path) -> str:
 
 
 def register(ctx) -> None:
-    """Register github-dev skills with Hermes.
+    """Register anti-slop-design skills with Hermes.
 
-    Hermes automatically qualifies these as ``github-dev:<name>`` based on the
+    Hermes automatically qualifies these as ``anti-slop-design:<name>`` based on the
     plugin manifest name, matching the existing Claude/Codex command namespace.
     """
     skills_root = Path(__file__).resolve().parent / "skills"

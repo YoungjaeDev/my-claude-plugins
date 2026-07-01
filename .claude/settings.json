@@ -10,7 +10,6 @@
       "./plugins/notebook",
       "./plugins/ml-toolkit",
       "./plugins/translator",
-      "./plugins/midjourney",
       "./plugins/interview",
       "./plugins/notion",
       "./plugins/slidev",

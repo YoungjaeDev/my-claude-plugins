@@ -5,6 +5,22 @@ description: "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master �
 
 # ppt-yeong-style
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `ppt-yeong-style:ppt-yeong-style`, map Claude/Codex tool names to Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Bash | terminal |
+| Read | read_file |
+| AskUserQuestion | clarify |
+| Skill | skill_view (list available via skills_list) |
+| (image generation) | image_generate |
+
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ppt-yeong-style:ppt-yeong-style")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+
+**Hermes 전제**: 이 스킬은 외부 `ppt-master` 플러그인의 빌드 엔진(`uv run` 스크립트)에 의존한다. Hermes 세션에서는 (1) `ppt-master` 플러그인이 enable 되어 있고 (2) `uv`가 설치되어 있어야 한다. 둘 중 하나라도 없으면 빌드 단계 진입 전에 중단하고 사용자에게 설치를 요청한다 (`skill_view("ppt-master:ppt-master")`로 엔진 스킬 로드 가능).
+
 yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 규약. 빌드는 **ppt-master 워크플로 위에서** 돌고, 이 스킬은 그 위에 얹는 "무엇을·어떻게 쓸지" 레이어다.
 
 **핵심 명제:** 덱 품질은 엔진이 아니라 *작성 규약*에서 갈린다 — 담백한 명사구 제목, 한 장=한 메시지, anti-slop 본문 + 표지/전환 pop, 역할 기반 색, 일상 비유 보조선. 이 규약을 매번 재유도 없이 일관 적용하는 게 목적.

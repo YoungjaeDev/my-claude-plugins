@@ -5,6 +5,21 @@ description: Generate interactive CV data exploration notebooks with ipywidgets 
 
 # cv-explorer Skill
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `ml-toolkit:cv-explorer`, map Claude/Codex tool names to Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Read | read_file |
+| Write | write_file |
+| Edit | patch |
+| NotebookEdit | Hermes "Jupyter Live Kernel" skill, or write_file / patch on the .ipynb JSON |
+
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ml-toolkit:cv-explorer")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+
+> **NotebookEdit across runtimes**: Claude and Codex use the `NotebookEdit` tool to author `.ipynb` cells (the global rule forbids hand-editing notebook JSON under Claude). Under Hermes there is no `NotebookEdit` tool — use the Hermes "Jupyter Live Kernel" skill, or write/patch the `.ipynb` JSON directly with `write_file` / `patch` (Hermes' Claude/GPT brain can emit valid notebook JSON).
+
 Interactive Computer Vision data exploration notebook generator using ipywidgets.
 
 ## Design Principles

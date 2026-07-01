@@ -26,7 +26,7 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 
 - **GitHub 워크플로우** - 이슈 분해, PR, 코드 리뷰, post-merge 정리까지 한 흐름으로
 - **리서치** - arXiv/PubMed 논문 검색, GitHub 레포 문서화, 보일러플레이트 탐색
-- **멀티모달** - Claude→Codex 이미지 생성 브리지, 웹 페이지 번역, Notion 업로드
+- **멀티모달** - Claude→Codex 이미지 생성 브리지, 웹 페이지 번역
 - **문서화** - README/CHANGELOG, CLAUDE.md 모듈화, PRD/Tech Spec 생성
 - **시각화** - Mermaid 다이어그램, Slidev 프레젠테이션
 

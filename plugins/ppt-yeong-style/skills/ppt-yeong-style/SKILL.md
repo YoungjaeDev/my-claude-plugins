@@ -21,6 +21,33 @@ Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks
 
 **Hermes 전제**: 이 스킬은 외부 `ppt-master` 플러그인의 빌드 엔진(`uv run` 스크립트)에 의존한다. Hermes 세션에서는 (1) `ppt-master` 플러그인이 enable 되어 있고 (2) `uv`가 설치되어 있어야 한다. 둘 중 하나라도 없으면 빌드 단계 진입 전에 중단하고 사용자에게 설치를 요청한다 (`skill_view("ppt-master:ppt-master")`로 엔진 스킬 로드 가능).
 
+## 목차
+
+- §0. 미감 토대 (Aesthetic foundation)
+- §0b. 엔진·의존 (cross-skill 관용구)
+- §0c. 언제 쓰나 / 안 쓰나
+- §1. 덱 유형과 파이프라인
+- §2. md 소스 작성 규약
+- §3. 발표 덱 작성 원칙 15종
+- §3b. 밀도·리듬 (정량 프리셋 + 기본값)
+- §3c. 색·이미지·로고 (핵심 1줄 + 포인터)
+- §3d. 스크린샷 — 옆에 둘까, 위에 짚을까 (앱 UI 실물 전제)
+- §4. ppt-master 깊이 활용 — 조합으로 차별화
+- 부록 A. 다른 세션에 규칙 주입
+
+## 참조 파일 지도
+
+| 파일 | 담당 SKILL.md 섹션 | 자기 내부 §라벨 |
+|---|---|---|
+| `references/design-language.md` | §0 상세 | (무번호, 전체가 §0 상세) |
+| `references/color-typography.md` | §3c 상세(색·타이포) | §3c 상세 |
+| `references/images-and-pop.md` | §3c 상세(이미지) | §5·§5b |
+| `references/icons-logos.md` | §3c 상세(로고) | §5c |
+| `references/ppt-master-craft.md` | §4 상세 | §4 상세 |
+| `references/ppt-master-and-qa.md` | §1 파이프라인 상세(7-step·윤문·완료 QA·스토리 흐름) | §6~§8c |
+
+> 참조 파일들 자체의 §5·§5b·§5c·§6~§8c 번호는 이번 라운드에서 재편하지 않는다(리스크 대비 이득 작음, 스펙 §2.4/§4 참고) — 위 표가 SKILL.md 쪽과의 대응만 명시한다.
+
 yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 규약. 빌드는 **ppt-master 워크플로 위에서** 돌고, 이 스킬은 그 위에 얹는 "무엇을·어떻게 쓸지" 레이어다.
 
 **핵심 명제:** 덱 품질은 엔진이 아니라 *작성 규약*에서 갈린다 — 담백한 명사구 제목, 한 장=한 메시지, anti-slop 본문 + 표지/전환 pop, 역할 기반 색, 일상 비유 보조선. 이 규약을 매번 재유도 없이 일관 적용하는 게 목적.
@@ -32,12 +59,12 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 - **tonality는 색보다 먼저.** 인터뷰·색 락(파이프라인 (2)) 전에 *감정 온도*(절제↔pop, 권위↔즉시성)부터 합의하고, 그 톤에 맞춰 색·타입·사진을 고른다. 색을 먼저 고르고 톤을 끼워 맞추지 않는다.
 - 6축(레이아웃·여백·색·타이포·사진·pop)과 anti-slop↔하이엔드 양립표, ppt-master 레버 락은 → `references/design-language.md`. **이 파일은 색·이미지·craft 모든 결정의 상위 미감 계약이다** — 충돌 시 design-language의 톤 의도가 우선.
 
-## 엔진·의존 (cross-skill 관용구)
+## §0b. 엔진·의존 (cross-skill 관용구)
 
 - **ppt-master** = 빌드 엔진·구현 owner. canvas init·source 변환·template·executor 스타일 등 **명시 안 한 세부는 ppt-master SKILL.md 그대로** 따른다. **bare name으로 참조**(vendor·복제 금지 — 이 repo에 동봉하지 않는 별도 marketplace 플러그인). ppt-master의 python 스크립트(`image_gen.py`·`finalize_svg.py`·`svg_to_pptx.py` 등)는 **`uv run`으로 실행**(시스템 python 직접 의존 금지). **필수 엔진이라 graceful degrade 대상이 아니다 — 미설치 시 Step 5 빌드 진입 전에 중단하고 ppt-master 설치를 먼저 안내**(수기 대체 금지).
 - 의존 스킬은 **있으면 사용, 없으면 graceful degrade**: `codex-image`(이미지)·`interview`(인터뷰)·`anti-slop-design`(영문 slop·디자인 감사)·`humanize-korean`(한국어 윤문)·`design-shotgun`(색 후보 생성). 미설치 시 그 단계는 수기로 대체하되 규약은 유지.
 
-## 언제 쓰나 / 안 쓰나
+## §0c. 언제 쓰나 / 안 쓰나
 
 **쓴다:** 강의·실습·제안·학술 덱을 yeong 규약대로 만들거나 감사·개선할 때. "강의 덱 만들어줘", "제안서 슬라이드", "ppt-master로 강의자료 yeong 스타일로".
 
@@ -56,8 +83,9 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 **파이프라인**(내용 SOT는 사용자) — 단계별 도구:
 ```text
 (1) 인터뷰: interview 스킬 → (2) 색 락: design-shotgun + AskUserQuestion → (3) md 소스 작성
-→ (4) 사용자 검토 → (5) ppt-master 빌드 → (6) anti-slop-design audit → humanize-korean 윤문
-→ 렌더 Visual QA + 스토리 흐름 review → (7) finalize_svg → svg_to_pptx → cairosvg PDF
+→ (4) 사용자 검토 → (5) ppt-master 빌드(SVG 생성) → (6) anti-slop 감사 → 윤문(SVG·노트 내용 수정)
+→ (7) finalize_svg → svg_to_pptx → cairosvg PDF(실제 산출물 생성) → 렌더 Visual QA(PPT→PNG export 기준 최종 검증, §8)
+→ 완료 게이트 리포트(감사·윤문·렌더QA·스토리 흐름 전부 확인 후 이때 처음 완료 선언)
 이미지 = codex-image · 산출물 = 항상 pptx + PDF
 ```
 
@@ -90,6 +118,7 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 - `<!-- layout -->` = ppt-master 레이아웃 의도. `<!-- visual -->` = codex-image 배경/사용자 이미지 필요 여부. `<!-- diagram-note -->` = 도식 구조 지시(번호 나열 금지, 화살표 박스 흐름).
 - 표·일정·범위는 **마크다운 표**로 → SVG 변환. 애매한 무드 도식만 codex-image.
 - 전역 규약(컨텍스트·톤·디자인 락·흐름 표·출처)은 단일 md면 **앞머리 블록**에, 섹션 분리면 별도 `deck_spec.md`에.
+- **목차(TOC) 슬라이드는 마지막에 작성한다.** md 소스 초안 단계에서 다른 슬라이드와 같이 쓰지 않는다 — **md 소스 안에서 전체 페이지 순서가 정해진 뒤**(ppt-master 빌드 전, 이 저작 단계 안에서) 그 순서를 그대로 옮겨 적는다. **빌드 이후 페이지 순서를 바꿀 때**(예: §8c 완료 게이트에서 순서 문제가 드러난 경우)는 목차뿐 아니라 `spec_lock.md`도 함께 갱신한다 — Executor가 페이지마다 spec_lock을 재읽으므로, md만 고치고 spec_lock을 안 갱신하면 다음 빌드가 예전 순서·리듬 계약으로 진행돼 다시 어긋난다(재확인 없이 방치 금지 — `ppt-master-and-qa.md` §8b의 "목차-실제 순서 일치" 체크와 짝).
 
 ## §3. 발표 덱 작성 원칙 15종
 
@@ -127,13 +156,13 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 - 강사의 **일상 비유**(매뉴얼=책, 컨텍스트=하루 뇌 용량/배터리, 서브에이전트=인격체, GitHub=코드계 구글드라이브, 하네스=회사/팀, Git=카톡 업데이트 롤백)를 개념 슬라이드 보조선으로 적극 활용.
 - **중간 강화 ≠ dense**: dense는 "표로 분산", 중간 강화는 "메시지 + 비유 보조선". 둘 다 wall-of-text는 금지.
 
-## 색·이미지·로고 (핵심 1줄 + 포인터)
+## §3c. 색·이미지·로고 (핵심 1줄 + 포인터)
 
 - **색**: 역할·면적 기반 팔레트("색 여러 개 = slop") — 중립 2(배경+잉크 ~85%) + 주색 1~2 + 액센트 footprint ≤10%. deck-wide 락 후 슬라이드별 색 날조 금지. 폰트 폴백 Pretendard → Noto Sans KR → Malgun Gothic. 상세 → `references/color-typography.md`.
 - **이미지**: 기본 codex-image(무드컷·배경·hero), 정확한 라벨·표·도식은 SVG. 배경 fade·마스코트·pop은 **표지·목차·전환 divider 한정**(본문은 anti-slop 미니멀). 앱 UI(로그인·diff·권한·설정 화면 등)는 **실물 스크린샷 또는 점선 placeholder만 — codex/AI로 앱 화면 생성 금지**(지어낸 UI는 틀린 UX를 가르쳐 placeholder보다 나쁘다). 미보유 시 playwright 실물 캡처·공식 docs 스크린샷·placeholder 순. 상세 → `references/images-and-pop.md`.
 - **로고**: 브랜드·도구 로고는 직접 그리기·codex 생성 금지 → 공식 SVG 라이브러리 fetch → 인라인 → 근접성. 상세 → `references/icons-logos.md`.
 
-## §3c. 스크린샷 — 옆에 둘까, 위에 짚을까 (앱 UI 실물 전제)
+## §3d. 스크린샷 — 옆에 둘까, 위에 짚을까 (앱 UI 실물 전제)
 
 기준은 "이 화면에서 뭐가 메시지냐".
 - 화면 자체·첫 소개·분위기, 또는 설명이 길거나 화면이 빽빽 → **2단**(좌 스크린샷 + 우 설명).
@@ -153,6 +182,6 @@ ppt-master를 **단순 변환기로 쓰지 말 것.** 엔진 안의 레버를 �
 
 > 원칙: 레버는 '더 화려하게'가 아니라 **한 덱 안의 의도된 리듬·아트디렉션·정확도**를 위해. anti-slop·역할 기반 색은 그대로 유지.
 
-## 다른 세션에 규칙 주입
+## 부록 A. 다른 세션에 규칙 주입
 
 ppt-master·codex-image 등이 설치된 **다른 서버/세션**에서 이 규약을 한 번에 쓰려면 → `assets/injection-prompt.md`의 압축 프롬프트(복붙 페이로드)를 대화 맨 앞에 붙인 뒤 실제 요청을 잇는다(위 §1~§4 + 색·이미지·로고·craft의 1:1 압축판).

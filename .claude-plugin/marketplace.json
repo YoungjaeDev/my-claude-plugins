@@ -138,7 +138,7 @@
       "name": "codex-image",
       "source": "./plugins/codex-image",
       "description": "Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "category": "ai-models"
     },
     {

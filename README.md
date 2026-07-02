@@ -66,7 +66,12 @@ skill_view("github-dev:commit-and-push")
 
 ```bash
 # 1. 캐시 삭제
+#   macOS / Linux:
 rm -rf ~/.claude/plugins/cache/my-claude-plugins/
+#   Windows (PowerShell):
+#   Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\plugins\cache\my-claude-plugins"
+#   Windows (cmd):
+#   rmdir /s /q "%USERPROFILE%\.claude\plugins\cache\my-claude-plugins"
 
 # 2. Marketplace 업데이트 후 Claude Code 재시작
 /plugin marketplace update my-claude-plugins

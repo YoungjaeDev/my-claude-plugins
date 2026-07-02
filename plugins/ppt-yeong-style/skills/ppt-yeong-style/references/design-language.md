@@ -1,78 +1,77 @@
-# Design language — the yeong signature (§0 detail)
+# 디자인 언어 — yeong 시그니처 (§0 상세)
 
-The aesthetic spine of the skill. anti-slop tells you what NOT to do; this tells you what TO do
-so a deck reads as a deliberate high-end artifact, not a competent-but-generic AI house style.
+이 스킬의 미감 근간. anti-slop이 "하지 말 것"을 정한다면, 이 문서는 무엇을 **해야** 하는지를 정해서
+덱이 무난하지만 흔한 AI 하우스 스타일이 아니라 의도적으로 만든 하이엔드 산출물로 읽히게 한다.
 
-> Derived from a reference corpus (enterprise/product decks, Seongsu·Hongdae pop, Hannam
-> high-end, Apple-grade, Korean card-news), cross-extracted by Claude + Codex with near-total
-> agreement. This file is the distilled ONE signature.
+> 레퍼런스 코퍼스(기업/제품 덱, 성수·홍대 팝, 한남 하이엔드, 애플급, 한국 카드뉴스)에서
+> Claude + Codex가 거의 완전히 일치하는 결론으로 교차 추출했다. 이 문서는 그 결과를 하나의
+> 시그니처로 증류한 것이다.
 
-## The one signature
+## 하나의 시그니처
 
-**"Editorial restraint, one committed accent."**
-A disciplined warm-neutral editorial canvas, broken by exactly ONE committed loud moment per
-page. Restraint that feels alive, not safe. The craft is making silence feel charged without
-letting the composition become decorative noise.
+**"에디토리얼 절제, 단 하나의 커밋된 액센트."**
+절제된 웜 뉴트럴 에디토리얼 캔버스를, 페이지당 정확히 하나의 커밋된 라우드 모먼트로 깬다.
+살아있는 절제이지 안전한 절제가 아니다. 침묵을 장식적 소음으로 만들지 않으면서도 긴장감
+있게 만드는 게 이 크래프트의 핵심이다.
 
-Core proposition: **signature within trust.** The anti-slop trust floor stays fully intact
-(every ban below is kept). The high-end differentiation is layered on top as deliberate *tonal
-intent* — controlled by tone, not by adding more. This is the brand-asset escape hatch of
-anti-slop, used deliberately: when there is a committed visual language, it wins over the
-generic safe default.
+핵심 명제: **신뢰 안의 시그니처(signature within trust).** anti-slop의 신뢰 바닥은 전부
+그대로 유지된다(아래 모든 금지 사항 유지). 하이엔드 차별화는 그 위에 의도적인 *톤 의도*로
+얹힌다 — 더 넣어서가 아니라 톤으로 통제한다. 이건 anti-slop 자체의 "브랜드 자산" 탈출구를
+의도적으로 쓰는 것이다: 확고한 비주얼 언어가 있을 땐, 그게 무난한 기본값을 이긴다.
 
-## The six axes (apply every deck)
+## 6축 (매 덱에 적용)
 
-1. **Layout** — Swiss/editorial grid laid down, then broken with intent. ONE dominant anchor per
-   page (oversized type/number OR one cropped image). Hard left-edge anchoring, baseline
-   discipline, small metadata rails. Tension at edges/overlaps/crops, never a centered hero.
-2. **Whitespace** — moderate→extreme, never evenly filled. Emptiness carries *pressure* (it
-   frames the anchor), it is not just "clean space."
-3. **Color** — neutral-FIRST, warm-tinted base + ONE committed high-saturation accent. Low base
-   saturation, sharp accent. The accent is a *system*, not sprinkled. yeong house accent =
-   Claude orange `#D97757` on warm off-white `#FAF8F3`; lock the exact tokens per project
-   (`color-typography.md`), but the *philosophy* (warm neutral + single committed accent) is
-   fixed. No rainbow, no gradient, no gradient text.
-4. **Typography** — EXTREME header→body scale jump (**display ≥ 1.5× body, cover ≥ 3×**). Very
-   high weight contrast (heavy display vs tiny light metadata). Sans-dominant; serif only as
-   editorial seasoning. Tight, confident, poster-like tracking — not airy. **Type itself is a
-   graphic element** (oversized, stacked, numbers-as-structure).
-5. **Photo** — editorial material, not stock decoration. B&W / desaturated = authority;
-   controlled color = immediacy. Single-color (accent) overlay, subtle grain, never
-   glossy-clean. Aggressive intentional crops; type overlaps / frames the photo.
-6. **Pop** — the loud break is ISOLATED to hierarchy peaks (cover, section divider, one giant
-   number, one accent panel/burst). **Honesty test (tone version): a pop must carry an emotional
-   or narrative signal. If it conveys no tone information, delete it.** One pop per spread, not
-   per element.
+1. **레이아웃** — 스위스/에디토리얼 그리드를 깔고, 의도적으로 깬다. 페이지당 지배적 앵커
+   하나(오버사이즈 타이포/숫자 또는 크롭된 이미지 하나). 하드 좌측 정렬, 베이스라인 규율,
+   작은 메타데이터 레일. 긴장은 가장자리·오버랩·크롭에서 나오지, 센터 히어로에서 나오지 않는다.
+2. **여백** — 중간~극단, 절대 균등하게 채우지 않는다. 비어 있음이 *압력*을 만든다(앵커를
+   프레이밍한다) — 그냥 "깨끗한 공간"이 아니다.
+3. **색** — 뉴트럴이 **먼저**, 웜 틴트 베이스 + 커밋된 고채도 액센트 **하나**. 낮은 베이스
+   채도, 날카로운 액센트. 액센트는 뿌려놓는 게 아니라 하나의 *시스템*이다. yeong 하우스
+   액센트 = 웜 오프화이트(웜 크림톤) `#FAF8F3` 위 Claude 오렌지 `#D97757`. 정확한 토큰은
+   프로젝트마다 락하되(`color-typography.md`), *철학*(웜 뉴트럴 + 커밋된 단일 액센트)은
+   고정이다. 무지개 금지, 그라데이션 금지, 그라데이션 텍스트 금지.
+4. **타이포그래피** — 헤더→본문 스케일이 **극단적으로** 벌어진다(**디스플레이 ≥ 본문 1.5배,
+   표지 ≥ 3배**). 무게 대비도 매우 크게(무거운 디스플레이 vs 아주 가벼운 작은 메타데이터).
+   산세리프 위주, 세리프는 에디토리얼 양념으로만. 타이트하고 자신감 있는, 포스터 같은
+   자간 — 여유롭지 않다. **타이포 자체가 그래픽 요소**다(오버사이즈, 스택, 숫자가 구조가
+   되는).
+5. **사진** — 장식이 아니라 에디토리얼 소재(로파이 아카이브 무드에 가까운 바랜 톤). 흑백/저채도 = 권위, 통제된 컬러 = 즉시성.
+   단색(액센트) 오버레이, 은은한 그레인, 절대 glossy하게 매끈하지 않다. 과감하고 의도적인
+   크롭, 타이포가 사진을 겹치거나 프레이밍한다.
+6. **팝(pop)** — 크게 튀는 지점은 위계의 정점에만 고립된다(표지, 섹션 구분선, 큰 숫자 하나,
+   액센트 패널/버스트 하나). **정직성 테스트(톤 버전): 팝은 감정적이거나 서사적인 신호를
+   담아야 한다. 아무 톤 정보도 전달하지 않으면 삭제한다.** 스프레드당 팝 하나, 요소마다가
+   아니다.
 
-## anti-slop ↔ high-end: both hold (banned stays banned, tone does the work)
+## anti-slop ↔ 하이엔드: 둘 다 유지 (금지는 그대로, 톤이 차이를 만든다)
 
-| anti-slop ban (kept) | high-end move (how tone differentiates without breaking the ban) |
+| anti-slop 금지(유지) | 하이엔드 무브(금지를 깨지 않고 톤으로 차별화하는 법) |
 |---|---|
-| no purple/blue gradient, no gradient text | ONE flat committed accent; depth via scale + whitespace, not gradient |
-| no centered hero | off-center anchor, hard left-edge alignment, asymmetric tension |
-| no icon-tile 3-col grid | one dominant anchor; supporting info as a small rail or table |
-| no even rhythm across slides | deliberate quiet/loud/dense/sparse pacing (page_rhythm) |
-| no emoji icons | one line/editorial icon family, fill-only |
-| no fabricated metrics / fake symmetry | balance from tension; real numbers only |
-| no body wall-of-text | extreme type-scale: huge anchor + tiny metadata |
+| 보라/파랑 그라데이션 금지, 그라데이션 텍스트 금지 | 커밋된 플랫 액센트 하나 — 깊이는 그라데이션이 아니라 스케일+여백으로 |
+| 센터 히어로 금지 | 오프센터 앵커, 하드 좌측 정렬, 비대칭 긴장 |
+| icon-tile 3열 그리드 금지 | 지배적 앵커 하나 — 보조 정보는 작은 레일이나 표로 |
+| 슬라이드 간 균등한 리듬 금지 | 의도적인 조용함/시끄러움/밀도/여백의 페이싱(page_rhythm) |
+| 이모지 아이콘 금지 | 하나의 라인/에디토리얼 아이콘 패밀리, fill 전용 |
+| 조작된 수치/가짜 대칭 금지 | 긴장에서 오는 균형, 진짜 숫자만 |
+| 본문 wall-of-text 금지 | 극단적 타입 스케일: 거대한 앵커 + 작은 메타데이터 |
 
-## ppt-master lever lock (signature → engine values)
+## ppt-master 레버 락 (시그니처 → 엔진 값)
 
-Encode these into `spec_lock.md` so the executor applies them every page (see
-`ppt-master-craft.md` for the levers):
+`spec_lock.md`에 아래를 박아 executor가 매 페이지 적용하게 한다(레버 상세는
+`ppt-master-craft.md` 참조):
 
-- **visual_style** — lock as `custom` (never a stock preset — none of ppt-master's 18 presets
-  is this signature) with a `visual_style_behavior:` paragraph that is this file's signature +
-  six axes, summarized. This is ppt-master's own documented escape hatch for a bespoke aesthetic
-  (`visual-styles/_index.md` §3) — without it, ppt-master's Strategist may auto-pick an unrelated
-  stock style instead.
-- **image rendering × palette** — warm-neutral base + single accent, ONE combo deck-wide.
-- **page_rhythm** — uneven on purpose: anchor (extreme whitespace) / breathing / dense.
-- **type-scale** — display ≥1.5× body, cover ≥3×; very high weight contrast.
-- **icon** — one family, line/editorial, fill-only, never emoji.
-- **photo** — B&W or single-accent overlay + grain; aggressive crop; type overlaps.
-- **pop** — isolated to hierarchy peaks; honesty-test gated.
+- **visual_style** — `custom`으로 락(기성 프리셋 아님 — ppt-master의 18개 프리셋 중 이
+  시그니처와 맞는 게 없다), `visual_style_behavior:` 문단에 이 문서의 시그니처 + 6축을
+  요약해 넣는다. 이건 ppt-master 자체가 문서화해둔 커스텀 미감 탈출구다(`visual-styles/_index.md`
+  §3) — 이게 없으면 ppt-master의 Strategist가 무관한 기성 스타일을 임의로 고를 수 있다.
+- **이미지 rendering × palette** — 웜 뉴트럴 베이스 + 단일 액센트, deck-wide 1조합.
+- **page_rhythm** — 의도적으로 불균등: anchor(극단적 여백) / breathing / dense.
+- **type-scale** — 디스플레이 ≥1.5배 본문, 표지 ≥3배; 무게 대비도 크게.
+- **아이콘** — 한 패밀리, 라인/에디토리얼, fill 전용, 이모지 금지.
+- **사진** — 흑백 또는 단일 액센트 오버레이 + 그레인; 과감한 크롭; 타이포가 겹침.
+- **팝** — 위계 정점에만 고립; 정직성 테스트로 게이트.
 
-> Where this meets the rest: color/area discipline → `color-typography.md`; pop/photo honesty →
-> `images-and-pop.md`; lever encoding → `ppt-master-craft.md`. This file is the *why*; those are
-> the *how*.
+> 나머지가 이어지는 곳: 색/면적 규율 → `color-typography.md`; 팝/사진 정직성 →
+> `images-and-pop.md`; 레버 인코딩 → `ppt-master-craft.md`. 이 문서는 *왜*를 담고,
+> 저 문서들은 *어떻게*를 담는다.

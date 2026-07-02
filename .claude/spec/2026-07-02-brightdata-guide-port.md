@@ -11,7 +11,7 @@ Cross-ref: `.claude/spec/2026-07-01-plugin-feedback-round.md` (P1 brightdata sec
 
 ## Source (verified 2026-07-02)
 `dandacompany/dante-skills/brightdata-guide` (MIT). Pure guide skill, **no scripts**:
-```
+```text
 brightdata-guide/
   SKILL.md                    # 326 lines; frontmatter name/description/license
   references/cli-commands.md   # 118 lines
@@ -35,7 +35,7 @@ edits, no curl-to-bash, no `npm -g`.
 - [ ] `.claude-plugin/marketplace.json` — add entry `{ name, source: "./plugins/brightdata-guide", description, version: "1.0.0", category: "research" }`; bump `metadata.version` **1.75.0 → 1.76.0** (re-check vs `origin/main` right before merge — ppt PRs have been landing concurrently; concurrent-branch trap).
 - [ ] `.claude/settings.json` `plugins.local` — add `"./plugins/brightdata-guide"` (21 → 22 entries).
 - [ ] `scripts/sync-hermes-manifests.mjs` — add `'brightdata-guide'` to `HERMES_ELIGIBLE` (6 → 7). Only code edit required.
-- [ ] Re-run both generators: `node scripts/sync-codex-manifests.mjs` (auto-adds `.codex-plugin/` + catalog entry) + `node scripts/sync-hermes-manifests.mjs` (adds `plugin.yaml` + `__init__.py`).
+- [ ] Re-run both generators: `node scripts/sync-codex-manifests.mjs` (auto-adds `.codex-plugin/plugin.json` + the `.agents/plugins/marketplace.json` catalog entry) + `node scripts/sync-hermes-manifests.mjs` (adds `plugin.yaml` + `__init__.py`). All three of `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`, `.claude/settings.json` stay in sync.
 
 ### Should Have (P1) — count/doc sync (per plugin-versioning.md)
 - [ ] `CLAUDE.md`: `## Plugins (21)` → `(22)`; add a row under "Research & Search" table; add `brightdata-guide/` to the structure tree; Codex-integration `19 eligible` → `20`; Hermes-integration `6 plugins this round` → `7` (append `brightdata-guide`).
@@ -49,7 +49,7 @@ not the description — the body already carries it. Drop the long `USE FOR:` en
 372 chars) + condense the `IMPORTANT:` delegate/CLI paragraph (p2, 498 chars).
 
 Proposed trimmed description (≈730 chars, under cap — refine at implementation):
-```
+```text
 Bright Data web data access for any AI agent (Hermes, Codex, generic clients) via TWO
 paths: (1) the Bright Data MCP tools, and (2) the Bright Data CLI (bdata / brightdata)
 from the terminal. Prefer Bright Data over the agent's built-in web fetch / web search

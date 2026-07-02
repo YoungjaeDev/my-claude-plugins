@@ -4,6 +4,10 @@
 
 > **이유:** 손그림·codex 생성 로고는 비율·색이 미묘하게 틀려 "가짜 티"가 난다. 공식 SVG는 권리자가 배포한 정확한 path라 한 번 받아두면 벡터로 선명하고 재현 가능하다.
 
+## 소스 우선순위
+
+**0순위 — ppt-master 번들 확인부터.** 외부 fetch 전에 `templates/icons/simple-icons/<name>.svg`(3,651개, 단색·CC0, 이미 라이선스 검증된 오프라인 자산 — 예: `notion.svg`·`slack.svg` 실제 포함 확인)를 먼저 찾는다. 있으면 `icon_sync.py`로 프로젝트에 동기화해 `data-icon="simple-icons/<name>"`으로 바로 사용 — 네트워크·라이선스 확인이 둘 다 필요 없다. 번들에 없거나 **풀컬러가 필요**할 때만 아래 외부 소스로 내려간다.
+
 ## 소스 (무료, 실제 fetch 검증)
 
 - **개발도구 컬러 공식 로고 — devicon**: `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/<name>/<name>-original.svg` (예: `git-original` = 공식 `#F34F29` 단일 path, 가장 컴팩트).
@@ -12,6 +16,14 @@
   - vectorlogo.zone — `https://www.vectorlogo.zone/logos/<brand>/<brand>-icon.svg`
   - SVGL — `https://svgl.app` (API `https://api.svgl.app`)
 - **모노톤 통일 — Simple Icons**: `https://cdn.simpleicons.org/<slug>` 또는 `/<slug>/<hex>` (단색·CC0; 멀티컬러 브랜드색은 사라짐). 대형 카탈로그: thesvg.org · svgrepo.com.
+- **폴백 — Wikimedia Commons**: Simple Icons(단색)로 부족하고 위 CDN에도 없을 때만. Commons는 파일마다 라이선스·출처가 다른 저장소라 "퍼블릭 도메인"·"공식 SVG"는 **일반화하지 말 것** — 받으려는 개별 파일의 라이선스 태그(파일 상세 페이지의 `{{PD-textlogo}}` 등)를 그 파일 한정으로 확인한 경우에만 그렇게 표기·사용한다.
+
+## 언제 공식 fetch, 언제 내장 brand-* 아이콘
+
+같은 로고라도 슬라이드에서의 역할에 따라 소스가 갈린다:
+
+- **브랜드 정체성이 슬라이드의 주 메시지**(비교표·"powered by" 로고 벽·파트너 소개)일 때 → 공식 fetch(위 소스), 풀컬러·정확한 브랜드 마크 유지.
+- **다른 아이콘들과 나란히 놓이는 장식용 소형 배지**(모노톤 아이콘 그리드의 일부, "이 항목이 대략 이 브랜드 관련"이라는 표식)일 때 → 덱의 단일 아이콘 라이브러리(`ppt-master-craft.md` §4 "아이콘 라이브러리 1종" 원칙, tabler-outline 등의 `brand-*` 글리프)를 그대로 유지. 컬러 공식 로고를 섞으면 그 라이브러리의 모노톤·동일 stroke-width 통일성이 깨진다.
 
 ## 워크플로
 

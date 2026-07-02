@@ -61,6 +61,7 @@ Before generating:
    - `--reasoning`: must be one of `low`, `medium`, `high`, `xhigh`.
    - `--sandbox`: must be one of `read-only`, `workspace-write`, `danger-full-access`.
    Do not silently drop or rewrite an invalid value — ask for a valid one, the same way size/quality are handled above.
+8. `--edit` / `--ref` also reach the shell, quoted into `-i "<path>"` (see Prompt Handoff) — validate the path the same way: resolve it, confirm it exists (step already required above), and refuse any value containing shell metacharacters (`` ` $ " ' \ ; | & < > ( ) ``) or that does not resolve to a plain file under the project. Never interpolate the raw value directly; pass it as a single quoted/escaped shell argument (or via an array-form exec, not string concatenation). Ask for a corrected path instead of silently stripping characters.
 
 ## Prompt Handoff
 

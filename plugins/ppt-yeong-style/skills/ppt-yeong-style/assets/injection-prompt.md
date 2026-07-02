@@ -45,7 +45,7 @@ md 확정 시 **layout 태그 분포 표를 사용자 검토에 제출** — 동
 
 [윤문] humanize-korean 본문/노트 fast 자동 + 납품본 strict. 차단: 수사의문문·역설 hook·TED 슬로건·번역투(~에 대해/~를 통해)·이중피동·접속사 남발·콜론 헤더·"not X but Y"·진부표현(AI 시대/디지털 전환/매우/당연히)·오그라드는 친근/위로/응원조(함께 시작·함께 봐요·걱정 말고·쉽게·금방·같이~해요).
 
-[완료 기준] 렌더(PowerPoint/cairosvg, LibreOffice는 overflow 숨김이라 부적합) PNG → 페이지별 정렬·오버플로·아이콘·코드박스·풀블리드 안전영역 체크 통과(페이지별 subtask 병렬+ultrathink). PPTX 텍스트/수치 검증은 group shape 재귀. 해상도 ≠ 밀도(viewBox 1280×720 1회 판단, 내보내기 해상도 분리). 고화질 PDF=cairo 부재 시 브라우저 렌더 device_scale_factor=2(2560×1440)→img2pdf. + 스토리 흐름 review(빌드 후 통독): through-line·표지 약속 범위-실제 빌드 범위 일치·surface 일관·용어 일관·개념 등장 순서·목차-실제 순서 일치·레이아웃 분포(3연속·텍스트형 합 >50% 재집계)·고아/탈선 슬라이드·사실 정확(9항목). 정렬만 맞고 스토리 끊기면 미완. **완료 게이트 리포트(MANDATORY)**: 빌드 완료 보고 전 위 스토리 흐름 9항목 체크(✓/✗ 실제 출력) + anti-slop-design audit 실행 결과 + humanize-korean 윤문 적용 여부를 하나의 리포트로 실제 출력해야 완료 선언 가능(내부 판단만 하고 넘어가는 것 금지 — 셋 중 하나라도 미실행/✗면 완료 보고 대신 재작업).
+[완료 기준] 렌더(PowerPoint/cairosvg, LibreOffice는 overflow 숨김이라 부적합) PNG → 페이지별 정렬·오버플로·아이콘·코드박스·풀블리드 안전영역 체크 통과(페이지별 subtask 병렬+ultrathink). PPTX 텍스트/수치 검증은 group shape 재귀. 해상도 ≠ 밀도(viewBox 1280×720 1회 판단, 내보내기 해상도 분리). 고화질 PDF=cairo 부재 시 브라우저 렌더 device_scale_factor=2(2560×1440)→img2pdf. + 스토리 흐름 review(빌드 후 통독): through-line·표지 약속 범위-실제 빌드 범위 일치·surface 일관·용어 일관·개념 등장 순서·목차-실제 순서 일치·레이아웃 분포(3연속·텍스트형 합 >50% 재집계, md→ppt-master 신규 빌드 경로 한정 — template-fill/beautify/native-enhance는 면제)·고아/탈선 슬라이드·사실 정확(9항목). 정렬만 맞고 스토리 끊기면 미완. **완료 게이트 리포트(MANDATORY)**: 빌드 완료 보고 전 위 스토리 흐름 9항목 체크(✓/✗ 실제 출력) + anti-slop-design audit 실행 결과 + humanize-korean 윤문 적용 여부를 하나의 리포트로 실제 출력해야 완료 선언 가능(내부 판단만 하고 넘어가는 것 금지 — 셋 중 하나라도 미실행/✗면 완료 보고 대신 재작업).
 ```
 
 ## 사용 예시

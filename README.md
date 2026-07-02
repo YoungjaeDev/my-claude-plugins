@@ -298,7 +298,7 @@ Bright Data 플랫폼으로 웹 데이터 작업을 수행하는 가이드 스�
 **Features:**
 - 모델 호출 허용 + 본문 게이트 (1.2.0) — 명시 요청 또는 작업 사양이 codex-image 를 지정한 경우만 생성, 모호하면 생성 전 확인 (생성 비용/부수효과 때문)
 - 기본 출력: `assets/generated/codex-image/`, non-destructive 파일명
-- `--size` / `--quality` / `--out` / `-n` / `--edit` 옵션, opt-in `--model` / `--reasoning` / `--sandbox` (기본은 Codex 기본 모델 + workspace-write 유지)
+- `--size` / `--quality` / `--out` / `-n` / `--edit`(기존 이미지 수정) / `--ref`(새 생성의 스타일·캐릭터 참조, 1.3.0) 옵션, opt-in `--model` / `--reasoning` / `--sandbox` (기본은 Codex 기본 모델 + workspace-write 유지)
 - Claude-only 브리지 — Codex sync 에서 제외 (순환 방지)
 
 **Requirements:** Codex CLI 설치 + ChatGPT OAuth 로그인

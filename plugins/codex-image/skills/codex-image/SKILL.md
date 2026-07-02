@@ -1,7 +1,7 @@
 ---
 name: codex-image
 description: Generate or edit bitmap images from Claude Code by delegating to Codex CLI image generation, without managing OpenAI API keys. Use when the user asks to generate or edit a raster image, or when an active task's spec explicitly designates codex-image as the image path (e.g. deck builds); never research raw codex invocation instead of loading this skill. When the grounding or scope is ambiguous, confirm before generating — image generation has cost and side effects.
-argument-hint: "[--size auto|WIDTHxHEIGHT] [--quality low|medium|high|auto] [--out <dir>] [-n <count>] [--edit <image-path>] [--model <id>] [--reasoning <effort>] [--sandbox <mode>] <prompt>"
+argument-hint: "[--size auto|WIDTHxHEIGHT] [--quality low|medium|high|auto] [--out <dir>] [-n <count>] [--edit <image-path>] [--ref <image-path>] [--model <id>] [--reasoning <effort>] [--sandbox <mode>] <prompt>"
 allowed-tools: Bash(codex *) Bash(git rev-parse *) Bash(pwd) Bash(mkdir *) Bash(ls *) Read AskUserQuestion
 ---
 
@@ -33,7 +33,8 @@ Parse the invocation arguments manually:
 - `--quality`: `low`, `medium`, `high`, or `auto`.
 - `--out`: output directory. Resolve relative paths from the project root.
 - `-n`: number of variants. Use `1` through `4` without extra confirmation; ask before generating more.
-- `--edit`: local image path to edit. Verify it exists and read it before delegating.
+- `--edit`: local image path to use as the base to edit — the prompt describes the change. Like every other run, the output is still saved as a **new**, non-destructive file in the output directory (see Defaults / Result Handling); the input at `--edit`'s path is never overwritten. Verify it exists and read it before delegating.
+- `--ref`: local image path to attach as a style/character reference while generating an image whose subject/scene is otherwise **new** (not a modification of the reference's own scene) — distinct intent from `--edit`, though the output is a new file either way. Verify it exists and read it before delegating. `--edit` and `--ref` are mutually exclusive (editing a specific image vs. using one as inspiration for a different image are different intents) — if both are given, ask which one is meant. **Unverified mechanism**: `codex exec`'s `-i, --image <FILE>...` flag (confirmed via `codex exec --help` on codex-cli 0.142.3) is a generic "attach image(s) to the prompt" transport — it does not itself distinguish edit-in-place from reference-only. The edit-vs-reference distinction relies entirely on how the prompt text frames the intent (see Prompt Handoff), not on a separate CLI mechanism. This has not been empirically verified with a live generation in this repo; on first real use, check the result actually looks like a new image guided by the reference (not a near-copy or a literal edit of it) and report back if it doesn't behave as expected.
 - `--model`: Codex model id, passed through as `codex exec -m <id>`. Omit to use Codex's own default model — that auto-tracks the latest model, so no model pin is maintained here.
 - `--reasoning`: reasoning effort, passed through as `-c model_reasoning_effort="<effort>"` (e.g. `low`, `medium`, `high`, `xhigh`). Explicit opt-in only — image generation barely benefits from reasoning effort, so omit unless the user asks for it.
 - `--sandbox`: Codex sandbox mode for the run: `read-only`, `workspace-write` (default), or `danger-full-access`. The default stays `workspace-write` (enough to save the PNG); escalate only on explicit request. The full approval+sandbox bypass is `--dangerously-bypass-approvals-and-sandbox` — pass it only when the user explicitly asks, never by default.
@@ -60,6 +61,7 @@ Before generating:
    - `--reasoning`: must be one of `low`, `medium`, `high`, `xhigh`.
    - `--sandbox`: must be one of `read-only`, `workspace-write`, `danger-full-access`.
    Do not silently drop or rewrite an invalid value — ask for a valid one, the same way size/quality are handled above.
+8. `--edit` / `--ref` also reach the shell, quoted into `-i "<path>"` (see Prompt Handoff) — validate the path the same way: resolve it, confirm it exists (step already required above), and confirm it resolves to a plain file under the project. Refuse any value containing shell-command metacharacters (`` ` $ " ' ; | & < > ( ) ``) — but **not** `\` or `:`, which are legitimate on Windows paths (backslash separator, drive letter). Never interpolate the raw value directly; pass it as a single quoted/escaped shell argument (or via an array-form exec, not string concatenation) — correct quoting, not blanket character exclusion, is what actually stops injection. Ask for a corrected path instead of silently stripping characters.
 
 ## Prompt Handoff
 
@@ -81,6 +83,7 @@ Options:
 - quality: <quality>
 - count: <count>
 - edit target: <image path or none>
+- reference image: <image path or none — attach as style/character guidance for this new generation, do not modify it>
 - output directory: <absolute output directory>
 - filename base: <codex-image timestamp base>
 
@@ -108,6 +111,7 @@ Options:
 - quality: <quality>
 - count: <count>
 - edit target: <image path or none>
+- reference image: <image path or none — attach as style/character guidance for this new generation, do not modify it>
 - output directory: <absolute output directory>
 - filename base: <codex-image timestamp base>
 
@@ -120,10 +124,10 @@ Requirements:
 '@ | codex exec - [-m <model>] [-c model_reasoning_effort="<effort>"] -C "<project-root>" -s <sandbox, default workspace-write>
 ```
 
-If `--edit` is provided, also pass the image via Codex CLI's image attachment option when available:
+If `--edit` or `--ref` is provided, also pass the image via Codex CLI's image attachment option (`-i`) — the same flag, different intent conveyed in the prompt text (edit-in-place vs. reference-for-a-new-image):
 
 ```bash
-codex exec - -i "<edit-image-path>" -C "<project-root>" -s workspace-write ...
+codex exec - -i "<edit-or-ref-image-path>" -C "<project-root>" -s workspace-write ...
 ```
 
 ## Prompt Quality
@@ -138,7 +142,7 @@ Shape vague prompts into a short production spec without inventing unrelated con
 - Exact text, quoted verbatim, if any.
 - Constraints and avoid list.
 
-For edits, preserve invariants explicitly: say what must change and what must remain unchanged.
+For edits, preserve invariants explicitly: say what must change and what must remain unchanged. For a reference-guided new generation (`--ref`), state what to carry over from the reference (character, style, palette) and what is new (scene, pose, composition) — do not imply the reference itself will be altered.
 
 ## Transparent Output
 

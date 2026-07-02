@@ -11,7 +11,7 @@ ppt-master는 **빌드 엔진**이다(이 스킬은 그 위 작성 규약). 아�
   - SVG는 **메인 에이전트가 페이지 단위 순차 수기 생성.** 서브에이전트 위임 금지. 5장씩 배치 금지. **스크립트 일괄 생성 금지.**
   - 페이지마다 `spec_lock.md` 재읽기 — 색/폰트/아이콘은 거기 값만(기억·즉흥 금지). per-page `page_rhythm`(anchor/dense/breathing) 조회.
   - ppt-master 품질 체크(error 0)는 **페이지 단위로** 통과 후 진행 — 첫 장(패턴 확립 장)은 반드시 checker 통과 후 다음 장으로, 이후에도 2~3장 단위 상한. **전량 생성 후 일괄 검사 금지**: 첫 장에서 안 잡으면 같은 드리프트가 전 장에 복제된다(실측: off-lock 색 6종이 14장 전체에 번진 뒤 일괄 검사에서야 발견돼 전수 패치). notes/total.md 생성.
-- **Step 7:** `finalize_svg.py` → `svg_to_pptx.py`(애니메이션 기본 포함). `cp`로 finalize 대체 금지.
+- **Step 7:** `finalize_svg.py` → `svg_to_pptx.py`(애니메이션 기본 포함). `cp`로 finalize 대체 금지. **손으로 `dy`-스택 tspan 다중 줄바꿈을 쓴 장이 하나라도 있으면 `svg_to_pptx.py`를 처음부터 `--no-merge`로 실행** — 기본 병합 동작은 여러 줄을 한 문단으로 합치고 `word_wrap=True`를 부여해, PowerPoint가 그 문단을 실제 텍스트박스 폭 기준으로 재계산하면서 손으로 나눈 줄 수와 달라질 수 있다(cairosvg 렌더는 SVG를 그대로 그려 이 문제를 안 보여준다 — 실측: PDF 2줄이 PPTX에서 3줄로 밀림, 폰트 미설치가 원인이 아니라 병합+박스폭 재계산 구조가 원인). yeong처럼 밀도 리듬(breathing/dense) 때문에 줄바꿈을 손으로 정밀 계산하는 스타일에서는 `--no-merge`가 예외가 아니라 기본값이어야 한다.
 - design_spec.md는 영문 템플릿 구조 유지, 내용 값만 한국어.
 - **긴 빌드 중단 복구**: 빌드가 중간에 끊기거나 실패하면 처음부터 재빌드하지 않는다 — 엔진의 resume/failure-recovery 워크플로로 완료 페이지를 건너뛰고 이어 빌드(정확한 워크플로명·절차는 설치된 ppt-master 문서 확인).
 
@@ -26,7 +26,7 @@ ppt-master는 **빌드 엔진**이다(이 스킬은 그 위 작성 규약). 아�
 ## §8. 완료 기준 / Visual QA
 
 - **렌더 기반 QA가 완료 기준.** PPT→PNG export 후 페이지별로 정렬·오버플로·아이콘(fill만, stroke 금지)·코드박스·풀블리드 안전영역 체크. yeong 실제 패턴: 페이지별 subtask 병렬 + ultrathink 검토(상사 보고용은 엄격도 ↑).
-- 진실 기준 = **PowerPoint/cairosvg.** LibreOffice는 overflow를 숨겨 부적합. PPTX 텍스트/수치 검증은 group shape **재귀.**
+- 진실 기준 = **PowerPoint/cairosvg** — 단, **cairosvg만으로는 불충분하다.** cairosvg는 SVG를 있는 그대로 렌더해 PPTX 변환 단계(문단 병합·word_wrap 재계산)의 버그를 원천적으로 못 잡는다. 손으로 `dy` 다중 줄바꿈을 쓴 장이 하나라도 있으면 실제 PowerPoint를 열어 확인하거나(권장), python-pptx로 해당 텍스트 프레임의 `word_wrap`·문단 개수를 직접 검사한다. LibreOffice는 overflow를 숨겨 부적합. PPTX 텍스트/수치 검증은 group shape **재귀.**
 - 표지는 finalize 후 `svg_final`로 별도 확인(cairosvg는 외부 상대경로 이미지 미로드).
 - 엔진에도 자체 visual-review 워크플로가 있다 — §8·§8b 기준을 그대로 둔 채 **실행 수단**으로 활용 가능(중복 기준을 새로 만들지 않는다).
 - **고화질 PDF 납품**: cairo 부재 환경은 브라우저 렌더 `device_scale_factor=2`(2560×1440 PNG) → img2pdf 경로. 화면 검토는 1280px 축소본으로(읽기 도구 한도).

@@ -56,7 +56,7 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 
 **시그니처 한 줄: "Editorial restraint, one committed accent."** 따뜻한 중립 에디토리얼 캔버스를 페이지당 *단 하나의* 의도된 라우드 모먼트로 깬다. anti-slop은 "하지 마"의 신뢰 바닥이고, 이 시그니처는 그 위에 얹는 "이렇게 해"의 톤 — **signature within trust**(금지는 그대로 두고 톤으로만 차별화). 그래서 규칙을 다 지켜도 "무난한 AI 톤"에서 멈추지 않는다.
 
-- **tonality는 색보다 먼저.** 인터뷰·색 락(파이프라인 (2)) 전에 *감정 온도*(절제↔pop, 권위↔즉시성)부터 합의하고, 그 톤에 맞춰 색·타입·사진을 고른다. 색을 먼저 고르고 톤을 끼워 맞추지 않는다.
+- **tonality는 색보다 먼저.** 인터뷰·색 락(파이프라인 (4)) 전에 *감정 온도*(절제↔pop, 권위↔즉시성)부터 합의하고, 그 톤에 맞춰 색·타입·사진을 고른다. 색을 먼저 고르고 톤을 끼워 맞추지 않는다.
 - 6축(레이아웃·여백·색·타이포·사진·pop)과 anti-slop↔하이엔드 양립표, ppt-master 레버 락은 → `references/design-language.md`. **이 파일은 색·이미지·craft 모든 결정의 상위 미감 계약이다** — 충돌 시 design-language의 톤 의도가 우선.
 
 ## §0b. 엔진·의존 (cross-skill 관용구)
@@ -82,8 +82,8 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 
 **파이프라인**(내용 SOT는 사용자) — 단계별 도구:
 ```text
-(1) 인터뷰: interview 스킬 → (2) 색 락: design-shotgun + AskUserQuestion → (3) md 소스 작성
-→ (4) 사용자 검토 → (5) ppt-master 빌드(SVG 생성) → (6) anti-slop 감사 → 윤문(SVG·노트 내용 수정)
+(1) 인터뷰: interview 스킬 → (2) md 소스 작성 → (3) 사용자 검토
+→ (4) 색 락: design-shotgun + AskUserQuestion(확정된 md 콘텐츠의 톤/무드를 반영해서 고른다) → (5) ppt-master 빌드(SVG 생성) → (6) anti-slop 감사 → 윤문(SVG·노트 내용 수정)
 → (7) finalize_svg → svg_to_pptx → cairosvg PDF(실제 산출물 생성) → 렌더 Visual QA(PPT→PNG export 기준 최종 검증, §8)
 → 완료 게이트 리포트(감사·윤문·렌더QA·스토리 흐름 전부 확인 후 이때 처음 완료 선언)
 이미지 = codex-image · 산출물 = 항상 pptx + PDF

@@ -61,6 +61,11 @@ generic safe default.
 Encode these into `spec_lock.md` so the executor applies them every page (see
 `ppt-master-craft.md` for the levers):
 
+- **visual_style** — lock as `custom` (never a stock preset — none of ppt-master's 18 presets
+  is this signature) with a `visual_style_behavior:` paragraph that is this file's signature +
+  six axes, summarized. This is ppt-master's own documented escape hatch for a bespoke aesthetic
+  (`visual-styles/_index.md` §3) — without it, ppt-master's Strategist may auto-pick an unrelated
+  stock style instead.
 - **image rendering × palette** — warm-neutral base + single accent, ONE combo deck-wide.
 - **page_rhythm** — uneven on purpose: anchor (extreme whitespace) / breathing / dense.
 - **type-scale** — display ≥1.5× body, cover ≥3×; very high weight contrast.

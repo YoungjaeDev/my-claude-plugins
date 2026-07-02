@@ -12,9 +12,9 @@
 
 [시그니처 — 색보다 먼저] "Editorial restraint, one committed accent": 따뜻한 중립 에디토리얼 캔버스 + 페이지당 단 하나의 의도된 라우드 모먼트. signature within trust(anti-slop 금지는 그대로, 톤으로만 차별화). 6축: ①레이아웃=스위스 그리드+의도된 비대칭, 페이지당 지배 앵커 1개, 센터 히어로 금지 ②여백=압력 있는 여백(공허 아님) ③색=따뜻한 중립 베이스+단 하나 커밋 액센트(무지개·그라데이션 금지) ④타이포=극단 스케일(디스플레이≥본문1.5배, 표지≥3배)+높은 무게대비, 타입 자체가 그래픽 ⑤사진=B&W/저채도(권위) or 통제된 컬러(즉시성)+단일 오버레이·그레인·과감 크롭 ⑥pop=위계 정점에만 격리, honesty test(톤 정보 없으면 삭제). 인터뷰에서 색 락 전에 감정 온도부터 합의.
 
-[파이프라인 — 단계별 도구] (1)인터뷰(interview 스킬): 주제·청중·발표시간(→슬라이드 수)·핵심 메시지·섹션·톤·visual level → (2)색 락(design-shotgun + AskUserQuestion): 중립 2(배경+텍스트) + 주색 1~2 + 액센트 footprint ≤10% + 옵션 semantic 3(카드 한정) → (3)md 소스 작성 → (4)사용자 검토 → (5)ppt-master 빌드 → (6)anti-slop-design audit → humanize-korean 윤문 → 렌더 Visual QA + 스토리 흐름 review → (7)finalize_svg → svg_to_pptx → cairosvg PDF. 이미지=codex-image. 산출물=항상 pptx+PDF.
+[파이프라인 — 단계별 도구] (1)인터뷰(interview 스킬): 주제·청중·발표시간(→슬라이드 수)·핵심 메시지·섹션·톤·visual level → (2)색 락(design-shotgun + AskUserQuestion): 중립 2(배경+텍스트) + 주색 1~2 + 액센트 footprint ≤10% + 옵션 semantic 3(카드 한정) → (3)md 소스 작성 → (4)사용자 검토 → (5)ppt-master 빌드 → (6)렌더 Visual QA → 완료 게이트 리포트(anti-slop 감사 · 윤문 · 스토리 흐름 통합 출력, 아래 [완료 기준] 참조) → (7)finalize_svg → svg_to_pptx → cairosvg PDF. 이미지=codex-image. 산출물=항상 pptx+PDF.
 
-[md 소스 — 기본 단일 md 한 파일] 전체 슬라이드를 한 파일에 `---`로 구분, 앞머리에 전역 규약 블록(컨텍스트·톤·색·흐름). 큰 덱(25장+)·섹션 독립 작업 시에만 deck_spec.md + 01_*.md 분리. 각 슬라이드:
+[md 소스 — 기본 단일 md 한 파일] 전체 슬라이드를 한 파일에 `---`로 구분, 앞머리에 전역 규약 블록(컨텍스트·톤·색·흐름). 큰 덱(25장+)·섹션 독립 작업 시에만 deck_spec.md + 01_*.md 분리. **목차(TOC) 슬라이드는 페이지 순서가 spec_lock에 확정된 뒤 마지막에 작성**(초안 단계에 같이 쓰지 않는다 — 순서 바뀌면 목차도 갱신). 각 슬라이드:
   ## 담백한 주제형 제목 (영업·당위 꼬리표 금지 · 한두 단어 압축 말고 맥락 명사구)
   <!-- layout: two-col | timeline-table | diagram | image-bg | table | checklist -->
   <!-- visual: bg-faded(codex-image) | user-image | none -->
@@ -30,7 +30,7 @@
 
 [색] 역할·면적 기반(개수 균등 금지). 중립 2 + 주색 1~2 + 액센트는 면적 ≤10%로만. deck-wide 락 후 슬라이드별 색 날조 금지.
 
-[이미지 — 기본 codex-image] 무드컷·배경·hero·표보다 이미지가 나은 도식에만. codex-image 생성 성능은 매번 반문하지 말 것(saturation). 디자인 토큰·캐릭터 참조 첨부, 생성 후 라벨 오타 검증. 정확한 한글 라벨·표·숫자·도식은 SVG. 하이브리드(codex 무드+SVG 라벨) 2안 비교 후 택1. ppt-master의 AI 이미지 경로는 미사용. honesty test(빼도 손실 없으면 삭제). codex 배경 fade=표지·목차·세션 전환 divider·마무리 한정(opacity 0.12~0.16), 본문은 흰 배경. 마스코트·pop·instagram 감성도 표지·목차·전환 divider 한정(codex 마스코트+주황 pop), 본문은 anti-slop 미니멀(그라데이션·다색·icon-tile·이모지 금지). 장르 주의(기업·포멀 덱은 pop 생략 가능). **앱 UI(로그인·diff·권한·설정)는 실물 캡처 or 점선 placeholder만—codex/AI 생성 절대 금지**(지어낸 UI는 틀린 UX를 사실처럼 가르쳐 placeholder보다 나쁨, "재현 예시" 칩으로도 정당화 금지). 취득순서: 사용자제공→playwright 실물캡처(앱·공식docs)→공식docs 스크린샷→점선 placeholder.
+[이미지 — 기본 codex-image] 무드컷·배경·hero·표보다 이미지가 나은 도식에만. codex-image 생성 성능은 매번 반문하지 말 것(saturation). 디자인 토큰·캐릭터 참조 첨부, 생성 후 라벨 오타 검증. 정확한 한글 라벨·표·숫자·도식은 SVG. 하이브리드(codex 무드+SVG 라벨) 2안 비교 후 택1. ppt-master의 AI 이미지 경로는 미사용. honesty test(빼도 손실 없으면 삭제). **기본값 이탈(이미지 없음/기존 자산 재사용) 시 design_spec 8대 확인 h에 사유 한 줄 명시 — 사유 없는 생략 금지.** codex 배경 fade=표지·목차·세션 전환 divider·마무리 한정(opacity 0.12~0.16), 본문은 흰 배경. 마스코트·pop·instagram 감성도 표지·목차·전환 divider 한정(codex 마스코트+주황 pop), 본문은 anti-slop 미니멀(그라데이션·다색·icon-tile·이모지 금지). 장르 주의(기업·포멀 덱은 pop 생략 가능). **앱 UI(로그인·diff·권한·설정)는 실물 캡처 or 점선 placeholder만—codex/AI 생성 절대 금지**(지어낸 UI는 틀린 UX를 사실처럼 가르쳐 placeholder보다 나쁨, "재현 예시" 칩으로도 정당화 금지). 취득순서: 사용자제공→playwright 실물캡처(앱·공식docs)→공식docs 스크린샷→점선 placeholder.
 
 [로고] 브랜드·도구 로고는 직접 그리기·codex 생성 금지 → 공식 SVG 라이브러리 fetch(devicon `cdn.jsdelivr.net/gh/devicons/devicon/icons/<name>/<name>-original.svg`·gilbarbara/logos·vectorlogo.zone·SVGL·Simple Icons[모노톤·CC0]) → `curl`로 assets/logos/ 보관 → path 인라인 + `<g transform="translate scale">`(image href 금지=래스터화 회피) → 근접성(설명 요소 바로 옆, 빈 여백 띄우기 금지) → 상표권 주의(교육 맥락, 변형 금지).
 
@@ -44,7 +44,7 @@
 
 [윤문] humanize-korean 본문/노트 fast 자동 + 납품본 strict. 차단: 수사의문문·역설 hook·TED 슬로건·번역투(~에 대해/~를 통해)·이중피동·접속사 남발·콜론 헤더·"not X but Y"·진부표현(AI 시대/디지털 전환/매우/당연히)·오그라드는 친근/위로/응원조(함께 시작·함께 봐요·걱정 말고·쉽게·금방·같이~해요).
 
-[완료 기준] 렌더(PowerPoint/cairosvg, LibreOffice는 overflow 숨김이라 부적합) PNG → 페이지별 정렬·오버플로·아이콘·코드박스·풀블리드 안전영역 체크 통과(페이지별 subtask 병렬+ultrathink). PPTX 텍스트/수치 검증은 group shape 재귀. 해상도 ≠ 밀도(viewBox 1280×720 1회 판단, 내보내기 해상도 분리). 고화질 PDF=cairo 부재 시 브라우저 렌더 device_scale_factor=2(2560×1440)→img2pdf. + 스토리 흐름 review(빌드 후 통독): through-line·surface 일관·용어 일관·개념 등장 순서·고아/탈선 슬라이드·사실 정확. 정렬만 맞고 스토리 끊기면 미완.
+[완료 기준] 렌더(PowerPoint/cairosvg, LibreOffice는 overflow 숨김이라 부적합) PNG → 페이지별 정렬·오버플로·아이콘·코드박스·풀블리드 안전영역 체크 통과(페이지별 subtask 병렬+ultrathink). PPTX 텍스트/수치 검증은 group shape 재귀. 해상도 ≠ 밀도(viewBox 1280×720 1회 판단, 내보내기 해상도 분리). 고화질 PDF=cairo 부재 시 브라우저 렌더 device_scale_factor=2(2560×1440)→img2pdf. + 스토리 흐름 review(빌드 후 통독): through-line·표지 약속 범위-실제 빌드 범위 일치·surface 일관·용어 일관·개념 등장 순서·목차-실제 순서 일치·고아/탈선 슬라이드·사실 정확(8항목). 정렬만 맞고 스토리 끊기면 미완. **완료 게이트 리포트(MANDATORY)**: 빌드 완료 보고 전 위 스토리 흐름 8항목 체크(✓/✗ 실제 출력) + anti-slop-design audit 실행 결과 + humanize-korean 윤문 적용 여부를 하나의 리포트로 실제 출력해야 완료 선언 가능(내부 판단만 하고 넘어가는 것 금지 — 셋 중 하나라도 미실행/✗면 완료 보고 대신 재작업).
 ```
 
 ## 사용 예시

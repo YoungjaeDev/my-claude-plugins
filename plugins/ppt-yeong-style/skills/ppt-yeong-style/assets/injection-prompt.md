@@ -12,7 +12,7 @@
 
 [시그니처 — 색보다 먼저] "Editorial restraint, one committed accent": 따뜻한 중립 에디토리얼 캔버스 + 페이지당 단 하나의 의도된 라우드 모먼트. signature within trust(anti-slop 금지는 그대로, 톤으로만 차별화). 6축: ①레이아웃=스위스 그리드+의도된 비대칭, 페이지당 지배 앵커 1개, 센터 히어로 금지 ②여백=압력 있는 여백(공허 아님) ③색=따뜻한 중립 베이스+단 하나 커밋 액센트(무지개·그라데이션 금지) ④타이포=극단 스케일(디스플레이≥본문1.5배, 표지≥3배)+높은 무게대비, 타입 자체가 그래픽 ⑤사진=B&W/저채도(권위) or 통제된 컬러(즉시성)+단일 오버레이·그레인·과감 크롭 ⑥pop=위계 정점에만 격리, honesty test(톤 정보 없으면 삭제). 인터뷰에서 색 락 전에 감정 온도부터 합의.
 
-[파이프라인 — 단계별 도구] (1)인터뷰(interview 스킬): 주제·청중·발표시간(→슬라이드 수)·핵심 메시지·섹션·톤·visual level → (2)색 락(design-shotgun + AskUserQuestion): 중립 2(배경+텍스트) + 주색 1~2 + 액센트 footprint ≤10% + 옵션 semantic 3(카드 한정) → (3)md 소스 작성 → (4)사용자 검토 → (5)ppt-master 빌드 → (6)렌더 Visual QA → 완료 게이트 리포트(anti-slop 감사 · 윤문 · 스토리 흐름 통합 출력, 아래 [완료 기준] 참조) → (7)finalize_svg → svg_to_pptx → cairosvg PDF. 이미지=codex-image. 산출물=항상 pptx+PDF.
+[파이프라인 — 단계별 도구] (1)인터뷰(interview 스킬): 주제·청중·발표시간(→슬라이드 수)·핵심 메시지·섹션·톤·visual level → (2)색 락(design-shotgun + AskUserQuestion): 중립 2(배경+텍스트) + 주색 1~2 + 액센트 footprint ≤10% + 옵션 semantic 3(카드 한정) → (3)md 소스 작성 → (4)사용자 검토 → (5)ppt-master 빌드 → (6)anti-slop 감사 → 윤문 → 렌더 Visual QA(감사·윤문 반영분까지 최종 검증) → 완료 게이트 리포트(위 셋 + 스토리 흐름 통합 출력, 아래 [완료 기준] 참조) → (7)finalize_svg → svg_to_pptx → cairosvg PDF. 이미지=codex-image. 산출물=항상 pptx+PDF.
 
 [md 소스 — 기본 단일 md 한 파일] 전체 슬라이드를 한 파일에 `---`로 구분, 앞머리에 전역 규약 블록(컨텍스트·톤·색·흐름). 큰 덱(25장+)·섹션 독립 작업 시에만 deck_spec.md + 01_*.md 분리. **목차(TOC) 슬라이드는 md 소스 안에서 페이지 순서가 정해진 뒤 마지막에 작성**(초안 단계에 같이 쓰지 않는다 — 빌드 후 순서 바뀌면 목차뿐 아니라 spec_lock.md도 재갱신, 안 그러면 Executor가 예전 순서로 재빌드). 각 슬라이드:
   ## 담백한 주제형 제목 (영업·당위 꼬리표 금지 · 한두 단어 압축 말고 맥락 명사구)

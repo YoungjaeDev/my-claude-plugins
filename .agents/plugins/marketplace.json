@@ -41,18 +41,6 @@
       "category": "research"
     },
     {
-      "name": "council",
-      "source": {
-        "source": "local",
-        "path": "./plugins/council"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "ai-models"
-    },
-    {
       "name": "deepwiki",
       "source": {
         "source": "local",
@@ -113,18 +101,6 @@
       "category": "planning"
     },
     {
-      "name": "notion",
-      "source": {
-        "source": "local",
-        "path": "./plugins/notion"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "integration"
-    },
-    {
       "name": "paper-search-tools",
       "source": {
         "source": "local",
@@ -159,18 +135,6 @@
         "authentication": "ON_INSTALL"
       },
       "category": "content"
-    },
-    {
-      "name": "workflow-viz",
-      "source": {
-        "source": "local",
-        "path": "./plugins/workflow-viz"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "visualization"
     },
     {
       "name": "rules-forge",

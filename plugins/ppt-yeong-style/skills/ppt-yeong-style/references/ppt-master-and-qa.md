@@ -10,7 +10,7 @@ ppt-master는 **빌드 엔진**이다(이 스킬은 그 위 작성 규약). 아�
 - **Step 6 Executor (HARD rules):**
   - SVG는 **메인 에이전트가 페이지 단위 순차 수기 생성.** 서브에이전트 위임 금지. 5장씩 배치 금지. **스크립트 일괄 생성 금지.**
   - 페이지마다 `spec_lock.md` 재읽기 — 색/폰트/아이콘은 거기 값만(기억·즉흥 금지). per-page `page_rhythm`(anchor/dense/breathing) 조회.
-  - ppt-master 품질 체크(error 0) 통과 후 진행. notes/total.md 생성.
+  - ppt-master 품질 체크(error 0)는 **페이지 단위로** 통과 후 진행 — 첫 장(패턴 확립 장)은 반드시 checker 통과 후 다음 장으로, 이후에도 2~3장 단위 상한. **전량 생성 후 일괄 검사 금지**: 첫 장에서 안 잡으면 같은 드리프트가 전 장에 복제된다(실측: off-lock 색 6종이 14장 전체에 번진 뒤 일괄 검사에서야 발견돼 전수 패치). notes/total.md 생성.
 - **Step 7:** `finalize_svg.py` → `svg_to_pptx.py`(애니메이션 기본 포함). `cp`로 finalize 대체 금지.
 - design_spec.md는 영문 템플릿 구조 유지, 내용 값만 한국어.
 - **긴 빌드 중단 복구**: 빌드가 중간에 끊기거나 실패하면 처음부터 재빌드하지 않는다 — 엔진의 resume/failure-recovery 워크플로로 완료 페이지를 건너뛰고 이어 빌드(정확한 워크플로명·절차는 설치된 ppt-master 문서 확인).

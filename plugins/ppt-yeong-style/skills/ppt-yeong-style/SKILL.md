@@ -63,6 +63,7 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 
 - **ppt-master** = 빌드 엔진·구현 owner. canvas init·source 변환·template·executor 스타일 등 **명시 안 한 세부는 ppt-master SKILL.md 그대로** 따른다. **bare name으로 참조**(vendor·복제 금지 — 이 repo에 동봉하지 않는 별도 marketplace 플러그인). ppt-master의 python 스크립트(`image_gen.py`·`finalize_svg.py`·`svg_to_pptx.py` 등)는 **`uv run`으로 실행**(시스템 python 직접 의존 금지). **필수 엔진이라 graceful degrade 대상이 아니다 — 미설치 시 Step 5 빌드 진입 전에 중단하고 ppt-master 설치를 먼저 안내**(수기 대체 금지).
 - 의존 스킬은 **있으면 사용, 없으면 graceful degrade**: `codex-image`(이미지)·`interview`(인터뷰)·`anti-slop-design`(영문 slop·디자인 감사)·`humanize-korean`(한국어 윤문)·`design-shotgun`(색 후보 생성). 미설치 시 그 단계는 수기로 대체하되 규약은 유지.
+- **의존 스킬은 로드가 먼저다.** 설치돼 있으면 해당 단계에서 그 스킬을 `Skill` 도구로 로드해 절차를 그대로 따른다 — 호출법·사용법을 리서치 에이전트로 재조사하지 않는다(실측: codex-image 호출법을 조사 에이전트로 재도출하느라 140k+ 토큰 소모 — 스킬 본문에 전부 있던 내용).
 
 ## §0c. 언제 쓰나 / 안 쓰나
 
@@ -91,6 +92,7 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 
 - **해상도 ≠ 밀도**: SVG 벡터라 720p/1080p가 레이아웃 동일·선명도만 다르다. **viewBox `1280×720`로 1회 작성·밀도 판단**, 내보내기 해상도는 분리 변수(고해상도라고 글자를 더 넣지 않는다).
 - **PDF 고화질 경로**: cairosvg/cairo가 없는 환경에서는 **브라우저 렌더 `device_scale_factor=2`(2560×1440 PNG) → img2pdf**로 고화질 PDF. 화면 검토용은 1280px로 축소(읽기 도구 2000px 한도 회피).
+- **anti-slop 2단계 시점**: (6)의 감사는 anti-slop-design의 **Phase B**(납품 전 체크리스트)다. **Phase A**(생성 전 self-critique, 최고 레버리지)는 빌드 후가 아니라 **(2)~(4) md 소스·사양 확정 시점**에 적용한다 — 빌드가 끝나고 처음 스킬을 로드하면 Phase A가 통째로 죽는다(실측).
 
 ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완료 QA·실사용 주의는 → `references/ppt-master-and-qa.md`.
 

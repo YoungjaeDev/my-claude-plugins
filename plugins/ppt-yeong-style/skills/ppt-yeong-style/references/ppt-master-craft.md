@@ -52,4 +52,5 @@ ppt-master 기본값만 쓰면 안 나오는 결과를 만드는 조합. 모두 
 - **레버는 spec_lock에.** 인터뷰·머리로만 정하면 executor가 모른다. 모든 선택은 design_spec(서술) + spec_lock(실행 계약)에 기록.
 - **도메인 특화 레이아웃 템플릿(`templates/layouts/` 7종)은 기본 미사용.** academic_defense/ai_ops/government_blue·red/medical_university/pixel_retro/psychology_attachment는 중국 관공서·의료·학술 시장 특화라 yeong 장르(한국어 비즈니스·기술 강의/제안)와 안 맞는다. 사용자가 명시 요청할 때만 검토.
 - **개별 장 이미지+텍스트 배치가 막히면** ppt-master의 `references/image-layout-patterns.md`(50+ 배치 패턴 어휘집)에서 고른다 — 매번 좌/우·상/하·풀블리드 3가지로 회귀하지 않기 위한 재료 창고.
+- **엔진 내부 파일명·문서 체계는 설치본(버전)에 따라 다르다.** 실측: 한 설치본은 executor 문서가 `executor-general.md`(확장 레이아웃 표 포함), 다른 설치본은 `executor-base.md`(`page_layouts` 템플릿 상속 체계)였다. 레버를 조합하기 전에 **설치된 ppt-master의 SKILL.md/references 현재 트리를 직접 확인**하고, 이 스킬 문서에는 엔진 파일명·표 이름을 계약처럼 박지 않는다(위 SOT 주의와 같은 원리).
 - **회사 템플릿을 반복 재사용**하려면 ppt-master의 `create-template`/`create-brand` 워크플로로 한 번 등록해두면 이후 "3종 fusion"의 재료로 계속 쓸 수 있다(매번 처음부터 다시 만들지 않아도 됨).

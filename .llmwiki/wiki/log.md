@@ -6,6 +6,11 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-02 — post-merge #89: worktree lifecycle gotchas around squash-merge (ingest-finding)
+
+- plugin-ops/worktree-squash-merge-gotchas.md: new page (id worktree-squash-merge-gotchas, status active, volatility volatile, sources 1). Distills two git/harness gotchas hit during PR #89's worktree-based implementation: (1) `EnterWorktree`'s default `baseRef: fresh` branches from `origin/<default-branch>`, not local HEAD — local-only unpushed commits on main are invisible in a freshly created worktree until rebased in; (2) `gh pr merge --delete-branch` run from inside a worktree can switch that worktree's own checkout to the base branch and attempt (and fail) a local fast-forward, producing a "not possible to fast-forward" error and an `ExitWorktree` ancestry false-positive — resolved both times via bidirectional content-diff proving no unique local content, then `git reset --hard origin/main` + `discard_changes: true`. Not promoted to insight (recurred within one continuous work session, not across independent sessions).
+- index.md: added the worktree-squash-merge-gotchas hook under plugin-ops.
+
 ## 2026-07-02 — staging drain: 3 pending markers cleared as already-curated (ingest-finding)
 
 - Staging drain: cleared pending-adab2d74 (this session's PR #87 lore already ingested this same session, see the entry immediately below — `skill-engine-layering.md` sources 3→4, commit `07c407c`), pending-ccadfa81 (PR #84/#83 Hermes lore already ingested via commit `a298d65`, see the 2026-07-01 entry), and pending-aec5d2f2 (PR #86 roster-removal learnings routed to config, not wiki — `.claude/rules/plugin-versioning.md` + `AGENTS.md` via commit `e454cfe`, README via `bb7ec8d`) as skips. No new wiki page/section content — decision is provenance-only.

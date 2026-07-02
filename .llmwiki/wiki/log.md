@@ -6,6 +6,19 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-02 — post-merge #91: invisible-skill cost gate + declared-mirror fan-out (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `7be395d` — docs(ppt-yeong-style)+feat(codex-image): layout gates, execution discipline, model-invocable image bridge.
+
+- plugin-ops/codex-image-bridge-design.md: added 4th design rule "Visibility is not a cost gate" — `disable-model-invocation: true` hid the skill from the agent's available list entirely, so a deck-build pipeline whose spec named codex-image re-derived raw `codex exec` usage via a 140k+-token research agent while generation still ran autonomously (the flag hid the recipe without preventing cost); since 1.2.0 the skill is model-invocable with the gate moved in-body (explicit grounding + ask-when-ambiguous). Intro "three design rules" → four; alias `disable-model-invocation` added; sources 1 → 2; last_verified 2026-07-02.
+- plugin-ops/skill-engine-layering.md: added declared-mirror fan-out facet — the layer hand-maintains mirrors (SKILL.md SOT → references file → injection-prompt "1:1 압축판" → README section) and PR #91's review findings were 4/4 mirror/doc-sync gaps (enum member missing in one home; new gate conflicting with a boundary in another section; a fix landing in the SOT but not the standalone mirror; README still stating the superseded policy), plus a reverse-drift case (the mirror carried a "같은 layout 5장 연속" ban the SOT lacked). Rule: fan a rule change out to every declared mirror home in the same commit (grep the rule's key tokens across the plugin + README); reviewer re-review is the backstop, not the mechanism. sources 4 → 5; last_verified 2026-07-02.
+- index.md: extended both hooks (codex-image in-body gate facet; skill-engine-layering mirror fan-out facet).
+- Not promoted to insight: both facets observed in one PR each (recurrence bar not met).
+
+## 2026-07-02 — staging drain: 3 re-captured markers cleared as already-curated (ingest-finding)
+
+- Staging drain: deleted pending-adab2d74 + pending-aec5d2f2 (re-captured by the Stop hook when those sessions ended again after the earlier same-day drain — original skip rationale in that entry) and pending-2d3ca0b3 (this session pre-/clear; PR refs 28/37/47/60/64/81/86/87/89/90 all covered by prior post-merge ingests) as skips. Provenance-only; no page content.
+
 ## 2026-07-02 — post-merge #89: worktree lifecycle gotchas around squash-merge (ingest-finding)
 
 - plugin-ops/worktree-squash-merge-gotchas.md: new page (id worktree-squash-merge-gotchas, status active, volatility volatile, sources 1). Distills two git/harness gotchas hit during PR #89's worktree-based implementation: (1) `EnterWorktree`'s default `baseRef: fresh` branches from `origin/<default-branch>`, not local HEAD — local-only unpushed commits on main are invisible in a freshly created worktree until rebased in; (2) `gh pr merge --delete-branch` run from inside a worktree can switch that worktree's own checkout to the base branch and attempt (and fail) a local fast-forward, producing a "not possible to fast-forward" error and an `ExitWorktree` ancestry false-positive — resolved both times via bidirectional content-diff proving no unique local content, then `git reset --hard origin/main` + `discard_changes: true`. Not promoted to insight (recurred within one continuous work session, not across independent sessions).

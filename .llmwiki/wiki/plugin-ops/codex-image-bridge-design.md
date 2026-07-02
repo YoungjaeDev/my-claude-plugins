@@ -1,10 +1,10 @@
 ---
 id: codex-image-bridge-design
-aliases: [codex-image, codex-exec-delegation, sub-cli-model-inherit, passthrough-shell-validation]
-last_verified: 2026-06-25
+aliases: [codex-image, codex-exec-delegation, sub-cli-model-inherit, passthrough-shell-validation, disable-model-invocation]
+last_verified: 2026-07-02
 status: active
 volatility: stable
-sources: 1
+sources: 2
 ---
 
 # Designing a Claude→sub-CLI bridge skill (codex-image)
@@ -12,8 +12,8 @@ sources: 1
 `codex-image` is a Claude-only skill that generates images by shelling out to
 `codex exec` (Codex CLI's own image-gen) instead of calling the OpenAI REST API.
 That delegation shape — a Claude skill driving an external model CLI as its
-backend — has three design rules that are easy to get wrong, all confirmed on
-codex-cli 0.142.
+backend — has four design rules that are easy to get wrong, the first three
+confirmed on codex-cli 0.142.
 
 > See-also: shared-source-codex-manifests
 
@@ -57,7 +57,27 @@ class is a literal hyphen, not a range**. A Codex P2 review misread it as
 excluding hyphens; empirically refuted (bash ERE + python `re` both accept the
 hyphenated ids and reject `evil; rm -rf /`), so it was skipped.
 
+## Visibility is not a cost gate — model-invocable + in-body grounding
+
+`disable-model-invocation: true` (used through 1.1.0 as the "manual only, cost
+and side effects" guard) removes the skill from the agent's available-skills
+list entirely — slash-invocation only. That fails as a cost gate in exactly the
+workflow the skill exists for: a deck-build pipeline whose spec named
+codex-image as the image path could not see or load the skill, so it dispatched
+a 140k+-token research agent to re-derive raw `codex exec` usage — and then ran
+generation autonomously anyway. The flag hid the *recipe* without preventing
+the *cost*; it only removed the safest, cheapest path to the action.
+
+Since 1.2.0 the skill is model-invocable and the gate lives in the body:
+generation needs explicit grounding (a direct user request, or a task spec that
+names codex-image), and the agent asks before generating when grounding or
+scope is ambiguous. General rule: a cost/side-effect gate must sit where the
+agent can read it at decision time — invisibility is not enforcement.
+
 ## Sources
 
 - `plugins/codex-image/skills/codex-image/SKILL.md` (PR #80, merged b681a26) — the
   passthrough-override design + Validation step 7; codex-cli 0.142 `codex exec --help`.
+- PR #91 (merged 7be395d) — `disable-model-invocation` retirement + in-body
+  grounding gate; deck-build dogfood where the hidden skill cost a 140k+-token
+  `codex exec` re-derivation while generation still ran.

@@ -6,6 +6,13 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-02 — post-merge #92: reference-image arg + quote-don't-denylist shell validation (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `e431312` — docs(ppt-yeong-style): logo-source bundle-first + codex-image -i re-check gate (0.5.1).
+
+- plugin-ops/codex-image-bridge-design.md: added 5th design rule "Generic attach flag, no built-in edit-vs-reference semantics" — `codex exec`'s `-i, --image <FILE>...` (verified via `codex exec --help` on codex-cli 0.142.3) is a bare "attach image(s) to the prompt" transport with no CLI-level distinction between edit-in-place and reference-only; a new `--ref` argument added alongside the existing `--edit` relies entirely on prompt-text framing for that distinction, which is unverified with a live generation and documented as such. Extended "Validate passthrough args at the shell trust boundary" with the dogfooded correction from cr-fix PR #92 (5 real findings across 5 iterations, incl. one P0): the first fix denylisted all shell metacharacters including `\` and broke every Windows path (the skill's own PowerShell examples use `C:\...`) — correct rule is quote/array-exec as the actual injection defense, with the character check scoped to shell-command metacharacters only (excluding path-legitimate `\` and `:`), not a blanket denylist. sources 2 → 3; aliases +`--ref`, `edit-vs-reference-arg`; last_verified 2026-07-02.
+- index.md: extended the codex-image-bridge-design hook with both facets.
+
 ## 2026-07-02 — post-merge #91: invisible-skill cost gate + declared-mirror fan-out (ingest-finding)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `7be395d` — docs(ppt-yeong-style)+feat(codex-image): layout gates, execution discipline, model-invocable image bridge.

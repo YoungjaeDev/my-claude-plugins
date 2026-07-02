@@ -48,7 +48,7 @@
 - 플러그인 버전을 올릴 때는 `plugins/<name>/.claude-plugin/plugin.json`과 `.claude-plugin/marketplace.json`의 해당 항목을 같은 변경에 포함하세요.
 - Hermes-eligible 플러그인: `plugins/<name>/plugin.yaml`(Hermes 어댑터)의 `version`은 `sync-hermes-manifests.mjs` 가 marketplace 에서 파생해 생성하므로, 버전 범프 후 `node scripts/sync-hermes-manifests.mjs` 재실행으로 갱신하세요. `sync-hermes-manifests.mjs --check` 가 drift 를 가드하므로 수동 동기화는 불필요합니다 (단 Codex `--check` 는 Codex 매니페스트만 봅니다).
 - 어떤 플러그인 버전이든 변경하면 `.claude-plugin/marketplace.json`의 `metadata.version`도 marketplace release 버전으로 올리세요.
-- 플러그인을 추가하거나 제거하면 루트 `CLAUDE.md`의 플러그인 수와 구조, `README.md`의 플러그인 수와 목록도 갱신하세요.
+- 플러그인을 추가하거나 제거하면 루트 `CLAUDE.md`의 플러그인 수와 구조, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 `AGENTS.md` 자신의 미러 카운트(Hermes allowlist `현재 N개`, Codex 검증 주석 `# N entries`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다.
 - 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다.
 - Claude Code 플러그인 캐시 이슈 때문에 사용자 문서나 릴리스 안내에는 필요 시 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 후 marketplace update 및 Claude Code 재시작 절차를 유지하세요.
 
@@ -70,7 +70,7 @@
 ## Hermes 통합 (shared-source)
 
 - Hermes Agent 도 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 어댑터(`plugin.yaml` + `__init__.py`)는 `scripts/sync-hermes-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성합니다 — `plugins/<name>/plugin.yaml` / `__init__.py` 를 손으로 편집하지 마세요.
-- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 6개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`. 커버리지 확장은 allowlist 에 이름 추가.
+- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 7개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`. 커버리지 확장은 allowlist 에 이름 추가.
 - Hermes-eligible 플러그인의 `version` / `description` 을 바꾸면 `node scripts/sync-hermes-manifests.mjs` 를 실행해 어댑터를 재생성하세요. `plugin.yaml` 의 `version` 은 marketplace 파생이므로 `--check` 가 drift + orphan 어댑터를 잡습니다 (수동 동기화 불필요 — 생성으로 해소).
 - `__init__.py` 는 `skills/*/SKILL.md` 를 `<plugin>:<skill>` 으로 등록하는 제네릭 엔트리포인트입니다 (플러그인별 로직 없음, `import yaml`=PyYAML 가정).
 - 공유 skill 본문은 3런타임 포터블이어야 합니다. Claude/Codex 는 도구명이 동일하므로, 본문에 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표(`Bash`→`terminal`, `Read`→`read_file`, `Edit`→`patch`, `AskUserQuestion`→`clarify`, `Task`→`delegate_task`, `Skill`→`skill_view`, 이미지 생성→`image_generate`, `NotebookEdit`→Hermes Jupyter Live Kernel / `write_file`·`patch` 등)를 둡니다. 새 skill 추가/도구 사용 변경 시 이 표를 점검하세요.
@@ -90,7 +90,7 @@ node scripts/sync-hermes-manifests.mjs --check
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 19 entries
+codex plugin list --marketplace my-claude-plugins   # 20 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 
@@ -133,6 +133,7 @@ codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ### Domain-specific (Claude Code plugin marketplace)
 - 새 플러그인 추가 / 제거 PR 은 `CLAUDE.md` 플러그인 수, `README.md` badge + 표 + detail + 트리, `CLAUDE.md`/`README.md` 의 Codex-eligible count (total − 2 excluded: core-config·codex-image), `marketplace.json` entry + `metadata.version`, `.claude/settings.json` 의 `plugins.local` entry, 그리고 `node scripts/sync-codex-manifests.mjs` + (Hermes-eligible 이면) `node scripts/sync-hermes-manifests.mjs` 재실행 — 동시 업데이트 필수. Codex-eligible count 는 version 파일도 `--check` 도 못 잡으니 수동 확인.
 - 기존 플러그인에 **skill 추가** PR 은 plugin 수를 바꾸지 않지만 문서 동기화가 필요하다 — 해당 플러그인의 `plugins/<name>/CLAUDE.md` skill 목록, 그리고 version bump 이 `description` 도 바꿨다면 루트 `CLAUDE.md`/`README.md` 의 한 줄 설명. 매니페스트 재생성 + `metadata.version` bump 은 그대로 적용.
+- **플러그인 제거 PR 추가 주의** — (a) `git grep -niE '<name>'` 로 레포 전체(다른 플러그인 skill 본문·`docs/` 포함, 과거 `.claude/spec/*` 제외)에서 live 참조를 훑어 제거. count 파일만으론 부족하다 (예: `code-scout` 의 `agent-routing.md` 라우팅). 살아남은 참조는 존재하지 않는 플러그인으로 사용자를 안내한다. (b) 삭제된 플러그인이 생성하던 tracked 산출물(예: `workflow-viz` → `docs/architecture/*`)은 orphaned 이니 같은 변경에서 제거. (c) 플러그인 제거는 `metadata.version` **MINOR** bump (MAJOR 아님 — metadata.version 은 per-release counter, semver-breaking 규칙은 per-plugin 스코프; `midjourney` 삭제 선례가 MINOR). 리뷰어의 "breaking→MAJOR" 지적보다 이 컨벤션 우선.
 - Codex 매니페스트 (`plugins/*/.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`) 가 `--check` 통과해야 함. 수동 편집 흔적 검토.
 - Plugin 캐시 이슈 ([anthropics/claude-code#17361](https://github.com/anthropics/claude-code/issues/17361), [anthropics/claude-code#19197](https://github.com/anthropics/claude-code/issues/19197)) — version bump 만으로는 사용자 캐시 갱신 보장 안 됨. 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차 유지.
 

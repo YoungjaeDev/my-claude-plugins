@@ -6,6 +6,33 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-02 — post-merge #91: invisible-skill cost gate + declared-mirror fan-out (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `7be395d` — docs(ppt-yeong-style)+feat(codex-image): layout gates, execution discipline, model-invocable image bridge.
+
+- plugin-ops/codex-image-bridge-design.md: added 4th design rule "Visibility is not a cost gate" — `disable-model-invocation: true` hid the skill from the agent's available list entirely, so a deck-build pipeline whose spec named codex-image re-derived raw `codex exec` usage via a 140k+-token research agent while generation still ran autonomously (the flag hid the recipe without preventing cost); since 1.2.0 the skill is model-invocable with the gate moved in-body (explicit grounding + ask-when-ambiguous). Intro "three design rules" → four; alias `disable-model-invocation` added; sources 1 → 2; last_verified 2026-07-02.
+- plugin-ops/skill-engine-layering.md: added declared-mirror fan-out facet — the layer hand-maintains mirrors (SKILL.md SOT → references file → injection-prompt "1:1 압축판" → README section) and PR #91's review findings were 4/4 mirror/doc-sync gaps (enum member missing in one home; new gate conflicting with a boundary in another section; a fix landing in the SOT but not the standalone mirror; README still stating the superseded policy), plus a reverse-drift case (the mirror carried a "같은 layout 5장 연속" ban the SOT lacked). Rule: fan a rule change out to every declared mirror home in the same commit (grep the rule's key tokens across the plugin + README); reviewer re-review is the backstop, not the mechanism. sources 4 → 5; last_verified 2026-07-02.
+- index.md: extended both hooks (codex-image in-body gate facet; skill-engine-layering mirror fan-out facet).
+- Not promoted to insight: both facets observed in one PR each (recurrence bar not met).
+
+## 2026-07-02 — staging drain: 3 re-captured markers cleared as already-curated (ingest-finding)
+
+- Staging drain: deleted pending-adab2d74 + pending-aec5d2f2 (re-captured by the Stop hook when those sessions ended again after the earlier same-day drain — original skip rationale in that entry) and pending-2d3ca0b3 (this session pre-/clear; PR refs 28/37/47/60/64/81/86/87/89/90 all covered by prior post-merge ingests) as skips. Provenance-only; no page content.
+
+## 2026-07-02 — post-merge #89: worktree lifecycle gotchas around squash-merge (ingest-finding)
+
+- plugin-ops/worktree-squash-merge-gotchas.md: new page (id worktree-squash-merge-gotchas, status active, volatility volatile, sources 1). Distills two git/harness gotchas hit during PR #89's worktree-based implementation: (1) `EnterWorktree`'s default `baseRef: fresh` branches from `origin/<default-branch>`, not local HEAD — local-only unpushed commits on main are invisible in a freshly created worktree until rebased in; (2) `gh pr merge --delete-branch` run from inside a worktree can switch that worktree's own checkout to the base branch and attempt (and fail) a local fast-forward, producing a "not possible to fast-forward" error and an `ExitWorktree` ancestry false-positive — resolved both times via bidirectional content-diff proving no unique local content, then `git reset --hard origin/main` + `discard_changes: true`. Not promoted to insight (recurred within one continuous work session, not across independent sessions).
+- index.md: added the worktree-squash-merge-gotchas hook under plugin-ops.
+
+## 2026-07-02 — staging drain: 3 pending markers cleared as already-curated (ingest-finding)
+
+- Staging drain: cleared pending-adab2d74 (this session's PR #87 lore already ingested this same session, see the entry immediately below — `skill-engine-layering.md` sources 3→4, commit `07c407c`), pending-ccadfa81 (PR #84/#83 Hermes lore already ingested via commit `a298d65`, see the 2026-07-01 entry), and pending-aec5d2f2 (PR #86 roster-removal learnings routed to config, not wiki — `.claude/rules/plugin-versioning.md` + `AGENTS.md` via commit `e454cfe`, README via `bb7ec8d`) as skips. No new wiki page/section content — decision is provenance-only.
+
+## 2026-07-02 — post-merge #87: ppt-master lever-alignment as 3rd skill-engine-layering dogfood (post-merge)
+
+- plugin-ops/skill-engine-layering.md: added PR #87 as a 3rd dogfood source; new paragraph on periodic re-audit (a layer's prose can drift/gap even after initial authoring as the engine evolves — re-check against the engine's actual current source, not just at authoring time); two concrete new failure modes recorded (missing lever coverage: ppt-yeong-style's signature had no `visual_style` mapping at all; inaccurate mechanism claim: a lever was described as engine-enforced when it only applies under a different `image_usage` path); sources 3 -> 4; last_verified 2026-07-02.
+- index.md: extended the skill-engine-layering hook with the periodic-re-audit facet.
+
 ## 2026-07-01 — post-merge #84: Hermes generator + midjourney removal (post-merge)
 
 - plugin-ops/hermes-plugin-adapter.md: updated for PR #84 — adapters now generator-produced (`sync-hermes-manifests.mjs`, 6 HERMES_ELIGIBLE plugins) not hand-written; `plugin.yaml` documented as 5 marketplace-derived fields with the CodeRabbit minimal-manifest decision recorded (kept 5 — drift moot post-generator, `kind: standalone` load-bearing, pilot proves extra fields don't break Hermes); `__init__.py` `yaml.safe_load` try/except hardening; tool-name table expanded (Read/Write, Glob/Grep→search_files, Skill→skill_view, image→image_generate, WebFetch/WebSearch→web_extract/browser_*, NotebookEdit→Jupyter Live Kernel); `${HERMES_SKILL_DIR}`→3-branch revert (Codex caught the var is undocumented/unset on install); version-sync now `--check`-guarded; sources 3→4 (+PR #84, +DeepWiki NousResearch/hermes-agent); last_verified 2026-07-01.

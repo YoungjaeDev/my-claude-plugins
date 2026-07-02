@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -26,7 +26,7 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 
 - **GitHub 워크플로우** - 이슈 분해, PR, 코드 리뷰, post-merge 정리까지 한 흐름으로
 - **리서치** - arXiv/PubMed 논문 검색, GitHub 레포 문서화, 보일러플레이트 탐색
-- **멀티모달** - Claude→Codex 이미지 생성 브리지, 웹 페이지 번역, Notion 업로드
+- **멀티모달** - Claude→Codex 이미지 생성 브리지, 웹 페이지 번역
 - **문서화** - README/CHANGELOG, CLAUDE.md 모듈화, PRD/Tech Spec 생성
 - **시각화** - Mermaid 다이어그램, Slidev 프레젠테이션
 
@@ -66,7 +66,12 @@ skill_view("github-dev:commit-and-push")
 
 ```bash
 # 1. 캐시 삭제
+#   macOS / Linux:
 rm -rf ~/.claude/plugins/cache/my-claude-plugins/
+#   Windows (PowerShell):
+#   Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\plugins\cache\my-claude-plugins"
+#   Windows (cmd):
+#   rmdir /s /q "%USERPROFILE%\.claude\plugins\cache\my-claude-plugins"
 
 # 2. Marketplace 업데이트 후 Claude Code 재시작
 /plugin marketplace update my-claude-plugins
@@ -84,12 +89,11 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음) |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
-| **AI Models** | `council` | Claude, Codex, Gemini 멀티모델 심의 |
-| | `codex-image` | Claude->Codex 이미지 생성 브리지 (ChatGPT OAuth, OpenAI API key 불필요) |
+| | `brightdata-guide` | Bright Data 웹 데이터 (MCP 툴 + CLI) — 스크래핑(Web Unlocker), SERP, 구조화 web_data_* 추출, 브라우저 자동화. operator 가 BRIGHTDATA_API_KEY 설정 |
+| **AI Models** | `codex-image` | Claude->Codex 이미지 생성 브리지 (ChatGPT OAuth, OpenAI API key 불필요) |
 | **Dev Tools** | `notebook` | Jupyter 노트북 안전 편집 |
 | | `ml-toolkit` | ML/멀티모달 개발 원칙, GPU 병렬 처리, Gradio CV 앱 |
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
-| | `notion` | Markdown을 Notion으로 업로드 |
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
 | | `tally-form` | 체크리스트 md → Tally 설문/상담 폼 빌드·게시 (테마 프리셋, 구분선, 문항별 보기·필수·복수선택·단답, matrix/date/time 일정 조율, 이미지·redirect, idempotent) |
 | **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
@@ -97,7 +101,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) + 배포 문서 템플릿 + MOC 인덱스 |
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
-| **Visualization** | `workflow-viz` | 시스템 워크플로우 Mermaid 다이어그램, ASCII 진행 추적 |
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 | **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
@@ -271,32 +274,29 @@ WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
 
 </details>
 
-### AI Models
-
 <details>
-<summary><strong>council</strong> - LLM Council</summary>
+<summary><strong>brightdata-guide</strong> - Bright Data 웹 데이터 접근 (MCP + CLI)</summary>
 
-여러 AI 모델에 질문하고 집단 지혜 합성.
+Bright Data 플랫폼으로 웹 데이터 작업을 수행하는 가이드 스킬. 두 경로가 같은 플랫폼 + 무료 5,000 req/월 을 공유합니다.
 
-**Commands:**
-| Command | Description |
-|---------|-------------|
-| `/council` | 멀티모델 심의 |
-| `/council --quick` | 퀵 모드 (1라운드) |
-| `/council:ask-codex` | Codex 직접 질문 |
-| `/council:ask-gemini` | Gemini 직접 질문 |
+- **MCP 툴**: `search_engine` (SERP), `scrape_as_markdown`/`scrape_batch` (Web Unlocker — JS/CAPTCHA/봇 탐지 우회), `extract` (AI 구조화 JSON), 40+ `web_data_*` 구조화 추출기 (Amazon/LinkedIn/Instagram/TikTok/YouTube/X/Reddit 등), `scraping_browser_*` 브라우저 자동화
+- **CLI (`bdata`/`brightdata`)**: MCP 툴을 못 받는 `delegate_task` 서브에이전트용 fallback (터미널은 상속하지만 부모의 MCP 툴셋은 상속 안 함)
 
-**Models:** Claude Opus, Sonnet, Codex, Gemini
+**Runtime:** Claude / Codex / Hermes 공용 (MCP 툴명 동일; `terminal` ↔ Bash / execute_command)
+
+**Requirements:** Bright Data 계정 + `BRIGHTDATA_API_KEY` (또는 `bdata login`). 스킬은 guide 라 설치/키 하드코딩 안 함 — operator 가 out-of-band 로 연결.
 
 </details>
+
+### AI Models
 
 <details>
 <summary><strong>codex-image</strong> - Claude->Codex 이미지 생성 브리지</summary>
 
-`/codex-image` 호출 시 Codex CLI 의 이미지 생성 기능에 위임해 이미지를 만들거나 편집합니다. OpenAI REST API 나 API key 없이 ChatGPT OAuth 만으로 동작합니다.
+`/codex-image` 호출 또는 에이전트의 스킬 로드 시 Codex CLI 의 이미지 생성 기능에 위임해 이미지를 만들거나 편집합니다. OpenAI REST API 나 API key 없이 ChatGPT OAuth 만으로 동작합니다.
 
 **Features:**
-- 수동 호출 전용 (`/codex-image`) — 생성 비용/부수효과 때문
+- 모델 호출 허용 + 본문 게이트 (1.2.0) — 명시 요청 또는 작업 사양이 codex-image 를 지정한 경우만 생성, 모호하면 생성 전 확인 (생성 비용/부수효과 때문)
 - 기본 출력: `assets/generated/codex-image/`, non-destructive 파일명
 - `--size` / `--quality` / `--out` / `-n` / `--edit` 옵션, opt-in `--model` / `--reasoning` / `--sandbox` (기본은 Codex 기본 모델 + workspace-write 유지)
 - Claude-only 브리지 — Codex sync 에서 제외 (순환 방지)
@@ -341,20 +341,6 @@ WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
 - firecrawl MCP로 페칭
 - VLM 이미지 분석
 - 코드/테이블 보존
-
-</details>
-
-<details>
-<summary><strong>notion</strong> - Notion 연동</summary>
-
-Markdown을 Notion에 포매팅하여 업로드.
-
-**Features:**
-- 전체 Markdown 지원
-- 이미지 자동 업로드
-- Dry run 미리보기
-
-**Requirements:** Notion API key
 
 </details>
 
@@ -564,22 +550,6 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 
 </details>
 
-### Visualization
-
-<details>
-<summary><strong>workflow-viz</strong> - 워크플로우 시각화</summary>
-
-시스템 아키텍처 다이어그램 및 작업 진행 추적.
-
-**Features:**
-- C4 Container 다이어그램
-- 플러그인별 Flowchart
-- ASCII 진행 상황 표시
-
-**Usage:** `/workflow-viz:show-progress`
-
-</details>
-
 ### Design
 
 <details>
@@ -631,18 +601,15 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
       "./plugins/core-config",
       "./plugins/github-dev",
       "./plugins/code-scout",
-      "./plugins/council",
       "./plugins/deepwiki",
       "./plugins/paper-search-tools",
       "./plugins/notebook",
       "./plugins/ml-toolkit",
       "./plugins/translator",
       "./plugins/interview",
-      "./plugins/notion",
       "./plugins/slidev",
       "./plugins/docs-forge",
       "./plugins/rules-forge",
-      "./plugins/workflow-viz",
       "./plugins/tcrei-prompt",
       "./plugins/llm-wiki",
       "./plugins/spec-state"
@@ -667,9 +634,9 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 22 / 24 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 20 / 22 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
-Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `council`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
+Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
 `--check` 는 manifest drift 외에 **skill `description` 길이**도 검증합니다 (Codex 0.135 는 1024자 초과 description 을 가진 skill 을 silent 하게 skip). 이 가드는 로컬 pre-commit 훅과 CI 양쪽에서 동일하게 실행됩니다:
 
@@ -696,7 +663,7 @@ hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
 hermes gateway restart  # 메시징 게이트웨이 사용 시
 ```
 
-어댑터 필드는 marketplace 엔트리에서 파생되고(`plugin.yaml` name/version/description, `__init__.py` 는 SKILL.md 를 `<plugin>:<skill>` 로 등록하는 제네릭 엔트리포인트 — 플러그인별 로직 없음), 대상은 `HERMES_ELIGIBLE` allowlist (이번 라운드 6개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`) 입니다. allowlist 에 이름을 추가하면 커버리지가 확장됩니다. `--check` 가 어댑터 drift + orphan 어댑터를 잡습니다. 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
+어댑터 필드는 marketplace 엔트리에서 파생되고(`plugin.yaml` name/version/description, `__init__.py` 는 SKILL.md 를 `<plugin>:<skill>` 로 등록하는 제네릭 엔트리포인트 — 플러그인별 로직 없음), 대상은 `HERMES_ELIGIBLE` allowlist (이번 라운드 7개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`) 입니다. allowlist 에 이름을 추가하면 커버리지가 확장됩니다. `--check` 가 어댑터 drift + orphan 어댑터를 잡습니다. 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
 
 플러그인 스킬은 opt-in 이라 enable 후 `skill_view("<plugin>:<skill>")` 로 명시 로드합니다 (`--enable` 후 새 Hermes 세션 시작).
 
@@ -736,19 +703,17 @@ node scripts/install-skills.mjs
 │   ├── core-config/           # 가이드라인 + 훅
 │   ├── github-dev/            # GitHub 워크플로우
 │   ├── code-scout/            # 리소스 탐색
-│   ├── council/               # LLM Council
 │   ├── deepwiki/              # 레포 문서화
 │   ├── paper-search-tools/    # 논문 검색
+│   ├── brightdata-guide/      # Bright Data 웹데이터 guide (MCP + CLI)
 │   ├── notebook/              # Jupyter 편집
 │   ├── ml-toolkit/            # ML 개발
 │   ├── translator/            # 번역
 │   ├── codex-image/           # Claude->Codex 이미지 생성 브리지
 │   ├── interview/             # 요구사항 수집
-│   ├── notion/                # Notion 연동
 │   ├── slidev/                # 프레젠테이션 생성
 │   ├── docs-forge/            # README/CHANGELOG + 배포 문서 + MOC 생성
 │   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)
-│   ├── workflow-viz/          # 워크플로우 시각화
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate

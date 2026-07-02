@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "1.74.0"
+    "description": "Personal Claude Code plugin collection with 22 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
+    "version": "1.79.0"
   },
   "plugins": [
     {
@@ -37,11 +37,11 @@
       "category": "research"
     },
     {
-      "name": "council",
-      "source": "./plugins/council",
-      "description": "Multi-model deliberation: Claude, Codex, Gemini",
-      "version": "1.1.0",
-      "category": "ai-models"
+      "name": "brightdata-guide",
+      "source": "./plugins/brightdata-guide",
+      "description": "Bright Data web data access via MCP tools + CLI — scraping (Web Unlocker), SERP, 40+ structured web_data_* extractors, browser automation. Guide skill; operator sets BRIGHTDATA_API_KEY, delegate subagents fall back to the bdata CLI.",
+      "version": "1.0.0",
+      "category": "research"
     },
     {
       "name": "deepwiki",
@@ -79,13 +79,6 @@
       "category": "planning"
     },
     {
-      "name": "notion",
-      "source": "./plugins/notion",
-      "description": "Markdown to Notion upload",
-      "version": "1.0.0",
-      "category": "integration"
-    },
-    {
       "name": "paper-search-tools",
       "source": "./plugins/paper-search-tools",
       "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
@@ -105,13 +98,6 @@
       "description": "Slidev markdown presentation generator with interview workflow and KubeCon-level visual enhancement",
       "version": "1.2.0",
       "category": "content"
-    },
-    {
-      "name": "workflow-viz",
-      "source": "./plugins/workflow-viz",
-      "description": "System workflow Mermaid diagrams and ASCII progress tracking",
-      "version": "1.0.0",
-      "category": "visualization"
     },
     {
       "name": "rules-forge",
@@ -152,14 +138,14 @@
       "name": "codex-image",
       "source": "./plugins/codex-image",
       "description": "Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "category": "ai-models"
     },
     {
       "name": "anti-slop-design",
       "source": "./plugins/anti-slop-design",
       "description": "Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. Runs a clarify->context->plan->run->audit->revise flow with a two-phase audit gate (pre-emit self-critique + binary slop checklist) and hands Korean copy rewriting to humanize-korean. Source-grounded in 6 OSS anti-slop repos.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "category": "design"
     },
     {
@@ -173,7 +159,7 @@
       "name": "ppt-yeong-style",
       "source": "./plugins/ppt-yeong-style",
       "description": "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 미감 시그니처(§0 'Editorial restraint, one committed accent')·덱 유형·md 소스 규약·작성 원칙 15종·밀도 리듬(중간 강화 기본)·역할 기반 색 팔레트·codex-image vs SVG 경계·앱 UI 실물 강제(가짜 UI 생성 금지)·ppt-master 레버 조합 차별화·빌드 후 스토리 흐름 review·공식 로고 fetch·윤문·렌더 QA를 한 세션·어느 repo에서든 일관 적용. 진입점 SKILL.md + references/ 6종(design-language·color-typography·images-and-pop·icons-logos·ppt-master-craft·ppt-master-and-qa) + assets/injection-prompt.md(주입 페이로드). ppt-master/slidev로 그냥 'PPT/슬라이드 만들기'와 달리 yeong 특유의 담백한 명사구 제목·anti-slop 본문 + 표지/목차/전환 pop 무드·일상 비유 보조선이 필요할 때.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "category": "design"
     }
   ]

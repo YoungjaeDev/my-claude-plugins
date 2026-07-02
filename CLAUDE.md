@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration. The same plugin tree is loaded by Codex 0.135 via `scripts/sync-codex-manifests.mjs` and by Hermes Agent via `scripts/sync-hermes-manifests.mjs` — one source, three runtimes.
 
-## Plugins (24)
+## Plugins (22)
 
 ### Core
 | Plugin | Description |
@@ -25,11 +25,11 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | `code-scout` | Multi-axis research harness — 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl tier-3 + insane-search tier-4 for WAF/blocked URLs. paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics. |
 | `deepwiki` | AI-powered GitHub repo documentation |
 | `paper-search-tools` | Academic paper search (arXiv, PubMed, Semantic Scholar, etc.) |
+| `brightdata-guide` | Bright Data web data access via MCP tools + CLI — scraping (Web Unlocker), SERP, structured web_data_* extractors, browser automation. Operator sets BRIGHTDATA_API_KEY; delegate subagents fall back to the bdata CLI |
 
 ### AI Models
 | Plugin | Description |
 |--------|-------------|
-| `council` | Multi-model deliberation (Claude, Codex, Gemini) |
 | `codex-image` | Claude->Codex image generation bridge (delegates to Codex CLI image gen via ChatGPT OAuth, no OpenAI API key). Claude-only — excluded from Codex sync |
 
 ### Development Tools
@@ -42,7 +42,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | Plugin | Description |
 |--------|-------------|
 | `translator` | Web article translation to Korean |
-| `notion` | Markdown to Notion upload |
 | `tcrei-prompt` | Rewrite prompts using Google's TCREI structure for next-session reuse |
 | `tally-form` | Checklist markdown to Tally questionnaire/survey form — deterministic urllib builder, theme presets, section dividers, per-question choices (required/checkbox) + short-answer inputs (text/number/email/phone/link), native scheduling (matrix/date/time), form images (logo/cover/IMAGE) + redirect, idempotent publish, humanize routing. Dev-survey + lecture-consultation presets |
 
@@ -69,11 +68,6 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | `anti-slop-design` | Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. clarify→context→plan→run→audit→revise flow + two-phase audit gate (pre-emit self-critique + binary slop checklist); Korean copy handed to `humanize-korean`. Source-grounded in 6 OSS anti-slop repos (impeccable/hallmark/frontend-design/huashu/stop-slop/frontend-slides) |
 | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약 — `ppt-master` 엔진 위에 얹는 작성 레이어. 덱 유형·md 소스 규약·작성 원칙 15종·밀도 리듬(중간 강화)·역할 기반 색·codex vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 review·공식 로고 fetch·윤문·렌더 QA. 진입점 SKILL.md + references/ 6종 + assets/injection-prompt.md |
 
-### Visualization
-| Plugin | Description |
-|--------|-------------|
-| `workflow-viz` | System workflow Mermaid diagrams and ASCII progress tracking |
-
 ### Memory & Lore
 | Plugin | Description |
 |--------|-------------|
@@ -95,19 +89,17 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 │   ├── github-dev/         # GitHub workflow
 │   ├── e2e-harness/        # Playwright E2E test-harness (setup/author/debug)
 │   ├── code-scout/         # Resource discovery
-│   ├── council/            # LLM Council
 │   ├── deepwiki/           # Repo docs
 │   ├── paper-search-tools/ # Academic papers
+│   ├── brightdata-guide/   # Bright Data web-data guide (MCP + CLI)
 │   ├── notebook/           # Jupyter
 │   ├── ml-toolkit/         # ML tools
 │   ├── translator/         # Translation
 │   ├── codex-image/        # Claude->Codex image gen bridge
 │   ├── interview/          # Requirements
-│   ├── notion/             # Notion
 │   ├── docs-forge/         # README/CHANGELOG + deploy-doc + MOC
 │   ├── rules-forge/        # write-rules skill (auto mode detection)
 │   ├── slidev/             # Presentation generator
-│   ├── workflow-viz/       # Workflow visualization
 │   ├── tcrei-prompt/       # TCREI prompt structuring
 │   ├── llm-wiki/           # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/         # spec/issue/PR work-pipeline aggregate
@@ -132,7 +124,7 @@ node scripts/sync-codex-manifests.mjs           # write manifests
 node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
-Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 22 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 20 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
 
 ## Hermes integration
 
@@ -143,7 +135,7 @@ node scripts/sync-hermes-manifests.mjs           # write adapters
 node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (also in validate-codex.yml + .githooks/pre-commit)
 ```
 
-Adapter fields derive from `marketplace.json` (`plugin.yaml` name/version/description; `__init__.py` a generic skill-registration entrypoint, no per-plugin logic). Coverage is an allowlist — `HERMES_ELIGIBLE` (6 plugins this round: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`); add a name to extend. `--check` flags adapter drift + orphan adapters. Shared skill bodies carry a Hermes tool-compatibility table (Claude/Codex tool terms → Hermes tools). Skill-level install (no adapter needed) is also available via `node scripts/install-skills.mjs` (wraps `npx skills`).
+Adapter fields derive from `marketplace.json` (`plugin.yaml` name/version/description; `__init__.py` a generic skill-registration entrypoint, no per-plugin logic). Coverage is an allowlist — `HERMES_ELIGIBLE` (7 plugins this round: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`); add a name to extend. `--check` flags adapter drift + orphan adapters. Shared skill bodies carry a Hermes tool-compatibility table (Claude/Codex tool terms → Hermes tools). Skill-level install (no adapter needed) is also available via `node scripts/install-skills.mjs` (wraps `npx skills`).
 
 ## Modular Rules
 

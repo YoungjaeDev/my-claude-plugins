@@ -1,8 +1,7 @@
 ---
 name: codex-image
-description: Generate or edit bitmap images from Claude Code by delegating to Codex CLI image generation. Use only when the user explicitly invokes /codex-image to create project-bound raster assets without managing OpenAI API keys.
+description: Generate or edit bitmap images from Claude Code by delegating to Codex CLI image generation, without managing OpenAI API keys. Use when the user asks to generate or edit a raster image, or when an active task's spec explicitly designates codex-image as the image path (e.g. deck builds); never research raw codex invocation instead of loading this skill. When the grounding or scope is ambiguous, confirm before generating — image generation has cost and side effects.
 argument-hint: "[--size auto|WIDTHxHEIGHT] [--quality low|medium|high|auto] [--out <dir>] [-n <count>] [--edit <image-path>] [--model <id>] [--reasoning <effort>] [--sandbox <mode>] <prompt>"
-disable-model-invocation: true
 allowed-tools: Bash(codex *) Bash(git rev-parse *) Bash(pwd) Bash(mkdir *) Bash(ls *) Read AskUserQuestion
 ---
 
@@ -12,7 +11,7 @@ Generate or edit raster images by asking Codex CLI to use its image generation c
 
 ## Defaults
 
-- Invocation is manual only because image generation has cost and side effects.
+- Generation needs explicit grounding: a direct user request, or a task spec that names codex-image as the image path. Without that grounding — or when scope/count is ambiguous — ask before generating, because image generation has cost and side effects.
 - Default output directory: `assets/generated/codex-image/` under the project root.
 - Default size: `auto`.
 - Default quality: `auto`.

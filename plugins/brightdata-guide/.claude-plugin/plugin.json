@@ -1,0 +1,6 @@
+{
+  "name": "brightdata-guide",
+  "version": "1.0.0",
+  "description": "Bright Data web data access (MCP tools + CLI) for scraping, SERP, structured extractors, and browser automation.",
+  "license": "MIT"
+}

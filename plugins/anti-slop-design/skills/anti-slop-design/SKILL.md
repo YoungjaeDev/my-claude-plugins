@@ -34,7 +34,7 @@ Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks
 - 덱 빌드 실행(md->SVG->pptx)은 기존 도구(ppt-master/codex-image)가 한다. 단 **생성 일관성·납품 전 검증 방법론**(per-slide 병렬 + BUILDKIT, 렌더 검증 함정)은 anti-slop 소관으로 포함 — `references/slop-taxonomy.md` §3 PPT lane.
 - 브랜드 색·폰트를 **기억으로 추측하지 않는다**. 자료 있으면 읽고, 없으면 `references/house-style.md` 기본값, 그래도 없으면 placeholder로 두고 사용자에게 묻는다.
 
-## 흐름 (clarify -> context -> plan -> run -> audit -> revise)
+## 흐름 (clarify -> context -> plan -> audit(A) -> run -> audit(B) -> revise)
 
 ### 1. Clarify
 artifact 종류(web / ppt / dashboard / copy), 청중, 브랜드, 결정맥락을 식별. 모호하면 `AskUserQuestion` 및 'interview skill'을 통해 좁힌다. 자동 가정 금지.
@@ -49,21 +49,27 @@ artifact 종류(web / ppt / dashboard / copy), 청중, 브랜드, 결정맥락�
 - 정보 위계(primary/secondary/tertiary)를 먼저 정의.
 - **시각 산출물은 방향을 2~3개 제안하고 사용자가 택1**(show-don't-tell). 한 안만 밀지 않는다.
 
-### 4. Run
+### 4. Audit gate — Phase A (생성 전)
+Plan을 6축으로 채점해 emit 전에 통과시킨다(상세 → 아래 "Audit gate (2단계)"의 Phase A).
+
+### 5. Run
 택1 방향 + lane 규칙 + house-style 기본값으로 산출(또는 호출자에게 전달할 spec 작성). 모든 ban에는 **escape hatch**: 브리프의 명시 요구가 항상 이긴다(브랜드가 보라색이면 보라 허용, 청중이 어린이면 emoji 허용 등). 예외를 쓰면 그 줄에 이유를 명시.
 
-### 5. Audit gate
-아래 2단계 게이트(필수). 카피 포함 시 영문은 `references/copy-rules.md`로 탐지·스코어링하고, **한국어 산문 재작성은 `humanize-korean:humanize-korean`(fast 모드)로 핸드오프** 후 `final.md` 본문만 회수한다.
+### 6. Audit gate — Phase B (납품 전)
+아래 12항목 binary 체크리스트(필수, 상세 → 아래 "Audit gate (2단계)"의 Phase B). 카피 포함 시 영문은 `references/copy-rules.md`로 탐지·스코어링하고, **한국어 산문 재작성은 `humanize-korean:humanize-korean`(fast 모드)로 핸드오프** 후 `final.md` 본문만 회수한다.
 
-### 6. Revise
+### 7. Revise
 게이트에 걸린 항목을 고친 뒤 최종화. 출력은 항상 다음을 포함:
 1. 사용한 design direction (구체 명칭)
 2. 정보 위계
 3. 적용한 anti-slop 결정 (무엇을 왜 피했나)
 4. 산출물(또는 구현 spec)
 5. 남은 리스크 / trade-off
+6. 게이트 결과 — Phase A 6축 점수(최저 축 포함)와 Phase B 12항목 중 걸렸던 항목·수정 내용(모두 no였으면 그대로 명시)
 
 ## Audit gate (2단계)
+
+Phase A = 흐름 4번(Plan 직후, Run 이전) · Phase B = 흐름 6번(Run 이후, 납품 전).
 
 ### Phase A — 생성 전 self-critique (도구 불필요, 최고 레버리지)
 
@@ -98,18 +104,11 @@ artifact 종류(web / ppt / dashboard / copy), 청중, 브랜드, 결정맥락�
 | 11 | over-animation / `transition-all` / 균일 `hover:scale` / `prefers-reduced-motion` 없음? | 하나의 orchestrated moment + reduced-motion |
 | 12 | copy: buzzword / "Not X, it's Y" 대비 / throat-clearing / 지어낸 specifics? | 직접 진술 후 한국어는 humanize-korean로 |
 
-**numeric floor sweep** (자동검증 가능):
-- contrast >=4.5:1 본문, >=3:1 large(>=24px 또는 >=18.67px bold)
-- 본문 >=14px (slide 본문 >=24px)
-- type-scale ratio >=1.25 (slide title >=2.5x body)
-- line-length <=80ch, line-height >=1.3
-- 색 <=3-4 (1 primary + 1 secondary + 1 accent + grays)
-- touch target 44x44px
-- 모든 장식 image에 honesty test (이미지를 빼도 정보가 안 줄면 slop)
+**numeric floor sweep** (자동검증 가능) — 세부 8항목(contrast·본문 폰트·type-scale·line-length·line-height·색 수·touch target·accent footprint)과 정확한 수치는 `references/slop-taxonomy.md` §4 Numeric floor sweep 표에서 확인한다(아래 "reference 로딩 가이드"의 중복 금지 정책과 동일하게 본문엔 요약만 둔다).
 
 ### gate mechanics
 - Phase A 주관 판단을 Phase B 체크리스트보다 **먼저** 형성한다(체크리스트가 비판을 anchoring하지 않도록).
-- 선택: 산출물에 self-describing 스탬프(`<!-- anti-slop: A-pass · contrast ok · 1-12 no -->`)를 남겨 후속 drift 탐지.
+- 산출물에 self-describing 스탬프(`<!-- anti-slop: A-pass · contrast ok · 1-12 no -->`)를 **반드시 남긴다** — Phase A/B가 실제로 실행됐다는 유일한 사후 증거이므로 생략 금지.
 - 모든 ban은 escape hatch 보유 — "브리프의 명시 요구가 항상 이긴다". 예외는 인라인으로 사유 표기.
 
 ## reference 로딩 가이드

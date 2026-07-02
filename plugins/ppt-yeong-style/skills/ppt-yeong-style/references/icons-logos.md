@@ -16,7 +16,7 @@
   - vectorlogo.zone — `https://www.vectorlogo.zone/logos/<brand>/<brand>-icon.svg`
   - SVGL — `https://svgl.app` (API `https://api.svgl.app`)
 - **모노톤 통일 — Simple Icons**: `https://cdn.simpleicons.org/<slug>` 또는 `/<slug>/<hex>` (단색·CC0; 멀티컬러 브랜드색은 사라짐). 대형 카탈로그: thesvg.org · svgrepo.com.
-- **폴백 — Wikimedia Commons**: 형태가 단순해 저작권 보호 수준 미달로 퍼블릭 도메인 처리된 마크(워드마크형 로고 등)의 풀컬러 공식 SVG. Simple Icons(단색)로 부족하고 위 CDN에도 없을 때만.
+- **폴백 — Wikimedia Commons**: Simple Icons(단색)로 부족하고 위 CDN에도 없을 때만. Commons는 파일마다 라이선스·출처가 다른 저장소라 "퍼블릭 도메인"·"공식 SVG"는 **일반화하지 말 것** — 받으려는 개별 파일의 라이선스 태그(파일 상세 페이지의 `{{PD-textlogo}}` 등)를 그 파일 한정으로 확인한 경우에만 그렇게 표기·사용한다.
 
 ## 언제 공식 fetch, 언제 내장 brand-* 아이콘
 

@@ -83,8 +83,9 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 **파이프라인**(내용 SOT는 사용자) — 단계별 도구:
 ```text
 (1) 인터뷰: interview 스킬 → (2) 색 락: design-shotgun + AskUserQuestion → (3) md 소스 작성
-→ (4) 사용자 검토 → (5) ppt-master 빌드 → (6) anti-slop 감사 → 윤문 → 렌더 Visual QA(감사·윤문 반영분까지 최종 검증)
-→ 완료 게이트 리포트(위 셋 + 스토리 흐름을 하나로 통합 출력) → (7) finalize_svg → svg_to_pptx → cairosvg PDF
+→ (4) 사용자 검토 → (5) ppt-master 빌드(SVG 생성) → (6) anti-slop 감사 → 윤문(SVG·노트 내용 수정)
+→ (7) finalize_svg → svg_to_pptx → cairosvg PDF(실제 산출물 생성) → 렌더 Visual QA(PPT→PNG export 기준 최종 검증, §8)
+→ 완료 게이트 리포트(감사·윤문·렌더QA·스토리 흐름 전부 확인 후 이때 처음 완료 선언)
 이미지 = codex-image · 산출물 = 항상 pptx + PDF
 ```
 

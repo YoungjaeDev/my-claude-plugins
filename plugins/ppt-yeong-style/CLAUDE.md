@@ -26,7 +26,7 @@ ppt-yeong-style/
     │   ├── color-typography.md     # 색·타이포 (역할 기반 팔레트 + 폰트 폴백 + 타입 스케일·톤 + 토큰 예)
     │   ├── images-and-pop.md       # codex vs SVG 경계 + fade 범위 + 마스코트/pop + 스크린샷 배치(앱 UI 실물 강제)
     │   ├── icons-logos.md          # 공식 SVG fetch → 인라인 → 근접성 → 상표권
-    │   ├── ppt-master-craft.md     # ppt-master 레버 6종·조합 레시피·정확도 충실도·함정 (§4 상세)
+    │   ├── ppt-master-craft.md     # ppt-master 레버 8종·조합 레시피·정확도 충실도·함정 (§4 상세)
     │   └── ppt-master-and-qa.md    # ppt-master 7-step(참조) + 윤문 + 완료 QA + 스토리 흐름 review + 실사용 주의
     └── assets/
         └── injection-prompt.md     # 다른 세션 주입용 압축 프롬프트(복붙 페이로드)

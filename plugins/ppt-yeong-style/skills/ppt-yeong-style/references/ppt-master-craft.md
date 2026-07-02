@@ -8,12 +8,18 @@ ppt-master는 "md → PPTX 변환기"가 아니라 **레이어드 디자인 엔�
 >
 > **SOT 주의:** 정확한 필드·스크립트·워크플로명·옵션은 **ppt-master SKILL.md/references가 진실**(버전에 따라 달라질 수 있음). 이 문서는 "무엇을 골라 조합할지"(판단 레이어)만 담고 엔진 내부를 복제하지 않는다 — 이름은 hook으로만 쓰고, 동작 세부는 ppt-master에서 확인.
 
-## 레버 6종 (무엇을·언제·yeong 적용)
+## 레버 8종 (무엇을·언제·yeong 적용)
+
+> **덱 구조(mode)·비주얼 무드(visual_style)는 ppt-master의 "Eight Confirmations" 확인 항목 d 안의 두 레이어**(Layer 1 = mode, Layer 2 = visual_style)다 — 새 확인 단계가 아니라 기존 항목의 명세다. 둘 다 ppt-master 자체에 "이런 내용/청중이면 이 프리셋" 추천표가 내장돼 있어 매번 새로 설계할 필요는 없지만, yeong 시그니처는 그 표 어디에도 없어 명시 지정이 필요하다.
+>
+> **색 절차 관계:** yeong의 design-shotgun 색 후보 단계는 ppt-master 자체 색 확정 단계(confirmation e, 3후보+실시간 미리보기)를 대체하는 게 아니라 그 앞에 들어가는 **사전 브리핑**이다 — "이런 느낌(웜뉴트럴+액센트1개)으로 후보를 짜달라"는 입력으로 넘기고, 최종 확정은 confirmation e가 한다. 별도 중복 확정 라운드를 만들지 않는다.
 
 | 레버 | 메커니즘 (ppt-master) | 언제 | yeong 적용 |
 |------|----------------------|------|-----------|
+| **mode(구조)** | Strategist 확인 d.Layer 1 — `pyramid`/`narrative`/`instructional`/`showcase`/`briefing` 중 자체 추천표로 선택, `spec_lock`에 `mode:` 기입 | 모든 덱 | 강의/실습 덱 → `instructional` 고정(ppt-master 자체 추천표와 일치, 판단 불필요). 제안 덱 → `narrative`/`pyramid` 중 인터뷰에서 판단(색 락과 동일 원칙 — 프로젝트마다 판단, 강제 고정 안 함) |
+| **visual_style(무드)** | Strategist 확인 d.Layer 2 — 18개 기성 프리셋 또는 `custom`, `spec_lock`에 `visual_style:` + (`custom`이면) `visual_style_behavior:` 기입 | 모든 덱 | yeong 덱 전부 → `custom` 고정 + `design-language.md` §0 시그니처 요약 문단(고정 문구, 프로젝트마다 재작성 안 함 — 색 hex와 달리 "철학"이라 고정) |
 | **레이아웃 3축** | `spec_lock`의 `page_rhythm`(anchor/dense/breathing) + `page_layouts`(per-page 템플릿 basename) + `page_charts`(차트 템플릿) | 모든 덱 | 페이지별로 의도적 변주 → "전 장 카드 그리드" 균일함 탈피. anchor=표지/전환, breathing=실습/개념 1개, dense=표/비교. **단, `page_layouts`+`page_charts`는 레이아웃이 그 차트의 호환 셸일 때만 같이 건다(ppt-master hard rule)** — 안 맞으면 그 장은 `page_layouts`에서 생략. 칸 채우려 충돌 레이아웃 강제 금지 |
-| **이미지 rendering×palette** | 20 렌더링 × 14 팔레트 매트릭스(ppt-master Strategist 확인 항목) — spec_lock `image_rendering`/`image_palette`에 락 | codex/AI 무드 이미지 쓰는 덱 | **deck-wide 1조합 락** 후 per-image type만 조절 → 아트디렉션 일관. 강의=editorial·sketch-notes·warm-scene + warm-earth·mono-ink 류 |
+| **이미지 rendering×palette** | 20 렌더링 × 14 팔레트 매트릭스(ppt-master Strategist 확인 항목) — `spec_lock`의 `image_rendering`/`image_palette`는 **ppt-master 자체 AI 이미지 생성 경로(`image_usage: ai`)를 쓸 때만** 락된다 | codex/AI 무드 이미지 쓰는 덱 | yeong은 이미지를 codex-image(외부, `image_usage: provided`)로 채우므로 이 spec_lock 필드가 안 걸릴 수 있다 — **"ppt-master가 자동으로 지키는 락"이 아니라 "codex-image 프롬프트에 넣을 어휘집"**으로 취급(화풍·색조합 이름을 프롬프트 문구로 번역). **deck-wide 1조합**은 여전히 유지 — 강의=editorial·sketch-notes·warm-scene + warm-earth·mono-ink 류 |
 | **3종 템플릿 fusion** | brand + layout + deck 템플릿 fusion (경로·규칙은 ppt-master SKILL.md) | 검증된 구조/브랜드 재사용 | brand=yeong 색·로고·아이덴티티, layout=검증 구조, deck=중간 페이지. 같은 종 2개 충돌은 해소 프롬프트 |
 | **아이콘 라이브러리** | `chunk-filled`/`tabler-filled`/`tabler-outline`/`phosphor-duotone` 중 **택1** + `simple-icons`(브랜드 로고 전용) — ppt-master 아이콘 확인 항목 | 모든 덱 | 스타일 1종 deck-wide 고정(fill만, stroke 금지는 §icons-logos). 톤: chunk=tech·각짐, phosphor=부드러움 |
 | **검증 차트 + verify-charts** | `templates/charts/charts_index.json`(bar/line/pyramid/funnel/timeline/matrix/kpi 등) + `verify-charts` 워크플로(좌표 10~50px 보정) | 데이터·도식 정확도 필요 | 표·도식을 codex 무드가 아니라 **편집가능 SVG 차트 템플릿**으로. 숫자·라벨 정확. 빌드 후 verify-charts로 좌표 보정 |
@@ -44,3 +50,6 @@ ppt-master 기본값만 쓰면 안 나오는 결과를 만드는 조합. 모두 
 - **매트릭스 과조합**: rendering×palette는 deck-wide 1조합 락이 원칙. 장마다 다른 조합 = 아트디렉션 붕괴(슬롭).
 - **fusion 충돌**: 같은 종 템플릿 2개(brand 2개 등)는 자동 병합 말고 해소 프롬프트로 택1.
 - **레버는 spec_lock에.** 인터뷰·머리로만 정하면 executor가 모른다. 모든 선택은 design_spec(서술) + spec_lock(실행 계약)에 기록.
+- **도메인 특화 레이아웃 템플릿(`templates/layouts/` 7종)은 기본 미사용.** academic_defense/ai_ops/government_blue·red/medical_university/pixel_retro/psychology_attachment는 중국 관공서·의료·학술 시장 특화라 yeong 장르(한국어 비즈니스·기술 강의/제안)와 안 맞는다. 사용자가 명시 요청할 때만 검토.
+- **개별 장 이미지+텍스트 배치가 막히면** ppt-master의 `references/image-layout-patterns.md`(50+ 배치 패턴 어휘집)에서 고른다 — 매번 좌/우·상/하·풀블리드 3가지로 회귀하지 않기 위한 재료 창고.
+- **회사 템플릿을 반복 재사용**하려면 ppt-master의 `create-template`/`create-brand` 워크플로로 한 번 등록해두면 이후 "3종 fusion"의 재료로 계속 쓸 수 있다(매번 처음부터 다시 만들지 않아도 됨).

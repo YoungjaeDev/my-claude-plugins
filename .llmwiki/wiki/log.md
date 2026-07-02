@@ -6,6 +6,10 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-02 — staging drain: 3 pending markers cleared as already-curated (ingest-finding)
+
+- Staging drain: cleared pending-adab2d74 (this session's PR #87 lore already ingested this same session, see the entry immediately below — `skill-engine-layering.md` sources 3→4, commit `07c407c`), pending-ccadfa81 (PR #84/#83 Hermes lore already ingested via commit `a298d65`, see the 2026-07-01 entry), and pending-aec5d2f2 (PR #86 roster-removal learnings routed to config, not wiki — `.claude/rules/plugin-versioning.md` + `AGENTS.md` via commit `e454cfe`, README via `bb7ec8d`) as skips. No new wiki page/section content — decision is provenance-only.
+
 ## 2026-07-02 — post-merge #87: ppt-master lever-alignment as 3rd skill-engine-layering dogfood (post-merge)
 
 - plugin-ops/skill-engine-layering.md: added PR #87 as a 3rd dogfood source; new paragraph on periodic re-audit (a layer's prose can drift/gap even after initial authoring as the engine evolves — re-check against the engine's actual current source, not just at authoring time); two concrete new failure modes recorded (missing lever coverage: ppt-yeong-style's signature had no `visual_style` mapping at all; inaccurate mechanism claim: a lever was described as engine-enforced when it only applies under a different `image_usage` path); sources 3 -> 4; last_verified 2026-07-02.

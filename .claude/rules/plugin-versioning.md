@@ -31,6 +31,12 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 - **Adhere to semver** at the plugin level: `MAJOR.MINOR.PATCH`. PATCH for fixes, MINOR for backward-compatible features, MAJOR for breaking changes.
 - **Document cache workaround** in release notes and user docs — the manual `rm -rf` is the only reliable refresh path until the Claude Code plugin cache bugs are fixed upstream.
 
+## Plugin Removal
+
+- **Grep the whole repo for live references, not just the count files.** Beyond `CLAUDE.md` / `README.md` / `marketplace.json` / `settings.json`, a removed plugin is often still referenced in other plugins' skill bodies (e.g. `code-scout`'s `agent-routing.md` routing table) or under `docs/`. Run `git grep -niE '<name>'` across the repo (exclude historical `.claude/spec/*`) before finalizing — a surviving reference ships users a route to a non-existent plugin.
+- **Delete orphaned generated artifacts.** A plugin that generates tracked output (e.g. `workflow-viz` → `docs/architecture/*`, tagged `<!-- workflow-viz: … -->`) leaves that output unmaintained once the generator is gone; remove the generated tree in the same change.
+- **A plugin removal is a MINOR `metadata.version` bump, not MAJOR.** `metadata.version` is a per-release counter, not strict semver — the MAJOR-for-breaking rule above is scoped to per-plugin versions. Precedent: dropping the `midjourney` plugin was a MINOR bump. A reviewer may flag a removal as "breaking → MAJOR"; that contradicts this convention.
+
 ## Don'ts
 
 - **Never bump `plugin.json` without `marketplace.json`** (or vice versa). Downstream users will see the mismatched version and lose trust in the registry.

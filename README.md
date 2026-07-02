@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 21개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-21-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -89,6 +89,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음) |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
+| | `brightdata-guide` | Bright Data 웹 데이터 (MCP 툴 + CLI) — 스크래핑(Web Unlocker), SERP, 구조화 web_data_* 추출, 브라우저 자동화. operator 가 BRIGHTDATA_API_KEY 설정 |
 | **AI Models** | `codex-image` | Claude->Codex 이미지 생성 브리지 (ChatGPT OAuth, OpenAI API key 불필요) |
 | **Dev Tools** | `notebook` | Jupyter 노트북 안전 편집 |
 | | `ml-toolkit` | ML/멀티모달 개발 원칙, GPU 병렬 처리, Gradio CV 앱 |
@@ -270,6 +271,20 @@ WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
 **Platforms:** arXiv, PubMed, bioRxiv, medRxiv, Google Scholar, IACR, Semantic Scholar, CrossRef
 
 **MCP Tools (23):** `search_arxiv`, `download_arxiv`, `read_arxiv_paper` 등
+
+</details>
+
+<details>
+<summary><strong>brightdata-guide</strong> - Bright Data 웹 데이터 접근 (MCP + CLI)</summary>
+
+Bright Data 플랫폼으로 웹 데이터 작업을 수행하는 가이드 스킬. 두 경로가 같은 플랫폼 + 무료 5,000 req/월 을 공유합니다.
+
+- **MCP 툴**: `search_engine` (SERP), `scrape_as_markdown`/`scrape_batch` (Web Unlocker — JS/CAPTCHA/봇 탐지 우회), `extract` (AI 구조화 JSON), 40+ `web_data_*` 구조화 추출기 (Amazon/LinkedIn/Instagram/TikTok/YouTube/X/Reddit 등), `scraping_browser_*` 브라우저 자동화
+- **CLI (`bdata`/`brightdata`)**: MCP 툴을 못 받는 `delegate_task` 서브에이전트용 fallback (터미널은 상속하지만 부모의 MCP 툴셋은 상속 안 함)
+
+**Runtime:** Claude / Codex / Hermes 공용 (MCP 툴명 동일; `terminal` ↔ Bash / execute_command)
+
+**Requirements:** Bright Data 계정 + `BRIGHTDATA_API_KEY` (또는 `bdata login`). 스킬은 guide 라 설치/키 하드코딩 안 함 — operator 가 out-of-band 로 연결.
 
 </details>
 
@@ -619,7 +634,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 19 / 21 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 20 / 22 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -648,7 +663,7 @@ hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
 hermes gateway restart  # 메시징 게이트웨이 사용 시
 ```
 
-어댑터 필드는 marketplace 엔트리에서 파생되고(`plugin.yaml` name/version/description, `__init__.py` 는 SKILL.md 를 `<plugin>:<skill>` 로 등록하는 제네릭 엔트리포인트 — 플러그인별 로직 없음), 대상은 `HERMES_ELIGIBLE` allowlist (이번 라운드 6개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`) 입니다. allowlist 에 이름을 추가하면 커버리지가 확장됩니다. `--check` 가 어댑터 drift + orphan 어댑터를 잡습니다. 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
+어댑터 필드는 marketplace 엔트리에서 파생되고(`plugin.yaml` name/version/description, `__init__.py` 는 SKILL.md 를 `<plugin>:<skill>` 로 등록하는 제네릭 엔트리포인트 — 플러그인별 로직 없음), 대상은 `HERMES_ELIGIBLE` allowlist (이번 라운드 7개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`) 입니다. allowlist 에 이름을 추가하면 커버리지가 확장됩니다. `--check` 가 어댑터 drift + orphan 어댑터를 잡습니다. 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
 
 플러그인 스킬은 opt-in 이라 enable 후 `skill_view("<plugin>:<skill>")` 로 명시 로드합니다 (`--enable` 후 새 Hermes 세션 시작).
 
@@ -690,6 +705,7 @@ node scripts/install-skills.mjs
 │   ├── code-scout/            # 리소스 탐색
 │   ├── deepwiki/              # 레포 문서화
 │   ├── paper-search-tools/    # 논문 검색
+│   ├── brightdata-guide/      # Bright Data 웹데이터 guide (MCP + CLI)
 │   ├── notebook/              # Jupyter 편집
 │   ├── ml-toolkit/            # ML 개발
 │   ├── translator/            # 번역

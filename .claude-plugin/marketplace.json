@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 21 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "1.75.0"
+    "description": "Personal Claude Code plugin collection with 22 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
+    "version": "1.76.0"
   },
   "plugins": [
     {
@@ -34,6 +34,13 @@
       "source": "./plugins/code-scout",
       "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, firecrawl tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate).",
       "version": "2.1.1",
+      "category": "research"
+    },
+    {
+      "name": "brightdata-guide",
+      "source": "./plugins/brightdata-guide",
+      "description": "Bright Data web data access via MCP tools + CLI — scraping (Web Unlocker), SERP, 40+ structured web_data_* extractors, browser automation. Guide skill; operator sets BRIGHTDATA_API_KEY, delegate subagents fall back to the bdata CLI.",
+      "version": "1.0.0",
       "category": "research"
     },
     {

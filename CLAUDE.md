@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration. The same plugin tree is loaded by Codex 0.135 via `scripts/sync-codex-manifests.mjs` and by Hermes Agent via `scripts/sync-hermes-manifests.mjs` — one source, three runtimes.
 
-## Plugins (21)
+## Plugins (22)
 
 ### Core
 | Plugin | Description |
@@ -25,6 +25,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | `code-scout` | Multi-axis research harness — 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl tier-3 + insane-search tier-4 for WAF/blocked URLs. paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics. |
 | `deepwiki` | AI-powered GitHub repo documentation |
 | `paper-search-tools` | Academic paper search (arXiv, PubMed, Semantic Scholar, etc.) |
+| `brightdata-guide` | Bright Data web data access via MCP tools + CLI — scraping (Web Unlocker), SERP, structured web_data_* extractors, browser automation. Operator sets BRIGHTDATA_API_KEY; delegate subagents fall back to the bdata CLI |
 
 ### AI Models
 | Plugin | Description |
@@ -90,6 +91,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 │   ├── code-scout/         # Resource discovery
 │   ├── deepwiki/           # Repo docs
 │   ├── paper-search-tools/ # Academic papers
+│   ├── brightdata-guide/   # Bright Data web-data guide (MCP + CLI)
 │   ├── notebook/           # Jupyter
 │   ├── ml-toolkit/         # ML tools
 │   ├── translator/         # Translation
@@ -122,7 +124,7 @@ node scripts/sync-codex-manifests.mjs           # write manifests
 node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
-Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 19 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 20 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
 
 ## Hermes integration
 
@@ -133,7 +135,7 @@ node scripts/sync-hermes-manifests.mjs           # write adapters
 node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (also in validate-codex.yml + .githooks/pre-commit)
 ```
 
-Adapter fields derive from `marketplace.json` (`plugin.yaml` name/version/description; `__init__.py` a generic skill-registration entrypoint, no per-plugin logic). Coverage is an allowlist — `HERMES_ELIGIBLE` (6 plugins this round: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`); add a name to extend. `--check` flags adapter drift + orphan adapters. Shared skill bodies carry a Hermes tool-compatibility table (Claude/Codex tool terms → Hermes tools). Skill-level install (no adapter needed) is also available via `node scripts/install-skills.mjs` (wraps `npx skills`).
+Adapter fields derive from `marketplace.json` (`plugin.yaml` name/version/description; `__init__.py` a generic skill-registration entrypoint, no per-plugin logic). Coverage is an allowlist — `HERMES_ELIGIBLE` (7 plugins this round: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`); add a name to extend. `--check` flags adapter drift + orphan adapters. Shared skill bodies carry a Hermes tool-compatibility table (Claude/Codex tool terms → Hermes tools). Skill-level install (no adapter needed) is also available via `node scripts/install-skills.mjs` (wraps `npx skills`).
 
 ## Modular Rules
 

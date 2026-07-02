@@ -32,6 +32,7 @@ const HERMES_ELIGIBLE = new Set([
   'tcrei-prompt',
   'ppt-yeong-style',
   'ml-toolkit',
+  'brightdata-guide',
 ]);
 
 const AUTHOR = 'YoungjaeDev';

@@ -41,6 +41,18 @@
       "category": "research"
     },
     {
+      "name": "brightdata-guide",
+      "source": {
+        "source": "local",
+        "path": "./plugins/brightdata-guide"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "research"
+    },
+    {
       "name": "deepwiki",
       "source": {
         "source": "local",

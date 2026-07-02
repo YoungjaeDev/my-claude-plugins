@@ -21,7 +21,8 @@
       "./plugins/anti-slop-design",
       "./plugins/tally-form",
       "./plugins/ppt-yeong-style",
-      "./plugins/codex-image"
+      "./plugins/codex-image",
+      "./plugins/brightdata-guide"
     ]
   }
 }

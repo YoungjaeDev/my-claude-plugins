@@ -293,10 +293,10 @@ Bright Data 플랫폼으로 웹 데이터 작업을 수행하는 가이드 스�
 <details>
 <summary><strong>codex-image</strong> - Claude->Codex 이미지 생성 브리지</summary>
 
-`/codex-image` 호출 시 Codex CLI 의 이미지 생성 기능에 위임해 이미지를 만들거나 편집합니다. OpenAI REST API 나 API key 없이 ChatGPT OAuth 만으로 동작합니다.
+`/codex-image` 호출 또는 에이전트의 스킬 로드 시 Codex CLI 의 이미지 생성 기능에 위임해 이미지를 만들거나 편집합니다. OpenAI REST API 나 API key 없이 ChatGPT OAuth 만으로 동작합니다.
 
 **Features:**
-- 수동 호출 전용 (`/codex-image`) — 생성 비용/부수효과 때문
+- 모델 호출 허용 + 본문 게이트 (1.2.0) — 명시 요청 또는 작업 사양이 codex-image 를 지정한 경우만 생성, 모호하면 생성 전 확인 (생성 비용/부수효과 때문)
 - 기본 출력: `assets/generated/codex-image/`, non-destructive 파일명
 - `--size` / `--quality` / `--out` / `-n` / `--edit` 옵션, opt-in `--model` / `--reasoning` / `--sandbox` (기본은 Codex 기본 모델 + workspace-write 유지)
 - Claude-only 브리지 — Codex sync 에서 제외 (순환 방지)

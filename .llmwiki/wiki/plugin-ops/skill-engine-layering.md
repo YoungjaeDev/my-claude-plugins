@@ -1,10 +1,10 @@
 ---
 id: skill-engine-layering
 aliases: [skill-on-skill-engine, bare-name-engine-reference, cross-marketplace-dependency, ppt-yeong-style-ppt-master]
-last_verified: 2026-06-23
+last_verified: 2026-07-02
 status: active
 volatility: stable
-sources: 3
+sources: 4
 ---
 
 # Skill-on-skill engine layering
@@ -18,6 +18,8 @@ A skill can be a thin *writing / convention layer* on top of another skill's *en
 
 Why this is easy to miss: in the *author's* environment the engine is already installed, so the build runs end-to-end and the gap is invisible. It only surfaces on a clean install of just the layer plugin — exactly the scenario marketplace exposure creates. The reflex to make every dependency "graceful-degrade" is wrong here: a degrade path for the core engine would mean hand-building what the engine exists to build.
 
+- **Periodic re-audit, not just initial authoring.** The engine evolves independently of the layer, so a layer's SOT-pointer prose can go stale or incomplete *after* it was accurate at authoring time — re-verify the layer's claims against the engine's actual current source tree periodically, not only when first writing the layer. A full file-tree audit of `ppt-master` surfaced two concrete drift/gap modes in `ppt-yeong-style`, neither caught by the earlier authoring passes: (1) **missing lever coverage** — the layer's aesthetic signature had no mapping onto the engine's own `visual_style` catalog at all, so the engine's Strategist could auto-pick an unrelated stock preset instead of the intended signature; (2) **inaccurate mechanism claim** — a lever was documented as locked via the engine's `spec_lock` field when that field is only populated under one specific `image_usage` path, and the layer's own configuration routes through a different path, so the field likely never gets written. Both were caught only by re-reading the engine's actual reference files end-to-end, not by re-reading the layer's own prose.
+
 > See-also: [[dual-surface-command-skill-pattern]]
 
 ## Sources
@@ -25,3 +27,4 @@ Why this is easy to miss: in the *author's* environment the engine is already in
 - PR #72 — `plugins/ppt-yeong-style/` (writing layer on the `ppt-master` engine); merged `skills/ppt-yeong-style/SKILL.md` §엔진·의존 encodes the bare-name reference + required-engine prerequisite-stop.
 - Codex P1 review on PR #72 — flagged the fresh-install build-block (`ppt-master` absent from `plugins/` and both `marketplace.json` files), motivating the prerequisite-stop guard over graceful-degrade.
 - PR #74 — `ppt-yeong-style` v0.2.0 deck-review pass; the merged `references/ppt-master-craft.md` "SOT 주의" note ("이름은 hook으로만 쓰고, 동작 세부는 ppt-master에서 확인") and the SKILL.md change from the `page_rhythm`(anchor/dense/breathing) enum to a `§3b 리듬` concept-reference encode the no-reproduce-internal-API facet — a 2nd dogfood of the bare-name/no-copy contract.
+- PR #87 — `ppt-yeong-style` mode/visual_style lever-alignment pass; a full re-audit of the installed `ppt-master` plugin's file tree (not just its `SKILL.md`) found the missing `visual_style` lock and the `image_usage`-scoped `spec_lock` field claim, both corrected in `references/design-language.md` + `references/ppt-master-craft.md` — a 3rd dogfood, and the first to surface the periodic-re-audit facet.

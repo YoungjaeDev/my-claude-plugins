@@ -6,6 +6,11 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-02 — post-merge #87: ppt-master lever-alignment as 3rd skill-engine-layering dogfood (post-merge)
+
+- plugin-ops/skill-engine-layering.md: added PR #87 as a 3rd dogfood source; new paragraph on periodic re-audit (a layer's prose can drift/gap even after initial authoring as the engine evolves — re-check against the engine's actual current source, not just at authoring time); two concrete new failure modes recorded (missing lever coverage: ppt-yeong-style's signature had no `visual_style` mapping at all; inaccurate mechanism claim: a lever was described as engine-enforced when it only applies under a different `image_usage` path); sources 3 -> 4; last_verified 2026-07-02.
+- index.md: extended the skill-engine-layering hook with the periodic-re-audit facet.
+
 ## 2026-07-01 — post-merge #84: Hermes generator + midjourney removal (post-merge)
 
 - plugin-ops/hermes-plugin-adapter.md: updated for PR #84 — adapters now generator-produced (`sync-hermes-manifests.mjs`, 6 HERMES_ELIGIBLE plugins) not hand-written; `plugin.yaml` documented as 5 marketplace-derived fields with the CodeRabbit minimal-manifest decision recorded (kept 5 — drift moot post-generator, `kind: standalone` load-bearing, pilot proves extra fields don't break Hermes); `__init__.py` `yaml.safe_load` try/except hardening; tool-name table expanded (Read/Write, Glob/Grep→search_files, Skill→skill_view, image→image_generate, WebFetch/WebSearch→web_extract/browser_*, NotebookEdit→Jupyter Live Kernel); `${HERMES_SKILL_DIR}`→3-branch revert (Codex caught the var is undocumented/unset on install); version-sync now `--check`-guarded; sources 3→4 (+PR #84, +DeepWiki NousResearch/hermes-agent); last_verified 2026-07-01.

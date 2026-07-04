@@ -1,6 +1,6 @@
 {
   "name": "ppt-yeong-style",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 미감 시그니처(§0 'Editorial restraint, one committed accent')·덱 유형·md 소스 규약·작성 원칙 15종·밀도 리듬(중간 강화 기본)·역할 기반 색 팔레트·codex-image vs SVG 경계·앱 UI 실물 강제(가짜 UI 생성 금지)·ppt-master 레버 조합 차별화·빌드 후 스토리 흐름 review·공식 로고 fetch·윤문·렌더 QA를 한 세션·어느 repo에서든 일관 적용. ppt-master/slidev로 그냥 'PPT/슬라이드 만들기'와 달리 yeong 특유의 담백한 명사구 제목·anti-slop 본문 + 표지/목차/전환 pop 무드·일상 비유 보조선이 필요할 때 사용.",
   "skills": ["./skills/ppt-yeong-style"]
 }

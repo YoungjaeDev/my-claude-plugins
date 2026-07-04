@@ -59,7 +59,7 @@ ppt-master는 **빌드 엔진**이다(이 스킬은 그 위 작성 규약). 아�
 
 ## 주의 / 미해결 (실사용 시 판단)
 
-- **Windows 콘솔 인코딩(cp949) 크래시**: quality_checker 등 ppt-master python 스크립트를 Windows에서 `uv run`으로 돌리면 한글·유니코드 출력이 cp949 콘솔 인코딩에 걸려 UnicodeEncodeError로 크래시한다. `PYTHONIOENCODING=utf-8` 환경변수를 걸고 실행이 필수(실측: 33장 빌드 전 구간에서 재현 후 이 방법으로 해소). 스크립트가 정상인데 크래시하면 코드보다 콘솔 인코딩부터 의심.
+- **Windows 콘솔 인코딩(cp949) 크래시**: quality_checker 등 ppt-master python 스크립트를 Windows에서 `uv run`으로 돌리면 한글·유니코드 출력이 cp949 콘솔 인코딩에 걸려 UnicodeEncodeError로 크래시한다. `PYTHONIOENCODING=utf-8` 환경변수를 걸고 실행이 필수 — 셸별 문법: Git Bash/POSIX `PYTHONIOENCODING=utf-8 uv run …` / PowerShell `$env:PYTHONIOENCODING='utf-8'; uv run …` / cmd `set PYTHONIOENCODING=utf-8 && uv run …` (실측: 33장 빌드 전 구간에서 재현 후 이 방법으로 해소). 스크립트가 정상인데 크래시하면 코드보다 콘솔 인코딩부터 의심.
 - **SVG 생성 경로(결정)**: 기본 = **ppt-master 순차 수기**(레이아웃 다양성·페이지 간 일관성·anti-slop에 유리 — 생성기는 균일 레이아웃을 양산해 "일관성 과다" 불만과 충돌). 생성기 `_gen_*.py`는 **반복 구조(터미널 블록·단계 카드)가 명백하고 장수 많은 실습덱에만** 키트로 한정. ppt-master와 혼용 금지(덱 내 택1). 생성기 쓸 땐 레이아웃 균일화 위험을 별도로 의식.
 - **이미지 경로(결정)**: 기본 = codex-image(무드컷·배경·hero). 정확한 라벨·표·도식은 SVG. ppt-master의 AI 이미지 생성 경로는 기본 미사용. (상세 → `images-and-pop.md`.)
 - **용어·도구명 정확성(출처 근거)**: 도구·브랜드명은 전사·출처에서 **실제 언급된 것만**, 추측 금지(예: 전사 미언급 용어는 본문 신중·부록 제외). **강사 자작 스킬 vs 일반 개념을 구분**해 표기.

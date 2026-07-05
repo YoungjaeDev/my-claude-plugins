@@ -22,7 +22,8 @@
       "./plugins/tally-form",
       "./plugins/ppt-yeong-style",
       "./plugins/codex-image",
-      "./plugins/brightdata-guide"
+      "./plugins/brightdata-guide",
+      "./plugins/gws-sync"
     ]
   }
 }

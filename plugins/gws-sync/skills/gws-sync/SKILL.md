@@ -60,8 +60,9 @@ description: 로컬 폴더 → Google Drive 단방향 제안형 동기화 — gw
 4. **업데이트 대상 ID 재확인(MANDATORY)**: 각 '변경' 파일에 대해 2단계 스캔 결과에서 **승인된 폴더 안·trashed=false·해당 로컬 파일명과 정확히 1건 매칭**되는 Drive item 하나를 확정한다. 캐시 ID가 이 결과와 어긋나거나(폴더 밖·trashed·이름 불일치) 동명 파일이 여러 개면 **자동 진행을 멈추고 AskUserQuestion으로 대상 ID를 사용자에게 고르게 한다**. 확정된 ID로만 캐시를 갱신.
 5. **승인**: 리포트를 보여주고 진행 여부 확인(신규/변경 건수가 0이면 "동기화 최신" 보고 후 종료).
 6. **실행**:
-   - 신규: `gws drive +upload <file> --parent <folderId>` → 반환 ID를 `files` 캐시에 기록.
-   - 변경: 4에서 확정한 ID로만 `gws drive files update --params '{"fileId": "<id>", "supportsAllDrives": true}' --upload <file>` — 새 파일을 만들지 않고 기존 ID를 갱신.
+   - 신규(My Drive 폴더): `gws drive +upload <file> --parent <folderId>` → 반환 ID를 `files` 캐시에 기록.
+   - 신규(Shared Drive 폴더): `+upload` 헬퍼는 `supportsAllDrives`를 전달하지 않아 팀 Drive 업로드가 실패한다(upstream googleworkspace/cli #722). 대상 폴더가 Shared Drive면 raw create 경로로 우회 — `gws drive files create --params '{"supportsAllDrives": true}' --params-name-parents ...`(정확한 create 인자·부모 지정 문법은 `gws drive files create --help` 확인). 매핑의 `driveFolderId`가 Shared Drive 소속인지는 2단계 스캔의 `parents`/드라이브 조회로 판별.
+   - 변경: 4에서 확정한 ID로만 `gws drive files update --params '{"fileId": "<id>", "supportsAllDrives": true}' --upload <file>` — 새 파일을 만들지 않고 기존 ID를 갱신(update는 My Drive·Shared Drive 모두 `supportsAllDrives`로 처리).
 7. **검증**: 업로드 후 대상 폴더를 재조회해 건수·이름 확인, 결과 표 보고.
 
 ## 하드 룰

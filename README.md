@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 22개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 23개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-22-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-23-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -105,6 +105,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 | **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
 | | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 덱 유형·md 규약·작성 원칙 15종·밀도 리듬·역할 기반 색·codex vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 review·공식 로고 fetch·윤문·렌더 QA. 진입점 SKILL.md + references/ 6종 + 주입 프롬프트 |
+| **Productivity** | `gws-sync` | 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반). 매핑 설정 기억 → Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일 content update로 ID·공유링크 보존). 삭제는 제안만. gws 미설치 시 설치 안내 후 중단. googleworkspace/cli 스킬 95종 카탈로그(llms.txt) 동봉 |
 
 ## 설치 옵션
 
@@ -590,6 +591,24 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 
 </details>
 
+<details>
+<summary><strong>gws-sync</strong> - 로컬 → Google Drive 단방향 제안형 동기화</summary>
+
+로컬 폴더의 산출물을 Google Drive에 **제안형으로** 올립니다. gws CLI(공식 googleworkspace/cli) 기반 — MCP가 아니라 CLI를 부르고, 인증(`gws auth login`)은 전제입니다.
+
+**동작:**
+1. 전제 확인 — `gws` 미설치 시 설치 안내(`npm install -g @googleworkspace/cli`) 출력 후 중단(자동 설치 안 함)
+2. 매핑 설정(`.gws-sync.json`)으로 로컬↔Drive 폴더 대응 + 파일 ID 캐시 기억
+3. Drive 트리 탐색 → 신규·변경 diff 리포트
+4. **업로드 위치는 AskUserQuestion으로 승인 필수** — 승인 없이 업로드 안 함
+5. 업로드 — 기존 파일은 `files update --upload`로 content만 갱신(파일 ID·공유 링크·버전 히스토리 보존)
+
+**하드 룰:** 단방향(로컬→Drive)만 · 모든 쓰기는 diff+승인 뒤에만 · 삭제는 제안만(자동 삭제 금지) · Drive→로컬 다운로드는 범위 밖.
+
+**동봉:** `references/gws-skills-llms.txt` — googleworkspace/cli 공식 스킬 54종 + 레시피 41종 카탈로그. 상황에 맞는 미설치 스킬을 `npx skills add`로 제안하는 인덱스.
+
+</details>
+
 ## Configuration
 
 ### settings.json
@@ -719,7 +738,8 @@ node scripts/install-skills.mjs
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
 │   ├── anti-slop-design/      # anti-AI-slop 디자인 가드 (web/ppt/dashboard/copy)
 │   ├── ppt-yeong-style/       # yeong 스타일 강의·제안 덱 작성 레이어 (ppt-master 위)
-│   └── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
+│   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
+│   └── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)
 ├── CLAUDE.md
 └── README.md
 ```

@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 22 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "1.80.0"
+    "description": "Personal Claude Code plugin collection with 23 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
+    "version": "1.81.0"
   },
   "plugins": [
     {
@@ -161,6 +161,13 @@
       "description": "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 미감 시그니처(§0 'Editorial restraint, one committed accent')·덱 유형·md 소스 규약·작성 원칙 15종·밀도 리듬(중간 강화 기본)·역할 기반 색 팔레트·codex-image vs SVG 경계·앱 UI 실물 강제(가짜 UI 생성 금지)·ppt-master 레버 조합 차별화·빌드 후 스토리 흐름 review·공식 로고 fetch·윤문·렌더 QA를 한 세션·어느 repo에서든 일관 적용. 진입점 SKILL.md + references/ 6종(design-language·color-typography·images-and-pop·icons-logos·ppt-master-craft·ppt-master-and-qa) + assets/injection-prompt.md(주입 페이로드). ppt-master/slidev로 그냥 'PPT/슬라이드 만들기'와 달리 yeong 특유의 담백한 명사구 제목·anti-slop 본문 + 표지/목차/전환 pop 무드·일상 비유 보조선이 필요할 때.",
       "version": "0.5.2",
       "category": "design"
+    },
+    {
+      "name": "gws-sync",
+      "source": "./plugins/gws-sync",
+      "description": "로컬 폴더 → Google Drive 단방향 제안형 동기화 (gws CLI 기반, MCP 아님). 매핑 설정 파일(.gws-sync.json)로 로컬↔Drive 폴더 대응을 기억하고, 실행 시 Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일은 content update로 ID·공유링크 보존). 삭제는 제안만(자동 삭제 금지), Drive→로컬 다운로드 범위 밖. gws 미설치 시 공식 docs 기반 설치 안내 출력 후 중단(자동 설치 안 함). googleworkspace/cli 공식 스킬/레시피 95종 카탈로그(llms.txt)를 references에 동봉 — 상황에 유용한 미설치 스킬을 npx skills add로 제안.",
+      "version": "0.1.0",
+      "category": "productivity"
     }
   ]
 }

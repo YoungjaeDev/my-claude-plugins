@@ -26,10 +26,10 @@ ppt-master는 **빌드 엔진**이다(이 스킬은 그 위 작성 규약). 아�
 ## §8. 완료 기준 / Visual QA
 
 - **렌더 기반 QA가 완료 기준.** PPT→PNG export 후 페이지별로 정렬·오버플로·아이콘(fill만, stroke 금지)·코드박스·풀블리드 안전영역 체크. yeong 실제 패턴: 페이지별 subtask 병렬 + ultrathink 검토(상사 보고용은 엄격도 ↑).
-- 진실 기준 = **PowerPoint/cairosvg** — 단, **cairosvg만으로는 불충분하다.** cairosvg는 SVG를 있는 그대로 렌더해 PPTX 변환 단계(문단 병합·word_wrap 재계산)의 버그를 원천적으로 못 잡는다. 손으로 `dy` 다중 줄바꿈을 쓴 장이 하나라도 있으면 실제 PowerPoint를 열어 확인하거나(권장), python-pptx로 해당 텍스트 프레임의 `word_wrap`·문단 개수를 직접 검사한다. LibreOffice는 overflow를 숨겨 부적합. PPTX 텍스트/수치 검증은 group shape **재귀.**
+- 진실 기준 = **PowerPoint**(라틴 전용 덱은 cairosvg 병용 가능 — 단 **한글/CJK 덱은 cairosvg 금지**: CJK 폰트 폴백이 없어 tofu 발생, SKILL.md §1의 Playwright 렌더 경로 사용). cairosvg는 어느 경우든 **단독으로는 불충분하다** — SVG를 있는 그대로 렌더해 PPTX 변환 단계(문단 병합·word_wrap 재계산)의 버그를 원천적으로 못 잡는다. 손으로 `dy` 다중 줄바꿈을 쓴 장이 하나라도 있으면 실제 PowerPoint를 열어 확인하거나(권장), python-pptx로 해당 텍스트 프레임의 `word_wrap`·문단 개수를 직접 검사한다. LibreOffice는 overflow를 숨겨 부적합. PPTX 텍스트/수치 검증은 group shape **재귀.**
 - 표지는 finalize 후 `svg_final`로 별도 확인(cairosvg는 외부 상대경로 이미지 미로드).
 - 엔진에도 자체 visual-review 워크플로가 있다 — §8·§8b 기준을 그대로 둔 채 **실행 수단**으로 활용 가능(중복 기준을 새로 만들지 않는다).
-- **고화질 PDF 납품**: cairo 부재 환경은 브라우저 렌더 `device_scale_factor=2`(2560×1440 PNG) → img2pdf 경로. 화면 검토는 1280px 축소본으로(읽기 도구 한도).
+- **고화질 PDF 납품**: 표준 경로 = 브라우저(Playwright/Chromium) 렌더 `device_scale_factor=2`(2560×1440 PNG) → img2pdf — 한글/CJK 덱은 이 경로가 "cairo 부재 시 대체"가 아니라 **유일 경로**다(cairosvg 금지, SKILL.md §1). 화면 검토는 1280px 축소본으로(읽기 도구 한도).
 
 ## §8b. 스토리 흐름 review (빌드 후 — 페이지별 QA와 별개)
 
@@ -43,9 +43,9 @@ ppt-master는 **빌드 엔진**이다(이 스킬은 그 위 작성 규약). 아�
 - **목차-실제 순서 일치**: 목차(TOC) 슬라이드가 나열한 순서가 실제 빌드된 페이지 순서와 정확히 같은가(§2의 "TOC는 마지막에 작성" 규칙이 지켜졌는지 확인).
 - **레이아웃 분포**: 빌드된 덱 기준으로 layout 유형 카운트를 재집계 — 동일 layout 3장 연속 없음, 텍스트형(two-col·checklist·table·timeline-table) 합 ≤50% (§2 셀프 체크와 동일 기준. md 단계를 통과했어도 빌드 중 장 추가·삭제·통합으로 다시 쏠릴 수 있다). **md→ppt-master 신규 빌드 경로 한정** — 아래 라우팅 경계의 template-fill/beautify/native-enhance 경로는 레이아웃이 기존 틀에서 상속되어 저작 대상이 아니므로 이 항목은 면제(다른 8개 항목은 그대로 적용).
 - **고아·탈선 슬라이드**(원칙 15): 본 흐름과 무관한 곁가지·경쟁 도구가 본류에 끼지 않았는가.
-- **사실 정확성**(원칙 4): 명령·UI·기능 주장이 공식 docs(Claude 런타임이면 `claude-code-guide` 에이전트도)와 맞는가. 미확인은 `unverified` 표기·재확인.
+- **사실 정확성**(원칙 4): 명령·UI·기능 주장이 공식 docs(Claude 런타임이면 `claude-code-guide` 에이전트도)와 맞는가. 미확인은 `unverified` 표기·재확인. 공식 vs 실사용이 갈리면 병기됐는가.
 
-발견 시 → deck.md 소스 수정 후 해당 장만 재빌드. 이 review는 **렌더 QA 통과만으로 완료로 보지 않는다**(정렬은 맞아도 스토리가 끊기면 미완).
+발견 시 → deck.md 소스 수정 후 해당 장만 재빌드. **사실을 정정할 때는 그 장만 고치고 끝내지 말 것** — 정정 문구의 핵심 토큰(명령어·기능명·수치)을 `svg_output/ + sources/deck.md + notes/` 전체에서 grep해 잔존 참조를 일괄 수정한다(실측: 한 라운드에서 정정한 `/clear` 문구가 다른 장 각주에 남아 리그레션 — 위키 mirror-fan-out 교훈의 덱 레벨 버전). 이 review는 **렌더 QA 통과만으로 완료로 보지 않는다**(정렬은 맞아도 스토리가 끊기면 미완).
 
 ## §8c. 완료 게이트 리포트 (통합, MANDATORY)
 
@@ -59,6 +59,7 @@ ppt-master는 **빌드 엔진**이다(이 스킬은 그 위 작성 규약). 아�
 
 ## 주의 / 미해결 (실사용 시 판단)
 
+- **Windows 콘솔 인코딩(cp949) 크래시**: quality_checker 등 ppt-master python 스크립트를 Windows에서 `uv run`으로 돌리면 한글·유니코드 출력이 cp949 콘솔 인코딩에 걸려 UnicodeEncodeError로 크래시한다. `PYTHONIOENCODING=utf-8` 환경변수를 걸고 실행이 필수 — 셸별 문법: Git Bash/POSIX `PYTHONIOENCODING=utf-8 uv run …` / PowerShell `$env:PYTHONIOENCODING='utf-8'; uv run …` / cmd `set PYTHONIOENCODING=utf-8 && uv run …` (실측: 33장 빌드 전 구간에서 재현 후 이 방법으로 해소). 스크립트가 정상인데 크래시하면 코드보다 콘솔 인코딩부터 의심.
 - **SVG 생성 경로(결정)**: 기본 = **ppt-master 순차 수기**(레이아웃 다양성·페이지 간 일관성·anti-slop에 유리 — 생성기는 균일 레이아웃을 양산해 "일관성 과다" 불만과 충돌). 생성기 `_gen_*.py`는 **반복 구조(터미널 블록·단계 카드)가 명백하고 장수 많은 실습덱에만** 키트로 한정. ppt-master와 혼용 금지(덱 내 택1). 생성기 쓸 땐 레이아웃 균일화 위험을 별도로 의식.
 - **이미지 경로(결정)**: 기본 = codex-image(무드컷·배경·hero). 정확한 라벨·표·도식은 SVG. ppt-master의 AI 이미지 생성 경로는 기본 미사용. (상세 → `images-and-pop.md`.)
 - **용어·도구명 정확성(출처 근거)**: 도구·브랜드명은 전사·출처에서 **실제 언급된 것만**, 추측 금지(예: 전사 미언급 용어는 본문 신중·부록 제외). **강사 자작 스킬 vs 일반 개념을 구분**해 표기.

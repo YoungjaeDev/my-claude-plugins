@@ -65,4 +65,4 @@ skill_view("ppt-yeong-style:ppt-yeong-style")
 
 - 스킬 본문은 Claude/Codex 도구 용어(`Bash`, `Read`, `AskUserQuestion`, 이미지 생성, `Skill`)를 Hermes 도구(`terminal`, `read_file`, `clarify`, `image_generate`, `skill_view`)로 매핑하는 호환 표를 포함한다.
 - 전제: 빌드 엔진인 외부 `ppt-master` 플러그인 enable + `uv` 설치가 필요하다. 미설치 시 빌드 진입 전 중단.
-- Hermes에는 Claude식 서브에이전트 dispatch가 없다 — `deck-review`는 4관점 체크리스트를 메인 세션에서 순차 수행하는 것으로 강등된다.
+- Hermes·Codex(0.135는 `agents` 미노출)에는 Claude식 서브에이전트 dispatch가 없다 — `deck-review`는 4관점 체크리스트를 메인 세션에서 순차 수행하는 것으로 강등된다(`deck-review/SKILL.md` 런타임 폴백 참조).

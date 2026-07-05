@@ -21,18 +21,19 @@ ppt-yeong-style 파이프라인의 감사 단계((6) anti-slop 감사·윤문, �
 | `render_dir` | 렌더 PNG 디렉터리(없으면 Playwright로 먼저 렌더 — svg_output 직접 검산은 차선) |
 | `personas` | **파라미터** — 사용자에게 확인하거나 deck.md 전역 규약 블록의 청중 정의에서 도출. 페르소나는 에이전트에 하드코딩돼 있지 않다 |
 | `official_sources` | deck.md 출처 절 + 사용자 지정 |
+| `usage_notes` | 실사용 경험 기록(BUILD_PROGRESS·notes 등) — fact-check의 공식 vs 실사용 병기 점검용(없으면 생략 가능) |
 
 ## 절차
 
 1. **범위 결정** — 전수 리뷰인지 이번 라운드 수정 장 한정인지. 수정 장 한정이어도 story-flow는 항상 전수(흐름은 부분 리뷰가 안 된다).
-2. **병렬 dispatch** — 한 메시지에 4개 Agent 호출(각각 자기완결 브리프: 위 입력 + 리뷰어 md의 입력 계약대로):
-   - `audience-fit` (personas 주입)
-   - `story-flow` (qa_reference로 ppt-yeong-style의 `references/ppt-master-and-qa.md` 경로 전달)
-   - `fact-check` (official_sources + 실사용 기록 경로)
-   - `design-qa` (render_dir + spec_lock)
+2. **병렬 dispatch** — 한 메시지에 4개 Agent 호출(subagent_type은 플러그인 네임스페이스 포함 `ppt-yeong-style:<agent>` — bare name은 Claude Code에서 해석 안 됨. 각각 자기완결 브리프: 위 입력 + 리뷰어 md의 입력 계약대로):
+   - `ppt-yeong-style:audience-fit` (personas 주입)
+   - `ppt-yeong-style:story-flow` (qa_reference로 ppt-yeong-style의 `references/ppt-master-and-qa.md` 경로 전달)
+   - `ppt-yeong-style:fact-check` (official_sources + usage_notes 경로)
+   - `ppt-yeong-style:design-qa` (render_dir + spec_lock)
    md 확정 단계 사전 리뷰면 design-qa는 생략하고 3종만.
 3. **codex 교차 리뷰(조건부)** — `codex:rescue` 스킬이 설치돼 있으면 리포트 종합 전에 1회 호출해 덱 소스(또는 수정 diff)에 대한 독립 리뷰를 받는다. **미설치면 생략하되 설치 제안 문구를 출력한다**: "codex 플러그인(codex:rescue)이 있으면 이 단계에서 교차 리뷰를 자동으로 받습니다 — marketplace에서 codex 플러그인을 설치하면 활성화됩니다."
-4. **종합** — 리포트 4~5건을 장 번호 기준으로 병합해 **장별 수정 티켓**으로 정리:
+4. **종합** — 리포트 3~5건(사전 리뷰·codex 미설치 조합에 따라 3건까지 줄 수 있음)을 장 번호 기준으로 병합해 **장별 수정 티켓**으로 정리:
    - 두 리뷰어 이상이 같은 장을 지적하면 우선순위 ↑.
    - 리뷰어 간 충돌(예: audience-fit "더 풀어라" vs design-qa "밀도 초과")은 그대로 노출하고 판단을 사용자/메인 세션에 남긴다 — 오케스트레이터가 임의 중재하지 않는다.
    - fact-check의 `unverified` 항목은 수정 티켓이 아니라 **검증 티켓**으로 분리.

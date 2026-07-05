@@ -1,6 +1,6 @@
 # gws CLI Skills Catalog (googleworkspace/cli, skills v0.22.5)
 
-> Google Workspace CLI(gws)의 공식 스킬/레시피 카탈로그. 각 항목은 `npx skills add github.com/googleworkspace/cli --skill <name>` 형태로 설치를 제안할 수 있다(정확한 설치 명령은 skills CLI 버전에 따라 확인). 이 파일은 gws-sync 스킬이 '상황에 유용한 미설치 스킬'을 제안할 때 조회하는 인덱스다.
+> Google Workspace CLI(gws)의 공식 스킬/레시피 카탈로그. 각 항목은 `npx skills add github.com/googleworkspace/cli --skill <name>` 형태로 설치를 제안한다 — 단, 이 명령 형태는 skills CLI 버전에 따라 다를 수 있으니 제안 전에 현재 `skills` CLI로 정확한 형태를 확인하고, 미확인이면 "설치는 skills CLI로 확인"이라고만 안내한다. 이 파일은 gws-sync 스킬이 '상황에 유용한 미설치 스킬'을 제안할 때 조회하는 인덱스다.
 
 ## Service skills (54)
 

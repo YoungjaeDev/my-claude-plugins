@@ -6,6 +6,14 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-06 — post-merge #94/#95: plugin-own agents/ dispatch needs runtime fallback; gws-sync add (ingest-finding)
+
+Diff log written before applying the page edit (git-revertible). Merge SHAs `7b5a721` (#94 ppt-yeong-style 0.7.0 — 서브스킬 분리 + agents/ 4종), `b4d8b59` (#95 gws-sync 신규).
+
+- `plugin-ops/shared-source-codex-manifests.md`: "Skill bodies must be runtime-portable" 절에 plugin-own `agents/` dispatch 케이스 추가 — 플러그인이 자기 `agents/`를 정의하고 스킬(deck-review)이 그걸 subagent로 dispatch하면, `agents/`가 Codex 매니페스트에 미emit + Codex/Hermes에 subagent-dispatch 부재라 이중으로 막힘 → 스킬 body가 순차 체크리스트 fallback을 명문화해야 함. `last_verified` 2026-06-30→2026-07-06, sources 8→9(PR #94), `See-also: [[skill-engine-layering]]`.
+- gws-sync의 제안형 Drive 동기화 안전 교훈(캐시 ID 재검증·Shared Drive +upload gap #722·folder MIME·read≠write scope)은 플러그인 내용 특화라 위키 페이지 미신설 — 해당 SKILL.md/CLAUDE.md가 SOT.
+- 카운트 정합(23 plugins / 21 Codex-eligible / metadata 1.83.0)은 문서 자체에 반영됨(위키 lore 아님).
+
 ## 2026-07-02 — post-merge #92: reference-image arg + quote-don't-denylist shell validation (ingest-finding)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `e431312` — docs(ppt-yeong-style): logo-source bundle-first + codex-image -i re-check gate (0.5.1).

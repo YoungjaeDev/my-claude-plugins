@@ -1,10 +1,10 @@
 ---
 id: shared-source-codex-manifests
 aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, retired-codex-bridge]
-last_verified: 2026-06-30
+last_verified: 2026-07-06
 status: active
 volatility: stable
-sources: 8
+sources: 9
 ---
 
 # Shared-source Codex manifests
@@ -148,6 +148,23 @@ emitted to Codex at all (above), but a Claude-only agent named inside a *skill
 body* slips past that exclusion — it ships to Codex as unfollowable prose unless
 the body demotes it to optional.
 
+A sharper version of the same failure surfaced with a plugin that ships its
+**own** `agents/` directory and a skill that *dispatches* them. `ppt-yeong-style`
+0.7.0 (PR #94) added four review agents (`agents/{audience-fit,story-flow,fact-check,design-qa}.md`)
+and a `deck-review` skill that fans them out as parallel subagents. This is
+doubly broken off the Claude surface: (1) the generator does not emit `agents/`
+to the Codex manifest, so the agent *definitions* never ship, and (2) Codex 0.135
+and Hermes have no subagent-dispatch mechanism at all, so even a shipped
+definition could not be invoked. A skill whose core loop is "dispatch N agents in
+parallel" therefore dead-ends on both non-Claude runtimes. The fix is the same
+shape as the description-cap fix — keep meaning in the shared body, don't rely on
+a Claude-only surface: `deck-review`'s body declares an explicit **runtime
+fallback** — on a runtime without subagent dispatch (Codex, Hermes), run the same
+four review *perspectives* as a sequential checklist in the main session, keeping
+the input/output contract identical. The rule: a shared skill body that dispatches
+subagents must name its no-dispatch fallback, or it is Claude-only in effect while
+appearing cross-runtime.
+
 ## Orphan manifest detection
 
 `--check`'s drift guard also catches the inverse failure: a manifest file left
@@ -183,6 +200,11 @@ does NOT need to retain removed plugins — orphan detection covers that case.
   + `references/ppt-master-and-qa.md` + `assets/injection-prompt.md`) defaults to
   official docs and demotes the Claude-only `claude-code-guide` agent to an
   optional, runtime-gated enhancement — the runtime-portable-body rule.
+- PR #94 body (merge `7b5a721`) — `ppt-yeong-style` 0.7.0 sub-skill split adds
+  `agents/` (4 review agents) + a `deck-review` dispatch skill; the plugin-own-
+  agents dispatch case + the sequential-checklist runtime fallback for Codex/Hermes
+  (no subagent dispatch). Verified against the merged `deck-review/SKILL.md`
+  runtime-fallback rule.
 
 > Supersedes: (retired plugin `codex-bridge` 1.0.0)
 > Promoted-to: [[codex-skill-desc-1024]]
@@ -190,5 +212,7 @@ does NOT need to retain removed plugins — orphan detection covers that case.
 > See-also: [[cache-version-pinning]]
 > See-also: [[dual-surface-command-skill-pattern]]
 > See-also: [[skills-install-wrapper]]
+> See-also: [[skill-engine-layering]]
 > Evidence: scripts/sync-codex-manifests.mjs
 > Evidence: AGENTS.md
+> Evidence: plugins/ppt-yeong-style/skills/deck-review/SKILL.md

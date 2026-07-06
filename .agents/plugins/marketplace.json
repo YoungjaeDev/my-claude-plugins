@@ -243,6 +243,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "design"
+    },
+    {
+      "name": "gws-sync",
+      "source": {
+        "source": "local",
+        "path": "./plugins/gws-sync"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "productivity"
     }
   ]
 }

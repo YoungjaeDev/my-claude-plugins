@@ -33,6 +33,7 @@ ppt-master 기본값만 쓰면 안 나오는 결과를 만드는 조합. 모두 
 - **일관 아트디렉션 덱** — 표지·전환의 codex 무드를 deck-wide `image_rendering`+`image_palette` **1조합**으로 락(예: sketch-notes + warm-earth). 모든 무드컷이 한 손에서 나온 듯. 본문은 흰 배경 유지(fade는 표지·전환만).
 - **검증 구조 + yeong 톤** — `templates/layouts/<검증된 구조>` + `templates/brands/<yeong 색>` fusion. 남이 만든 탄탄한 골격에 우리 색·로고·voice만 덮어 빠르고 일관되게.
 - **정확한 데이터 덱** — KPI·추세·비교를 codex가 아니라 `charts_index.json` 템플릿(kpi_cards·line_chart·comparison_table)으로 + verify-charts. 숫자가 픽셀 단위로 맞는 "컨설팅급" 정확도.
+- **C3 에디토리얼 골격 덱** — 본문 전 장에 header rail(섹션 라벨+hairline+faded 페이지 번호)·제목 액센트 룰·비대칭 좌우 박스(중립/tint)를 **spec_lock에 `signature` 블록으로 박아** executor가 매 장 재읽게 하고, pop(이미지 배경+타입 오버레이)은 표지·전환·마무리에만 격리. 균일 그리드 없이도 "한 손에서 나온" 일관성이 나온다(구체 골격 → `design-language.md` Exemplar).
 
 ## 정확도·충실도 레버 (ppt-master만 되는 것)
 

@@ -104,7 +104,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 | **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
-| | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 덱 유형·md 규약·작성 원칙 15종·밀도 리듬·역할 기반 색·codex vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 review·공식 로고 fetch·윤문·렌더 QA. 진입점 SKILL.md + references/ 6종 + 주입 프롬프트 |
+| | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 스킬 3종(메인 작성 규약 + `lecture-deck` 강의 덱 운영 + `deck-review` 리뷰 오케스트레이션) + 리뷰 서브에이전트 4종(audience-fit·story-flow·fact-check·design-qa). md 규약·원칙 15종·밀도 리듬·역할 기반 색·앱 UI 실물 강제·전사 회고 루프·스크린샷 슬롯·리넘버링. 진입점 SKILL.md + references/ + 주입 프롬프트 |
 | **Productivity** | `gws-sync` | 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반). 매핑 설정 기억 → Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일 content update로 ID·공유링크 보존). 삭제는 제안만. gws 미설치 시 설치 안내 후 중단. googleworkspace/cli 스킬 95종 카탈로그(llms.txt) 동봉 |
 
 ## 설치 옵션
@@ -571,21 +571,18 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 </details>
 
 <details>
-<summary><strong>ppt-yeong-style</strong> - yeong 스타일 강의·제안 덱 작성 규약</summary>
+<summary><strong>ppt-yeong-style</strong> - yeong 스타일 강의·제안 덱 작성 규약 (스킬 3종 + 리뷰 에이전트 4종)</summary>
 
 강의/실습/제안/학술 덱을 yeong 스타일로 만들 때 적용하는 작성 규약. `ppt-master`(빌드 엔진) 위에 얹는 **작성 레이어** — 엔진은 손대지 않고 "무엇을·어떻게 쓸지"를 어느 repo·세션에서든 일관 적용합니다.
 
-**엔진·의존:** `ppt-master`(빌드 엔진, bare name 참조) 위 레이어. `codex-image`·`interview`·`anti-slop-design`·`humanize-korean`·`design-shotgun` 은 있으면 사용, 없으면 graceful degrade.
+**엔진·의존:** `ppt-master`(빌드 엔진, bare name 참조, prerequisite — 미설치 시 빌드 진입 전 중단) 위 레이어. `codex-image`·`interview`·`anti-slop-design`·`humanize-korean`·`design-shotgun`·`codex:rescue` 는 있으면 사용, 없으면 **생략 + 설치 제안 문구 출력**.
 
-**규약 핵심:**
-- 덱 유형(제안/실습)·파이프라인(인터뷰→색 락→md→빌드→audit→윤문→QA)
-- md 소스 규약(단일 md, `[ ]` 키 메시지, 담백한 명사구 제목)
-- 작성 원칙 15종 + 밀도 리듬(anchor/breathing/dense, **중간 강화 기본** + 본문 바닥 20pt)
-- 역할·면적 기반 색(중립 2 + 주색 1~2 + 액센트 ≤10%), 폰트 폴백 Pretendard→Noto→Malgun
-- codex-image vs SVG 경계, fade·pop은 표지/전환 한정, 실물 스크린샷 우선
-- 공식 SVG 로고 fetch→인라인→근접성
+**스킬 3종 (0.7.0):**
+- `ppt-yeong-style`(메인) — 작성 규약: md 소스 규약(단일 md, `[ ]` 키 메시지, 담백한 명사구 제목)·작성 원칙 15종(공식 vs 실사용 병기·개념어 AI 냄새 점검 포함)·밀도 리듬(중간 강화 기본 + 본문 바닥 20pt)·역할·면적 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·스크린샷 shrink-to-hug·CJK 덱 cairosvg 금지(Playwright dsf=2 + img2pdf)
+- `lecture-deck` — 강의 덱 운영: 시간→장수 구성·실습 handouts 생성 규약(자료-지시문 정합 검증)·실습 프롬프트 카드·placeholder→실캡처 스크린샷 슬롯·리넘버링 파이프라인(read-all-then-write-all + 4중 동기화)·표 행 수 재배치·**전사 회고 루프**(강의 후 전사→커버리지 맵→기존 장 보강)·강사 노트 태그([시연 필수]·수치 고정 대본·주차장 멘트). 완성 실례 cc-common 47장 레퍼런스(md + 대표 렌더 PNG 5장) 동봉
+- `deck-review` — 리뷰 오케스트레이션: 관점별 서브에이전트 4종(`audience-fit` 청중 페르소나 — 파라미터 주입 / `story-flow` §8b 9항목 / `fact-check` 공식 docs 대조 / `design-qa` 렌더 QA·anti-slop) 병렬 dispatch + `codex:rescue` 교차 리뷰(설치 시) → 장별 수정 티켓 종합
 
-**구조:** 진입점 `SKILL.md` + `references/` 6종(design-language / color-typography / images-and-pop / icons-logos / ppt-master-and-qa / ppt-master-craft) + `assets/injection-prompt.md`(다른 세션 주입용 압축 페이로드).
+**구조:** `agents/` 4종 + `skills/ppt-yeong-style/`(SKILL.md + `references/` 6종 + `assets/injection-prompt.md`) + `skills/lecture-deck/`(+cc-common 레퍼런스) + `skills/deck-review/`. 실물 PPTX/PDF 바이너리는 미포함 — cc-lesson-deck repo·Drive 링크 참조.
 
 > 그냥 "PPT 만들어줘"는 `ppt-master`, "slidev 슬라이드"는 `slidev` — 이 스킬은 yeong 규약이 필요할 때만 트리거됩니다.
 
@@ -737,7 +734,7 @@ node scripts/install-skills.mjs
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
 │   ├── anti-slop-design/      # anti-AI-slop 디자인 가드 (web/ppt/dashboard/copy)
-│   ├── ppt-yeong-style/       # yeong 스타일 강의·제안 덱 작성 레이어 (ppt-master 위)
+│   ├── ppt-yeong-style/       # yeong 스타일 덱 작성 레이어 — 스킬 3종(메인/lecture-deck/deck-review) + 리뷰 에이전트 4종
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 │   └── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)
 ├── CLAUDE.md

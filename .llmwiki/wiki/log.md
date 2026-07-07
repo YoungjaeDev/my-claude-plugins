@@ -6,6 +6,31 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-07 — post-merge #97: mem0 REST list 계약 quirk 3종 + PLUGIN_ROOT 재발 evidence (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `24064a7` — feat(mem0-ops): 플릿 레벨 mem0 진단·정리 플러그인 (0.1.0).
+
+- `plugin-ops/mem0-rest-list-contract.md`: new page (id `mem0-rest-list-contract`, status active, volatility volatile, sources 2) — v2 list API의 라이브 계약 quirk 3종(전부 2026-07-07 실검증): (1) entity 와일드카드(`user_id:"*"` 등)는 해당 필드 non-null 행만 매칭 — user/agent/run OR로도 app-only 행 누락, 전체 앱 스코프는 bare `{"app_id"}` 필터가 단순+완전, (2) list는 만료 메모리를 기본 은닉 — 삭제·백업 SSOT는 `show_expired: true` 필수, (3) `HTTPResponse.length`는 chunked 응답에서 None — `not r.length` 가드는 본문을 조용히 버림. tally-api-schema-vs-live와 같은 클래스(vendor 계약 vs 문서). `> See-also: [[mem0-hook-latency-budget]]`, `> See-also: [[tally-api-schema-vs-live]]`.
+- `plugin-ops/dual-surface-command-skill-pattern.md`: PLUGIN_ROOT resolver 절에 재발 evidence 추가 — mem0-ops PR #97에서 Codex P1이 bare `${CLAUDE_PLUGIN_ROOT}` 참조를 잡음(2번째 독립 발생). 규칙의 mechanical 홈은 `.claude/rules/dual-integration.md` + AGENTS.md 미러로 승격(이번 post-merge Step 6) — insight 졸업은 이중 기록이라 안 함. sources +1, last_verified 2026-07-07.
+- `index.md`: plugin-ops에 mem0-rest-list-contract hook 추가.
+
+## 2026-07-07 — staging drain 73e1c10b: mem0 auto_save 우선순위 함정 (ingest-finding)
+
+Diff log written before applying the page edit (git-revertible). Source: staging marker `pending-73e1c10b` (mem0-ops 플러그인 빌드 + auto_save off 적용 세션).
+
+- `plugin-ops/mem0-hook-latency-budget.md`: rule 4 추가 — env-lever 패턴(rule 1)은 플래그별로 일반화되지 않음: `_identity.sh:68`이 매 훅 실행마다 `~/.mem0/settings.json`의 `auto_save` 값으로 `MEM0_AUTO_SAVE`를 무조건 재할당·export하므로 `~/.claude/settings.json` env에 둔 `MEM0_AUTO_SAVE`는 무효, `~/.mem0/settings.json`이 이 플래그의 SOT (`MEM0_RERANK`는 `_identity.sh`가 안 건드려 env가 유효). AUTO_SAVE off는 자동 캡처 쓰기만 끄고 검색·주입·SessionStart 로드·nudge는 남음. aliases +`mem0-auto-save-priority`; sources 3→4 (session 73e1c10b + `_identity.sh` 재검증 2026-07-07).
+- mem0-ops 플러그인 설계 lore(결정론 stdlib 스크립트 = LLM 비용 0, fleet/project 역할 분리)는 root `CLAUDE.md` + 플러그인 문서가 SOT라 위키 페이지 미신설.
+- staging marker `pending-73e1c10b` 소비 후 삭제.
+
+## 2026-07-07 — staging drain: mem0 hook latency budget lore + 1 marker already-curated (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Source: staging markers `pending-48e62aa5` (2026-07-06 mem0 hook-timeout investigation session) + `pending-5986d0a2` (2026-07-03).
+
+- `plugin-ops/mem0-hook-latency-budget.md`: new page (id `mem0-hook-latency-budget`, status active, volatility volatile, sources 3) — mem0 plugin(0.2.12) UserPromptSubmit 훅의 8s 예산 vs blocking 검색 비용 구조(HTTP 캡 5s/호출, resume 분기 2연속 검색 ~10s, rerank +150-200ms 기본 on), 사용자 소유 `settings.json` env(`MEM0_RERANK=off`)가 캐시 파일 수정보다 업데이트-생존하는 레버라는 규칙, 플러그인 기본 rerank-on이 mem0 공식 Best Practice(측정 전 rerank 금지)와 반대라는 관찰. `> See-also: [[cache-version-pinning]]`, `> See-also: [[mem0-llmwiki-federation]]`.
+- `index.md`: `## plugin-ops`에 mem0-hook-latency-budget hook 1줄 추가.
+- staging marker `pending-5986d0a2` cleared as already-curated — 해당 세션은 #94/#95 구현 세션(transcript 내 ppt-yeong/gws-sync 마커 2575건)이고 그 lore는 2026-07-06 post-merge #94/#95 ingest가 커버. PR refs 33-68은 전부 기존 log 엔트리에 존재.
+- 두 staging 파일 모두 소비 후 삭제.
+
 ## 2026-07-06 — post-merge #94/#95: plugin-own agents/ dispatch needs runtime fallback; gws-sync add (ingest-finding)
 
 Diff log written before applying the page edit (git-revertible). Merge SHAs `7b5a721` (#94 ppt-yeong-style 0.7.0 — 서브스킬 분리 + agents/ 4종), `b4d8b59` (#95 gws-sync 신규).

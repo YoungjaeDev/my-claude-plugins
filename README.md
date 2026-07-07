@@ -432,7 +432,7 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 |-------|-------------|
 | `/mem0-ops:fleet-scan` | 전 앱 스캔 — 앱별 노이즈율, 쓰레기 app_id 후보(`JUNK?`), app/user_id 파편화 쌍(`FRAG`). read-only |
 | `/mem0-ops:doctor` | 설정 자세 점검 — `MEM0_RERANK` env, `~/.mem0/settings.json` `auto_save`(env가 아니라 이 파일이 지배하는 함정), decay, 훅 timeout 예산, 정체성 파편화. 제안만 |
-| `/mem0-ops:cleanup` | 백업→삭제 — 타입 단위(`--type session_summary`) 또는 앱 전체(`--all`). dry-run 기본, `--execute` + 앱별 사용자 확인 필수. 백업은 `~/.mem0/backups/`, 복원은 `infer=False` 재주입 |
+| `/mem0-ops:cleanup` | 백업→삭제 — 타입 단위(`--type session_summary`) 또는 앱 전체(`--all`). dry-run 기본, `--execute` + 스킬 레이어 앱별 사용자 확인(스크립트 단독은 `--execute`만 게이트). 백업은 `~/.mem0/backups/`(런별 타임스탬프), 복원은 `infer=False` 재주입 |
 
 **스코프 규칙:** cleanup은 cwd의 프로젝트 app_id가 기본(upstream과 동일한 해석 체인: env → project_map → git slug → basename). basename fallback 스코프는 거부 — 쓰레기 app_id 생성 경로이기 때문. fleet-scan/doctor는 항상 전역.
 

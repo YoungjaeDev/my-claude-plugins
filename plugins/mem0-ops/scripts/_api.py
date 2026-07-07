@@ -39,9 +39,12 @@ def req_json(url, body=None, method=None, retries=3):
                 },
             )
             with urllib.request.urlopen(req, timeout=30) as r:
-                if r.status == 204 or not r.length:
+                if r.status == 204:
                     return {}
-                return json.load(r)
+                raw = r.read()
+                if not raw:
+                    return {}
+                return json.loads(raw)
         except urllib.error.HTTPError as e:
             if e.code == 404 and method == "DELETE":
                 return {}
@@ -69,16 +72,22 @@ def list_memories(filters):
     return mems
 
 
-def list_apps():
-    """All app entity names via GET /v1/entities/."""
-    apps, page = [], 1
+def list_entities():
+    """All entity rows via GET /v1/entities/ (paginated, empty-page guarded)."""
+    rows, page = [], 1
     while True:
         d = req_json(f"{BASE}/v1/entities/?page={page}")
-        apps += [e["name"] for e in d["results"] if e["type"] == "app"]
-        if not d.get("next"):
+        res = d.get("results", [])
+        rows.extend(res)
+        if not d.get("next") or not res:
             break
         page += 1
-    return apps
+    return rows
+
+
+def list_apps():
+    """All app entity names via GET /v1/entities/."""
+    return [e["name"] for e in list_entities() if e["type"] == "app"]
 
 
 def resolve_app_id():

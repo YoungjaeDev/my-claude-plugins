@@ -12,7 +12,7 @@ import os
 import sys
 from collections import Counter
 
-from _api import BASE, req_json
+from _api import BASE, list_entities, req_json
 
 
 def check(label, ok, detail):
@@ -45,8 +45,14 @@ def main():
         decay = req_json(f"{BASE}/api/v1/orgs/projects/?fields=decay")
     except Exception:
         decay = None
-    if isinstance(decay, dict) and "decay" in str(decay):
-        check("decay", True, f"project response: {json.dumps(decay)[:80]}")
+    if isinstance(decay, dict) and "decay" in decay:
+        val = decay.get("decay")
+        check(
+            "decay",
+            bool(val),
+            f"project decay={val}"
+            + ("" if val else " (search-time ranking decay disabled)"),
+        )
     else:
         print(
             "INFO  decay                  could not read via REST "
@@ -71,14 +77,7 @@ def main():
         except (KeyError, IndexError, json.JSONDecodeError, OSError):
             continue
 
-    users, page = Counter(), 1
-    while True:
-        d = req_json(f"{BASE}/v1/entities/?page={page}")
-        for e in d["results"]:
-            users[e["type"]] += 1
-        if not d.get("next"):
-            break
-        page += 1
+    users = Counter(e["type"] for e in list_entities())
     check(
         "identity",
         users.get("user", 0) <= 2,

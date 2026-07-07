@@ -60,26 +60,29 @@ def req_json(url, body=None, method=None, retries=3):
 def entity_filters(app, user):
     """v2 list filters for one app.
 
-    user '*' broadens to every entity scope (user/agent/run) — a bare
-    user_id wildcard only matches rows where user_id is non-null, silently
-    missing agent/run-scoped memories in the same app.
+    user '*' means the whole app: filter by app_id alone. Wildcards on
+    user/agent/run only match rows where that field is non-null, so even an
+    OR of all three misses rows written with app_id only (absent entity
+    fields are null per the mem0 entity-scoped docs) — a bare app_id clause
+    is both simpler and complete. Live-verified 2026-07-07.
     """
     if user == "*":
-        return {
-            "AND": [
-                {"app_id": app},
-                {"OR": [{"user_id": "*"}, {"agent_id": "*"}, {"run_id": "*"}]},
-            ]
-        }
+        return {"AND": [{"app_id": app}]}
     return {"AND": [{"user_id": user}, {"app_id": app}]}
 
 
 def list_memories(filters):
-    """Page through POST /v2/memories/ (list-by-filter). Returns all rows."""
+    """Page through POST /v2/memories/ (list-by-filter). Returns all rows.
+
+    show_expired: the list API hides expired memories by default; this
+    helper is the SSOT for cleanup/backup target selection, so expired
+    rows must be visible or teardown reports complete while leaving data.
+    """
     mems, page = [], 1
     while True:
         d = req_json(
-            f"{BASE}/v2/memories/?page={page}&page_size=100", {"filters": filters}
+            f"{BASE}/v2/memories/?page={page}&page_size=100",
+            {"filters": filters, "show_expired": True},
         )
         res = d.get("results", []) if isinstance(d, dict) else d
         mems.extend(res)

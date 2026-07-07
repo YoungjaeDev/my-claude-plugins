@@ -1,10 +1,10 @@
 ---
 id: dual-surface-command-skill-pattern
 aliases: [dual-surface-plugin, command-skill-shared-references, codex-claude-portability]
-last_verified: 2026-05-31
+last_verified: 2026-07-07
 status: active
 volatility: stable
-sources: 4
+sources: 5
 ---
 
 # Dual-surface command + skill pattern
@@ -81,7 +81,12 @@ the description correctly".
 
 `${CLAUDE_PLUGIN_ROOT}` is a Claude Code env var. Codex 0.135 does NOT export
 an equivalent. Skills that need to invoke scripts or copy assets from the
-plugin's installed root must resolve the path portably.
+plugin's installed root must resolve the path portably. This is a recurring
+authoring miss, not a one-off: mem0-ops shipped bare `${CLAUDE_PLUGIN_ROOT}`
+references in all three SKILL.md bodies and a Codex P1 review caught it
+(second independent occurrence after project-init). The mechanical rule now
+lives in `.claude/rules/dual-integration.md` + the AGENTS.md mirror; this
+page keeps the pattern's full rationale and the resolver reference below.
 
 For SKILL.md / command files that only point to a procedure document, prefer
 the relative-path phrasing — "See `references/<name>-procedure.md` in this
@@ -159,6 +164,11 @@ addition to the marketplace catalog.
   and validated the guard scope (the original guard's depth-2 source-file list
   let `Dockerfile`, `Makefile`, `.env`, `docs/*`, and deeper sources slip
   through).
+
+- `plugins/mem0-ops/skills/*/SKILL.md` — recurrence evidence: all three
+  skills shipped bare `${CLAUDE_PLUGIN_ROOT}` and gained the resolver via a
+  Codex P1 review on the plugin's introduction PR; the mechanical rule was
+  promoted to `.claude/rules/dual-integration.md` + the AGENTS.md mirror.
 
 > Refines: [[shared-source-codex-manifests]]
 > See-also: [[neutral-llmwiki-root]]

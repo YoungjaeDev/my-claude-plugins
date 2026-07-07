@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: merged
 ---
 
 # mem0-ops 플러그인 설계 (플릿 레벨 mem0 진단·정리)

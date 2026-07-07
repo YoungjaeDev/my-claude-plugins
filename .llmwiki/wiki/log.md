@@ -6,6 +6,15 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-07 — staging drain: mem0 hook latency budget lore + 1 marker already-curated (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Source: staging markers `pending-48e62aa5` (2026-07-06 mem0 hook-timeout investigation session) + `pending-5986d0a2` (2026-07-03).
+
+- `plugin-ops/mem0-hook-latency-budget.md`: new page (id `mem0-hook-latency-budget`, status active, volatility volatile, sources 3) — mem0 plugin(0.2.12) UserPromptSubmit 훅의 8s 예산 vs blocking 검색 비용 구조(HTTP 캡 5s/호출, resume 분기 2연속 검색 ~10s, rerank +150-200ms 기본 on), 사용자 소유 `settings.json` env(`MEM0_RERANK=off`)가 캐시 파일 수정보다 업데이트-생존하는 레버라는 규칙, 플러그인 기본 rerank-on이 mem0 공식 Best Practice(측정 전 rerank 금지)와 반대라는 관찰. `> See-also: [[cache-version-pinning]]`, `> See-also: [[mem0-llmwiki-federation]]`.
+- `index.md`: `## plugin-ops`에 mem0-hook-latency-budget hook 1줄 추가.
+- staging marker `pending-5986d0a2` cleared as already-curated — 해당 세션은 #94/#95 구현 세션(transcript 내 ppt-yeong/gws-sync 마커 2575건)이고 그 lore는 2026-07-06 post-merge #94/#95 ingest가 커버. PR refs 33-68은 전부 기존 log 엔트리에 존재.
+- 두 staging 파일 모두 소비 후 삭제.
+
 ## 2026-07-06 — post-merge #94/#95: plugin-own agents/ dispatch needs runtime fallback; gws-sync add (ingest-finding)
 
 Diff log written before applying the page edit (git-revertible). Merge SHAs `7b5a721` (#94 ppt-yeong-style 0.7.0 — 서브스킬 분리 + agents/ 4종), `b4d8b59` (#95 gws-sync 신규).

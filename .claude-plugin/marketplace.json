@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 23 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "1.83.0"
+    "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
+    "version": "1.84.0"
   },
   "plugins": [
     {
@@ -166,6 +166,13 @@
       "name": "gws-sync",
       "source": "./plugins/gws-sync",
       "description": "로컬 폴더 → Google Drive 단방향 제안형 동기화 (gws CLI 기반, MCP 아님). 매핑 설정 파일(.gws-sync.json)로 로컬↔Drive 폴더 대응을 기억하고, 실행 시 Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일은 content update로 ID·공유링크 보존). 삭제는 제안만(자동 삭제 금지), Drive→로컬 다운로드 범위 밖. gws 미설치 시 공식 docs 기반 설치 안내 출력 후 중단(자동 설치 안 함). googleworkspace/cli 공식 스킬/레시피 95종 카탈로그(llms.txt)를 references에 동봉 — 상황에 유용한 미설치 스킬을 npx skills add로 제안.",
+      "version": "0.1.0",
+      "category": "productivity"
+    },
+    {
+      "name": "mem0-ops",
+      "source": "./plugins/mem0-ops",
+      "description": "Fleet-level mem0 diagnostics and cleanup — complements the upstream mem0 plugin (which owns per-project quality). fleet-scan reports per-app noise ratio, junk app_id candidates, and app/user_id fragmentation across all apps; doctor checks config posture (MEM0_RERANK env, ~/.mem0/settings.json auto_save precedence trap, project decay flag, hook timeout budget, identity fragmentation); cleanup does backup-then-delete by metadata.type or whole junk app behind a dry-run default and per-app confirmation gate. stdlib-only REST scripts, zero LLM cost for the deterministic parts.",
       "version": "0.1.0",
       "category": "productivity"
     }

@@ -23,7 +23,8 @@
       "./plugins/ppt-yeong-style",
       "./plugins/codex-image",
       "./plugins/brightdata-guide",
-      "./plugins/gws-sync"
+      "./plugins/gws-sync",
+      "./plugins/mem0-ops"
     ]
   }
 }

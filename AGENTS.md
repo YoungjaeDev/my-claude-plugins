@@ -90,7 +90,7 @@ node scripts/sync-hermes-manifests.mjs --check
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 21 entries
+codex plugin list --marketplace my-claude-plugins   # 22 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 

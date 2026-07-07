@@ -1,0 +1,10 @@
+{
+  "name": "mem0-ops",
+  "version": "0.1.0",
+  "description": "Fleet-level mem0 diagnostics and cleanup — complements the upstream mem0 plugin (which owns per-project quality). fleet-scan reports per-app noise ratio, junk app_id candidates, and app/user_id fragmentation across all apps; doctor checks config posture (MEM0_RERANK env, ~/.mem0/settings.json auto_save precedence trap, project decay flag, hook timeout budget, identity fragmentation); cleanup does backup-then-delete by metadata.type or whole junk app behind a dry-run default and per-app confirmation gate. stdlib-only REST scripts, zero LLM cost for the deterministic parts.",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

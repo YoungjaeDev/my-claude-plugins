@@ -255,6 +255,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "productivity"
+    },
+    {
+      "name": "mem0-ops",
+      "source": {
+        "source": "local",
+        "path": "./plugins/mem0-ops"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "productivity"
     }
   ]
 }

@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 23개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-23-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -102,6 +102,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) + 배포 문서 템플릿 + MOC 인덱스 |
 | | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) |
+| **Memory & Lore** | `mem0-ops` | 플릿 레벨 mem0 진단·정리 — fleet-scan(전 앱 노이즈율·파편화) + doctor(설정 자세 점검) + cleanup(백업→삭제, dry-run 기본). upstream mem0 플러그인(프로젝트 내부 품질)과 역할 분리 |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 | **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
 | | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 스킬 3종(메인 작성 규약 + `lecture-deck` 강의 덱 운영 + `deck-review` 리뷰 오케스트레이션) + 리뷰 서브에이전트 4종(audience-fit·story-flow·fact-check·design-qa). md 규약·원칙 15종·밀도 리듬·역할 기반 색·앱 UI 실물 강제·전사 회고 루프·스크린샷 슬롯·리넘버링. 진입점 SKILL.md + references/ + 주입 프롬프트 |
@@ -421,6 +422,24 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 
 </details>
 
+<details>
+<summary><strong>mem0-ops</strong> - 플릿 레벨 mem0 진단·정리</summary>
+
+mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upstream `mem0@mem0-plugins`(health/memory-reviewer/stats/dream — 프로젝트 내부 품질, 200건 캡)와 역할 분리 — 기능 복제 없음. 스크립트는 stdlib + REST 직결(v1 entities/delete, v2 list)이라 upstream 버전 변화와 무관하고, 결정론 구간은 LLM 비용 0.
+
+**Skills:**
+| Skill | Description |
+|-------|-------------|
+| `/mem0-ops:fleet-scan` | 전 앱 스캔 — 앱별 노이즈율, 쓰레기 app_id 후보(`JUNK?`), app/user_id 파편화 쌍(`FRAG`). read-only |
+| `/mem0-ops:doctor` | 설정 자세 점검 — `MEM0_RERANK` env, `~/.mem0/settings.json` `auto_save`(env가 아니라 이 파일이 지배하는 함정), decay, 훅 timeout 예산, 정체성 파편화. 제안만 |
+| `/mem0-ops:cleanup` | 백업→삭제 — 타입 단위(`--type session_summary`) 또는 앱 전체(`--all`). dry-run 기본, `--execute` + 앱별 사용자 확인 필수. 백업은 `~/.mem0/backups/`, 복원은 `infer=False` 재주입 |
+
+**스코프 규칙:** cleanup은 cwd의 프로젝트 app_id가 기본(upstream과 동일한 해석 체인: env → project_map → git slug → basename). basename fallback 스코프는 거부 — 쓰레기 app_id 생성 경로이기 때문. fleet-scan/doctor는 항상 전역.
+
+**전제:** `MEM0_API_KEY` (없으면 안내 후 중단).
+
+</details>
+
 ### Workflow State
 
 <details>
@@ -650,7 +669,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 21 / 23 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 22 / 24 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -736,7 +755,8 @@ node scripts/install-skills.mjs
 │   ├── anti-slop-design/      # anti-AI-slop 디자인 가드 (web/ppt/dashboard/copy)
 │   ├── ppt-yeong-style/       # yeong 스타일 덱 작성 레이어 — 스킬 3종(메인/lecture-deck/deck-review) + 리뷰 에이전트 4종
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
-│   └── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)
+│   ├── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)
+│   └── mem0-ops/              # 플릿 레벨 mem0 진단·정리 (fleet-scan/doctor/cleanup)
 ├── CLAUDE.md
 └── README.md
 ```

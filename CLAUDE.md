@@ -2,7 +2,7 @@
 
 Plugin-based configuration for Claude Code with multi-agent orchestration. The same plugin tree is loaded by Codex 0.135 via `scripts/sync-codex-manifests.mjs` and by Hermes Agent via `scripts/sync-hermes-manifests.mjs` — one source, three runtimes.
 
-## Plugins (23)
+## Plugins (24)
 
 ### Core
 | Plugin | Description |
@@ -76,6 +76,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 ### Memory & Lore
 | Plugin | Description |
 |--------|-------------|
+| `mem0-ops` | 플릿 레벨 mem0 진단·정리 — upstream mem0 플러그인(프로젝트 내부 품질)과 역할 분리. fleet-scan(전 앱 노이즈율·쓰레기 app_id 후보·app/user_id 파편화 리포트) + doctor(rerank env·auto_save 파일 우선순위 함정·decay·훅 timeout·정체성 파편화 점검, 제안만) + cleanup(백업→타입/앱 단위 삭제, dry-run 기본 + 앱별 확인 게이트). stdlib REST 스크립트라 결정론 구간 LLM 비용 0 |
 | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral `.llmwiki/`): 5 skills + 5 hooks (incl. Stop-capture + SessionStart-drain auto-ingest) + bootstrap templates. Post-merge wiki ingest is a mandatory step inside `github-dev:post-merge` (post-merge-wiki absorbed). Promoted cross-agent rules graduate to `.llmwiki/insight/` (surfaced via core-config prompt-inject hook), not `.claude/rules/` |
 
 ### Workflow State
@@ -107,6 +108,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 │   ├── slidev/             # Presentation generator
 │   ├── tcrei-prompt/       # TCREI prompt structuring
 │   ├── llm-wiki/           # LLM-Wiki 3-layer (wiki lore)
+│   ├── mem0-ops/           # Fleet-level mem0 diagnostics/cleanup (fleet-scan/doctor/cleanup)
 │   ├── spec-state/         # spec/issue/PR work-pipeline aggregate
 │   ├── anti-slop-design/   # Anti-AI-slop design guard (web/ppt/dashboard/copy)
 │   ├── ppt-yeong-style/    # yeong-style lecture/proposal deck writing layer (on ppt-master)
@@ -129,7 +131,7 @@ node scripts/sync-codex-manifests.mjs           # write manifests
 node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
-Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 21 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
+Produces `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` for 22 eligible plugins. Codex 0.135 manifest top-level only supports `skills` / `hooks` / `mcpServers` / `apps` — `commands` and `agents` are not emitted. Excluded: `core-config` (Claude-only hooks; no Codex hook surface for the same patterns), `codex-image` (Claude->Codex bridge; syncing it into Codex would be circular). Skill bodies are read in place — no mirror, no transform. `--check` also detects orphan manifests left behind when a plugin is removed.
 
 ## Hermes integration
 

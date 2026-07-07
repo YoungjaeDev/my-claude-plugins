@@ -14,7 +14,7 @@ import sys
 from collections import Counter, defaultdict
 from datetime import date, datetime
 
-from _api import list_memories, resolve_app_id
+from _api import entity_filters, list_memories, resolve_app_id
 
 STOP = set(
     "a an the and or of to in on for with is are was were be been this that "
@@ -67,7 +67,7 @@ def main():
                 file=sys.stderr,
             )
 
-    mems = list_memories({"AND": [{"user_id": args.user}, {"app_id": app}]})
+    mems = list_memories(entity_filters(app, args.user))
     if args.dump:
         with open(args.dump, "w") as f:
             json.dump(mems, f, ensure_ascii=False)

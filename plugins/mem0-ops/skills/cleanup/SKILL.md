@@ -9,22 +9,41 @@ description: "Backup-then-delete mem0 noise for one app (default: current projec
 
 Script is plain `python3` on all runtimes. The confirmation gate uses
 `AskUserQuestion` on Claude; on Codex/Hermes ask in plain text and wait
-(Hermes: `clarify`).
+(Hermes: `clarify`). Codex 0.135 does NOT export `CLAUDE_PLUGIN_ROOT` —
+always resolve `PLUGIN_ROOT` first (block below).
 
 ## Steps
 
-1. Resolve scope: no args = current project (script mirrors upstream chain:
+1. Resolve the plugin root (cross-runtime):
+
+   ```bash
+   PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+   [ -z "$PLUGIN_ROOT" ] && [ -d plugins/mem0-ops/scripts ] && PLUGIN_ROOT=plugins/mem0-ops
+   if [ -z "$PLUGIN_ROOT" ]; then
+     cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+     PLUGIN_ROOT=$(ls -1d "$cache_root"/*/mem0-ops/* 2>/dev/null | sort | tail -1)
+   fi
+   [ -d "$PLUGIN_ROOT/scripts" ] || { echo "mem0-ops scripts not found"; exit 1; }
+   ```
+
+   Scope: no args = current project (script mirrors upstream chain:
    `MEM0_PROJECT_ID` env -> `~/.mem0/project_map.json` -> git slug -> basename).
    The script REFUSES basename-fallback scope; pass `--app` explicitly then.
+   `--type` additionally requires a user scope (`--user` or `MEM0_USER_ID`);
+   only `--all` targets every entity scope (user/agent/run) in the app.
 2. Dry-run first, always:
-   `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/cleanup.py [--app X] --type session_summary`
+   `python3 "$PLUGIN_ROOT/scripts/cleanup.py" [--app X] --type session_summary`
    (or `--all` for a junk app teardown flagged by fleet-scan).
 3. Show the dry-run count + samples to the user, then gate with
    AskUserQuestion (one question per app: delete N of M? yes/no).
 4. Only after explicit yes: re-run with `--execute`. Report ok/failed counts
    and the backup path.
-5. Verify: run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/audit.py --app X` and
+5. Verify: run `python3 "$PLUGIN_ROOT/scripts/audit.py" --app X` and
    confirm the deleted type count is now 0.
 6. Restore procedure (if the user regrets): read the backup JSON at
-   `~/.mem0/backups/<app>-<date>.json` and re-add each row via mem0
-   `add_memory` with `infer=False`, same app_id/user_id/metadata.
+   `~/.mem0/backups/<app>-<timestamp>.json` — it holds `{app, target_ids,
+   rows}` where `rows` is the WHOLE app at backup time and `target_ids`
+   lists what was actually deleted. Re-add ONLY the rows whose id is in
+   `target_ids` via mem0 `add_memory` with `infer=False`, same
+   app_id/user_id/metadata — re-adding all rows would duplicate the
+   untouched ones.

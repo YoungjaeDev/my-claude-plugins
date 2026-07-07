@@ -57,6 +57,23 @@ def req_json(url, body=None, method=None, retries=3):
     raise last
 
 
+def entity_filters(app, user):
+    """v2 list filters for one app.
+
+    user '*' broadens to every entity scope (user/agent/run) — a bare
+    user_id wildcard only matches rows where user_id is non-null, silently
+    missing agent/run-scoped memories in the same app.
+    """
+    if user == "*":
+        return {
+            "AND": [
+                {"app_id": app},
+                {"OR": [{"user_id": "*"}, {"agent_id": "*"}, {"run_id": "*"}]},
+            ]
+        }
+    return {"AND": [{"user_id": user}, {"app_id": app}]}
+
+
 def list_memories(filters):
     """Page through POST /v2/memories/ (list-by-filter). Returns all rows."""
     mems, page = [], 1

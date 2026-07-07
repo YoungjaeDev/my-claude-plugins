@@ -3,7 +3,9 @@
 Safety contract (spec section 6): mandatory full-app JSON backup to
 ~/.mem0/backups/<app>-<timestamp>.json before any DELETE; 5xx retry in
 _api.req_json; DELETE 404 treated as already-deleted (idempotent).
-Restore: re-add backup rows via add_memory with infer=False.
+Restore: re-add only the rows whose id is in the backup's target_ids via
+add_memory with infer=False — the backup stores the whole app for context,
+but only target_ids were actually deleted.
 """
 
 import argparse
@@ -14,7 +16,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from _api import BASE, list_memories, req_json, resolve_app_id
+from _api import BASE, entity_filters, list_memories, req_json, resolve_app_id
 
 
 def select_targets(mems, mem_type=None, all_types=False):
@@ -25,18 +27,21 @@ def select_targets(mems, mem_type=None, all_types=False):
     return [m["id"] for m in mems if (m.get("metadata") or {}).get("type") == mem_type]
 
 
-def backup(app, mems):
+def backup(app, mems, target_ids):
     bdir = os.path.expanduser("~/.mem0/backups")
     os.makedirs(bdir, exist_ok=True)
     # app is user-controlled (--app / env / project_map) — sanitize the filename
     # component so absolute paths or separators cannot escape the backup dir,
     # and timestamp per run so a same-day second cleanup never overwrites the
-    # only recovery copy of the first.
+    # only recovery copy of the first. target_ids records what was actually
+    # deleted so a partial (--type) restore never re-adds untouched rows.
     safe = re.sub(r"[^A-Za-z0-9._-]", "_", app) or "app"
     stamp = datetime.now().strftime("%Y-%m-%dT%H%M%S")
     path = os.path.join(bdir, f"{safe}-{stamp}.json")
     with open(path, "w") as f:
-        json.dump(mems, f, ensure_ascii=False)
+        json.dump(
+            {"app": app, "target_ids": target_ids, "rows": mems}, f, ensure_ascii=False
+        )
     return path
 
 
@@ -76,8 +81,13 @@ def main():
         user = args.user
     elif args.all:
         user = "*"
+    elif os.environ.get("MEM0_USER_ID"):
+        user = os.environ["MEM0_USER_ID"]
     else:
-        user = os.environ.get("MEM0_USER_ID", "*")
+        sys.exit(
+            "--type needs an explicit scope: pass --user or set "
+            "MEM0_USER_ID (only --all may target every user)."
+        )
     app = args.app
     if not app:
         app, source = resolve_app_id()
@@ -86,7 +96,7 @@ def main():
                 f"refusing to run against basename-fallback scope "
                 f"'{app}' — run from a project root or pass --app."
             )
-    mems = list_memories({"AND": [{"user_id": user}, {"app_id": app}]})
+    mems = list_memories(entity_filters(app, user))
     targets = select_targets(mems, mem_type=args.mem_type, all_types=args.all)
     print(
         f"app={app} user={user} total={len(mems)} targets={len(targets)} "
@@ -102,7 +112,7 @@ def main():
     if not targets:
         print("nothing to delete")
         return 0
-    path = backup(app, mems)
+    path = backup(app, mems, targets)
     print(f"backup: {path}")
     with ThreadPoolExecutor(max_workers=8) as ex:
         results = list(ex.map(delete_one, targets))

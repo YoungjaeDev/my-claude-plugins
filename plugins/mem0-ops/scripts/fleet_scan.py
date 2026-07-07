@@ -8,7 +8,7 @@ Fragmentation: app A whose name is a suffix of app B (owner-prefixed pair).
 import sys
 from collections import Counter
 
-from _api import list_apps, list_memories
+from _api import entity_filters, list_apps, list_memories
 
 MANUAL_TYPES = {
     "decision",
@@ -24,7 +24,7 @@ NOISE_TYPES = {"session_summary", "compact_summary", "session_state"}
 
 
 def scan_app(app):
-    mems = list_memories({"AND": [{"user_id": "*"}, {"app_id": app}]})
+    mems = list_memories(entity_filters(app, "*"))
     types = Counter((m.get("metadata") or {}).get("type") or "(none)" for m in mems)
     users = Counter(m.get("user_id") for m in mems)
     noise = sum(n for t, n in types.items() if t in NOISE_TYPES)

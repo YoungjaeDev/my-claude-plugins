@@ -6,6 +6,14 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-08 — post-merge #99: Hermes llm-wiki cross-check consolidated into curated-conservative (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `8c2df03` — docs(llm-wiki): Hermes 채택분 반영 + raw/ source-type 재구조화 (2.4.0). The spec (`docs/superpowers/specs/2026-07-07-llm-wiki-hermes-adoption-design.md`) reserved the adopt/reject rationale for this hub page (not a new page); the earlier same-day raw-restructure entry below flagged the same. No insight graduation — design-stance lore, single ingestion; the "steal the ideas, not the plan" thesis stays wiki-layer.
+
+- `llm-wiki-design/curated-conservative.md`: added `## Second cross-check — Hermes llm-wiki skill (2026-07)`. Hermes' `skills/research/llm-wiki/SKILL.md` re-surfaced already-rejected rohitg00-v2 ideas (confidence bands, archive-move, type dirs, raw `[[wikilink]]`s) → re-rejected on the same senior-engineer-test grounds (a 2nd independent maximalist design converging on the same Rejected list); adopted 5 cheap git-legible hygiene gap-fillers (`log.md` year-rotation, raw body-sha256 immutability check, link-poverty lint, bulk-ingest batching, 10+-page edit-scope gate) that fill real plugin gaps without the maximalist machinery; newly rejected Hermes-specific PKM devices (tags taxonomy, query-answer recall / C-group, Obsidian). sources 2→3 (+Hermes SKILL.md); last_verified 2026-07-08.
+- `index.md`: extended the curated-conservative hook to note the Hermes 2nd cross-check.
+- Staging drain: consumed `pending-61cfe914` (this planning session — the Hermes rationale is ingested here; the hook-defect analysis the transcript also carries is tracked in issue #100, not yet merged, so it stays out of the wiki until #100 lands). PR refs 36–99 all covered by prior log entries. File deleted.
+
 ## 2026-07-08 — raw/ source-type restructure + Evidence ref rewrite (ingest-finding)
 
 Diff log written before commit (git-revertible — log + page edits land in one commit). Part of llm-wiki 2.4.0 (#98): `.llmwiki/raw/` moves from a flat dump to source-type buckets (`external/ research/ transcripts/ audits/`). Body sha256 verified unchanged across all 4 `git mv`s — immutability is content, not path.

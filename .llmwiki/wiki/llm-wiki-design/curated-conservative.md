@@ -1,10 +1,10 @@
 ---
 id: curated-conservative
 aliases: [curated-conservative-upgrade, steal-the-ideas-not-the-plan, v2-harvest]
-last_verified: 2026-06-01
+last_verified: 2026-07-08
 status: active
 volatility: stable
-sources: 2
+sources: 3
 ---
 
 # Curated-conservative v2 upgrade
@@ -78,6 +78,32 @@ The dividing line is the senior-engineer test: keep what stays cheap, reversible
 and legible in `git`; drop what adds an unverifiable score or an autonomous
 write path.
 
+## Second cross-check — Hermes llm-wiki skill (2026-07)
+
+A second upstream — NousResearch hermes-agent's `skills/research/llm-wiki/SKILL.md`
+— was reviewed against this plugin. It re-validates the conservative stance: most of
+it either re-surfaces ideas already rejected above or is a PKM-tool device, and only a
+handful of cheap hygiene gaps were worth adopting.
+
+- **Re-rejected (a 2nd independent source lands on the same Rejected list).**
+  Confidence bands, archive-move (delete/relocate old claims), type directories
+  (`entities/`, `concepts/`, `comparisons/`, `queries/`), and raw `[[wikilink]]`s all
+  reappear in the Hermes skill and are re-rejected on the same senior-engineer-test
+  grounds — false precision, supersede-don't-move, no-new-dirs, typed-refs-only. Two
+  independent maximalist designs converging on the same rejects is the strongest
+  evidence the conservative kernel is right.
+- **Adopted (gap-fillers, not machinery).** Five items filled holes the plugin actually
+  had, each cheap and git-legible: `log.md` **year-rotation** (logs grew unbounded while
+  pages split at 5 KB), a raw **body-sha256** immutability check (the "raw is immutable"
+  rule had no verifier), a **link-poverty** lint (the orphan scan caught only
+  index-missing pages, not typed-ref-0 graph islands), **bulk-ingest** batching (drain
+  2+ staging markers as one dedup pass + one `log.md` entry), and a **10+-page
+  edit-scope** autonomy gate. These pass the senior-engineer test the rohitg00
+  scoring/decay/tier machinery fails.
+- **Newly rejected (Hermes-specific PKM devices).** A tags taxonomy, query-answer recall
+  rules (the "C group" — cache answers to re-serve), and Obsidian integration are
+  personal-knowledge-base ergonomics, not lore-layer needs; dropped.
+
 ## Sources
 
 - `.llmwiki/raw/external/2026-05-29-rohitg00-llm-wiki-v2-gist.md` — the v2 maximalist proposal
@@ -87,6 +113,9 @@ write path.
 - `.llmwiki/raw/external/2026-05-29-karpathy-llm-wiki-gist.md` — the original three-layer pattern
   (raw / wiki / schema), the ingest-touches-10-to-15-pages observation, and the
   "wiki is just a git repo" framing that grounds the git-auditable kernel.
+- NousResearch hermes-agent `skills/research/llm-wiki/SKILL.md` — a second upstream
+  llm-wiki skill (reviewed 2026-07); the cross-check source for the adopted hygiene
+  kernel and the re-rejected / newly-rejected items in `## Second cross-check`.
 
 > See-also: [[neutral-llmwiki-root]]
 > See-also: [[insight-layer-via-hook]]

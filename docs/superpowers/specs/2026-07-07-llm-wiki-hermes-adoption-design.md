@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: merged
 ---
 
 # llm-wiki 2.4.0 — Hermes llm-wiki 스킬 채택분 반영 (A: 위생 3종 + B: ingest 규율 2.5종)

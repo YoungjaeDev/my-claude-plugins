@@ -147,9 +147,12 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
       awk 'NR==1&&$0=="---"{fm=1;next} fm&&$0=="---"{fm=0;next} !fm{print}' "$1" \
         | { sha256sum 2>/dev/null || shasum -a 256; } | awk '{print $1}'
     }
+    _fm_sha256() {  # read sha256 ONLY from the leading --- frontmatter block (not body text)
+      awk 'NR==1&&$0=="---"{f=1;next} f&&$0=="---"{exit} f&&/^sha256:[[:space:]]*[^[:space:]]/{v=$0;sub(/^sha256:[[:space:]]*/,"",v);print v;exit}' "$1" 2>/dev/null
+    }
     while IFS= read -r f; do
-      stored=$(LC_ALL=C.UTF-8 grep -oP '^sha256:\s*\K\S+' "$f" 2>/dev/null | head -1)
-      [[ -z "$stored" ]] && continue    # no sha256: frontmatter -> skip (prospective-only; pre-2.4.0 files)
+      stored=$(_fm_sha256 "$f")
+      [[ -z "$stored" ]] && continue    # no sha256: in frontmatter -> skip (prospective-only; body-text sha256: ignored)
       actual=$(_body_sha256 "$f")
       [[ "$stored" != "$actual" ]] && printf 'DRIFT: %s (stored %s.. != actual %s..)\n' "$f" "${stored:0:12}" "${actual:0:12}"
     done < <(find .llmwiki/raw -type f -not -name '*.pdf' 2>/dev/null)
@@ -160,7 +163,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
     ```bash
     LC_ALL=C.UTF-8
     while IFS= read -r f; do
-      n=$(LC_ALL=C.UTF-8 grep -cP '^> \w+(-\w+)*:' "$f")
+      n=$(LC_ALL=C.UTF-8 grep -cP '^> (Refines|Contradicts|Evidence|See-also|Supersedes|Superseded-by|Uses|Depends-on|Caused-by|Fixed-by):' "$f")
       [[ "$n" -eq 0 ]] && printf 'link-poverty: %s (0 typed cross-refs)\n' "$f"
     done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log*.md' 2>/dev/null)
     ```

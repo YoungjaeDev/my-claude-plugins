@@ -80,11 +80,11 @@ write path.
 
 ## Sources
 
-- `.llmwiki/raw/rohitg00-llm-wiki-v2-gist.md` — the v2 maximalist proposal
+- `.llmwiki/raw/external/2026-05-29-rohitg00-llm-wiki-v2-gist.md` — the v2 maximalist proposal
   (confidence scoring, forgetting/Ebbinghaus, consolidation tiers, hybrid search,
   event-driven hooks) and the implementation-spectrum framing that v2 reads as
   optional, not mandatory.
-- `.llmwiki/raw/karpathy-llm-wiki-gist.md` — the original three-layer pattern
+- `.llmwiki/raw/external/2026-05-29-karpathy-llm-wiki-gist.md` — the original three-layer pattern
   (raw / wiki / schema), the ingest-touches-10-to-15-pages observation, and the
   "wiki is just a git repo" framing that grounds the git-auditable kernel.
 
@@ -92,5 +92,5 @@ write path.
 > See-also: [[insight-layer-via-hook]]
 > See-also: [[provenance-over-confidence]]
 > See-also: [[volatility-over-decay]]
-> Evidence: .llmwiki/raw/rohitg00-llm-wiki-v2-gist.md
-> Evidence: .llmwiki/raw/karpathy-llm-wiki-gist.md
+> Evidence: .llmwiki/raw/external/2026-05-29-rohitg00-llm-wiki-v2-gist.md
+> Evidence: .llmwiki/raw/external/2026-05-29-karpathy-llm-wiki-gist.md

@@ -45,6 +45,14 @@ wiki_root="$(resolve_wiki_root)" || exit 0
 # unreliable (~always false). Compound commands (`git commit && gh pr merge`) count
 # as a merge: the merge is the high-value event.
 case "$cmd" in
+  *"gh pr merge"*"--auto"*)
+    # `gh pr merge --auto` only ENROLLS the PR for auto-merge; the merge completes
+    # later, server-side, with no local command — so announcing "a PR merged" now is
+    # premature (and there is no local commit to hint on either). Stay silent. (A repo
+    # merge queue can defer a plain `gh pr merge` too, but that is not detectable from
+    # the command string; the post-merge hint is self-correcting there — post-merge's
+    # own `state=MERGED` gate refuses to proceed on an unmerged PR.)
+    exit 0 ;;
   *"gh pr merge"*) event="merge" ;;
   *)               event="commit" ;;
 esac

@@ -99,29 +99,26 @@ fi
 touch "$marker"
 
 # --- mechanical signal detection over the transcript (heuristic, intentionally coarse) ---
-# Bound the scan: copy at most the last 4 MB into a temp buffer and grep that, so a
-# pathological multi-MB session stays well under the 5s hook timeout (tail -c seeks, so
-# the read is O(cap) not O(filesize)). The tail holds the recent, ingest-relevant turns;
-# the full transcript path is still recorded in the staging file, so the curator always
-# reads the complete source — this cap only bounds the coarse fire/no-fire heuristic.
+# Bound the scan: read at most the last 4 MB of the transcript (tail -c seeks, so the
+# read is O(cap) not O(filesize)) and grep that, so a pathological multi-MB session
+# stays well under the 5s hook timeout. Piping tail straight into each grep means there
+# is NO failure path that falls back to an unbounded full-file scan — a failed tail just
+# yields an empty stream (zero counts, degrading safely), never the whole file. The
+# recent, ingest-relevant turns are at the tail; the full transcript path is still
+# recorded in the staging file, so the curator always reads the complete source — this
+# cap only bounds the coarse fire/no-fire heuristic.
 scan_cap=$((4 * 1024 * 1024))
-scan_buf=$(mktemp 2>/dev/null) || scan_buf=""
-trap 'rm -f "${scan_buf:-}" 2>/dev/null' EXIT
-if [[ -n "$scan_buf" ]] && tail -c "$scan_cap" "$transcript" > "$scan_buf" 2>/dev/null; then
-  scan_target="$scan_buf"
-else
-  scan_target="$transcript"
-fi
+scan() { tail -c "$scan_cap" "$transcript" 2>/dev/null; }
 
 # grep -c prints a count to stdout (and exits 1 on zero matches, swallowed by $()).
 # Kept as 3 separate greps (not one alternation) so per-category counts survive for
 # the staging signal breakdown below.
-merge_hits=$(LC_ALL=C.UTF-8 grep -cE 'gh pr merge|git merge|Merged pull request|"merged":[[:space:]]*true' "$scan_target" 2>/dev/null)
-debug_hits=$(LC_ALL=C.UTF-8 grep -ciE 'root cause|근본 원인|원인은|the bug was|fixed by|race condition|provider quirk|deadlock|off-by-one' "$scan_target" 2>/dev/null)
-decision_hits=$(LC_ALL=C.UTF-8 grep -ciE 'decided to|trade-?off|왜냐하면|the reason is|rationale|we chose|design decision' "$scan_target" 2>/dev/null)
+merge_hits=$(scan | LC_ALL=C.UTF-8 grep -cE 'gh pr merge|git merge|Merged pull request|"merged":[[:space:]]*true' 2>/dev/null)
+debug_hits=$(scan | LC_ALL=C.UTF-8 grep -ciE 'root cause|근본 원인|원인은|the bug was|fixed by|race condition|provider quirk|deadlock|off-by-one' 2>/dev/null)
+decision_hits=$(scan | LC_ALL=C.UTF-8 grep -ciE 'decided to|trade-?off|왜냐하면|the reason is|rationale|we chose|design decision' 2>/dev/null)
 merge_hits=${merge_hits:-0}; debug_hits=${debug_hits:-0}; decision_hits=${decision_hits:-0}
 
-pr_refs=$(LC_ALL=C.UTF-8 grep -oE 'PR #[0-9]+|pull/[0-9]+' "$scan_target" 2>/dev/null \
+pr_refs=$(scan | LC_ALL=C.UTF-8 grep -oE 'PR #[0-9]+|pull/[0-9]+' 2>/dev/null \
           | LC_ALL=C.UTF-8 grep -oE '[0-9]+' | sort -un | head -10 | tr '\n' ' ')
 
 # Fire only when the session plausibly produced lore: a real merge, OR several

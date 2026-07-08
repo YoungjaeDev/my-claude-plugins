@@ -105,7 +105,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Memory & Lore** | `mem0-ops` | 플릿 레벨 mem0 진단·정리 — fleet-scan(전 앱 노이즈율·파편화) + doctor(설정 자세 점검) + cleanup(백업→삭제, dry-run 기본). upstream mem0 플러그인(프로젝트 내부 품질)과 역할 분리 |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 | **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
-| | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 스킬 3종(메인 작성 규약 + `lecture-deck` 강의 덱 운영 + `deck-review` 리뷰 오케스트레이션) + 리뷰 서브에이전트 4종(audience-fit·story-flow·fact-check·design-qa). md 규약·원칙 15종·밀도 리듬·역할 기반 색·앱 UI 실물 강제·전사 회고 루프·스크린샷 슬롯·리넘버링. 진입점 SKILL.md + references/ + 주입 프롬프트 |
+| | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 스킬 3종(메인 작성 규약 + `lecture-deck` 강의 덱 운영 + `deck-review` 리뷰 오케스트레이션) + 리뷰 서브에이전트 4종(audience-fit·story-flow·fact-check·design-qa). md 규약·원칙 16종·밀도 리듬·역할 기반 색·앱 UI 실물 강제·전사 회고 루프·스크린샷 슬롯·리넘버링. 진입점 SKILL.md + references/ + 주입 프롬프트 |
 | **Productivity** | `gws-sync` | 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반). 매핑 설정 기억 → Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일 content update로 ID·공유링크 보존). 삭제는 제안만. gws 미설치 시 설치 안내 후 중단. googleworkspace/cli 스킬 95종 카탈로그(llms.txt) 동봉 |
 
 ## 설치 옵션
@@ -597,7 +597,7 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 **엔진·의존:** `ppt-master`(빌드 엔진, bare name 참조, prerequisite — 미설치 시 빌드 진입 전 중단) 위 레이어. `codex-image`·`interview`·`anti-slop-design`·`humanize-korean`·`design-shotgun`·`codex:rescue` 는 있으면 사용, 없으면 **생략 + 설치 제안 문구 출력**.
 
 **스킬 3종 (0.7.0):**
-- `ppt-yeong-style`(메인) — 작성 규약: md 소스 규약(단일 md, `[ ]` 키 메시지, 담백한 명사구 제목)·작성 원칙 15종(공식 vs 실사용 병기·개념어 AI 냄새 점검 포함)·밀도 리듬(중간 강화 기본 + 본문 바닥 20pt)·역할·면적 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·스크린샷 shrink-to-hug·CJK 덱 cairosvg 금지(Playwright dsf=2 + img2pdf)
+- `ppt-yeong-style`(메인) — 작성 규약: md 소스 규약(단일 md, `[ ]` 키 메시지, 담백한 명사구 제목)·작성 원칙 16종(공식 vs 실사용 병기·개념어 AI 냄새 점검 포함)·밀도 리듬(중간 강화 기본 + 본문 바닥 20pt)·역할·면적 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·스크린샷 shrink-to-hug·CJK 덱 cairosvg 금지(Playwright dsf=2 + img2pdf)
 - `lecture-deck` — 강의 덱 운영: 시간→장수 구성·실습 handouts 생성 규약(자료-지시문 정합 검증)·실습 프롬프트 카드·placeholder→실캡처 스크린샷 슬롯·리넘버링 파이프라인(read-all-then-write-all + 4중 동기화)·표 행 수 재배치·**전사 회고 루프**(강의 후 전사→커버리지 맵→기존 장 보강)·강사 노트 태그([시연 필수]·수치 고정 대본·주차장 멘트). 완성 실례 cc-common 47장 레퍼런스(md + 대표 렌더 PNG 5장) 동봉
 - `deck-review` — 리뷰 오케스트레이션: 관점별 서브에이전트 4종(`audience-fit` 청중 페르소나 — 파라미터 주입 / `story-flow` §8b 9항목 / `fact-check` 공식 docs 대조 / `design-qa` 렌더 QA·anti-slop) 병렬 dispatch + `codex:rescue` 교차 리뷰(설치 시) → 장별 수정 티켓 종합
 

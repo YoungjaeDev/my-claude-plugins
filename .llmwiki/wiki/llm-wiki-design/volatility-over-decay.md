@@ -62,10 +62,10 @@ must sit inside the same enforcement sweep, or the contract is decorative there.
 
 ## Sources
 
-- `.llmwiki/raw/rohitg00-llm-wiki-v2-gist.md` — the Forgetting / memory-lifecycle
+- `.llmwiki/raw/external/2026-05-29-rohitg00-llm-wiki-v2-gist.md` — the Forgetting / memory-lifecycle
   section proposing the Ebbinghaus retention curve and the slow-vs-fast decay
   observation that the discrete class encodes more honestly.
-- `.llmwiki/raw/karpathy-llm-wiki-gist.md` — the lint operation, which lists
+- `.llmwiki/raw/external/2026-05-29-karpathy-llm-wiki-gist.md` — the lint operation, which lists
   "stale claims that newer sources have superseded" as a health check, grounding
   staleness as a lint concern rather than an automatic decay process.
 - `plugins/llm-wiki/hooks/wiki_stale_check.sh` — the stale-check hook; resolves the
@@ -76,6 +76,6 @@ must sit inside the same enforcement sweep, or the contract is decorative there.
 > Refines: [[curated-conservative]]
 > See-also: [[provenance-over-confidence]]
 > See-also: [[insight-layer-via-hook]]
-> Evidence: .llmwiki/raw/rohitg00-llm-wiki-v2-gist.md
-> Evidence: .llmwiki/raw/karpathy-llm-wiki-gist.md
+> Evidence: .llmwiki/raw/external/2026-05-29-rohitg00-llm-wiki-v2-gist.md
+> Evidence: .llmwiki/raw/external/2026-05-29-karpathy-llm-wiki-gist.md
 > Evidence: plugins/llm-wiki/hooks/wiki_stale_check.sh

@@ -32,6 +32,7 @@ The dedup gate, run before any add:
 - If an existing page's scope this *refines* / *contradicts* / extends → **edit that page** (or supersede it), don't add.
 - Condense to the claim; push long reasoning down to `> Evidence:` (a `.llmwiki/raw/` or external citation), never inline a wall of justification.
 - Only add a new page if the finding is a genuinely new top-level concept inside an existing `wiki/<domain>/`.
+- **Page-creation threshold**: even then, only spawn a new page when the concept appears in **2+ independent sources**, or is a **load-bearing concept of the current decision/fix**. A single passing mention lands in an existing page's body or a `> See-also:` — not its own page (this is what keeps the "new page for every finding" rot mode shut).
 
 ### Prefer updating existing pages over adding new ones
 
@@ -61,9 +62,21 @@ Silent corruption mode (LLM edits a stale page without noticing): rare but catas
 
 This is cheap and gives `git log log.md` (at the resolved root) as the single audit trail.
 
+### Bulk ingest (multiple sources / staging markers at once)
+
+When draining several sources at once (a SessionStart drain surfacing 2+ `.staging/` markers, or a post-merge sweep producing several findings), do NOT run the full single-finding loop per item — that re-greps and re-logs redundantly and tends to spawn duplicate pages. Batch it:
+
+1. **Read all** sources first (every marker / audit md) before touching any page.
+2. **One dedup pass** across the whole batch — cluster findings that hit the same page, and drop cross-source duplicates once (not once per source).
+3. **Batch the page edits** — apply every change to a given page in a single touch.
+4. **Update `index.md` once** for the whole batch.
+5. **One `log.md` entry** covering the batch (list every page touched + every marker consumed), not one entry per source.
+
+A batch-wide view is what catches "these three findings are actually the same page," and one log entry keeps `log.md` readable. Delete the consumed staging markers after the single log entry is written.
+
 ## Steps
 
-1. **Read the source of the finding** (audit md / PR diff / debug notes).
+1. **Read the source of the finding** (audit md / PR diff / debug notes). If the source is a *newly captured* raw artifact (survey, chat/meeting transcript, external doc), first save it under the matching `raw/` source-type bucket (`external/ research/ transcripts/ audits/`) with a `YYYY-MM-DD-<slug>.<ext>` filename. *Text* raw (md/txt/html) also gets `source_url`/`ingested`/`sha256` frontmatter; *binary* raw (pdf) is stored as-is with no inline frontmatter (YAML would corrupt the bytes) and stays outside the Step 11 drift check. See `references/wiki-conventions.md` § raw/ layout & frontmatter.
 2. **Map to wiki pages**: search `index.md` + grep page bodies. Identify all pages the finding affects — usually 1 primary + 2-5 cross-ref updates. List them.
 3. **Compose diff log entry**: draft the resolved root's `log.md` block now, listing every page you're about to touch.
 4. **Apply changes page-by-page**:
@@ -100,6 +113,7 @@ This is cheap and gives `git log log.md` (at the resolved root) as the single au
 | Update existing page body | ✅ (after diff log) | — |
 | Bump `last_verified:` after actually re-checking against code | ✅ | — |
 | Add new page inside existing `wiki/<domain>/` | ✅ | — |
+| Single ingest editing 10+ pages | ❌ | ✅ (confirm scope first) |
 | Supersede a page (new page `> Supersedes:` + old page `status: stale` + `> Superseded-by:`) | ✅ (after diff log) | — |
 | Graduate a finding to `.llmwiki/insight/` (all 4 promotion criteria met) | ✅ (after diff log) | — |
 | Add new `wiki/<domain>/` directory | ❌ | ✅ |

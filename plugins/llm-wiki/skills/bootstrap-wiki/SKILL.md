@@ -29,8 +29,11 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
 
 3. **Create layout** (idempotent — `mkdir -p` + existence guards; avoid GNU-only `cp --update=none` so it works on macOS/BSD too):
    ```bash
-   mkdir -p .llmwiki/raw .llmwiki/wiki .llmwiki/insight .claude/skills .claude/spec
-   : > .llmwiki/raw/.gitkeep
+   # raw/ is bucketed by source-type (external / research / transcripts / audits);
+   # see references/wiki-conventions.md § raw/ layout. wiki/ uses domain subdirs, insight/ stays flat.
+   mkdir -p .llmwiki/raw/external .llmwiki/raw/research .llmwiki/raw/transcripts .llmwiki/raw/audits \
+            .llmwiki/wiki .llmwiki/insight .claude/skills .claude/spec
+   for b in external research transcripts audits; do : > ".llmwiki/raw/$b/.gitkeep"; done
    T="${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates"
    [ -f .llmwiki/wiki/index.md ]        || cp "$T/wiki-skeleton/index.md"                 .llmwiki/wiki/index.md
    [ -f .llmwiki/wiki/log.md ]          || cp "$T/wiki-skeleton/log.md"                   .llmwiki/wiki/log.md
@@ -54,7 +57,7 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
 
 After bootstrap:
 - `.llmwiki/wiki/index.md` exists and has 1+ domain headings (even if empty)
-- `.llmwiki/raw/.gitkeep` exists
+- `.llmwiki/raw/{external,research,transcripts,audits}/.gitkeep` exist (source-type buckets)
 - `.llmwiki/insight/index.md` exists (with `TODO-INITIAL-DATE` replaced by today's date)
 - `.claude/spec/_template.md` exists
 - `.llmwiki/wiki/log.md` has its first entry

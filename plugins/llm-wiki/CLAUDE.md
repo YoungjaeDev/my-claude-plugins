@@ -54,6 +54,19 @@ sources: 2                     # integer count of named provenance under ## Sour
 
 `sources` (an integer count under `## Sources`) replaces numeric confidence floats. "How sure" = source count + `last_verified` recency + presence of `> Contradicts:`.
 
+## Raw layout
+
+`.llmwiki/raw/` is bucketed by source-type, not dumped flat (wiki uses domain subdirs, insight stays flat — each layer's structure follows the axis on which its content actually varies):
+
+| Bucket | Holds |
+|--------|-------|
+| `external/` | third-party originals (gist, paper, vendor doc, web article) |
+| `research/` | our generated research (deep-research, code-scout, survey dumps) |
+| `transcripts/` | conversation / recording captures (chat exports, meeting/call transcripts) |
+| `audits/` | debug / audit captures (audit md, session debug notes) |
+
+Filename `YYYY-MM-DD-<slug>.<ext>` (date = ingested day). Newly captured *text* raw (md/txt/html) carries `source_url` / `ingested` / `sha256`-of-body frontmatter; *binary* raw (pdf) is stored as-is (no inline frontmatter, outside the drift check). Existing files are moved as-is, never backfilled — immutability is *content*, not path, so a `git mv` into a bucket preserves the body hash. `lint-wiki` Step 11 drift-checks any `sha256:`-bearing file. Full spec: `references/wiki-conventions.md` § raw/ layout & frontmatter.
+
 ## Cross-ref grammar
 
 Pages link via typed references only — never raw `[[wikilink]]`:
@@ -75,7 +88,7 @@ Per page, the staleness window is driven by `volatility:`: `volatile` → 30 day
 
 ## Event log
 
-All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in the resolved root's `log.md` (`.llmwiki/wiki/log.md`, or a legacy `.claude/wiki/log.md`) with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`. `grep '## ' wiki/log.md` recovers the time-series.
+All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in the resolved root's `log.md` (`.llmwiki/wiki/log.md`, or a legacy `.claude/wiki/log.md`) with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`. `grep '## ' wiki/log.md` recovers the time-series. At year-turnover the prior year's entries migrate to a sibling `log-YYYY.md` (`grep '## ' log*.md` still recovers the full series); `lint-wiki` Step 13 flags when a rotation is due.
 
 ## Related: spec-state
 

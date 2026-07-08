@@ -28,6 +28,7 @@ codex-image로 만드는 배경·무드컷도 **반드시 deck 디자인 토큰�
 - **Pretendard 1순위** — 모던·Anthropic 톤.
 - Pretendard 미임베드 시 **로컬 설치된 Noto Sans KR이 받아 품질 유지**(PPTX/cairosvg 렌더 폴백 안전). **Malgun은 차선**(최후 폴백).
 - PPTX 폰트 임베드 권장은 유지.
+- **다단어 폰트명은 unquoted로 쓴다** — `font-family="Pretendard, Malgun Gothic, sans-serif"`처럼 홑따옴표 없이. `'Malgun Gothic'`으로 감싸면 `svg_quality_checker`의 drift 정규식이 내부 따옴표에서 이름을 잘라(`Pretendard,`만 캡처) 전 페이지 false drift 경고가 뜬다. unquoted 다단어 폰트명은 유효 CSS이고 변환기·Chrome 렌더 모두 정상이다.
 - 코드/터미널 블록 = **다크 배경 + 액센트 텍스트**(TUI 느낌). Consolas + Malgun(한글 주석) 조합.
 
 > **이유:** 폴백 체인을 박아두면 Pretendard가 없는 렌더 환경에서도 Malgun으로 바로 떨어지지 않고 Noto가 받아 품질이 유지된다. 임베드 누락 시 한글 깨짐·자간 붕괴를 막는 안전선.

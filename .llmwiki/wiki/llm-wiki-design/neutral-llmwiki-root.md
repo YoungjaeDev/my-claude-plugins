@@ -81,7 +81,7 @@ re-emerge.
 
 ## Sources
 
-- `.llmwiki/raw/perplexity-llm-wiki-survey-2026-05.md` — 2026-05 ecosystem
+- `.llmwiki/raw/research/2026-05-29-perplexity-llm-wiki-survey.md` — 2026-05 ecosystem
   survey; real repos (nvk/llm-wiki, Pratiyush/llm-wiki, dair-ai/wiki-builder and
   others) use neutral runtime-agnostic raw/ + wiki/ layouts and a `.llmwiki/`
   convention rather than nesting data under `.claude/`.
@@ -97,6 +97,6 @@ re-emerge.
 > Refines: [[curated-conservative]]
 > See-also: [[insight-layer-via-hook]]
 > See-also: [[shared-source-codex-manifests]]
-> Evidence: .llmwiki/raw/perplexity-llm-wiki-survey-2026-05.md
+> Evidence: .llmwiki/raw/research/2026-05-29-perplexity-llm-wiki-survey.md
 > Evidence: .claude/spec/2026-05-29-llm-wiki-v2.md
 > Evidence: scripts/sync-codex-manifests.mjs

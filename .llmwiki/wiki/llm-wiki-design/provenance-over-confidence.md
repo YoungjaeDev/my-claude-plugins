@@ -44,14 +44,14 @@ the listed entries.
 
 ## Sources
 
-- `.llmwiki/raw/rohitg00-llm-wiki-v2-gist.md` — the confidence-scoring section
+- `.llmwiki/raw/external/2026-05-29-rohitg00-llm-wiki-v2-gist.md` — the confidence-scoring section
   proposing per-fact float confidence (the `0.85` example) with time decay and
   reinforcement, which v2 replaces with a named source count.
-- `.llmwiki/raw/karpathy-llm-wiki-gist.md` — the index.md description, which
+- `.llmwiki/raw/external/2026-05-29-karpathy-llm-wiki-gist.md` — the index.md description, which
   lists "source count" as legitimate per-page metadata, grounding provenance
   count as the native trust signal for this pattern.
 
 > Refines: [[curated-conservative]]
 > See-also: [[volatility-over-decay]]
-> Evidence: .llmwiki/raw/rohitg00-llm-wiki-v2-gist.md
-> Evidence: .llmwiki/raw/karpathy-llm-wiki-gist.md
+> Evidence: .llmwiki/raw/external/2026-05-29-rohitg00-llm-wiki-v2-gist.md
+> Evidence: .llmwiki/raw/external/2026-05-29-karpathy-llm-wiki-gist.md

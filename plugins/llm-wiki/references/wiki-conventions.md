@@ -38,6 +38,45 @@ sources: 2                     # integer count of named provenance under ## Sour
 source count + `last_verified` recency + presence of `> Contradicts:`. Insight-layer entries add
 `tier: insight` + `promoted_from: [[wiki-id]]` + `evidence_count: N` on top of this schema.
 
+## raw/ layout & frontmatter
+
+`.llmwiki/raw/` holds immutable evidence the wiki cites (never copies). It is **not** a flat dump —
+raw material is heterogeneous by *source*, so it is bucketed on a source-type axis (distinct from
+`wiki/`'s domain subdirs and `insight/`'s deliberate flatness — each layer's structure follows where
+its content actually varies):
+
+```text
+raw/
+├── external/      # third-party originals (gist, paper, vendor doc, web article)
+├── research/      # our own generated research (deep-research, code-scout, survey dumps)
+├── transcripts/   # conversation / recording captures (chat exports, meeting/call transcripts)
+└── audits/        # debug / audit captures (audit md, session debug notes)
+```
+
+- **Filename**: `YYYY-MM-DD-<slug>.<ext>` — date is the capture/ingested day, matching the
+  `ingested:` frontmatter field and the `.staging/` marker naming. Sortable + grep-friendly.
+- **Immutability is content, not path**: raw file *bytes* never change (so the sha256 drift check
+  below holds), but a file may be relocated/renamed with `git mv` — the body hash is unchanged, and
+  updating the `> Evidence:` refs that point at it is a wiki edit, not a raw mutation. Pre-existing
+  raw files without frontmatter are moved as-is (no backfill — prospective-only).
+
+Frontmatter is added to **newly captured text** raw files (md/txt/html; prospective-only — existing
+files are not backfilled, per raw-immutability). **Binary raw (`.pdf`) is stored as-is** — inline YAML
+would corrupt the bytes, so it carries no frontmatter and stays outside the `sha256` drift check
+(`lint-wiki` Step 11 excludes `.pdf`):
+
+```yaml
+---
+source_url: https://...        # original URL (when applicable)
+ingested: YYYY-MM-DD
+sha256: <hex>                   # hash of the body ONLY (below the frontmatter)
+---
+```
+
+Re-ingesting the same `source_url`: recompute the body hash — identical → skip; different → flag drift
++ write a new dated snapshot (never edit the existing raw file). Files without a `sha256:` field are
+skipped by the drift check (`lint-wiki` Step 11).
+
 ## Cross-reference grammar
 
 Pages link via **typed** references only — never raw `[[wikilink]]`. The token set and each token's
@@ -64,3 +103,10 @@ resolved root's `log.md` (`.llmwiki/wiki/log.md`, or a legacy `.claude/wiki/log.
 header `## YYYY-MM-DD — <event-type> (<source-skill>)`. The diff-log entry is appended **first**
 (before the page edit) so `git revert` of the commit undoes both the log line and the page change in
 sync. `grep '## ' log.md` recovers the time-series.
+
+**Yearly rotation**: on the first wiki event after the calendar year turns over, migrate the previous
+year's entries out of `log.md` into a sibling `log-YYYY.md` (e.g. `log-2026.md`), preserving
+newest-first order; `log.md` keeps only the current year. Time-series recovery becomes
+`grep '## ' log*.md` (globs the rotated files too). This keeps the hot `log.md` bounded without an
+entry-count threshold — the date headers make the cut deterministic and grep-friendly. `lint-wiki`
+Step 13 flags when a rotation is due.

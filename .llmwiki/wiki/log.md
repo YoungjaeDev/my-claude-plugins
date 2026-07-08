@@ -6,6 +6,21 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-08 — raw/ source-type restructure + Evidence ref rewrite (ingest-finding)
+
+Diff log written before commit (git-revertible — log + page edits land in one commit). Part of llm-wiki 2.4.0 (#98): `.llmwiki/raw/` moves from a flat dump to source-type buckets (`external/ research/ transcripts/ audits/`). Body sha256 verified unchanged across all 4 `git mv`s — immutability is content, not path.
+
+- `raw/`: `git mv` 4 files into buckets — karpathy·rohitg00 gist → `external/2026-05-29-*`, perplexity md·pdf → `research/2026-05-29-perplexity-llm-wiki-survey.*`; empty `transcripts/`·`audits/` seeded with `.gitkeep`. Files moved as-is (no frontmatter backfill — prospective-only).
+- `llm-wiki-design/volatility-over-decay.md`: `> Evidence:` + body raw refs (rohitg00, karpathy) rewritten to new bucket paths. No `last_verified` bump — path maintenance, not re-verification.
+- `llm-wiki-design/provenance-over-confidence.md`: rohitg00 + karpathy Evidence refs → new paths (same rationale).
+- `llm-wiki-design/curated-conservative.md`: rohitg00 + karpathy Evidence refs → new paths.
+- `llm-wiki-design/neutral-llmwiki-root.md`: perplexity survey Evidence ref → new `research/` path.
+- No new wiki pages. The Hermes-adoption adopt/reject rationale consolidates into `curated-conservative` at post-merge #98 (not a new page).
+
+## 2026-07-07 — staging drain: re-captured 73e1c10b marker cleared as already-curated (ingest-finding)
+
+- Staging drain: deleted `pending-73e1c10b` (re-captured by the Stop hook when session 73e1c10b ended after the earlier same-day drain — that drain's auto_save lore entry plus the session's own post-merge #97 ingest, commit `47352ff`, cover the transcript's lore; PR refs 12–50 are all in prior log entries). Provenance-only; no page content.
+
 ## 2026-07-07 — post-merge #97: mem0 REST list 계약 quirk 3종 + PLUGIN_ROOT 재발 evidence (ingest-finding)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `24064a7` — feat(mem0-ops): 플릿 레벨 mem0 진단·정리 플러그인 (0.1.0).

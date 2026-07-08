@@ -6,7 +6,7 @@ yeong 스타일 강의·제안 덱 작성 규약. **ppt-master**(빌드 엔진) 
 
 | Skill | Description |
 |-------|-------------|
-| `ppt-yeong-style` | 작성 규약(메인): 미감 시그니처(§0)·덱 유형·md 소스 규약·작성 원칙 15종·밀도 리듬(중간 강화 기본)·역할 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·윤문·렌더 QA. 진입점 = `SKILL.md`, 세부는 `references/` 6종 + `assets/injection-prompt.md` |
+| `ppt-yeong-style` | 작성 규약(메인): 미감 시그니처(§0)·덱 유형·md 소스 규약·작성 원칙 16종·밀도 리듬(중간 강화 기본)·역할 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·윤문·렌더 QA. 진입점 = `SKILL.md`, 세부는 `references/` 6종 + `assets/injection-prompt.md` |
 | `lecture-deck` | 강의 덱 전용 운영: 시간→장수 구성·실습 handouts 생성 규약(자료-지시문 정합 검증)·실습 프롬프트 카드·placeholder→실캡처 스크린샷 슬롯·리넘버링 파이프라인(4중 동기화)·표 행 수 재배치·전사 회고 루프·강사 노트 태그. 완성 실례 = `references/cc-common-reference.md`(47장) + 대표 렌더 PNG 5장 |
 | `deck-review` | 리뷰 파이프라인 오케스트레이션: 아래 에이전트 4종 병렬 dispatch + `codex:rescue` 교차 리뷰(설치 시) → 장별 수정 티켓 종합. 리뷰어는 관찰+제안만, 수정은 메인 세션 |
 

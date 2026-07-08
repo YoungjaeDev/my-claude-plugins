@@ -136,6 +136,7 @@ codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 - 기존 플러그인에 **skill 추가** PR 은 plugin 수를 바꾸지 않지만 문서 동기화가 필요하다 — 해당 플러그인의 `plugins/<name>/CLAUDE.md` skill 목록, 그리고 version bump 이 `description` 도 바꿨다면 루트 `CLAUDE.md`/`README.md` 의 한 줄 설명. 매니페스트 재생성 + `metadata.version` bump 은 그대로 적용.
 - **플러그인 제거 PR 추가 주의** — (a) `git grep -niE '<name>'` 로 레포 전체(다른 플러그인 skill 본문·`docs/` 포함, 과거 `.claude/spec/*` 제외)에서 live 참조를 훑어 제거. count 파일만으론 부족하다 (예: `code-scout` 의 `agent-routing.md` 라우팅). 살아남은 참조는 존재하지 않는 플러그인으로 사용자를 안내한다. (b) 삭제된 플러그인이 생성하던 tracked 산출물(예: `workflow-viz` → `docs/architecture/*`)은 orphaned 이니 같은 변경에서 제거. (c) 플러그인 제거는 `metadata.version` **MINOR** bump (MAJOR 아님 — metadata.version 은 per-release counter, semver-breaking 규칙은 per-plugin 스코프; `midjourney` 삭제 선례가 MINOR). 리뷰어의 "breaking→MAJOR" 지적보다 이 컨벤션 우선.
 - Codex 매니페스트 (`plugins/*/.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`) 가 `--check` 통과해야 함. 수동 편집 흔적 검토.
+- **도입-버전 마커는 bump 하지 않는다** — `스킬 3종 (0.7.0)`·`0.7.0부터 ...`·SKILL.md `(0.7.0)` 절 태그처럼 *기능이 언제 들어왔는지* 표기하는 버전 주석은 현재-버전 진술이 아니라 이력이므로 이후 릴리스에서 그대로 둔다. 현재 버전을 추적하는 건 per-plugin `version`·`metadata.version`·description 개수 문자열뿐. grep 기반 버전 sweep과 패턴매칭 리뷰어(CodeRabbit)가 stale 로 오탐하니 그 사유로 skip.
 - Plugin 캐시 이슈 ([anthropics/claude-code#17361](https://github.com/anthropics/claude-code/issues/17361), [anthropics/claude-code#19197](https://github.com/anthropics/claude-code/issues/19197)) — version bump 만으로는 사용자 캐시 갱신 보장 안 됨. 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차 유지.
 
 ## CodeRabbit / Codex 조율

@@ -140,6 +140,41 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
     ```
     Report-only. Beyond the mechanical checks, eyeball each insight entry against its `promoted_from:` wiki page: the insight must *condense* the page, not contradict it, and must not restate the page's full body (dedup — the long story stays in the wiki). Flag any insight whose rule conflicts with its now-`active` source page, or that has grown into a second copy of the wiki page.
 
+11. **Source-drift scan** (raw evidence integrity — the raw layer is immutable, so a body-hash that no longer matches the stored `sha256:` means the file was edited or the source URL's content moved):
+    ```bash
+    LC_ALL=C.UTF-8
+    _body_sha256() {  # hash the body ONLY (below the YAML frontmatter)
+      awk 'NR==1&&$0=="---"{fm=1;next} fm&&$0=="---"{fm=0;next} !fm{print}' "$1" \
+        | { sha256sum 2>/dev/null || shasum -a 256; } | awk '{print $1}'
+    }
+    while IFS= read -r f; do
+      stored=$(LC_ALL=C.UTF-8 grep -oP '^sha256:\s*\K\S+' "$f" | head -1)
+      [[ -z "$stored" ]] && continue    # no sha256: frontmatter -> skip (prospective-only; pre-2.4.0 files)
+      actual=$(_body_sha256 "$f")
+      [[ "$stored" != "$actual" ]] && printf 'DRIFT: %s (stored %s.. != actual %s..)\n' "$f" "${stored:0:12}" "${actual:0:12}"
+    done < <(find .llmwiki/raw -name '*.md' -type f 2>/dev/null)
+    ```
+    `find` recurses into the raw source-type buckets (`external/ research/ transcripts/ audits/`). Files with no `sha256:` field are skipped (frontmatter is prospective-only — existing raw is never backfilled, per raw-immutability). A DRIFT hit means either the immutable raw file was edited (a discipline break) or the same `source_url` now yields different bytes (re-ingest -> write a *new* dated snapshot, don't overwrite). Report-only.
+
+12. **Link-poverty scan** (graph-isolated pages — Step 5's orphan scan catches index omissions, but a page can be *in* the index yet carry zero typed cross-refs, leaving it invisible to graph traversal):
+    ```bash
+    LC_ALL=C.UTF-8
+    while IFS= read -r f; do
+      n=$(LC_ALL=C.UTF-8 grep -cP '^> \w+(-\w+)*:' "$f")
+      [[ "$n" -eq 0 ]] && printf 'link-poverty: %s (0 typed cross-refs)\n' "$f"
+    done < <(find .llmwiki/wiki -name '*.md' -not -name index.md -not -name log.md 2>/dev/null)
+    ```
+    Flags wiki pages with no typed cross-ref line (`> Refines:` / `> See-also:` / `> Evidence:` / ...). Report-only — a genuinely standalone page (a domain's first page, a leaf citing only raw evidence) can be legitimately ref-poor; the human decides whether it should be wired into the graph.
+
+13. **Log-rotation due** (bounded hot log — `log.md` grows monotonically; at year-turnover it should shed the prior year):
+    ```bash
+    LC_ALL=C.UTF-8
+    cur_year=$(date +%Y)
+    LC_ALL=C.UTF-8 grep -oP '^## \K\d{4}' .llmwiki/wiki/log.md 2>/dev/null | sort -u \
+      | awk -v y="$cur_year" '$1 < y {printf "log-rotation due: %s entries in log.md -> migrate to log-%s.md\n", $1, $1}'
+    ```
+    If any `## YYYY-...` entry predates the current year, suggest migrating that year's block into a sibling `log-YYYY.md` (newest-first preserved; `grep '## ' log*.md` still recovers the full time-series). Report-only — the migration itself is a manual / `ingest-finding` op, logged like any other event. (Convention: `references/wiki-conventions.md` § log.md discipline.)
+
 ## Output format
 
 Produce a Markdown report:
@@ -155,6 +190,9 @@ Produce a Markdown report:
 - Supersession: <n broken Supersedes/Superseded-by pairs / clean>
 - Sources: <n pages with sources:N mismatched vs ## Sources count / clean>
 - Insight: <n promoted_from unresolved / oversize / missing-frontmatter / clean | no insight layer>
+- Source drift: <n raw files whose body hash != stored sha256 / clean (no sha256-bearing files)>
+- Link poverty: <n wiki pages with 0 typed cross-refs / clean>
+- Log rotation: <prior-year block present in log.md -> migrate to log-YYYY.md / clean>
 - Orphans: <list>
 - Broken refs: <list>
 - Open contradictions: <list>
@@ -175,6 +213,9 @@ Report only — do not auto-fix. User reviews and triggers `/llm-wiki:ingest-fin
 - Supersession: 1 broken pair (backend/old-quirk.md is status: stale but has no > Superseded-by:)
 - Sources: clean
 - Insight: clean (2 entries, promoted_from resolves, all condensed)
+- Source drift: clean (no sha256-bearing raw files — frontmatter is prospective-only)
+- Link poverty: 1 (research/leaf-note.md has 0 typed cross-refs — standalone, human to confirm)
+- Log rotation: clean (log.md current-year only)
 - Orphans: none
 - Broken refs: none
 - Open contradictions: 1 (design/cache.md > Contradicts: [[design/cache-v2]])

@@ -41,6 +41,29 @@ type 디렉토리(entities/concepts/…)는 질의 후 기각 합의.
     드리프트 플래그 + 신규 스냅샷 (기존 raw 파일은 수정하지 않음 — 불변).
   - **prospective-only**: 기존 raw 파일 backfill은 하지 않는다(raw 수정 금지 원칙). sha256 없는
     파일은 드리프트 검사에서 skip.
+- **`## raw/ layout` 섹션 신설** (raw frontmatter 위에, 세션 중 추가된 범위): raw를 평평하게
+  덤프하지 않고 **출처(source-type) 축**으로 하위 버킷을 둔다. wiki의 도메인 subdir·insight의
+  flat과 달리 raw는 출처가 이질적(제3자 문서 / 우리 리서치 / 대화·녹취 / 감사)이라 이 축이 실제로
+  갈린다.
+  ```
+  raw/
+  ├── external/      # 제3자 원본 (gist, paper, vendor doc, 웹 아티클)
+  ├── research/      # 우리 생성 리서치 (deep-research, code-scout, survey)
+  ├── transcripts/   # 대화·녹취 (카카오톡 대화 export, 녹음/미팅 전사)
+  └── audits/        # 디버그·감사 캡처 (audit md, 세션 디버그 노트)
+  ```
+  - **파일명**: `YYYY-MM-DD-<slug>.<ext>` (날짜 = 캡처/ingested 일자, frontmatter `ingested:` 와 동기).
+    ingest-finding worked example(`2026-05-29-provider-x-debug.md`) + `.staging` 마커 네이밍과 일치.
+  - **불변성 = 내용 불변, 경로 고정 아님**: 기존 raw 파일을 `git mv`로 버킷에 옮기고 rename해도
+    바이트가 그대로라 body sha256 불변 → 드리프트 검사와 무충돌. 이동은 위키 편집(Evidence ref 갱신),
+    파일 수정이 아니다. 기존 4파일은 frontmatter 없이 이동만 (prospective-only 유지).
+- **이 repo의 실제 raw 이동**: karpathy·rohitg00 gist → `external/2026-05-29-*`, perplexity md·pdf →
+  `research/2026-05-29-perplexity-llm-wiki-survey.*`. `transcripts/`·`audits/`는 `.gitkeep`로 빈 버킷.
+  Evidence ref 갱신 대상: `volatility-over-decay` / `provenance-over-confidence` /
+  `curated-conservative` / `neutral-llmwiki-root` (~7 Evidence 라인 + 본문 언급). bootstrap
+  wiki-skeleton 템플릿에도 4버킷을 반영.
+- **wiki·insight는 안 건드림**: wiki는 이미 도메인 subdir 보유, insight는 균질·상한 설계라 flat 유지
+  (커지면 index.md 헤딩 그룹핑 — 물리 폴더 아님). 세 층이 성격상 다른 구조를 갖는 게 정상.
 - **`## log.md discipline`에 로테이션 규칙 추가**: 해가 바뀐 뒤 첫 wiki 이벤트 시 전년도
   엔트리를 같은 루트의 `log-YYYY.md`로 이관(newest-first 유지). 시계열 복구는
   `grep '## ' log*.md`. (Hermes의 500-엔트리 임계 대신 연도 기준 — 우리 헤더가 날짜형이라
@@ -106,6 +129,8 @@ Output format 블록 + worked example에 세 줄 추가 (`- Source drift:` / `- 
   - link-poverty: 실제 위키 페이지 대상 스캔 → 플래그 출력 형식 확인 (hit 존재 예상).
   - log-rotation: 2026 단일 연도라 미해당 → 침묵 확인. 전년도 엔트리 mock으로 양성 케이스도 1회.
 - raw frontmatter 해시 규칙 self-check: 샘플 파일 만들어 body 해시 재계산 일치 확인 (scratchpad).
+- raw 재구조화 검증: `git mv` 후 4파일 body sha256이 이동 전과 동일(내용 불변) 확인, 갱신된 Evidence
+  ref가 새 경로로 resolve되는지(broken ref 0), source-drift 스니펫이 subdir 재귀 스캔하는지.
 - `node scripts/sync-codex-manifests.mjs --check` + `node scripts/sync-hermes-manifests.mjs --check` 통과.
 - 버전 3파일(plugin.json / marketplace entry / metadata.version) grep으로 일치 확인.
 - 전체 `lint-wiki` 수동 1회 실행해 신규 Output format이 실제 리포트에 렌더되는지 확인.

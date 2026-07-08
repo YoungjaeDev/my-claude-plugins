@@ -37,7 +37,7 @@ ppt-yeong-style/
 │   └── design-qa.md
 └── skills/
     ├── ppt-yeong-style/            # 메인: 작성 규약
-    │   ├── SKILL.md                # §0 미감 + 파이프라인 + md 규약 + 원칙 15 + 리듬 + §4 레버 + §5 서브스킬 포인터
+    │   ├── SKILL.md                # §0 미감 + 파이프라인 + md 규약 + 원칙 16 + 리듬 + §4 레버 + §5 서브스킬 포인터
     │   ├── references/             # design-language / color-typography / images-and-pop / icons-logos / ppt-master-craft / ppt-master-and-qa
     │   └── assets/injection-prompt.md
     ├── lecture-deck/               # 강의 덱 운영

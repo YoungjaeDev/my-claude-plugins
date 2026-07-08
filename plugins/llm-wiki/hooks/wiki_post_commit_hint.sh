@@ -48,11 +48,17 @@ case "$cmd" in
   *"gh pr merge"*"--auto"*)
     # `gh pr merge --auto` only ENROLLS the PR for auto-merge; the merge completes
     # later, server-side, with no local command — so announcing "a PR merged" now is
-    # premature (and there is no local commit to hint on either). Stay silent. (A repo
-    # merge queue can defer a plain `gh pr merge` too, but that is not detectable from
-    # the command string; the post-merge hint is self-correcting there — post-merge's
-    # own `state=MERGED` gate refuses to proceed on an unmerged PR.)
-    exit 0 ;;
+    # premature. Suppress the merge hint. But if the same command also made a local
+    # commit/push (e.g. `git commit ... && gh pr merge --auto`), that commit still
+    # deserves the ingest-finding hint, so fall through to the commit-event path; a
+    # bare `gh pr merge --auto` has no such commit and the threshold below won't fire.
+    # (A repo merge queue can defer a plain `gh pr merge` too, but that is not
+    # detectable from the command string; the post-merge hint is self-correcting there
+    # — post-merge's own `state=MERGED` gate refuses to proceed on an unmerged PR.)
+    case "$cmd" in
+      *"git commit"*|*"git push"*) event="commit" ;;
+      *)                           exit 0 ;;
+    esac ;;
   *"gh pr merge"*) event="merge" ;;
   *)               event="commit" ;;
 esac

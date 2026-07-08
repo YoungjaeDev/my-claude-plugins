@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Karpathy LLM-Wiki 3-layer system (insight + wiki + raw under neutral .llmwiki/): 5 skills (query/ingest/lint/bootstrap/migrate) + 5 hooks. Three soft hints (stale check, post-commit hint, session-start lint hint) plus an auto-capture/ingest path: a Stop hook mechanically captures ingest candidates to <root>/.staging/ and the next session's SessionStart drain hook surfaces them for ingest-finding curation (capture and curation are split — a shell hook cannot curate). Post-merge wiki ingest is a mandatory, force-logged step inside github-dev:post-merge (the standalone post-merge-wiki skill was absorbed). Promoted cross-agent rules graduate to .llmwiki/insight/ (surfaced via core-config prompt-inject hook for Claude + Codex), NOT .claude/rules/. Neutral root defeats codex-bridge's .claude/->.codex/ fork; resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. For spec/issue/PR work-pipeline state see the spec-state plugin.",
   "hooks": {
     "UserPromptSubmit": [
@@ -45,6 +45,18 @@
       }
     ],
     "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/wiki_session_capture.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
       {
         "matcher": "",
         "hooks": [

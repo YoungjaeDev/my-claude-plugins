@@ -40,8 +40,21 @@ extract() { # $1=key
   printf '%s' "$v"
 }
 cwd=$(extract cwd)
+# SubagentStop carries BOTH transcript_path (the PARENT session's transcript) and
+# agent_transcript_path (this subagent's OWN transcript, written and present at fire
+# time — verified empirically). Prefer the agent transcript so a subagent capture
+# records the delegated work the parent Stop never sees; scanning transcript_path
+# would just duplicate the main Stop capture. The main Stop event has no
+# agent_transcript_path, so it falls through to transcript_path as before. When a
+# subagent has no persisted transcript (agent_transcript_path names a missing file),
+# the -f guard below no-ops rather than falling back to the redundant parent.
 transcript=$(extract transcript_path)
+agent_transcript=$(extract agent_transcript_path)
+[[ -n "$agent_transcript" ]] && transcript="$agent_transcript"
 session_id=$(extract session_id)
+# Present only on SubagentStop — used below to key this subagent's capture separately
+# from the parent session's (they share session_id). Empty on the main Stop event.
+agent_id=$(extract agent_id)
 # cd into the event cwd when given; exit gracefully if the cd itself fails (race /
 # permission) so we never scan from the wrong directory. Empty cwd is intentional —
 # fall through to PWD (the harness launches the hook there).
@@ -66,8 +79,19 @@ wiki_root="$(resolve_wiki_root)" || exit 0
 [[ -n "$session_id" ]] || session_id="unknown"
 sid=$(printf '%s' "$session_id" | LC_ALL=C.UTF-8 tr -c 'A-Za-z0-9._-' '_')
 
-# Rate-limit: at most once per 90s per session (Stop fires every assistant turn).
-marker="/tmp/wiki_session_capture.${sid}"
+# When fired as SubagentStop, key the marker + staging file by session_id AND agent_id
+# so a subagent capture cannot collide with the parent Stop capture (they may share
+# session_id). Main Stop has no agent_id -> unkeyed, preserving pending-<sid>.md.
+if [[ -n "$agent_id" ]]; then
+  aid=$(printf '%s' "$agent_id" | LC_ALL=C.UTF-8 tr -c 'A-Za-z0-9._-' '_')
+  marker="/tmp/wiki_session_capture.${sid}.${aid}"
+  pending_basename="pending-${sid}-${aid}.md"
+else
+  marker="/tmp/wiki_session_capture.${sid}"
+  pending_basename="pending-${sid}.md"
+fi
+
+# Rate-limit: at most once per 90s per session/agent (Stop fires every assistant turn).
 if [[ -f "$marker" ]]; then
   age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null || echo 0) ))
   [[ $age -lt 90 ]] && exit 0
@@ -75,13 +99,29 @@ fi
 touch "$marker"
 
 # --- mechanical signal detection over the transcript (heuristic, intentionally coarse) ---
+# Bound the scan: copy at most the last 4 MB into a temp buffer and grep that, so a
+# pathological multi-MB session stays well under the 5s hook timeout (tail -c seeks, so
+# the read is O(cap) not O(filesize)). The tail holds the recent, ingest-relevant turns;
+# the full transcript path is still recorded in the staging file, so the curator always
+# reads the complete source — this cap only bounds the coarse fire/no-fire heuristic.
+scan_cap=$((4 * 1024 * 1024))
+scan_buf=$(mktemp 2>/dev/null) || scan_buf=""
+trap 'rm -f "${scan_buf:-}" 2>/dev/null' EXIT
+if [[ -n "$scan_buf" ]] && tail -c "$scan_cap" "$transcript" > "$scan_buf" 2>/dev/null; then
+  scan_target="$scan_buf"
+else
+  scan_target="$transcript"
+fi
+
 # grep -c prints a count to stdout (and exits 1 on zero matches, swallowed by $()).
-merge_hits=$(LC_ALL=C.UTF-8 grep -cE 'gh pr merge|git merge|Merged pull request|"merged":[[:space:]]*true' "$transcript" 2>/dev/null)
-debug_hits=$(LC_ALL=C.UTF-8 grep -ciE 'root cause|근본 원인|원인은|the bug was|fixed by|race condition|provider quirk|deadlock|off-by-one' "$transcript" 2>/dev/null)
-decision_hits=$(LC_ALL=C.UTF-8 grep -ciE 'decided to|trade-?off|왜냐하면|the reason is|rationale|we chose|design decision' "$transcript" 2>/dev/null)
+# Kept as 3 separate greps (not one alternation) so per-category counts survive for
+# the staging signal breakdown below.
+merge_hits=$(LC_ALL=C.UTF-8 grep -cE 'gh pr merge|git merge|Merged pull request|"merged":[[:space:]]*true' "$scan_target" 2>/dev/null)
+debug_hits=$(LC_ALL=C.UTF-8 grep -ciE 'root cause|근본 원인|원인은|the bug was|fixed by|race condition|provider quirk|deadlock|off-by-one' "$scan_target" 2>/dev/null)
+decision_hits=$(LC_ALL=C.UTF-8 grep -ciE 'decided to|trade-?off|왜냐하면|the reason is|rationale|we chose|design decision' "$scan_target" 2>/dev/null)
 merge_hits=${merge_hits:-0}; debug_hits=${debug_hits:-0}; decision_hits=${decision_hits:-0}
 
-pr_refs=$(LC_ALL=C.UTF-8 grep -oE 'PR #[0-9]+|pull/[0-9]+' "$transcript" 2>/dev/null \
+pr_refs=$(LC_ALL=C.UTF-8 grep -oE 'PR #[0-9]+|pull/[0-9]+' "$scan_target" 2>/dev/null \
           | LC_ALL=C.UTF-8 grep -oE '[0-9]+' | sort -un | head -10 | tr '\n' ' ')
 
 # Fire only when the session plausibly produced lore: a real merge, OR several
@@ -96,11 +136,12 @@ staging_dir="$(dirname "$wiki_root")/.staging"
 mkdir -p "$staging_dir" || exit 0
 today=$(date +%Y-%m-%d)
 recent_commits=$(git log --oneline -5 2>/dev/null || true)
-pending_file="$staging_dir/pending-${sid}.md"
+pending_file="$staging_dir/${pending_basename}"
 
 {
   printf -- '---\n'
   printf 'session: %s\n' "$session_id"
+  [[ -n "$agent_id" ]] && printf 'agent_id: %s\n' "$agent_id"
   printf 'captured: %s\n' "$today"
   printf 'transcript: %s\n' "$transcript"
   printf 'cwd: %s\n' "$PWD"

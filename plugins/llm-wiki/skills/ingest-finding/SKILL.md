@@ -76,7 +76,7 @@ A batch-wide view is what catches "these three findings are actually the same pa
 
 ## Steps
 
-1. **Read the source of the finding** (audit md / PR diff / debug notes). If the source is a *newly captured* raw artifact (survey, chat/meeting transcript, external doc), first save it under the matching `raw/` source-type bucket (`external/ research/ transcripts/ audits/`) with a `YYYY-MM-DD-<slug>` filename + `source_url`/`ingested`/`sha256` frontmatter — see `references/wiki-conventions.md` § raw/ layout & frontmatter.
+1. **Read the source of the finding** (audit md / PR diff / debug notes). If the source is a *newly captured* raw artifact (survey, chat/meeting transcript, external doc), first save it under the matching `raw/` source-type bucket (`external/ research/ transcripts/ audits/`) with a `YYYY-MM-DD-<slug>.<ext>` filename + `source_url`/`ingested`/`sha256` frontmatter — see `references/wiki-conventions.md` § raw/ layout & frontmatter.
 2. **Map to wiki pages**: search `index.md` + grep page bodies. Identify all pages the finding affects — usually 1 primary + 2-5 cross-ref updates. List them.
 3. **Compose diff log entry**: draft the resolved root's `log.md` block now, listing every page you're about to touch.
 4. **Apply changes page-by-page**:

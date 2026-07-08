@@ -45,7 +45,7 @@ raw material is heterogeneous by *source*, so it is bucketed on a source-type ax
 `wiki/`'s domain subdirs and `insight/`'s deliberate flatness — each layer's structure follows where
 its content actually varies):
 
-```
+```text
 raw/
 ├── external/      # third-party originals (gist, paper, vendor doc, web article)
 ├── research/      # our own generated research (deep-research, code-scout, survey dumps)

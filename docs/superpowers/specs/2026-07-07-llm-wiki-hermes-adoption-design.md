@@ -45,7 +45,7 @@ type 디렉토리(entities/concepts/…)는 질의 후 기각 합의.
   덤프하지 않고 **출처(source-type) 축**으로 하위 버킷을 둔다. wiki의 도메인 subdir·insight의
   flat과 달리 raw는 출처가 이질적(제3자 문서 / 우리 리서치 / 대화·녹취 / 감사)이라 이 축이 실제로
   갈린다.
-  ```
+  ```text
   raw/
   ├── external/      # 제3자 원본 (gist, paper, vendor doc, 웹 아티클)
   ├── research/      # 우리 생성 리서치 (deep-research, code-scout, survey)

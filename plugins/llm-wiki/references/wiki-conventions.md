@@ -60,8 +60,10 @@ raw/
   updating the `> Evidence:` refs that point at it is a wiki edit, not a raw mutation. Pre-existing
   raw files without frontmatter are moved as-is (no backfill — prospective-only).
 
-Frontmatter is added to **newly captured** raw files (prospective-only — existing files are not
-backfilled, per raw-immutability):
+Frontmatter is added to **newly captured text** raw files (md/txt/html; prospective-only — existing
+files are not backfilled, per raw-immutability). **Binary raw (`.pdf`) is stored as-is** — inline YAML
+would corrupt the bytes, so it carries no frontmatter and stays outside the `sha256` drift check
+(`lint-wiki` Step 11 excludes `.pdf`):
 
 ```yaml
 ---

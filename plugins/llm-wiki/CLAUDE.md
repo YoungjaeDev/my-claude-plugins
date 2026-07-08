@@ -65,7 +65,7 @@ sources: 2                     # integer count of named provenance under ## Sour
 | `transcripts/` | conversation / recording captures (chat exports, meeting/call transcripts) |
 | `audits/` | debug / audit captures (audit md, session debug notes) |
 
-Filename `YYYY-MM-DD-<slug>.<ext>` (date = ingested day). Newly captured raw carries `source_url` / `ingested` / `sha256`-of-body frontmatter; existing files are moved as-is, never backfilled — immutability is *content*, not path, so a `git mv` into a bucket preserves the body hash. `lint-wiki` Step 11 drift-checks any `sha256:`-bearing file. Full spec: `references/wiki-conventions.md` § raw/ layout & frontmatter.
+Filename `YYYY-MM-DD-<slug>.<ext>` (date = ingested day). Newly captured *text* raw (md/txt/html) carries `source_url` / `ingested` / `sha256`-of-body frontmatter; *binary* raw (pdf) is stored as-is (no inline frontmatter, outside the drift check). Existing files are moved as-is, never backfilled — immutability is *content*, not path, so a `git mv` into a bucket preserves the body hash. `lint-wiki` Step 11 drift-checks any `sha256:`-bearing file. Full spec: `references/wiki-conventions.md` § raw/ layout & frontmatter.
 
 ## Cross-ref grammar
 

@@ -79,13 +79,13 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
      [[ "$vol" == "volatile" ]] && window=30 || window=180
      age_days=$(( (today - $(date -d "$d" +%s)) / 86400 ))
      [[ $age_days -gt $window ]] && printf '%s (%d days, %s window %dd)\n' "$f" "$age_days" "${vol:-stable}" "$window"
-   done < <(find .llmwiki/wiki .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name 'log*.md' 2>/dev/null)
+   done < <(find .llmwiki/wiki .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name 'log.md' -not -name 'log-[0-9][0-9][0-9][0-9].md' 2>/dev/null)
    ```
    For each stale page, either re-verify against current code and bump the date, or mark for review.
 
 5. **Orphan scan** (pages not in index, indexed pages that don't exist):
    ```bash
-   diff <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log*.md' | sort) \
+   diff <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md' -not -name 'log-[0-9][0-9][0-9][0-9].md' | sort) \
         <(LC_ALL=C.UTF-8 grep -oP '\(\K[^)]+\.md' .llmwiki/wiki/index.md | sed 's|^|.llmwiki/wiki/|' | sort)
    ```
 
@@ -103,7 +103,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
    while IFS= read -r f; do
      LC_ALL=C.UTF-8 grep -q '^status:\s*stale' "$f" || continue
      LC_ALL=C.UTF-8 grep -q '^> Superseded-by:' "$f" || printf 'stale without Superseded-by: %s\n' "$f"
-   done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log*.md')
+   done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md' -not -name 'log-[0-9][0-9][0-9][0-9].md')
 
    # > Supersedes: targets that are NOT status: stale
    LC_ALL=C.UTF-8 grep -rhoP '^> Supersedes:\s*\[\[\K[^\]]+' .llmwiki/wiki/ | sort -u | while IFS= read -r id; do
@@ -165,7 +165,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
     while IFS= read -r f; do
       n=$(LC_ALL=C.UTF-8 grep -cP '^> (Refines|Contradicts|Evidence|See-also|Supersedes|Superseded-by|Uses|Depends-on|Caused-by|Fixed-by):' "$f")
       [[ "$n" -eq 0 ]] && printf 'link-poverty: %s (0 typed cross-refs)\n' "$f"
-    done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log*.md' 2>/dev/null)
+    done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md' -not -name 'log-[0-9][0-9][0-9][0-9].md' 2>/dev/null)
     ```
     Flags wiki pages with no typed cross-ref line (`> Refines:` / `> See-also:` / `> Evidence:` / ...). Report-only — a genuinely standalone page (a domain's first page, a leaf citing only raw evidence) can be legitimately ref-poor; the human decides whether it should be wired into the graph.
 

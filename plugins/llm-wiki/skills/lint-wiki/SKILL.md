@@ -79,13 +79,13 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
      [[ "$vol" == "volatile" ]] && window=30 || window=180
      age_days=$(( (today - $(date -d "$d" +%s)) / 86400 ))
      [[ $age_days -gt $window ]] && printf '%s (%d days, %s window %dd)\n' "$f" "$age_days" "${vol:-stable}" "$window"
-   done < <(find .llmwiki/wiki .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name 'log.md' 2>/dev/null)
+   done < <(find .llmwiki/wiki .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name 'log*.md' 2>/dev/null)
    ```
    For each stale page, either re-verify against current code and bump the date, or mark for review.
 
 5. **Orphan scan** (pages not in index, indexed pages that don't exist):
    ```bash
-   diff <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md' | sort) \
+   diff <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log*.md' | sort) \
         <(LC_ALL=C.UTF-8 grep -oP '\(\K[^)]+\.md' .llmwiki/wiki/index.md | sed 's|^|.llmwiki/wiki/|' | sort)
    ```
 
@@ -103,7 +103,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
    while IFS= read -r f; do
      LC_ALL=C.UTF-8 grep -q '^status:\s*stale' "$f" || continue
      LC_ALL=C.UTF-8 grep -q '^> Superseded-by:' "$f" || printf 'stale without Superseded-by: %s\n' "$f"
-   done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md')
+   done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log*.md')
 
    # > Supersedes: targets that are NOT status: stale
    LC_ALL=C.UTF-8 grep -rhoP '^> Supersedes:\s*\[\[\K[^\]]+' .llmwiki/wiki/ | sort -u | while IFS= read -r id; do
@@ -148,13 +148,13 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
         | { sha256sum 2>/dev/null || shasum -a 256; } | awk '{print $1}'
     }
     while IFS= read -r f; do
-      stored=$(LC_ALL=C.UTF-8 grep -oP '^sha256:\s*\K\S+' "$f" | head -1)
+      stored=$(LC_ALL=C.UTF-8 grep -oP '^sha256:\s*\K\S+' "$f" 2>/dev/null | head -1)
       [[ -z "$stored" ]] && continue    # no sha256: frontmatter -> skip (prospective-only; pre-2.4.0 files)
       actual=$(_body_sha256 "$f")
       [[ "$stored" != "$actual" ]] && printf 'DRIFT: %s (stored %s.. != actual %s..)\n' "$f" "${stored:0:12}" "${actual:0:12}"
-    done < <(find .llmwiki/raw -name '*.md' -type f 2>/dev/null)
+    done < <(find .llmwiki/raw -type f -not -name '*.pdf' 2>/dev/null)
     ```
-    `find` recurses into the raw source-type buckets (`external/ research/ transcripts/ audits/`). Files with no `sha256:` field are skipped (frontmatter is prospective-only — existing raw is never backfilled, per raw-immutability). A DRIFT hit means either the immutable raw file was edited (a discipline break) or the same `source_url` now yields different bytes (re-ingest -> write a *new* dated snapshot, don't overwrite). Report-only.
+    `find` recurses into the raw source-type buckets (`external/ research/ transcripts/ audits/`) and scans **any-extension text raw** (`.md`, `.txt`, `.html`, ...), not just `.md` — a transcript or external doc can carry `sha256:` frontmatter too; the `sha256:`-presence guard (not the extension) is the real filter. Binary raw (`.pdf`) is excluded since it can't carry text frontmatter. Files with no `sha256:` field are skipped (frontmatter is prospective-only — existing raw is never backfilled, per raw-immutability). A DRIFT hit means either the immutable raw file was edited (a discipline break) or the same `source_url` now yields different bytes (re-ingest -> write a *new* dated snapshot, don't overwrite). Report-only.
 
 12. **Link-poverty scan** (graph-isolated pages — Step 5's orphan scan catches index omissions, but a page can be *in* the index yet carry zero typed cross-refs, leaving it invisible to graph traversal):
     ```bash
@@ -162,7 +162,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
     while IFS= read -r f; do
       n=$(LC_ALL=C.UTF-8 grep -cP '^> \w+(-\w+)*:' "$f")
       [[ "$n" -eq 0 ]] && printf 'link-poverty: %s (0 typed cross-refs)\n' "$f"
-    done < <(find .llmwiki/wiki -name '*.md' -not -name index.md -not -name log.md 2>/dev/null)
+    done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log*.md' 2>/dev/null)
     ```
     Flags wiki pages with no typed cross-ref line (`> Refines:` / `> See-also:` / `> Evidence:` / ...). Report-only — a genuinely standalone page (a domain's first page, a leaf citing only raw evidence) can be legitimately ref-poor; the human decides whether it should be wired into the graph.
 

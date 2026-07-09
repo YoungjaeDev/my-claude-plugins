@@ -4,24 +4,24 @@
 # 프로젝트의 에이전트 하네스 설정 상태를 탐지해 JSON 한 덩어리로 출력한다.
 # 순수 read-only — 어떤 파일도 만들거나 고치지 않는다.
 #
-# `/project-init:checkup` 의 탐지 SSOT. `idempotent-seed.sh diagnose` 도 이걸 감싼다.
+# `/project-init:wiring` 의 탐지 SSOT. `idempotent-seed.sh diagnose` 도 이걸 감싼다.
 #
 # Usage:
 #   bash project_state.sh            # 전체 상태 JSON
 #
 # Env:
-#   CHECKUP_TMP_STALE_DAYS   .tmp/ stale 판정 기준 (기본 14)
+#   WIRING_TMP_STALE_DAYS   .tmp/ stale 판정 기준 (기본 14)
 #
 # 의존성: jq (infer-github-context.sh / idempotent-seed.sh 와 동일한 기존 의존성)
 
 set -euo pipefail
 
-STALE_DAYS="${CHECKUP_TMP_STALE_DAYS:-14}"
+STALE_DAYS="${WIRING_TMP_STALE_DAYS:-14}"
 # 비정수면 `find -mtime +$STALE_DAYS` 와 `jq --argjson` 이 둘 다 깨진다.
 # jq 의 usage dump 대신 원인을 말하고 죽는다.
 case "$STALE_DAYS" in
   '' | *[!0-9]*)
-    echo "[project_state] CHECKUP_TMP_STALE_DAYS must be a non-negative integer (got: $STALE_DAYS)" >&2
+    echo "[project_state] WIRING_TMP_STALE_DAYS must be a non-negative integer (got: $STALE_DAYS)" >&2
     exit 2
     ;;
 esac

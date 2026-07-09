@@ -1,13 +1,13 @@
 ---
-name: checkup
-description: "This skill should be used when the user asks to run a project setup diagnostic on an EXISTING repository — phrases like '프로젝트 진단', '셋업 점검', '이 repo 설정 제대로 됐는지 확인', 'project checkup', 'is this repo wired up', 'diagnose my project setup', or an explicit /project-init:checkup invocation. Detects 11 axes of agent-harness configuration (git, CLAUDE.md/AGENTS.md guidance, .claude/rules, llm-wiki layout + staging backlog, Serena onboarding, memory surfaces, spec locations, gws-sync, .tmp convention, git hooksPath, .gitignore coverage), reports a verdict per axis with the remediation skill named, then gates every fix behind AskUserQuestion. Read-only until the user approves. Complements /project-init:new (which bootstraps an EMPTY dir and refuses to run here). Not for mem0 store diagnostics (use /mem0-ops:doctor) or wiki-content health (use /llm-wiki:lint-wiki)."
+name: wiring
+description: "This skill should be used when the user asks to run a project setup diagnostic on an EXISTING repository — phrases like '프로젝트 진단', '셋업 점검', '하네스 배선 확인', '이 repo 설정 제대로 됐는지 확인', 'check my project wiring', 'is this repo wired up', 'diagnose my project setup', or an explicit /project-init:wiring invocation. Detects 11 axes of agent-harness configuration (git, CLAUDE.md/AGENTS.md guidance, .claude/rules, llm-wiki layout + staging backlog, Serena onboarding, memory surfaces, spec locations, gws-sync, .tmp convention, git hooksPath, .gitignore coverage), reports a verdict per axis with the remediation skill named, then gates every fix behind AskUserQuestion. Read-only until the user approves. Complements /project-init:new (which bootstraps an EMPTY dir and refuses to run here). Not for mem0 store diagnostics (use /mem0-ops:doctor) or wiki-content health (use /llm-wiki:lint-wiki)."
 ---
 
-# project-init `checkup` skill
+# project-init `wiring` skill
 
 Diagnose whether an existing repository's agent-harness conventions are actually wired up, then fix what the user approves.
 
-Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-empty one. `checkup` is the inverse — it only makes sense on a repo that already exists.
+Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-empty one. `wiring` is the inverse — it only makes sense on a repo that already exists.
 
 ## Contract
 
@@ -36,7 +36,7 @@ fi
 bash "$PLUGIN_ROOT/scripts/project_state.sh"
 ```
 
-Emits one JSON object. `CHECKUP_TMP_STALE_DAYS` (default 14) sets the `.tmp/` staleness window. Requires `jq`.
+Emits one JSON object. `WIRING_TMP_STALE_DAYS` (default 14) sets the `.tmp/` staleness window. Requires `jq`.
 
 Do not re-derive any field with ad-hoc `test -f` calls — the script is the detection SSOT, and duplicating it is how the three pre-existing detectors drifted.
 
@@ -71,7 +71,7 @@ Three verdicts need an explanation the JSON cannot carry:
 Print a fixed-width table, most severe first. Name the remediation on every non-OK row — a verdict without a next action is noise.
 
 ```
-## Project Checkup — <dir_name>
+## Project Wiring — <dir_name>
 
 [FAIL] llm-wiki    .llmwiki/.staging: 2 pending captures uncurated
                    -> /llm-wiki:ingest-finding  (gitignored; lore is unrecoverable if cleaned)
@@ -127,4 +127,4 @@ Resolving it means user-scope settings changes — `autoMemoryEnabled: false`, p
 
 ## Relationship to `new`
 
-`new` and `checkup` share `scripts/project_state.sh` for state detection. They do **not** share the preflight guard: `new`'s Step 0 hard guard stays inline, dependency-free, and runs before `PLUGIN_ROOT` is resolved. Moving a safety gate behind a script lookup would add a failure mode where the guard silently does not run.
+`new` and `wiring` share `scripts/project_state.sh` for state detection. They do **not** share the preflight guard: `new`'s Step 0 hard guard stays inline, dependency-free, and runs before `PLUGIN_ROOT` is resolved. Moving a safety gate behind a script lookup would add a failure mode where the guard silently does not run.

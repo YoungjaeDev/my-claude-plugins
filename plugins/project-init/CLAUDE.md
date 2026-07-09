@@ -3,7 +3,7 @@
 프로젝트의 **에이전트 하네스 lifecycle** 을 orchestrate. 두 방향이 대칭을 이룬다.
 
 - `new` — Day-1 셋업 (`.claude/`, CLAUDE.md, AGENTS.md, README/CHANGELOG, gh repo create+push). **빈 디렉토리 전용.**
-- `checkup` — 이미 존재하는 repo 의 하네스 설정 진단. **`new` 의 역방향.** read-only 탐지 후 `AskUserQuestion` 게이트 뒤에서만 수정.
+- `wiring` — 이미 존재하는 repo 의 하네스 설정 진단. **`new` 의 역방향.** read-only 탐지 후 `AskUserQuestion` 게이트 뒤에서만 수정.
 
 ## Surfaces
 
@@ -11,15 +11,15 @@
 |---------|-------|-------------|
 | Command | `/project-init:new` | 명시적 사용자 호출 — bootstrap 의 primary surface. |
 | Skill | `new` | Codex (및 Claude Code) 의 capability-discovery 용. description 이 좁게 잡혀 "bootstrap a new project in this empty dir" 류만 매치. |
-| Skill | `checkup` | 기존 repo 진단. command surface 없음 — `/project-init:checkup` 스킬 호출로 충분하고, command 는 Codex 로 emit 되지 않아 본문만 이중화된다. |
+| Skill | `wiring` | 기존 repo 진단. command surface 없음 — `/project-init:wiring` 스킬 호출로 충분하고, command 는 Codex 로 emit 되지 않아 본문만 이중화된다. |
 
-`new` 의 두 surface 는 본문 첫 블록에 **preflight hard guard** 를 둔다 — `.git/` / `.claude/` / source-file 이 cwd 에 하나라도 있으면 abort. description 기반 매칭에만 기대지 않고 runtime 에서 강제. `checkup` 에는 이 가드가 없다 (정의상 비어있지 않은 repo 에서만 의미).
+`new` 의 두 surface 는 본문 첫 블록에 **preflight hard guard** 를 둔다 — `.git/` / `.claude/` / source-file 이 cwd 에 하나라도 있으면 abort. description 기반 매칭에만 기대지 않고 runtime 에서 강제. `wiring` 에는 이 가드가 없다 (정의상 비어있지 않은 repo 에서만 의미).
 
 ## 탐지 SSOT
 
 `scripts/project_state.sh` 가 프로젝트 상태 탐지를 **혼자** 담당한다. 순수 read-only, JSON 한 덩어리 출력.
 
-- `checkup` 은 11 축 전체를 소비한다.
+- `wiring` 은 11 축 전체를 소비한다.
 - `idempotent-seed.sh diagnose` 는 이 스크립트를 감싸 legacy 출력 형태(`cwd`/`dir_name`/`git`/`seeded`/`code_signal`)만 골라낸다. 탐지 로직을 다시 구현하지 않는다.
 - **`new` 의 Step 0 hard guard 는 여기에 흡수하지 않는다.** 가드는 의존성 0 (순수 `find`) 이고 `PLUGIN_ROOT` 리졸버보다 **먼저** 돌아야 한다. 스크립트 호출로 바꾸면 "PLUGIN_ROOT 해석 실패 시 가드가 조용히 실행되지 않는" 실패 모드가 새로 생긴다. 안전 장치는 lazy-load 뒤로 옮기지 않는다.
 
@@ -28,8 +28,8 @@
 ## 원칙
 
 - **Preflight hard guard is non-negotiable**: `commands/new.md` 와 `skills/new/SKILL.md` 양쪽 Step 0 에 동일한 가드가 박혀 있다. description 만으로 잘못된 트리거를 막을 수 없다는 전제 — 모델이 description 을 잘못 해석해도 runtime 이 막는다. 가드 제거는 사용자의 명시적 (high-friction, 의도적) 결정이어야 한다.
-- **checkup 은 남의 영역을 진단하지 않는다**: 위키 페이지 건강도는 `/llm-wiki:lint-wiki`, mem0 스토어/설정 자세는 `/mem0-ops:doctor` 가 소유한다. checkup 은 파일시스템 신호만 본다 — "위키가 있는가 / 레이아웃이 맞는가 / 미드레인 캡처가 쌓였는가" 까지. 겹치면 두 진단이 서로 다른 답을 내는 날이 온다.
-- **결함마다 담당 스킬을 지목한다**: 다음 행동이 없는 판정은 노이즈다. 기계적·되돌릴 수 있는 수정 (`.gitignore` 라인, `.tmp/` 생성, `core.hooksPath`, serena `project_name`) 만 checkup 이 직접 고치고, 판단이 필요한 것 (`.staging` 큐레이션, wiki bootstrap/migrate, CLAUDE.md 저작, spec 이전, Serena 온보딩, mem0 변경) 은 전부 위임한다.
+- **wiring 은 남의 영역을 진단하지 않는다**: 위키 페이지 건강도는 `/llm-wiki:lint-wiki`, mem0 스토어/설정 자세는 `/mem0-ops:doctor` 가 소유한다. wiring 은 파일시스템 신호만 본다 — "위키가 있는가 / 레이아웃이 맞는가 / 미드레인 캡처가 쌓였는가" 까지. 겹치면 두 진단이 서로 다른 답을 내는 날이 온다.
+- **결함마다 담당 스킬을 지목한다**: 다음 행동이 없는 판정은 노이즈다. 기계적·되돌릴 수 있는 수정 (`.gitignore` 라인, `.tmp/` 생성, `core.hooksPath`, serena `project_name`) 만 wiring 이 직접 고치고, 판단이 필요한 것 (`.staging` 큐레이션, wiki bootstrap/migrate, CLAUDE.md 저작, spec 이전, Serena 온보딩, mem0 변경) 은 전부 위임한다.
 - **Minimal seeding, explicit follow-ups**: Day-1 에 필요한 것만 시드. tech-stack 기반 rules 생성과 wiki 도메인 인터뷰는 **호출 X, 안내만**. 빈 프로젝트에 generic 콘텐츠 만들면 사용자 덮어쓰기 비용 발생.
 - **Owner gate is mandatory**: 사용자가 personal + 다중 org 컨텍스트라 owner 자동 결정 금지. `AskUserQuestion` 으로 명시 선택.
 - **Codex GitHub reviewer surface**: AGENTS.md `## Review guidelines` 섹션이 Codex GitHub cloud reviewer 가 자동으로 읽는 영역. **레포 생성 시점에 시드**해야 첫 PR 부터 효과.
@@ -43,7 +43,7 @@ plugins/project-init/
 ├── commands/new.md                     # 명시적 슬래시 surface (preflight guard + 포인터)
 ├── skills/
 │   ├── new/SKILL.md                    # bootstrap 스킬 surface (동일 preflight guard + 포인터)
-│   └── checkup/SKILL.md                # 기존 repo 진단 (read-only 탐지 + 게이트 수정)
+│   └── wiring/SKILL.md                # 기존 repo 진단 (read-only 탐지 + 게이트 수정)
 ├── references/
 │   ├── new-procedure.md                # 본문 (Phase 0–7) — 두 surface 가 공유
 │   ├── codex-review-discovery.md       # AGENTS.md vs /review CLI

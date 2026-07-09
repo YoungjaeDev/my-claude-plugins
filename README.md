@@ -479,7 +479,7 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 <details>
 <summary><strong>project-init</strong> - Day-1 부트스트랩 + 기존 repo 셋업 진단</summary>
 
-빈 디렉토리에서 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료. 이미 있는 repo 는 `/project-init:checkup` 으로 진단.
+빈 디렉토리에서 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료. 이미 있는 repo 는 `/project-init:wiring` 으로 진단.
 
 **시드 결과:**
 - `.claude/{spec,rules}/` + `.llmwiki/{raw,wiki}/` 빈 구조 (`.gitkeep`)
@@ -498,7 +498,7 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 2. 첫 도메인 lore → `/llm-wiki:bootstrap-wiki`
 3. 첫 PR merge 후 → `/github-dev:post-merge` (post-merge 내장 wiki 적재 step)
 
-**`/project-init:checkup`** — `new` 의 역방향. 이미 있는 repo 의 하네스 설정을 11 축으로 진단한다 (guidance 파일, llm-wiki 레이아웃 + `.staging` 미드레인 백로그, Serena 온보딩, 메모리 표면 충돌, spec 위치, gws-sync, `.tmp`, `core.hooksPath`, `.gitignore` 커버리지). 탐지는 `scripts/project_state.sh` 가 전담하는 read-only 단계이고, 결함마다 담당 스킬을 지목한 뒤 모든 수정은 `AskUserQuestion` 게이트 뒤에서만 적용한다. 위키 페이지 건강도는 `/llm-wiki:lint-wiki`, mem0 스토어는 `/mem0-ops:doctor` 가 담당 — 중복하지 않는다.
+**`/project-init:wiring`** — `new` 의 역방향. 이미 있는 repo 의 하네스 설정을 11 축으로 진단한다 (guidance 파일, llm-wiki 레이아웃 + `.staging` 미드레인 백로그, Serena 온보딩, 메모리 표면 충돌, spec 위치, gws-sync, `.tmp`, `core.hooksPath`, `.gitignore` 커버리지). 탐지는 `scripts/project_state.sh` 가 전담하는 read-only 단계이고, 결함마다 담당 스킬을 지목한 뒤 모든 수정은 `AskUserQuestion` 게이트 뒤에서만 적용한다. 위키 페이지 건강도는 `/llm-wiki:lint-wiki`, mem0 스토어는 `/mem0-ops:doctor` 가 담당 — 중복하지 않는다.
 
 **Requirements:** `gh` CLI authenticated, `git`, `jq`
 

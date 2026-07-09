@@ -49,7 +49,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | Plugin | Description |
 |--------|-------------|
 | `interview` | Structured requirements gathering |
-| `project-init` | Agent-harness project lifecycle. `new` — first-day bootstrap (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + README/CHANGELOG + gh repo create), preflight-guarded to empty dirs. `checkup` — read-only 11-axis setup diagnostic for existing repos (guidance, llm-wiki layout + staging backlog, Serena onboarding, memory-surface conflict, spec homes, gws-sync, .tmp, hooksPath, .gitignore), remediation skill named per finding, fixes gated behind AskUserQuestion. Shared detector `scripts/project_state.sh` |
+| `project-init` | Agent-harness project lifecycle. `new` — first-day bootstrap (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + README/CHANGELOG + gh repo create), preflight-guarded to empty dirs. `wiring` — read-only 11-axis setup diagnostic for existing repos (guidance, llm-wiki layout + staging backlog, Serena onboarding, memory-surface conflict, spec homes, gws-sync, .tmp, hooksPath, .gitignore), remediation skill named per finding, fixes gated behind AskUserQuestion. Shared detector `scripts/project_state.sh` |
 
 ### Presentation
 | Plugin | Description |
@@ -113,7 +113,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 │   ├── anti-slop-design/   # Anti-AI-slop design guard (web/ppt/dashboard/copy)
 │   ├── ppt-yeong-style/    # yeong-style lecture/proposal deck writing layer (on ppt-master)
 │   ├── tally-form/         # Checklist md -> Tally questionnaire/survey form builder
-│   └── project-init/       # Day-1 bootstrap (new) + existing-repo setup diagnostic (checkup)
+│   └── project-init/       # Day-1 bootstrap (new) + existing-repo setup diagnostic (wiring)
 ├── CLAUDE.md               # This file
 └── README.md               # Full documentation
 ```

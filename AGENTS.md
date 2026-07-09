@@ -14,7 +14,7 @@
 
 | 관심사 | Claude Code 표면 | Codex 표면 | Hermes 표면 |
 |---|---|---|---|
-| 최상위 지침 | `CLAUDE.md`, `.claude/rules/*.md` | `AGENTS.md` (inline / mirror) | `AGENTS.md` (mirror, `@import` 불가) |
+| 최상위 지침 | `CLAUDE.md`, `.claude/rules/*.md` (`@import`) | `AGENTS.md` (verbatim 로드 — `@import` 메커니즘 자체가 없음) | `AGENTS.md` (mirror, verbatim) |
 | 프롬프트 주입 hook | 플러그인 `UserPromptSubmit` (`plugin.json` → `hooks/*.sh`) | `~/.codex/hooks.json` → 같은 스크립트, `codex` 포맷 인자 | (별도 hook surface — 현재 미사용) |
 | skill | `plugins/*/skills` (native) | 같은 트리 in-place + generated `.codex-plugin/plugin.json` (아래 "Codex 통합") | 같은 트리 in-place + generated `plugin.yaml` + `__init__.py` (아래 "Hermes 통합") |
 | command / subagent | `plugins/*/{commands,agents}` (native) | Codex 0.135 미지원 (Claude-only) | Hermes 미지원 (skill 만) |
@@ -27,6 +27,7 @@
 - skill 본문을 추가/변경할 때 Hermes 호환 표(Claude/Codex 도구 용어 → Hermes 도구)를 점검한다 — 3런타임 포터블.
 - wiki lore 는 `.claude/rules/` 로 승격하지 않는다 — Codex/Hermes 가 못 읽는다. cross-agent insight 는 `.llmwiki/insight/` 로 graduate 후 공유 주입 hook 으로 노출한다.
 - `.llmwiki/` 를 per-agent 로 fork 하지 않는다.
+- `AGENTS.md` 를 `CLAUDE.md` 로의 포인터로 축약하지 않는다. Codex/Hermes 는 `@` 를 확장하지 않아 `@CLAUDE.md` 는 죽은 텍스트이고, "CLAUDE.md 를 먼저 읽어라" 식 산문 redirect 는 Codex GitHub cloud reviewer 에 닿지 않는다 (이 리뷰어는 `## Review guidelines` 섹션을 시스템 프롬프트에 직접 로드하지, 파일을 찾아가지 않는다). 실패는 조용하다 — 에러 없이 지침만 사라진다. 미러 유지가 부담이면 방향을 뒤집어 `AGENTS.md` 를 SSOT 로 두고 `CLAUDE.md` 가 `@AGENTS.md` 를 import 한다 (`@import` 는 Claude 전용 기능이고 `CLAUDE.md` 쪽에만 있다).
 
 ## 저장소 구조
 

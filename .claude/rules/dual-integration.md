@@ -12,7 +12,7 @@ Keep the Claude Code, Codex, and Hermes surfaces in sync whenever guidance, hook
 
 | Concern | Claude Code surface | Codex surface | Hermes surface |
 |---|---|---|---|
-| Top-level guidance | `CLAUDE.md`, `.claude/rules/*.md` (`@import`) | `AGENTS.md` (no `@import` — inline or mirror) | `AGENTS.md` (mirror, no `@import`) |
+| Top-level guidance | `CLAUDE.md`, `.claude/rules/*.md` (`@import`) | `AGENTS.md` (read verbatim — no `@import` mechanism; inline or mirror) | `AGENTS.md` (mirror, read verbatim) |
 | Prompt-submit injection | plugin `UserPromptSubmit` hook (`plugin.json` → `hooks/*.sh`) | `~/.codex/hooks.json` `UserPromptSubmit` → same script, `codex` format arg | (separate hook surface — currently unused) |
 | Skill delivery | `plugins/*/skills` (native) | same tree in place + generated `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) | same tree in place + generated `plugin.yaml` + `__init__.py` (`scripts/sync-hermes-manifests.mjs`) |
 | Command / subagent | `plugins/*/{commands,agents}` (native) | not supported by Codex 0.135 — Claude-only | not supported by Hermes — skills only |
@@ -22,7 +22,7 @@ Keep the Claude Code, Codex, and Hermes surfaces in sync whenever guidance, hook
 ## Do's
 
 - **Edit guidance in pairs.** When you change `CLAUDE.md` behavioral guidance that Codex should also follow, update the matching `AGENTS.md` block (or confirm it is already covered). The reverse holds too.
-- **Mirror cross-cutting `.claude/rules/` rules into `AGENTS.md`.** Codex cannot `@import` `.claude/rules/`, so a rule that both agents must honor needs a concise mirror block in `AGENTS.md` plus a one-line pointer in `CLAUDE.md` `## Modular Rules`.
+- **Mirror cross-cutting `.claude/rules/` rules into `AGENTS.md`.** Codex has no `@import` mechanism at all — it reads `AGENTS.md` byte-for-byte and expands nothing — so a rule that both agents must honor needs a concise mirror block in `AGENTS.md` plus a one-line pointer in `CLAUDE.md` `## Modular Rules`. `@import` is a Claude-only feature and only works from `CLAUDE.md`; Claude never reads `AGENTS.md` at all.
 - **Pair every hook change.** A new or changed Claude `UserPromptSubmit` / `SessionStart` hook in a `plugin.json` should be checked against the Codex `~/.codex/hooks.json` equivalent. Prefer one shared script with a format arg (plain stdout for Claude, JSON `additionalContext` for Codex) over two divergent copies.
 - **Regenerate Codex manifests after a plugin's skills / `version` / `description` / `category` change.** Run `node scripts/sync-codex-manifests.mjs` (the `--check` drift guard otherwise fails). Codex reads skill bodies in place — no transform — so valid frontmatter still matters; `commands/` and `agents/` are Claude-only and are not emitted. core-config and codex-image are intentionally excluded (see the generator's `EXCLUDED` set).
 - **Regenerate Hermes adapters after a HERMES_ELIGIBLE plugin's `version` / `description` change.** Run `node scripts/sync-hermes-manifests.mjs` (the `--check` drift + orphan guard otherwise fails). `plugin.yaml` / `__init__.py` are generated from `marketplace.json` — never hand-edit them. Coverage is the generator's `HERMES_ELIGIBLE` allowlist (the symmetric counterpart of Codex's `EXCLUDED` denylist); add a name to extend it.
@@ -39,6 +39,7 @@ Keep the Claude Code, Codex, and Hermes surfaces in sync whenever guidance, hook
 - **Never hand-edit generated manifests/adapters.** `.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json` (Codex) and `plugin.yaml` + `__init__.py` (Hermes) are generator output; edit the marketplace source + regenerate, or the `--check` guards flag drift.
 - **Never promote wiki lore to `.claude/rules/`.** Neither Codex nor Hermes reads `.claude/rules/`. Cross-agent insight graduates to `.llmwiki/insight/` and is surfaced via the shared prompt-injection hook (see `llm-wiki` ingest rules). `.claude/rules/` is reserved for mechanical tool-operation rules (versioning, this file), not lore.
 - **Never fork `.llmwiki/` into per-agent copies.** One neutral root is the point; a `.codex/wiki/` fork defeats it.
+- **Never reduce `AGENTS.md` to a pointer at `CLAUDE.md`.** An `@CLAUDE.md` line is dead text under Codex and Hermes (neither expands `@`), and a prose "read CLAUDE.md first" redirect cannot reach the Codex GitHub cloud reviewer, which loads the `## Review guidelines` section straight into its system prompt rather than walking files. The failure is silent — Codex reports no error, it just runs with no guidance. If the mirror ever becomes too costly to hand-maintain, invert the direction instead: make `AGENTS.md` the SSOT and have `CLAUDE.md` carry `@AGENTS.md`, which both runtimes honor.
 
 ## Source of Truth
 

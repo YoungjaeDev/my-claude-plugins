@@ -207,6 +207,7 @@ does NOT need to retain removed plugins — orphan detection covers that case.
   runtime-fallback rule.
 
 > Supersedes: (retired plugin `codex-bridge` 1.0.0)
+> Refined-by: [[agents-md-verbatim-no-import]]
 > Promoted-to: [[codex-skill-desc-1024]]
 > See-also: [[neutral-llmwiki-root]]
 > See-also: [[cache-version-pinning]]

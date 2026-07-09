@@ -6,6 +6,14 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-09 — post-merge #103: codex-image gpt-image 출력 behavior quirk 3종 (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `6d7750d` — feat(ppt-yeong-style): 0.9.0 — 본문 스토리 개념 일러스트 규약 + 레터링 경계 + drawio 삼분. PR이 실측한 codex-image(gpt-image) 출력 behavior 3종을 재사용 provider lore로 synth. 스토리 일러스트 저작 규약 자체(개념유형→서사패턴·마스코트 연기·anti-slop)는 skill(`plugins/ppt-yeong-style/.../images-and-pop.md` §5d)이 SoT라 위키에 미복제 — routing 원칙.
+
+- `plugin-ops/codex-imagegen-output-behavior.md`: new page (id codex-imagegen-output-behavior, status active, volatility volatile, sources 1). gpt-image via `codex exec`의 출력 behavior 3종 실측 — (1) 짧은 한글 라벨·말풍선은 자소분리·오타 0으로 정상 렌더(장문·자주 바뀌는 문구·정확 수치만 SVG 폴백), (2) "flat, no gradient" 과잉 강조 시 팔레트를 뭉갬 → "flat vector with soft subtle shading"로 완화, (3) 역할색 미명시 시 의미색으로 폴백(배터리→신호등색) → 프롬프트에 역할색 명시. `> See-also: [[codex-image-bridge-design]]`.
+- `index.md`: plugin-ops에 codex-imagegen-output-behavior hook 1줄 추가.
+- Not graduated to insight: 단일 세션 실측(recurs-across-2+-sessions 미충족) + model-output이라 volatile — 위키 레이어 유지.
+
 ## 2026-07-09 — post-merge #101: SubagentStop hook payload contract + post_commit merge-detection fix (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `17a1f26` — fix(llm-wiki): 훅 결함 (2.5.0). Also corrected a concurrent-release `metadata.version` collision (#101 + #102 both bumped 1.85.0→1.86.0 from the shared base; fixed to 1.87.0 per the existing plugin-versioning.md concurrent-release rule — a value fix, no new rule or wiki page).

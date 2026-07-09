@@ -19,7 +19,7 @@ else
 fi
 [[ -z "$cmd" ]] && exit 0
 
-# Only react to git commit or git push to a non-feature branch (merge to main)
+# Only react to git commit / git push / gh pr merge; classify below by command string.
 case "$cmd" in
   *"git commit"*|*"git push"*|*"gh pr merge"*) ;;
   *) exit 0 ;;
@@ -39,34 +39,63 @@ resolve_wiki_root() {
 }
 wiki_root="$(resolve_wiki_root)" || exit 0
 
-# Rate-limit: suppress if we've already fired in the last 10 minutes for this cwd
-marker="/tmp/wiki_post_commit_hint.$(printf '%s' "$PWD" | cksum | cut -d' ' -f1)"
+# Classify the event by the COMMAND STRING, not local git state. `gh pr merge` is a
+# remote operation — it never changes local HEAD (a --squash merge leaves no local
+# 2-parent commit), so deriving "is this a merge?" from `git rev-list` on HEAD was
+# unreliable (~always false). Compound commands (`git commit && gh pr merge`) count
+# as a merge: the merge is the high-value event.
+case "$cmd" in
+  *"gh pr merge"*"--auto"*)
+    # `gh pr merge --auto` only ENROLLS the PR for auto-merge; the merge completes
+    # later, server-side, with no local command — so announcing "a PR merged" now is
+    # premature. Suppress the merge hint. But if the same command also made a local
+    # commit/push (e.g. `git commit ... && gh pr merge --auto`), that commit still
+    # deserves the ingest-finding hint, so fall through to the commit-event path; a
+    # bare `gh pr merge --auto` has no such commit and the threshold below won't fire.
+    # (A repo merge queue can defer a plain `gh pr merge` too, but that is not
+    # detectable from the command string; the post-merge hint is self-correcting there
+    # — post-merge's own `state=MERGED` gate refuses to proceed on an unmerged PR.)
+    case "$cmd" in
+      *"git commit"*|*"git push"*) event="commit" ;;
+      *)                           exit 0 ;;
+    esac ;;
+  *"gh pr merge"*) event="merge" ;;
+  *)               event="commit" ;;
+esac
+
+# Rate-limit per (cwd, event): a preceding commit must not consume the merge budget,
+# and vice versa — each event class gets an independent 10-minute window.
+cksum_pwd=$(printf '%s' "$PWD" | cksum | cut -d' ' -f1)
+marker="/tmp/wiki_post_commit_hint.${cksum_pwd}.${event}"
 if [[ -f "$marker" ]]; then
   age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null || echo 0) ))
   [[ $age -lt 600 ]] && exit 0
 fi
-touch "$marker"
 
-# Stat the last commit's diff
+if [[ "$event" == "merge" ]]; then
+  # A PR merged. There is no local diff to threshold (remote op), so fire the
+  # post-merge hint directly, rate-limited by the merge marker alone.
+  printf '[wiki-ingest-hint] a `gh pr merge` just ran — a PR merged.\n'
+  printf 'Consider /github-dev:post-merge (if the github-dev plugin is installed) — its mandatory wiki step scans the merged diff for ingest candidates. Without github-dev, run /llm-wiki:ingest-finding manually.\n'
+  touch "$marker"  # arm the window only after deciding to print (never on a suppressed run)
+  exit 0
+fi
+
+# event == commit (git commit / git push): threshold on the last commit's diff.
+# HEAD~1..HEAD is valid here — a local commit did move local HEAD.
 files_changed=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l || echo 0)
 lines_changed=$(git diff --shortstat HEAD~1 HEAD 2>/dev/null \
                 | LC_ALL=C.UTF-8 grep -oP '\d+(?= insertion| deletion)' \
                 | awk '{s+=$1} END{print s+0}' 2>/dev/null || echo 0)
 [[ -z "$lines_changed" ]] && lines_changed=0
 
-# Threshold: 2+ files OR 50+ lines OR a merge commit
-is_merge=$(git rev-list --merges -1 HEAD~..HEAD 2>/dev/null)
-if (( files_changed < 2 )) && (( lines_changed < 50 )) && [[ -z "$is_merge" ]]; then
+# Threshold: 2+ files OR 50+ lines. Below threshold, leave the marker UNTOUCHED so a
+# trivial commit does not consume the window a subsequent real commit needs.
+if (( files_changed < 2 )) && (( lines_changed < 50 )); then
   exit 0
 fi
 
-printf '[wiki-ingest-hint] last commit touched %s file(s), ~%s line(s)' "$files_changed" "$lines_changed"
-[[ -n "$is_merge" ]] && printf ' (merge commit)'
-printf '.\n'
-if [[ -n "$is_merge" ]]; then
-  printf 'Consider /github-dev:post-merge (if the github-dev plugin is installed) — its mandatory wiki step scans the merged diff for ingest candidates. Without github-dev, run /llm-wiki:ingest-finding manually.\n'
-else
-  printf 'Consider /llm-wiki:ingest-finding if the commit surfaced non-obvious lore (provider quirks, debugging stories, design rationale).\n'
-fi
-
+printf '[wiki-ingest-hint] last commit touched %s file(s), ~%s line(s).\n' "$files_changed" "$lines_changed"
+printf 'Consider /llm-wiki:ingest-finding if the commit surfaced non-obvious lore (provider quirks, debugging stories, design rationale).\n'
+touch "$marker"  # arm the window only after threshold passed + output emitted (fixes touch-before-check)
 exit 0

@@ -42,7 +42,7 @@ Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks
 |---|---|---|
 | `references/design-language.md` | §0 상세 | (무번호, 전체가 §0 상세) |
 | `references/color-typography.md` | §3c 상세(색·타이포) | §3c 상세 |
-| `references/images-and-pop.md` | §3c 상세(이미지) | §5·§5b |
+| `references/images-and-pop.md` | §3c 상세(이미지) | §5·§5b·§5d |
 | `references/icons-logos.md` | §3c 상세(로고) | §5c |
 | `references/ppt-master-craft.md` | §4 상세 | §4 상세 |
 | `references/ppt-master-and-qa.md` | §1 파이프라인 상세(7-step·윤문·완료 QA·스토리 흐름) | §6~§8c |
@@ -63,7 +63,7 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 ## §0b. 엔진·의존 (cross-skill 관용구)
 
 - **ppt-master** = 빌드 엔진·구현 owner. canvas init·source 변환·template·executor 스타일 등 **명시 안 한 세부는 ppt-master SKILL.md 그대로** 따른다. **bare name으로 참조**(vendor·복제 금지 — 이 repo에 동봉하지 않는 별도 marketplace 플러그인). ppt-master의 python 스크립트(`image_gen.py`·`finalize_svg.py`·`svg_to_pptx.py` 등)는 **`uv run`으로 실행**(시스템 python 직접 의존 금지). **필수 엔진이라 graceful degrade 대상이 아니다 — 미설치 시 Step 5 빌드 진입 전에 중단하고 ppt-master 설치를 먼저 안내**(수기 대체 금지).
-- 의존 스킬은 **있으면 사용, 없으면 생략 + 설치 제안 문구 출력**: `codex-image`(이미지)·`interview`(인터뷰)·`anti-slop-design`(영문 slop·디자인 감사)·`humanize-korean`(한국어 윤문)·`design-shotgun`(색 후보 생성)·`codex:rescue`(교차 리뷰). 미설치 시 그 단계는 수기로 대체하되 규약은 유지하고, 어떤 스킬이 빠져 어떤 단계가 수기로 강등됐는지 + "marketplace에서 <플러그인> 설치 시 자동화됩니다" 한 줄을 사용자에게 알린다(조용한 강등 금지 — ppt-master만 예외로 prerequisite-stop).
+- 의존 스킬은 **있으면 사용, 없으면 생략 + 설치 제안 문구 출력**: `codex-image`(이미지)·`interview`(인터뷰)·`anti-slop-design`(영문 slop·디자인 감사)·`humanize-korean`(한국어 윤문)·`design-shotgun`(색 후보 생성)·`codex:rescue`(교차 리뷰)·`drawio:drawio-skill`(자유형 구조 도식 PNG — §5d 삼분 경계). 미설치 시 그 단계는 수기로 대체하되 규약은 유지하고, 어떤 스킬이 빠져 어떤 단계가 수기로 강등됐는지 + "marketplace에서 <플러그인> 설치 시 자동화됩니다" 한 줄을 사용자에게 알린다(조용한 강등 금지 — ppt-master만 예외로 prerequisite-stop).
 - **의존 스킬은 로드가 먼저다.** 설치돼 있으면 해당 단계에서 그 스킬을 `Skill` 도구로 로드해 절차를 그대로 따른다 — 호출법·사용법을 리서치 에이전트로 재조사하지 않는다(실측: codex-image 호출법을 조사 에이전트로 재도출하느라 140k+ 토큰 소모 — 스킬 본문에 전부 있던 내용).
 
 ## §0c. 언제 쓰나 / 안 쓰나
@@ -105,7 +105,7 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 ---
 ## 슬라이드 제목 (담백한 주제형 — 영업·당위 꼬리표 금지)
 <!-- layout: two-col | timeline-table | diagram | image-bg | table | checklist | 자유 서술 -->
-<!-- visual: bg-faded(codex-image) | user-image | none -->
+<!-- visual: bg-faded(codex-image) | concept-story(codex-image) | user-image | none -->
 <!-- diagram-note: (layout:diagram일 때) 좌→우 흐름·강조 지점 등 도식 상세 지시 -->
 
 [ 핵심 메시지 1 ]
@@ -165,7 +165,7 @@ ppt-master 7-step 세부(Eight Confirmations·Executor HARD rules)·윤문·완�
 ## §3c. 색·이미지·로고 (핵심 1줄 + 포인터)
 
 - **색**: 역할·면적 기반 팔레트("색 여러 개 = slop") — 중립 2(배경+잉크 ~85%) + 주색 1~2 + 액센트 footprint ≤10%. deck-wide 락 후 슬라이드별 색 날조 금지. 폰트 폴백 Pretendard → Noto Sans KR → Malgun Gothic. 상세 → `references/color-typography.md`.
-- **이미지**: 기본 codex-image(무드컷·배경·hero), 정확한 라벨·표·도식은 SVG. 배경 fade·마스코트·pop은 **표지·목차·전환 divider 한정**(본문은 anti-slop 미니멀). 앱 UI(로그인·diff·권한·설정 화면 등)는 **실물 스크린샷 또는 점선 placeholder만 — codex/AI로 앱 화면 생성 금지**(지어낸 UI는 틀린 UX를 가르쳐 placeholder보다 나쁘다). 미보유 시 playwright 실물 캡처·공식 docs 스크린샷·placeholder 순. 상세 → `references/images-and-pop.md`.
+- **이미지**: codex-image가 기본 — **본문 개념 설명은 스토리 일러스트(§5d)가 주 경로**(개념이 벌어지는 장면·서사, 정적 아이콘 아님), 무드컷·배경·hero도 codex. 정확한 라벨·표·정형 차트는 SVG, 자유형 구조 도식(관계·플로우·트리)은 drawio PNG. 배경 fade·**장식** 마스코트·pop만 표지·목차·전환 divider 한정. 앱 UI(로그인·diff·권한·설정 화면 등)는 **실물 스크린샷 또는 점선 placeholder만 — codex/AI로 앱 화면 생성 금지**(지어낸 UI는 틀린 UX를 가르쳐 placeholder보다 나쁘다). 미보유 시 playwright 실물 캡처·공식 docs 스크린샷·placeholder 순. 상세 → `references/images-and-pop.md`.
 - **로고**: 브랜드·도구 로고는 직접 그리기·codex 생성 금지 → 공식 SVG 라이브러리 fetch → 인라인 → 근접성. 상세 → `references/icons-logos.md`.
 
 ## §3d. 스크린샷 — 옆에 둘까, 위에 짚을까 (앱 UI 실물 전제)

@@ -25,6 +25,8 @@ codex-image로 만드는 배경·무드컷도 **반드시 deck 디자인 토큰�
 
 **Pretendard → Noto Sans KR → Malgun Gothic.**
 
+> 이 체인은 **덱 SVG/PPTX 렌더 폰트**(정확·안전) 축이다. codex 일러스트 *내부* 레터링의 글꼴 **스타일** 옵션(산세리프/손글씨/둥근, 그림 스타일별 default)은 별개 축 → `images-and-pop.md` §5.
+
 - **Pretendard 1순위** — 모던·Anthropic 톤.
 - Pretendard 미임베드 시 **로컬 설치된 Noto Sans KR이 받아 품질 유지**(PPTX/cairosvg 렌더 폴백 안전). **Malgun은 차선**(최후 폴백).
 - PPTX 폰트 임베드 권장은 유지.
@@ -40,7 +42,7 @@ codex-image로 만드는 배경·무드컷도 **반드시 deck 디자인 토큰�
 - **타입 스케일 ≥1.5**: 디스플레이(제목)는 본문의 **최소 1.5배**, 표지 제목은 **본문 3배 이상**. 무게 대비도 크게(heavy 디스플레이 ↔ tiny light 메타데이터). "헤더와 본문이 비슷한 크기" = 무난·slop 신호.
 - **본문 바닥 20pt 유지**(§3b 고정선) — 스케일은 *위로* 키운다(본문을 줄이지 않는다).
 - **웜-틴트 중립**: 배경 오프화이트는 차가운 순백(#FFF)이 아니라 **따뜻한 톤**(예 `#FAF8F3`). 중립 음영(밴드·카드)도 액센트 색을 아주 옅게 섞은 웜 틴트(예 주황 기준 `#FBEEE7`/`#F1EBE0`)로 — 차가운 회색은 시그니처를 깬다.
-- **codex tone 토큰**: codex-image 무드컷도 이 웜-틴트 + 단일 액센트 온도를 따른다(차가운/멀티컬러 톤 금지). 프롬프트에 베이스 hex + 액센트 hex + "warm, single-accent, B&W or single-overlay photo" 명시.
+- **codex tone 토큰**: codex-image 무드컷도 이 웜-틴트 + 단일 액센트 온도를 따른다(차가운/멀티컬러 톤 금지). 프롬프트에 베이스 hex + 액센트 hex + "warm, single-accent, B&W or single-overlay photo" 명시. **실측**: "flat, no gradient"를 과잉 강조하면 codex가 팔레트를 강제로 뭉갠다(엣지 깨짐) → `flat vector with soft subtle shading`으로 완화한다. 역할색은 프롬프트에 못박는다(미명시 시 배터리를 신호등색으로 그림). 상세 → `images-and-pop.md` §5 codex 실측 교훈.
 
 > yeong house 기본: 따뜻한 오프화이트 베이스 + Claude 주황 `#D97757` 단일 액센트. 단 정확한 hex는 프로젝트별로 §위 절차로 락 — 시그니처(웜 중립 + 단일 액센트)는 고정, hex는 프로젝트 결정.
 

@@ -6,6 +6,37 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-09 — post-merge #104: AGENTS.md verbatim-load 계약 + worktree .git 파일 + cr-fix CLI 폴백 계약 드리프트 (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `61190bf` — feat(project-init): add wiring skill with shared state detector. 규칙 텍스트 자체(`AGENTS.md` 를 포인터로 축약 금지)는 이번 run 의 Step 6 에서 `.claude/rules/dual-integration.md` + `AGENTS.md` 에 이미 안착 — 위키는 증거와 근거만 보관 (routing 원칙, 이중 기록 금지).
+
+- `plugin-ops/agents-md-verbatim-no-import.md`: new page (id agents-md-verbatim-no-import, status active, volatility stable, sources 4). Codex 는 `@import` 메커니즘 자체가 없고 AGENTS.md 를 verbatim 로드한다 (`codex-rs/core/src/agents_md.rs`); `@import` 는 Claude 전용이며 `CLAUDE.md` 쪽에만 있다. 따라서 유일하게 성립하는 redirect 는 `CLAUDE.md` 가 `@AGENTS.md` 를 import 하는 역방향. prose redirect 도 Codex GitHub cloud reviewer 에는 안 닿는다 (`## Review guidelines` 를 시스템 프롬프트에 직접 로드). `> Refines: [[shared-source-codex-manifests]]`, `> See-also: [[insight-layer-via-hook]]`, `> Promoted-to: [[agents-md-no-import]]`.
+- `plugin-ops/worktree-squash-merge-gotchas.md`: gotcha 3 추가 — worktree/submodule 에서 `.git` 은 gitdir 포인터 *파일*이라 `test -d .git` 이 false. 2차 파급(git-flag 로 단락되는 `git check-ignore` 헬퍼가 전부 false → `.gitignore` 커버리지 축이 확정적 거짓 FAIL)은 읽어선 안 보이고 돌려야 보인다. H1 을 squash-merge 한정에서 worktree lifecycle 로 넓힘 (id 불변), alias 추가. last_verified 2026-07-02 → 2026-07-09, sources 1 → 2.
+- `cr-fix-ops/cr-cli-fallback-contract-drift.md`: new page (id cr-cli-fallback-contract-drift, status active, volatility volatile, sources 3). rate-limit 폴백 경로가 현재 도구와 계약 불일치 — CodeRabbit CLI 0.6.1 의 finding JSONL 스키마 변경(`fileName`/`severity`/`suggestions[]`, `location` 없음)으로 `parse-cr-cli-jsonl.sh` 사망; Step 5b 의 `git diff A..B` 는 merge-base 가 아니라 양 끝점 비교라 base 전진 시 small-diff 휴리스틱 오판; `sniff-cr-rate-limit.sh` 가 본문의 "Next review available in: 41 minutes" 를 못 읽음. `> See-also: [[cr-rate-limit-progressive-refill]]`.
+- `cr-fix-ops/cr-rate-limit-progressive-refill.md`: 신규 페이지 아님 — 기존 페이지가 이미 `Review limit reached` 즉시-rate_limited 라우팅과 content-empty `cr_state: success` 함정을 담고 있어 dedup 통과. Evidence 에 4번째 인스턴스 1줄만 추가 (Fair Usage adaptive limit, commit-status `success / Review completed` 인데 인라인 0건) + `> See-also: [[cr-cli-fallback-contract-drift]]`. last_verified 2026-06-08 → 2026-07-09, sources 5 → 6.
+- `plugin-ops/shared-source-codex-manifests.md`: cross-ref 1줄 (`> Refined-by: [[agents-md-verbatim-no-import]]`).
+- `index.md`: plugin-ops + cr-fix-ops 에 hook 2줄 추가.
+- `../insight/agents-md-no-import.md`: **graduated** (tier insight, promoted_from [[agents-md-verbatim-no-import]], evidence_count 2). 4기준 충족 — PR #43 (insight-layer-via-hook, "Codex 는 `.claude/rules/` 를 못 읽는다") 과 이번 세션의 AGENTS.md redirect 제안으로 2회 재발, 어느 repo 에나 적용, 위반 시 Codex/Hermes 지침이 **에러 없이** 전부 소실, codex-cli 0.142.3 로 검증돼 안정.
+- `../insight/index.md`: hook 1줄 추가.
+- `.staging/pending-88102e17-*.md`, `.staging/pending-fddffdce-*.md`: 소비 후 삭제. 88102e17 = 이번 세션(lore 는 위 4건이 전부). fddffdce = PR 32–56 참조인데 `post-merge #99`/`#101` ingest 가 이미 적재 — 중복이라 새 페이지 없음.
+
+## 2026-07-09 — post-merge #103: codex-image gpt-image 출력 behavior quirk 3종 (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `6d7750d` — feat(ppt-yeong-style): 0.9.0 — 본문 스토리 개념 일러스트 규약 + 레터링 경계 + drawio 삼분. PR이 실측한 codex-image(gpt-image) 출력 behavior 3종을 재사용 provider lore로 synth. 스토리 일러스트 저작 규약 자체(개념유형→서사패턴·마스코트 연기·anti-slop)는 skill(`plugins/ppt-yeong-style/.../images-and-pop.md` §5d)이 SoT라 위키에 미복제 — routing 원칙.
+
+- `plugin-ops/codex-imagegen-output-behavior.md`: new page (id codex-imagegen-output-behavior, status active, volatility volatile, sources 1). gpt-image via `codex exec`의 출력 behavior 3종 실측 — (1) 짧은 한글 라벨·말풍선은 자소분리·오타 0으로 정상 렌더(장문·자주 바뀌는 문구·정확 수치만 SVG 폴백), (2) "flat, no gradient" 과잉 강조 시 팔레트를 뭉갬 → "flat vector with soft subtle shading"로 완화, (3) 역할색 미명시 시 의미색으로 폴백(배터리→신호등색) → 프롬프트에 역할색 명시. `> See-also: [[codex-image-bridge-design]]`.
+- `index.md`: plugin-ops에 codex-imagegen-output-behavior hook 1줄 추가.
+- Not graduated to insight: 단일 세션 실측(recurs-across-2+-sessions 미충족) + model-output이라 volatile — 위키 레이어 유지.
+
+## 2026-07-09 — post-merge #101: SubagentStop hook payload contract + post_commit merge-detection fix (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `17a1f26` — fix(llm-wiki): 훅 결함 (2.5.0). Also corrected a concurrent-release `metadata.version` collision (#101 + #102 both bumped 1.85.0→1.86.0 from the shared base; fixed to 1.87.0 per the existing plugin-versioning.md concurrent-release rule — a value fix, no new rule or wiki page).
+
+- `plugin-ops/subagentstop-hook-payload.md`: new page (id subagentstop-hook-payload, status active, volatility volatile, sources 1). The empirically-verified SubagentStop hook stdin contract — Claude Code docs are silent on the two facts that matter: `transcript_path` + `session_id` are the PARENT session's, while the subagent's OWN transcript is under `agent_transcript_path` (`.../subagents/agent-<agent_id>.jsonl`, present at fire time — Explore 68KB / claude-code-guide 116KB verified). To capture delegated-task lore, prefer `agent_transcript_path` and key staging/markers by `agent_id` (session_id collides with the parent). `agent_type` present for typed agents, empty for internal; matcher `""` matches all. `> See-also: [[capture-curation-split]]`.
+- `llm-wiki-design/post-merge-trigger.md`: the `wiki_post_commit_hint` bullet now notes the merge-vs-commit split is by command string (`gh pr merge` is a remote op — local `is_merge`/HEAD detection was unreliable, ~always false for `--squash`), per-event rate-limit markers, and `--auto` suppression (deferred merge ≠ completed). sources 4→5, last_verified 2026-07-09.
+- `index.md`: added the subagentstop-hook-payload hook under plugin-ops; extended the post-merge-trigger hook.
+- Not graduated to insight: single-session finding (fails recurs-across-2+-sessions); stays in the wiki layer.
+
 ## 2026-07-08 — post-merge #99: Hermes llm-wiki cross-check consolidated into curated-conservative (ingest-finding)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `8c2df03` — docs(llm-wiki): Hermes 채택분 반영 + raw/ source-type 재구조화 (2.4.0). The spec (`docs/superpowers/specs/2026-07-07-llm-wiki-hermes-adoption-design.md`) reserved the adopt/reject rationale for this hub page (not a new page); the earlier same-day raw-restructure entry below flagged the same. No insight graduation — design-stance lore, single ingestion; the "steal the ideas, not the plan" thesis stays wiki-layer.

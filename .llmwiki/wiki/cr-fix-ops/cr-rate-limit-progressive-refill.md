@@ -1,10 +1,10 @@
 ---
 id: cr-rate-limit-progressive-refill
 aliases: [cr-free-tier-disabled, cr-quota-budget, cr-burst-push]
-last_verified: 2026-06-08
+last_verified: 2026-07-09
 status: active
 volatility: volatile
-sources: 5
+sources: 6
 ---
 
 # CodeRabbit rate-limit: progressive refill, not a plan downgrade
@@ -43,11 +43,13 @@ Three independent instances confirm the signal is transient and recoverable, not
 - **Burst push → skip/complete oscillation = progressive refill** (PR #33): a multi-push burst produced interleaved `Review completed` / `Review skipped: free tier disabled` commit statuses — the oscillation matches refill semantics, not a fixed-hour block.
 - **CLI fallback recovery path** (PR #50): pre-flight returned `gate=rate_limited`; with `--cr-source auto`, cr-fix fell back to the authed local CodeRabbit CLI, which produced a full review and the loop converged.
 - **Co-reviewer recovery path** (PR #54): early commits CR-skipped, final commit CR-completed once quota refilled, while Codex (`chatgpt-codex-connector[bot]`) carried every iteration's review through the skip window — so the loop never stalled. Caveat: during the skip window `cr_state: success` is *terminal but content-empty*, so a CR-only PR can false-"clean" unless something holds the gate (the `CR_SKIP_GRACE` rule closes that gap). The CLI fallback and the co-reviewer are two distinct recovery paths for the same signal.
+- **Adaptive Fair-Usage limit, commit-status still green** (PR #104): the `Review limit reached` variant (not `free tier disabled`) arrived with commit status `CodeRabbit | success | Review completed`, 0 inline comments, and 0 reviews — the content-empty-success trap above, reached by the *hard-cap* string rather than the refill placeholder. Pre-flight routed it to `gate=rate_limited` from the comment channel, correctly. The body carried an explicit `Next review available in: 41 minutes`, which the sniffer does not extract (see the drift page).
 
 > Evidence: plugins/github-dev/skills/cr-fix/references/lessons-from-dogfood.md
 > Evidence: plugins/github-dev/skills/cr-fix/scripts/sniff-cr-rate-limit.sh
 > See-also: [[curated-conservative]]
 > See-also: [[cr-cli-false-positive-generated-files]]
+> See-also: [[cr-cli-fallback-contract-drift]]
 
 ## Sources
 
@@ -56,3 +58,4 @@ Three independent instances confirm the signal is transient and recoverable, not
 3. **PR #50 dogfood** — established the CLI-fallback recovery path: `gate=rate_limited` → `--cr-source auto` fell back to the authed CodeRabbit CLI and converged.
 4. **PR #54 dogfood** — established the co-reviewer recovery path and the content-empty `cr_state: success` caveat.
 5. **PR #56 (Issue #55 fix)** — code-level correction of `poll-cr-status.sh` + `pre-flight.sh`: the transient placeholder is held non-terminal for `CR_SKIP_GRACE` (default 300s, env-only) rather than collapsing to `rate_limited`.
+6. **PR #104 dogfood** — fourth instance: `Review limit reached` (Fair Usage adaptive limit) under a green `success / Review completed` commit status, with a machine-readable `Next review available in: 41 minutes` the sniffer drops.

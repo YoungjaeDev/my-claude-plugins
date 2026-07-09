@@ -1,0 +1,54 @@
+---
+id: agents-md-verbatim-no-import
+aliases: [agents-md-pointer-trap, codex-no-at-import, claude-md-imports-agents-md]
+last_verified: 2026-07-09
+status: active
+volatility: stable
+sources: 4
+---
+
+# AGENTS.md is loaded verbatim — `@import` is Claude-only, and one-directional
+
+The tempting cleanup ("stop hand-maintaining the `AGENTS.md` mirror; just point it at `CLAUDE.md`") fails silently on the two runtimes that read `AGENTS.md`. This page holds the evidence; the operational rule lives in `.claude/rules/dual-integration.md` and its `AGENTS.md` mirror.
+
+## Mechanism
+
+Codex reads `AGENTS.md` as bytes. `codex-rs/core/src/agents_md.rs` does `String::from_utf8_lossy(&data).to_string()`, discovers the files from project root down to CWD, concatenates them with `\n\n--- project-doc ---\n\n` separators, and truncates at `project_doc_max_bytes`. **No `@file`, `@path`, or `@import` directive is ever expanded.** Nesting is directory-scoped (nearest file wins), never an include graph.
+
+Hermes has no documented import mechanism either. Zero evidence of support — treated as unsupported (`unverified` that it is impossible; fail-safe verdict).
+
+Claude Code never reads `AGENTS.md` at all. It reads `CLAUDE.md`, and `@path/to/import` is a **Claude-only** feature that lives on `CLAUDE.md` (recursive, max depth four hops).
+
+## The consequence
+
+An `AGENTS.md` reduced to `@CLAUDE.md` (or `See @CLAUDE.md`) leaves Codex and Hermes with a ~12-byte file of literal Markdown. Every rule, review guideline, and integration note is gone from their context. **No error, no warning** — the byte-limit/concat path succeeds on a tiny file, so the failure is invisible from the Claude side, which never consulted `AGENTS.md` in the first place.
+
+A *prose* redirect ("read `CLAUDE.md` before starting") half-works: Codex CLI is an agent with file tools and can comply, at the cost of a tool call per session and a soft, model-dependent guarantee. It does **not** reach the Codex GitHub cloud reviewer, which loads the `## Review guidelines` section straight into its system prompt rather than walking files — a redirect there returns the reviewer to generic lint nits on every PR.
+
+## The direction that works
+
+Official Claude Code memory docs state the inverse pattern:
+
+> Claude Code reads `CLAUDE.md`, not `AGENTS.md`. If your repository already uses `AGENTS.md` … create a `CLAUDE.md` that imports it.
+
+So `AGENTS.md` becomes the SSOT and `CLAUDE.md` carries `@AGENTS.md`. Codex and Hermes read the full file natively; Claude expands the import. The mirror disappears in the one direction that is loader-valid on all three runtimes.
+
+Whether that inversion is worth doing is a separate call — in this repo `AGENTS.md` is a curated *superset* (Codex cloud-reviewer guidelines and Codex/Hermes integration sections that `CLAUDE.md` lacks, minus Claude-only content like Plan Mode), so a naive `cat CLAUDE.md .claude/rules/*.md` generator cannot produce it, and inverting means Claude carries reviewer guidelines it never uses.
+
+## Why the older phrasing under-stated it
+
+The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a *reach* limitation into a Claude-only directory. The real constraint is categorical: Codex has no `@import` at all. The weaker phrasing is what makes the pointer cleanup look plausible.
+
+> Refines: [[shared-source-codex-manifests]]
+> See-also: [[insight-layer-via-hook]]
+> See-also: [[hermes-plugin-adapter]]
+> Promoted-to: [[agents-md-no-import]]
+> Evidence: .claude/rules/dual-integration.md
+> Evidence: plugins/project-init/references/codex-review-discovery.md
+
+## Sources
+
+1. **`codex-rs/core/src/agents_md.rs`** (github.com/openai/codex, main) — the verbatim reader: byte read → `from_utf8_lossy` → concat with `--- project-doc ---`. No directive expansion anywhere in the path.
+2. **Locally installed `codex-cli` 0.142.3** — the embedded model system prompt describes `AGENTS.md` purely as directory-scoped text ("The scope of an AGENTS.md file is the entire directory tree rooted at the folder that contains it… More-deeply-nested AGENTS.md files take precedence"). No import syntax. Newer than the 0.135 this repo targets, so the claim is not stale.
+3. **agents.md spec** — "AGENTS.md is just standard Markdown. … the agent simply parses the text you provide." Nesting is directory-only.
+4. **Claude Code memory docs** (`code.claude.com/docs/en/memory`) — Claude reads `CLAUDE.md`, not `AGENTS.md`; `@path` imports are a `CLAUDE.md` feature, recursive to four hops; the documented interop pattern is a `CLAUDE.md` that imports `AGENTS.md`.

@@ -477,9 +477,9 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 </details>
 
 <details>
-<summary><strong>project-init</strong> - Day-1 프로젝트 부트스트랩</summary>
+<summary><strong>project-init</strong> - Day-1 부트스트랩 + 기존 repo 셋업 진단</summary>
 
-새 디렉토리에서 단일 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료.
+빈 디렉토리에서 `/project-init:new` 한 번으로 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시까지 완료. 이미 있는 repo 는 `/project-init:wiring` 으로 진단.
 
 **시드 결과:**
 - `.claude/{spec,rules}/` + `.llmwiki/{raw,wiki}/` 빈 구조 (`.gitkeep`)
@@ -497,6 +497,8 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 1. 코드 쌓이면 → `/rules-forge:write-rules`
 2. 첫 도메인 lore → `/llm-wiki:bootstrap-wiki`
 3. 첫 PR merge 후 → `/github-dev:post-merge` (post-merge 내장 wiki 적재 step)
+
+**`/project-init:wiring`** — `new` 의 역방향. 이미 있는 repo 의 하네스 설정을 11 축으로 진단한다 (guidance 파일, llm-wiki 레이아웃 + `.staging` 미드레인 백로그, Serena 온보딩, 메모리 표면 충돌, spec 위치, gws-sync, `.tmp`, `core.hooksPath`, `.gitignore` 커버리지). 탐지는 `scripts/project_state.sh` 가 전담하는 read-only 단계이고, 결함마다 담당 스킬을 지목한 뒤 모든 수정은 `AskUserQuestion` 게이트 뒤에서만 적용한다. 위키 페이지 건강도는 `/llm-wiki:lint-wiki`, mem0 스토어는 `/mem0-ops:doctor` 가 담당 — 중복하지 않는다.
 
 **Requirements:** `gh` CLI authenticated, `git`, `jq`
 
@@ -597,7 +599,7 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 **엔진·의존:** `ppt-master`(빌드 엔진, bare name 참조, prerequisite — 미설치 시 빌드 진입 전 중단) 위 레이어. `codex-image`·`interview`·`anti-slop-design`·`humanize-korean`·`design-shotgun`·`codex:rescue` 는 있으면 사용, 없으면 **생략 + 설치 제안 문구 출력**.
 
 **스킬 3종 (0.7.0):**
-- `ppt-yeong-style`(메인) — 작성 규약: md 소스 규약(단일 md, `[ ]` 키 메시지, 담백한 명사구 제목)·작성 원칙 16종(공식 vs 실사용 병기·개념어 AI 냄새 점검 포함)·밀도 리듬(중간 강화 기본 + 본문 바닥 20pt)·역할·면적 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·스크린샷 shrink-to-hug·CJK 덱 cairosvg 금지(Playwright dsf=2 + img2pdf)
+- `ppt-yeong-style`(메인) — 작성 규약: md 소스 규약(단일 md, `[ ]` 키 메시지, 담백한 명사구 제목)·작성 원칙 16종(공식 vs 실사용 병기·개념어 AI 냄새 점검 포함)·밀도 리듬(중간 강화 기본 + 본문 바닥 20pt)·역할·면적 기반 색·codex/SVG/drawio 도구 삼분·본문 스토리 개념 일러스트(opt-in)·codex 레터링 경계·앱 UI 실물 강제·스크린샷 shrink-to-hug·CJK 덱 cairosvg 금지(Playwright dsf=2 + img2pdf)
 - `lecture-deck` — 강의 덱 운영: 시간→장수 구성·실습 handouts 생성 규약(자료-지시문 정합 검증)·실습 프롬프트 카드·placeholder→실캡처 스크린샷 슬롯·리넘버링 파이프라인(read-all-then-write-all + 4중 동기화)·표 행 수 재배치·**전사 회고 루프**(강의 후 전사→커버리지 맵→기존 장 보강)·강사 노트 태그([시연 필수]·수치 고정 대본·주차장 멘트). 완성 실례 cc-common 47장 레퍼런스(md + 대표 렌더 PNG 5장) 동봉
 - `deck-review` — 리뷰 오케스트레이션: 관점별 서브에이전트 4종(`audience-fit` 청중 페르소나 — 파라미터 주입 / `story-flow` §8b 9항목 / `fact-check` 공식 docs 대조 / `design-qa` 렌더 QA·anti-slop) 병렬 dispatch + `codex:rescue` 교차 리뷰(설치 시) → 장별 수정 티켓 종합
 

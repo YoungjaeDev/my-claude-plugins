@@ -7,7 +7,7 @@ Karpathy LLM-Wiki 3-layer system packaged as a plugin. Universal — works in an
 | Component | Path | Purpose |
 |-----------|------|---------|
 | **5 skills** | `skills/{query,ingest,lint,bootstrap,migrate}-wiki/` | wiki query, finding ingest, health audit, repo bootstrap, v1→v2 migration. (Post-merge ingest moved into `github-dev:post-merge` as a mandatory step.) |
-| **5 hooks** | `hooks/wiki_{stale_check,post_commit_hint,session_start_lint_hint,session_capture,session_start_drain}.sh` | UserPromptSubmit + PostToolUse(Bash) + SessionStart soft hints, plus Stop-capture + SessionStart-drain auto-ingest (capture/curation split) |
+| **5 hooks** | `hooks/wiki_{stale_check,post_commit_hint,session_start_lint_hint,session_capture,session_start_drain}.sh` | UserPromptSubmit + PostToolUse(Bash) + SessionStart soft hints, plus Stop/SubagentStop-capture + SessionStart-drain auto-ingest (capture/curation split; `session_capture` wired to both Stop and SubagentStop — the latter scans the subagent's own `agent_transcript_path`, keyed by `agent_id` so it never collides with the parent capture) |
 | **bootstrap templates** | `skills/bootstrap-wiki/assets/templates/` | wiki-skeleton (index, log, spec) + insight-skeleton (index, _insight-template) |
 
 ## Layer model

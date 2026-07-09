@@ -75,63 +75,18 @@ cmd_check_collision() {
   exit 0
 }
 
+# 탐지는 project_state.sh 가 SSOT. 여기서는 기존 diagnose 출력 형태만 유지하도록
+# 필요한 필드를 골라낸다 (project_state.sh 는 git 아래 hooks_* 등 상위 집합을 낸다).
 cmd_diagnose() {
-  local cwd
-  cwd=$(pwd)
-  local has_git="false"
-  [ -d .git ] && has_git="true"
-  local has_claude="false"
-  [ -d .claude ] && has_claude="true"
-  local has_claude_md="false"
-  [ -f CLAUDE.md ] && has_claude_md="true"
-  local has_agents_md="false"
-  [ -f AGENTS.md ] && has_agents_md="true"
-  local has_readme="false"
-  [ -f README.md ] && has_readme="true"
-  local has_changelog="false"
-  [ -f CHANGELOG.md ] && has_changelog="true"
-  local commit_count="0"
-  if [ "$has_git" = "true" ]; then
-    commit_count=$(git rev-list --count HEAD 2>/dev/null || echo "0")
-  fi
-  local has_remote="false"
-  if [ "$has_git" = "true" ] && git remote get-url origin >/dev/null 2>&1; then
-    has_remote="true"
-  fi
-  # Quick code signal — first detected ext, else "none"
-  local code_signal="none"
-  for ext in py ts tsx js jsx go rs java rb php; do
-    if find . -maxdepth 3 -type f -name "*.${ext}" 2>/dev/null | head -1 | grep -q .; then
-      code_signal="${ext}"
-      break
-    fi
-  done
-
-  jq -nc \
-    --arg cwd "$cwd" \
-    --arg dir_name "$(basename "$cwd")" \
-    --argjson has_git "$has_git" \
-    --argjson has_claude "$has_claude" \
-    --argjson has_claude_md "$has_claude_md" \
-    --argjson has_agents_md "$has_agents_md" \
-    --argjson has_readme "$has_readme" \
-    --argjson has_changelog "$has_changelog" \
-    --argjson commit_count "$commit_count" \
-    --argjson has_remote "$has_remote" \
-    --arg code_signal "$code_signal" \
-    '{
-      cwd: $cwd,
-      dir_name: $dir_name,
-      git: { initialized: $has_git, commits: $commit_count, remote_origin: $has_remote },
-      seeded: {
-        claude_dir: $has_claude,
-        claude_md: $has_claude_md,
-        agents_md: $has_agents_md,
-        readme: $has_readme,
-        changelog: $has_changelog
-      },
-      code_signal: $code_signal
-    }'
+  local script_dir
+  script_dir="$(cd "$(dirname "$0")" && pwd)"
+  bash "$script_dir/project_state.sh" | jq -c '{
+    cwd,
+    dir_name,
+    git: { initialized: .git.initialized, commits: .git.commits, remote_origin: .git.remote_origin },
+    seeded,
+    code_signal
+  }'
 }
 
 case "$CMD" in

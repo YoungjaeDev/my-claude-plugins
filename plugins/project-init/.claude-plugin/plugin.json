@@ -1,7 +1,7 @@
 {
   "name": "project-init",
-  "version": "0.2.1",
-  "description": "One-shot first-day project bootstrap: .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines, README/CHANGELOG seed, gh repo create + push. Dual-surface: /project-init:new command and `new` skill — both gated by a preflight guard that refuses non-empty directories.",
+  "version": "0.3.0",
+  "description": "Agent-harness project lifecycle. `new` bootstraps an empty dir (.claude/ scaffold, minimal CLAUDE.md, AGENTS.md with Codex GitHub cloud reviewer guidelines, README/CHANGELOG seed, gh repo create + push) behind a preflight guard that refuses non-empty directories. `wiring` is its inverse for existing repos: a read-only 11-axis diagnostic (guidance files, llm-wiki layout + staging backlog, Serena onboarding, memory-surface conflict, spec homes, gws-sync, .tmp, core.hooksPath, .gitignore coverage) that names the remediation skill per finding and gates every fix behind AskUserQuestion. Both consume the shared read-only detector scripts/project_state.sh.",
   "author": {
     "name": "YoungjaeDev"
   },
@@ -9,6 +9,7 @@
     "./commands/new.md"
   ],
   "skills": [
-    "./skills/new"
+    "./skills/new",
+    "./skills/wiring"
   ]
 }

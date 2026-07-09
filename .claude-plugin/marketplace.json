@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "1.87.0"
+    "version": "1.88.0"
   },
   "plugins": [
     {
@@ -130,8 +130,8 @@
     {
       "name": "project-init",
       "source": "./plugins/project-init",
-      "description": "One-shot first-day project bootstrap: interview, .claude/ scaffold, minimal CLAUDE.md (LLM-Wiki entrypoint), AGENTS.md with Codex GitHub cloud reviewer guidelines (general/ml/web variants), README/CHANGELOG seed, gh repo create + initial push. Dual-surface: `/project-init:new` command and `new` skill with hardened preflight guard (refuses non-empty cwd).",
-      "version": "0.2.1",
+      "description": "Agent-harness project lifecycle. `new` — one-shot first-day bootstrap (interview, .claude/ scaffold, minimal CLAUDE.md, AGENTS.md with Codex GitHub cloud reviewer guidelines in general/ml/web variants, README/CHANGELOG seed, gh repo create + initial push) behind a hardened preflight guard that refuses a non-empty cwd. `wiring` — its inverse for existing repos: a read-only 11-axis setup diagnostic (guidance files, llm-wiki layout + staging backlog, Serena onboarding, memory-surface conflict, spec homes, gws-sync, .tmp, core.hooksPath, .gitignore coverage) that names the remediation skill per finding and gates every fix behind AskUserQuestion. Shared read-only detector: scripts/project_state.sh.",
+      "version": "0.3.0",
       "category": "planning"
     },
     {

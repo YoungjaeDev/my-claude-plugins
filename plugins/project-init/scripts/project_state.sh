@@ -17,6 +17,14 @@
 set -euo pipefail
 
 STALE_DAYS="${CHECKUP_TMP_STALE_DAYS:-14}"
+# 비정수면 `find -mtime +$STALE_DAYS` 와 `jq --argjson` 이 둘 다 깨진다.
+# jq 의 usage dump 대신 원인을 말하고 죽는다.
+case "$STALE_DAYS" in
+  '' | *[!0-9]*)
+    echo "[project_state] CHECKUP_TMP_STALE_DAYS must be a non-negative integer (got: $STALE_DAYS)" >&2
+    exit 2
+    ;;
+esac
 
 b() { if "$@" >/dev/null 2>&1; then echo true; else echo false; fi; }
 
@@ -55,14 +63,23 @@ CWD="$(pwd)"
 DIR_NAME="$(basename "$CWD")"
 
 # --- git -----------------------------------------------------------------
-GIT_INIT=$(b test -d .git)
+# `test -d .git` 은 worktree 와 submodule 에서 false 다 — 거기선 .git 이 gitdir
+# 포인터 *파일*이다. 그러면 ignored() 가 전부 false 를 뱉어 .gitignore 축이
+# 통째로 거짓 FAIL 이 된다 (github-dev 는 worktree 를 쓴다).
+GIT_INIT=false
+if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = "true" ]; then GIT_INIT=true; fi
 COMMITS=0
 REMOTE=false
 if [ "$GIT_INIT" = true ]; then
   COMMITS=$(git rev-list --count HEAD 2>/dev/null || echo 0)
   REMOTE=$(b git remote get-url origin)
 fi
-HOOKS_PATH=$(git config core.hooksPath 2>/dev/null || true)
+# repo 밖에서 core.hooksPath 를 읽으면 남의 global 값을 이 프로젝트 것인 양 보고한다.
+# 단 scope 는 좁히지 않는다 — 실제로 적용되는 값은 local > global > system 의 해석 결과다.
+HOOKS_PATH=""
+if [ "$GIT_INIT" = true ]; then
+  HOOKS_PATH=$(git config core.hooksPath 2>/dev/null || true)
+fi
 HOOKS_DIR=$(b test -d .githooks)
 
 # --- seeded files (idempotent-seed.sh diagnose 호환 필드) -----------------

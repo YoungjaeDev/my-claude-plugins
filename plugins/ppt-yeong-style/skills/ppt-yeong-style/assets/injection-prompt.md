@@ -3,7 +3,7 @@
 다른 서버/세션의 Claude 대화 **맨 앞에 아래 코드블록만** 붙여넣어 yeong 스타일 PPT 규칙을 주입한다(SKILL.md §1~§4 + 색·이미지·로고·craft 상세본의 압축판, 1:1 동기화).
 
 - 이 블록 뒤에 **실제 요청**(주제·청중·발표시간·자료)을 붙여야 시작된다.
-- 전제: 그 환경에 `ppt-master`(필수 — 없으면 빌드 진입 전 중단)·`codex-image`·`humanize-korean`·`interview`·`anti-slop-design`·`design-shotgun`·`codex:rescue` 설치(필수 외에는 없으면 해당 단계 생략 + "설치 시 자동화됩니다" 제안 문구 출력).
+- 전제: 그 환경에 `ppt-master`(필수 — 없으면 빌드 진입 전 중단)·`codex-image`·`humanize-korean`·`interview`·`anti-slop-design`·`design-shotgun`·`codex:rescue`·`drawio:drawio-skill`(자유형 구조도식 PNG — 없으면 SVG/수기 대체) 설치(필수 외에는 없으면 해당 단계 생략 + "설치 시 자동화됩니다" 제안 문구 출력).
 - 강의 덱 운영(실습 handouts·프롬프트 카드·스크린샷 슬롯·리넘버링·전사 회고·강사 노트 태그)과 4관점 리뷰 파이프라인은 이 페이로드에 압축돼 있지 않다 — 플러그인의 `lecture-deck`·`deck-review` 서브스킬 참조.
 
 ```text

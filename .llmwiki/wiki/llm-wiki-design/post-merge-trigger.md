@@ -1,10 +1,10 @@
 ---
 id: post-merge-trigger
 aliases: [post-merge-wiki-trigger, wiki-ingest-trigger, post-merge-step-8]
-last_verified: 2026-06-10
+last_verified: 2026-07-09
 status: active
 volatility: stable
-sources: 4
+sources: 5
 ---
 
 # Post-merge wiki trigger
@@ -34,7 +34,15 @@ prompts a wiki ingest and sometimes does not.
   fires on a **local CLI merge commit**. It now nudges toward
   `/github-dev:post-merge` (whose Step 8 does the ingest); for non-merge commits
   it still nudges toward `/llm-wiki:ingest-finding`. It never fires for a web-UI merge,
-  because no merge `git` command runs on the local machine.
+  because no merge `git` command runs on the local machine. It classifies
+  merge-vs-commit by the **command string** (`gh pr merge` present → merge), never
+  by local git state: `gh pr merge` is a *remote* op that leaves local HEAD
+  unchanged (a `--squash` merge has no local 2-parent commit), so the old
+  `git rev-list` merge check was ~always false. Merge and commit events use
+  **separate rate-limit markers** (a preceding commit no longer suppresses the
+  merge hint), and `gh pr merge --auto` is suppressed — it only enrolls a deferred
+  merge (command success ≠ merge complete) — unless the same command also
+  committed, which still earns the commit hint.
 
 ## Why two
 
@@ -75,6 +83,10 @@ Each fact is recorded in exactly one home.
 - `plugins/github-dev/skills/post-merge/SKILL.md` Step 8 + `references/wiki-ingest.md`
   — the forced `wiki-ingest: ingested N` / `no-lore (<reason>)` checkpoint and the
   `WIKI_AUTOINGEST=0` disable knob.
+- Command-string merge classification — verified 2026-07-09 by the #101
+  reproduction (RED: old shared cwd marker + local `is_merge` rev-list suppressed
+  the merge hint after a commit; GREEN: command-string detection fires it, per-event
+  markers, `--auto` deferred-merge suppressed).
 
 > See-also: [[capture-curation-split]]
 > See-also: [[curated-conservative]]

@@ -6,6 +6,15 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-09 — post-merge #101: SubagentStop hook payload contract + post_commit merge-detection fix (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `17a1f26` — fix(llm-wiki): 훅 결함 (2.5.0). Also corrected a concurrent-release `metadata.version` collision (#101 + #102 both bumped 1.85.0→1.86.0 from the shared base; fixed to 1.87.0 per the existing plugin-versioning.md concurrent-release rule — a value fix, no new rule or wiki page).
+
+- `plugin-ops/subagentstop-hook-payload.md`: new page (id subagentstop-hook-payload, status active, volatility volatile, sources 1). The empirically-verified SubagentStop hook stdin contract — Claude Code docs are silent on the two facts that matter: `transcript_path` + `session_id` are the PARENT session's, while the subagent's OWN transcript is under `agent_transcript_path` (`.../subagents/agent-<agent_id>.jsonl`, present at fire time — Explore 68KB / claude-code-guide 116KB verified). To capture delegated-task lore, prefer `agent_transcript_path` and key staging/markers by `agent_id` (session_id collides with the parent). `agent_type` present for typed agents, empty for internal; matcher `""` matches all. `> See-also: [[capture-curation-split]]`.
+- `llm-wiki-design/post-merge-trigger.md`: the `wiki_post_commit_hint` bullet now notes the merge-vs-commit split is by command string (`gh pr merge` is a remote op — local `is_merge`/HEAD detection was unreliable, ~always false for `--squash`), per-event rate-limit markers, and `--auto` suppression (deferred merge ≠ completed). sources 4→5, last_verified 2026-07-09.
+- `index.md`: added the subagentstop-hook-payload hook under plugin-ops; extended the post-merge-trigger hook.
+- Not graduated to insight: single-session finding (fails recurs-across-2+-sessions); stays in the wiki layer.
+
 ## 2026-07-08 — post-merge #99: Hermes llm-wiki cross-check consolidated into curated-conservative (ingest-finding)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `8c2df03` — docs(llm-wiki): Hermes 채택분 반영 + raw/ source-type 재구조화 (2.4.0). The spec (`docs/superpowers/specs/2026-07-07-llm-wiki-hermes-adoption-design.md`) reserved the adopt/reject rationale for this hub page (not a new page); the earlier same-day raw-restructure entry below flagged the same. No insight graduation — design-stance lore, single ingestion; the "steal the ideas, not the plan" thesis stays wiki-layer.

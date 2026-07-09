@@ -3,7 +3,7 @@
 다른 서버/세션의 Claude 대화 **맨 앞에 아래 코드블록만** 붙여넣어 yeong 스타일 PPT 규칙을 주입한다(SKILL.md §1~§4 + 색·이미지·로고·craft 상세본의 압축판, 1:1 동기화).
 
 - 이 블록 뒤에 **실제 요청**(주제·청중·발표시간·자료)을 붙여야 시작된다.
-- 전제: 그 환경에 `ppt-master`(필수 — 없으면 빌드 진입 전 중단)·`codex-image`·`humanize-korean`·`interview`·`anti-slop-design`·`design-shotgun`·`codex:rescue` 설치(필수 외에는 없으면 해당 단계 생략 + "설치 시 자동화됩니다" 제안 문구 출력).
+- 전제: 그 환경에 `ppt-master`(필수 — 없으면 빌드 진입 전 중단)·`codex-image`·`humanize-korean`·`interview`·`anti-slop-design`·`design-shotgun`·`codex:rescue`·`drawio:drawio-skill`(자유형 구조도식 PNG — 없으면 SVG/수기 대체) 설치(필수 외에는 없으면 해당 단계 생략 + "설치 시 자동화됩니다" 제안 문구 출력).
 - 강의 덱 운영(실습 handouts·프롬프트 카드·스크린샷 슬롯·리넘버링·전사 회고·강사 노트 태그)과 4관점 리뷰 파이프라인은 이 페이로드에 압축돼 있지 않다 — 플러그인의 `lecture-deck`·`deck-review` 서브스킬 참조.
 
 ```text
@@ -18,7 +18,7 @@
 [md 소스 — 기본 단일 md 한 파일] 전체 슬라이드를 한 파일에 `---`로 구분, 앞머리에 전역 규약 블록(컨텍스트·톤·색·흐름). 큰 덱(25장+)·섹션 독립 작업 시에만 deck_spec.md + 01_*.md 분리. **목차(TOC) 슬라이드는 md 소스 안에서 페이지 순서가 정해진 뒤 마지막에 작성**(초안 단계에 같이 쓰지 않는다 — 빌드 후 순서 바뀌면 목차뿐 아니라 spec_lock.md도 재갱신, 안 그러면 Executor가 예전 순서로 재빌드). 각 슬라이드:
   ## 담백한 주제형 제목 (영업·당위 꼬리표 금지 · 한두 단어 압축 말고 맥락 명사구)
   <!-- layout: two-col | timeline-table | diagram | image-bg | table | checklist | 자유 서술(3열 카드·상하 분할·중심 방사형·풀블리드 오버레이·Z/워터폴 등 — 6종은 시작 어휘일 뿐 닫힌 목록 아님, 페이지 구조 상속은 page_layouts) -->
-  <!-- visual: bg-faded(codex-image) | user-image | none -->
+  <!-- visual: bg-faded(codex-image) | concept-story(codex-image) | user-image | none -->
   <!-- diagram-note: (diagram일 때) 좌→우 흐름·강조 지점. 도식 형태도 변주(체인만 반복 금지 — 상하 단계·방사형·매트릭스 혼용, 인접 장과는 형태 강제 차별화) -->
 중요 신규 기능은 비교표 행 하나로 묻지 말고 별도 1장 장면 스포트라이트(상황→동작→복귀)로 승격.
   [ 핵심 메시지 1 ]   [ 핵심 메시지 2 ]      ← 소스 전용 마커(md만 봐도 핵심 한눈). 렌더 출력엔 대괄호 글리프 노출 금지=내부 텍스트만 키 메시지 스타일로 strip
@@ -33,7 +33,7 @@ md 확정 시 **layout 태그 분포 표를 사용자 검토에 제출** — 동
 
 [색] 역할·면적 기반(개수 균등 금지). 중립 2 + 주색 1~2 + 액센트는 면적 ≤10%로만. deck-wide 락 후 슬라이드별 색 날조 금지.
 
-[이미지 — 기본 codex-image] codex-image 스킬이 설치돼 있으면 로드해 그 절차로 생성(호출법 재조사·직접 재도출 금지). 무드컷·배경·hero·표보다 이미지가 나은 도식에만. codex-image 생성 성능은 매번 반문하지 말 것(saturation). 디자인 토큰·캐릭터 참조 첨부(항상 `--ref <실제 참조 이미지>`, 자리표시자 금지 — "동작 unverified" 판단으로 텍스트 전용 대체 금지, 과거 성공 산출물 `assets/generated/codex-image/` 먼저 확인. `--ref`는 이미지 수정 없이 새 생성의 참조로만, 기존 이미지를 고치는 `--edit`과 다름 — 단 이 구분은 프롬프트 문구 의존이라 미검증, 첫 사용 시 결과가 진짜 새 이미지인지 확인), 생성 후 라벨 오타 검증. 정확한 한글 라벨·표·숫자·도식은 SVG. 하이브리드(codex 무드+SVG 라벨) 2안 비교 후 택1. ppt-master의 AI 이미지 경로는 미사용. honesty test(빼도 손실 없으면 삭제). **기본값 이탈(이미지 없음/기존 자산 재사용) 시 design_spec 8대 확인 h에 사유 한 줄 명시 — 사유 없는 생략 금지.** codex 배경 fade=표지·목차·세션 전환 divider·마무리 한정(opacity 0.12~0.16), 본문은 흰 배경. 마스코트·pop·instagram 감성도 표지·목차·전환 divider 한정(codex 마스코트+주황 pop), 본문은 anti-slop 미니멀(그라데이션·다색·icon-tile·이모지 금지). 장르 주의(기업·포멀 덱은 pop 생략 가능). **앱 UI(로그인·diff·권한·설정)는 실물 캡처 or 점선 placeholder만—codex/AI 생성 절대 금지**(지어낸 UI는 틀린 UX를 사실처럼 가르쳐 placeholder보다 나쁨, "재현 예시" 칩으로도 정당화 금지). 취득순서: 사용자제공→playwright 실물캡처(앱·공식docs)→공식docs 스크린샷→점선 placeholder.
+[이미지 — 기본 codex-image] codex-image 스킬이 설치돼 있으면 로드해 그 절차로 생성(호출법 재조사·직접 재도출 금지). 무드컷·배경·hero·표보다 이미지가 나은 도식에만. codex-image 생성 성능은 매번 반문하지 말 것(saturation). 디자인 토큰·캐릭터 참조 첨부(항상 `--ref <실제 참조 이미지>`, 자리표시자 금지 — "동작 unverified" 판단으로 텍스트 전용 대체 금지, 과거 성공 산출물 `assets/generated/codex-image/` 먼저 확인. `--ref`는 이미지 수정 없이 새 생성의 참조로만, 기존 이미지를 고치는 `--edit`과 다름 — 단 이 구분은 프롬프트 문구 의존이라 미검증, 첫 사용 시 결과가 진짜 새 이미지인지 확인), 생성 후 라벨 오타 검증. 정확한 한글 라벨·표·숫자·도식은 SVG. 하이브리드(codex 무드+SVG 라벨) 2안 비교 후 택1. ppt-master의 AI 이미지 경로는 미사용. honesty test(빼도 손실 없으면 삭제). **기본값 이탈(이미지 없음/기존 자산 재사용) 시 design_spec 8대 확인 h에 사유 한 줄 명시 — 사유 없는 생략 금지.** codex 배경 fade=표지·목차·세션 전환 divider·마무리 한정(opacity 0.12~0.16), 본문은 흰 배경. **본문 개념 설명=스토리 일러스트(§5d)가 codex 주 용도**: 개념이 벌어지는 장면·서사(정적 아이콘 reject), 개념유형→서사패턴(상태=단일 드라마틱 씬 / 워크플로우=3패널 문제-시도-해결 / 감정=3패널+피크 컷 / 역할=day-in-the-life), 마스코트 몸은 미니멀·스토리는 표정·소품·조연·컷으로("물건 든다✗/상황에 휘말린다✓"), 반복 시각 모티프 1개+역할색 고정(주황=클로드), Corporate Memphis(긴 팔다리·다색 플랫)=slop 회피—unDraw/Storyset 드롭인 금지·우리 마스코트로 재작화. 레터링=codex 한글 짧은 라벨·말풍선 적극(품질 검증)+SVG 폴백(자주 바뀌는 문구·정확 수치·명령어·대괄호 키메시지·폰트 통일 시), 폰트 스타일=프롬프트 지정(산세리프/손글씨/둥근, 그림 스타일별 default). 실측: "flat,no gradient" 과잉→codex 팔레트 뭉갬(→"flat vector with soft subtle shading"), 역할색 미명시→배터리 신호등색(프롬프트에 역할색 명시). 삼분: 서사=codex / 정확 라벨·표·정형차트=SVG / 자유형 구조도식(관계·플로우·트리)=drawio. **장식** 마스코트·pop만 표지·목차·전환 divider 한정(codex 마스코트+주황 pop), 본문은 anti-slop 미니멀(그라데이션·다색·icon-tile·이모지 금지). 장르 주의(기업·포멀 덱은 pop 생략 가능). **앱 UI(로그인·diff·권한·설정)는 실물 캡처 or 점선 placeholder만—codex/AI 생성 절대 금지**(지어낸 UI는 틀린 UX를 사실처럼 가르쳐 placeholder보다 나쁨, "재현 예시" 칩으로도 정당화 금지). 취득순서: 사용자제공→playwright 실물캡처(앱·공식docs)→공식docs 스크린샷→점선 placeholder.
 
 [로고] 직접 그리기·codex 생성 금지. 0순위 — ppt-master 번들 `templates/icons/simple-icons/<name>.svg`(3651개·CC0·오프라인, notion/slack 포함) 먼저 확인 → 있으면 `icon_sync.py`로 동기화해 `data-icon="simple-icons/<name>"`. 없거나 풀컬러 필요 시 공식 SVG 라이브러리 fetch(devicon `cdn.jsdelivr.net/gh/devicons/devicon/icons/<name>/<name>-original.svg`·gilbarbara/logos·vectorlogo.zone·SVGL·Wikimedia Commons[개별 파일 라이선스 태그로 PD/CC0 확인된 경우만, 일반화 금지]) → `curl`로 assets/logos/ 보관 → path 인라인 + `<g transform="translate scale">`(image href 금지=래스터화 회피) → 근접성(설명 요소 바로 옆, 빈 여백 띄우기 금지) → 상표권 주의(교육 맥락, 변형 금지). **공식 fetch vs 내장 brand-* 아이콘 선택**: 브랜드가 주 메시지(비교표·partner 로고 벽)면 공식 fetch, 다른 아이콘과 나란한 장식 배지면 덱의 단일 아이콘 라이브러리 brand-* 글리프 유지(컬러 로고 섞으면 모노톤 통일성 깨짐).
 

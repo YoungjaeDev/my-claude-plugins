@@ -226,14 +226,29 @@ fi
 
 # --- codex CLI 자세 -------------------------------------------------------
 # 값 판단은 스킬이 한다 — 여기서는 읽기만. 의도적 설정일 수 있으므로 결함이 아니다.
-toml_val() { sed -n "s/^$1 *= *//p" "$HOME/.codex/config.toml" 2>/dev/null | head -1 | tr -d '"'; }
+# TOML allows an inline comment after a value. Cut from the first space-hash so
+# `approval_policy = "never" # yolo` reads as `never`, while a `#` inside a quoted
+# value (`model = "gpt#5"`) survives.
+toml_val() {
+  sed -n "s/^$1 *= *//p" "$HOME/.codex/config.toml" 2>/dev/null | head -1 \
+    | sed -e 's/[[:space:]]#.*$//' -e 's/[[:space:]]*$//' | tr -d '"'
+}
 CODEX_CONFIG=$(b test -f "$HOME/.codex/config.toml")
 CODEX_APPROVAL=""; CODEX_SANDBOX=""; CODEX_MODEL=""; CODEX_DOC_MAX=32768
 if [ "$CODEX_CONFIG" = true ]; then
   CODEX_APPROVAL=$(toml_val approval_policy)
   CODEX_SANDBOX=$(toml_val sandbox_mode)
   CODEX_MODEL=$(toml_val model)
-  v=$(toml_val project_doc_max_bytes); [ -n "$v" ] && CODEX_DOC_MAX="$v"
+  # Only this value reaches jq through `--argjson`, which demands strict JSON.
+  # A valid TOML integer may carry `_` digit separators (`65_536`), and anything
+  # non-numeric that slips through aborts jq *before the script prints anything* —
+  # the whole diagnostic dies, not just this axis. Accept digits only; otherwise
+  # keep the documented default.
+  v=$(toml_val project_doc_max_bytes | tr -d '_')
+  case "$v" in
+    '' | *[!0-9]*) : ;;
+    *) CODEX_DOC_MAX="$v" ;;
+  esac
 fi
 AGENTS_BYTES=0; [ -f AGENTS.md ] && AGENTS_BYTES=$(wc -c < AGENTS.md | tr -d ' ')
 AGENTS_GLOBAL_BYTES=0; [ -f "$HOME/.codex/AGENTS.md" ] && AGENTS_GLOBAL_BYTES=$(wc -c < "$HOME/.codex/AGENTS.md" | tr -d ' ')

@@ -172,6 +172,8 @@ Deleting stale `.tmp/` files is destructive: list them, confirm separately, and 
 
 **Recording `ASK` answers.** Every `ASK` the user answers is written to `.claude/state/wiring.json` under `answers.<key>` with `value` and `answered_at` (UTC `YYYY-MM-DD`). Create the file if absent. Write it even when the rest of "apply all" is declined — a recorded "no" is the whole point of the class. Never write an answer the user did not give.
 
+**The answers file must be ignored before it is written.** Its values are machine-local (a Drive folder id, a decision that holds for this clone only), so run `git check-ignore -q .claude/state/wiring.json` first. If it does not pass, add `.claude/state/` to `.gitignore` as a precondition — not as part of "apply all", which the user may have declined. If the user declines that line too, do not create the file: report the answer as unrecorded and say why. Persisting a "no" is worth a `.gitignore` line; it is not worth committing someone's Drive folder id on their next `git add -A`. Outside a git repository the check does not apply.
+
 ## Memory posture
 
 This axis checks **posture consistency** — which writers are live and whether their authority relationship is declared. It does **not** check **content consistency**: whether mem0 and `.llmwiki/` hold contradicting versions of the same fact. That comparison spans a cloud API and a markdown tree, no tool in this toolchain performs it, and claiming otherwise would be a lie. Say so when reporting.

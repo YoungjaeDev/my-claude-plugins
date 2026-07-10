@@ -256,5 +256,5 @@ council 은 각자 어떻게 판단했는지 꺼내놓고 대조해 합의에 �
 
 ### Spec State
 
-- 진행 중 spec / issue / PR aggregate 는 `.claude/state/spec.json`(`spec-state:state-tracker` skill 이 read / init / start / complete 4 op). spec frontmatter `status:` 가 SSOT, JSON 은 aggregate cache.
+- 진행 중 spec / issue / PR aggregate 는 `.claude/state/spec.json`(`spec-state:state-tracker` skill 이 read / init / start / complete 4 op). spec frontmatter `status:` 가 SoT, JSON 은 aggregate cache.
 - `github-dev:post-merge` 가 자동으로 `complete <spec-path>` 호출.

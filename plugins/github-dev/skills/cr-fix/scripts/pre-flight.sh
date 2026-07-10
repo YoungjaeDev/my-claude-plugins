@@ -26,16 +26,14 @@ set -euo pipefail
 
 SCRIPT_DIR="${SKIP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
-# ── 1. CR commit-status (state + description) ────────────────────────────────
-cr_status='{}'
-if cr_pages=$(gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" 2>/dev/null); then
-  cr_status=$(jq -s 'add // []
-                     | [ .[] | select(.context | test("CodeRabbit"; "i")) ]
-                     | sort_by(.created_at) | reverse | .[0] // {}' <<<"$cr_pages")
-fi
-cr_state=$(jq -r '.state // ""' <<<"$cr_status")
-cr_desc=$(jq -r '.description // ""' <<<"$cr_status")
-cr_created_at=$(jq -r '.created_at // ""' <<<"$cr_status")
+# ── 1. CR reported state (commit-status, else check-run) ─────────────────────
+# Delegated to cr-commit-state.sh: CodeRabbit reports through the commit-status
+# API on some installs and a check-run on others, and reading only /statuses made
+# every check-run repo look like "CR never answered" (issue #105).
+cr_status=$(bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$CUR_SHA" 2>/dev/null || echo '{}')
+cr_state=$(jq -r 'if (.state // "none") == "none" then "" else .state end' <<<"$cr_status" 2>/dev/null || echo "")
+cr_desc=$(jq -r '.description // ""' <<<"$cr_status" 2>/dev/null || echo "")
+cr_created_at=$(jq -r '.created_at // ""' <<<"$cr_status" 2>/dev/null || echo "")
 
 # Normalize empty state → "none" for the output JSON; the matrix treats both
 # as "no status row yet" but downstream tooling reads strings, not blanks.

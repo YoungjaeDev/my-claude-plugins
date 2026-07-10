@@ -199,14 +199,16 @@ See `references/pre-flight-rules.md` for the full decision matrix + JSON contrac
 
 Runs AFTER pre-flight so a rate-limited PR doesn't waste cycles on engagement probing.
 
+**Three-dot, never two-dot.** In `git diff`, `A..B` compares the two endpoints, so every commit the base picked up after the branch forked counts as part of this PR. `A...B` diffs from the merge-base, which is what GitHub shows and what the heuristic means by "how big is this PR". A base that advanced by three unrelated files turns a 1-file PR into a 4-file one and the small-diff branch stops firing.
+
 ```bash
 if [ "$ITER" = "1" ] && [ "$CR_SOURCE" = "auto" ] && [ "$SMALL_DIFF_LOC" -gt 0 ] && [ "$gate" != "rate_limited" ] && [ "$gate" != "failure" ]; then
   codex_active=$(bash $SKILL_DIR/scripts/probe-codex-engagement.sh "$OWNER" "$REPO" "$PR_NUM")
   [ "$NO_CODEX" = "true" ] && codex_active=disabled
   if [ "$codex_active" = "active" ]; then
     BASE=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
-    loc=$(git diff --shortstat "origin/$BASE..HEAD" 2>/dev/null | awk '{s=0; for(i=1;i<=NF;i++) if($i~/^[0-9]+$/ && ($(i+1)~/insertion/||$(i+1)~/deletion/)) s+=$i; print s+0}')
-    files=$(git diff --name-only "origin/$BASE..HEAD" 2>/dev/null | wc -l)
+    loc=$(git diff --shortstat "origin/$BASE...HEAD" 2>/dev/null | awk '{s=0; for(i=1;i<=NF;i++) if($i~/^[0-9]+$/ && ($(i+1)~/insertion/||$(i+1)~/deletion/)) s+=$i; print s+0}')
+    files=$(git diff --name-only "origin/$BASE...HEAD" 2>/dev/null | wc -l)
     if [ "${loc:-0}" -lt "$SMALL_DIFF_LOC" ] && [ "${files:-0}" -lt "$SMALL_DIFF_FILES" ]; then
       echo "cr-source: auto → codex-only (small diff: ${loc} LoC / ${files} files, Codex active)"
       CR_SOURCE=codex-only

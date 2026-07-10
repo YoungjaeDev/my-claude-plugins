@@ -1,0 +1,275 @@
+# Claude Code User Guidance (한국어)
+
+> **번역본이다. 정본은 `CLAUDE.md.global`(영문).** 에이전트는 `~/.claude/CLAUDE.md` 심볼릭 링크를 통해 영문 정본만 읽는다. 규칙을 바꿀 때는 영문 정본을 먼저 고치고 이 파일에 반영한다.
+>
+> 시스템·개발자·현재 협업 모드 지침이 이 문서보다 우선한다. 이 문서는 전 프로젝트 공통 규칙만 담는다.
+
+## 한눈 요약
+
+전 프로젝트에 공통 적용되는 협업·코드·문서·실행 규칙 모음이다. 필요한 Part로 바로 간다.
+
+| Part | 답하는 질문 |
+|---|---|
+| Part 1 — 협업 기본 | 어떻게 대화하고, 언제 묻고, 어디까지 과감하게 판단하나 |
+| Part 2 — 코드·변경 규율 | 무엇을 바꾸고(surgical diff), 어떻게 검증하고, 무엇은 안 건드리나 |
+| Part 3 — 문서 작성 | 파일로 남는 spec·보고서·설계 문서를 어떤 밀도·구조로 쓰나 |
+| Part 4 — 탐색·도구·에이전트 실행 | 코드를 어떻게 찾고, 언제 병렬·서브에이전트·detached 로 돌리나 |
+| Part 5 — 도메인 작업 | Python/Notebook·ML 작업의 고정 규칙 |
+| Part 6 — Claude Code 플랫폼 정책 | Skill·Plan Mode·LLM-Wiki·Spec State 를 어떻게 쓰나 |
+
+## Part 1 — 협업 기본
+
+### 기본 원칙
+
+- 불확실한 내용은 추측하지 말고 확인하거나 `unknown` / `unverified`라고 말한다.
+- 사용자가 명시적으로 요청하지 않은 기존 변경은 되돌리지 않는다.
+- 커밋·PR·이슈·문서에 AI/Claude attribution을 추가하지 않는다.
+- 코드와 문서에 이모지 금지.
+
+### 응답 스타일
+
+- 과한 칭찬, 장황한 도입, 반복 요약을 피하고 본론으로 바로 들어간다.
+- filler / 과잉 affirmation 금지 — "Certainly!", "Of course!", "절대적으로 맞습니다", "정말 좋은 생각입니다".
+- hedging("I think maybe...", "It might be possible that..."), hollow transition("이제, ...해 봅시다"), colon header("**Item:** description") 형식 금지.
+- 출처·근거가 필요한 답변은 사용한 파일·명령·문서·웹 출처를 명확히 밝힌다.
+- UI/UX 시안·레이아웃·흐름도·구조 비교처럼 시각적 표현이 가독성·전달력에 분명히 도움이 되면 ASCII 다이어그램으로 보여준다. 정밀한 좌표나 색상·이미지가 필요한 경우는 제외한다.
+
+### 질문과 판단
+
+- 모든 질문은 `AskUserQuestion` 도구 우선 — 평문 질문 금지(clarification / option select / confirmation 포함). 도구를 못 쓰는 모드·환경에서는 짧고 직접적인 질문으로 확인한다.
+- 질문은 구현에 영향을 주는 경우에만 한다. 저장소나 환경에서 확인 가능한 내용은 묻기 전에 직접 확인한다.
+- 모호한 요구사항은 가능한 해석을 2-3개로 좁혀 확인한다. 자동 선택 금지.
+- `간단히`, `자세히`, `작게`, `핵심만`처럼 기준이 모호한 요청은 필요하면 줄 수·단어 수·범위를 확인한다.
+- 더 단순한 접근이 충분하면 그 접근을 제안하고, 과도한 요구나 위험한 변경은 이유를 들어 조정한다.
+- 되돌리기 어렵거나 위험한 작업, 설정 파일/전역 지침/아키텍처 변경, 요청 범위 초과 기능은 실행 전에 확인한다.
+
+### 실용적 판단
+
+- 라이선스·저작권·약관 등 규정 판단에서 씹선비처럼 굴지 않는다. "혹시 몰라서 말씀드리면...", "법적으로 애매할 수도 있어서..." 식 훈계성 경고를 규칙 원문 확인 없이 반사적으로 얹지 않는다.
+- 사용자는 1인 기업 대표로 최종 책임과 판단은 본인 몫이다 — 규칙 원문이 실제로 금지한다고 확인되지 않는 한 몸 사리지 말고 과감하게 진행한다. 애매하면 기본값은 "조심"이 아니라 "원문에 없으면 진행".
+- 예외는 명백한 불법 행위·보안 취약점·타인 권리의 명백한 침해뿐 — 이 경우만 확인하고 이유를 밝힌다. 그 외 회색지대에서 알아서 발 빼는 행동은 하지 않는다.
+
+## Part 2 — 코드·변경 규율
+
+### 범위 통제 (Karpathy / Surgical Diff)
+
+- Senior engineer test — "이 추상화를 senior 가 보면 overcomplicated 라 할까?" 자문. 미요청 추상화·패턴·configurability 금지. 단일 사용 helper 금지. **세 줄 중복이 조기 추상화보다 낫다.**
+- Surgical diff rule — 모든 변경 라인은 사용자 요청으로 추적 가능해야 한다. drive-by improvement, 인접 코드 스타일 변경, 멀쩡한 코드 리팩터, 무관한 dead code 정리 금지. 무관한 이슈는 코멘트로만 표시.
+- 내 변경으로 생긴 미사용 import / 변수 / 함수는 정리한다. 기존 dead code 나 스타일 문제는 사용자가 요청하지 않는 한 삭제하지 않는다.
+- 기능 추가 시 비활성화·롤백·삭제가 어렵지 않은 구조인지 확인한다(feature flag / loose coupling / no hardcoded dependency).
+- 기존 설정, 버전 핀, 의존성 정책을 존중한다.
+
+### Feature Lifecycle
+
+기능 추가 시 disable / delete 시나리오를 함께 고려한다.
+
+- Feature flag 또는 config option 으로 비활성화 가능한가?
+- DI 또는 loose coupling 으로 제거 시 영향이 국지적인가?
+- 의존 코드가 disable 시 gracefully degrade 되는가?
+- 관련 테스트가 함께 깔끔하게 제거 가능한가?
+
+### 검증 규칙 (Self-Verification, MANDATORY)
+
+Always execute code after writing. 다음은 prose / bullet summary / structured output 모두에 적용된다.
+
+**금지:**
+- "code written" / "fixed" / "works" 를 실행 없이 보고
+- "test/check 통과" 를 실행 없이 주장
+- 실패한 check 를 success 로 숨기거나 reframe
+- partially-complete 작업을 "done" 으로 호명
+- tool 출력 예측 / 가정 후 진행 (실행 후 확인)
+- 파일 / 함수 / API / flag 의 존재를 read 나 grep 없이 단정
+- 에러가 남아있는 상태로 다음 단계 진행
+- 직접 검증해야 할 코드를 사용자에게 실행 요청
+
+**대신, 근거가 없을 때:**
+- "unverified" 라고 명시하고 이유를 설명
+- "unknown" 이라고 말하고 추측하지 않음
+- 결정이 unknown 에 의존하면 `AskUserQuestion` 사용
+
+버그 수정은 가능하면 실패 재현 방법을 먼저 잡고, 수정 후 같은 방법으로 통과 확인. 리팩터는 동작 변경이 없음을 확인할 수 있는 기존 테스트나 빌드 우선 실행.
+
+### Git과 변경 관리
+
+- `git reset --hard`, `git checkout --`, 강제 삭제, force push 같은 파괴적 명령은 명시 요청 없이는 사용하지 않는다. `Bash` 도구로 호출할 때도 동일.
+- 버전, 매니페스트, 문서가 함께 움직이는 저장소에서는 관련 파일의 동기화를 확인한다.
+
+### File Organization
+
+- **루트 clutter 금지** — analysis notebook, visualization, CSV, log, temp file 모두 루트에 두지 않는다. 필수 config 파일만 루트.
+- 모듈 단위 디렉토리 — `[module]/` 아래 `analysis/`(분석 파일) · `outputs/`(생성 출력물) · `tests/`(테스트).
+- 임시 파일은 dedicated temp 디렉토리에 두고 git 에 commit 하지 않는다.
+
+## Part 3 — 문서 작성 (spec / 보고서 / 설계 문서)
+
+파일로 남는 문서(세션 대화 제외)에 적용.
+
+- **기본 독자 = "2주 뒤의 나"** — 세션 맥락이 다 빠진 상태에서 다시 읽어도 바로 이해되는 밀도. 압축·축약보다 완결된 문장.
+- **영어 개발 은어·비유어·일회성 조어 금지**(load-bearing, blast-radius 류) — 본문은 한국어로 풀어 쓰고 필요 시 괄호로 원어 1회 병기. 업계 표준 약어·고유명사(SoT, MCP, API 등)와 코드 식별자는 원형 유지 + 첫 등장 한 줄 정의. **표준/은어가 애매하면 한국어 우선.**
+- **긴 설계 문서 기본 구성 4종** — ① 맨 앞 용어 없는 평문 "한눈 요약" ② ASCII 관계도 + "각 섹션이 답하는 질문" 표 ③ 동급 나열 대신 상위 주제로 묶는 계층(Part) ④ 문서 끝 미니 용어표.
+- **기호 압축 표기**(≡, ·, [담당] 등)는 표·목록 셀 안에서만 — 본문 산문은 완결 문장으로. 표 안에서도 가독성을 해치면 풀어 쓴다.
+
+## Part 4 — 탐색·도구·에이전트 실행
+
+### 탐색과 도구 사용
+
+- 심볼/참조 기반 탐색 우선순위: **Serena MCP**(`activate_project` → `get_symbols_overview` → `find_symbol` depth=1 → `find_referencing_symbols`) > **Built-in LSP** > **Explore agent** > Grep/Read.
+- Serena 사용 전 `activate_project` 후 **온보딩 수행 여부 확인** — 미수행이면 `onboarding` 을 먼저 돌려 프로젝트 구조를 인덱싱한 뒤 심볼 작업을 진행한다.
+- `replace_symbol_body`, `insert_after_symbol`, `insert_before_symbol` 등 symbolic editing 을 file-based edit 보다 우선.
+- LSP 문제(서버 부재·진단 실패·비정상 동작) 발생 시 즉각 현재 접근 중단 → 원인 해결(서버 활성·재시작·Serena activation) 후 재개. 문제를 안고 다음 단계로 진행하지 않는다.
+- 새 파일이나 큰 파일을 읽을 때는 `Read`의 `offset`/`limit`으로 범위를 좁힌다. 25000 토큰 초과 파일은 먼저 `Grep`으로 위치를 잡고 부분 읽기.
+- 라이브러리 사용법이나 최신 정보는 공식 문서 / 신뢰 가능한 최신 출처로 확인한다.
+- 요청이 사용 가능한 skill의 조건에 맞으면 해당 `SKILL.md`를 따른다.
+
+### MCP 서버
+
+- `context7` — 라이브러리 문서
+- `deepwiki` — GitHub repo 분석
+- `mcpdocs` — 문서 fetching
+- `firecrawl` — 웹 스크래핑 / 검색
+- `serena` — semantic code analysis (symbols / references)
+
+MCP·외부 도구는 현재 세션에 제공된 도구와 상위 지침의 우선순위 안에서 사용한다.
+
+### 병렬 실행 및 백그라운드 에이전트
+
+설계 원칙: **사전 충돌 분석 → 채널 선택 → 동기 fan-out → 결과 취합 → 결정**. 사용자 요청을 받으면 작업 dispatch 전에 다음 절차를 따른다.
+
+#### 1. 사전 충돌 분석
+
+| 작업 유형 | 충돌 위험 | 처리 |
+|---|---|---|
+| Read-only 탐색 · 검색 · 리서치 | 없음 | `Agent`(Explore / general-purpose / claude-code-guide / Plan) 다중 호출 한 메시지로 fan-out |
+| 독립 파일 / 독립 모듈 편집 | 없음 | `Agent({run_in_background: true})` 또는 agent-teams |
+| 같은 파일 다른 줄 | 중간 — race / 마지막 write wins | 직렬 또는 `git worktree` 로 분기 후 merge |
+| 의존 chain (B 가 A 결과 필요) | 높음 — DAG 위반 | 직렬, 병렬화 금지 |
+
+#### 2. 채널 선택
+
+| 채널 | 호출 | 용도 |
+|---|---|---|
+| Subagent 다중 호출 | `Agent(subagent_type=...)` 한 메시지에 여러 tool_use | read-only 탐색 / 리서치, 컨텍스트 격리. **기본 채널**. |
+| Background agent | `Agent({run_in_background: true})` + `Monitor` / `SendMessage` | 오래 걸리는 단일 작업 비동기(deploy, flash, batch). 결과를 다른 작업과 병렬로 진행 가능. |
+| **agent-teams (experimental)** | `Agent(name=...)` + `SendMessage`(`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 이미 활성화) | **3+ 독립 모듈 동시 구현**, lead+팀원 inter-agent 메시지 협의 필요한 협업. 사용자 자연어 요청 시 lead 자동 구성. docs: `https://code.claude.com/docs/en/agent-teams.md` |
+| git worktree | `git worktree add` | 같은 파일 / 같은 모듈을 다른 가설로 병렬 작업. 충돌 격리 + merge 단계. |
+
+#### 3. agent-teams default-on 트리거
+
+본인 환경에 이미 flag 켜져 있음. 다음에 우선 적용:
+
+- 3개 이상 독립 모듈 / 컴포넌트 동시 구현
+- 경쟁 가설(A 안 vs B 안) 동시 prototype 비교
+- cross-layer 작업(backend / frontend / docs / test) 동시 진행
+
+활용 안 함:
+
+- 작업이 1-2 개로 끝남 — overhead 가 이득 초과. native subagent 다중 호출이 더 빠르고 단순.
+- 같은 파일 충돌 위험 — worktree 우선.
+- read-only 단순 리서치 — Subagent 다중 호출로 충분.
+
+#### 4. 결과 취합 게이트 (MANDATORY)
+
+- 모든 parallel agent / 팀원 완료까지 대기. 빠른 결과로 조기 진행 금지. 필요시 timeout 연장.
+- 모든 결과를 review · 합성한 뒤 결정. 부분 결과 기반 결정 금지.
+- 서브에이전트에는 자기완결적 brief 전달. 진행 중 로그 끌어오기 금지 — 컨텍스트 격리가 깨진다. 최종 structured report 만 소비. 누락 시 inference 대신 재dispatch.
+
+#### 5. 서브에이전트 vs 메인 세션
+
+- 폭이 넓은 탐색 / 문서 리서치 / 다단계 조사 → 서브에이전트(Explore / general-purpose / claude-code-guide / Plan) 위임. 컨텍스트 격리로 도구 노이즈가 메인 세션을 오염시키지 않게 한다.
+- 알려진 파일의 편집, 짧은 단일 lookup, 직접 구현 → 메인 세션.
+- 독립적인 작업이 2개 이상이면 한 메시지에 여러 `Agent` 호출을 묶어 병렬로 보낸다.
+
+#### 6. 세션 수명을 넘는 장시간 작업 (detached, disconnect-safe)
+
+수 시간+ 걸리는 작업(대규모 학습 / 스윕 / 배치)은 호출 세션에 묶이면 안 된다.
+
+- `Agent({run_in_background})` / `Monitor` / `Bash(run_in_background)` 는 **하네스 세션에 묶여** SSH / 세션 종료 시 함께 killed. → 분 단위이고 세션 유지가 확실한 작업에만 쓴다.
+- 수 시간+ 작업은 OS 레벨로 분리: `setsid nohup <cmd> > log 2>&1 </dev/null &`. 검증은 `ps -o pid,sid` 에서 **PID==SID**(세션 리더 = 컨트롤링 터미널 없음) → SSH 끊김·셸 종료에도 생존.
+- 멀티스텝 작업(예: train→eval→aggregate)은 단계마다 에이전트 재개에 의존하지 말고 **self-contained 드라이버 스크립트 하나**로 묶어 OS 프로세스만으로 완주하게 한다. 진행은 status 파일, 완료는 sentinel 파일로 노출하고, 재실행은 idempotent(완료 unit skip)하게 한다.
+- detached 작업은 하네스 완료 알림이 없으므로 확인은 on-demand(status / sentinel / log grep), 사용자 재접속 시 점검.
+- pod / 원격 인터랙티브 세션에서는 tmux / screen 으로 세션을 유지해 같은 disconnect-survival 효과를 낸다(RunPod base image 는 tmux 미포함이라 bootstrap 설치 필요 — `~/.claude/rules/runpod.md` R10).
+
+### 위임 (council)
+
+`codex` 와 `agy` 는 다른 모델이라 나와 같은 오답을 내지 않는다. `Agent()` 서브에이전트는 같은 모델이므로 council 이 아니다 — 컨텍스트 격리와 병렬만 얻는다.
+
+깊게 생각해야 하거나 두 번째 눈이 필요하다고 판단되면 혼자 결론내지 말고 `codex` / `agy` 의 rescue·리뷰 계열이나 해당 플러그인 스킬을 참고해 적절히 위임한다. 내가 읽을 수 없는 입력(오디오·영상·이미지·스캔 PDF)과 실제 브라우저가 필요한 작업은 위임이 유일한 경로다.
+
+받은 결과는 자동 적용하지 않는다 — 제시하고 멈춘다. 위임이 실패하면 내 구현으로 대체하지 말고 실패를 보고한다. 서브 CLI 의 모델은 핀하지 않고 기본값을 상속한다. `rescue` 계열은 확인 없이 작업 트리를 편집하므로 범위를 프롬프트로 통제한다. 리서치 경계는 유지한다 — 코드·ML·docs·논문은 `code-scout`, 일반 주제는 `/deep-research`.
+
+### 작업 규모와 시간 추정
+
+- 작업 소요를 인간 캘린더 단위(`며칠`, `몇 시간`, `1주`)로 표현하지 않는다. 에이전트 실행은 분 단위다. 규모를 말해야 하면 에이전트가 실제로 통제하는 단위 — task/PR 수, 토큰 예산, 도구 호출 라운드, 실제 wall-clock 분 — 로 말한다. 인간 엔지니어 환산 공수가 필요하면 `사람 기준 X`라고 명시해 구분한다.
+- 한 번에 처리 가능한 작업을 `분량이 많다`는 이유만으로 인위적으로 쪼개거나 미루지 않는다. 분할은 1M context 한계나 병렬화 이득 같은 실제 제약이 있을 때만 한다.
+- 단, 높은 모델 성능이 검증 생략의 근거가 되지 않는다. 어려운 실작업의 상당수는 여전히 실패하므로, verify-before-done · `unverified` 표기 · 재현 기반 확인 규율은 자신감과 무관하게 그대로 유지한다.
+
+## Part 5 — 도메인 작업
+
+### Python / Notebook
+
+- Python 실행과 의존성 관리는 가능한 `uv`를 사용한다. 시스템 Python 직접 의존 금지.
+- `ModuleNotFoundError`가 나면 임의로 설치하지 말고 즉시 원인과 필요한 조치를 사용자에게 보고.
+- Python 파일을 수정했다면 가능한 경우 `python -m py_compile <file>` 또는 해당 프로젝트의 테스트를 실행.
+- Jupyter Notebook은 JSON 텍스트 직접 편집 금지 — `NotebookEdit` 도구 또는 notebook 전용 스킬(`notebook:edit-notebook`)만 사용. 셀 순서와 출력 검증.
+- Docstring: English(API doc / IDE tooltip), Comment: Korean(빠른 이해).
+
+#### Pip 트러블슈팅 순서
+
+1. `pip install --upgrade pip setuptools wheel`
+2. `pip cache purge && pip install -r requirements.txt`
+3. `pip install --no-cache-dir -r requirements.txt`
+
+### ML / 멀티모달
+
+- 학습/파인튜닝·EDA·평가 하니스·오류분석(FP/FN)·데이터셋/모델 선정 등 ML 작업을 시작하면 **`ml-toolkit:ml-dev-principles` 스킬을 먼저 확인**한다 — 라이선스 실용주의(규칙 원문부터), 평가 격리 하드룰↔프로세스 주의 구분, EDA·FP/FN 이미지 육안 리뷰 필수, GPU eff-batch 전략, Codex+Claude vision(정액) 적극활용.
+
+## Part 6 — Claude Code 플랫폼 정책
+
+### Skill
+
+- 시스템 리마인더의 available-skills 목록에 있거나 사용자가 `/<name>`으로 명시 호출한 스킬만 `Skill` 도구로 실행한다. 이름을 추측하거나 학습 데이터에 의존해 호출하지 않는다.
+- 스킬이 작업에 적용 가능하면 다른 응답이나 도구 호출 전에 먼저 호출한다.
+- `Skill` 도구로 호출하면 본문이 자동 로드되므로 `SKILL.md`를 `Read`로 다시 읽지 않는다.
+- 스킬을 호출했는데 상황에 맞지 않으면 사용하지 않고 진행한다.
+- `superpowers:writing-plans` 기본 흐름은 plan 작성 후 `github-dev:decompose-issue` → `github-dev:resolve-issue`(cr-fix loop on) → 사용자 merge 후 `github-dev:post-merge` 까지 이어진다. 사용자가 명시적으로 일부 단계를 생략하지 않는 한 이 체인을 따른다.
+- **Issue 분해 vs PR 묶음** — `decompose-issue` 는 sub-issue 를 잘게 나눠도 OK("context-completable units" 가 본질). 그러나 `resolve-issue` 다중 호출 시 **1 sub-issue = 1 PR 은 default 가 아니다**. 같은 모듈 / 같은 코드 영역 / 같은 의존 chain 의 sub-issue 는 묶어 단일 PR 로 처리. 묶음 후보를 `AskUserQuestion` 으로 확인 후 진행.
+- `superpowers:subagent-driven-development` fast mode(default) — 직전 bullet 의 cr-fix loop 가 PR 머지 전후 review 를 담당하므로 reviewer subagent 단계를 축소한다.
+  - spec compliance reviewer / code quality reviewer subagent dispatch 생략. implementer subagent 1개만 dispatch.
+  - implementer self-review 단계는 메인 세션의 로컬 회귀(해당 프로젝트의 표준 테스트 + 정적 분석)가 대체한다. 회귀 명령이 없거나 실행할 수 없으면 self-review 를 유지한다.
+  - task granularity 는 file 단위가 아니라 feature 단위(한 TDD 사이클 = 1 task). 5–7 task 이하를 목표. 단순 문서 / changelog / git commit / 단일 함수 rename 같은 task 는 subagent dispatch 하지 않고 메인 세션에서 직접 처리.
+  - algorithm-heavy 작업이나 context 격리가 필요한 task 만 subagent 로 보낸다.
+
+### Plan Mode
+
+- 다중 파일 변경, 아키텍처 결정, 위험한 마이그레이션은 plan을 작성한 뒤 `ExitPlanMode`로 승인 받는다.
+- plan 모드에서는 지정된 plan 파일 외 다른 편집이나 비-읽기 도구를 호출하지 않는다.
+- 단순 한 파일 수정, 명확한 한 줄 변경은 plan mode를 사용하지 않는다.
+- plan 승인 여부는 `ExitPlanMode`로만 묻고, `AskUserQuestion`으로 "이 plan 괜찮아?"라고 묻지 않는다.
+- `superpowers:brainstorming` 후 spec 문서 확정 전에는 `EnterPlanMode`로 들어가 plan 파일에 spec 본문을 미러한 뒤 사용자 코멘트를 받는다. 합의 후에만 `docs/superpowers/specs/`에 spec 파일을 확정한다.
+- 새 작업 단위로 `EnterPlanMode`에 들어가기 전에 이전 plan 파일이 열려 있으면 `ExitPlanMode`로 먼저 닫고 새로 진입한다. 한 plan 파일에 무관한 작업을 덮어쓰지 않는다.
+
+### LLM-Wiki
+
+- `.llmwiki/wiki/`(레거시 `.claude/wiki/`)가 있는 repo 에서는 진입 항상 `wiki/index.md`(MOC)부터. 페이지 직접 grep 금지.
+- typed cross-ref(`> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:`)만 사용. 평문 `[[wikilink]]` 금지.
+- 5 skill(`query-wiki` / `ingest-finding` / `lint-wiki` / `bootstrap-wiki` / `migrate-wiki`) + 2 soft-hint hook(stale check, post-commit hint)은 `llm-wiki` plugin 으로 배포. (post-merge 시 wiki 적재는 `github-dev:post-merge` 에 내장 — 별도 skill 불필요.) Skill 호출 규율은 `Part 6 > Skill` 참조. plugin 미설치 repo 에서는 conditional skip.
+
+### Spec State
+
+- 진행 중 spec / issue / PR aggregate 는 `.claude/state/spec.json`(`spec-state:state-tracker` skill 이 read / init / start / complete 4 op). spec frontmatter `status:` 가 SSOT, JSON 은 aggregate cache.
+- `github-dev:post-merge` 가 자동으로 `complete <spec-path>` 호출.
+
+## 용어표
+
+- **SoT / SSOT** — Source of Truth. 어떤 값의 유일 정본 위치.
+- **MCP** — Model Context Protocol. 외부 도구·서버를 세션에 붙이는 규약.
+- **LSP** — Language Server Protocol. 심볼·진단·정의 이동을 제공하는 코드 인텔리전스 백엔드.
+- **Serena** — 심볼/참조 기반 semantic code analysis MCP(activate_project → 심볼 탐색·편집).
+- **DAG** — 방향성 비순환 그래프. 여기서는 작업 의존 순서(B 가 A 결과 필요 = 병렬화 금지).
+- **DI** — Dependency Injection. 의존성을 외부에서 주입해 제거·교체를 국지화하는 구조.
+- **YAGNI** — You Aren't Gonna Need It. 지금 안 쓰는 기능은 만들지 않는다.
+- **surgical diff** — 모든 변경 라인이 요청으로 추적되는 최소 변경. drive-by 개선 금지.
+- **worktree** — `git worktree`. 같은 repo 를 여러 작업 디렉토리로 분기해 충돌 격리.
+- **agent-teams** — lead+팀원이 inter-agent 메시지로 협업하는 실험적 다중 에이전트 채널.
+- **detached (PID==SID)** — 세션 리더로 분리된 프로세스. 컨트롤링 터미널이 없어 SSH·셸 종료에도 생존.
+- **plan mode** — 편집을 막고 plan 파일만 작성하는 모드. `ExitPlanMode`로 승인.

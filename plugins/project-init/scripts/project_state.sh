@@ -202,16 +202,25 @@ GI_ENV=$(ignored .env)
 # 명령 치환을 타고 올라와 스크립트 전체를 죽인다 — 중복 하나 못 세는 대신 진단이
 # 통째로 사라진다. 파싱 실패를 이 축 안에 가두고, 대신 unreadable 로 실어 보낸다:
 # 조용히 "중복 없음" 이라고 답하는 것이 제일 나쁘다.
-mcp_keys() { jq -r '.mcpServers // {} | keys[]' "$1" 2>/dev/null | sort || true; }
-mcp_broken() { [ -f "$1" ] && [ -s "$1" ] && ! jq empty "$1" >/dev/null 2>&1; }
+# "읽을 수 있나" 는 "유효한 JSON 인가" 보다 좁다. 빈 파일은 jq 에게 유효한 입력이고,
+# `mcpServers` 가 객체가 아니면 (`[]`, `"x"`) `keys[]` 가 죽거나 인덱스를 뱉는다.
+# 둘 다 "중복 없음" 으로 조용히 통과했다 — 못 본 것을 봤다고 답하는 셈이다.
+mcp_readable() { jq -e 'type == "object" and ((.mcpServers // {}) | type) == "object"' "$1" >/dev/null 2>&1; }
+mcp_keys() { jq -r '.mcpServers // {} | keys[]' "$1" 2>/dev/null | sort; }
 MCP_USER=0; MCP_SETTINGS=0; MCP_DUPES='[]'
 _bad=""
 for f in "$HOME/.claude.json" "$HOME/.claude/settings.json"; do
-  if mcp_broken "$f"; then _bad="${_bad}${f#$HOME/}"$'\n'; fi
+  [ -f "$f" ] || continue
+  # `${f#$HOME/}` 는 HOME 에 glob 문자가 있으면 오작동한다 — 접두사는 따옴표로 고정.
+  if ! mcp_readable "$f"; then _bad="${_bad}${f#"$HOME/"}"$'\n'; fi
 done
 MCP_UNREADABLE=$(printf '%s' "$_bad" | jq -Rsc 'split("\n") | map(select(length>0))')
-if [ -f "$HOME/.claude.json" ]; then MCP_USER=$(mcp_keys "$HOME/.claude.json" | wc -l | tr -d ' '); fi
-if [ -f "$HOME/.claude/settings.json" ]; then MCP_SETTINGS=$(mcp_keys "$HOME/.claude/settings.json" | wc -l | tr -d ' '); fi
+if [ -f "$HOME/.claude.json" ] && mcp_readable "$HOME/.claude.json"; then
+  MCP_USER=$(mcp_keys "$HOME/.claude.json" | wc -l | tr -d ' ')
+fi
+if [ -f "$HOME/.claude/settings.json" ] && mcp_readable "$HOME/.claude/settings.json"; then
+  MCP_SETTINGS=$(mcp_keys "$HOME/.claude/settings.json" | wc -l | tr -d ' ')
+fi
 if [ "$MCP_USER" -gt 0 ] && [ "$MCP_SETTINGS" -gt 0 ]; then
   MCP_DUPES=$(comm -12 <(mcp_keys "$HOME/.claude.json") <(mcp_keys "$HOME/.claude/settings.json") | jq -Rsc 'split("\n") | map(select(length>0))')
 fi
@@ -236,14 +245,18 @@ fi
 
 # --- codex CLI 자세 -------------------------------------------------------
 # 값 판단은 스킬이 한다 — 여기서는 읽기만. 의도적 설정일 수 있으므로 결함이 아니다.
+# Codex 는 `$CODEX_HOME` 을 존중한다 (`codex --help`: "Layer $CODEX_HOME/<name>.config.toml").
+# `$HOME/.codex` 만 보면 그 환경에서 설정이 있는데도 config:false 로 보고해
+# approval/sandbox 자세와 doc-budget WARN 이 통째로 사라진다.
+CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 # TOML allows an inline comment after a value. Cut from the first space-hash so
 # `approval_policy = "never" # yolo` reads as `never`, while a `#` inside a quoted
 # value (`model = "gpt#5"`) survives.
 toml_val() {
-  sed -n "s/^$1 *= *//p" "$HOME/.codex/config.toml" 2>/dev/null | head -1 \
+  sed -n "s/^$1 *= *//p" "$CODEX_HOME_DIR/config.toml" 2>/dev/null | head -1 \
     | sed -e 's/[[:space:]]#.*$//' -e 's/[[:space:]]*$//' | tr -d '"'
 }
-CODEX_CONFIG=$(b test -f "$HOME/.codex/config.toml")
+CODEX_CONFIG=$(b test -f "$CODEX_HOME_DIR/config.toml")
 CODEX_APPROVAL=""; CODEX_SANDBOX=""; CODEX_MODEL=""; CODEX_DOC_MAX=32768
 if [ "$CODEX_CONFIG" = true ]; then
   CODEX_APPROVAL=$(toml_val approval_policy)
@@ -261,7 +274,7 @@ if [ "$CODEX_CONFIG" = true ]; then
   esac
 fi
 AGENTS_BYTES=0; [ -f AGENTS.md ] && AGENTS_BYTES=$(wc -c < AGENTS.md | tr -d ' ')
-AGENTS_GLOBAL_BYTES=0; [ -f "$HOME/.codex/AGENTS.md" ] && AGENTS_GLOBAL_BYTES=$(wc -c < "$HOME/.codex/AGENTS.md" | tr -d ' ')
+AGENTS_GLOBAL_BYTES=0; [ -f "$CODEX_HOME_DIR/AGENTS.md" ] && AGENTS_GLOBAL_BYTES=$(wc -c < "$CODEX_HOME_DIR/AGENTS.md" | tr -d ' ')
 
 # --- 사용자가 이미 답한 ASK 항목 -------------------------------------------
 # 결함이 아니라 결정인 축(git remote, gws-sync ...)의 답을 보관한다.

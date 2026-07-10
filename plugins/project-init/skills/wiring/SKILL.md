@@ -42,7 +42,7 @@ Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-e
 }
 ```
 
-`project_state.sh` surfaces the file's `answers` object verbatim under `.answers`. Before raising any `ASK`, check whether its key holds a **terminal** value; if so, report it as `OK` or `SKIP` and move on. A value that records a step still pending (`gws_sync: "pending-install"`) is not terminal — re-ask once its precondition is met, or the answer file silently swallows the follow-up question. Re-ask otherwise only when the user says so, or when an answer is older than a year.
+`project_state.sh` surfaces the file's `answers` object verbatim under `.answers`. Before raising any `ASK`, check whether its key holds a **terminal** value; if so, report it as `OK` or `SKIP` and move on. A value that records a step still pending (`gws_sync: "pending-install"`) is not terminal — re-ask once its precondition is met, or the answer file silently swallows the follow-up question. Otherwise re-ask only when the user explicitly asks to revisit the decision. There is no automatic expiry: "do you want a git remote?" does not become a new question a year later, and an axis that re-opens settled decisions on a timer is the same barking this class exists to stop.
 
 ## Step 0 — Resolve PLUGIN_ROOT
 
@@ -70,7 +70,7 @@ Do not re-derive any field with ad-hoc `test -f` calls — the script is the det
 
 ## Step 2 — Verdict per axis
 
-Map the JSON to verdicts. Suppress any `ASK` whose key already appears in `.answers`.
+Map the JSON to verdicts. Suppress an `ASK` only when its key in `.answers` holds a *terminal* value (see "Answers file").
 
 | Axis | JSON | FAIL when | WARN when | ASK / INFO when | Remediation |
 |---|---|---|---|---|---|
@@ -154,9 +154,19 @@ State the scan is filesystem-only. Things it deliberately does not check, to avo
 - mem0 store contents and config posture → `/mem0-ops:doctor`
 - MCP servers left behind by deleted plugins, and which extensions go unused → the built-in `/doctor` (it reads usage history; this skill reads only the filesystem)
 
+## Step 3.5 — Put the `ASK` axes to the user
+
+Every axis the report printed as `[ASK] … (unanswered)` is asked here, before Step 4. Without this step the class is decorative: the row renders, nobody is asked, `.claude/state/wiring.json` is never written, and the next run prints the same row forever.
+
+One `AskUserQuestion` per axis — `git_remote` and `gws_sync` are unrelated decisions and a `multiSelect` would conflate them. Skip an axis whose key already holds a terminal value. Record each answer per "Recording `ASK` answers" below, and honor the `.gitignore` precondition there.
+
+A dismissed question leaves the key absent. An unanswered `ASK` is not a recorded "no" — inventing one would be writing an answer the user did not give.
+
+Step 4's gate runs after this, and asks only about the mechanical fixes.
+
 ## Step 4 — Gate, then fix
 
-Present ONE `AskUserQuestion`. Put "Apply all mechanical fixes (Recommended)" first, "Let me pick" second, "Report only" last. If the user picks "Let me pick", follow with one `multiSelect` question, one option per fix group.
+Present ONE `AskUserQuestion` for the mechanical fixes (the `ASK` axes were already answered in Step 3.5). Put "Apply all mechanical fixes (Recommended)" first, "Let me pick" second, "Report only" last. If the user picks "Let me pick", follow with one `multiSelect` question, one option per fix group.
 
 **Mechanically fixable here** (reversible, no judgment):
 

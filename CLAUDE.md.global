@@ -3,6 +3,8 @@
 > System, developer, and current collaboration-mode instructions outrank this document. This document carries only the rules shared by every project.
 >
 > **This English file is the source of truth.** `CLAUDE.md.global.ko` is a hand-maintained Korean translation and is never loaded by any agent. Change the English first, then mirror it.
+>
+> Nothing loads this file in place. `~/.claude/CLAUDE.md` is a **copy**, refreshed by an explicit sync step (`cp CLAUDE.md.global ~/.claude/CLAUDE.md`) — never a symlink into this working tree, which would make every branch switch and every uncommitted edit take effect globally at once.
 
 ## At a glance
 

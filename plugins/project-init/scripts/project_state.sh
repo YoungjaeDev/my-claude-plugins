@@ -194,6 +194,96 @@ GI_SERENA=$(ignored .serena/)
 GI_STAGING=$(ignored .llmwiki/.staging/)
 GI_ENV=$(ignored .env)
 
+# --- MCP 설정 중복 --------------------------------------------------------
+# 같은 서버가 두 user-scope 파일에 있으면 Claude 는 한쪽 정의를 통째로 고르고
+# 나머지는 버린다 (필드 병합 없음). 두 정의가 갈라지면 한쪽 편집이 조용히 죽는다.
+# 고아 등록(삭제된 플러그인의 서버)은 사용 이력이 있어야 알 수 있어 여기서 다루지 않는다.
+# 손상된 JSON 에서 jq 는 non-zero 로 끝난다. `set -euo pipefail` 아래서 그 실패는
+# 명령 치환을 타고 올라와 스크립트 전체를 죽인다 — 중복 하나 못 세는 대신 진단이
+# 통째로 사라진다. 파싱 실패를 이 축 안에 가두고, 대신 unreadable 로 실어 보낸다:
+# 조용히 "중복 없음" 이라고 답하는 것이 제일 나쁘다.
+# "읽을 수 있나" 는 "유효한 JSON 인가" 보다 좁다. 빈 파일은 jq 에게 유효한 입력이고,
+# `mcpServers` 가 객체가 아니면 (`[]`, `"x"`) `keys[]` 가 죽거나 인덱스를 뱉는다.
+# 둘 다 "중복 없음" 으로 조용히 통과했다 — 못 본 것을 봤다고 답하는 셈이다.
+mcp_readable() { jq -e 'type == "object" and ((.mcpServers // {}) | type) == "object"' "$1" >/dev/null 2>&1; }
+mcp_keys() { jq -r '.mcpServers // {} | keys[]' "$1" 2>/dev/null | sort; }
+MCP_USER=0; MCP_SETTINGS=0; MCP_DUPES='[]'
+_bad=""
+for f in "$HOME/.claude.json" "$HOME/.claude/settings.json"; do
+  [ -f "$f" ] || continue
+  # `${f#$HOME/}` 는 HOME 에 glob 문자가 있으면 오작동한다 — 접두사는 따옴표로 고정.
+  if ! mcp_readable "$f"; then _bad="${_bad}${f#"$HOME/"}"$'\n'; fi
+done
+MCP_UNREADABLE=$(printf '%s' "$_bad" | jq -Rsc 'split("\n") | map(select(length>0))')
+if [ -f "$HOME/.claude.json" ] && mcp_readable "$HOME/.claude.json"; then
+  MCP_USER=$(mcp_keys "$HOME/.claude.json" | wc -l | tr -d ' ')
+fi
+if [ -f "$HOME/.claude/settings.json" ] && mcp_readable "$HOME/.claude/settings.json"; then
+  MCP_SETTINGS=$(mcp_keys "$HOME/.claude/settings.json" | wc -l | tr -d ' ')
+fi
+if [ "$MCP_USER" -gt 0 ] && [ "$MCP_SETTINGS" -gt 0 ]; then
+  MCP_DUPES=$(comm -12 <(mcp_keys "$HOME/.claude.json") <(mcp_keys "$HOME/.claude/settings.json") | jq -Rsc 'split("\n") | map(select(length>0))')
+fi
+
+# --- .claude/rules 스코핑 무력화 -------------------------------------------
+# `paths:` frontmatter 는 조건부 로드다. 그런데 CLAUDE.md 가 같은 파일을 `@import`
+# 하면 launch 때 무조건 전개돼 스코핑이 죽는다 (import 는 조건을 모른다).
+RULES_DEFEATED='[]'
+if [ -f CLAUDE.md ] && [ -d .claude/rules ]; then
+  RULES_DEFEATED=$(
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      [ "$(head -1 "$f")" = "---" ] || continue
+      sed -n '1,10p' "$f" | grep -q '^paths:' || continue
+      grep -q "@\.claude/rules/$(basename "$f")" CLAUDE.md && basename "$f"
+    done <<EOF
+$(find_or_empty .claude/rules -maxdepth 1 -type f -name '*.md')
+EOF
+  ) || true
+  RULES_DEFEATED=$(printf '%s' "${RULES_DEFEATED:-}" | jq -Rsc 'split("\n") | map(select(length>0))')
+fi
+
+# --- codex CLI 자세 -------------------------------------------------------
+# 값 판단은 스킬이 한다 — 여기서는 읽기만. 의도적 설정일 수 있으므로 결함이 아니다.
+# Codex 는 `$CODEX_HOME` 을 존중한다 (`codex --help`: "Layer $CODEX_HOME/<name>.config.toml").
+# `$HOME/.codex` 만 보면 그 환경에서 설정이 있는데도 config:false 로 보고해
+# approval/sandbox 자세와 doc-budget WARN 이 통째로 사라진다.
+CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
+# TOML allows an inline comment after a value. Cut from the first space-hash so
+# `approval_policy = "never" # yolo` reads as `never`, while a `#` inside a quoted
+# value (`model = "gpt#5"`) survives.
+toml_val() {
+  sed -n "s/^$1 *= *//p" "$CODEX_HOME_DIR/config.toml" 2>/dev/null | head -1 \
+    | sed -e 's/[[:space:]]#.*$//' -e 's/[[:space:]]*$//' | tr -d '"'
+}
+CODEX_CONFIG=$(b test -f "$CODEX_HOME_DIR/config.toml")
+CODEX_APPROVAL=""; CODEX_SANDBOX=""; CODEX_MODEL=""; CODEX_DOC_MAX=32768
+if [ "$CODEX_CONFIG" = true ]; then
+  CODEX_APPROVAL=$(toml_val approval_policy)
+  CODEX_SANDBOX=$(toml_val sandbox_mode)
+  CODEX_MODEL=$(toml_val model)
+  # Only this value reaches jq through `--argjson`, which demands strict JSON.
+  # A valid TOML integer may carry `_` digit separators (`65_536`), and anything
+  # non-numeric that slips through aborts jq *before the script prints anything* —
+  # the whole diagnostic dies, not just this axis. Accept digits only; otherwise
+  # keep the documented default.
+  v=$(toml_val project_doc_max_bytes | tr -d '_')
+  case "$v" in
+    '' | *[!0-9]*) : ;;
+    *) CODEX_DOC_MAX="$v" ;;
+  esac
+fi
+AGENTS_BYTES=0; [ -f AGENTS.md ] && AGENTS_BYTES=$(wc -c < AGENTS.md | tr -d ' ')
+AGENTS_GLOBAL_BYTES=0; [ -f "$CODEX_HOME_DIR/AGENTS.md" ] && AGENTS_GLOBAL_BYTES=$(wc -c < "$CODEX_HOME_DIR/AGENTS.md" | tr -d ' ')
+
+# --- 사용자가 이미 답한 ASK 항목 -------------------------------------------
+# 결함이 아니라 결정인 축(git remote, gws-sync ...)의 답을 보관한다.
+# 답이 있으면 스킬은 다시 묻지 않는다.
+ANSWERS='{}'
+if [ -f .claude/state/wiring.json ]; then
+  ANSWERS=$(jq -c '.answers // {}' .claude/state/wiring.json 2>/dev/null || echo '{}')
+fi
+
 jq -nc \
   --arg cwd "$CWD" --arg dir_name "$DIR_NAME" \
   --argjson git_init "$GIT_INIT" --argjson commits "$COMMITS" --argjson remote "$REMOTE" \
@@ -216,6 +306,14 @@ jq -nc \
   --argjson tmp_stale "$TMP_STALE" --argjson stale_days "$STALE_DAYS" \
   --argjson gi_state "$GI_STATE" --argjson gi_serena "$GI_SERENA" --argjson gi_staging "$GI_STAGING" \
   --argjson gi_env "$GI_ENV" \
+  --argjson mcp_user "$MCP_USER" --argjson mcp_settings "$MCP_SETTINGS" --argjson mcp_dupes "$MCP_DUPES" \
+  --argjson mcp_unreadable "$MCP_UNREADABLE" \
+  --argjson rules_defeated "$RULES_DEFEATED" \
+  --argjson codex_config "$CODEX_CONFIG" --arg codex_approval "$CODEX_APPROVAL" \
+  --arg codex_sandbox "$CODEX_SANDBOX" --arg codex_model "$CODEX_MODEL" \
+  --argjson codex_doc_max "$CODEX_DOC_MAX" --argjson agents_bytes "$AGENTS_BYTES" \
+  --argjson agents_global_bytes "$AGENTS_GLOBAL_BYTES" \
+  --argjson answers "$ANSWERS" \
   '{
     cwd: $cwd,
     dir_name: $dir_name,
@@ -252,5 +350,17 @@ jq -nc \
     },
     gws_sync: { cli: $gws_cli, config: $gws_config },
     tmp: { dir: $tmp_dir, gitignored: $tmp_ignored, stale_files: $tmp_stale, stale_days: $stale_days },
-    gitignore: { claude_state: $gi_state, serena: $gi_serena, llmwiki_staging: $gi_staging, tmp: $tmp_ignored, env: $gi_env }
+    gitignore: { claude_state: $gi_state, serena: $gi_serena, llmwiki_staging: $gi_staging, tmp: $tmp_ignored, env: $gi_env },
+    mcp: { user_json: $mcp_user, settings_json: $mcp_settings, duplicates: $mcp_dupes, unreadable: $mcp_unreadable },
+    rules_scoping: { paths_defeated_by_import: $rules_defeated },
+    codex: {
+      config: $codex_config,
+      approval_policy: (if $codex_approval == "" then null else $codex_approval end),
+      sandbox_mode: (if $codex_sandbox == "" then null else $codex_sandbox end),
+      model_pinned: (if $codex_model == "" then null else $codex_model end),
+      project_doc_max_bytes: $codex_doc_max,
+      agents_md_bytes: $agents_bytes,
+      global_agents_md_bytes: $agents_global_bytes
+    },
+    answers: $answers
   }'

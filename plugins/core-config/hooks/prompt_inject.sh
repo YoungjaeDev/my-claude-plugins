@@ -50,8 +50,10 @@ EOF
 # paths that don't exist (or the wrong legacy path). Single-quoted to keep the
 # backticks literal (no command substitution).
 PTR=""
-if [ -d .llmwiki/insight ]; then
+if [ -d .llmwiki/insight ] && [ -d .llmwiki/wiki ]; then
   PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules), then check the wiki MOC `.llmwiki/wiki/index.md` (query-wiki gate). For lore, prefer the dated/sourced page over memory.'
+elif [ -d .llmwiki/insight ]; then
+  PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules). For lore, prefer the dated/sourced page over memory.'
 elif [ -d .llmwiki/wiki ]; then
   PTR='Before reasoning (do not guess): check the wiki MOC `.llmwiki/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
 elif [ -d .claude/wiki ]; then
@@ -72,8 +74,10 @@ fi
 # is emitted, never model names: the CLI name is stable, the model behind it is not.
 # One line, no trigger table — the delegation rules live in CLAUDE.md, which loads
 # once per session; this is only the per-prompt reminder that a second model exists.
-C_CODEX=0; command -v codex >/dev/null 2>&1 && C_CODEX=1
-C_AGY=0;   command -v agy   >/dev/null 2>&1 && C_AGY=1
+# `type -P` and not `command -v`: the latter also resolves shell functions, aliases
+# and builtins, so an exported `codex()` would announce a CLI that is not on PATH.
+C_CODEX=0; type -P codex >/dev/null 2>&1 && C_CODEX=1
+C_AGY=0;   type -P agy   >/dev/null 2>&1 && C_AGY=1
 COUNCIL=""
 if [ "$C_CODEX" = 1 ] || [ "$C_AGY" = 1 ]; then
   ROSTER=""

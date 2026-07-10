@@ -14,7 +14,7 @@ Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-e
 - **Detection is read-only.** `scripts/project_state.sh` never writes. Run it first, always.
 - **Nothing is fixed before approval.** Present the full report, then a single `AskUserQuestion` gate.
 - **Delegate, do not reimplement.** Every remediation that needs judgment routes to the skill that owns it. Only mechanical, reversible edits are applied here.
-- **Absent tooling is not a defect.** An unconfigured optional integration (gws-sync without the `gws` CLI) reports `SKIP`, never `FAIL`.
+- **Absent tooling is not a defect.** A missing optional CLI is never a `FAIL`. `gws-sync` without the `gws` binary is an unanswered question (`ASK`) or a recorded decision (`SKIP`), never a broken repo.
 - **A decision is not a defect.** Some axes have no correct answer the filesystem can know — whether this project wants a git remote, whether its deliverables belong on a shared Drive. Those report `ASK`, are put to the user once, and the answer is persisted so the next run stays quiet. An axis that barks the same un-answerable warning every run trains the user to ignore the ones that matter.
 
 ## Verdict classes
@@ -42,7 +42,7 @@ Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-e
 }
 ```
 
-`project_state.sh` surfaces the file's `answers` object verbatim under `.answers`. Before raising any `ASK`, check whether its key holds a **terminal** value; if so, report it as `OK` or `SKIP` and move on. A value that records a step still pending (`gws_sync: "pending-install"`) is not terminal — re-ask once its precondition is met, or the answer file silently swallows the follow-up question. Otherwise re-ask only when the user explicitly asks to revisit the decision. There is no automatic expiry: "do you want a git remote?" does not become a new question a year later, and an axis that re-opens settled decisions on a timer is the same barking this class exists to stop.
+`project_state.sh` surfaces the file's `answers` object verbatim under `.answers`. Before raising any `ASK`, check whether its key holds a **terminal** value; if so, report it as `OK` or `SKIP` and move on. For `gws_sync` the answer alone does not settle it — the filesystem can have moved underneath, so its verdict comes from the table in "gws-sync is a two-step ASK". A value that records a step still pending (`gws_sync: "pending-install"`) is not terminal — re-ask once its precondition is met, or the answer file silently swallows the follow-up question. Otherwise re-ask only when the user explicitly asks to revisit the decision. There is no automatic expiry: "do you want a git remote?" does not become a new question a year later, and an axis that re-opens settled decisions on a timer is the same barking this class exists to stop.
 
 ## Step 0 — Resolve PLUGIN_ROOT
 
@@ -84,7 +84,7 @@ Map the JSON to verdicts. Suppress an `ASK` only when its key in `.answers` hold
 | mcp config | `.mcp` | — | `duplicates` non-empty; `unreadable` non-empty | — | collapse to one file (see below) |
 | codex | `.codex` | — | `agents_md_bytes + global_agents_md_bytes` ≥ 80% of `project_doc_max_bytes` | **INFO** otherwise when `config: true` | over budget → trim `AGENTS.md`; else visibility only |
 | spec | `.spec` | — | `missing_frontmatter > 0` | **INFO** `claude_spec > 0` **and** `superpowers_spec > 0` | `/spec-state:state-tracker init` |
-| gws-sync | `.gws_sync` | — | — | **ASK** unless answered with a terminal value (`gws_sync`) — see below | `/gws-sync:gws-sync` |
+| gws-sync | `.gws_sync`, `.answers.gws_sync` | — | `config: true` but `cli: false` | **ASK** / **OK** / **SKIP** / **INFO** per the table in "gws-sync is a two-step ASK" | `/gws-sync:gws-sync` |
 | .tmp | `.tmp` | — | `dir: true` and `gitignored: false`; `stale_files > 0` | — | mechanical fix (Step 4) |
 | gitignore | `.gitignore` | `env: false` | any of `claude_state` / `serena` / `llmwiki_staging` false | — | mechanical fix (Step 4) |
 | code_signal | `.code_signal` | — | — | **INFO** | — |
@@ -107,12 +107,23 @@ Also print the Codex doc budget when `AGENTS.md` exists: `agents_md_bytes + glob
 
 ### gws-sync is a two-step ASK
 
-Never a defect — it is a question about what this project produces.
+Never a defect — it is a question about what this project produces. The verdict depends on the filesystem (`.gws_sync.cli`, `.gws_sync.config`) *and* the recorded answer, never on the answer alone. This table is the single definition; Step 2 and Step 3.5 both defer to it.
 
-1. If `cli: false` → ASK: "이 프로젝트 산출물을 Google Drive 에 올리나요?" If yes, guide the install (`gws` CLI) and stop; record `gws_sync: "pending-install"`. If no, record `gws_sync: "not-for-this-repo"` and never ask again.
-2. If `cli: true` and `config: false` → ASK which local folders are the deliverables and which Drive folder receives them, then hand off to `/gws-sync:gws-sync` to write `.gws-sync.json`. Record `gws_sync: "configured"`.
+| `config` | recorded `gws_sync` | `cli` | Verdict | Ask? |
+|---|---|---|---|---|
+| `true` | any | `true` | `OK` — already adopted | no |
+| `true` | any | `false` | `WARN` — `.gws-sync.json` exists but the `gws` CLI is gone | no |
+| `false` | `not-for-this-repo` | any | `SKIP` | no |
+| `false` | `configured` | any | `ASK` — the config it claims is gone; confirm before rewriting | yes |
+| `false` | `pending-install` | `false` | `INFO` — waiting on the `gws` install | no |
+| `false` | `pending-install` | `true` | `ASK` step 2 | yes |
+| `false` | *(none)* | `false` | `ASK` step 1 | yes |
+| `false` | *(none)* | `true` | `ASK` step 2 | yes |
 
-**Only a terminal answer suppresses the ASK.** `not-for-this-repo` and `configured` are decisions; `pending-install` is a step that has not happened yet. Treating all three as "answered" means the user installs `gws`, re-runs `wiring`, and is never asked step 2 — the answer file has silently swallowed the question. Re-ask whenever the recorded value is `pending-install` and `cli: true`.
+1. **Step 1** ASK: "이 프로젝트 산출물을 Google Drive 에 올리나요?" If yes, guide the `gws` install and stop; record `gws_sync: "pending-install"`. If no, record `gws_sync: "not-for-this-repo"`.
+2. **Step 2** ASK which local folders are the deliverables and which Drive folder receives them, then hand off to `/gws-sync:gws-sync` to write `.gws-sync.json`. Record `gws_sync: "configured"`.
+
+Two ways this axis silently misbehaves, both closed by the table above. Treating `pending-install` as a decision means the user installs `gws`, re-runs `wiring`, and is never asked step 2 — the answer file swallows its own follow-up. Treating it as *unanswered* means asking the same question on every run before the install has happened. And a repo that already has `.gws-sync.json` must never be asked whether it wants Drive at all: a `not-for-this-repo` recorded on top of a live config puts the two in direct conflict.
 
 ### spec is a preference, not a migration
 
@@ -158,7 +169,7 @@ State the scan is filesystem-only. Things it deliberately does not check, to avo
 
 Every axis the report printed as `[ASK] … (unanswered)` is asked here, before Step 4. Without this step the class is decorative: the row renders, nobody is asked, `.claude/state/wiring.json` is never written, and the next run prints the same row forever.
 
-One `AskUserQuestion` per axis — `git_remote` and `gws_sync` are unrelated decisions and a `multiSelect` would conflate them. Skip an axis whose key already holds a terminal value. Record each answer per "Recording `ASK` answers" below, and honor the `.gitignore` precondition there.
+One `AskUserQuestion` per axis — `git_remote` and `gws_sync` are unrelated decisions and a `multiSelect` would conflate them. Ask an axis only when Step 2 marked it `ASK`; for `gws-sync` that verdict comes from the table in "gws-sync is a two-step ASK", which reads the filesystem as well as the recorded answer. Record each answer per "Recording `ASK` answers" below, and honor the `.gitignore` precondition there.
 
 A dismissed question leaves the key absent. An unanswered `ASK` is not a recorded "no" — inventing one would be writing an answer the user did not give.
 

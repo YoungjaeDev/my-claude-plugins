@@ -6,6 +6,22 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-10 — post-merge #106: 진단기의 침묵 실패 + Codex 리뷰 스레드 비해소 + CLI 파서 크래시 지점 정정 (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `78384b5` — feat(project-init): ASK verdict class + three efficacy axes for wiring. 기계적 규율(`jq` 실패를 축 안에 가두기, `CODEX_HOME` 해석, `ASK` 는 묻는 단계를 가진다)은 이번 run 의 Step 6 에서 `plugins/project-init/CLAUDE.md` 에 안착 — 위키는 메커니즘과 증거만 보관 (routing 원칙, 이중 기록 금지). `.llmwiki/.staging/` 의 pending 마커 7건을 이 배치에서 소비.
+
+- `plugin-ops/detector-cannot-look-vs-nothing-wrong.md`: new page (id detector-cannot-look-vs-nothing-wrong, status active, volatility stable, sources 2). read-only 진단기가 `set -euo pipefail` 아래서 한 축의 실패에 통째로 죽거나(출력 0바이트), `|| true` 로 실패를 삼켜 "문제 없음" 으로 답하는 두 실패 모드. `find` 의 exit 1, `jq` 의 손상 입력, `jq --argjson` 에 넘어가는 비-JSON TOML 값이 전부 같은 뿌리. `> See-also: [[jq-capture-yields-empty]]`.
+- `plugin-ops/jq-capture-yields-empty.md`: new page (id jq-capture-yields-empty, status active, volatility stable, sources 2). jq `capture()` 는 비매치에서 예외도 null 도 아닌 **무출력**을 낸다. `try … catch null` 이 구제하지 못하고, 객체 생성자 안의 `empty` 는 객체 전체를 소멸시킨다 — 배열에서 항목이 조용히 사라진다. `sniff-cr-rate-limit.sh` 의 "capture() THROWS" 주석은 오기. `> See-also: [[detector-cannot-look-vs-nothing-wrong]]`, `> Refines: [[cr-cli-fallback-contract-drift]]`.
+- `cr-fix-ops/codex-review-threads-never-resolve.md`: new page (id codex-review-threads-never-resolve, status active, volatility volatile, sources 2). CodeRabbit 은 재리뷰에서 스레드를 auto-resolve 하지만 Codex 는 하지 않는다. 이미 고친 Codex 코멘트가 매 푸시마다 HEAD 로 재앵커돼 열린 채 쌓인다. 신구 판별은 `pull_request_review_id` 로만 가능하고, `post-merge` Step 1.5 의 `OPEN_THREADS` 프록시는 그래서 과대 계상한다. `> See-also: [[cr-fix-yagni-over-engineering-axis]]`.
+- `cr-fix-ops/cr-cli-fallback-contract-drift.md`: 크래시 지점 정정 + `comment` 부재 추가. 파서는 `fileName`/`severity`/`codegenInstructions` 를 이미 처리하고 있었고, 실제 사망 지점은 `.suggestions[0].line` — `suggestions` 가 객체 배열이 아니라 패치 **문자열** 배열이라 문자열 인덱싱에서 jq 가 죽는다. CLI 0.6.5 의 `finding` 키 합집합은 `type/fileName/severity/suggestions/codegenInstructions` 뿐이고 `comment` 는 0건이라, 크래시를 고쳐도 `body`/`type_emoji`/`line` 이 모두 빈다. last_verified 2026-07-09 → 2026-07-10, sources 3 → 4.
+- `plugin-ops/agents-md-verbatim-no-import.md`: Codex 설정 루트가 `${CODEX_HOME:-~/.codex}` 라는 한 줄 + doc-budget 절단면이 곧 `## Review guidelines` 라는 점 명시. last_verified 2026-07-09 → 2026-07-10, sources 4 → 5.
+- `index.md`: plugin-ops 2줄, cr-fix-ops 1줄 hook 추가.
+- `.llmwiki/.staging/`: pending 마커 7건 소비 후 삭제 (5건은 subagent 캡처, 2건은 세션 캡처 — 전부 신호 카운트 색인이고 본문 lore 는 이 배치에 흡수).
+
+insight 승격 없음. `detector-cannot-look-vs-nothing-wrong` 은 4기준(재현·일반화·비용·안정) 을 만족하지만 bash 진단기를 **작성할 때만** 필요한 규율이라, 매 프롬프트에 주입되는 insight 층이 아니라 위키에 둔다.
+
+---
+
 ## 2026-07-09 — post-merge #104: AGENTS.md verbatim-load 계약 + worktree .git 파일 + cr-fix CLI 폴백 계약 드리프트 (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `61190bf` — feat(project-init): add wiring skill with shared state detector. 규칙 텍스트 자체(`AGENTS.md` 를 포인터로 축약 금지)는 이번 run 의 Step 6 에서 `.claude/rules/dual-integration.md` + `AGENTS.md` 에 이미 안착 — 위키는 증거와 근거만 보관 (routing 원칙, 이중 기록 금지).

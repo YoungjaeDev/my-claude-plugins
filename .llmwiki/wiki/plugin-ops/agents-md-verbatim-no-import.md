@@ -1,10 +1,10 @@
 ---
 id: agents-md-verbatim-no-import
 aliases: [agents-md-pointer-trap, codex-no-at-import, claude-md-imports-agents-md]
-last_verified: 2026-07-09
+last_verified: 2026-07-10
 status: active
 volatility: stable
-sources: 4
+sources: 5
 ---
 
 # AGENTS.md is loaded verbatim — `@import` is Claude-only, and one-directional
@@ -16,6 +16,8 @@ The tempting cleanup ("stop hand-maintaining the `AGENTS.md` mirror; just point 
 Codex reads `AGENTS.md` as bytes. `codex-rs/core/src/agents_md.rs` does `String::from_utf8_lossy(&data).to_string()`, discovers the files from project root down to CWD, concatenates them with `\n\n--- project-doc ---\n\n` separators, and truncates at `project_doc_max_bytes`. **No `@file`, `@path`, or `@import` directive is ever expanded.** Nesting is directory-scoped (nearest file wins), never an include graph.
 
 Hermes has no documented import mechanism either. Zero evidence of support — treated as unsupported (`unverified` that it is impossible; fail-safe verdict).
+
+Two operational corollaries of that same reader. Codex's configuration root is `${CODEX_HOME:-~/.codex}`, not a hardcoded `~/.codex` (`codex --help`: "Layer `$CODEX_HOME/<name>.config.toml` on top of the base user config"), so a tool that reads the cap from `$HOME/.codex/config.toml` reports no Codex config at all on a machine that sets `CODEX_HOME`. And because the files are concatenated root-down and cut at `project_doc_max_bytes`, the bytes lost to the cap are the **tail** of the deepest `AGENTS.md` — which in a repo that follows the project-init template is `## Review guidelines`, precisely the section the cloud reviewer loads. Exceeding the budget deletes the reviewer's instructions and reports nothing.
 
 Claude Code never reads `AGENTS.md` at all. It reads `CLAUDE.md`, and `@path/to/import` is a **Claude-only** feature that lives on `CLAUDE.md` (recursive, max depth four hops).
 
@@ -45,10 +47,12 @@ The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a
 > Promoted-to: [[agents-md-no-import]]
 > Evidence: .claude/rules/dual-integration.md
 > Evidence: plugins/project-init/references/codex-review-discovery.md
+> See-also: [[detector-cannot-look-vs-nothing-wrong]]
 
 ## Sources
-
 1. **`codex-rs/core/src/agents_md.rs`** (github.com/openai/codex, main) — the verbatim reader: byte read → `from_utf8_lossy` → concat with `--- project-doc ---`. No directive expansion anywhere in the path.
 2. **Locally installed `codex-cli` 0.142.3** — the embedded model system prompt describes `AGENTS.md` purely as directory-scoped text ("The scope of an AGENTS.md file is the entire directory tree rooted at the folder that contains it… More-deeply-nested AGENTS.md files take precedence"). No import syntax. Newer than the 0.135 this repo targets, so the claim is not stale.
 3. **agents.md spec** — "AGENTS.md is just standard Markdown. … the agent simply parses the text you provide." Nesting is directory-only.
 4. **Claude Code memory docs** (`code.claude.com/docs/en/memory`) — Claude reads `CLAUDE.md`, not `AGENTS.md`; `@path` imports are a `CLAUDE.md` feature, recursive to four hops; the documented interop pattern is a `CLAUDE.md` that imports `AGENTS.md`.
+
+5. **`codex --help` / `codex doctor` on codex-cli 0.144.1** — `$CODEX_HOME` is the documented config root. The shipped binary also carries the literal `.codex/config.toml` plus `"Error parsing project config file"` / `"Failed to read project config file"`, so a project-level config surface exists; whether `project_doc_max_bytes` is honored there, and under what trust gating (`trust_level` appears in the binary), is **unverified** — `codex doctor` reports only the user-level path.

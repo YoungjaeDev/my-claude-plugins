@@ -21,11 +21,19 @@
 
 - `wiring` 은 14 축 전체를 소비한다. 그중 4 축은 "파일이 있나"가 아니라 **"그 설정이 실제로 발효하나"** 를 본다 — `core.hooksPath`(clone 마다 켜야 함), `.claude/rules` 의 `paths:` 스코핑을 `@import` 가 무력화했는지, 같은 MCP 서버가 두 user-scope 파일에 등록돼 한쪽 정의가 통째로 버려지는지, Codex `AGENTS.md` 가 `project_doc_max_bytes` 예산 안에 드는지.
 - 결함이 아니라 **결정**인 축(`git remote`, `gws-sync`)은 `ASK` 로 낸다. 답은 `.claude/state/wiring.json` 의 `answers` 에 적히고 스크립트가 그대로 실어 보낸다 — 스킬은 이미 답한 항목을 다시 묻지 않는다. 값은 머신마다 다르므로(Drive 폴더 id 등) gitignored state 에 남고, `CLAUDE.md` 에는 **경로 포인터 한 줄**만 둔다. 매번 짖는 경고는 사람이 무시하게 되고, 그러면 진짜 `FAIL` 도 같이 묻힌다.
+- **`ASK` 는 반드시 묻는 단계를 가진다** (Step 3.5). 보고서에 `(unanswered)` 로 찍기만 하고 묻는 곳이 없으면 답이 기록되지 않고 다음 실행에서 같은 줄이 그대로 반복된다 — 클래스가 장식이 된다. 답하지 않고 닫은 질문은 키를 남기지 않는다. 기록되지 않은 `ASK` 는 기록된 "아니오" 가 아니다.
+- 억제 조건은 **한 곳에만** 쓴다. `gws_sync` 의 판정은 답변만으로 정해지지 않고 `.gws-sync.json` 존재와 `gws` CLI 유무를 함께 읽는다 — 답을 기록한 뒤에도 파일시스템이 움직인다. 같은 조건을 판정표·산문·질문 단계에 세 번 적으면 세 번 어긋난다.
 - **고아 MCP 등록은 다루지 않는다.** 삭제된 플러그인이 남긴 서버는 사용 이력이 있어야 판정 가능해 내장 `/doctor` 의 영역이다. 반면 **중복 등록**은 두 파일 키의 교집합이라 순수 계산이다 — 결정론으로 못 잡는 걸 잡는 척하지 않는다.
 - `idempotent-seed.sh diagnose` 는 이 스크립트를 감싸 legacy 출력 형태(`cwd`/`dir_name`/`git`/`seeded`/`code_signal`)만 골라낸다. 탐지 로직을 다시 구현하지 않는다.
 - **`new` 의 Step 0 hard guard 는 여기에 흡수하지 않는다.** 가드는 의존성 0 (순수 `find`) 이고 `PLUGIN_ROOT` 리졸버보다 **먼저** 돌아야 한다. 스크립트 호출로 바꾸면 "PLUGIN_ROOT 해석 실패 시 가드가 조용히 실행되지 않는" 실패 모드가 새로 생긴다. 안전 장치는 lazy-load 뒤로 옮기지 않는다.
 
 `find` 는 "없음" 을 exit 1 로 표현한다. `set -o pipefail` 아래서 `find ... | wc -l` 는 정상적인 빈 결과에 스크립트를 죽인다. 모든 `find` 는 `find_or_empty` / `count_files` 헬퍼를 거치고, `code_signal` 은 `head` 로 인한 SIGPIPE 오탐을 피하려고 `-print -quit` 를 쓴다.
+
+`jq` 도 같은 함정을 판다. 손상된 사용자 설정 파일 하나에 `jq` 가 non-zero 로 끝나면 그 실패가 명령 치환을 타고 올라와 `set -e` 가 스크립트를 죽인다 — 한 축을 판정하지 못하는 대신 진단이 통째로 사라지고, 사용자는 출력조차 못 본다. 축 하나의 실패는 그 축 안에 가두고 (`mcp.unreadable` 처럼) 나머지 진단은 계속 낸다. 그리고 **"못 봤다" 를 "문제 없다" 로 보고하지 않는다.**
+
+외부 도구 값을 읽어 `jq --argjson` 에 넘길 때는 원문 형식을 믿지 않는다. TOML 은 값 뒤 인라인 주석과 정수의 `_` 구분자를 허용하므로, `sed` 로 긁어낸 `65536 # bytes` 는 유효한 설정이면서 유효하지 않은 JSON 이다. 숫자는 정규화 후 전부 숫자인지 확인하고, 아니면 문서화된 기본값으로 떨어진다.
+
+Codex 설정 위치는 `${CODEX_HOME:-$HOME/.codex}` 다 (`codex --help`). `$HOME/.codex` 를 하드코딩하면 `CODEX_HOME` 을 쓰는 머신에서 `config: false` 로 보고되어 approval/sandbox 자세와 doc-budget 판정이 통째로 사라진다.
 
 ## 원칙
 

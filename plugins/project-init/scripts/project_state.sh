@@ -198,8 +198,18 @@ GI_ENV=$(ignored .env)
 # 같은 서버가 두 user-scope 파일에 있으면 Claude 는 한쪽 정의를 통째로 고르고
 # 나머지는 버린다 (필드 병합 없음). 두 정의가 갈라지면 한쪽 편집이 조용히 죽는다.
 # 고아 등록(삭제된 플러그인의 서버)은 사용 이력이 있어야 알 수 있어 여기서 다루지 않는다.
-mcp_keys() { jq -r '.mcpServers // {} | keys[]' "$1" 2>/dev/null | sort; }
+# 손상된 JSON 에서 jq 는 non-zero 로 끝난다. `set -euo pipefail` 아래서 그 실패는
+# 명령 치환을 타고 올라와 스크립트 전체를 죽인다 — 중복 하나 못 세는 대신 진단이
+# 통째로 사라진다. 파싱 실패를 이 축 안에 가두고, 대신 unreadable 로 실어 보낸다:
+# 조용히 "중복 없음" 이라고 답하는 것이 제일 나쁘다.
+mcp_keys() { jq -r '.mcpServers // {} | keys[]' "$1" 2>/dev/null | sort || true; }
+mcp_broken() { [ -f "$1" ] && [ -s "$1" ] && ! jq empty "$1" >/dev/null 2>&1; }
 MCP_USER=0; MCP_SETTINGS=0; MCP_DUPES='[]'
+_bad=""
+for f in "$HOME/.claude.json" "$HOME/.claude/settings.json"; do
+  if mcp_broken "$f"; then _bad="${_bad}${f#$HOME/}"$'\n'; fi
+done
+MCP_UNREADABLE=$(printf '%s' "$_bad" | jq -Rsc 'split("\n") | map(select(length>0))')
 if [ -f "$HOME/.claude.json" ]; then MCP_USER=$(mcp_keys "$HOME/.claude.json" | wc -l | tr -d ' '); fi
 if [ -f "$HOME/.claude/settings.json" ]; then MCP_SETTINGS=$(mcp_keys "$HOME/.claude/settings.json" | wc -l | tr -d ' '); fi
 if [ "$MCP_USER" -gt 0 ] && [ "$MCP_SETTINGS" -gt 0 ]; then
@@ -284,6 +294,7 @@ jq -nc \
   --argjson gi_state "$GI_STATE" --argjson gi_serena "$GI_SERENA" --argjson gi_staging "$GI_STAGING" \
   --argjson gi_env "$GI_ENV" \
   --argjson mcp_user "$MCP_USER" --argjson mcp_settings "$MCP_SETTINGS" --argjson mcp_dupes "$MCP_DUPES" \
+  --argjson mcp_unreadable "$MCP_UNREADABLE" \
   --argjson rules_defeated "$RULES_DEFEATED" \
   --argjson codex_config "$CODEX_CONFIG" --arg codex_approval "$CODEX_APPROVAL" \
   --arg codex_sandbox "$CODEX_SANDBOX" --arg codex_model "$CODEX_MODEL" \
@@ -327,7 +338,7 @@ jq -nc \
     gws_sync: { cli: $gws_cli, config: $gws_config },
     tmp: { dir: $tmp_dir, gitignored: $tmp_ignored, stale_files: $tmp_stale, stale_days: $stale_days },
     gitignore: { claude_state: $gi_state, serena: $gi_serena, llmwiki_staging: $gi_staging, tmp: $tmp_ignored, env: $gi_env },
-    mcp: { user_json: $mcp_user, settings_json: $mcp_settings, duplicates: $mcp_dupes },
+    mcp: { user_json: $mcp_user, settings_json: $mcp_settings, duplicates: $mcp_dupes, unreadable: $mcp_unreadable },
     rules_scoping: { paths_defeated_by_import: $rules_defeated },
     codex: {
       config: $codex_config,

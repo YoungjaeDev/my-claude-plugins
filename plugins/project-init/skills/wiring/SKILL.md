@@ -42,7 +42,7 @@ Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-e
 }
 ```
 
-`project_state.sh` surfaces the file's `answers` object verbatim under `.answers`. Before raising any `ASK`, check whether its key is already answered; if so, report the recorded value as `OK` or `SKIP` and move on. Re-ask only when the user says so, or when an answer is older than a year.
+`project_state.sh` surfaces the file's `answers` object verbatim under `.answers`. Before raising any `ASK`, check whether its key holds a **terminal** value; if so, report it as `OK` or `SKIP` and move on. A value that records a step still pending (`gws_sync: "pending-install"`) is not terminal — re-ask once its precondition is met, or the answer file silently swallows the follow-up question. Re-ask otherwise only when the user says so, or when an answer is older than a year.
 
 ## Step 0 — Resolve PLUGIN_ROOT
 
@@ -81,15 +81,15 @@ Map the JSON to verdicts. Suppress any `ASK` whose key already appears in `.answ
 | llm-wiki | `.llmwiki` | `staging_pending > 0` | `state: absent`; `state: legacy`; `state: current` but `insight_layer: false` or `raw_source_buckets: false` | — | pending → `/llm-wiki:ingest-finding`; absent → `/llm-wiki:bootstrap-wiki`; legacy → `/llm-wiki:migrate-wiki` |
 | serena | `.serena` | — | `state: not-registered` / `registered`; `name_drift: true` | — | onboard via Serena MCP `onboarding`; drift → edit `.serena/project.yml` |
 | memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md`; `mem0_settings: true` but `federate_labels: false`; `mem0_project_mapped: false` | — | see "Memory posture" below |
-| mcp config | `.mcp` | — | `duplicates` non-empty | — | collapse to one file (see below) |
-| codex | `.codex` | — | — | **INFO** always when `config: true` | none — visibility only |
+| mcp config | `.mcp` | — | `duplicates` non-empty; `unreadable` non-empty | — | collapse to one file (see below) |
+| codex | `.codex` | — | `agents_md_bytes + global_agents_md_bytes` ≥ 80% of `project_doc_max_bytes` | **INFO** otherwise when `config: true` | over budget → trim `AGENTS.md`; else visibility only |
 | spec | `.spec` | — | `missing_frontmatter > 0` | **INFO** `claude_spec > 0` **and** `superpowers_spec > 0` | `/spec-state:state-tracker init` |
-| gws-sync | `.gws_sync` | — | — | **ASK** unless answered (`gws_sync`) — see below | `/gws-sync:gws-sync` |
+| gws-sync | `.gws_sync` | — | — | **ASK** unless answered with a terminal value (`gws_sync`) — see below | `/gws-sync:gws-sync` |
 | .tmp | `.tmp` | — | `dir: true` and `gitignored: false`; `stale_files > 0` | — | mechanical fix (Step 4) |
 | gitignore | `.gitignore` | `env: false` | any of `claude_state` / `serena` / `llmwiki_staging` false | — | mechanical fix (Step 4) |
 | code_signal | `.code_signal` | — | — | **INFO** | — |
 
-### The three efficacy axes
+### The four efficacy axes
 
 Existence checks answer "is it there?". These four answer "**does it take effect?**" — the failure mode where a file exists, looks configured, and is inert.
 
@@ -97,11 +97,13 @@ Existence checks answer "is it there?". These four answer "**does it take effect
 - **rules scoping.** A `.claude/rules/*.md` carrying `paths:` frontmatter is meant to load only when Claude touches matching files. `@import`ing that same file from `CLAUDE.md` expands it unconditionally at launch, so the scoping is dead and its tokens are paid every session. Fix: drop the `@` and wrap the path in backticks — import parsing skips code spans, so the line survives as a human pointer.
 - **mcp config.** When the same server name appears in both `~/.claude.json` and `~/.claude/settings.json`, Claude Code picks one entry whole and discards the other — fields are never merged. Two definitions that have drifted mean one file's edits have never once taken effect. Report the duplicate names and say plainly that editing the losing copy does nothing. Orphan registrations (a server left behind by a deleted plugin) need usage history to identify — that is the built-in `/doctor`'s job, not this skill's.
 
-### `codex` is INFO, never a verdict
+  `unreadable` is a separate `WARN`. A user-scope file that is not valid JSON cannot be compared, and the detector refuses to answer "no duplicates" when what it means is "could not look". Name the file and say the duplicate check did not run.
 
-`approval_policy: "never"` with `sandbox_mode: "danger-full-access"` means a `/codex:rescue` edits the working tree without asking. That is a legitimate dev-box choice, so it is not a defect — but it should never be a surprise. Print it. Same for `model_pinned`: pinning freezes the model that `codex-image` deliberately leaves unpinned to auto-track the latest, which is maintenance debt, not breakage.
+### `codex` is visibility, except the doc budget
 
-Also print the Codex doc budget when `AGENTS.md` exists: `agents_md_bytes + global_agents_md_bytes` against `project_doc_max_bytes`. Codex concatenates root-down and truncates at the cap — and the tail of `AGENTS.md` is usually `## Review guidelines`, the part the GitHub cloud reviewer needs. Warn past 80%.
+`approval_policy: "never"` with `sandbox_mode: "danger-full-access"` means a `/codex:rescue` edits the working tree without asking. That is a legitimate dev-box choice, so it is not a defect — but it should never be a surprise. Print it. The one part of this axis that *is* a verdict is the doc budget below. Same for `model_pinned`: pinning freezes the model that `codex-image` deliberately leaves unpinned to auto-track the latest, which is maintenance debt, not breakage.
+
+Also print the Codex doc budget when `AGENTS.md` exists: `agents_md_bytes + global_agents_md_bytes` against `project_doc_max_bytes`. Codex concatenates root-down and truncates at the cap — and the tail of `AGENTS.md` is usually `## Review guidelines`, the part the GitHub cloud reviewer loads into its system prompt. So the budget is a `WARN` at 80% and above, not an `INFO`: past the cap the guidance is silently gone, with no error anywhere. Below 80% it is `INFO`, visibility only.
 
 ### gws-sync is a two-step ASK
 
@@ -109,6 +111,8 @@ Never a defect — it is a question about what this project produces.
 
 1. If `cli: false` → ASK: "이 프로젝트 산출물을 Google Drive 에 올리나요?" If yes, guide the install (`gws` CLI) and stop; record `gws_sync: "pending-install"`. If no, record `gws_sync: "not-for-this-repo"` and never ask again.
 2. If `cli: true` and `config: false` → ASK which local folders are the deliverables and which Drive folder receives them, then hand off to `/gws-sync:gws-sync` to write `.gws-sync.json`. Record `gws_sync: "configured"`.
+
+**Only a terminal answer suppresses the ASK.** `not-for-this-repo` and `configured` are decisions; `pending-install` is a step that has not happened yet. Treating all three as "answered" means the user installs `gws`, re-runs `wiring`, and is never asked step 2 — the answer file has silently swallowed the question. Re-ask whenever the recorded value is `pending-install` and `cli: true`.
 
 ### spec is a preference, not a migration
 

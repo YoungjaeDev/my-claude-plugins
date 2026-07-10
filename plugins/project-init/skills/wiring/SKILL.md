@@ -14,7 +14,7 @@ Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-e
 - **Detection is read-only.** `scripts/project_state.sh` never writes. Run it first, always.
 - **Nothing is fixed before approval.** Present the full report, then a single `AskUserQuestion` gate.
 - **Delegate, do not reimplement.** Every remediation that needs judgment routes to the skill that owns it. Only mechanical, reversible edits are applied here.
-- **Absent tooling is not a defect.** A missing optional CLI is never a `FAIL`. `gws-sync` without the `gws` binary is an unanswered question (`ASK`) or a recorded decision (`SKIP`), never a broken repo.
+- **Absent tooling is not a defect.** A missing optional CLI is never a `FAIL`. For `gws-sync` the exact verdict — `ASK`, `SKIP`, `INFO`, or a `WARN` when a live `.gws-sync.json` outlives its CLI — comes from the table in "gws-sync is a two-step ASK", never from the CLI's absence alone.
 - **A decision is not a defect.** Some axes have no correct answer the filesystem can know — whether this project wants a git remote, whether its deliverables belong on a shared Drive. Those report `ASK`, are put to the user once, and the answer is persisted so the next run stays quiet. An axis that barks the same un-answerable warning every run trains the user to ignore the ones that matter.
 
 ## Verdict classes

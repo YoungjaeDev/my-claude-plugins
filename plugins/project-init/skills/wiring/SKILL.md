@@ -1,6 +1,6 @@
 ---
 name: wiring
-description: "This skill should be used when the user asks to run a project setup diagnostic on an EXISTING repository — phrases like '프로젝트 진단', '셋업 점검', '하네스 배선 확인', '이 repo 설정 제대로 됐는지 확인', 'check my project wiring', 'is this repo wired up', 'diagnose my project setup', or an explicit /project-init:wiring invocation. Detects 11 axes of agent-harness configuration (git, CLAUDE.md/AGENTS.md guidance, .claude/rules, llm-wiki layout + staging backlog, Serena onboarding, memory surfaces, spec locations, gws-sync, .tmp convention, git hooksPath, .gitignore coverage), reports a verdict per axis with the remediation skill named, then gates every fix behind AskUserQuestion. Read-only until the user approves. Complements /project-init:new (which bootstraps an EMPTY dir and refuses to run here). Not for mem0 store diagnostics (use /mem0-ops:doctor) or wiki-content health (use /llm-wiki:lint-wiki)."
+description: "This skill should be used when the user asks to run a project setup diagnostic on an EXISTING repository — phrases like '프로젝트 진단', '셋업 점검', '하네스 배선 확인', '이 repo 설정 제대로 됐는지 확인', 'check my project wiring', 'is this repo wired up', 'diagnose my project setup', or an explicit /project-init:wiring invocation. Detects 14 axes of agent-harness configuration, including four that check whether config takes EFFECT rather than merely exists: git core.hooksPath, an @import that defeats .claude/rules paths: scoping, MCP servers registered twice so one copy is silently discarded, and the Codex AGENTS.md byte budget. Verdicts are FAIL / WARN / ASK / INFO / SKIP / OK — an ASK is a decision nobody made yet, asked once and persisted to .claude/state/wiring.json. Read-only until approved. Complements /project-init:new (empty dirs only). Not for mem0 store diagnostics (/mem0-ops:doctor) or wiki-content health (/llm-wiki:lint-wiki)."
 ---
 
 # project-init `wiring` skill
@@ -15,6 +15,34 @@ Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-e
 - **Nothing is fixed before approval.** Present the full report, then a single `AskUserQuestion` gate.
 - **Delegate, do not reimplement.** Every remediation that needs judgment routes to the skill that owns it. Only mechanical, reversible edits are applied here.
 - **Absent tooling is not a defect.** An unconfigured optional integration (gws-sync without the `gws` CLI) reports `SKIP`, never `FAIL`.
+- **A decision is not a defect.** Some axes have no correct answer the filesystem can know — whether this project wants a git remote, whether its deliverables belong on a shared Drive. Those report `ASK`, are put to the user once, and the answer is persisted so the next run stays quiet. An axis that barks the same un-answerable warning every run trains the user to ignore the ones that matter.
+
+## Verdict classes
+
+| Class | Means | Next run |
+|---|---|---|
+| `FAIL` | broken, or losing data | keeps failing until fixed |
+| `WARN` | works but degraded | keeps warning until fixed |
+| `ASK` | a decision nobody has made yet — not a defect | silent once answered |
+| `INFO` | worth seeing, no action implied | always shown |
+| `SKIP` | optional and not adopted | silent |
+| `OK` | healthy | one line |
+
+## Answers file
+
+`ASK` answers live in `.claude/state/wiring.json` (gitignored, alongside `spec.json` and `cr-fix-*.json`). Values are machine-local — a Drive folder id is not the same on another clone — so they do not belong in a committed file. `CLAUDE.md` carries only a pointer to this path, never the values.
+
+```json
+{
+  "schema": 1,
+  "answers": {
+    "git_remote": { "value": "none-intended", "answered_at": "2026-07-10" },
+    "gws_sync":   { "value": "not-for-this-repo", "answered_at": "2026-07-10" }
+  }
+}
+```
+
+`project_state.sh` surfaces the file's `answers` object verbatim under `.answers`. Before raising any `ASK`, check whether its key is already answered; if so, report the recorded value as `OK` or `SKIP` and move on. Re-ask only when the user says so, or when an answer is older than a year.
 
 ## Step 0 — Resolve PLUGIN_ROOT
 
@@ -42,21 +70,49 @@ Do not re-derive any field with ad-hoc `test -f` calls — the script is the det
 
 ## Step 2 — Verdict per axis
 
-Map the JSON to verdicts. `FAIL` = broken or losing data. `WARN` = works but degraded. `SKIP` = optional and not adopted. `OK` = healthy.
+Map the JSON to verdicts. Suppress any `ASK` whose key already appears in `.answers`.
 
-| Axis | JSON | FAIL when | WARN when | Remediation |
-|---|---|---|---|---|
-| git | `.git` | `initialized: false` | `commits: 0` or `remote_origin: false` | `git init` / `gh repo create` |
-| hooksPath | `.git.hooks_path`, `.hooks_dir_present` | — | `hooks_dir_present: true` but `hooks_path: null` | `git config core.hooksPath .githooks` |
-| guidance | `.seeded.claude_md`, `.guidance` | `claude_md: false` | `cross_runtime_gap: true` | `/rules-forge:write-rules` |
-| llm-wiki | `.llmwiki` | `staging_pending > 0` | `state: absent`; `state: legacy`; `state: current` but `insight_layer: false` or `raw_source_buckets: false` | pending → `/llm-wiki:ingest-finding`; absent → `/llm-wiki:bootstrap-wiki`; legacy → `/llm-wiki:migrate-wiki` |
-| serena | `.serena` | — | `state: not-registered` / `registered`; `name_drift: true` | onboard via Serena MCP `onboarding`; drift → edit `.serena/project.yml` |
-| memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | `native_memory_md: true` but auto-memory disabled (orphan files); `mem0_settings: true` but `federate_labels: false`; `mem0_project_mapped: false` | see "Memory posture" below |
-| spec | `.spec` | — | `claude_spec > 0` **and** `superpowers_spec > 0` (split home); `missing_frontmatter > 0` | `/spec-state:state-tracker init` |
-| gws-sync | `.gws_sync` | — | `cli: true` but `config: false` | `/gws-sync:gws-sync` |
-| .tmp | `.tmp` | — | `dir: true` and `gitignored: false`; `stale_files > 0` | mechanical fix (Step 4) |
-| gitignore | `.gitignore` | `env: false` | any of `claude_state` / `serena` / `llmwiki_staging` false | mechanical fix (Step 4) |
-| code_signal | `.code_signal` | — | — | informational only |
+| Axis | JSON | FAIL when | WARN when | ASK / INFO when | Remediation |
+|---|---|---|---|---|---|
+| git | `.git` | `initialized: false` | `commits: 0` | **ASK** `remote_origin: false` — "push할 원격을 만들까요?" (`git_remote`) | `git init` / `gh repo create` |
+| hooksPath | `.git.hooks_path`, `.hooks_dir_present` | — | `hooks_dir_present: true` but `hooks_path: null` | — | `git config core.hooksPath .githooks` |
+| guidance | `.seeded.claude_md`, `.guidance` | `claude_md: false` | `cross_runtime_gap: true` | — | `/rules-forge:write-rules` |
+| rules scoping | `.rules_scoping` | — | `paths_defeated_by_import` non-empty | — | drop the `@` (mechanical, Step 4) |
+| llm-wiki | `.llmwiki` | `staging_pending > 0` | `state: absent`; `state: legacy`; `state: current` but `insight_layer: false` or `raw_source_buckets: false` | — | pending → `/llm-wiki:ingest-finding`; absent → `/llm-wiki:bootstrap-wiki`; legacy → `/llm-wiki:migrate-wiki` |
+| serena | `.serena` | — | `state: not-registered` / `registered`; `name_drift: true` | — | onboard via Serena MCP `onboarding`; drift → edit `.serena/project.yml` |
+| memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md`; `mem0_settings: true` but `federate_labels: false`; `mem0_project_mapped: false` | — | see "Memory posture" below |
+| mcp config | `.mcp` | — | `duplicates` non-empty | — | collapse to one file (see below) |
+| codex | `.codex` | — | — | **INFO** always when `config: true` | none — visibility only |
+| spec | `.spec` | — | `missing_frontmatter > 0` | **INFO** `claude_spec > 0` **and** `superpowers_spec > 0` | `/spec-state:state-tracker init` |
+| gws-sync | `.gws_sync` | — | — | **ASK** unless answered (`gws_sync`) — see below | `/gws-sync:gws-sync` |
+| .tmp | `.tmp` | — | `dir: true` and `gitignored: false`; `stale_files > 0` | — | mechanical fix (Step 4) |
+| gitignore | `.gitignore` | `env: false` | any of `claude_state` / `serena` / `llmwiki_staging` false | — | mechanical fix (Step 4) |
+| code_signal | `.code_signal` | — | — | **INFO** | — |
+
+### The three efficacy axes
+
+Existence checks answer "is it there?". These four answer "**does it take effect?**" — the failure mode where a file exists, looks configured, and is inert.
+
+- **hooksPath.** `.githooks/` is tracked; `core.hooksPath` is per-clone git config that is *not*. A fresh clone has the hook scripts and no hook. Silent until CI catches it after the push. When `.githooks/` is absent the axis says nothing — plenty of repos don't use it.
+- **rules scoping.** A `.claude/rules/*.md` carrying `paths:` frontmatter is meant to load only when Claude touches matching files. `@import`ing that same file from `CLAUDE.md` expands it unconditionally at launch, so the scoping is dead and its tokens are paid every session. Fix: drop the `@` and wrap the path in backticks — import parsing skips code spans, so the line survives as a human pointer.
+- **mcp config.** When the same server name appears in both `~/.claude.json` and `~/.claude/settings.json`, Claude Code picks one entry whole and discards the other — fields are never merged. Two definitions that have drifted mean one file's edits have never once taken effect. Report the duplicate names and say plainly that editing the losing copy does nothing. Orphan registrations (a server left behind by a deleted plugin) need usage history to identify — that is the built-in `/doctor`'s job, not this skill's.
+
+### `codex` is INFO, never a verdict
+
+`approval_policy: "never"` with `sandbox_mode: "danger-full-access"` means a `/codex:rescue` edits the working tree without asking. That is a legitimate dev-box choice, so it is not a defect — but it should never be a surprise. Print it. Same for `model_pinned`: pinning freezes the model that `codex-image` deliberately leaves unpinned to auto-track the latest, which is maintenance debt, not breakage.
+
+Also print the Codex doc budget when `AGENTS.md` exists: `agents_md_bytes + global_agents_md_bytes` against `project_doc_max_bytes`. Codex concatenates root-down and truncates at the cap — and the tail of `AGENTS.md` is usually `## Review guidelines`, the part the GitHub cloud reviewer needs. Warn past 80%.
+
+### gws-sync is a two-step ASK
+
+Never a defect — it is a question about what this project produces.
+
+1. If `cli: false` → ASK: "이 프로젝트 산출물을 Google Drive 에 올리나요?" If yes, guide the install (`gws` CLI) and stop; record `gws_sync: "pending-install"`. If no, record `gws_sync: "not-for-this-repo"` and never ask again.
+2. If `cli: true` and `config: false` → ASK which local folders are the deliverables and which Drive folder receives them, then hand off to `/gws-sync:gws-sync` to write `.gws-sync.json`. Record `gws_sync: "configured"`.
+
+### spec is a preference, not a migration
+
+Two spec homes is `INFO`, not `WARN`: state which one this project prefers (`.claude/spec/` unless the project says otherwise) and leave the files where they are. Only `missing_frontmatter > 0` is a `WARN`, because a spec without `status:` frontmatter is invisible to `spec-state` regardless of which directory it sits in. Never move spec files as part of "apply all".
 
 Three verdicts need an explanation the JSON cannot carry:
 
@@ -75,19 +131,24 @@ Print a fixed-width table, most severe first. Name the remediation on every non-
 
 [FAIL] llm-wiki    .llmwiki/.staging: 2 pending captures uncurated
                    -> /llm-wiki:ingest-finding  (gitignored; lore is unrecoverable if cleaned)
-[WARN] serena      project.yml name "oh-my-claudecode" != dir "my-claude-plugins"
-                   -> edit .serena/project.yml
-[WARN] .tmp        not covered by .gitignore
-                   -> mechanical fix available
-[SKIP] gws-sync    gws CLI not installed
+[WARN] rules       plugin-versioning.md has paths: scoping, but CLAUDE.md @imports it
+                   -> scoping is dead; ~2k tokens loaded every session. mechanical fix
+[WARN] mcp         7 servers registered twice (~/.claude.json wins, settings.json copy inert)
+                   -> context7 deepwiki exa firecrawl mcpdocs notion shadcn-ui
+[ASK ] gws-sync    does this project publish deliverables to Drive?  (unanswered)
+[ASK ] git         no origin remote — create one?                    (unanswered)
+[INFO] codex       approval=never sandbox=danger-full-access -> /codex:rescue edits unprompted
+[INFO] codex       AGENTS.md 28,506 / 65,536 B (43%) of the doc budget
+[INFO] spec        .claude/spec 8 + docs/superpowers/specs 6 — this project prefers .claude/spec
 [ OK ] llm-wiki    post-2.4.0 layout (insight + raw buckets)
 [ OK ] serena      onboarded (1 memory)
 ```
 
-State the scan is filesystem-only. Two things it deliberately does not check, to avoid duplicating their owners:
+State the scan is filesystem-only. Things it deliberately does not check, to avoid duplicating their owners:
 
 - wiki page staleness / identity duplication → `/llm-wiki:lint-wiki`
 - mem0 store contents and config posture → `/mem0-ops:doctor`
+- MCP servers left behind by deleted plugins, and which extensions go unused → the built-in `/doctor` (it reads usage history; this skill reads only the filesystem)
 
 ## Step 4 — Gate, then fix
 
@@ -101,12 +162,15 @@ Present ONE `AskUserQuestion`. Put "Apply all mechanical fixes (Recommended)" fi
 | `.tmp/` convention | `mkdir -p .tmp && : > .tmp/.gitkeep` + the `.gitignore` line |
 | hooksPath | `git config core.hooksPath .githooks` |
 | serena name drift | rewrite the `project_name:` line in `.serena/project.yml` |
+| rules scoping | in `CLAUDE.md`, change `@.claude/rules/<f>.md` to `` `.claude/rules/<f>.md` `` — restores `paths:` scoping, keeps the pointer readable |
 
 **Never fixed here** — delegate, and say so:
 
-`.staging` drain, wiki bootstrap/migrate, CLAUDE.md authoring, spec relocation, Serena onboarding, mem0 changes. Each needs LLM judgment or touches a store this skill does not own.
+`.staging` drain, wiki bootstrap/migrate, CLAUDE.md authoring, spec relocation, Serena onboarding, mem0 changes, MCP config collapse (it edits a user-scope file holding credentials). Each needs LLM judgment or touches a store this skill does not own.
 
 Deleting stale `.tmp/` files is destructive: list them, confirm separately, and never widen the glob beyond `.tmp/`.
+
+**Recording `ASK` answers.** Every `ASK` the user answers is written to `.claude/state/wiring.json` under `answers.<key>` with `value` and `answered_at` (UTC `YYYY-MM-DD`). Create the file if absent. Write it even when the rest of "apply all" is declined — a recorded "no" is the whole point of the class. Never write an answer the user did not give.
 
 ## Memory posture
 

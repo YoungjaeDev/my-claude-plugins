@@ -19,7 +19,9 @@
 
 `scripts/project_state.sh` 가 프로젝트 상태 탐지를 **혼자** 담당한다. 순수 read-only, JSON 한 덩어리 출력.
 
-- `wiring` 은 11 축 전체를 소비한다.
+- `wiring` 은 14 축 전체를 소비한다. 그중 4 축은 "파일이 있나"가 아니라 **"그 설정이 실제로 발효하나"** 를 본다 — `core.hooksPath`(clone 마다 켜야 함), `.claude/rules` 의 `paths:` 스코핑을 `@import` 가 무력화했는지, 같은 MCP 서버가 두 user-scope 파일에 등록돼 한쪽 정의가 통째로 버려지는지, Codex `AGENTS.md` 가 `project_doc_max_bytes` 예산 안에 드는지.
+- 결함이 아니라 **결정**인 축(`git remote`, `gws-sync`)은 `ASK` 로 낸다. 답은 `.claude/state/wiring.json` 의 `answers` 에 적히고 스크립트가 그대로 실어 보낸다 — 스킬은 이미 답한 항목을 다시 묻지 않는다. 값은 머신마다 다르므로(Drive 폴더 id 등) gitignored state 에 남고, `CLAUDE.md` 에는 **경로 포인터 한 줄**만 둔다. 매번 짖는 경고는 사람이 무시하게 되고, 그러면 진짜 `FAIL` 도 같이 묻힌다.
+- **고아 MCP 등록은 다루지 않는다.** 삭제된 플러그인이 남긴 서버는 사용 이력이 있어야 판정 가능해 내장 `/doctor` 의 영역이다. 반면 **중복 등록**은 두 파일 키의 교집합이라 순수 계산이다 — 결정론으로 못 잡는 걸 잡는 척하지 않는다.
 - `idempotent-seed.sh diagnose` 는 이 스크립트를 감싸 legacy 출력 형태(`cwd`/`dir_name`/`git`/`seeded`/`code_signal`)만 골라낸다. 탐지 로직을 다시 구현하지 않는다.
 - **`new` 의 Step 0 hard guard 는 여기에 흡수하지 않는다.** 가드는 의존성 0 (순수 `find`) 이고 `PLUGIN_ROOT` 리졸버보다 **먼저** 돌아야 한다. 스크립트 호출로 바꾸면 "PLUGIN_ROOT 해석 실패 시 가드가 조용히 실행되지 않는" 실패 모드가 새로 생긴다. 안전 장치는 lazy-load 뒤로 옮기지 않는다.
 
@@ -57,7 +59,7 @@ plugins/project-init/
 ├── scripts/
 │   ├── infer-github-context.sh         # gh api user + orgs
 │   ├── idempotent-seed.sh              # 충돌 가드 + .claude/ + .llmwiki/ 시드 (diagnose = 래퍼)
-│   └── project_state.sh                # 탐지 SSOT — read-only 11 축 JSON
+│   └── project_state.sh                # 탐지 SSOT — read-only 14 축 JSON
 └── CLAUDE.md                           # this file
 ```
 

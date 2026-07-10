@@ -191,11 +191,11 @@ MCP·외부 도구는 현재 세션에 제공된 도구와 상위 지침의 우�
 
 ### 위임 (council)
 
-`codex` 와 `agy` 는 다른 모델이라 나와 같은 오답을 내지 않는다. `Agent()` 서브에이전트는 같은 모델이므로 council 이 아니다 — 컨텍스트 격리와 병렬만 얻는다.
+council 은 각자 어떻게 판단했는지 꺼내놓고 대조해 합의에 이르는 자리다. 답을 받아와서 채택하는 게 아니라, 내 판단과 다른 판단을 나란히 놓고 어디서 왜 갈라지는지 보는 것이다. `Agent()` 서브에이전트는 나와 같은 모델이므로 council 이 아니다 — 컨텍스트 격리와 병렬만 얻는다.
 
 깊게 생각해야 하거나 두 번째 눈이 필요하다고 판단되면 혼자 결론내지 말고 `codex` / `agy` 의 rescue·리뷰 계열이나 해당 플러그인 스킬을 참고해 적절히 위임한다. 내가 읽을 수 없는 입력(오디오·영상·이미지·스캔 PDF)과 실제 브라우저가 필요한 작업은 위임이 유일한 경로다.
 
-받은 결과는 자동 적용하지 않는다 — 제시하고 멈춘다. 위임이 실패하면 내 구현으로 대체하지 말고 실패를 보고한다. 서브 CLI 의 모델은 핀하지 않고 기본값을 상속한다. `rescue` 계열은 확인 없이 작업 트리를 편집하므로 범위를 프롬프트로 통제한다. 리서치 경계는 유지한다 — 코드·ML·docs·논문은 `code-scout`, 일반 주제는 `/deep-research`.
+받은 결과는 자동 적용하지 않는다 — 제시하고 멈춘다. `rescue` 계열은 확인 없이 작업 트리를 편집하므로 범위를 프롬프트로 통제한다.
 
 ### 작업 규모와 시간 추정
 
@@ -245,7 +245,7 @@ MCP·외부 도구는 현재 세션에 제공된 도구와 상위 지침의 우�
 - plan 모드에서는 지정된 plan 파일 외 다른 편집이나 비-읽기 도구를 호출하지 않는다.
 - 단순 한 파일 수정, 명확한 한 줄 변경은 plan mode를 사용하지 않는다.
 - plan 승인 여부는 `ExitPlanMode`로만 묻고, `AskUserQuestion`으로 "이 plan 괜찮아?"라고 묻지 않는다.
-- `superpowers:brainstorming` 후 spec 문서 확정 전에는 `EnterPlanMode`로 들어가 plan 파일에 spec 본문을 미러한 뒤 사용자 코멘트를 받는다. 합의 후에만 `docs/superpowers/specs/`에 spec 파일을 확정한다.
+- `superpowers:brainstorming` 후 spec 문서 확정 전에는 `EnterPlanMode`로 들어가 plan 파일에 spec 본문을 미러한 뒤 사용자 코멘트를 받는다. 합의 후에만 `.claude/spec/`에 spec 파일을 확정한다 — 어느 스킬이 만들었든 spec 홈은 여기 하나다.
 - 새 작업 단위로 `EnterPlanMode`에 들어가기 전에 이전 plan 파일이 열려 있으면 `ExitPlanMode`로 먼저 닫고 새로 진입한다. 한 plan 파일에 무관한 작업을 덮어쓰지 않는다.
 
 ### LLM-Wiki
@@ -258,18 +258,3 @@ MCP·외부 도구는 현재 세션에 제공된 도구와 상위 지침의 우�
 
 - 진행 중 spec / issue / PR aggregate 는 `.claude/state/spec.json`(`spec-state:state-tracker` skill 이 read / init / start / complete 4 op). spec frontmatter `status:` 가 SSOT, JSON 은 aggregate cache.
 - `github-dev:post-merge` 가 자동으로 `complete <spec-path>` 호출.
-
-## 용어표
-
-- **SoT / SSOT** — Source of Truth. 어떤 값의 유일 정본 위치.
-- **MCP** — Model Context Protocol. 외부 도구·서버를 세션에 붙이는 규약.
-- **LSP** — Language Server Protocol. 심볼·진단·정의 이동을 제공하는 코드 인텔리전스 백엔드.
-- **Serena** — 심볼/참조 기반 semantic code analysis MCP(activate_project → 심볼 탐색·편집).
-- **DAG** — 방향성 비순환 그래프. 여기서는 작업 의존 순서(B 가 A 결과 필요 = 병렬화 금지).
-- **DI** — Dependency Injection. 의존성을 외부에서 주입해 제거·교체를 국지화하는 구조.
-- **YAGNI** — You Aren't Gonna Need It. 지금 안 쓰는 기능은 만들지 않는다.
-- **surgical diff** — 모든 변경 라인이 요청으로 추적되는 최소 변경. drive-by 개선 금지.
-- **worktree** — `git worktree`. 같은 repo 를 여러 작업 디렉토리로 분기해 충돌 격리.
-- **agent-teams** — lead+팀원이 inter-agent 메시지로 협업하는 실험적 다중 에이전트 채널.
-- **detached (PID==SID)** — 세션 리더로 분리된 프로세스. 컨트롤링 터미널이 없어 SSH·셸 종료에도 생존.
-- **plan mode** — 편집을 막고 plan 파일만 작성하는 모드. `ExitPlanMode`로 승인.

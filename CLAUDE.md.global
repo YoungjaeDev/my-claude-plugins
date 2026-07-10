@@ -195,11 +195,11 @@ Work spanning hours or more (large training runs, sweeps, batches) must not be t
 
 ### Delegation (council)
 
-`codex` and `agy` are different models, so their wrong answers do not correlate with mine. An `Agent()` subagent is the same model and is therefore not a council — it buys context isolation and parallelism, nothing else.
+A council is where each side puts its reasoning on the table, compares it against the others, and works toward agreement. It is not a place to collect an answer and adopt it — it is where my judgment and a different judgment sit side by side so I can see exactly where they diverge and why. An `Agent()` subagent is the same model as me and is therefore not a council; it buys context isolation and parallelism, nothing else.
 
 When something needs real depth, or a second pair of eyes, do not conclude alone: delegate to the `codex` / `agy` rescue and review paths, or to the matching plugin skill. For input I cannot read (audio, video, images, scanned PDFs) and for work that needs a real browser, delegation is the only route.
 
-Never auto-apply what comes back — present it and stop. If a delegation fails, report the failure rather than substituting my own implementation. Do not pin the sub-CLI's model; inherit its default. The `rescue` family edits the working tree without asking, so bound its scope through the prompt. Keep the research boundary: code / ML / docs / papers go to `code-scout`, general topics to `/deep-research`.
+Never auto-apply what comes back — present it and stop. The `rescue` family edits the working tree without asking, so bound its scope through the prompt.
 
 ### Work size and time estimates
 
@@ -249,7 +249,7 @@ Never auto-apply what comes back — present it and stop. If a delegation fails,
 - In plan mode, never call editing or non-read tools other than writing the designated plan file.
 - Do not use plan mode for a simple single-file edit or an obvious one-line change.
 - Ask for plan approval through `ExitPlanMode` only. Never ask "is this plan OK?" through `AskUserQuestion`.
-- After `superpowers:brainstorming` and before finalizing a spec document, enter `EnterPlanMode`, mirror the spec body into the plan file, and collect user comments there. Only after agreement, write the spec file into `docs/superpowers/specs/`.
+- After `superpowers:brainstorming` and before finalizing a spec document, enter `EnterPlanMode`, mirror the spec body into the plan file, and collect user comments there. Only after agreement, write the spec file into `.claude/spec/` — the one spec home, whatever skill produced it.
 - Before entering `EnterPlanMode` for a new unit of work, close any open plan file with `ExitPlanMode` first, then enter fresh. Never overwrite unrelated work in one plan file.
 
 ### LLM-Wiki
@@ -262,18 +262,3 @@ Never auto-apply what comes back — present it and stop. If a delegation fails,
 
 - In-progress spec / issue / PR aggregates live in `.claude/state/spec.json` (the `spec-state:state-tracker` skill provides four ops: read / init / start / complete). The spec frontmatter `status:` is the SoT; the JSON is an aggregate cache.
 - `github-dev:post-merge` calls `complete <spec-path>` automatically.
-
-## Glossary
-
-- **SoT / SSOT** — Source of Truth. The single canonical location of a value.
-- **MCP** — Model Context Protocol. The convention for attaching external tools and servers to a session.
-- **LSP** — Language Server Protocol. The code-intelligence backend providing symbols, diagnostics, and go-to-definition.
-- **Serena** — A symbol/reference-based semantic code-analysis MCP (`activate_project` → symbol exploration and editing).
-- **DAG** — Directed acyclic graph. Here, the task dependency order (B needs A's result = no parallelism).
-- **DI** — Dependency Injection. Injecting dependencies from outside so removal and replacement stay local.
-- **YAGNI** — You Aren't Gonna Need It. Do not build what is not used now.
-- **surgical diff** — The minimal change in which every line traces to the request. No drive-by improvements.
-- **worktree** — `git worktree`. Branching one repo into several working directories to isolate conflicts.
-- **agent-teams** — An experimental multi-agent channel where a lead and members collaborate through inter-agent messages.
-- **detached (PID == SID)** — A process separated as a session leader. With no controlling terminal, it survives SSH and shell exit.
-- **plan mode** — A mode that blocks edits and writes only the plan file. Approved through `ExitPlanMode`.

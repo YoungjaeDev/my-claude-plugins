@@ -8,8 +8,12 @@ set -euo pipefail
 
 : "${OWNER:?}"; : "${REPO:?}"; : "${PR_NUM:?}"; : "${PROCESSED:=[]}"; : "${INTERVAL:=15}"
 
+# jq needs -r here: without it an empty result prints the JSON-encoded string
+# '""' (two literal quote chars), which passes [ -n ] and terminated the until
+# loop on round 1 — the grace poll never actually waited, and the caller
+# received a fabricated empty review id. (self-found, reproduced live iter 5)
 until id=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null \
-    | jq -s --argjson processed "$PROCESSED" '
+    | jq -sr --argjson processed "$PROCESSED" '
         add // []
         | [ .[]
             | select(.user.login == "chatgpt-codex-connector[bot]")

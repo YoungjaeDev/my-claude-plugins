@@ -12,7 +12,7 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 | `failure` | CR commit-status reported `failure`, OR Step 8 GraphQL fetch errored, OR `gh api` returned `errors` payload. | no | Inspect CR dashboard via `target_url` for the failure case; check `gh auth status` and network for the fetch case. |
 | `cr_inactive` | Step 8c engagement gate: `ITER == MAX_ITER` AND `cr_engagement == 0` (CR posted nothing on this push). | no | CR is unreachable, paused, or rate-limited. Use `--cr-source cli\|codex-only` to bypass. |
 | `rate_limited` | Step 7c detected CR rate-limit comment AND `--cr-source pr-bot` (user blocked auto-flip). | no | Wait for CR reset window (typically 5-60 min) or re-run with `--cr-source cli` / `--cr-source codex-only`. |
-| `cli_failed` | Step 7d `coderabbit review --agent` exited non-zero OR emitted `type: "error"` event OR exited without emitting `type: "complete"`. | no | Inspect `/tmp/cr-cli-review-${PR_NUM}-iter${ITER}.jsonl` for CLI error detail. No auto-fallback to PR-bot in V1. |
+| `cli_failed` | Step 7d `coderabbit review --agent` exited non-zero OR emitted `type: "error"` event OR exited without emitting `type: "complete"`. | no | Inspect the CLI log at the path in the spawn marker's `jsonl` field (random `mktemp` suffix, no extension — glob `/tmp/cr-cli-review-${PR_NUM}-iter${ITER}-*`) for error detail. No auto-fallback to PR-bot in V1. |
 | `unknown` | Trap fired before any flow path set `final_state` (rare — e.g. SIGKILL, runtime error before Step 6). | no | Inspect archived state file in `.claude/state/archive/`. |
 
 ## Codex-specific failure cases (do NOT change final_state)

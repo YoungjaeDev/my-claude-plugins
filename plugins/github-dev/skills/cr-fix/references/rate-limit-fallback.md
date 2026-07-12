@@ -37,3 +37,30 @@ If the user passes `--cr-source pr-bot|cli|codex-only`, Step 7c **never** silent
 3. `Review limit reached` — generic, no reset hint.
 
 If a reset estimate was extracted, the SKILL.md log line includes it: `... (reset in ~12 minutes)`. The AskUserQuestion "wait NN min" option uses the extracted estimate; if absent, default to 15 min.
+
+## Active query channel (`scripts/query-cr-rate-limit.sh`)
+
+The three patterns above are **passive** — they read whatever CodeRabbit already
+posted. When the passive sniff confirms a rate-limit but extracts no reset (a
+generic `Review limit reached` with no minutes), SKILL.md Step 7b escalates to an
+**active** query rather than defaulting to 15 min: it posts one
+`@coderabbitai rate limit` comment and polls issue comments for CodeRabbit's
+reply (bounded, default 6 rounds x 20s), then parses `remaining` review count and
+`reset_minutes` out of the reply body. It is a companion to — not a replacement
+for — the passive sniff, and only fires on the ambiguous case, so the extra
+comment is not posted on every rate-limit hit. The parser is exercised in
+`tests/run-tests.sh` via the `parse` seam (reply body on stdin, no network).
+
+## `--max-iterations` budget rationale (measured tier)
+
+The default `--max-iterations 5` is a **quota budget**, not just a runaway guard.
+Earlier notes tied it to "CR Pro = 5 reviews/hour"; the measured tier is actually
+**Pro+ at 10 PR-reviews/hour on a rolling window**, layered with a **Fair-Usage
+adaptive decay** — sustained heavy use (roughly 90+ reviews over 7 days) throttles
+the effective rate down toward ~1/hour ([Fair Usage Limits Policy](https://docs.coderabbit.ai/management/plans#fair-usage-limits-policy)).
+Because cr-fix pushes a burst (one review consumed per iter), the ceiling that
+bites is the adaptive-decayed rate, not the nominal 10/hr. Default 5 stays
+**conservative under adaptive throttle**: it fits inside the decayed budget for a
+developer who is not already near the 7-day cap, while still leaving headroom
+below the nominal 10/hr. Raise `--max-iterations` only when the account is known
+to be fresh on the rolling window; lower it when recent activity is heavy.

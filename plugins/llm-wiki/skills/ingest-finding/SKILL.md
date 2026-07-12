@@ -13,6 +13,31 @@ The wiki is only useful if it stays current. Conversations end, audit mds accumu
 
 > Ships with `llm-wiki` plugin; install via marketplace.
 
+## Resolving `${PLUGIN_ROOT}`
+
+`${PLUGIN_ROOT}/references/wiki-conventions.md` (referenced below) lives at the plugin root. Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so resolve it once before reading that file:
+
+```bash
+# --- Plugin root resolution (cross-runtime) --------------------------------
+# Each branch verifies the target exists before committing; the cache branch
+# walks versions high-to-low and takes the first COMPLETE one. HERMES_HOME
+# probes are additive/unverified until live Hermes.
+CHK="references/wiki-conventions.md"
+PLUGIN_ROOT=""
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+[ -z "$PLUGIN_ROOT" ] && [ -e "plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="plugins/llm-wiki"
+if [ -z "$PLUGIN_ROOT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  for d in $(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##'); do
+    [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
+  done
+fi
+[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
+[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
+{ [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "llm-wiki: wiki-conventions.md not resolved" >&2; exit 1; }
+echo "PLUGIN_ROOT=$PLUGIN_ROOT"
+```
+
 ## When to use
 
 - A new audit md just landed

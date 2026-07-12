@@ -30,22 +30,24 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
 3. **Create layout** (idempotent — `mkdir -p` + existence guards; avoid GNU-only `cp --update=none` so it works on macOS/BSD too):
    ```bash
    # --- Plugin root resolution (cross-runtime) -------------------------------
-   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not — fall back to the
-   # source tree, then the Codex plugin cache (highest version: numeric
-   # dotted-field sort on the version basename; plain `sort` misranks 10.x under
-   # 9.x, `sort -V` is GNU-only). The HERMES_HOME probes cover both Hermes
-   # layouts (plugin tree + skill-level install); unverified until live Hermes.
+   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Every branch verifies
+   # its target (CHK) exists before committing, so a stale env or an incomplete
+   # cache version falls through instead of winning. The cache branch walks
+   # versions high-to-low and takes the first COMPLETE one. HERMES_HOME probes
+   # cover both Hermes layouts; unverified until live Hermes.
    CHK="skills/bootstrap-wiki/assets/templates"
-   PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
-   [ -z "$PLUGIN_ROOT" ] && [ -d "plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="plugins/llm-wiki"
+   PLUGIN_ROOT=""
+   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+   [ -z "$PLUGIN_ROOT" ] && [ -e "plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="plugins/llm-wiki"
    if [ -z "$PLUGIN_ROOT" ]; then
      cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-     PLUGIN_ROOT=$(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null \
-       | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- | sed 's#/$##')
+     for d in $(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##'); do
+       [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
+     done
    fi
-   [ -n "${HERMES_HOME:-}" ] && [ -z "$PLUGIN_ROOT" ] && [ -d "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
-   [ -n "${HERMES_HOME:-}" ] && [ -z "$PLUGIN_ROOT" ] && [ -d "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
-   { [ -n "$PLUGIN_ROOT" ] && [ -d "$PLUGIN_ROOT/$CHK" ]; } || { echo "bootstrap-wiki: plugin root not resolved (need $CHK)" >&2; exit 1; }
+   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
+   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
+   { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "bootstrap-wiki: plugin root not resolved (need $CHK)" >&2; exit 1; }
 
    # raw/ is bucketed by source-type (external / research / transcripts / audits);
    # see ${PLUGIN_ROOT}/references/wiki-conventions.md § raw/ layout. wiki/ uses domain subdirs, insight/ stays flat.

@@ -6,6 +6,18 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-12 — staging drain 88102e17 re-capture: Hermes update-model reality + stacked-PR auto-close (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). The 3 re-captured `.staging/` markers from session 88102e17 (Stop hook fired after the post-merge #106 mid-session ingest) are NOT fully already-curated — the post-#106 window (Hermes real-machine investigation + PR #107/#108/#109 creation) carries new lore. Ingest-recap portions are DUP and dropped. Repo-actionable (non-lore) findings routed to the current audit backlog instead of the wiki: README orphan commands (`/github-dev:code-review`, `/github-dev:cr-wait`), stale Serena `project-init` memory, cr-fix SKILL.md `$HERMES_HOME/plugins/...` path assumption, 3-arg `register_skill` in generated adapters.
+
+- `plugin-ops/hermes-plugin-adapter.md`: coverage staleness fixed (6 → 7 HERMES_ELIGIBLE, adds `brightdata-guide`); new `## Update model` section (`hermes plugins update` = plain `git pull`, errors `not installed from git` on non-git installs — real-machine output; `plugin.yaml version` unread by Hermes, exists only for `--check` drift guard; adapters in this repo are generated-but-never-executed — only byte-drift is tested); provenance caveats (monorepo subpath install works empirically but is undocumented upstream; `ctx.register_skill` documented 2-arg vs our 3-arg emission; `author:` undocumented key, `kind` enum real); SKILL_DIR layout-divergence caveat (plugin-route `$HERMES_HOME/plugins/<name>/skills/` vs measured npx-skills route `$HERMES_HOME/skills` — two install routes, two layouts). last_verified 2026-07-01 → 2026-07-12, sources 4 → 5.
+- `plugin-ops/worktree-squash-merge-gotchas.md`: gotcha 4 added — squash-merging base PR #106 with `--delete-branch` auto-CLOSED stacked child PR #108 (base = the deleted branch); GitHub did not retarget to main; head branch survives, recovery = new PR (observed once, recorded as observation not universal mechanism). alias added. last_verified 2026-07-09 → 2026-07-12, sources 2 → 3.
+- `plugin-ops/skills-install-wrapper.md`: 1 cross-ref bullet on the layout divergence (`$HERMES_HOME/skills` flat, per-skill) vs the plugin-adapter route — `> See-also: [[hermes-plugin-adapter]]` already present in reverse; no last_verified bump (no re-measurement).
+- `index.md`: hermes-plugin-adapter hook updated (7 plugins + update-model note); worktree hook extended (stacked-PR auto-close).
+- `.llmwiki/.staging/`: 3 re-captured markers consumed and deleted (`pending-88102e17…{,-a5813…,-a58fb…}.md`). Plus `pending-242b83c4…-ade1a15f….md` — the Stop-hook capture of this drain's own Explore scan agent, whose entire output IS this ingest; consumed as self-referential, deleted.
+
+No insight graduation — all findings are single-session Hermes/GitHub observations (fail the recurs-across-2+-sessions bar).
+
 ## 2026-07-10 — post-merge #106: 진단기의 침묵 실패 + Codex 리뷰 스레드 비해소 + CLI 파서 크래시 지점 정정 (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `78384b5` — feat(project-init): ASK verdict class + three efficacy axes for wiring. 기계적 규율(`jq` 실패를 축 안에 가두기, `CODEX_HOME` 해석, `ASK` 는 묻는 단계를 가진다)은 이번 run 의 Step 6 에서 `plugins/project-init/CLAUDE.md` 에 안착 — 위키는 메커니즘과 증거만 보관 (routing 원칙, 이중 기록 금지). `.llmwiki/.staging/` 의 pending 마커 7건을 이 배치에서 소비.

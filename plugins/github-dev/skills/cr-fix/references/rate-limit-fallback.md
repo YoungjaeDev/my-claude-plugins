@@ -30,7 +30,10 @@ If the user passes `--cr-source pr-bot|cli|codex-only`, Step 7c **never** silent
 `scripts/sniff-cr-rate-limit.sh` parses 3 body patterns:
 
 1. `auto-generated comment: rate limited by coderabbit\.ai` — generic, no reset hint.
-2. `More reviews will be available in (\d+) minutes?` — extract group 1 as `reset_minutes`.
+2. `(?:More reviews will be available in|Next review available in)[^0-9]{0,12}(\d+)\s*minutes?` — extract the digits as `reset_minutes`.
+   Both phrasings occur; the newer one is markdown-bold (`**Next review available in:** **41 minutes**`), which is why the
+   `[^0-9]{0,12}` bridge is needed. Matching only the older phrasing returned `reset_minutes_estimate: null` on a comment
+   that plainly stated 41 minutes.
 3. `Review limit reached` — generic, no reset hint.
 
 If a reset estimate was extracted, the SKILL.md log line includes it: `... (reset in ~12 minutes)`. The AskUserQuestion "wait NN min" option uses the extracted estimate; if absent, default to 15 min.

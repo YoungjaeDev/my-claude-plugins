@@ -7,7 +7,7 @@ Triggered at the top of every iteration BEFORE the wait/polling phase. Goal: dec
 Two reviewers (CR + Codex) on different channels with different timings:
 
 - Codex arrives **3-24 minutes earlier** than CR in the observed 7-PR / 4-repo sample. "Codex landed → CR done" is NOT a safe assumption.
-- CR uses commit-status; Codex uses PR reviews. They cannot be merged into one probe.
+- CR uses commit-status **or** a check-run, depending on how the app is installed on the repo; Codex uses PR reviews. They cannot be merged into one probe. `scripts/cr-commit-state.sh` normalizes CR's two surfaces onto one vocabulary.
 - Mid-action re-reviews are real (PR #30: 5 distinct Codex reviews across iterations). Pre-flight has to surface the latest unprocessed review id, not just "any review existed".
 - PR timeline rendering can re-order arrivals (Codex emoji flip can push CR review visually first). Pre-flight sorts by `submitted_at` / `created_at` only — never by GitHub timeline body order.
 
@@ -15,7 +15,7 @@ Two reviewers (CR + Codex) on different channels with different timings:
 
 | # | Channel | Endpoint | Purpose |
 |---|---------|----------|---------|
-| 1 | CR commit-status | `repos/$O/$R/commits/$SHA/statuses` (plural, `--paginate`) | `state` + `description` of latest `CodeRabbit` context |
+| 1 | CR reported state | `scripts/cr-commit-state.sh` -> `commits/$SHA/statuses` (plural, `--paginate`), else `commits/$SHA/check-runs` | `state` + `description` of the latest `CodeRabbit` row on whichever surface reports |
 | 2 | CR issue-comments | `repos/$O/$R/issues/$PR/comments` (`--paginate`) | `coderabbitai[bot]` bodies created OR updated after `PUSH_TIME` — catches in-place rate-limit edits |
 | 3 | Codex reviews | `repos/$O/$R/pulls/$PR/reviews` (`--paginate`) | `chatgpt-codex-connector[bot]` reviews, `COMMENTED`/`CHANGES_REQUESTED`, sorted by `submitted_at`, filtered by `codex_processed_reviews` |
 | 4 | Codex emoji A | `repos/$O/$R/issues/$PR/reactions` | PR-level reactions left by `chatgpt-codex-connector[bot]` (in_progress / clean / findings) |
@@ -28,11 +28,21 @@ Channel 4/5 (emoji) are best-effort. The Explore agent's 4-repo probe found **no
 ## CR state read
 
 ```bash
-cr_status=$(gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/statuses" \
-  | jq -s 'add // [] | [.[] | select(.context | test("CodeRabbit"; "i"))] | sort_by(.created_at) | reverse | .[0] // {}')
-cr_state=$(jq -r '.state // ""' <<<"$cr_status")
-cr_desc=$(jq -r '.description // ""'  <<<"$cr_status")
+cr_status=$(bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$CUR_SHA")
+cr_state=$(jq -r 'if (.state // "none") == "none" then "" else .state end' <<<"$cr_status")
+cr_desc=$(jq -r '.description // ""' <<<"$cr_status")
 ```
+
+`cr-commit-state.sh` reads `/statuses` first (its `description` carries the rate-limit text) and falls back to `/check-runs`, mapping the check-run vocabulary onto the commit-status one:
+
+| check-run | -> state |
+|---|---|
+| `completed` + `success` \| `neutral` \| `skipped` | `success` |
+| `completed` + `failure` \| `timed_out` \| `cancelled` \| `action_required` \| `stale` | `failure` |
+| `queued` \| `in_progress` | `pending` |
+| no CodeRabbit row on either surface | `none` |
+
+Reading only `/statuses` is what made every check-run repo report `cr_state: none` forever: pre-flight routed to `cr_wait`, `poll-cr-status.sh` never saw a terminal state, and the loop spun to `TIMEOUT` while the review had finished and posted inline comments (issue #105). Fixture-covered in `tests/run-tests.sh`.
 
 - `cr_state ∈ {success, failure, pending, "", error}` (`""` → no status row yet).
 - `cr_desc` carries the free-tier-disabled and `Review limit reached` text in newer CR versions (this is the **new channel** Step 7b previously missed).

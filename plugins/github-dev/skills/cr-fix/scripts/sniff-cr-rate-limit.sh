@@ -32,21 +32,25 @@ bodies=$(
   } | jq -s 'add // []'
 )
 
-# Channel 3: commit-status description on the most recent CodeRabbit context for PR_NUM's HEAD SHA.
-# Pulled SHA-scoped via the PR object so we don't confuse statuses from old SHAs.
+# Channel 3: CR's reported description for PR_NUM's HEAD SHA — commit-status
+# `description`, or the check-run `output.title` when the install reports there
+# instead. cr-commit-state.sh owns that choice (issue #105); reading /statuses
+# directly here left check-run repos with a permanently empty description.
+# SHA-scoped via the PR object so we don't confuse rows from old SHAs.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 status_desc=""
 if pr_obj=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM" 2>/dev/null); then
   head_sha=$(jq -r '.head.sha // ""' <<<"$pr_obj")
   if [ -n "$head_sha" ]; then
-    status_desc=$(gh api --paginate "repos/$OWNER/$REPO/commits/$head_sha/statuses" 2>/dev/null \
-      | jq -sr 'add // []
-                | [ .[] | select(.context | test("CodeRabbit"; "i")) ]
-                | sort_by(.created_at) | reverse | .[0].description // ""')
+    status_desc=$(bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$head_sha" 2>/dev/null \
+      | jq -r '.description // ""' 2>/dev/null || echo "")
   fi
 fi
 
-# 4 patterns now: 3 historic + 1 free-tier-disabled
-pattern='auto-generated comment: rate limited by coderabbit\.ai|More reviews will be available in|Review limit reached|Review skipped: free tier disabled'
+# 5 patterns now: 3 historic + free-tier-disabled + refill phrasing ("Next review
+# available in" appears alone in Fair-Usage comments; without it here RESET_RE
+# below never runs because hits stays 0)
+pattern='auto-generated comment: rate limited by coderabbit\.ai|More reviews will be available in|Next review available in|Review limit reached|Review skipped: free tier disabled'
 
 hits=$(jq --arg p "$pattern" '[ .[] | select(test($p; "i")) ] | length' <<<"$bodies")
 desc_hit=0
@@ -59,13 +63,23 @@ total=$((hits + desc_hit))
 if [ "$total" -eq 0 ]; then exit 1; fi
 
 # Determine reset estimate from any source.
-# jq `capture()` THROWS on non-match (not null) — `// empty` only catches null/false.
-# Wrap in `try ... catch empty` so non-matching bodies don't kill the script under
-# `set -euo pipefail`.
-reset=$(jq -r '[ .[] | (try capture("More reviews will be available in (?<m>[0-9]+) minutes?"; "i").m catch empty) ] | first // empty' <<<"$bodies")
+# Two phrasings are in the wild, and the newer one is wrapped in markdown bold:
+#   "More reviews will be available in 41 minutes"
+#   "**Next review available in:** **41 minutes**"
+# `[^0-9]{0,12}` bridges the `:** **` between the phrase and the number, so the
+# minute count survives whatever punctuation CR wraps it in. Only matching the
+# older phrasing is why `reset_minutes_estimate` came back null on a comment that
+# plainly stated 41 minutes (issue #105).
+#
+# jq `capture()` yields NO OUTPUT on a non-match — it neither throws nor returns
+# null. `try ... catch empty` therefore changes nothing here, but it is kept so a
+# genuinely malformed body (invalid regex input) cannot abort the array build.
+# The `[ ... ] | first // empty` around it is what turns "no match" into a value.
+RESET_RE='(?:More reviews will be available in|Next review available in)[^0-9]{0,12}(?<m>[0-9]+)\s*minutes?'
+reset=$(jq -r --arg re "$RESET_RE" '[ .[] | (try capture($re; "i").m catch empty) ] | first // empty' <<<"$bodies")
 if [ -z "$reset" ] && [ -n "$status_desc" ]; then
-  reset=$(jq -nr --arg d "$status_desc" \
-    'try ($d | capture("More reviews will be available in (?<m>[0-9]+) minutes?"; "i").m) catch empty')
+  reset=$(jq -nr --arg d "$status_desc" --arg re "$RESET_RE" \
+    'try ($d | capture($re; "i").m) catch empty')
 fi
 reset="${reset:-null}"
 

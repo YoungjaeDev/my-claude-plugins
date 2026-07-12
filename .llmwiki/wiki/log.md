@@ -6,6 +6,12 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-13 — post-merge #130: heredoc prompt-handoff injection defense (post-merge)
+
+Diff log written before applying the page edit (git-revertible). Merge SHA `936781a` — codex-image heredoc shell-injection fix (#112). A second injection surface on the same skill, distinct from the `-i "<path>"` argument case already on the page: the prompt-body heredoc handoff. Config integration: none — security-design lore, routed to the wiki.
+
+- `plugin-ops/codex-image-bridge-design.md`: new `## Heredoc prompt handoff: random literal delimiter, not a fixed or variable one` section — a fixed `EOF` delimiter lets a prompt line equal to `EOF` close the heredoc early and execute the rest as shell (reproduced live with a canary); the fix is a per-invocation random LITERAL token in both open `<<'TOKEN'` and close, plus a pre-check rejecting a prompt line equal to it. Load-bearing gotcha: bash does NOT parameter-expand the heredoc delimiter word, so a `<<"$DELIM"` variable form matches the literal string `$DELIM` (fixed, predictable) — zero real randomization; the token must be a concrete literal in both positions. Companion to the existing quote/array-exec lesson (two injection vectors, same skill). sources 3 → 4, last_verified → 2026-07-13.
+
 ## 2026-07-13 — post-merge #129: resolver-robustness refinements (post-merge)
 
 Diff log written before applying the page edit (git-revertible). Merge SHA `11bdacf` — the cross-runtime PLUGIN_ROOT resolver wave (#111). The base resolver pattern was already on `dual-surface-command-skill-pattern.md`; #129's review (2 Major + 3 Minor across two rounds) surfaced five robustness rules the base pattern omitted. Config integration: none — this is resolver lore, routed to the wiki, not a CLAUDE.md rule.

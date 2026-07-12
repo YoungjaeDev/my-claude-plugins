@@ -47,13 +47,27 @@ OUT=$(cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT -u HERMES_HOME CODEX_PLUGIN
 # Nothing resolves: must abort nonzero
 if (cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT -u HERMES_HOME CODEX_PLUGIN_CACHE="$TMP/none" bash "$BW") 2>/dev/null; then die "should abort with no root"; else pass "bootstrap: aborts when unresolved"; fi
 
-# review #4 — PLUGIN_ROOT is DEFINED and resolves in all 5 llm-wiki skills.
+# spaces in cache path — a cache under a path with a space must resolve
+# (the old `for d in $(ls ...)` word-split and returned nothing).
+mkdir -p "$TMP/sp dir/mkt/llm-wiki"; ln -s "$PLUGIN_DIR" "$TMP/sp dir/mkt/llm-wiki/2.5.1"
+OUT=$(cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT -u HERMES_HOME CODEX_PLUGIN_CACHE="$TMP/sp dir" bash "$BW")
+[ "$OUT" = "$TMP/sp dir/mkt/llm-wiki/2.5.1" ] && pass "spaced cache path resolves" || die "spaced cache path ($OUT)"
+
+# review #4 — PLUGIN_ROOT is DEFINED in all 5 llm-wiki skills AND resolves to a
+# root that actually contains the target file the skill references.
 for sk in bootstrap-wiki query-wiki ingest-finding lint-wiki migrate-wiki; do
   SKILL="$PLUGIN_DIR/skills/$sk/SKILL.md"
   grep -q 'PLUGIN_ROOT=' "$SKILL" || { die "$sk: no PLUGIN_ROOT definition"; continue; }
+  case "$sk" in bootstrap-wiki) TGT="skills/bootstrap-wiki/assets/templates";; *) TGT="references/wiki-conventions.md";; esac
   R=$(runner_for "$SKILL")
   OUT=$(cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT -u HERMES_HOME CODEX_PLUGIN_CACHE="$TMP/cache" bash "$R" 2>/dev/null)
-  { [ -n "$OUT" ] && [ -e "$OUT" ]; } && pass "$sk: PLUGIN_ROOT defined & resolves -> $OUT" || die "$sk: PLUGIN_ROOT unresolved ($OUT)"
+  { [ -n "$OUT" ] && [ -e "$OUT/$TGT" ]; } && pass "$sk: resolves real target ($TGT)" || die "$sk: target $TGT unresolved ($OUT)"
 done
+
+# ingest-finding #2 — a doc-skill resolver degrades QUIETLY when nothing resolves
+# (supplementary reference), not a hard abort: exit 0 with empty PLUGIN_ROOT.
+IF=$(runner_for "$PLUGIN_DIR/skills/ingest-finding/SKILL.md")
+OUT=$(cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT -u HERMES_HOME CODEX_PLUGIN_CACHE="$TMP/none" bash "$IF" 2>/dev/null); rc=$?
+{ [ "$rc" = 0 ] && [ -z "$OUT" ]; } && pass "doc skill degrades quietly when unresolved (rc=0, empty)" || die "doc skill should degrade quietly (rc=$rc, out=$OUT)"
 
 [ "$fail" = 0 ] && echo "llm-wiki resolver smoke: ALL PASS" || { echo "llm-wiki resolver smoke: FAILURES"; exit 1; }

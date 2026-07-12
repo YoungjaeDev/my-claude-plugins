@@ -38,7 +38,10 @@ mkdir -p "$TMP/cache2/mkt/e2e-harness/9.9.9"; ln -s "$PLUGIN_DIR" "$TMP/cache2/m
 OUT=$(cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT -u HERMES_HOME CODEX_PLUGIN_CACHE="$TMP/cache2" bash "$RUN")
 [ "$OUT" = "$TMP/cache2/mkt/e2e-harness/0.1.2" ] && pass "incomplete 9.9.9 skipped, picked complete 0.1.2" || die "incomplete-version skip ($OUT)"
 
-# Hermes skill-level install carries the skill but NOT the plugin-root assets/ -> abort.
+# Deliberately NOT asserting a Hermes plugin/skill install layout as *passing* —
+# the Hermes layout is unverified (no live Hermes) and our additive-fence policy
+# forbids greening an unverified path. We only assert the fence holds: skill-level
+# install carries the skill but NOT the plugin-root assets/ -> abort.
 if (cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT HERMES_HOME="$TMP/hermes" CODEX_PLUGIN_CACHE="$TMP/none" bash "$RUN") 2>/dev/null; then die "should abort under skill-level install (no plugin-root assets)"; else pass "aborts under skill-level install"; fi
 
 [ "$fail" = 0 ] && echo "e2e-harness resolver smoke: ALL PASS" || { echo "e2e-harness resolver smoke: FAILURES"; exit 1; }

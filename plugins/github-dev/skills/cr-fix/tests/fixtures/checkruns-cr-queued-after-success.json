@@ -1,0 +1,4 @@
+{"total_count":2,"check_runs":[
+ {"name":"CodeRabbit / Review","status":"completed","conclusion":"success","started_at":"2026-07-10T02:52:00Z","details_url":"https://coderabbit.ai/r/1","output":{"title":"Review completed"}},
+ {"name":"CodeRabbit / Review","status":"queued","conclusion":null,"started_at":null,"details_url":"https://coderabbit.ai/r/2","output":{"title":"CodeRabbit Review Queued"}}
+]}

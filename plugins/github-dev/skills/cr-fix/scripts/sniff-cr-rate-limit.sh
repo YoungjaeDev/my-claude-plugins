@@ -47,8 +47,10 @@ if pr_obj=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM" 2>/dev/null); then
   fi
 fi
 
-# 4 patterns now: 3 historic + 1 free-tier-disabled
-pattern='auto-generated comment: rate limited by coderabbit\.ai|More reviews will be available in|Review limit reached|Review skipped: free tier disabled'
+# 5 patterns now: 3 historic + free-tier-disabled + refill phrasing ("Next review
+# available in" appears alone in Fair-Usage comments; without it here RESET_RE
+# below never runs because hits stays 0)
+pattern='auto-generated comment: rate limited by coderabbit\.ai|More reviews will be available in|Next review available in|Review limit reached|Review skipped: free tier disabled'
 
 hits=$(jq --arg p "$pattern" '[ .[] | select(test($p; "i")) ] | length' <<<"$bodies")
 desc_hit=0

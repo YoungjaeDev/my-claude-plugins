@@ -62,9 +62,12 @@ fi
 #   completed + failure | timed_out | cancelled | action_required | stale
 #                                                              -> failure
 #   queued | in_progress                                       -> pending
+# A queued run has started_at null; it is the NEWEST run, so null must sort
+# last (highest), or an older completed run wins and reports success while a
+# re-review is queued.
 check_row=$(fetch_checkruns | jq -s '[ .[] | (.check_runs // []) ] | add // []
   | [ .[] | select(.name // "" | test("CodeRabbit"; "i")) ]
-  | sort_by(.started_at // "") | reverse | .[0] // {}' 2>/dev/null || echo '{}')
+  | sort_by(.started_at // "9999-12-31T23:59:59Z") | reverse | .[0] // {}' 2>/dev/null || echo '{}')
 
 if [ "$(jq -r 'has("status")' <<<"$check_row" 2>/dev/null || echo false)" = "true" ]; then
   jq -c '

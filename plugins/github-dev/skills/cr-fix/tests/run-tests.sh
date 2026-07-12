@@ -63,6 +63,11 @@ is "check-run picks the CodeRabbit run, not 'check'" \
 s=$(state statuses-empty.json checkruns-cr-inprogress.json)
 is "check-run in_progress -> pending" "$(jq -r '.state' <<<"$s")" pending
 
+# Queued run (started_at null) must beat an older completed run — null sorts
+# newest, or the stale success masks the queued re-review.
+s=$(state statuses-empty.json checkruns-cr-queued-after-success.json)
+is "queued after success -> pending"  "$(jq -r '.state' <<<"$s")" pending
+
 s=$(state statuses-empty.json checkruns-cr-failure.json)
 is "check-run timed_out -> failure"   "$(jq -r '.state' <<<"$s")" failure
 

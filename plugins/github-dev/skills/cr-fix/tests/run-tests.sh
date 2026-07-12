@@ -170,6 +170,26 @@ esac
 SH
 g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "probe failure -> protection_http 0" "$(jq -r '.protection_http' <<<"$g" 2>/dev/null)" 0
+
+# Check-run-only CR repo: CR posts 0 commit statuses and 1 check-run. The old
+# status-only cr_state read saw nothing -> "unknown" -> Step 15 never merged on
+# --auto-merge. Now it delegates to cr-commit-state.sh (dual-surface), so a
+# completed/success check-run yields cr_state:"success". RED against the
+# status-only implementation by construction. (self-found, PR #122)
+cat > "$SHIMDIR/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/check-runs"*) echo '{"check_runs":[{"name":"CodeRabbit","status":"completed","conclusion":"success","started_at":"2025-01-01T00:00:00Z"}]}';;
+  *"/statuses"*)   echo '[]';;
+  "pr checks"*)    echo '0';;
+  "pr view"*)      echo "main";;
+  *"/protection"*) echo "HTTP/2.0 404 Not Found"; exit 1;;
+  *) echo "unknown gh args: $*" >&2; exit 1;;
+esac
+SH
+chmod +x "$SHIMDIR/gh"
+g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
+is "check-run-only CR -> cr_state success" "$(jq -r '.cr_state' <<<"$g" 2>/dev/null)" success
 rm -rf "$SHIMDIR"
 
 echo

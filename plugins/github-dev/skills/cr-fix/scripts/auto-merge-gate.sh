@@ -10,14 +10,19 @@
 set -euo pipefail
 
 OWNER="${1:?}"; REPO="${2:?}"; PR_NUM="${3:?}"; HEAD_SHA="${4:?}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-cr_state=$(
-  gh api --paginate "repos/$OWNER/$REPO/commits/$HEAD_SHA/statuses" 2>/dev/null \
-    | jq -r -s 'add // []
-                | map(select(.context | test("CodeRabbit"; "i")))
-                | sort_by(.created_at) | reverse
-                | (.[0].state // "unknown")' \
-  || echo "unknown")
+# CR state must come from the SAME dual-surface reader the rest of cr-fix uses.
+# CodeRabbit reports through EITHER the commit-status API OR a check-run,
+# per install. This gate read /statuses only, so on a check-run repo it saw
+# no CR row and reported cr_state:"unknown" forever — Step 15 then never merged
+# on `--auto-merge` even though CR had completed. cr-commit-state.sh already
+# unifies both surfaces (14 fixture cases); delegate to it, don't re-derive.
+# (self-found on PR #122 merge verify — the missed sibling of the same
+# check-run trap fixed in pre-flight/poll-cr-status/sniff. See .llmwiki
+# detector-cannot-look-vs-nothing-wrong.)
+cr_state=$(bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$HEAD_SHA" 2>/dev/null \
+  | jq -r '.state // "unknown"' || echo "unknown")
 cr_state="${cr_state:-unknown}"
 
 blocking=$(gh pr checks "$PR_NUM" --json name,state \

@@ -43,9 +43,10 @@ Provenance caveats (session 88102e17 upstream re-check, 2026-07-10):
 
 - The monorepo **subpath** install form works empirically but is **undocumented
   upstream** — Hermes docs only show bare `user/repo`.
-- Upstream documents `ctx.register_skill(name, path)` as **2-arg**; our generated
-  `__init__.py` emits a 3rd `description` arg, which is unverified upstream
-  (Python tolerates it only if the signature has a default or `*args` — untested).
+- `ctx.register_skill` signature SETTLED by upstream source read (2026-07-12,
+  `hermes_cli/plugins.py` L1196): `register_skill(self, name, path,
+  description="")` — 2 required + optional 3rd. Our generated 3-arg emission is
+  valid; the docs-derived "2-arg only" worry was a doc-vs-source gap, not a bug.
 - `author:` is not a documented `plugin.yaml` key (likely ignored). `kind` is
   real, enum `standalone|backend|platform|exclusive`.
 
@@ -72,8 +73,9 @@ installed as a git clone errors with `Plugin '<name>' was not installed from git
   update path is reinstall.
 - In this repo the adapters are **generated but never executed**: CI and
   pre-commit run only `sync-hermes-manifests.mjs --check` (byte-drift), and the
-  `hermes` CLI itself never runs. A behavioral break in `__init__.py` (e.g. the
-  3-arg `register_skill` above) would pass every guard we have.
+  `hermes` CLI itself never runs. Any behavioral break in `__init__.py` would
+  pass every guard we have — the register_skill scare above went through exactly
+  this blind spot before the source read settled it.
 
 ## Skills are opt-in: `skill_view`, not bare invocation
 
@@ -133,5 +135,6 @@ fallback. Do not reintroduce `HERMES_SKILL_DIR`.)
 - PR #84 (merged `6c12bb9`) — generator `scripts/sync-hermes-manifests.mjs` absorbs the pilot + extends to 6 HERMES_ELIGIBLE plugins; per-skill compat tables; CI + pre-commit `--check`; reverts `${HERMES_SKILL_DIR}` to the 3-branch fallback; keeps 5-field `plugin.yaml` over CodeRabbit's minimal-manifest suggestion.
 - PR #83 (merged `b5021b4`) — hand-written pilot: `plugin.yaml` + `__init__.py` on `github-dev`, its 8 workflows, the tool-name map + dynamic `SKILL_DIR`.
 - `scripts/sync-hermes-manifests.mjs`, `plugins/*/plugin.yaml`, `plugins/*/__init__.py`.
-- DeepWiki (NousResearch/hermes-agent) — `register(ctx)` + `ctx.register_skill(name, path, description)` contract; plugin skills opt-in via `skill_view("plugin:skill")`. Provenance gap: the 3-arg form rests on this single un-URL'd mention with no raw evidence — treat as unverified.
-- Session 88102e17 (2026-07-10) — real-machine `hermes plugins update` output (git-pull-only update model); upstream docs re-check (subpath install undocumented, 2-arg `register_skill`, `author:` undocumented, `kind` enum); HERMES_ELIGIBLE count 6 → 7 correction.
+- DeepWiki (NousResearch/hermes-agent) — `register(ctx)` + `ctx.register_skill(name, path, description)` contract; plugin skills opt-in via `skill_view("plugin:skill")`.
+- Session 88102e17 (2026-07-10) — real-machine `hermes plugins update` output (git-pull-only update model); upstream docs re-check (subpath install undocumented, `author:` undocumented, `kind` enum); HERMES_ELIGIBLE count 6 → 7 correction.
+- Fleet-recon research read of upstream source (2026-07-12) — `hermes_cli/plugins.py` L1196 `register_skill(self, name, path, description="")`: settles the signature, retires the 2026-07-10 "2-arg documented" caveat (docs lag source).

@@ -6,6 +6,12 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-12 — register_skill signature settled by upstream source read (ingest-finding)
+
+Diff log written before applying the page edit (git-revertible). Fleet-recon research agent read `hermes_cli/plugins.py` L1196: `register_skill(self, name, path, description="")` — 2 required + optional 3rd. This retires the same-day "upstream documents 2-arg; our 3-arg emission unverified" caveat (added this morning from the 2026-07-10 docs re-check): docs lag source. Generator + all 7 adapters are correct; a P1 that had been reported 7x across audit groups collapses to this one wiki correction.
+
+- `plugin-ops/hermes-plugin-adapter.md`: provenance-caveat bullet replaced with the settled signature; update-model section's example reworded (the scare itself demonstrates the adapters-never-executed blind spot); Sources +1 (upstream source read), DeepWiki source's "provenance gap" note removed. sources 5 → 6, last_verified unchanged (2026-07-12).
+
 ## 2026-07-12 — post-merge #109: fallback-contract drift resolved by cr-fix 2.7.1 + offline test suite (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `75f7c9d` — fix(github-dev): cr-fix 2.7.1 — make the fallback and detection paths work (closes #105). Config integration skipped: the check-run/commit-status dual-surface contract is housed in the PR's own cr-fix references (SSOT) — no CLAUDE.md/rules duplication.

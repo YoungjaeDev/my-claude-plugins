@@ -1,22 +1,15 @@
 [
   {
-    "id": 900,
-    "user": null,
-    "body": "orphaned comment from a deleted account",
-    "created_at": "2025-06-01T09:59:00Z",
-    "updated_at": "2025-06-01T09:59:00Z"
-  },
-  {
-    "id": 1000,
+    "id": 500,
     "user": { "login": "YoungjaeDev" },
     "body": "@coderabbitai rate limit",
     "created_at": "2025-06-01T10:00:00Z",
     "updated_at": "2025-06-01T10:00:00Z"
   },
   {
-    "id": 1001,
+    "id": 501,
     "user": { "login": "coderabbitai[bot]" },
-    "body": "You have 3 reviews remaining. Your reviews will be available in 41 minutes.",
+    "body": "You have 9 reviews remaining. Your reviews will be available in 5 minutes.",
     "created_at": "2025-06-01T10:00:30Z",
     "updated_at": "2025-06-01T10:00:30Z"
   }

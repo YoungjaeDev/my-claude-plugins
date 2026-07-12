@@ -230,16 +230,18 @@ is "gh failure mid-poll -> exit 0"        "$qrc" 0
 is "gh failure mid-poll -> replied false" "$(jq -r '.replied' <<<"$q" 2>/dev/null)" false
 rm -rf "$QSHIM"
 
-# Server-anchored reply detection. The old filter anchored on a LOCAL
-# `date -u` POST_TIME, so a runner clock ahead of GitHub filtered the genuine
-# reply forever; and a ghost (null-user) comment crashed jq's test(), forcing
+# Id-anchored reply detection. The old filter anchored on a LOCAL `date -u`
+# POST_TIME, so a runner clock ahead of GitHub filtered the genuine reply
+# forever; and a ghost (null-user) comment crashed jq's test(), forcing
 # reply="" every round. Fixture timestamps are fixed in the past, so this is
 # RED against the local-clock anchor by construction. (counsel P1 + P2)
+# The shim echoes the #issuecomment-<id> URL real `gh pr comment` prints;
+# the fixture reply id (1001) > anchor (1000) is the fresh-reply signal.
 QSHIM2=$(mktemp -d)
 cat > "$QSHIM2/gh" <<SH
 #!/usr/bin/env bash
 case "\$1" in
-  pr)  exit 0;;
+  pr)  echo "https://github.com/o/r/pull/42#issuecomment-1000";;
   api) cat "$FIX/issue-comments-rl.json";;
   *)   exit 1;;
 esac
@@ -247,10 +249,32 @@ SH
 chmod +x "$QSHIM2/gh"
 q=$(PATH="$QSHIM2:$PATH" QUERY_CR_POLLS=1 QUERY_CR_SLEEP=0 \
       bash "$SCRIPTS/query-cr-rate-limit.sh" o r 42 2>/dev/null) || true
-is "server-anchored reply -> replied true" "$(jq -r '.replied' <<<"$q" 2>/dev/null)" true
-is "server-anchored reply -> remaining 3"  "$(jq -r '.remaining' <<<"$q" 2>/dev/null)" 3
-is "ghost user tolerated -> reset 41"      "$(jq -r '.reset_minutes' <<<"$q" 2>/dev/null)" 41
+is "id-anchored reply -> replied true" "$(jq -r '.replied' <<<"$q" 2>/dev/null)" true
+is "id-anchored reply -> remaining 3"  "$(jq -r '.remaining' <<<"$q" 2>/dev/null)" 3
+is "ghost user tolerated -> reset 41"  "$(jq -r '.reset_minutes' <<<"$q" 2>/dev/null)" 41
 rm -rf "$QSHIM2"
+
+# A PREVIOUS run's identical "@coderabbitai rate limit" post + reply must not
+# be returned as this query's answer while the new post is not yet visible in
+# the list API. Body-match `last` anchoring picked the old post (id 500) and
+# served its stale reply (id 501) as fresh; id-anchoring (anchor 1000 from the
+# POST URL) sees no reply with id > 1000 and keeps polling. RED against the
+# body-anchor implementation by construction. (Codex P2 iter 4)
+QSHIM3=$(mktemp -d)
+cat > "$QSHIM3/gh" <<SH
+#!/usr/bin/env bash
+case "\$1" in
+  pr)  echo "https://github.com/o/r/pull/42#issuecomment-1000";;
+  api) cat "$FIX/issue-comments-rl-stale.json";;
+  *)   exit 1;;
+esac
+SH
+chmod +x "$QSHIM3/gh"
+q=$(PATH="$QSHIM3:$PATH" QUERY_CR_POLLS=1 QUERY_CR_SLEEP=0 \
+      bash "$SCRIPTS/query-cr-rate-limit.sh" o r 42 2>/dev/null) || true
+is "stale prior-run reply -> replied false" "$(jq -r '.replied' <<<"$q" 2>/dev/null)" false
+is "stale prior-run reply -> reset null"    "$(jq -r '.reset_minutes' <<<"$q" 2>/dev/null)" null
+rm -rf "$QSHIM3"
 
 echo
 echo "poll-cr-status.sh"

@@ -37,31 +37,40 @@ fi
 
 OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr required}"
 
-if ! gh pr comment "$PR_NUM" --repo "$OWNER/$REPO" --body "@coderabbitai rate limit" >/dev/null 2>&1; then
+if ! post_url=$(gh pr comment "$PR_NUM" --repo "$OWNER/$REPO" --body "@coderabbitai rate limit" 2>/dev/null); then
   printf '{"remaining":null,"reset_minutes":null,"replied":false,"body_excerpt":"comment post failed"}\n'
   exit 1
 fi
+# Anchor on OUR post's own comment id, parsed from the URL gh prints on success
+# (…#issuecomment-<id>). Every cr-fix run posts the identical body, so re-finding
+# the post by body-match `last` is ambiguous across runs: while the new post is
+# not yet visible in the list API, a previous run's post anchors the filter and
+# its old reply is returned as fresh (stale reset_minutes). Ids are monotonic,
+# so `reply.id > post.id` selects only replies to THIS query — and subsumes the
+# same-second `>=` timestamp clause.
+anchor_id="${post_url##*issuecomment-}"
+case "$anchor_id" in *[!0-9]*|"") anchor_id="";; esac
 
 # Bounded poll: default 6 rounds x 20s. Overridable for tests / tuning.
 POLLS="${QUERY_CR_POLLS:-6}"; SLEEP="${QUERY_CR_SLEEP:-20}"
 reply=""
 for _ in $(seq 1 "$POLLS"); do
   sleep "$SLEEP"
-  # Anchor on the SERVER-side created_at of our own "@coderabbitai rate limit"
-  # post (latest one) rather than a local timestamp — a runner clock ahead of
-  # GitHub would filter the genuine reply out forever. Post not visible yet ->
-  # no reply can exist either -> empty this round.
+  # $anchor empty (gh printed no URL — unexpected) degrades to the body-match
+  # `last` anchor: same-run correct, cross-run ambiguity documented above.
   # `.user.login // ""`: ghost/deleted accounts carry a null user, and jq's
   # test() errors on null input.
   # `|| reply=""`: a transient gh error (secondary rate limit, 502) would
   # otherwise trip set -e on this bare assignment and kill the bounded poll
   # before the terminal JSON line — treat it as "no reply yet this round".
   reply=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2>/dev/null \
-    | jq -sr 'add // []
-        | (map(select(.body == "@coderabbitai rate limit")) | last | .created_at) as $t
-        | if $t == null then "" else
+    | jq -sr --arg aid "$anchor_id" 'add // []
+        | (if $aid != "" then ($aid|tonumber) else
+             (map(select(.body == "@coderabbitai rate limit")) | last | .id) // null
+           end) as $anchor
+        | if $anchor == null then "" else
             ([ .[] | select(.user.login // "" | test("coderabbit"; "i"))
-                   | select(.created_at >= $t or .updated_at >= $t)
+                   | select((.id // 0) > $anchor)
                    | .body // "" ] | last // "")
           end') || reply=""
   [ -n "$reply" ] && break

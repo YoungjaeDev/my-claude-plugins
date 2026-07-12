@@ -7,7 +7,7 @@ description: Use to scaffold the LLM-Wiki knowledge system (`.llmwiki/` insight 
 
 LLM-Wiki 3-layer = `.llmwiki/insight/` (promoted cross-agent rules) + `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence). This skill drops the empty layout into any repo so the per-PR workflow (spec → resolve-issue → post-merge → ingest) has a place to land. All three layers live under the neutral `.llmwiki/` root so `codex-bridge`'s `.claude/`→`.codex/` body transform can never fork them per-agent — one copy, both agents (Claude Code + Codex). This skill does **not** scaffold a `.claude/rules/` schema layer: Codex can't read it, so cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes via the `core-config` prompt-injection hook instead. `.claude/rules/` stays reserved for mechanical tool-operation rules (not wiki lore), which this skill leaves to the project.
 
-> Ships with `llm-wiki` plugin; install via marketplace. Templates bundled at `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/`.
+> Ships with `llm-wiki` plugin; install via marketplace. Templates bundled at `<plugin-root>/skills/bootstrap-wiki/assets/templates/` — Step 3 resolves `<plugin-root>` across runtimes (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache, Hermes), since Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`.
 
 ## When to use
 
@@ -29,12 +29,30 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
 
 3. **Create layout** (idempotent — `mkdir -p` + existence guards; avoid GNU-only `cp --update=none` so it works on macOS/BSD too):
    ```bash
+   # --- Plugin root resolution (cross-runtime) -------------------------------
+   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not — fall back to the
+   # source tree, then the Codex plugin cache (highest version: numeric
+   # dotted-field sort on the version basename; plain `sort` misranks 10.x under
+   # 9.x, `sort -V` is GNU-only). The HERMES_HOME probes cover both Hermes
+   # layouts (plugin tree + skill-level install); unverified until live Hermes.
+   CHK="skills/bootstrap-wiki/assets/templates"
+   PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+   [ -z "$PLUGIN_ROOT" ] && [ -d "plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="plugins/llm-wiki"
+   if [ -z "$PLUGIN_ROOT" ]; then
+     cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+     PLUGIN_ROOT=$(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null \
+       | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- | sed 's#/$##')
+   fi
+   [ -n "${HERMES_HOME:-}" ] && [ -z "$PLUGIN_ROOT" ] && [ -d "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
+   [ -n "${HERMES_HOME:-}" ] && [ -z "$PLUGIN_ROOT" ] && [ -d "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
+   { [ -n "$PLUGIN_ROOT" ] && [ -d "$PLUGIN_ROOT/$CHK" ]; } || { echo "bootstrap-wiki: plugin root not resolved (need $CHK)" >&2; exit 1; }
+
    # raw/ is bucketed by source-type (external / research / transcripts / audits);
-   # see references/wiki-conventions.md § raw/ layout. wiki/ uses domain subdirs, insight/ stays flat.
+   # see ${PLUGIN_ROOT}/references/wiki-conventions.md § raw/ layout. wiki/ uses domain subdirs, insight/ stays flat.
    mkdir -p .llmwiki/raw/external .llmwiki/raw/research .llmwiki/raw/transcripts .llmwiki/raw/audits \
             .llmwiki/wiki .llmwiki/insight .claude/skills .claude/spec
    for b in external research transcripts audits; do : > ".llmwiki/raw/$b/.gitkeep"; done
-   T="${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates"
+   T="${PLUGIN_ROOT}/${CHK}"
    [ -f .llmwiki/wiki/index.md ]        || cp "$T/wiki-skeleton/index.md"                 .llmwiki/wiki/index.md
    [ -f .llmwiki/wiki/log.md ]          || cp "$T/wiki-skeleton/log.md"                   .llmwiki/wiki/log.md
    [ -f .llmwiki/insight/index.md ]     || cp "$T/insight-skeleton/index.md"              .llmwiki/insight/index.md
@@ -49,7 +67,7 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
    - If missing, write a ~30-line slim version: project pitch + a pointer to `.llmwiki/insight/index.md` (promoted cross-agent rules, read first) and `.llmwiki/wiki/index.md` (lore) + note that the user's global `CLAUDE.md` (under their home `.claude/` directory) takes precedence
    - If existing, do not overwrite — print a diff suggestion for the user to merge manually
 
-6. **First spec template**: copy `${CLAUDE_PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/spec-template.md` to `.claude/spec/_template.md` (rename of-the-day). Tell the user the workflow: copy template to `<YYYY-MM-DD>-<short-name>.md` → `/github-dev:decompose-issue` → `/github-dev:resolve-issue` → merge → `/github-dev:post-merge` (requires the `github-dev` plugin; its mandatory wiki step ingests merged lore — no separate skill needed). If `github-dev` is not installed, run `/llm-wiki:ingest-finding` manually after merging instead.
+6. **First spec template**: copy `${PLUGIN_ROOT}/skills/bootstrap-wiki/assets/templates/wiki-skeleton/spec-template.md` to `.claude/spec/_template.md` (rename of-the-day). Reuse `PLUGIN_ROOT` from Step 3, or re-run the resolver block if this runs in a fresh shell. Tell the user the workflow: copy template to `<YYYY-MM-DD>-<short-name>.md` → `/github-dev:decompose-issue` → `/github-dev:resolve-issue` → merge → `/github-dev:post-merge` (requires the `github-dev` plugin; its mandatory wiki step ingests merged lore — no separate skill needed). If `github-dev` is not installed, run `/llm-wiki:ingest-finding` manually after merging instead.
 
 7. **`.llmwiki/wiki/log.md` initial entry**: append `## YYYY-MM-DD — bootstrap (bootstrap-wiki)` with the domain list created.
 

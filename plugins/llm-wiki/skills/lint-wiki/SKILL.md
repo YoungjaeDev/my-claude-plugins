@@ -67,7 +67,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
    ```bash
    rg -nP '^\[\[' .llmwiki/wiki/ || echo "OK"
    ```
-   Any hits → must convert to typed `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` (per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar). Only a bare line starting with `[[` is flagged; typed refs are never flagged.
+   Any hits → must convert to typed `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` (per-token meanings: `${PLUGIN_ROOT}/references/wiki-conventions.md` § Cross-reference grammar). Only a bare line starting with `[[` is flagged; typed refs are never flagged.
 
 4. **Staleness scan** (per-page volatility window — `volatile` 30d / `stable` or absent 180d; covers the promoted `.llmwiki/insight/` layer too, matching the stale-check hook):
    ```bash
@@ -176,7 +176,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
     LC_ALL=C.UTF-8 grep -oP '^## \K\d{4}' .llmwiki/wiki/log.md 2>/dev/null | sort -u \
       | awk -v y="$cur_year" '$1 < y {printf "log-rotation due: %s entries in log.md -> migrate to log-%s.md\n", $1, $1}'
     ```
-    If any `## YYYY-...` entry predates the current year, suggest migrating that year's block into a sibling `log-YYYY.md` (newest-first preserved; `grep '## ' log*.md` still recovers the full time-series). Report-only — the migration itself is a manual / `ingest-finding` op, logged like any other event. (Convention: `references/wiki-conventions.md` § log.md discipline.)
+    If any `## YYYY-...` entry predates the current year, suggest migrating that year's block into a sibling `log-YYYY.md` (newest-first preserved; `grep '## ' log*.md` still recovers the full time-series). Report-only — the migration itself is a manual / `ingest-finding` op, logged like any other event. (Convention: `${PLUGIN_ROOT}/references/wiki-conventions.md` § log.md discipline.)
 
 ## Output format
 
@@ -251,4 +251,4 @@ For large wikis (>~30 pages), dispatch one read-only agent per `wiki/<domain>/` 
 
 ## References
 
-- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `references/wiki-conventions.md`.
+- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `${PLUGIN_ROOT}/references/wiki-conventions.md`.

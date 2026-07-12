@@ -24,22 +24,24 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
 
 0. **Resolve the plugin root (cross-runtime)** — run once, reuse `PLUGIN_ROOT` in the `cp` steps below (Steps 5-7). Re-run the block if a later step runs in a fresh shell.
    ```bash
-   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not — fall back to the
-   # source tree, then the Codex plugin cache (highest version: numeric
-   # dotted-field sort on the version basename; plain `sort` misranks 10.x under
-   # 9.x, `sort -V` is GNU-only). The HERMES_HOME probes cover both Hermes
-   # layouts (plugin tree + skill-level install); unverified until live Hermes.
+   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Every branch verifies
+   # its target (CHK) exists before committing, so a stale env or an incomplete
+   # cache version falls through instead of winning. The cache branch walks
+   # versions high-to-low and takes the first COMPLETE one. HERMES_HOME probes
+   # cover both Hermes layouts; unverified until live Hermes.
    CHK="assets"
-   PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
-   [ -z "$PLUGIN_ROOT" ] && [ -d "plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="plugins/e2e-harness"
+   PLUGIN_ROOT=""
+   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+   [ -z "$PLUGIN_ROOT" ] && [ -e "plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="plugins/e2e-harness"
    if [ -z "$PLUGIN_ROOT" ]; then
      cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-     PLUGIN_ROOT=$(ls -1d "$cache_root"/*/e2e-harness/*/ 2>/dev/null \
-       | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- | sed 's#/$##')
+     for d in $(ls -1d "$cache_root"/*/e2e-harness/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##'); do
+       [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
+     done
    fi
-   [ -n "${HERMES_HOME:-}" ] && [ -z "$PLUGIN_ROOT" ] && [ -d "$HERMES_HOME/plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/e2e-harness"   # unverified
-   [ -n "${HERMES_HOME:-}" ] && [ -z "$PLUGIN_ROOT" ] && [ -d "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                          # unverified (skill-level install)
-   { [ -n "$PLUGIN_ROOT" ] && [ -d "$PLUGIN_ROOT/$CHK" ]; } || { echo "e2e-setup: plugin root not resolved (need $CHK)" >&2; exit 1; }
+   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/e2e-harness"   # unverified
+   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                          # unverified (skill-level install)
+   { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "e2e-setup: plugin root not resolved (need $CHK)" >&2; exit 1; }
    echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```
    > Skill-level install (`$HERMES_HOME/skills/e2e-setup/`) does not carry the plugin-root `assets/` dir, so the resolver aborts there rather than resolving to a path without the templates — install the full plugin for e2e-setup.

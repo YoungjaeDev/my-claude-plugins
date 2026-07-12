@@ -1,6 +1,6 @@
 {
   "name": "deepwiki",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Deep query GitHub repositories using DeepWiki AI-powered documentation. Dual-surface: commands + skills share references/ procedures.",
   "commands": [
     "./commands/ask.md",

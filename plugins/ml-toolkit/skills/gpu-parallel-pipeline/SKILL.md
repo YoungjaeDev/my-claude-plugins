@@ -114,10 +114,11 @@ if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/gpu-para
 elif [ -d "plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
   SKILL_DIR="plugins/ml-toolkit/skills/gpu-parallel-pipeline"                  # Claude/Codex (repo CWD)
 elif SKILL_DIR=$(
-       for d in $(ls -1d "${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"/*/ml-toolkit/*/ 2>/dev/null \
-         | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##'); do
+       while IFS= read -r d; do
          [ -d "$d/skills/gpu-parallel-pipeline" ] && { printf '%s' "$d/skills/gpu-parallel-pipeline"; break; }
-       done); [ -n "$SKILL_DIR" ]; then :                                     # Codex 0.135 plugin cache (highest COMPLETE version)
+       done < <(ls -1d "${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"/*/ml-toolkit/*/ 2>/dev/null \
+         | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
+     ); [ -n "$SKILL_DIR" ]; then :                                          # Codex 0.135 plugin cache (highest COMPLETE version)
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
   SKILL_DIR="$HERMES_HOME/plugins/ml-toolkit/skills/gpu-parallel-pipeline"     # Hermes profile install
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/gpu-parallel-pipeline" ]; then

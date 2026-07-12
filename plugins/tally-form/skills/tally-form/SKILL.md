@@ -42,9 +42,9 @@ TALLY_SCRIPT=""
 [ -z "$TALLY_SCRIPT" ] && [ -f "plugins/tally-form/$S" ] && TALLY_SCRIPT="plugins/tally-form/$S"
 if [ -z "$TALLY_SCRIPT" ]; then
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-  for d in $(ls -1d "$cache_root"/*/tally-form/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##'); do
+  while IFS= read -r d; do
     [ -f "$d/$S" ] && { TALLY_SCRIPT="$d/$S"; break; }
-  done
+  done < <(ls -1d "$cache_root"/*/tally-form/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
 fi
 [ -z "$TALLY_SCRIPT" ] && [ -n "${HERMES_HOME:-}" ] && [ -f "$HERMES_HOME/plugins/tally-form/$S" ] && TALLY_SCRIPT="$HERMES_HOME/plugins/tally-form/$S"   # unverified
 [ -z "$TALLY_SCRIPT" ] && [ -n "${HERMES_HOME:-}" ] && [ -f "$HERMES_HOME/$S" ] && TALLY_SCRIPT="$HERMES_HOME/$S"                                          # unverified (skill-level install)

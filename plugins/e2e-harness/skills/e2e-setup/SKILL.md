@@ -35,9 +35,9 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    [ -z "$PLUGIN_ROOT" ] && [ -e "plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="plugins/e2e-harness"
    if [ -z "$PLUGIN_ROOT" ]; then
      cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-     for d in $(ls -1d "$cache_root"/*/e2e-harness/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##'); do
+     while IFS= read -r d; do
        [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
-     done
+     done < <(ls -1d "$cache_root"/*/e2e-harness/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
    fi
    [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/e2e-harness"   # unverified
    [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                          # unverified (skill-level install)

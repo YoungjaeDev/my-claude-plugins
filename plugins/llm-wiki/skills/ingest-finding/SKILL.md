@@ -28,13 +28,14 @@ PLUGIN_ROOT=""
 [ -z "$PLUGIN_ROOT" ] && [ -e "plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="plugins/llm-wiki"
 if [ -z "$PLUGIN_ROOT" ]; then
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-  for d in $(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##'); do
+  while IFS= read -r d; do
     [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
-  done
+  done < <(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
 fi
 [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
 [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
-{ [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "llm-wiki: wiki-conventions.md not resolved" >&2; exit 1; }
+# wiki-conventions.md is a supplementary reference — degrade quietly if unresolved (the skill handles "no wiki" itself) rather than abort.
+{ [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { PLUGIN_ROOT=""; echo "note: llm-wiki wiki-conventions.md not resolved; proceeding (supplementary reference)" >&2; }
 echo "PLUGIN_ROOT=$PLUGIN_ROOT"
 ```
 

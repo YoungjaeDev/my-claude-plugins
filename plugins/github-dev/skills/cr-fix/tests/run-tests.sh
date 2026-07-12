@@ -118,6 +118,22 @@ out=$(CR_THREADS_RESPONSE_FILE="$FIX/gql-null-pullrequest.json" \
 is "null pullRequest -> non-zero exit" "$([ "$rc" -ne 0 ] && echo yes || echo no)" yes
 is "null pullRequest -> emits no []"   "$out" ""
 
+# Round-3 detector hardening: an empty errors OBJECT ({}), a missing pageInfo,
+# and hasNextPage=true without a cursor all slipped the predicate — the first
+# two silently truncate multi-page threads, the third re-reads the first page
+# forever (a hang). (CR Major, iter 3)
+out=$(CR_THREADS_RESPONSE_FILE="$FIX/gql-errors-empty-object.json" \
+        bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null); rc=$?
+is "errors empty-object -> non-zero exit" "$([ "$rc" -ne 0 ] && echo yes || echo no)" yes
+out=$(CR_THREADS_RESPONSE_FILE="$FIX/gql-missing-pageinfo.json" \
+        bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null); rc=$?
+is "missing pageInfo -> non-zero exit"    "$([ "$rc" -ne 0 ] && echo yes || echo no)" yes
+# rc must be the detector's clean 1, not a hang killed by the timeout guard.
+TMO2=""; command -v timeout >/dev/null 2>&1 && TMO2="timeout 10"
+out=$(CR_THREADS_RESPONSE_FILE="$FIX/gql-cursorless-next.json" \
+        $TMO2 bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null); rc=$?
+is "cursorless hasNextPage -> detector rc 1" "$rc" 1
+
 echo
 echo "auto-merge-gate.sh"
 

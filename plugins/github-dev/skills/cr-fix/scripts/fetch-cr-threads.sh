@@ -33,18 +33,26 @@ while :; do
   }') || { echo "error: GraphQL request failed" >&2; exit 1; }
   fi
 
-  # A healthy page has no top-level errors AND an actual reviewThreads.nodes
-  # array. Guard the SUCCESS condition and fail on its negation, so a null
-  # repository, a null pullRequest (wrong PR number, deleted PR), or any
-  # malformed response lands here rather than exiting 4 unmatched and letting
-  # the loop project an empty array — a false "clean" convergence.
-  # `(.errors // []) | length == 0` also accepts a benign literal `errors: []`.
+  # A healthy page has no top-level errors, an actual reviewThreads.nodes
+  # array, AND coherent pagination. Guard the SUCCESS condition and fail on its
+  # negation, so a null repository, a null pullRequest (wrong PR number,
+  # deleted PR), or any malformed response lands here rather than exiting 4
+  # unmatched and letting the loop project an empty array — a false "clean"
+  # convergence. errors must be an absent key or an empty ARRAY (an object —
+  # even {} — is an unknown shape and fails loud). pageInfo must be an object,
+  # and hasNextPage=true requires a non-empty endCursor: a missing pageInfo
+  # silently truncates multi-page threads, and a cursorless hasNextPage
+  # re-reads the first page forever.
   # `null // empty | not` produced empty (exit 4), which the old `if jq -e` read
   # as "no error" and skipped this branch. See .llmwiki jq-capture-yields-empty.
-  if ! jq -e '((.errors // []) | length == 0)
-              and ((.data.repository.pullRequest.reviewThreads.nodes // null) | type == "array")' \
+  if ! jq -e '(.errors == null or ((.errors | type) == "array" and (.errors | length) == 0))
+              and ((.data.repository.pullRequest.reviewThreads.nodes // null) | type == "array")
+              and (.data.repository.pullRequest.reviewThreads.pageInfo as $pi
+                   | (($pi | type) == "object")
+                     and (($pi.hasNextPage != true)
+                          or ((($pi.endCursor // "") | type) == "string" and (($pi.endCursor // "") | length) > 0)))' \
        <<<"$response" >/dev/null 2>&1; then
-    echo "GraphQL fetch returned errors or a null repository/pullRequest:" >&2
+    echo "GraphQL fetch returned errors, a null repository/pullRequest, or malformed pagination:" >&2
     jq -r '.errors[]?.message // "no errors field"' <<<"$response" >&2
     exit 1
   fi

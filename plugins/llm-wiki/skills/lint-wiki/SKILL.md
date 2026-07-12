@@ -20,6 +20,32 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
 
 > Ships with `llm-wiki` plugin; install via marketplace.
 
+## Resolving `${PLUGIN_ROOT}`
+
+`${PLUGIN_ROOT}/references/wiki-conventions.md` (referenced below) lives at the plugin root. Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so resolve it once before reading that file:
+
+```bash
+# --- Plugin root resolution (cross-runtime) --------------------------------
+# Each branch verifies the target exists before committing; the cache branch
+# walks versions high-to-low and takes the first COMPLETE one. HERMES_HOME
+# probes are additive/unverified until live Hermes.
+CHK="references/wiki-conventions.md"
+PLUGIN_ROOT=""
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+[ -z "$PLUGIN_ROOT" ] && [ -e "plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="plugins/llm-wiki"
+if [ -z "$PLUGIN_ROOT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  while IFS= read -r d; do
+    [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
+  done < <(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
+fi
+[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
+[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
+# wiki-conventions.md is a supplementary reference — degrade quietly if unresolved (the skill handles "no wiki" itself) rather than abort.
+{ [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { PLUGIN_ROOT=""; echo "note: llm-wiki wiki-conventions.md not resolved; proceeding (supplementary reference)" >&2; }
+echo "PLUGIN_ROOT=$PLUGIN_ROOT"
+```
+
 ## Steps
 
 1. **Identity scan + dedup scoring** (duplicate concepts):
@@ -67,7 +93,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
    ```bash
    rg -nP '^\[\[' .llmwiki/wiki/ || echo "OK"
    ```
-   Any hits → must convert to typed `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` (per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar). Only a bare line starting with `[[` is flagged; typed refs are never flagged.
+   Any hits → must convert to typed `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` (per-token meanings: `${PLUGIN_ROOT}/references/wiki-conventions.md` § Cross-reference grammar). Only a bare line starting with `[[` is flagged; typed refs are never flagged.
 
 4. **Staleness scan** (per-page volatility window — `volatile` 30d / `stable` or absent 180d; covers the promoted `.llmwiki/insight/` layer too, matching the stale-check hook):
    ```bash
@@ -176,7 +202,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
     LC_ALL=C.UTF-8 grep -oP '^## \K\d{4}' .llmwiki/wiki/log.md 2>/dev/null | sort -u \
       | awk -v y="$cur_year" '$1 < y {printf "log-rotation due: %s entries in log.md -> migrate to log-%s.md\n", $1, $1}'
     ```
-    If any `## YYYY-...` entry predates the current year, suggest migrating that year's block into a sibling `log-YYYY.md` (newest-first preserved; `grep '## ' log*.md` still recovers the full time-series). Report-only — the migration itself is a manual / `ingest-finding` op, logged like any other event. (Convention: `references/wiki-conventions.md` § log.md discipline.)
+    If any `## YYYY-...` entry predates the current year, suggest migrating that year's block into a sibling `log-YYYY.md` (newest-first preserved; `grep '## ' log*.md` still recovers the full time-series). Report-only — the migration itself is a manual / `ingest-finding` op, logged like any other event. (Convention: `${PLUGIN_ROOT}/references/wiki-conventions.md` § log.md discipline.)
 
 ## Output format
 
@@ -251,4 +277,4 @@ For large wikis (>~30 pages), dispatch one read-only agent per `wiki/<domain>/` 
 
 ## References
 
-- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `references/wiki-conventions.md`.
+- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `${PLUGIN_ROOT}/references/wiki-conventions.md`.

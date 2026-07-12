@@ -13,6 +13,32 @@ The wiki is only useful if it stays current. Conversations end, audit mds accumu
 
 > Ships with `llm-wiki` plugin; install via marketplace.
 
+## Resolving `${PLUGIN_ROOT}`
+
+`${PLUGIN_ROOT}/references/wiki-conventions.md` (referenced below) lives at the plugin root. Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so resolve it once before reading that file:
+
+```bash
+# --- Plugin root resolution (cross-runtime) --------------------------------
+# Each branch verifies the target exists before committing; the cache branch
+# walks versions high-to-low and takes the first COMPLETE one. HERMES_HOME
+# probes are additive/unverified until live Hermes.
+CHK="references/wiki-conventions.md"
+PLUGIN_ROOT=""
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+[ -z "$PLUGIN_ROOT" ] && [ -e "plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="plugins/llm-wiki"
+if [ -z "$PLUGIN_ROOT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  while IFS= read -r d; do
+    [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
+  done < <(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
+fi
+[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
+[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
+# wiki-conventions.md is a supplementary reference — degrade quietly if unresolved (the skill handles "no wiki" itself) rather than abort.
+{ [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { PLUGIN_ROOT=""; echo "note: llm-wiki wiki-conventions.md not resolved; proceeding (supplementary reference)" >&2; }
+echo "PLUGIN_ROOT=$PLUGIN_ROOT"
+```
+
 ## When to use
 
 - A new audit md just landed
@@ -76,7 +102,7 @@ A batch-wide view is what catches "these three findings are actually the same pa
 
 ## Steps
 
-1. **Read the source of the finding** (audit md / PR diff / debug notes). If the source is a *newly captured* raw artifact (survey, chat/meeting transcript, external doc), first save it under the matching `raw/` source-type bucket (`external/ research/ transcripts/ audits/`) with a `YYYY-MM-DD-<slug>.<ext>` filename. *Text* raw (md/txt/html) also gets `source_url`/`ingested`/`sha256` frontmatter; *binary* raw (pdf) is stored as-is with no inline frontmatter (YAML would corrupt the bytes) and stays outside the Step 11 drift check. See `references/wiki-conventions.md` § raw/ layout & frontmatter.
+1. **Read the source of the finding** (audit md / PR diff / debug notes). If the source is a *newly captured* raw artifact (survey, chat/meeting transcript, external doc), first save it under the matching `raw/` source-type bucket (`external/ research/ transcripts/ audits/`) with a `YYYY-MM-DD-<slug>.<ext>` filename. *Text* raw (md/txt/html) also gets `source_url`/`ingested`/`sha256` frontmatter; *binary* raw (pdf) is stored as-is with no inline frontmatter (YAML would corrupt the bytes) and stays outside the Step 11 drift check. See `${PLUGIN_ROOT}/references/wiki-conventions.md` § raw/ layout & frontmatter.
 2. **Map to wiki pages**: search `index.md` + grep page bodies. Identify all pages the finding affects — usually 1 primary + 2-5 cross-ref updates. List them.
 3. **Compose diff log entry**: draft the resolved root's `log.md` block now, listing every page you're about to touch.
 4. **Apply changes page-by-page**:
@@ -93,7 +119,7 @@ A batch-wide view is what catches "these three findings are actually the same pa
      - End with `## Sources` citing the raw evidence (preferred path `.llmwiki/raw/<file>`, or external `docs/...`).
      - Add a one-line entry to `index.md` under the matching domain heading.
    - **If a finding contradicts a page with historical value**: apply the supersede pattern above — new page/section gets `> Supersedes: [[old-id]]`; old page gets `status: stale` + `> Superseded-by: [[new-id]]` (kept, not deleted).
-5. **Update cross-refs**: any page that previously linked to or contradicted the updated page may need a touch. Use typed grammar — `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — never raw `[[wikilink]]` (per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar).
+5. **Update cross-refs**: any page that previously linked to or contradicted the updated page may need a touch. Use typed grammar — `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — never raw `[[wikilink]]` (per-token meanings: `${PLUGIN_ROOT}/references/wiki-conventions.md` § Cross-reference grammar).
 6. **Decide whether to graduate to `.llmwiki/insight/`** (the promoted cross-agent layer — NOT `.claude/rules/`):
    - The wiki is the default home. Graduate a finding up to `.llmwiki/insight/` **only when ALL four hold**:
      1. **Recurs across sessions** — observed in 2+ independent sessions/PRs, not a one-off.
@@ -183,4 +209,4 @@ Page-edit summary:
 
 ## References
 
-- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `references/wiki-conventions.md`.
+- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `${PLUGIN_ROOT}/references/wiki-conventions.md`.

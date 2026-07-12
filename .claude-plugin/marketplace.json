@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "1.92.0"
+    "version": "1.93.0"
   },
   "plugins": [
     {
@@ -26,7 +26,7 @@
       "name": "e2e-harness",
       "source": "./plugins/e2e-harness",
       "description": "Playwright E2E test-harness engineering — wraps Playwright's official AI test agents (npx playwright init-agents --loop=claude generates planner/generator/healer). Three skills close the planner -> generator -> healer self-improving loop: e2e-setup onboards the full harness (agents, auth separation via storageState + setup-project dependency, page.route mocking with Next.js BFF/SSR guidance, E2E operating SSOT doc, GitHub Actions CI with trace/report artifact upload + PR-failure comment + path/label gating); e2e-author selects critical user flows and runs planner -> review-gate -> generator with semantic getByRole locators and a --repeat-each burn-in flake gate; e2e-debug downloads the CI trace, inspects it headlessly, and runs the healer with bounded retries (skip-after-3 + reason comment). Never overwrites an existing playwright.config (merge + backup); degrades gracefully when Playwright is not installed.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "testing"
     },
     {
@@ -47,7 +47,7 @@
       "name": "deepwiki",
       "source": "./plugins/deepwiki",
       "description": "AI-powered GitHub repo documentation. Dual-surface: `/deepwiki:ask` + `/deepwiki:generate-llmstxt` commands and matching skills for fuzzy-trigger discovery.",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "category": "documentation"
     },
     {
@@ -61,7 +61,7 @@
       "name": "ml-toolkit",
       "source": "./plugins/ml-toolkit",
       "description": "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "category": "development"
     },
     {
@@ -117,7 +117,7 @@
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
       "description": "Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral .llmwiki/): 5 skills (query/ingest/lint/bootstrap/migrate) + 5 hooks + bootstrap templates. Three soft hints plus an auto-capture/ingest path: a Stop hook mechanically captures ingest candidates to <root>/.staging/ and the next session's SessionStart drain hook surfaces them for ingest-finding curation (capture and curation split). Post-merge wiki ingest is a mandatory, force-logged step inside github-dev:post-merge (the standalone post-merge-wiki skill was removed — breaking, hence the 2.0.0 major bump). Promoted cross-agent rules graduate to .llmwiki/insight/ (via core-config prompt-inject hook), not .claude/rules/. Resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. Agent-facing wiki conventions deduped into references/wiki-conventions.md.",
-      "version": "2.5.0",
+      "version": "2.5.1",
       "category": "memory"
     },
     {
@@ -152,7 +152,7 @@
       "name": "tally-form",
       "source": "./plugins/tally-form",
       "description": "Build Tally questionnaire/survey forms from checklist markdown — deterministic stdlib urllib builder with theme presets (neutral/hermes), section dividers, paragraph-split intros, per-question choices with required + checkbox (multi-select), short-answer inputs (text/number/email/phone/link), native scheduling (matrix grid / date / time), form images (logo/cover/inline IMAGE via hosted URLs incl. GitHub raw shorthand), redirect-on-completion, idempotent publish, and humanize-korean copy routing. Includes dev-survey and lecture-consultation presets plus bundled example fixtures.",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "category": "content"
     },
     {

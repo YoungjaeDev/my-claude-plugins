@@ -13,6 +13,32 @@ The wiki is the lore layer — LLM-maintained domain knowledge that doesn't belo
 
 > Ships with `llm-wiki` plugin; install via marketplace. If no wiki root resolves, suggest `/llm-wiki:bootstrap-wiki` instead.
 
+## Resolving `${PLUGIN_ROOT}`
+
+`${PLUGIN_ROOT}/references/wiki-conventions.md` (referenced below) lives at the plugin root. Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so resolve it once before reading that file:
+
+```bash
+# --- Plugin root resolution (cross-runtime) --------------------------------
+# Each branch verifies the target exists before committing; the cache branch
+# walks versions high-to-low and takes the first COMPLETE one. HERMES_HOME
+# probes are additive/unverified until live Hermes.
+CHK="references/wiki-conventions.md"
+PLUGIN_ROOT=""
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+[ -z "$PLUGIN_ROOT" ] && [ -e "plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="plugins/llm-wiki"
+if [ -z "$PLUGIN_ROOT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  while IFS= read -r d; do
+    [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
+  done < <(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
+fi
+[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
+[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
+# wiki-conventions.md is a supplementary reference — degrade quietly if unresolved (the skill handles "no wiki" itself) rather than abort.
+{ [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { PLUGIN_ROOT=""; echo "note: llm-wiki wiki-conventions.md not resolved; proceeding (supplementary reference)" >&2; }
+echo "PLUGIN_ROOT=$PLUGIN_ROOT"
+```
+
 ## When to use
 
 - "Why does provider X return null on big inputs?" → look in `wiki/<backend-domain>/<provider>.md`
@@ -24,7 +50,7 @@ The wiki is the lore layer — LLM-maintained domain knowledge that doesn't belo
 
 1. **Check `.llmwiki/insight/index.md` first (if present), then the wiki `index.md`.** Insight is the promoted, most-consolidated layer — the `core-config` prompt-injection hook already points both agents here first. If an insight entry covers your question, it is the authoritative condensed rule; follow its `promoted_from: [[wiki-id]]` down to the wiki page only when you need the full story. Then read the wiki MOC (`index.md` at the resolved root) — every page listed with a 1-line hook; skim hooks, pick page(s). If neither `index.md` exists, the layer is not initialized — suggest `/llm-wiki:bootstrap-wiki`.
 2. **Read the matching page(s).** Each page is a single concept, ≤5KB.
-3. **Follow typed cross-refs (authoritative grammar).** The typed token set — `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — is the only authoritative link form; never raw `[[wikilink]]`. Two gate action: `> Contradicts: [[id]]` is a conflict to resolve before acting; `> Superseded-by: [[id]]` redirects you to the active replacement. Per-token meanings: `references/wiki-conventions.md` § Cross-reference grammar.
+3. **Follow typed cross-refs (authoritative grammar).** The typed token set — `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — is the only authoritative link form; never raw `[[wikilink]]`. Two gate action: `> Contradicts: [[id]]` is a conflict to resolve before acting; `> Superseded-by: [[id]]` redirects you to the active replacement. Per-token meanings: `${PLUGIN_ROOT}/references/wiki-conventions.md` § Cross-reference grammar.
 4. **Check `status:` and `last_verified:` frontmatter.** If `status: stale`, the page is superseded — follow its `> Superseded-by: [[id]]` to the active replacement and read that instead. Then check `last_verified:`: older than the page's volatility window (stable 180d / volatile 30d) = treat as possibly stale; verify against code before acting on the lore. `volatile` (bug/transient) lore needs re-checking sooner; `stable` (design/rationale) lore stays trustworthy longer. Soft-hint hook may already have flagged it.
 5. If neither insight nor wiki covers what you need, the answer is either in code (grep), in `.claude/rules/` (mechanical tool invariants — not wiki lore), or genuinely missing → trigger `/llm-wiki:ingest-finding` after you figure it out (it decides wiki vs insight graduation).
 
@@ -45,4 +71,4 @@ The wiki is the lore layer — LLM-maintained domain knowledge that doesn't belo
 
 ## References
 
-- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `references/wiki-conventions.md`.
+- Canonical frontmatter schema, cross-reference grammar (per-token meanings), resolution order, log.md discipline: `${PLUGIN_ROOT}/references/wiki-conventions.md`.

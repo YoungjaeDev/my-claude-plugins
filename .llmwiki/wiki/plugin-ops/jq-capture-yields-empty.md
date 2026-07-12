@@ -1,15 +1,15 @@
 ---
 id: jq-capture-yields-empty
-aliases: [jq-capture-non-match, try-catch-does-not-rescue-empty, empty-deletes-the-object]
-last_verified: 2026-07-10
+aliases: [jq-capture-non-match, try-catch-does-not-rescue-empty, empty-deletes-the-object, jq-missing-r-flag]
+last_verified: 2026-07-13
 status: active
 volatility: stable
-sources: 2
+sources: 3
 ---
 
 # jq `capture()` on a non-match yields nothing — and `empty` deletes the object around it
 
-Two jq facts that combine into a silent data loss. Each is harmless alone.
+Three jq output facts that silently defeat the shell code consuming them. Each is harmless alone.
 
 ## Fact 1: `capture()` does not throw and does not return null
 
@@ -46,6 +46,17 @@ line: first_or_null(capture("at line (?<n>[0-9]+)").n)
 
 `f?` also swallows genuine errors, which is what you want here — a malformed body must not abort the whole array.
 
+## Fact 3: without `-r`, an "empty" string result is the two-char literal `""`
+
+`jq '... | .id // ""'` on an empty selection prints not nothing but the JSON-encoded string — two literal quote characters. Any shell truthiness test downstream then passes:
+
+```
+$ id=$(echo '[]' | jq 'last | .id // ""'); [ -n "$id" ] && echo "FOUND: $id"
+FOUND: ""
+```
+
+How it bit (PR #122, reproduced live): `poll-codex-grace.sh` used exactly this shape as an `until` condition, so with no new Codex review the loop exited on round 1 and emitted a fabricated empty review id — the grace window never waited. The same missing `-r` in the SKILL.md Step 6b snippet made `candidate` look found, skipping grace polling entirely and silently dropping that iteration's Codex findings. Rule: **any jq output that feeds a shell emptiness/truthiness test must be produced with `-r`** (numbers print identically either way, so `-r` costs nothing).
+
 ## The comment that taught the wrong lesson
 
 `sniff-cr-rate-limit.sh` carried, for months:
@@ -63,3 +74,4 @@ Every clause is wrong except the conclusion. It does not throw; `try … catch e
 
 1. **jq 1.7 behavior, measured** — `capture()` on non-match emits no output under `jq -n`; `try/catch` does not convert it to null; an `empty` field drops the enclosing object from a `[ .[] | {…} ]` construction.
 2. **PR #109** (`fix(github-dev): cr-fix 2.7.1`) — the CLI-parser regression. Fixture `cr-cli-0.5.x-findings.jsonl` has two findings; the parser returned one. Caught by the assertion `0.5.x nitpick header parsed`, which failed with `null` because element `[1]` did not exist.
+3. **PR #122** (`fix(github-dev): cr-fix iter-5 — grace poll jq -r flag`) — the missing-`-r` instance, reproduced live during the run itself: the grace poll returned `{"codex_review_id":""}` instantly instead of polling; regression cases `unprocessed review found -> id 777` / `no unprocessed review -> no terminal line` in `tests/run-tests.sh`.

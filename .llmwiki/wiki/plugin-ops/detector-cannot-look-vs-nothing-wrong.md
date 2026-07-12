@@ -1,10 +1,10 @@
 ---
 id: detector-cannot-look-vs-nothing-wrong
-aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure]
-last_verified: 2026-07-10
+aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean]
+last_verified: 2026-07-13
 status: active
 volatility: stable
-sources: 2
+sources: 3
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -45,6 +45,19 @@ Both spellings are *correct configuration* and both aborted the script before it
 
 Related trap in the same family: `${f#$HOME/}` is a **pattern** expansion, so a `$HOME` containing glob characters mangles the stripped path. Quote the prefix: `${f#"$HOME/"}`.
 
+## Mode 4: the same family in remote fetchers — a degraded API answer read as "clean"
+
+PR #122 found five instances of the identical invariant in `cr-fix`'s GitHub fetchers, where "could not look" arrives as a *well-formed but degraded* API response rather than a non-zero exit:
+
+- **Null envelope**: a GraphQL reply of `{"data":{"repository":null}}` (bad repo coordinates, auth loss) flowed through `.repository.pullRequest.reviewThreads // []` into a confident empty thread list — which the convergence loop read as "all findings resolved" and declared the PR clean. The detector must require the full expected shape (a `nodes` *array*, not merely a non-error reply) and fail loudly otherwise.
+- **Missing `pageInfo`**: asking for `nodes` without `pageInfo { hasNextPage endCursor }` silently truncates to the first page — an incomplete answer indistinguishable from a complete one.
+- **Cursorless `hasNextPage`**: paginating on `hasNextPage` without threading `endCursor` refetches page one forever (reproduced as an rc-124 hang in the RED fixture).
+- **Probe rc 0 as 404**: `auto-merge-gate.sh` read a *failed* branch-protection probe (network rc 0-bytes) as the 404 "unprotected" answer. Only definitive HTTP codes (200/404) may drive the merge decision; anything else is "could not look" → refuse to merge.
+- **Fetch failure as `none`**: `cr-commit-state.sh` reported gh/auth/rate-limit failures as the clean `none` state; its poller then spun silently to the outer timeout. Fixed as a distinct `state:"error"` channel, terminal after `ERROR_STREAK_MAX` consecutive errors (a single transient still self-heals).
+- **Reading the wrong surface entirely**: `auto-merge-gate.sh` derived CR state from the commit-status API alone, but CodeRabbit reports through *either* commit-status *or* a check-run per install. On a check-run repo the status endpoint is empty forever, so the gate saw `cr_state:unknown` and `--auto-merge` could never fire — an all-clear-shaped block. This is the missed sibling of the exact trap `cr-commit-state.sh` already fixed for `pre-flight`/`poll-cr-status`/`sniff`; the fix was to delegate to that one dual-surface reader instead of re-deriving. "Could not look" here was "looked at the wrong window", not a parse failure.
+
+Local detectors (Modes 1-3) fail via exit codes and `pipefail`; remote fetchers fail via degraded payloads that still parse. Same rule both ways: **an answer you could not fully retrieve is not an answer of "nothing there".**
+
 ## Why this recurs
 
 Each instance arrives disguised as an edge case ("who has a corrupt config?"), and each one is discovered only by running the script against the ugly input rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis says so, keeps going, and never converts ignorance into an all-clear.**
@@ -58,3 +71,4 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?"), a
 
 1. **PR #104** (`feat(project-init): add wiring skill with shared state detector`) — the `find` / `pipefail` instance. `find ... | wc -l` killed the script on an empty match; `find | head -1 | grep -q .` inverted its own result via SIGPIPE(141). Fixed with `find_or_empty` / `count_files` helpers and `-print -quit`.
 2. **PR #106** (`feat(project-init): ASK verdict class + three efficacy axes for wiring`) — the `jq` instances. Reproduced across corrupt / empty / `[]` / `"x"` / top-level-array `~/.claude.json`, and across `65536`, `65536 # bytes`, `65_536`, `"65536"`, `abc`, key-absent, config-absent for `project_doc_max_bytes`. Before the fix: exit 2 or exit 5, zero output. After: exit 0 in every case, with `mcp.unreadable` naming the file it could not read.
+3. **PR #122** (`fix(github-dev): cr-fix correctness repair set`) — the remote-fetcher instances (Mode 4): `fetch-cr-threads.sh` null-envelope false-clean + pagination coherence (fixtures `gql-null-repository` / `gql-null-pullrequest` / `gql-missing-pageinfo` / `gql-cursorless-next`), `auto-merge-gate.sh` probe rc 0 (`probe failure -> protection_http 0`), `cr-commit-state.sh` `state:"error"` channel + `ERROR_STREAK_MAX` terminal poller test.

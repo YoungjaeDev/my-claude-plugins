@@ -25,19 +25,19 @@ allowed-tools: Bash(uv run *) Bash(curl *) Read AskUserQuestion
 
 ## 실행
 
-`uv run <abs>/scripts/build_tally_form.py` — `<abs>` 는 Claude Code 에서 `plugins/tally-form/skills/tally-form`(repo 루트 기준), Codex 에서 `~/.agents/skills/tally-form`(sync 후). 절대 경로로 cwd 의존 회피. stdlib-only 라 `uv run` 이 에페메랄 환경으로 그대로 실행(별도 `python` 호출 불필요).
+`uv run <abs>/scripts/build_tally_form.py` — `<abs>` 는 Claude Code 에서 `${CLAUDE_PLUGIN_ROOT}/skills/tally-form`(설치·개발 어느 cwd 에서도 동작), Codex 에서 `~/.agents/skills/tally-form`(sync 후). Codex 0.135 는 `CLAUDE_PLUGIN_ROOT` 를 export 하지 않으므로 런타임별 절대 경로를 쓴다(repo 루트 기준 상대 경로는 foreign cwd 에서 깨짐). Hermes 는 skill-level install 이면 `$HERMES_HOME/skills/tally-form`(unverified). stdlib-only 라 `uv run` 이 에페메랄 환경으로 그대로 실행(별도 `python` 호출 불필요).
 
 ```bash
 # 미리보기 (API 호출 없음 — 블록 수 검증)
-uv run plugins/tally-form/skills/tally-form/scripts/build_tally_form.py --md <checklist.md> --dry-run
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --md <checklist.md> --dry-run
 
 # 신규 생성
-uv run plugins/tally-form/skills/tally-form/scripts/build_tally_form.py --md <checklist.md>
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --md <checklist.md>
 
 # 기존 폼 갱신·게시 (공유 URL 유지, idempotent)
-uv run plugins/tally-form/skills/tally-form/scripts/build_tally_form.py --md <checklist.md> --update <formId>
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --md <checklist.md> --update <formId>
 
-# Codex (sync 후)
+# Codex (sync 후) — CLAUDE_PLUGIN_ROOT 미노출이라 절대 경로 사용
 uv run ~/.agents/skills/tally-form/scripts/build_tally_form.py --md <checklist.md> --dry-run
 ```
 

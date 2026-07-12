@@ -304,8 +304,11 @@ Skip if `codex_active != "active"`. Skip if pre-flight already populated `codex_
 ```bash
 if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
   PROCESSED=$(jq -c '.codex_processed_reviews // []' "$STATE_FILE")
+  # jq -sr, not -s: without -r an empty result prints the two-char string '""',
+  # which is non-empty -> candidate looks found -> grace polling is skipped and
+  # the iter silently loses every Codex finding (fetch by review id '""' -> []).
   candidate=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-    | jq -s --argjson p "$PROCESSED" 'add // []
+    | jq -sr --argjson p "$PROCESSED" 'add // []
         | [ .[] | select(.user.login=="chatgpt-codex-connector[bot]")
                 | select(.state=="COMMENTED" or .state=="CHANGES_REQUESTED")
                 | select(.id as $i | $p | index($i) | not) ]

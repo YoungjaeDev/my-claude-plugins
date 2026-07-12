@@ -277,6 +277,40 @@ is "stale prior-run reply -> reset null"    "$(jq -r '.reset_minutes' <<<"$q" 2>
 rm -rf "$QSHIM3"
 
 echo
+echo "poll-codex-grace.sh"
+
+# An unprocessed Codex review must be found and emitted by id.
+GSHIM=$(mktemp -d)
+cat > "$GSHIM/gh" <<SH
+#!/usr/bin/env bash
+cat "$FIX/pr-reviews-codex.json"
+SH
+chmod +x "$GSHIM/gh"
+g=$(PATH="$GSHIM:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[555]' INTERVAL=0 \
+      bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null) || true
+is "unprocessed review found -> id 777" "$(jq -r '.codex_review_id' <<<"$g" 2>/dev/null)" 777
+rm -rf "$GSHIM"
+
+# No unprocessed review -> the poll must KEEP WAITING, not emit a fabricated
+# empty id. Without jq -r the empty jq result printed the two-char string '""',
+# which passed [ -n ] and ended the until-loop on round 1 (reproduced live:
+# grace poll returned {"codex_review_id":""} instantly). RED against the -s
+# variant by construction. Needs GNU timeout as the loop-breaker; skipped on
+# BSD/macOS where the suite runs via pre-commit without coreutils.
+if command -v timeout >/dev/null 2>&1; then
+  GSHIM2=$(mktemp -d)
+  cat > "$GSHIM2/gh" <<SH
+#!/usr/bin/env bash
+cat "$FIX/pr-reviews-codex-none.json"
+SH
+  chmod +x "$GSHIM2/gh"
+  g=$(PATH="$GSHIM2:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[555]' INTERVAL=1 \
+        timeout 3 bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null) || true
+  is "no unprocessed review -> no terminal line" "$g" ""
+  rm -rf "$GSHIM2"
+fi
+
+echo
 echo "poll-cr-status.sh"
 
 # A persistent fetch error (state:"error" from cr-commit-state.sh) must become

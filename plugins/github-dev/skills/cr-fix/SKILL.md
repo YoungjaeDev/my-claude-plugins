@@ -323,11 +323,24 @@ if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
     # Without the second term the grace poll drops to 30s and Step 8c
     # fall-through can mark `clean` while a slower Codex review is still
     # in flight. (codex_wait promise violation, Codex P2 iter 6.)
-    pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
-    push_age=$(jq -r '.push_age_seconds // 0' <<<"$pf")
-    pf_remaining=$(( pf_timeout - push_age ))
-    [ "$pf_remaining" -lt 0 ] && pf_remaining=0
-    [ "$gate" = "codex_wait" ] && [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
+    # $pf holds the Step 5 pre-flight JSON, but Step 5 runs ONLY for
+    # CR_SOURCE ∈ {auto,pr-bot}; the bypass path (cli/codex-only) skips it and
+    # leaves $pf unset. pf_remaining is consulted only for gate=codex_wait, so
+    # read $pf under that gate alone — a bare `<<<"$pf"` here aborts the bypass
+    # path under `set -u`. (Codex P2 iter 8: the iter-5 jq -r fix first made
+    # `candidate` genuinely empty on bypass, so this branch is now reachable.)
+    if [ "$gate" = "codex_wait" ]; then
+      # gate=codex_wait is set only in Step 5's auto|pr-bot pre-flight, which
+      # populated $pf — so a bare read is safe here (no `${pf:-{}}` default,
+      # which bash mis-expands to `<value>}` on the set case, breaking the JSON).
+      pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
+      push_age=$(jq -r '.push_age_seconds // 0' <<<"$pf")
+      pf_remaining=$(( pf_timeout - push_age ))
+      [ "$pf_remaining" -lt 0 ] && pf_remaining=0
+      [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
+    else
+      grace_cap="$CODEX_GRACE"
+    fi
     # Bash(run_in_background=true, timeout=grace_cap*1000):
     #   OWNER=... REPO=... PR_NUM=... PROCESSED=... INTERVAL=15 \
     #     bash $SKILL_DIR/scripts/poll-codex-grace.sh

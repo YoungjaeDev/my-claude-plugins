@@ -424,6 +424,38 @@ fb=$(printf '2.9.0\t/a\n2.10.0\t/b\n' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 
 is "fallback sort: 2.10.0 outranks 2.9.0" "$fb" "/b"
 rm -rf "$RS"
 
+# Step 6b grace-cap selection: the bypass path (CR_SOURCE cli/codex-only) skips
+# Step 5 pre-flight, so $pf is UNSET. Reading `<<<"$pf"` unconditionally aborts
+# it under set -u; pf_remaining matters only for gate=codex_wait, so $pf is read
+# only under that gate. RED against the bare read by construction. (Codex P2 iter 8)
+gc_rc=0; gcap=$(bash -euo pipefail -c '
+  gate=bypass; CODEX_GRACE=30
+  if [ "$gate" = "codex_wait" ]; then
+    pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
+    push_age=$(jq -r ".push_age_seconds // 0" <<<"$pf")
+    pf_remaining=$(( pf_timeout - push_age )); [ "$pf_remaining" -lt 0 ] && pf_remaining=0
+    [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
+  else
+    grace_cap="$CODEX_GRACE"
+  fi
+  printf "%s" "$grace_cap"') || gc_rc=$?
+is "grace-cap bypass: unset pf survives errexit" "$gc_rc" 0
+is "grace-cap bypass: falls back to CODEX_GRACE" "$gcap" 30
+# codex_wait path still consults pre-flight remaining when it is the larger budget;
+# $pf is guaranteed set there (Step 5 populated it), read bare — no fragile default.
+gcap2=$(bash -euo pipefail -c '
+  gate=codex_wait; CODEX_GRACE=30; pf="{\"push_age_seconds\":100}"
+  if [ "$gate" = "codex_wait" ]; then
+    pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
+    push_age=$(jq -r ".push_age_seconds // 0" <<<"$pf")
+    pf_remaining=$(( pf_timeout - push_age )); [ "$pf_remaining" -lt 0 ] && pf_remaining=0
+    [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
+  else
+    grace_cap="$CODEX_GRACE"
+  fi
+  printf "%s" "$grace_cap"')
+is "grace-cap codex_wait: pre-flight remaining wins" "$gcap2" 500
+
 echo
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

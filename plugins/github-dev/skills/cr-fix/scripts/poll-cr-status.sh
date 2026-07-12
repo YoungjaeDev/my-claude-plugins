@@ -28,20 +28,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # silently doubling the documented 30s rate-limit detection window.
 start_ts=$(date +%s)
 
-# Pull statuses ONCE per loop iteration; --paginate + pipe form per plugins/github-dev/CLAUDE.md
-# gh / jq invariants. /statuses (plural) preserves the full history so we never miss
-# the early `pending` row that /status (singular, latest-per-context) hides.
+# Pull CR's reported state ONCE per loop iteration. cr-commit-state.sh reads the
+# commit-status API first and falls back to check-runs, because CodeRabbit uses
+# one surface or the other depending on the install. Polling /statuses alone made
+# a check-run repo spin here until TIMEOUT even though the review had finished
+# (issue #105). It normalizes both onto success|failure|pending|none.
 fetch_cr_state() {
-  gh api --paginate "repos/$OWNER/$REPO/commits/$SHA/statuses" 2>/dev/null \
-    | jq -s 'add // []
-             | map(select(.context | test("CodeRabbit"; "i")))
-             | sort_by(.created_at) | reverse
-             | .[0] // {}'
+  bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$SHA" 2>/dev/null || echo '{}'
 }
 
 while true; do
   cr_obj=$(fetch_cr_state)
-  s=$(jq -r '.state // ""' <<<"$cr_obj")
+  # "none" (no CR row on either surface yet) and "pending" both mean "keep waiting";
+  # the EARLY_CHECK_WINDOW rate-limit probe below tests for the empty string, so
+  # normalize both to "" rather than letting "none" slip past it.
+  s=$(jq -r 'if (.state // "none") == "none" or (.state // "") == "pending" then "" else .state end' <<<"$cr_obj")
   desc=$(jq -r '.description // ""' <<<"$cr_obj")
 
   # Free-tier transient: success row whose description is the quota-refill

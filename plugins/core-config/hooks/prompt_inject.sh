@@ -49,14 +49,21 @@ EOF
 # Without this, a globally-installed core-config would tell every repo to read
 # paths that don't exist (or the wrong legacy path). Single-quoted to keep the
 # backticks literal (no command substitution).
+#
+# Each branch tests the exact path it is about to name: the MOC is `-f`-tested,
+# not its parent directory, because a wiki root can exist with only `log.md`
+# (llm-wiki treats either file as a root). Testing `-d .../wiki` would put a
+# nonexistent `index.md` into every prompt.
 PTR=""
-if [ -d .llmwiki/insight ]; then
+if [ -d .llmwiki/insight ] && [ -f .llmwiki/wiki/index.md ]; then
   PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules), then check the wiki MOC `.llmwiki/wiki/index.md` (query-wiki gate). For lore, prefer the dated/sourced page over memory.'
-elif [ -d .llmwiki/wiki ]; then
+elif [ -d .llmwiki/insight ]; then
+  PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules). For lore, prefer the dated/sourced page over memory.'
+elif [ -f .llmwiki/wiki/index.md ]; then
   PTR='Before reasoning (do not guess): check the wiki MOC `.llmwiki/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
-elif [ -d .claude/wiki ]; then
+elif [ -f .claude/wiki/index.md ]; then
   PTR='Before reasoning (do not guess): check the wiki MOC `.claude/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
-elif [ -d .codex/wiki ]; then
+elif [ -f .codex/wiki/index.md ]; then
   PTR='Before reasoning (do not guess): check the wiki MOC `.codex/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
 fi
 # Federation labels: prefix the resolved pointer as [AUTHORITATIVE] and stage a
@@ -67,9 +74,29 @@ if [ -n "$PTR" ] && [ "$FEDERATE" != "0" ]; then
   PTR="[AUTHORITATIVE] $PTR"
   RECALL='[RECALL] mem0 recall is a secondary signal — when it conflicts with the [AUTHORITATIVE] .llmwiki page above, the page wins (mem0 surfacing is handled by mem0 hooks, not called here).'
 fi
+# Council pointer — only when a second-model CLI actually exists on PATH, mirroring
+# the wiki-pointer rule (never name a tool this machine does not have). The roster
+# is emitted, never model names: the CLI name is stable, the model behind it is not.
+# One line, no trigger table — the delegation rules live in CLAUDE.md, which loads
+# once per session; this is only the per-prompt reminder that a second model exists.
+# `type -P` and not `command -v`: the latter also resolves shell functions, aliases
+# and builtins, so an exported `codex()` would announce a CLI that is not on PATH.
+C_CODEX=0; type -P codex >/dev/null 2>&1 && C_CODEX=1
+C_AGY=0;   type -P agy   >/dev/null 2>&1 && C_AGY=1
+COUNCIL=""
+if [ "$C_CODEX" = 1 ] || [ "$C_AGY" = 1 ]; then
+  ROSTER=""
+  [ "$C_CODEX" = 1 ] && ROSTER="codex"
+  [ "$C_AGY" = 1 ] && ROSTER="${ROSTER:+$ROSTER, }agy"
+  COUNCIL="[council] A different model is on PATH ($ROSTER). When something needs real depth, a second pair of eyes, or input you cannot read, delegate to their rescue/review skills instead of deciding alone. Never auto-apply what comes back: present it and stop."
+fi
+
 [ -n "$PTR" ] && BLOCK="$BLOCK"$'\n'"$PTR"
 # Claude-only RECALL line (Codex omits — it has no mem0 layer).
 [ -n "$RECALL" ] && [ "$FMT" != "codex" ] && BLOCK="$BLOCK"$'\n'"$RECALL"
+# Claude-only COUNCIL line. Codex is itself a council member, so pointing it back
+# at codex would be circular — same reasoning as the RECALL omission above.
+[ -n "$COUNCIL" ] && [ "$FMT" != "codex" ] && BLOCK="$BLOCK"$'\n'"$COUNCIL"
 
 if [ "$FMT" = "codex" ]; then
   # JSON-escape: backslash, double-quote, then newline → \n. Block has none of

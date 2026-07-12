@@ -1,10 +1,10 @@
 ---
 id: insight-layer-via-hook
-aliases: [insight-layer, promoted-layer, insight-via-hook, no-rules-promotion]
-last_verified: 2026-06-01
+aliases: [insight-layer, promoted-layer, insight-via-hook, no-rules-promotion, conditional-pointer-rule]
+last_verified: 2026-07-12
 status: active
 volatility: stable
-sources: 2
+sources: 3
 ---
 
 # Insight layer, delivered via prompt-injection hook
@@ -45,6 +45,15 @@ not the insight content itself. This trades Claude's `paths:`-glob auto-load for
 hook-delivered parity across agents — a deliberate, full migration, not a
 straddle.
 
+The pointer is **conditional, and that is the hook's design rule: never name a
+surface this machine does not have.** The insight pointer injects only when a
+knowledge root actually resolves in cwd; core-config 1.10.0 added a second
+instance — a one-line `[council]` delegation pointer injected only when `codex`
+or `agy` resolves on PATH (Claude-side only: Codex is itself a council member,
+so reminding Codex to consult Codex is noise). Two independent pointers
+following the same gate make conditionality the rule for any future injection,
+not a per-pointer accident.
+
 `.claude/rules/` survives only for **mechanical tool-operation rules**
 (e.g. `plugin-versioning.md`) — repo machinery, not wiki lore.
 
@@ -68,6 +77,8 @@ a speculative taxonomy. The no-new-dir default still holds for everything else.
   auto-load path (the original, now-refined promotion argument).
 - `.llmwiki/insight/index.md` — the insight layer's own MOC: promotion criteria,
   frontmatter schema, and the non-append consolidation discipline.
+- PR #107 (merged `47c796c`) — core-config 1.10.0: the conditional `[council]`
+  pointer, second instance of the never-name-an-absent-tool gate.
 
 > Refines: [[neutral-llmwiki-root]]
 > Refines: [[curated-conservative]]

@@ -1,15 +1,15 @@
 ---
 id: worktree-squash-merge-gotchas
-aliases: [enterworktree-basefef-fresh, gh-pr-merge-delete-branch-worktree, exitworktree-ancestry-false-positive, dot-git-is-a-file-in-worktree]
-last_verified: 2026-07-09
+aliases: [enterworktree-basefef-fresh, gh-pr-merge-delete-branch-worktree, exitworktree-ancestry-false-positive, dot-git-is-a-file-in-worktree, stacked-pr-base-delete-close]
+last_verified: 2026-07-12
 status: active
 volatility: volatile
-sources: 2
+sources: 3
 ---
 
 # Worktree lifecycle gotchas
 
-Three git/harness gotchas that surface around worktrees — the first two specifically when a worktree-based implementation branch gets squash-merged, the third whenever a script tries to answer "am I in a git repo?".
+Four git/harness gotchas that surface around worktrees and squash-merges — the first two when a worktree-based implementation branch gets squash-merged, the third whenever a script tries to answer "am I in a git repo?", the fourth when PRs are stacked on each other's branches.
 
 ## 1. `EnterWorktree` branches from `origin/<default-branch>`, not local HEAD
 
@@ -46,9 +46,16 @@ if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = "true" ]; then GIT_I
 
 This matters here because `github-dev` drives implementation work from worktrees, so any diagnostic run under that flow takes the broken branch by default. Related trap in the same neighbourhood: `git config core.hooksPath` outside a repo silently returns the user's *global* value, so guard that lookup on the same flag — but do **not** narrow it to `--local`, since the value that actually applies is the `local > global > system` resolution.
 
+## 4. Squash-merging a base PR with `--delete-branch` auto-CLOSES stacked child PRs
+
+Observed once (2026-07-10): PR #108 was based on PR #106's feature branch. When #106 was squash-merged with `--delete-branch`, GitHub **closed** #108 rather than retargeting its base to `main`. The head branch survives, so recovery is opening a new PR from the same head — but review threads and PR history on the closed one do not carry over.
+
+Recorded as an observation, not a universal mechanism — GitHub's retarget-vs-close behavior may depend on merge method or timing. Until re-observed, treat "stack a PR on an unmerged PR's branch + squash-merge the base with `--delete-branch`" as a combination that can silently drop the child PR.
+
 > See-also: [[skill-engine-layering]] (a different squash-merge-adjacent gotcha: reproducing an engine's internal API in prose drifts across squash boundaries too, though that is a documentation-staleness issue, not a git-ancestry one)
 
 ## Sources
 
 1. **PR #89** (`ppt-yeong-style` completion-gate + document-structure round) — gotchas 1 and 2 hit back-to-back during worktree setup and post-merge cleanup; resolved via the content-diff-then-reset/discard pattern described above.
 2. **PR #104** (`project-init` wiring skill) — gotcha 3, surfaced by a CodeRabbit CLI finding and confirmed by running the detector inside a real `git worktree add`: `initialized=false`, `commits=0`, and all four `git check-ignore` probes false. Fixed with `git rev-parse --is-inside-work-tree`.
+3. **Session 88102e17 (2026-07-10)** — gotcha 4: stacked PR #108 (base = #106's branch) auto-closed by GitHub when #106 squash-merged with `--delete-branch`; confirmed by `gh pr list` showing #108 CLOSED with its head branch intact.

@@ -8,11 +8,18 @@ Development workflow essentials: Python formatting and notifications.
 |------|---------|-------------|
 | `auto-format-python.py` | Post Write/Edit | Auto-format Python with ruff |
 | `notify_osc.py` | Stop/Notification | Terminal OSC 777 notifications |
-| `prompt_inject.sh` | UserPromptSubmit | Per-prompt compact behavioral block — English rules with a Korean-output mandate + `.llmwiki/insight/`·wiki pointer. Federation labels off by default. Shared Claude + Codex. |
+| `prompt_inject.sh` | UserPromptSubmit | Per-prompt compact behavioral block — English rules with a Korean-output mandate + `.llmwiki/insight/`·wiki pointer + `[council]` delegation reminder. Federation labels off by default. Shared Claude + Codex. |
 
 The single `UserPromptSubmit` hook:
 
 - `prompt_inject.sh` fires **every** prompt with a fixed ~6-line block: the rules are written in **English**, but the first line mandates a **Korean final reply**, followed by a few core behavioral one-liners (surgical-diff, AskUserQuestion-first, no AI attribution, no emoji, verify-before-report) and a pointer to consult `.llmwiki/insight/` (promoted cross-agent rules) then the wiki MOC *before* reasoning. It does **not** inline insight/wiki content — only the instruction to read it. mem0 federation labels are **off by default** (the pointer is plain); `CORE_CONFIG_FEDERATE_MEM0=1` restores them — the pointer becomes `[AUTHORITATIVE]` (dated/sourced `.llmwiki/` wins on conflict) plus a `[RECALL]` line placing mem0 recall as the secondary layer, **labels only, no mem0 call/read** (the `codex` branch omits `[RECALL]`; Codex has no mem0 layer). The English wording keeps the model from drifting into an English block of its own while still pinning the reply language to Korean, and the pointer is the only reminder either agent gets to check the wiki/insight layer. Zero deps (no `jq`/`python`) — JSON encoding is bash parameter expansion.
+
+Both extra pointers are conditional on what the machine actually has, mirroring the same rule: never name a path or a tool that is not there.
+
+- **Wiki pointer** — emitted only when a knowledge root resolves in cwd (`.llmwiki` → legacy `.claude` → `.codex`). core-config installs globally, so a repo with no wiki must not be told to read one. Every branch `-f`-tests the exact file it names, not its parent directory — a wiki root can exist carrying only `log.md`, so `-d .../wiki` would inject a nonexistent `index.md` into every prompt. A repo carrying `.llmwiki/insight/` alone gets an insight-only pointer; a wiki root with no MOC gets no wiki pointer at all.
+- **`[council]` line** — emitted only when `codex` or `agy` is on `PATH` (`type -P`, not `command -v` — the latter also resolves an exported shell function and would announce a CLI that is not installed), and it names the CLI roster it found, never a model. It is one sentence: when something needs real depth, a second pair of eyes, or input the model cannot read, delegate rather than decide alone, and never auto-apply what comes back. The invocation names and the full post-delegation rules live in `~/.claude/CLAUDE.md`, which loads once per session and costs nothing per turn — this line is only the per-prompt reminder that a different model exists. It is Claude-only: Codex is itself a council member, so pointing it back at `codex` would be circular (same reasoning as the `[RECALL]` omission).
+
+Keep the injected text free of literal `"` and `\` — the `codex` JSON branch encodes it with bash parameter expansion, not `jq`.
 
 Output is quiet-friendly and becomes `additionalContext`. Disable it by removing its entry from the `UserPromptSubmit` block in `plugin.json`.
 

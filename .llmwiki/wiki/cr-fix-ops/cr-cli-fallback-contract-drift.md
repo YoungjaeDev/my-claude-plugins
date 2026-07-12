@@ -1,10 +1,10 @@
 ---
 id: cr-cli-fallback-contract-drift
-aliases: [coderabbit-cli-0-6-schema, cr-fix-two-dot-diff, cr-cli-parser-crash, suggestions-are-strings-not-objects]
-last_verified: 2026-07-10
+aliases: [coderabbit-cli-0-6-schema, cr-fix-two-dot-diff, cr-cli-parser-crash, suggestions-are-strings-not-objects, cr-check-run-surface]
+last_verified: 2026-07-12
 status: active
 volatility: volatile
-sources: 4
+sources: 5
 ---
 
 # cr-fix's rate-limit fallback drifted away from the tools it falls back to
@@ -64,6 +64,16 @@ Step 7c's `AskUserQuestion` fallback then offers the hard-coded "Wait ~15 min" d
 
 Every one of these lives on a path taken only when the primary path fails. The rate-limit fallback has no test that runs it against a current CLI, and the small-diff heuristic only misfires when the base moved *and* the diff is near a threshold. The signal that caught all three was running the fallback for real, once, and reading its output instead of its exit code.
 
+## Resolution — cr-fix 2.7.1
+
+All of the above is fixed as of cr-fix 2.7.1 (merged `75f7c9d`); this page stays as the drift record and the lesson above stands.
+
+- Parser rewritten against the measured 0.6.5 five-key schema: `suggestions` handled as patch **strings**, `comment` treated as absent, `line` recovered from `codegenInstructions` prose where present.
+- Step 5b sizes the diff with three-dot (merge-base), matching GitHub's own PR diff.
+- `sniff-cr-rate-limit.sh` extracts the "Next review available in: N minutes" refill phrasing — and counts it in the hit gate itself (the initial 2.7.1 cut had it only in the minutes regex, so that phrasing alone still yielded hits=0; caught in merge review).
+- New capability the drift analysis exposed: CodeRabbit reports on **two surfaces** (commit-status OR check-run, install-dependent). `cr-commit-state.sh` now reads both — statuses preferred; among check-runs a queued run (null `started_at`) sorts **newest**, or a stale completed success masks the queued re-review (also caught in merge review).
+- Root cause addressed, not just the instances: a 21-test offline suite with recorded 0.5.x/0.6.5/check-run fixtures now runs the fallback path in CI and pre-commit — the "no test runs it against a current CLI" gap is closed.
+
 > See-also: [[cr-rate-limit-progressive-refill]]
 > See-also: [[cr-cli-false-positive-generated-files]]
 > Evidence: plugins/github-dev/skills/cr-fix/scripts/parse-cr-cli-jsonl.sh
@@ -77,3 +87,4 @@ Every one of these lives on a path taken only when the primary path fails. The r
 2. **CodeRabbit CLI 0.6.1 JSONL** (`/tmp/cr-cli-review-104-iter1.jsonl`) — 13 lines: `review_context`, `status` x6, `heartbeat` x2, `finding` x3, `complete`. `finding` keys: `codegenInstructions`, `fileName`, `severity`, `suggestions`, `type`.
 3. **`git diff` two-dot vs three-dot semantics** — verified against `gh pr view 104 --json changedFiles,additions,deletions`, which agrees with three-dot and disagrees with two-dot once the base advanced.
 4. **CodeRabbit CLI 0.6.5 run on PR #107** (`/tmp/cr-cli-review-107-iter3.jsonl`, 12 lines, 3 findings) — `bash parse-cr-cli-jsonl.sh` exits 5 with `jq: error (at <stdin>:3): Cannot index string with string "line"`; the two findings carrying `suggestions: []` project fine, the third carries a patch string. `finding` key union confirmed as five keys, `comment` present in zero of three. `cr-cli-spawn.sh` still reports `{"exit":0,"emitted_complete":true}` — the CLI succeeded; only the parser died.
+5. **PR #109 (merged `75f7c9d`, cr-fix 2.7.1)** — the resolution: parser/diff/sniffer fixes, dual-surface `cr-commit-state.sh`, 21-test offline suite (incl. the two merge-review blocker fixes: refill phrasing in the hit gate, queued-run sort).

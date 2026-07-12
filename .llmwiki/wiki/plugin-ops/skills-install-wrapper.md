@@ -34,6 +34,11 @@ plugin-grouped selector and Hermes profile targeting.
   dir the retired `codex-bridge` wrote to — NOT `~/.codex/skills` (which holds
   only `.system`). Symlink/copy, conflicts, remove, update, and the lockfile are
   all owned by `npx skills`, not reimplemented.
+- **Layout divergence vs the plugin-adapter route**: this route installs flat
+  per-skill dirs under `$HERMES_HOME/skills/<skill>/`, while
+  `hermes plugins install` implies `$HERMES_HOME/plugins/<name>/skills/`. Skill
+  bodies whose `SKILL_DIR` fallback only covers one route miss the other — see
+  the layout-divergence caveat in [[hermes-plugin-adapter]].
 
 ## Hermes profile = HERMES_HOME bridge
 

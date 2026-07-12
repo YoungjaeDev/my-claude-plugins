@@ -1,0 +1,5 @@
+{"type":"review_context","reviewType":"committed","baseBranch":"main"}
+{"type":"finding","severity":"major","fileName":"src/a.py","comment":"_🎯 Functional Correctness_ | _🟠 Major_\n\n**boom**","codegenInstructions":"fix it","suggestions":[{"line":42,"patch":"..."}]}
+{"type":"finding","severity":"minor","fileName":"src/b.py","comment":"_📝 Nitpick_ | _🟡 Minor_\n\nstyle","codegenInstructions":"tidy","suggestions":[]}
+{"type":"complete"}
+NOT JSON AT ALL

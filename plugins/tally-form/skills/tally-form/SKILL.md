@@ -25,20 +25,31 @@ allowed-tools: Bash(uv run *) Bash(curl *) Read AskUserQuestion
 
 ## 실행
 
-`uv run <abs>/scripts/build_tally_form.py` — `<abs>` 는 Claude Code 에서 `${CLAUDE_PLUGIN_ROOT}/skills/tally-form`(설치·개발 어느 cwd 에서도 동작), Codex 에서 `~/.agents/skills/tally-form`(sync 후). Codex 0.135 는 `CLAUDE_PLUGIN_ROOT` 를 export 하지 않으므로 런타임별 절대 경로를 쓴다(repo 루트 기준 상대 경로는 foreign cwd 에서 깨짐). Hermes 는 skill-level install 이면 `$HERMES_HOME/skills/tally-form`(unverified). stdlib-only 라 `uv run` 이 에페메랄 환경으로 그대로 실행(별도 `python` 호출 불필요).
+`uv run <script>` — Claude Code 는 `${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py`(설치·개발 어느 cwd 에서도 동작). Codex 0.135 는 `CLAUDE_PLUGIN_ROOT` 를 export 하지 않고 플러그인을 캐시 트리(`~/.codex/plugins/cache/<marketplace>/tally-form/<version>/`)로 로드하므로 — 별도 `~/.agents/skills/tally-form` 설치는 만들어지지 않는다 — 아래 resolver 블록으로 실제 스크립트 경로를 먼저 찾은 뒤 `uv run "$TALLY_SCRIPT"` 한다(최종 실행은 여전히 `uv run`). Hermes 는 plugin/skill-level install 경로를 additive 로 탐색(unverified). stdlib-only 라 `uv run` 이 에페메랄 환경으로 그대로 실행.
 
 ```bash
-# 미리보기 (API 호출 없음 — 블록 수 검증)
-uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --md <checklist.md> --dry-run
+# Claude Code — CLAUDE_PLUGIN_ROOT 설정됨, 바로 실행 (cwd 무관)
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --md <checklist.md> --dry-run   # 미리보기(API 호출 없음)
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --md <checklist.md>              # 신규 생성
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --md <checklist.md> --update <formId>   # 갱신·게시(idempotent)
 
-# 신규 생성
-uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --md <checklist.md>
-
-# 기존 폼 갱신·게시 (공유 URL 유지, idempotent)
-uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --md <checklist.md> --update <formId>
-
-# Codex (sync 후) — CLAUDE_PLUGIN_ROOT 미노출이라 절대 경로 사용
-uv run ~/.agents/skills/tally-form/scripts/build_tally_form.py --md <checklist.md> --dry-run
+# Codex / CLAUDE_PLUGIN_ROOT 미설정 — 실제 플러그인 캐시에서 스크립트 경로 resolve.
+# 각 branch 는 커밋 전 대상 존재를 확인하고, 캐시는 버전 내림차순으로 "완결된" 첫 버전을 고른다.
+# HERMES_HOME 탐색은 additive/unverified. 최종 실행은 uv run 그대로.
+S="skills/tally-form/scripts/build_tally_form.py"
+TALLY_SCRIPT=""
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "$CLAUDE_PLUGIN_ROOT/$S" ] && TALLY_SCRIPT="$CLAUDE_PLUGIN_ROOT/$S"
+[ -z "$TALLY_SCRIPT" ] && [ -f "plugins/tally-form/$S" ] && TALLY_SCRIPT="plugins/tally-form/$S"
+if [ -z "$TALLY_SCRIPT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  for d in $(ls -1d "$cache_root"/*/tally-form/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##'); do
+    [ -f "$d/$S" ] && { TALLY_SCRIPT="$d/$S"; break; }
+  done
+fi
+[ -z "$TALLY_SCRIPT" ] && [ -n "${HERMES_HOME:-}" ] && [ -f "$HERMES_HOME/plugins/tally-form/$S" ] && TALLY_SCRIPT="$HERMES_HOME/plugins/tally-form/$S"   # unverified
+[ -z "$TALLY_SCRIPT" ] && [ -n "${HERMES_HOME:-}" ] && [ -f "$HERMES_HOME/$S" ] && TALLY_SCRIPT="$HERMES_HOME/$S"                                          # unverified (skill-level install)
+[ -n "$TALLY_SCRIPT" ] || { echo "tally-form: build script not resolved" >&2; exit 1; }
+uv run "$TALLY_SCRIPT" --md <checklist.md> --dry-run
 ```
 
 - `--theme neutral`(기본) | `hermes` | `none`(Tally 기본 테마) | `<styles.json>`(커스텀 `settings.styles`).

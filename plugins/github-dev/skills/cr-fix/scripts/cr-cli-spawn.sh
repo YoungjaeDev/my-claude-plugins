@@ -21,7 +21,11 @@ coderabbit review --agent --type committed --base "$BASE" --config "${CONFIG_FIL
 rc=$?
 set -e
 
-emitted_complete=$(grep -c '"type":"complete"' "$OUT" 2>/dev/null || echo 0)
+# grep -c prints its count (0 on no match) AND exits 1 when the count is 0. The
+# old `... || echo 0` then appended a second 0, yielding `0\n0` — a multi-line
+# value that made `[ -gt ]` below error out. Rely on grep's own printed count and
+# normalize any non-zero exit (no match, or missing file) to a clean single 0.
+emitted_complete=$(grep -c '"type":"complete"' "$OUT" 2>/dev/null) || emitted_complete=0
 [ "$emitted_complete" -gt 0 ] && ec=true || ec=false
 
 printf '{"jsonl":"%s","exit":%d,"emitted_complete":%s}\n' "$OUT" "$rc" "$ec"

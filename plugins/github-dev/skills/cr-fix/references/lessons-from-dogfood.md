@@ -55,7 +55,7 @@ if key in deferred_findings AND iters_since(key) <= 3:
 **Failure mode**: Two distinct user intents conflated under one flag — "stop after N iters no matter what" vs "stop when plateau detected within N iters".
 
 **Recommendation**: Split into:
-- `--max-iter <N>` — hard stop, default 5 (matches Pro 5-reviews/hour CR quota — see Lesson 5).
+- `--max-iter <N>` — hard stop, default 5 (a conservative CR quota budget — see Lesson 5 and `references/rate-limit-fallback.md`).
 - `--plateau-iter <N>` — soft stop, default 3 iters of plateau (Lesson 1 condition).
 
 Hard cap always wins. If neither triggers, run continues.
@@ -80,10 +80,10 @@ Hard cap always wins. If neither triggers, run continues.
 - CR uses **progressive refill** (reviews trickle back, not a 60-minute reset).
 - Wait time depends on recent activity per developer.
 
-**Failure mode**: cr-fix's multi-iter loop is structurally a **burst-push pattern** (8 push in ~10 min on PR #33). With Pro = 5 reviews/hour, the loop's iter cap of 5 happens to align with the quota — possibly a Karpathy-style intentional design coincidence in v1.
+**Failure mode**: cr-fix's multi-iter loop is structurally a **burst-push pattern** (8 push in ~10 min on PR #33). The measured tier is Pro+ (10 PR-reviews/hr on a rolling window) with Fair-Usage adaptive decay that throttles heavy 7-day usage toward ~1/hr, so the ceiling that actually bites is the decayed rate, not the nominal 10/hr; the iter cap of 5 sits conservatively under it.
 
 **Recommendation**:
-- Treat `--max-iter` as a **quota budget**, not a retry cap. Default 5 = matches CR Pro 5-rev/hour.
+- Treat `--max-iter` as a **quota budget**, not a retry cap. Default 5 is conservative under Pro+ (10/hr rolling) with Fair-Usage adaptive decay — full rationale in `references/rate-limit-fallback.md`.
 - Add `--push-spacing <sec>` (default `0`) to enforce minimum interval between consecutive pushes, throttling burst patterns. CR Pro+/Enterprise users can keep `0`.
 - pre-flight description should distinguish "rate-limited (progressive refill in progress)" from "rate-limited (hard cap)" — currently both produce identical `gate=rate_limited`.
 

@@ -24,8 +24,13 @@ blocking=$(gh pr checks "$PR_NUM" --json name,state \
 
 base=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
 
-http=$(gh api "repos/$OWNER/$REPO/branches/$base/protection" --silent -i 2>/dev/null \
-  | head -1 | awk '{print $2}' || echo 404)
+# An unprotected base returns 404: gh api exits non-zero AND its `-i` status line
+# prints `404`. Piping straight into `... || echo 404` under `set -o pipefail`
+# then emitted BOTH (`404\n404`), which --argjson rejects as invalid JSON and the
+# whole gate died silently. Capture the status line in one step (so pipefail can't
+# double it), then parse — a single clean value for both 200 and 404.
+proto_line=$(gh api "repos/$OWNER/$REPO/branches/$base/protection" --silent -i 2>/dev/null | head -1 || true)
+http=$(awk '{print $2}' <<<"$proto_line")
 http="${http:-404}"
 
 jq -nc \

@@ -12,6 +12,9 @@ cursor=""
 while :; do
   args=(-F owner="$OWNER" -F repo="$REPO" -F pr="$PR_NUM")
   [ -n "$cursor" ] && args+=(-F cursor="$cursor")
+  # TEST SEAM: CR_THREADS_RESPONSE_FILE replaces the GraphQL call with a captured
+  # response so the null-repository detector is verifiable without network.
+  if [ -n "${CR_THREADS_RESPONSE_FILE:-}" ]; then response=$(cat "$CR_THREADS_RESPONSE_FILE"); else
   response=$(gh api graphql "${args[@]}" -f query='query($owner:String!, $repo:String!, $pr:Int!, $cursor:String) {
     repository(owner:$owner, name:$repo) {
       pullRequest(number:$pr) {
@@ -28,8 +31,15 @@ while :; do
       }
     }
   }') || { echo "error: GraphQL request failed" >&2; exit 1; }
+  fi
 
-  if jq -e '.errors // (.data.repository // empty | not)' <<<"$response" >/dev/null 2>&1; then
+  # A healthy page has a non-null repository and no top-level errors. Guard the
+  # SUCCESS condition and fail on its negation, so a null repository (or any
+  # malformed response) lands here rather than exiting 4 unmatched and letting
+  # the loop project an empty array — a false "clean" convergence.
+  # `null // empty | not` produced empty (exit 4), which the old `if jq -e` read
+  # as "no error" and skipped this branch. See .llmwiki jq-capture-yields-empty.
+  if ! jq -e '.data.repository != null and (.errors | not)' <<<"$response" >/dev/null 2>&1; then
     echo "GraphQL fetch returned errors or null repository:" >&2
     jq -r '.errors[]?.message // "no errors field"' <<<"$response" >&2
     exit 1

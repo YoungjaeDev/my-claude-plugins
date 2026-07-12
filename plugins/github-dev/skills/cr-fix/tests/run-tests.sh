@@ -79,6 +79,162 @@ is "status description preserved"     "$(jq -r '.description' <<<"$s")" "Review 
 s=$(state statuses-empty.json checkruns-empty.json)
 is "neither surface -> none"          "$(jq -r '.state' <<<"$s")" none
 
+# Fetch failure must be its own state, not masked as "none" (== "no CR row").
+# __FAIL__ sentinel simulates auth/network/rate-limit. (issue #110 step 4)
+s=$(CR_STATE_STATUSES_FILE=__FAIL__ bash "$SCRIPTS/cr-commit-state.sh" o r sha 2>/dev/null)
+is "statuses fetch failure -> error"  "$(jq -r '.state' <<<"$s")" error
+is "statuses fetch failure -> channel status" "$(jq -r '.channel' <<<"$s")" status
+s=$(CR_STATE_STATUSES_FILE="$FIX/statuses-empty.json" CR_STATE_CHECKRUNS_FILE=__FAIL__ \
+      bash "$SCRIPTS/cr-commit-state.sh" o r sha 2>/dev/null)
+is "checkruns fetch failure -> error" "$(jq -r '.state' <<<"$s")" error
+is "checkruns fetch failure -> channel check_run" "$(jq -r '.channel' <<<"$s")" check_run
+
+# A completed check-run reports completion via completed_at; started_at is older
+# and made CR_SKIP_GRACE misfire. created_at must prefer completed_at. (step 4)
+s=$(state statuses-empty.json checkruns-cr-completed-at.json)
+is "check_run created_at prefers completed_at" "$(jq -r '.created_at' <<<"$s")" "2026-07-10T02:47:00Z"
+
+echo
+echo "fetch-cr-threads.sh"
+
+# A null repository (errors null AND repository null) exited the old detector 4,
+# unmatched, so the loop projected [] — a false clean convergence. It must fail
+# instead. CR_THREADS_RESPONSE_FILE replaces the GraphQL call. (issue #110 step 1)
+out=$(CR_THREADS_RESPONSE_FILE="$FIX/gql-null-repository.json" \
+        bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null); rc=$?
+is "null repository -> non-zero exit"  "$([ "$rc" -ne 0 ] && echo yes || echo no)" yes
+is "null repository -> emits no []"    "$out" ""
+out=$(CR_THREADS_RESPONSE_FILE="$FIX/gql-healthy-empty.json" \
+        bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null); rc=$?
+is "healthy empty -> exit 0"           "$rc" 0
+is "healthy empty -> []"               "$out" "[]"
+
+echo
+echo "auto-merge-gate.sh"
+
+# Unprotected base returns 404: the old pipe emitted "404\n404", which --argjson
+# rejected and killed the whole gate. It must yield a single clean 404. (step 2)
+SHIMDIR=$(mktemp -d)
+cat > "$SHIMDIR/gh" <<'SH'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "api --paginate"*) echo '[]';;
+  "pr checks") echo '0';;
+  "pr view") echo "main";;
+  "api repos"*) echo "HTTP/2.0 404 Not Found"; exit 1;;
+  *) echo "unknown gh args: $*" >&2; exit 1;;
+esac
+SH
+chmod +x "$SHIMDIR/gh"
+g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
+is "unprotected base -> valid JSON"    "$(jq -e . <<<"$g" >/dev/null 2>&1 && echo yes || echo no)" yes
+is "unprotected base -> protection_http 404" "$(jq -r '.protection_http' <<<"$g" 2>/dev/null)" 404
+rm -rf "$SHIMDIR"
+
+echo
+echo "cr-cli-spawn.sh"
+
+# grep -c on zero matches printed "0" and exited 1; the old `|| echo 0` appended a
+# second 0, so `[ "0\n0" -gt 0 ]` errored. A shimmed coderabbit lets us drive the
+# whole script without the CLI. (issue #110 step 5)
+CRSHIM=$(mktemp -d)
+cat > "$CRSHIM/coderabbit" <<'SH'
+#!/usr/bin/env bash
+printf '{"type":"finding"}\n{"type":"finding"}\n'
+SH
+chmod +x "$CRSHIM/coderabbit"
+so=$(PATH="$CRSHIM:$PATH" BASE=main PR_NUM=990001 ITER=1 bash "$SCRIPTS/cr-cli-spawn.sh" 2>/dev/null)
+se=$(PATH="$CRSHIM:$PATH" BASE=main PR_NUM=990001 ITER=1 bash "$SCRIPTS/cr-cli-spawn.sh" 2>&1 >/dev/null)
+is "0 completes -> marker valid JSON"  "$(jq -e . <<<"$so" >/dev/null 2>&1 && echo yes || echo no)" yes
+is "0 completes -> no integer-expr err" "$(printf '%s' "$se" | grep -c 'integer expression')" 0
+is "0 completes -> emitted_complete false" "$(jq -r '.emitted_complete' <<<"$so")" false
+cat > "$CRSHIM/coderabbit" <<'SH'
+#!/usr/bin/env bash
+printf '{"type":"finding"}\n{"type":"complete"}\n'
+SH
+so=$(PATH="$CRSHIM:$PATH" BASE=main PR_NUM=990002 ITER=1 bash "$SCRIPTS/cr-cli-spawn.sh" 2>/dev/null)
+is "complete present -> emitted_complete true" "$(jq -r '.emitted_complete' <<<"$so")" true
+rm -rf "$CRSHIM" /tmp/cr-cli-review-990001-iter1.jsonl /tmp/cr-cli-review-990002-iter1.jsonl
+
+echo
+echo "query-cr-rate-limit.sh (parse seam)"
+
+# Parse-only, no network: feed captured @coderabbitai reply bodies. (step 9)
+p=$(bash "$SCRIPTS/query-cr-rate-limit.sh" parse < "$FIX/cr-ratelimit-reply-full.txt")
+is "reply full -> remaining"           "$(jq -r '.remaining' <<<"$p")" 3
+is "reply full -> reset_minutes"       "$(jq -r '.reset_minutes' <<<"$p")" 41
+p=$(bash "$SCRIPTS/query-cr-rate-limit.sh" parse < "$FIX/cr-ratelimit-reply-reset-only.txt")
+is "reply reset-only -> remaining null" "$(jq -r '.remaining' <<<"$p")" null
+is "reply reset-only -> reset 12"      "$(jq -r '.reset_minutes' <<<"$p")" 12
+p=$(bash "$SCRIPTS/query-cr-rate-limit.sh" parse < "$FIX/cr-ratelimit-reply-none.txt")
+is "reply no-signal -> remaining null" "$(jq -r '.remaining' <<<"$p")" null
+is "reply no-signal -> reset null"     "$(jq -r '.reset_minutes' <<<"$p")" null
+
+# A transient gh failure mid-poll (secondary rate limit, 502) must not kill the
+# bounded poll via set -e on the bare `reply=$(...)` assignment: the script must
+# survive the round and still emit its terminal JSON line. (review P2)
+QSHIM=$(mktemp -d)
+cat > "$QSHIM/gh" <<'SH'
+#!/usr/bin/env bash
+case "$1" in
+  pr)  exit 0;;   # @coderabbitai post succeeds
+  api) exit 1;;   # comments fetch fails transiently
+  *)   exit 1;;
+esac
+SH
+chmod +x "$QSHIM/gh"
+q=$(PATH="$QSHIM:$PATH" QUERY_CR_POLLS=1 QUERY_CR_SLEEP=0 \
+      bash "$SCRIPTS/query-cr-rate-limit.sh" o r 42 2>/dev/null); qrc=$?
+is "gh failure mid-poll -> exit 0"        "$qrc" 0
+is "gh failure mid-poll -> replied false" "$(jq -r '.replied' <<<"$q" 2>/dev/null)" false
+rm -rf "$QSHIM"
+
+echo
+echo "SKILL.md snippet contracts (mirror SKILL.md prose blocks)"
+
+# Step 2 archive fallback: the EXIT trap archives the live state, so the next run
+# must read codex_processed_reviews from the newest archive or re-process Codex
+# reviews. Mirrors the SKILL.md Step 2 resolution. (issue #110 step 3)
+AF=$(mktemp -d); mkdir -p "$AF/.claude/state/archive"
+echo '{"codex_processed_reviews":[111,222]}' > "$AF/.claude/state/archive/cr-fix-42-20260101-000000.json"
+echo '{"codex_processed_reviews":[333]}'     > "$AF/.claude/state/archive/cr-fix-42-20260102-000000.json"
+touch -d "2026-01-01T00:00:00" "$AF/.claude/state/archive/cr-fix-42-20260101-000000.json"
+touch -d "2026-01-02T00:00:00" "$AF/.claude/state/archive/cr-fix-42-20260102-000000.json"
+af_got=$(cd "$AF" && PR_NUM=42
+  PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
+  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1)
+  PRIOR_PROCESSED='[]'
+  [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ] && PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' "$PRIOR_STATE")
+  printf '%s' "$PRIOR_PROCESSED")
+is "archive fallback reads newest archive" "$af_got" "[333]"
+rm -rf "$AF"
+
+# Step 1 SKILL_DIR resolver: CLAUDE_PLUGIN_ROOT wins, and the Codex cache is the
+# fallback outside the source tree. Mirrors the SKILL.md Step 1 resolver. (step 7)
+RS=$(mktemp -d)
+mkdir -p "$RS/pluginroot/skills/cr-fix" "$RS/cache/marketplace/github-dev/2.8.0/skills/cr-fix"
+cat > "$RS/resolver.sh" <<'SH'
+CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+if sort -V </dev/null >/dev/null 2>&1; then
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null | sort -V | tail -1)
+else
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null | sort | tail -1)
+fi
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
+elif [ -d "plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="plugins/github-dev/skills/cr-fix"
+elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then SKILL_DIR="$CODEX_CAND/skills/cr-fix"
+elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
+elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then SKILL_DIR="$HERMES_HOME/skills/cr-fix"
+else SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"; fi
+printf '%s' "$SKILL_DIR"
+SH
+# From a non-source-tree cwd so the source-tree branch cannot win.
+got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="$RS/pluginroot" CODEX_PLUGIN_CACHE="$RS/cache" HERMES_HOME="" bash resolver.sh)
+is "resolver: CLAUDE_PLUGIN_ROOT wins" "$got" "$RS/pluginroot/skills/cr-fix"
+got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache" HERMES_HOME="" bash resolver.sh)
+is "resolver: Codex cache fallback"    "$got" "$RS/cache/marketplace/github-dev/2.8.0/skills/cr-fix"
+rm -rf "$RS"
+
 echo
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

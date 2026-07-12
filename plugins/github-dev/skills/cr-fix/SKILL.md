@@ -55,10 +55,28 @@ Default behavior is unchanged for users who don't pass `--cr-source`. Polling in
 ## Step 1: Parse arguments
 
 ```bash
-if [ -d "plugins/github-dev/skills/cr-fix" ]; then
+# Codex 0.135 exports no CLAUDE_PLUGIN_ROOT, so fall back to discovering the
+# cached plugin dir. sort -V (GNU) orders X.Y.Z properly; BSD/macOS sort lacks
+# -V, so degrade to lexicographic.
+CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+if sort -V </dev/null >/dev/null 2>&1; then
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null | sort -V | tail -1)
+else
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null | sort | tail -1)
+fi
+
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then
+  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
+elif [ -d "plugins/github-dev/skills/cr-fix" ]; then
   SKILL_DIR="plugins/github-dev/skills/cr-fix"
+elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then
+  SKILL_DIR="$CODEX_CAND/skills/cr-fix"
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then
   SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
+elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then
+  # unverified flat Hermes layout (no live-Hermes confirmation yet) — additive
+  # branch guarded by -d, never rewrites the plugin-layout branch above
+  SKILL_DIR="$HERMES_HOME/skills/cr-fix"
 else
   SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"
 fi
@@ -68,7 +86,7 @@ eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
 
 Sets: `SKILL_DIR, MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, MINOR_STOP, GENERALIZE, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
 
-`SKILL_DIR` resolves to the source-tree plugin path when available, then to the active Hermes profile install (`$HERMES_HOME/plugins/github-dev/...`), then to the default `~/.hermes/plugins/github-dev/...` install. All `scripts/` and `references/` paths below resolve relative to this.
+`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex 0.135 cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`), the active Hermes profile install (`$HERMES_HOME/plugins/github-dev/...` then the flat `$HERMES_HOME/skills/cr-fix` layout), then the default `~/.hermes/plugins/github-dev/...` install. Without the `${CLAUDE_PLUGIN_ROOT}` and Codex-cache branches, an invocation outside the source tree resolved to a non-existent Hermes path and `parse-args.sh` was unreachable. All `scripts/` and `references/` paths below resolve relative to this.
 
 ## Step 2: Resolve repo / PR / START_SHA + pre-flight setup
 
@@ -98,9 +116,16 @@ Abort if `PR_NUM` empty: `No open PR for current branch — push first and open 
 ```bash
 mkdir -p .claude/state/archive
 PRIOR_PROCESSED='[]'
-if [ -f ".claude/state/cr-fix-${PR_NUM}.json" ]; then
-  PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' ".claude/state/cr-fix-${PR_NUM}.json" 2>/dev/null || echo '[]')
-  mv ".claude/state/cr-fix-${PR_NUM}.json" ".claude/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
+# The Step 16 EXIT trap always archives the live state file, so on the NEXT run
+# the live path is usually absent — fall back to the newest archive, or Codex
+# reviews already handled get re-processed. Mirrors post-merge Step 1.5.
+PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
+[ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1)
+if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
+  PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null || echo '[]')
+  # Only the live file is archived; an already-archived copy stays put.
+  [ "$PRIOR_STATE" = ".claude/state/cr-fix-${PR_NUM}.json" ] && \
+    mv "$PRIOR_STATE" ".claude/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
 fi
 STATE_FILE=".claude/state/cr-fix-${PR_NUM}.json"
 jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --arg src "$CR_SOURCE" \
@@ -312,6 +337,18 @@ reset=$(jq -r '.reset_minutes_estimate // empty' <<<"$rl")
 channel=$(jq -r '.channel // empty' <<<"$rl")
 ```
 
+**Active query fallback (ambiguous passive sniff only).** When the passive sniff confirmed a rate-limit but extracted no reset estimate (`reset` empty), ask CodeRabbit directly instead of guessing 15 min. The query posts one `@coderabbitai rate limit` comment and polls for the reply, so it is wrapped in background + `Monitor` (it sleeps between polls); skip it entirely when the passive sniff already produced a `reset`.
+
+```bash
+if [ -n "$rl" ] && [ -z "$reset" ]; then
+  # Bash(run_in_background=true, timeout=180000):
+  #   bash $SKILL_DIR/scripts/query-cr-rate-limit.sh "$OWNER" "$REPO" "$PR_NUM"
+  # Monitor returns one JSON line: {remaining, reset_minutes, replied, body_excerpt}
+  #   aq=<that line>
+  #   [ "$(jq -r '.replied' <<<"$aq")" = true ] && reset=$(jq -r '.reset_minutes // empty' <<<"$aq")
+fi
+```
+
 ### 7c: Decide fallback per `references/rate-limit-fallback.md`
 
 ```text
@@ -438,7 +475,7 @@ For each non-skip finding, in severity order (CR/CLI CRITICAL → HIGH → MAJOR
    **`over_engineering=yes` overrides `fix_size`**: a suggestion that only adds speculative abstraction / unrequested configurability is skipped even when the change is `small-safe`. cr-fix refuses *added* complexity; *removing* existing over-engineering is `ponytail-review`'s job (optional, when installed).
 
 6. **Apply / defer / skip**:
-   - **apply** → Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
+   - **apply** → **Stale-line guard**: before editing, if `$path` already appears in `$TRACK_FILE` from an earlier finding this cycle, re-Read the target region (offset `max(1, line-20)`, limit `40`) first — an earlier edit may have shifted the line numbers this finding was anchored to. Then Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
      - **9c.6 — Bounded same-file generalization** — after the flagged-line fix lands, when `GENERALIZE=true` AND `is_real=="real"` AND `confidence=="high"` AND the finding is a *mechanically grep-able* pattern (a literal/regex-matchable construct, not a judgement call), grep the **same file** (or, when the finding is scoped to one symbol, that symbol's body only) for sibling occurrences of the same pattern and apply the identical fix in the **same commit**. **Never cross-file** — cross-file or speculative matches stay deferred per the existing matrix. Record the extra edits in the log entry's `generalized_to: [<line>...]` field (audit-only). Do NOT re-increment `applied_this_cycle` / `auto_judge_apply` — the finding still counts as 1; only the extra lines are logged. Full scope + cross-file hard-exclusion + surgical-diff trade-off: `references/autonomous-judgment.md` ("Bounded same-file generalization").
    - **defer** → `deferred_this_cycle=$((deferred_this_cycle+1))`; `auto_judge_defer=$((auto_judge_defer+1))`; log judgment.
    - **High-severity accumulator (Step 13 soft-stop signal)** — for any `apply` or `defer` whose `severity_reassess=="high"`, `high_sev_this_cycle=$((high_sev_this_cycle+1))`. This feeds the Step 13 `minor_floor` soft-stop: a cycle that applied only low-severity fixes and deferred nothing can stop early.

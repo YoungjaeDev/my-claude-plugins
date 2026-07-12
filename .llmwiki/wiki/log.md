@@ -6,6 +6,15 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-12 — post-merge #109: fallback-contract drift resolved by cr-fix 2.7.1 + offline test suite (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `75f7c9d` — fix(github-dev): cr-fix 2.7.1 — make the fallback and detection paths work (closes #105). Config integration skipped: the check-run/commit-status dual-surface contract is housed in the PR's own cr-fix references (SSOT) — no CLAUDE.md/rules duplication.
+
+- `cr-fix-ops/cr-cli-fallback-contract-drift.md`: new `## Resolution — cr-fix 2.7.1` section — all three measured drifts fixed (parser rewritten for the 0.6.5 five-key schema incl. string `suggestions` + prose-parsed `line`; Step 5b two-dot → three-dot merge-base diff; sniffer extracts "Next review available in" minutes AND counts that phrasing as a hit), plus the previously-unread check-run surface (`cr-commit-state.sh`: statuses preferred, queued run with null `started_at` sorts newest so a stale success can't mask a queued re-review), plus the root cause addressed (21-test offline suite + fixtures now run the fallback path in CI/pre-commit). Body stays as the drift record; lesson section unchanged. last_verified 2026-07-10 → 2026-07-12, sources 4 → 5 (+PR #109 merge).
+- `index.md`: cr-fix-ops drift hook line gains "(fixed in 2.7.1 — offline suite now guards the fallback)".
+
+No insight graduation — plugin-scoped fix record; the general lesson ("fallback paths run only when nobody is watching") already lives in this page.
+
 ## 2026-07-12 — post-merge #107: conditional-pointer rule generalizes (2nd instance: [council]) (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `47c796c` — feat(core-config): 1.10.0 — conditional [council] pointer + English global guidance. The English-canonical CLAUDE.md.global decision + cp-not-symlink sync contract are fully housed in that file's own preamble (rule AND rationale) — not duplicated into the wiki per the routing/no-double-recording principle.

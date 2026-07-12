@@ -4,9 +4,10 @@
 #
 # ACTIVE rate-limit query — the companion to the passive sniff-cr-rate-limit.sh.
 # Posts "@coderabbitai rate limit" on the PR, then polls issue comments for a
-# CodeRabbit reply newer than the post time and parses the remaining-review count
-# + reset window out of the reply body. SKILL.md Step 7b calls this only when the
-# passive sniff is ambiguous (a rate-limit signal with no reset estimate).
+# CodeRabbit reply newer than the SERVER-recorded time of that post and parses
+# the remaining-review count + reset window out of the reply body. SKILL.md
+# Step 7b calls this only when the passive sniff is ambiguous (a rate-limit
+# signal with no reset estimate).
 #
 # Emits one JSON line:
 #   {"remaining":N|null,"reset_minutes":N|null,"replied":bool,"body_excerpt":"..."}
@@ -35,7 +36,6 @@ if [ "${1:-}" = "parse" ]; then
 fi
 
 OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr required}"
-POST_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 if ! gh pr comment "$PR_NUM" --body "@coderabbitai rate limit" >/dev/null 2>&1; then
   printf '{"remaining":null,"reset_minutes":null,"replied":false,"body_excerpt":"comment post failed"}\n'
@@ -47,14 +47,23 @@ POLLS="${QUERY_CR_POLLS:-6}"; SLEEP="${QUERY_CR_SLEEP:-20}"
 reply=""
 for _ in $(seq 1 "$POLLS"); do
   sleep "$SLEEP"
+  # Anchor on the SERVER-side created_at of our own "@coderabbitai rate limit"
+  # post (latest one) rather than a local timestamp — a runner clock ahead of
+  # GitHub would filter the genuine reply out forever. Post not visible yet ->
+  # no reply can exist either -> empty this round.
+  # `.user.login // ""`: ghost/deleted accounts carry a null user, and jq's
+  # test() errors on null input.
   # `|| reply=""`: a transient gh error (secondary rate limit, 502) would
   # otherwise trip set -e on this bare assignment and kill the bounded poll
   # before the terminal JSON line — treat it as "no reply yet this round".
   reply=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2>/dev/null \
-    | jq -sr --arg t "$POST_TIME" 'add // []
-        | [ .[] | select(.user.login | test("coderabbit"; "i"))
-                | select(.created_at > $t or .updated_at > $t)
-                | .body // "" ] | last // ""') || reply=""
+    | jq -sr 'add // []
+        | (map(select(.body == "@coderabbitai rate limit")) | last | .created_at) as $t
+        | if $t == null then "" else
+            ([ .[] | select(.user.login // "" | test("coderabbit"; "i"))
+                   | select(.created_at > $t or .updated_at > $t)
+                   | .body // "" ] | last // "")
+          end') || reply=""
   [ -n "$reply" ] && break
 done
 

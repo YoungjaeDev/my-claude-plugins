@@ -154,7 +154,7 @@ printf '{"type":"finding"}\n{"type":"complete"}\n'
 SH
 so=$(PATH="$CRSHIM:$PATH" BASE=main PR_NUM=990002 ITER=1 bash "$SCRIPTS/cr-cli-spawn.sh" 2>/dev/null)
 is "complete present -> emitted_complete true" "$(jq -r '.emitted_complete' <<<"$so")" true
-rm -rf "$CRSHIM" /tmp/cr-cli-review-990001-iter1.jsonl /tmp/cr-cli-review-990002-iter1.jsonl
+rm -rf "$CRSHIM" /tmp/cr-cli-review-990001-iter1-* /tmp/cr-cli-review-990002-iter1-*
 
 echo
 echo "query-cr-rate-limit.sh (parse seam)"
@@ -189,6 +189,39 @@ is "gh failure mid-poll -> exit 0"        "$qrc" 0
 is "gh failure mid-poll -> replied false" "$(jq -r '.replied' <<<"$q" 2>/dev/null)" false
 rm -rf "$QSHIM"
 
+# Server-anchored reply detection. The old filter anchored on a LOCAL
+# `date -u` POST_TIME, so a runner clock ahead of GitHub filtered the genuine
+# reply forever; and a ghost (null-user) comment crashed jq's test(), forcing
+# reply="" every round. Fixture timestamps are fixed in the past, so this is
+# RED against the local-clock anchor by construction. (counsel P1 + P2)
+QSHIM2=$(mktemp -d)
+cat > "$QSHIM2/gh" <<SH
+#!/usr/bin/env bash
+case "\$1" in
+  pr)  exit 0;;
+  api) cat "$FIX/issue-comments-rl.json";;
+  *)   exit 1;;
+esac
+SH
+chmod +x "$QSHIM2/gh"
+q=$(PATH="$QSHIM2:$PATH" QUERY_CR_POLLS=1 QUERY_CR_SLEEP=0 \
+      bash "$SCRIPTS/query-cr-rate-limit.sh" o r 42 2>/dev/null) || true
+is "server-anchored reply -> replied true" "$(jq -r '.replied' <<<"$q" 2>/dev/null)" true
+is "server-anchored reply -> remaining 3"  "$(jq -r '.remaining' <<<"$q" 2>/dev/null)" 3
+is "ghost user tolerated -> reset 41"      "$(jq -r '.reset_minutes' <<<"$q" 2>/dev/null)" 41
+rm -rf "$QSHIM2"
+
+echo
+echo "poll-cr-status.sh"
+
+# A persistent fetch error (state:"error" from cr-commit-state.sh) must become
+# a terminal line after ERROR_STREAK_MAX consecutive rounds instead of spinning
+# silently to the outer TIMEOUT; a single transient error keeps polling. (Codex P1)
+pout=$(OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 PUSH_TIME=x \
+  CR_STATE_STATUSES_FILE=__FAIL__ ERROR_STREAK_MAX=2 \
+  timeout 10 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
+is "persistent error -> terminal state error" "$(jq -r '.state' <<<"$pout" 2>/dev/null)" error
+
 echo
 echo "SKILL.md snippet contracts (mirror SKILL.md prose blocks)"
 
@@ -198,8 +231,9 @@ echo "SKILL.md snippet contracts (mirror SKILL.md prose blocks)"
 AF=$(mktemp -d); mkdir -p "$AF/.claude/state/archive"
 echo '{"codex_processed_reviews":[111,222]}' > "$AF/.claude/state/archive/cr-fix-42-20260101-000000.json"
 echo '{"codex_processed_reviews":[333]}'     > "$AF/.claude/state/archive/cr-fix-42-20260102-000000.json"
-touch -d "2026-01-01T00:00:00" "$AF/.claude/state/archive/cr-fix-42-20260101-000000.json"
-touch -d "2026-01-02T00:00:00" "$AF/.claude/state/archive/cr-fix-42-20260102-000000.json"
+# touch -t (POSIX) — `-d` is GNU-only and breaks the suite on macOS/BSD.
+touch -t 202601010000 "$AF/.claude/state/archive/cr-fix-42-20260101-000000.json"
+touch -t 202601020000 "$AF/.claude/state/archive/cr-fix-42-20260102-000000.json"
 af_got=$(cd "$AF" && PR_NUM=42
   PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
   [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1)
@@ -209,6 +243,18 @@ af_got=$(cd "$AF" && PR_NUM=42
 is "archive fallback reads newest archive" "$af_got" "[333]"
 rm -rf "$AF"
 
+# First run ever: no archive exists at all. The unguarded ls fallback died
+# rc=2 under set -euo pipefail (RED reproduced manually); the || true guard
+# must let an errexit caller survive. (counsel P1)
+AF2=$(mktemp -d); mkdir -p "$AF2/.claude/state/archive"
+arc=0; (cd "$AF2" && bash -euo pipefail -c '
+  PR_NUM=43
+  PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
+  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
+') || arc=$?
+is "archive fallback: no archive survives errexit" "$arc" 0
+rm -rf "$AF2"
+
 # Step 1 SKILL_DIR resolver: CLAUDE_PLUGIN_ROOT wins, and the Codex cache is the
 # fallback outside the source tree. Mirrors the SKILL.md Step 1 resolver. (step 7)
 RS=$(mktemp -d)
@@ -216,9 +262,11 @@ mkdir -p "$RS/pluginroot/skills/cr-fix" "$RS/cache/marketplace/github-dev/2.8.0/
 cat > "$RS/resolver.sh" <<'SH'
 CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
 if sort -V </dev/null >/dev/null 2>&1; then
-  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null | sort -V | tail -1)
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2- || true)
 else
-  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null | sort | tail -1)
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $0}' | sort | tail -1 | cut -f2- || true)
 fi
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
 elif [ -d "plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="plugins/github-dev/skills/cr-fix"
@@ -233,6 +281,20 @@ got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="$RS/pluginroot" CODEX_PLUGIN_CACHE="$RS/ca
 is "resolver: CLAUDE_PLUGIN_ROOT wins" "$got" "$RS/pluginroot/skills/cr-fix"
 got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache" HERMES_HOME="" bash resolver.sh)
 is "resolver: Codex cache fallback"    "$got" "$RS/cache/marketplace/github-dev/2.8.0/skills/cr-fix"
+
+# Multi-marketplace cache: the VERSION must win, not the marketplace dir name.
+# The old full-path sort -V let zeta/github-dev/2.10.0 outrank
+# alpha/github-dev/3.0.0. (CR Major, SKILL.md:66)
+mkdir -p "$RS/cache2/zeta/github-dev/2.10.0/skills/cr-fix" \
+         "$RS/cache2/alpha/github-dev/3.0.0/skills/cr-fix"
+got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache2" HERMES_HOME="" bash resolver.sh)
+is "resolver: version outranks marketplace name" "$got" "$RS/cache2/alpha/github-dev/3.0.0/skills/cr-fix"
+
+# Fresh env (no cache at all) must not kill an errexit caller — the unguarded
+# CODEX_CAND ls substitution died rc=2 under set -euo pipefail. (counsel P1)
+rrc=0; (cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/no-such-cache" HERMES_HOME="" \
+  bash -euo pipefail resolver.sh >/dev/null) || rrc=$?
+is "resolver: empty cache survives errexit" "$rrc" 0
 rm -rf "$RS"
 
 echo

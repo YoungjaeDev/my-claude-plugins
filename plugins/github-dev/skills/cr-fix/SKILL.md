@@ -56,13 +56,18 @@ Default behavior is unchanged for users who don't pass `--cr-source`. Polling in
 
 ```bash
 # Codex 0.135 exports no CLAUDE_PLUGIN_ROOT, so fall back to discovering the
-# cached plugin dir. sort -V (GNU) orders X.Y.Z properly; BSD/macOS sort lacks
-# -V, so degrade to lexicographic.
+# cached plugin dir. Sort on the version basename, not the full path — with two
+# marketplace dirs a name like zeta/github-dev/2.10.0 would otherwise outrank
+# alpha/github-dev/3.0.0. sort -V (GNU) orders X.Y.Z properly; BSD/macOS sort
+# lacks -V, so degrade to lexicographic. `|| true`: an absent/empty cache is
+# the normal case on Claude-only machines and must not trip an errexit caller.
 CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
 if sort -V </dev/null >/dev/null 2>&1; then
-  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null | sort -V | tail -1)
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2- || true)
 else
-  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null | sort | tail -1)
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $0}' | sort | tail -1 | cut -f2- || true)
 fi
 
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then
@@ -119,13 +124,23 @@ PRIOR_PROCESSED='[]'
 # The Step 16 EXIT trap always archives the live state file, so on the NEXT run
 # the live path is usually absent — fall back to the newest archive, or Codex
 # reviews already handled get re-processed. Mirrors post-merge Step 1.5.
+# `|| true`: no archive at all (first run) must not trip an errexit caller.
 PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
-[ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1)
+[ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
 if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
-  PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null || echo '[]')
-  # Only the live file is archived; an already-archived copy stays put.
-  [ "$PRIOR_STATE" = ".claude/state/cr-fix-${PR_NUM}.json" ] && \
-    mv "$PRIOR_STATE" ".claude/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
+  # Fail loud on a corrupt prior state: silently resetting the dedupe would
+  # re-judge every already-processed Codex review.
+  PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null) || {
+    echo "cr-fix: prior state $PRIOR_STATE unparseable — Codex dedupe reset, reviews may be re-judged" >&2
+    PRIOR_PROCESSED='[]'
+  }
+  # Only the live file is archived; an already-archived copy stays put. The $$
+  # suffix keeps a same-second re-run or parallel run from clobbering an
+  # archive; abort on mv failure rather than silently overwriting state.
+  if [ "$PRIOR_STATE" = ".claude/state/cr-fix-${PR_NUM}.json" ]; then
+    mv "$PRIOR_STATE" ".claude/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S)-$$.json" \
+      || { echo "cr-fix: failed to archive prior state" >&2; exit 1; }
+  fi
 fi
 STATE_FILE=".claude/state/cr-fix-${PR_NUM}.json"
 jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --arg src "$CR_SOURCE" \
@@ -275,6 +290,7 @@ fi
 
 - `state="success"` → Step 6b
 - `state="failure"` → `final_state=failure`, break
+- `state="error"` → `final_state=failure`, break — cr-commit-state.sh's error channel (auth/network/secondary rate limit) turned terminal after `ERROR_STREAK_MAX` (default 3) consecutive rounds; surface the JSON's `channel` field to the user instead of spinning to TIMEOUT
 - `state="rate_limited"` → `rate_limit_hits=$((rate_limit_hits+1))`, jump to Step 7c
 - timeout (no JSON, exit 124) → `final_state=timeout`, break
 
@@ -337,15 +353,19 @@ reset=$(jq -r '.reset_minutes_estimate // empty' <<<"$rl")
 channel=$(jq -r '.channel // empty' <<<"$rl")
 ```
 
-**Active query fallback (ambiguous passive sniff only).** When the passive sniff confirmed a rate-limit but extracted no reset estimate (`reset` empty), ask CodeRabbit directly instead of guessing 15 min. The query posts one `@coderabbitai rate limit` comment and polls for the reply, so it is wrapped in background + `Monitor` (it sleeps between polls); skip it entirely when the passive sniff already produced a `reset`.
+**Active query fallback (ambiguous passive sniff only).** When the passive sniff confirmed a rate-limit but extracted no reset estimate (`reset` empty), ask CodeRabbit directly instead of guessing 15 min. The query posts one `@coderabbitai rate limit` comment and polls for the reply, so it is wrapped in background + `Monitor` (it sleeps between polls); skip it entirely when the passive sniff already produced a `reset`. **Once per run**: the post is a non-idempotent external write, so persist the outcome to `STATE_FILE.rate_limit_query` and reuse it on later iterations instead of posting again.
 
 ```bash
-if [ -n "$rl" ] && [ -z "$reset" ]; then
+prior_aq=$(jq -c '.rate_limit_query // empty' "$STATE_FILE")
+if [ -n "$prior_aq" ]; then
+  reset=$(jq -r '.reset_minutes // empty' <<<"$prior_aq")
+elif [ -n "$rl" ] && [ -z "$reset" ]; then
   # Bash(run_in_background=true, timeout=180000):
   #   bash $SKILL_DIR/scripts/query-cr-rate-limit.sh "$OWNER" "$REPO" "$PR_NUM"
   # Monitor returns one JSON line: {remaining, reset_minutes, replied, body_excerpt}
   #   aq=<that line>
   #   [ "$(jq -r '.replied' <<<"$aq")" = true ] && reset=$(jq -r '.reset_minutes // empty' <<<"$aq")
+  #   tmp=$(mktemp); jq --argjson q "$aq" '.rate_limit_query = $q' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
 fi
 ```
 
@@ -475,7 +495,7 @@ For each non-skip finding, in severity order (CR/CLI CRITICAL → HIGH → MAJOR
    **`over_engineering=yes` overrides `fix_size`**: a suggestion that only adds speculative abstraction / unrequested configurability is skipped even when the change is `small-safe`. cr-fix refuses *added* complexity; *removing* existing over-engineering is `ponytail-review`'s job (optional, when installed).
 
 6. **Apply / defer / skip**:
-   - **apply** → **Stale-line guard**: before editing, if `$path` already appears in `$TRACK_FILE` from an earlier finding this cycle, re-Read the target region (offset `max(1, line-20)`, limit `40`) first — an earlier edit may have shifted the line numbers this finding was anchored to. Then Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
+   - **apply** → **Stale-line guard**: before editing, if `$path` already appears in `$TRACK_FILE` from an earlier finding this cycle, re-Read the target region (offset `max(1, line-20)`, limit `40`) and re-locate the finding's quoted context in it — an earlier edit may have shifted the line numbers this finding was anchored to. Edit only where the expected context still matches; if the anchor content cannot be re-found in the re-Read region, **defer** the finding instead of editing a guessed location. Then Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
      - **9c.6 — Bounded same-file generalization** — after the flagged-line fix lands, when `GENERALIZE=true` AND `is_real=="real"` AND `confidence=="high"` AND the finding is a *mechanically grep-able* pattern (a literal/regex-matchable construct, not a judgement call), grep the **same file** (or, when the finding is scoped to one symbol, that symbol's body only) for sibling occurrences of the same pattern and apply the identical fix in the **same commit**. **Never cross-file** — cross-file or speculative matches stay deferred per the existing matrix. Record the extra edits in the log entry's `generalized_to: [<line>...]` field (audit-only). Do NOT re-increment `applied_this_cycle` / `auto_judge_apply` — the finding still counts as 1; only the extra lines are logged. Full scope + cross-file hard-exclusion + surgical-diff trade-off: `references/autonomous-judgment.md` ("Bounded same-file generalization").
    - **defer** → `deferred_this_cycle=$((deferred_this_cycle+1))`; `auto_judge_defer=$((auto_judge_defer+1))`; log judgment.
    - **High-severity accumulator (Step 13 soft-stop signal)** — for any `apply` or `defer` whose `severity_reassess=="high"`, `high_sev_this_cycle=$((high_sev_this_cycle+1))`. This feeds the Step 13 `minor_floor` soft-stop: a cycle that applied only low-severity fixes and deferred nothing can stop early.

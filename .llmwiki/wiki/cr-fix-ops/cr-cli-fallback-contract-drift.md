@@ -1,10 +1,10 @@
 ---
 id: cr-cli-fallback-contract-drift
-aliases: [coderabbit-cli-0-6-schema, cr-fix-two-dot-diff, cr-cli-parser-crash]
-last_verified: 2026-07-09
+aliases: [coderabbit-cli-0-6-schema, cr-fix-two-dot-diff, cr-cli-parser-crash, suggestions-are-strings-not-objects]
+last_verified: 2026-07-10
 status: active
 volatility: volatile
-sources: 3
+sources: 4
 ---
 
 # cr-fix's rate-limit fallback drifted away from the tools it falls back to
@@ -16,6 +16,10 @@ Three drifts, all measured on one run (PR #104, CodeRabbit CLI 0.6.1, PR-bot rat
 ## 1. The CLI finding schema changed; the parser did not
 
 `scripts/parse-cr-cli-jsonl.sh` (and `references/cr-cli-jsonl-schema.md`) were written against CodeRabbit CLI **v0.5.x**, where a `finding` event carried `location` / `line` / `comment`.
+
+**Correction (0.6.5, measured).** The parser already read `fileName`, `severity` and `codegenInstructions`; those bindings were never the crash. The fatal line is `.suggestions[0].line`: `suggestions` is an array of raw patch **strings**, not objects, and indexing a string with `.line` aborts jq with `Cannot index string with string "line"`. The slurp path and the per-line fallback shared that expression, so the fallback died with it. A PR whose findings all carry `suggestions: []` survives by accident, which is why the crash looks intermittent.
+
+A second, quieter drift outlives the crash fix: **`comment` is absent entirely** in 0.6.x. The key union of a `finding` is exactly `type`, `fileName`, `severity`, `suggestions`, `codegenInstructions`. So `body` comes back empty, `type_emoji` (parsed out of `comment`'s `_Type_ | _Severity_` header) is always `null`, and `line` is always `null` unless it is parsed out of the prose inside `codegenInstructions` (`around lines 11 - 23`, `at line 4`). With `type_emoji` null, `classify-item.sh` falls through to its severity-only branch and a `minor` CLI finding lands in the `review` tier — surfaced, never applied. The CLI path therefore fixes strictly less than the PR-bot path even after the parser runs.
 
 CLI **0.6.1** emits a different shape:
 
@@ -64,9 +68,12 @@ Every one of these lives on a path taken only when the primary path fails. The r
 > See-also: [[cr-cli-false-positive-generated-files]]
 > Evidence: plugins/github-dev/skills/cr-fix/scripts/parse-cr-cli-jsonl.sh
 > Evidence: plugins/github-dev/skills/cr-fix/references/cr-cli-jsonl-schema.md
+> Refined-by: [[jq-capture-yields-empty]]
+> See-also: [[codex-review-threads-never-resolve]]
 
 ## Sources
 
 1. **PR #104 dogfood run** — PR-bot rate-limited (Fair Usage), `--cr-source auto` flipped to CLI; `parse-cr-cli-jsonl.sh` crashed on the first `finding`; findings were recovered by hand-parsing the JSONL. All three drifts observed in the same run.
 2. **CodeRabbit CLI 0.6.1 JSONL** (`/tmp/cr-cli-review-104-iter1.jsonl`) — 13 lines: `review_context`, `status` x6, `heartbeat` x2, `finding` x3, `complete`. `finding` keys: `codegenInstructions`, `fileName`, `severity`, `suggestions`, `type`.
 3. **`git diff` two-dot vs three-dot semantics** — verified against `gh pr view 104 --json changedFiles,additions,deletions`, which agrees with three-dot and disagrees with two-dot once the base advanced.
+4. **CodeRabbit CLI 0.6.5 run on PR #107** (`/tmp/cr-cli-review-107-iter3.jsonl`, 12 lines, 3 findings) — `bash parse-cr-cli-jsonl.sh` exits 5 with `jq: error (at <stdin>:3): Cannot index string with string "line"`; the two findings carrying `suggestions: []` project fine, the third carries a patch string. `finding` key union confirmed as five keys, `comment` present in zero of three. `cr-cli-spawn.sh` still reports `{"exit":0,"emitted_complete":true}` — the CLI succeeded; only the parser died.

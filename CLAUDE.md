@@ -7,7 +7,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 ### Core
 | Plugin | Description |
 |--------|-------------|
-| `core-config` | Python auto-format + cross-platform notifications + per-prompt behavioral block (`prompt_inject.sh`, shared Claude + Codex; points at `.llmwiki/insight/`) (work guidelines live in `~/.claude/CLAUDE.md`) |
+| `core-config` | Python auto-format + cross-platform notifications + per-prompt behavioral block (`prompt_inject.sh`, shared Claude + Codex). Two conditional pointers: `.llmwiki/insight/` when a knowledge root resolves in cwd, and a one-line `[council]` delegation reminder when `codex` / `agy` is on PATH (Claude-only — Codex is itself a council member). Work guidelines live in `~/.claude/CLAUDE.md` |
 
 ### GitHub
 | Plugin | Description |
@@ -49,7 +49,7 @@ Plugin-based configuration for Claude Code with multi-agent orchestration. The s
 | Plugin | Description |
 |--------|-------------|
 | `interview` | Structured requirements gathering |
-| `project-init` | Agent-harness project lifecycle. `new` — first-day bootstrap (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + README/CHANGELOG + gh repo create), preflight-guarded to empty dirs. `wiring` — read-only 11-axis setup diagnostic for existing repos (guidance, llm-wiki layout + staging backlog, Serena onboarding, memory-surface conflict, spec homes, gws-sync, .tmp, hooksPath, .gitignore), remediation skill named per finding, fixes gated behind AskUserQuestion. Shared detector `scripts/project_state.sh` |
+| `project-init` | Agent-harness project lifecycle. `new` — first-day bootstrap (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + README/CHANGELOG + gh repo create), preflight-guarded to empty dirs. `wiring` — read-only 14-axis setup diagnostic for existing repos, verdicts `FAIL/WARN/ASK/INFO/SKIP/OK`. Four axes ask whether config takes *effect*, not just exists: `core.hooksPath`, an `@import` that defeats `.claude/rules` `paths:` scoping, MCP servers registered twice (one copy silently discarded), Codex `AGENTS.md` byte budget. `ASK` = a decision nobody made yet — asked once, persisted to `.claude/state/wiring.json`. Shared detector `scripts/project_state.sh` |
 
 ### Presentation
 | Plugin | Description |
@@ -146,5 +146,11 @@ Adapter fields derive from `marketplace.json` (`plugin.yaml` name/version/descri
 
 ## Modular Rules
 
-- See @.claude/rules/plugin-versioning.md for plugin version bump contract and cache-refresh workflow.
-- See @.claude/rules/dual-integration.md for keeping the Claude Code, Codex, and Hermes surfaces in sync when editing guidance, hooks, or derived artifacts (mirrored into `AGENTS.md` since Codex/Hermes cannot `@import` `.claude/rules/`).
+`.claude/rules/*.md` is auto-loaded by Claude Code — no `@import` required. A rule carrying `paths:` frontmatter loads only when Claude touches a matching file; `@import`ing that same rule expands it unconditionally at launch and kills the scoping, so the first pointer below is deliberately plain (backticks, not `@`).
+
+- `.claude/rules/plugin-versioning.md` — plugin version bump contract and cache-refresh workflow. Scoped via `paths:` to the manifest files, so it loads only when you touch them.
+- See @.claude/rules/dual-integration.md for keeping the Claude Code, Codex, and Hermes surfaces in sync when editing guidance, hooks, or derived artifacts (unscoped, always loaded; mirrored into `AGENTS.md` because Codex and Hermes have no `@import` mechanism at all and read that file verbatim).
+
+## Setup answers
+
+`/project-init:wiring` records decisions the filesystem cannot infer — whether this project wants a git remote, whether its deliverables go to Drive — in `.claude/state/wiring.json` (gitignored; values are machine-local). Read that file before re-asking.

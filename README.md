@@ -498,7 +498,13 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 2. 첫 도메인 lore → `/llm-wiki:bootstrap-wiki`
 3. 첫 PR merge 후 → `/github-dev:post-merge` (post-merge 내장 wiki 적재 step)
 
-**`/project-init:wiring`** — `new` 의 역방향. 이미 있는 repo 의 하네스 설정을 11 축으로 진단한다 (guidance 파일, llm-wiki 레이아웃 + `.staging` 미드레인 백로그, Serena 온보딩, 메모리 표면 충돌, spec 위치, gws-sync, `.tmp`, `core.hooksPath`, `.gitignore` 커버리지). 탐지는 `scripts/project_state.sh` 가 전담하는 read-only 단계이고, 결함마다 담당 스킬을 지목한 뒤 모든 수정은 `AskUserQuestion` 게이트 뒤에서만 적용한다. 위키 페이지 건강도는 `/llm-wiki:lint-wiki`, mem0 스토어는 `/mem0-ops:doctor` 가 담당 — 중복하지 않는다.
+**`/project-init:wiring`** — `new` 의 역방향. 이미 있는 repo 의 하네스 설정을 14 축으로 진단한다. 판정은 `FAIL / WARN / ASK / INFO / SKIP / OK`.
+
+존재 검사("파일이 있나") 위에 **효력 검사**("그게 실제로 먹나") 4 축이 얹혀 있다 — clone 마다 따로 켜야 하는 `core.hooksPath`, `.claude/rules` 의 `paths:` 스코핑을 `@import` 가 무력화한 경우, 같은 MCP 서버가 두 파일에 등록돼 한쪽 정의가 통째로 버려지는 경우, Codex 의 `AGENTS.md` 바이트 예산. 전부 "설정은 있는데 안 먹는" 실패 모드다.
+
+`ASK` 는 결함이 아니라 **아직 아무도 안 정한 결정**이다 (원격 저장소를 만들지, 산출물을 Drive 에 올릴지). 한 번만 묻고 답을 `.claude/state/wiring.json` 에 적어 다음 실행부터 조용해진다 — 매번 짖는 경고는 사람이 무시하게 되고, 그러면 진짜 `FAIL` 도 같이 묻힌다.
+
+탐지는 `scripts/project_state.sh` 가 전담하는 read-only 단계이고, 결함마다 담당 스킬을 지목한 뒤 모든 수정은 `AskUserQuestion` 게이트 뒤에서만 적용한다. 위키 페이지 건강도는 `/llm-wiki:lint-wiki`, mem0 스토어는 `/mem0-ops:doctor`, 삭제된 플러그인이 남긴 고아 MCP 등록과 미사용 확장은 내장 `/doctor` 가 담당 — 중복하지 않는다.
 
 **Requirements:** `gh` CLI authenticated, `git`, `jq`
 

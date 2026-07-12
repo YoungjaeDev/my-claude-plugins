@@ -161,10 +161,7 @@ Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavior
 | `/github-dev:commit-and-push` | 분석, 커밋, 푸시 |
 | `/github-dev:resolve-issue` | 이슈 해결 E2E (worktree, 리뷰, 검증) |
 | `/github-dev:cr-fix` | CodeRabbit + Codex 통합 파이프라인 (skill, wait + fetch + apply + push 루프, --auto-merge 옵션, resolve-issue 기본 ON). `--cr-source <auto\|pr-bot\|cli\|codex-only>` 로 소스 선택; `auto` 는 PR-bot rate-limit 감지 시 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback (1800s spin 해소). |
-| `/github-dev:code-review` | (1.10 deprecated) CodeRabbit 피드백 자동 fetch + 수동 paste fallback |
-| `/github-dev:cr-wait` | (1.10 deprecated) CodeRabbit commit status 백그라운드 폴링 |
 | `/github-dev:post-merge` | 브랜치 정리, 일회성 산출물 정리(Step 4.5, 휴리스틱 후보 → 확인 → git rm), PR 학습을 설정/Serena/README에 통합 + 필수 wiki lore 적재 (skill) |
-| `/github-dev:merge-worktree` | worktree에서 base 브랜치로 squash merge + 학습 반영 |
 | `/github-dev:decompose-issue` | 이슈를 하위 작업으로 분해 |
 | `/github-dev:create-issue-label` | 표준화된 이슈 라벨 생성 |
 | `/github-dev:update-progress` | 마일스톤/이슈 진행 상황 동기화 |

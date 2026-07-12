@@ -6,6 +6,15 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-12 — post-merge #107: conditional-pointer rule generalizes (2nd instance: [council]) (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `47c796c` — feat(core-config): 1.10.0 — conditional [council] pointer + English global guidance. The English-canonical CLAUDE.md.global decision + cp-not-symlink sync contract are fully housed in that file's own preamble (rule AND rationale) — not duplicated into the wiki per the routing/no-double-recording principle.
+
+- `llm-wiki-design/insight-layer-via-hook.md`: the hook-delivery section now states the generalized conditional-pointer rule — prompt_inject.sh only names surfaces that actually resolve on this machine (knowledge root in cwd → insight pointer; `codex`/`agy` on PATH → one-line `[council]` delegation pointer, Claude-only since Codex is itself a council member). Two instances make it the hook's design rule, not a one-off. sources 2 → 3 (+PR #107 merge), last_verified 2026-06-01 → 2026-07-12.
+- `index.md`: insight-layer-via-hook hook line extended (conditional-pointer rule).
+
+No insight graduation — the rule is enforced in one script (`prompt_inject.sh`), not a cross-repo behavioral rule.
+
 ## 2026-07-12 — staging drain 88102e17 re-capture: Hermes update-model reality + stacked-PR auto-close (ingest-finding)
 
 Diff log written before applying the page edits (git-revertible). The 3 re-captured `.staging/` markers from session 88102e17 (Stop hook fired after the post-merge #106 mid-session ingest) are NOT fully already-curated — the post-#106 window (Hermes real-machine investigation + PR #107/#108/#109 creation) carries new lore. Ingest-recap portions are DUP and dropped. Repo-actionable (non-lore) findings routed to the current audit backlog instead of the wiki: README orphan commands (`/github-dev:code-review`, `/github-dev:cr-wait`), stale Serena `project-init` memory, cr-fix SKILL.md `$HERMES_HOME/plugins/...` path assumption, 3-arg `register_skill` in generated adapters.

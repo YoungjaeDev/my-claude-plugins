@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Usage: bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
 # Returns JSON on stdout summarizing the 4 gates:
-#   {"cr_state":"success|...", "blocking_checks":N, "base_branch":"...", "protection_http":200|404}
+#   {"cr_state":"success|...", "blocking_checks":N, "base_branch":"...", "protection_http":200|404|0}
 # Caller (SKILL.md Step 15) decides:
 #   - protection_http == 200 → `gh pr merge --auto --squash --delete-branch`
-#   - protection_http != 200 → AskUserQuestion (Merge now / Skip / Cancel)
+#   - protection_http == 404 → AskUserQuestion (Merge now / Skip / Cancel)
+#   - protection_http == 0   → probe failed (network/auth/5xx) — no merge
 # This script does NOT call gh pr merge — separation of probe vs action.
 set -euo pipefail
 
@@ -31,7 +32,10 @@ base=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
 # double it), then parse — a single clean value for both 200 and 404.
 proto_line=$(gh api "repos/$OWNER/$REPO/branches/$base/protection" --silent -i 2>/dev/null | head -1 || true)
 http=$(awk '{print $2}' <<<"$proto_line")
-http="${http:-404}"
+# Only 200 (protected) and 404 (unprotected) are trusted probe outcomes. An
+# empty or other status (network, auth, 5xx) must not masquerade as
+# "unprotected" — report 0 so Step 15 refuses to merge on an unverified state.
+case "$http" in 200|404) : ;; *) http=0 ;; esac
 
 jq -nc \
   --arg cr "$cr_state" \

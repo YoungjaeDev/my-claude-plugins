@@ -59,15 +59,16 @@ Default behavior is unchanged for users who don't pass `--cr-source`. Polling in
 # cached plugin dir. Sort on the version basename, not the full path — with two
 # marketplace dirs a name like zeta/github-dev/2.10.0 would otherwise outrank
 # alpha/github-dev/3.0.0. sort -V (GNU) orders X.Y.Z properly; BSD/macOS sort
-# lacks -V, so degrade to lexicographic. `|| true`: an absent/empty cache is
-# the normal case on Claude-only machines and must not trip an errexit caller.
+# lacks -V, so degrade to a numeric dotted-field sort (plain lexicographic
+# ranked 2.9.0 above 2.10.0). `|| true`: an absent/empty cache is the normal
+# case on Claude-only machines and must not trip an errexit caller.
 CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
 if sort -V </dev/null >/dev/null 2>&1; then
   CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null \
     | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2- || true)
 else
   CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null \
-    | awk -F/ '{print $NF "\t" $0}' | sort | tail -1 | cut -f2- || true)
+    | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
 fi
 
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then
@@ -128,11 +129,13 @@ PRIOR_PROCESSED='[]'
 PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
 [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
 if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
-  # Fail loud on a corrupt prior state: silently resetting the dedupe would
-  # re-judge every already-processed Codex review.
+  # Fail loud on a corrupt prior state: resetting the dedupe would re-judge
+  # every already-processed Codex review (duplicate re-apply attempts on
+  # already-fixed code). Abort BEFORE creating a new state file — recovery is
+  # inspecting/deleting the named file and re-running.
   PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null) || {
-    echo "cr-fix: prior state $PRIOR_STATE unparseable — Codex dedupe reset, reviews may be re-judged" >&2
-    PRIOR_PROCESSED='[]'
+    echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
+    exit 1
   }
   # Only the live file is archived; an already-archived copy stays put. The $$
   # suffix keeps a same-second re-run or parallel run from clobbering an
@@ -591,10 +594,14 @@ base=$(jq -r '.base_branch' <<<"$gate")
 [ "$blocking" = 0 ] || exit 0
 if [ "$proto" = 200 ]; then
   gh pr merge "$PR_NUM" --auto --squash --delete-branch && merged=true
-else
+elif [ "$proto" = 404 ]; then
   # AskUserQuestion: Merge now / Skip merge / Cancel
   # Description: "Base branch '$base' has no protection rules; --auto would merge immediately."
   # On "Merge now": gh pr merge "$PR_NUM" --squash --delete-branch && merged=true
+else
+  # protection_http=0: the probe itself failed (network/auth/5xx) — never
+  # merge on an unverified protection state; surface and leave the PR open.
+  echo "auto-merge: branch-protection probe failed — merge not attempted" >&2
 fi
 ```
 

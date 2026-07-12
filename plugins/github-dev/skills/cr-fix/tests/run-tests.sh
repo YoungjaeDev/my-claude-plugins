@@ -109,6 +109,15 @@ out=$(CR_THREADS_RESPONSE_FILE="$FIX/gql-healthy-empty.json" \
 is "healthy empty -> exit 0"           "$rc" 0
 is "healthy empty -> []"               "$out" "[]"
 
+# Same silent-failure family, one level deeper: a non-null repository whose
+# pullRequest is null (wrong PR number, deleted PR) passed the repository-only
+# detector and still projected [] — false clean. The detector must require the
+# reviewThreads.nodes array itself. (codex counsel P2)
+out=$(CR_THREADS_RESPONSE_FILE="$FIX/gql-null-pullrequest.json" \
+        bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null); rc=$?
+is "null pullRequest -> non-zero exit" "$([ "$rc" -ne 0 ] && echo yes || echo no)" yes
+is "null pullRequest -> emits no []"   "$out" ""
+
 echo
 echo "auto-merge-gate.sh"
 
@@ -129,6 +138,22 @@ chmod +x "$SHIMDIR/gh"
 g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "unprotected base -> valid JSON"    "$(jq -e . <<<"$g" >/dev/null 2>&1 && echo yes || echo no)" yes
 is "unprotected base -> protection_http 404" "$(jq -r '.protection_http' <<<"$g" 2>/dev/null)" 404
+
+# Probe failure (network/auth/5xx — gh dies with no status line) must NOT
+# masquerade as 404 "unprotected": it reports protection_http 0 so Step 15
+# refuses to merge on an unverified protection state. (codex counsel P1)
+cat > "$SHIMDIR/gh" <<'SH'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "api --paginate"*) echo '[]';;
+  "pr checks") echo '0';;
+  "pr view") echo "main";;
+  "api repos"*) exit 1;;
+  *) echo "unknown gh args: $*" >&2; exit 1;;
+esac
+SH
+g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
+is "probe failure -> protection_http 0" "$(jq -r '.protection_http' <<<"$g" 2>/dev/null)" 0
 rm -rf "$SHIMDIR"
 
 echo
@@ -217,9 +242,13 @@ echo "poll-cr-status.sh"
 # A persistent fetch error (state:"error" from cr-commit-state.sh) must become
 # a terminal line after ERROR_STREAK_MAX consecutive rounds instead of spinning
 # silently to the outer TIMEOUT; a single transient error keeps polling. (Codex P1)
+# `timeout` is GNU-only (absent on stock macOS/BSD, where this suite runs via
+# the pre-commit hook) — use it as a hang guard only where it exists; the case
+# itself terminates deterministically (INTERVAL=0, ERROR_STREAK_MAX=2).
+TMO=""; command -v timeout >/dev/null 2>&1 && TMO="timeout 10"
 pout=$(OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 PUSH_TIME=x \
   CR_STATE_STATUSES_FILE=__FAIL__ ERROR_STREAK_MAX=2 \
-  timeout 10 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
+  $TMO bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
 is "persistent error -> terminal state error" "$(jq -r '.state' <<<"$pout" 2>/dev/null)" error
 
 echo
@@ -255,6 +284,24 @@ arc=0; (cd "$AF2" && bash -euo pipefail -c '
 is "archive fallback: no archive survives errexit" "$arc" 0
 rm -rf "$AF2"
 
+# Corrupt prior state must ABORT before the new state file is created — a
+# warn-and-continue reset re-judges already-processed Codex reviews and can
+# re-apply fixes onto already-fixed code. Mirrors the SKILL.md Step 2 branch.
+AF3=$(mktemp -d); mkdir -p "$AF3/.claude/state/archive"
+echo 'not-json{' > "$AF3/.claude/state/cr-fix-44.json"
+crc=0; (cd "$AF3" && bash -c '
+  PR_NUM=44
+  PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
+  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
+  if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
+    PRIOR_PROCESSED=$(jq -c ".codex_processed_reviews // []" "$PRIOR_STATE" 2>/dev/null) || {
+      echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
+      exit 1
+    }
+  fi' 2>/dev/null) || crc=$?
+is "corrupt prior state -> aborts rc 1" "$crc" 1
+rm -rf "$AF3"
+
 # Step 1 SKILL_DIR resolver: CLAUDE_PLUGIN_ROOT wins, and the Codex cache is the
 # fallback outside the source tree. Mirrors the SKILL.md Step 1 resolver. (step 7)
 RS=$(mktemp -d)
@@ -266,7 +313,7 @@ if sort -V </dev/null >/dev/null 2>&1; then
     | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2- || true)
 else
   CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null \
-    | awk -F/ '{print $NF "\t" $0}' | sort | tail -1 | cut -f2- || true)
+    | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
 fi
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
 elif [ -d "plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="plugins/github-dev/skills/cr-fix"
@@ -295,6 +342,12 @@ is "resolver: version outranks marketplace name" "$got" "$RS/cache2/alpha/github
 rrc=0; (cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/no-such-cache" HERMES_HOME="" \
   bash -euo pipefail resolver.sh >/dev/null) || rrc=$?
 is "resolver: empty cache survives errexit" "$rrc" 0
+
+# BSD/no-sort-V fallback: the numeric dotted-field sort must rank 2.10.0 above
+# 2.9.0 (plain lexicographic sort picked 2.9.0). Asserts the exact fallback
+# pipeline from the SKILL.md Step 1 resolver. (codex counsel P2)
+fb=$(printf '2.9.0\t/a\n2.10.0\t/b\n' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2-)
+is "fallback sort: 2.10.0 outranks 2.9.0" "$fb" "/b"
 rm -rf "$RS"
 
 echo

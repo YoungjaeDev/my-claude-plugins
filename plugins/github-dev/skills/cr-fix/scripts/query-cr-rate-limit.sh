@@ -37,7 +37,7 @@ fi
 
 OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr required}"
 
-if ! gh pr comment "$PR_NUM" --body "@coderabbitai rate limit" >/dev/null 2>&1; then
+if ! gh pr comment "$PR_NUM" --repo "$OWNER/$REPO" --body "@coderabbitai rate limit" >/dev/null 2>&1; then
   printf '{"remaining":null,"reset_minutes":null,"replied":false,"body_excerpt":"comment post failed"}\n'
   exit 1
 fi
@@ -61,7 +61,7 @@ for _ in $(seq 1 "$POLLS"); do
         | (map(select(.body == "@coderabbitai rate limit")) | last | .created_at) as $t
         | if $t == null then "" else
             ([ .[] | select(.user.login // "" | test("coderabbit"; "i"))
-                   | select(.created_at > $t or .updated_at > $t)
+                   | select(.created_at >= $t or .updated_at >= $t)
                    | .body // "" ] | last // "")
           end') || reply=""
   [ -n "$reply" ] && break

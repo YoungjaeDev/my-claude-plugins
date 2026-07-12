@@ -33,14 +33,18 @@ while :; do
   }') || { echo "error: GraphQL request failed" >&2; exit 1; }
   fi
 
-  # A healthy page has a non-null repository and no top-level errors. Guard the
-  # SUCCESS condition and fail on its negation, so a null repository (or any
-  # malformed response) lands here rather than exiting 4 unmatched and letting
+  # A healthy page has no top-level errors AND an actual reviewThreads.nodes
+  # array. Guard the SUCCESS condition and fail on its negation, so a null
+  # repository, a null pullRequest (wrong PR number, deleted PR), or any
+  # malformed response lands here rather than exiting 4 unmatched and letting
   # the loop project an empty array — a false "clean" convergence.
+  # `(.errors // []) | length == 0` also accepts a benign literal `errors: []`.
   # `null // empty | not` produced empty (exit 4), which the old `if jq -e` read
   # as "no error" and skipped this branch. See .llmwiki jq-capture-yields-empty.
-  if ! jq -e '.data.repository != null and (.errors | not)' <<<"$response" >/dev/null 2>&1; then
-    echo "GraphQL fetch returned errors or null repository:" >&2
+  if ! jq -e '((.errors // []) | length == 0)
+              and ((.data.repository.pullRequest.reviewThreads.nodes // null) | type == "array")' \
+       <<<"$response" >/dev/null 2>&1; then
+    echo "GraphQL fetch returned errors or a null repository/pullRequest:" >&2
     jq -r '.errors[]?.message // "no errors field"' <<<"$response" >&2
     exit 1
   fi

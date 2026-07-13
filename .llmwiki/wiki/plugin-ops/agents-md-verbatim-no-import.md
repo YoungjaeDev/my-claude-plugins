@@ -1,7 +1,7 @@
 ---
 id: agents-md-verbatim-no-import
 aliases: [agents-md-pointer-trap, codex-no-at-import, claude-md-imports-agents-md]
-last_verified: 2026-07-10
+last_verified: 2026-07-13
 status: active
 volatility: stable
 sources: 5
@@ -19,7 +19,7 @@ Hermes has no documented import mechanism either. Zero evidence of support — t
 
 Two operational corollaries of that same reader. Codex's configuration root is `${CODEX_HOME:-~/.codex}`, not a hardcoded `~/.codex` (`codex --help`: "Layer `$CODEX_HOME/<name>.config.toml` on top of the base user config"), so a tool that reads the cap from `$HOME/.codex/config.toml` reports no Codex config at all on a machine that sets `CODEX_HOME`. And because the files are concatenated root-down and cut at `project_doc_max_bytes`, the bytes lost to the cap are the **tail** of the deepest `AGENTS.md` — which in a repo that follows the project-init template is `## Review guidelines`, precisely the section the cloud reviewer loads. Exceeding the budget deletes the reviewer's instructions and reports nothing.
 
-Claude Code never reads `AGENTS.md` at all. It reads `CLAUDE.md`, and `@path/to/import` is a **Claude-only** feature that lives on `CLAUDE.md` (recursive, max depth four hops).
+Claude Code never reads `AGENTS.md` as a discovery target. It reads `CLAUDE.md`, and `@path/to/import` — a **Claude-only** feature that lives on `CLAUDE.md` (recursive, max depth four hops) — is the only way `AGENTS.md` content reaches Claude when the two are wired together.
 
 ## The consequence
 
@@ -35,7 +35,11 @@ Official Claude Code memory docs state the inverse pattern:
 
 So `AGENTS.md` becomes the SSOT and `CLAUDE.md` carries `@AGENTS.md`. Codex and Hermes read the full file natively; Claude expands the import. The mirror disappears in the one direction that is loader-valid on all three runtimes.
 
-Whether that inversion is worth doing is a separate call — in this repo `AGENTS.md` is a curated *superset* (Codex cloud-reviewer guidelines and Codex/Hermes integration sections that `CLAUDE.md` lacks, minus Claude-only content like Plan Mode), so a naive `cat CLAUDE.md .claude/rules/*.md` generator cannot produce it, and inverting means Claude carries reviewer guidelines it never uses.
+This repo made that call: root `CLAUDE.md` is a one-line `@AGENTS.md` import. `AGENTS.md` is a curated *superset* (Codex cloud-reviewer guidelines and Codex/Hermes integration sections that `CLAUDE.md` lacks, minus Claude-only content like Plan Mode), so a naive `cat CLAUDE.md .claude/rules/*.md` generator cannot produce it, and inverting means Claude carries reviewer guidelines it never uses — accepted as the cost of a single SSOT.
+
+## `@import` vs symlink — why the import won
+
+A root `CLAUDE.md` **symlink** to `AGENTS.md` reaches the same single-file SSOT and is marginally stronger — one physical inode cannot drift from itself. It was the first form tried (the `agents-md-single-file` branch, revived from a closed earlier attempt). But a git symlink (mode `120000`) checks out **broken on Windows** without `core.symlinks`: git materializes `CLAUDE.md` as a regular text file whose contents are the literal target string `AGENTS.md`, so Claude Code on a Windows clone reads nine bytes of guidance and silently loses everything — the same invisible-failure shape as the `@CLAUDE.md` pointer trap above, just platform-gated instead of runtime-gated. The `@AGENTS.md` import is a plain text file that resolves identically on every platform, so it is preferred over the symlink for a repo cloned on Windows. Drift stays impossible in practice: the one-line pointer has no content to drift from.
 
 ## Why the older phrasing under-stated it
 

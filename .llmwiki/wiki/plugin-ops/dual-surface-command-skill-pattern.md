@@ -1,10 +1,10 @@
 ---
 id: dual-surface-command-skill-pattern
 aliases: [dual-surface-plugin, command-skill-shared-references, codex-claude-portability]
-last_verified: 2026-07-07
+last_verified: 2026-07-13
 status: active
 volatility: stable
-sources: 5
+sources: 6
 ---
 
 # Dual-surface command + skill pattern
@@ -140,6 +140,42 @@ under 10.
 The same probe-and-fallback shape applies to other GNU-only flags the
 procedure may use (`sed -i` signature, `${VAR,,}` Bash 4+, etc.).
 
+### Resolver robustness
+
+The resolution-order list above is necessary but not sufficient — a resolver that
+merely *picks* a candidate without proving it is usable fails in the field. Five
+rules, each learned from a live defect:
+
+1. **Existence-check the target before committing to a branch, not after.** A
+   branch that sets `PLUGIN_ROOT` from `${CLAUDE_PLUGIN_ROOT}` (or a cache dir)
+   without verifying the concrete target (`wiki-skeleton/`, `scripts/foo.py`, the
+   template) exists *there* lets a stale env var or an incomplete dir win and
+   **block every later fallback**. Each branch must verify its own target and fall
+   through otherwise; the fail-fast validator at the end is a backstop, not the
+   gate.
+2. **Walk cache versions descending and take the first COMPLETE one.** Selecting
+   the highest version and *then* checking the target means an incomplete `2.9.0`
+   shadows a working `2.5.1`. Iterate high-to-low, skip any dir missing the target.
+3. **`${PLUGIN_ROOT}` must be DEFINED wherever it is substituted.** Changing a
+   reference path to `${PLUGIN_ROOT}/references/...` in a sibling skill that never
+   runs the resolver leaves the var unset — the path expands to `/references/...`.
+   Every skill that substitutes `${PLUGIN_ROOT}` needs the resolver block, not just
+   the one entry skill.
+4. **Newline-safe cache iteration.** `for d in $(ls -1d "$CACHE"/*/…)` word-splits
+   on a cache path containing a space (`/Users/John Doe/.codex/…`, Windows). Use
+   `while IFS= read -r d; do …; done < <(ls …)` and quote every expansion.
+5. **Required target aborts; supplementary target degrades quietly.** If the
+   resolved path is required (a script/template the skill cannot run without), a
+   failed resolution hard-aborts. If it is supplementary (a conventions doc the
+   skill only cites), set `PLUGIN_ROOT=""` + a stderr note and return 0 so the
+   skill still runs.
+
+A Codex-specific trap sits under rule 1: a `~/.agents/skills/<plugin>/` path is
+**fictional** for a marketplace plugin — Codex 0.135 loads the plugin *tree/cache*
+(`.codex-plugin/plugin.json` `skills:"./skills/"`, marketplace `./plugins/<name>`),
+it does not materialize a per-skill dir under `~/.agents/skills`. Point the Codex
+branch at the real plugin cache, not that path.
+
 ## Versioning
 
 A dual-surface conversion is a MINOR bump for the plugin (new skill surface
@@ -165,6 +201,13 @@ addition to the marketplace catalog.
   let `Dockerfile`, `Makefile`, `.env`, `docs/*`, and deeper sources slip
   through).
 
+- PR #129 (resolver wave, #111) — the `### Resolver robustness` rules: two
+  rounds of cr-fix review (2 Major + 3 Minor) on porting the resolver into 5
+  plugins surfaced that picking a candidate is not proving it usable (stale-env
+  and incomplete-cache branch-blocking), that `${PLUGIN_ROOT}` must be defined in
+  every substituting skill (4 llm-wiki doc skills referenced it unresolved), the
+  spaces-in-cache-path word-split, the required-vs-supplementary abort/degrade
+  split, and the fictional `~/.agents/skills/<plugin>` Codex path.
 - `plugins/mem0-ops/skills/*/SKILL.md` — recurrence evidence: all three
   skills shipped bare `${CLAUDE_PLUGIN_ROOT}` and gained the resolver via a
   Codex P1 review on the plugin's introduction PR; the mechanical rule was

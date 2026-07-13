@@ -21,3 +21,7 @@ jobs:
           node-version: '20'
       - run: node scripts/sync-codex-manifests.mjs --check
       - run: node scripts/sync-hermes-manifests.mjs --check
+      # cr-fix's CLI-fallback / CR-state / rate-limit paths only run after the
+      # primary path fails, so nothing exercised them until they broke in
+      # production (issues #105, #110). Fixture-driven, no network, sub-second.
+      - run: bash plugins/github-dev/skills/cr-fix/tests/run-tests.sh

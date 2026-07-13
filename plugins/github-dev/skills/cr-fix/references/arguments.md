@@ -4,7 +4,7 @@ All flags are positional after `/github-dev:cr-fix`; order does not matter.
 
 | Flag | Default | Notes |
 |------|---------|-------|
-| `--max-iterations <n>` | `5` | Hard cap on review-fix cycles. Prevents runaway loops. |
+| `--max-iterations <n>` | `5` | Hard cap on review-fix cycles — a CR quota budget, not just a runaway guard. Measured tier is Pro+ (10 PR-reviews/hr rolling) with Fair-Usage adaptive decay; 5 is conservative under that throttle. Rationale: `references/rate-limit-fallback.md`. |
 | `--timeout <sec>` | `1800` (30 min) | Per-iteration CR-status wait cap. On timeout, exit and escalate. |
 | `--interval <sec>` | `8` | Poll interval used by Step 6 / 6b / 8c fallback polls. v2 dropped the default from `60` → `8` because Step 5 pre-flight absorbs the first round-trip; tighten to 5 for faster wakeup or raise back to 30+ if your CR org rate-limits aggressively. |
 | `--auto-merge` | OFF | After convergence, gate-check branch protection. With protection: `gh pr merge --auto --squash --delete-branch`. Without protection: prompt user (Merge now / Skip / Cancel). |

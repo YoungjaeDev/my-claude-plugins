@@ -55,10 +55,34 @@ Default behavior is unchanged for users who don't pass `--cr-source`. Polling in
 ## Step 1: Parse arguments
 
 ```bash
-if [ -d "plugins/github-dev/skills/cr-fix" ]; then
+# Codex 0.135 exports no CLAUDE_PLUGIN_ROOT, so fall back to discovering the
+# cached plugin dir. Sort on the version basename, not the full path — with two
+# marketplace dirs a name like zeta/github-dev/2.10.0 would otherwise outrank
+# alpha/github-dev/3.0.0. sort -V (GNU) orders X.Y.Z properly; BSD/macOS sort
+# lacks -V, so degrade to a numeric dotted-field sort (plain lexicographic
+# ranked 2.9.0 above 2.10.0). `|| true`: an absent/empty cache is the normal
+# case on Claude-only machines and must not trip an errexit caller.
+CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+if sort -V </dev/null >/dev/null 2>&1; then
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2- || true)
+else
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/github-dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
+fi
+
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then
+  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
+elif [ -d "plugins/github-dev/skills/cr-fix" ]; then
   SKILL_DIR="plugins/github-dev/skills/cr-fix"
+elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then
+  SKILL_DIR="$CODEX_CAND/skills/cr-fix"
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then
   SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
+elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then
+  # unverified flat Hermes layout (no live-Hermes confirmation yet) — additive
+  # branch guarded by -d, never rewrites the plugin-layout branch above
+  SKILL_DIR="$HERMES_HOME/skills/cr-fix"
 else
   SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"
 fi
@@ -68,7 +92,7 @@ eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
 
 Sets: `SKILL_DIR, MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, MINOR_STOP, GENERALIZE, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
 
-`SKILL_DIR` resolves to the source-tree plugin path when available, then to the active Hermes profile install (`$HERMES_HOME/plugins/github-dev/...`), then to the default `~/.hermes/plugins/github-dev/...` install. All `scripts/` and `references/` paths below resolve relative to this.
+`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex 0.135 cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`), the active Hermes profile install (`$HERMES_HOME/plugins/github-dev/...` then the flat `$HERMES_HOME/skills/cr-fix` layout), then the default `~/.hermes/plugins/github-dev/...` install. Without the `${CLAUDE_PLUGIN_ROOT}` and Codex-cache branches, an invocation outside the source tree resolved to a non-existent Hermes path and `parse-args.sh` was unreachable. All `scripts/` and `references/` paths below resolve relative to this.
 
 ## Step 2: Resolve repo / PR / START_SHA + pre-flight setup
 
@@ -98,9 +122,28 @@ Abort if `PR_NUM` empty: `No open PR for current branch — push first and open 
 ```bash
 mkdir -p .claude/state/archive
 PRIOR_PROCESSED='[]'
-if [ -f ".claude/state/cr-fix-${PR_NUM}.json" ]; then
-  PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' ".claude/state/cr-fix-${PR_NUM}.json" 2>/dev/null || echo '[]')
-  mv ".claude/state/cr-fix-${PR_NUM}.json" ".claude/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S).json"
+# The Step 16 EXIT trap always archives the live state file, so on the NEXT run
+# the live path is usually absent — fall back to the newest archive, or Codex
+# reviews already handled get re-processed. Mirrors post-merge Step 1.5.
+# `|| true`: no archive at all (first run) must not trip an errexit caller.
+PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
+[ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
+if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
+  # Fail loud on a corrupt prior state: resetting the dedupe would re-judge
+  # every already-processed Codex review (duplicate re-apply attempts on
+  # already-fixed code). Abort BEFORE creating a new state file — recovery is
+  # inspecting/deleting the named file and re-running.
+  PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null) || {
+    echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
+    exit 1
+  }
+  # Only the live file is archived; an already-archived copy stays put. The $$
+  # suffix keeps a same-second re-run or parallel run from clobbering an
+  # archive; abort on mv failure rather than silently overwriting state.
+  if [ "$PRIOR_STATE" = ".claude/state/cr-fix-${PR_NUM}.json" ]; then
+    mv "$PRIOR_STATE" ".claude/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S)-$$.json" \
+      || { echo "cr-fix: failed to archive prior state" >&2; exit 1; }
+  fi
 fi
 STATE_FILE=".claude/state/cr-fix-${PR_NUM}.json"
 jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --arg src "$CR_SOURCE" \
@@ -250,6 +293,7 @@ fi
 
 - `state="success"` → Step 6b
 - `state="failure"` → `final_state=failure`, break
+- `state="error"` → `final_state=failure`, break — cr-commit-state.sh's error channel (auth/network/secondary rate limit) turned terminal after `ERROR_STREAK_MAX` (default 3) consecutive rounds; surface the JSON's `channel` field to the user instead of spinning to TIMEOUT
 - `state="rate_limited"` → `rate_limit_hits=$((rate_limit_hits+1))`, jump to Step 7c
 - timeout (no JSON, exit 124) → `final_state=timeout`, break
 
@@ -260,8 +304,11 @@ Skip if `codex_active != "active"`. Skip if pre-flight already populated `codex_
 ```bash
 if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
   PROCESSED=$(jq -c '.codex_processed_reviews // []' "$STATE_FILE")
+  # jq -sr, not -s: without -r an empty result prints the two-char string '""',
+  # which is non-empty -> candidate looks found -> grace polling is skipped and
+  # the iter silently loses every Codex finding (fetch by review id '""' -> []).
   candidate=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
-    | jq -s --argjson p "$PROCESSED" 'add // []
+    | jq -sr --argjson p "$PROCESSED" 'add // []
         | [ .[] | select(.user.login=="chatgpt-codex-connector[bot]")
                 | select(.state=="COMMENTED" or .state=="CHANGES_REQUESTED")
                 | select(.id as $i | $p | index($i) | not) ]
@@ -276,11 +323,24 @@ if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
     # Without the second term the grace poll drops to 30s and Step 8c
     # fall-through can mark `clean` while a slower Codex review is still
     # in flight. (codex_wait promise violation, Codex P2 iter 6.)
-    pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
-    push_age=$(jq -r '.push_age_seconds // 0' <<<"$pf")
-    pf_remaining=$(( pf_timeout - push_age ))
-    [ "$pf_remaining" -lt 0 ] && pf_remaining=0
-    [ "$gate" = "codex_wait" ] && [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
+    # $pf holds the Step 5 pre-flight JSON, but Step 5 runs ONLY for
+    # CR_SOURCE ∈ {auto,pr-bot}; the bypass path (cli/codex-only) skips it and
+    # leaves $pf unset. pf_remaining is consulted only for gate=codex_wait, so
+    # read $pf under that gate alone — a bare `<<<"$pf"` here aborts the bypass
+    # path under `set -u`. (Codex P2 iter 8: the iter-5 jq -r fix first made
+    # `candidate` genuinely empty on bypass, so this branch is now reachable.)
+    if [ "$gate" = "codex_wait" ]; then
+      # gate=codex_wait is set only in Step 5's auto|pr-bot pre-flight, which
+      # populated $pf — so a bare read is safe here (no `${pf:-{}}` default,
+      # which bash mis-expands to `<value>}` on the set case, breaking the JSON).
+      pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
+      push_age=$(jq -r '.push_age_seconds // 0' <<<"$pf")
+      pf_remaining=$(( pf_timeout - push_age ))
+      [ "$pf_remaining" -lt 0 ] && pf_remaining=0
+      [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
+    else
+      grace_cap="$CODEX_GRACE"
+    fi
     # Bash(run_in_background=true, timeout=grace_cap*1000):
     #   OWNER=... REPO=... PR_NUM=... PROCESSED=... INTERVAL=15 \
     #     bash $SKILL_DIR/scripts/poll-codex-grace.sh
@@ -310,6 +370,22 @@ Entered either from Step 5 (`gate=rate_limited`) or Step 6 (`state=rate_limited`
 rl=$(bash $SKILL_DIR/scripts/sniff-cr-rate-limit.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" || echo '')
 reset=$(jq -r '.reset_minutes_estimate // empty' <<<"$rl")
 channel=$(jq -r '.channel // empty' <<<"$rl")
+```
+
+**Active query fallback (ambiguous passive sniff only).** When the passive sniff confirmed a rate-limit but extracted no reset estimate (`reset` empty), ask CodeRabbit directly instead of guessing 15 min. The query posts one `@coderabbitai rate limit` comment and polls for the reply, so it is wrapped in background + `Monitor` (it sleeps between polls); skip it entirely when the passive sniff already produced a `reset`. **Once per run**: the post is a non-idempotent external write, so persist the outcome to `STATE_FILE.rate_limit_query` and reuse it on later iterations instead of posting again.
+
+```bash
+prior_aq=$(jq -c '.rate_limit_query // empty' "$STATE_FILE")
+if [ -n "$prior_aq" ]; then
+  reset=$(jq -r '.reset_minutes // empty' <<<"$prior_aq")
+elif [ -n "$rl" ] && [ -z "$reset" ]; then
+  # Bash(run_in_background=true, timeout=180000):
+  #   bash $SKILL_DIR/scripts/query-cr-rate-limit.sh "$OWNER" "$REPO" "$PR_NUM"
+  # Monitor returns one JSON line: {remaining, reset_minutes, replied, body_excerpt}
+  #   aq=<that line>
+  #   [ "$(jq -r '.replied' <<<"$aq")" = true ] && reset=$(jq -r '.reset_minutes // empty' <<<"$aq")
+  #   tmp=$(mktemp); jq --argjson q "$aq" '.rate_limit_query = $q' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+fi
 ```
 
 ### 7c: Decide fallback per `references/rate-limit-fallback.md`
@@ -438,7 +514,7 @@ For each non-skip finding, in severity order (CR/CLI CRITICAL → HIGH → MAJOR
    **`over_engineering=yes` overrides `fix_size`**: a suggestion that only adds speculative abstraction / unrequested configurability is skipped even when the change is `small-safe`. cr-fix refuses *added* complexity; *removing* existing over-engineering is `ponytail-review`'s job (optional, when installed).
 
 6. **Apply / defer / skip**:
-   - **apply** → Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
+   - **apply** → **Stale-line guard**: before editing, if `$path` already appears in `$TRACK_FILE` from an earlier finding this cycle, re-Read the target region (offset `max(1, line-20)`, limit `40`) and re-locate the finding's quoted context in it — an earlier edit may have shifted the line numbers this finding was anchored to. Edit only where the expected context still matches; if the anchor content cannot be re-found in the re-Read region, **defer** the finding instead of editing a guessed location. Then Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
      - **9c.6 — Bounded same-file generalization** — after the flagged-line fix lands, when `GENERALIZE=true` AND `is_real=="real"` AND `confidence=="high"` AND the finding is a *mechanically grep-able* pattern (a literal/regex-matchable construct, not a judgement call), grep the **same file** (or, when the finding is scoped to one symbol, that symbol's body only) for sibling occurrences of the same pattern and apply the identical fix in the **same commit**. **Never cross-file** — cross-file or speculative matches stay deferred per the existing matrix. Record the extra edits in the log entry's `generalized_to: [<line>...]` field (audit-only). Do NOT re-increment `applied_this_cycle` / `auto_judge_apply` — the finding still counts as 1; only the extra lines are logged. Full scope + cross-file hard-exclusion + surgical-diff trade-off: `references/autonomous-judgment.md` ("Bounded same-file generalization").
    - **defer** → `deferred_this_cycle=$((deferred_this_cycle+1))`; `auto_judge_defer=$((auto_judge_defer+1))`; log judgment.
    - **High-severity accumulator (Step 13 soft-stop signal)** — for any `apply` or `defer` whose `severity_reassess=="high"`, `high_sev_this_cycle=$((high_sev_this_cycle+1))`. This feeds the Step 13 `minor_floor` soft-stop: a cycle that applied only low-severity fixes and deferred nothing can stop early.
@@ -534,10 +610,14 @@ base=$(jq -r '.base_branch' <<<"$gate")
 [ "$blocking" = 0 ] || exit 0
 if [ "$proto" = 200 ]; then
   gh pr merge "$PR_NUM" --auto --squash --delete-branch && merged=true
-else
+elif [ "$proto" = 404 ]; then
   # AskUserQuestion: Merge now / Skip merge / Cancel
   # Description: "Base branch '$base' has no protection rules; --auto would merge immediately."
   # On "Merge now": gh pr merge "$PR_NUM" --squash --delete-branch && merged=true
+else
+  # protection_http=0: the probe itself failed (network/auth/5xx) — never
+  # merge on an unverified protection state; surface and leave the PR open.
+  echo "auto-merge: branch-protection probe failed — merge not attempted" >&2
 fi
 ```
 

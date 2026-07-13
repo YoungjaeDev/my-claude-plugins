@@ -762,7 +762,8 @@ node scripts/install-skills.mjs
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 │   ├── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)
 │   └── mem0-ops/              # 플릿 레벨 mem0 진단·정리 (fleet-scan/doctor/cleanup)
-├── CLAUDE.md
+├── AGENTS.md                 # 세 런타임 공통 최상위 지침 (정본)
+├── CLAUDE.md                 # @AGENTS.md import
 └── README.md
 ```
 

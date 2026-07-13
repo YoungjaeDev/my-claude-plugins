@@ -5,7 +5,8 @@
 # Emits exactly one terminal JSON line:
 #   {"state":"success|failure","target_url":"..."}                      (CR responded)
 #   {"state":"rate_limited","reset_minutes_estimate":N,"hits":N}        (early escape — hang fix)
-# Exits 0 on success/failure/rate_limited terminal; timeout governed by surrounding Bash timeout.
+#   {"state":"error","channel":"status|check_run"}                      (persistent fetch failure)
+# Exits 0 on success/failure/rate_limited/error terminal; timeout governed by surrounding Bash timeout.
 #
 # Hang-fix design (Step 6, replaces 1800s unilateral spin):
 #   - After EARLY_CHECK_WINDOW seconds of wall-clock without seeing status, probe rate-limit body.
@@ -28,6 +29,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # silently doubling the documented 30s rate-limit detection window.
 start_ts=$(date +%s)
 
+# state:"error" from cr-commit-state.sh means the fetch itself failed (auth /
+# network / secondary rate limit) — distinct from "CR has not responded". A
+# single transient error self-heals next round; a streak means the credential
+# or network is actually broken, so surface it instead of spinning to TIMEOUT.
+ERROR_STREAK_MAX="${ERROR_STREAK_MAX:-3}"
+err_streak=0
+
 # Pull CR's reported state ONCE per loop iteration. cr-commit-state.sh reads the
 # commit-status API first and falls back to check-runs, because CodeRabbit uses
 # one surface or the other depending on the install. Polling /statuses alone made
@@ -44,6 +52,18 @@ while true; do
   # normalize both to "" rather than letting "none" slip past it.
   s=$(jq -r 'if (.state // "none") == "none" or (.state // "") == "pending" then "" else .state end' <<<"$cr_obj")
   desc=$(jq -r '.description // ""' <<<"$cr_obj")
+
+  if [ "$s" = "error" ]; then
+    err_streak=$((err_streak + 1))
+    if [ "$err_streak" -ge "$ERROR_STREAK_MAX" ]; then
+      ch=$(jq -r '.channel // ""' <<<"$cr_obj")
+      printf '{"state":"error","sha":"%s","pr":%s,"channel":"%s","source":"poll"}\n' "$SHA" "$PR_NUM" "$ch"
+      exit 0
+    fi
+    sleep "$INTERVAL"
+    continue
+  fi
+  err_streak=0
 
   # Free-tier transient: success row whose description is the quota-refill
   # placeholder (NOT genuine `Review limit reached`/`rate limited`). Keep

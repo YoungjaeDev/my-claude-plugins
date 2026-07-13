@@ -1,10 +1,10 @@
 ---
 id: codex-image-bridge-design
 aliases: [codex-image, codex-exec-delegation, sub-cli-model-inherit, passthrough-shell-validation, disable-model-invocation, --ref, edit-vs-reference-arg]
-last_verified: 2026-07-02
+last_verified: 2026-07-13
 status: active
 volatility: stable
-sources: 3
+sources: 4
 ---
 
 # Designing a Claude→sub-CLI bridge skill (codex-image)
@@ -109,10 +109,37 @@ platform (`\` separator, `:` drive letter on Windows). Denylisting for
 platform looks like breaks the feature for an entire platform, not just the
 attacker's crafted input.
 
+## Heredoc prompt handoff: random literal delimiter, not a fixed or variable one
+
+The prompt body reaches `codex exec` through a here-document, a second injection
+surface distinct from the `-i "<path>"` argument above. The original handoff used
+a fixed `EOF` delimiter with the user prompt spliced into the body — so a prompt
+whose own text contains a line equal to `EOF` closes the heredoc early and the
+remaining prompt lines execute as shell commands (reproduced live with a canary:
+an `EOF` line followed by `touch <file>` created the file).
+
+The fix is a per-invocation **random literal token** (`CODEX_PROMPT_EOF_<random>`)
+written verbatim in BOTH the opening `<<'TOKEN'` and the closing line, single-
+quoted so the body is never expanded, plus a pre-check that regenerates the token
+if any prompt line equals it. The load-bearing gotcha: **bash does not
+parameter-expand the here-document delimiter word.** Writing `<<"$DELIM" … $DELIM`
+makes the shell match the literal three-character string `$DELIM`, a fixed and
+predictable value — so a variable delimiter gives *zero* real randomization and
+the injection survives. The token must be a concrete random literal in both
+positions. (A PowerShell here-string carries the same shape: reject a prompt line
+beginning with the terminator `'@`.) Same lesson as the quote/array-exec rule
+above in spirit — the defense is in how the shell parses the construct, not in
+scrubbing the untrusted text.
+
 ## Sources
 
 - `plugins/codex-image/skills/codex-image/SKILL.md` (PR #80, merged b681a26) — the
   passthrough-override design + Validation step 7; codex-cli 0.142 `codex exec --help`.
+- PR #130 (merged 936781a) — the heredoc prompt-handoff injection: fixed `EOF`
+  delimiter allowed a prompt-embedded `EOF` line to break out (live canary repro);
+  fixed with a per-invocation random literal delimiter + reject-precheck. The
+  bash-does-not-expand-the-delimiter-word gotcha rejected the variable-delimiter
+  "simplification".
 - PR #91 (merged 7be395d) — `disable-model-invocation` retirement + in-body
   grounding gate; deck-build dogfood where the hidden skill cost a 140k+-token
   `codex exec` re-derivation while generation still ran.

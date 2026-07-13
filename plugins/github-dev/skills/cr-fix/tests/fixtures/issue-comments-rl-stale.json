@@ -1,0 +1,16 @@
+[
+  {
+    "id": 500,
+    "user": { "login": "YoungjaeDev" },
+    "body": "@coderabbitai rate limit",
+    "created_at": "2025-06-01T10:00:00Z",
+    "updated_at": "2025-06-01T10:00:00Z"
+  },
+  {
+    "id": 501,
+    "user": { "login": "coderabbitai[bot]" },
+    "body": "You have 9 reviews remaining. Your reviews will be available in 5 minutes.",
+    "created_at": "2025-06-01T10:00:30Z",
+    "updated_at": "2025-06-01T10:00:30Z"
+  }
+]

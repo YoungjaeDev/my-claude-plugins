@@ -1,10 +1,10 @@
 ---
 id: cr-rate-limit-progressive-refill
-aliases: [cr-free-tier-disabled, cr-quota-budget, cr-burst-push]
-last_verified: 2026-07-09
+aliases: [cr-free-tier-disabled, cr-quota-budget, cr-burst-push, cr-active-rate-limit-query]
+last_verified: 2026-07-13
 status: active
 volatility: volatile
-sources: 6
+sources: 7
 ---
 
 # CodeRabbit rate-limit: progressive refill, not a plan downgrade
@@ -36,6 +36,13 @@ Per CR's [Fair Usage Limits Policy](https://docs.coderabbit.ai/management/plans#
 
 A transient `"Review skipped: free tier disabled"` placeholder is **non-terminal**: hold it in `gate=cr_wait` for `CR_SKIP_GRACE` seconds (default `300`, env-only — no new `--flag`, mirroring `EARLY_CHECK_WINDOW`), then fall through to `rate_limited` once the grace window expires. A genuine `Review limit reached` / `rate limited` routes to `rate_limited` immediately; `error` / `pending` / `failure` paths are untouched. The poll keeps waiting through the grace window instead of terminating on the first `state ∈ {success,failure}`, exiting only when CR flips to `Review completed` (terminal success) or grace expires — so a refill placeholder no longer collapses to the same verdict as a hard cap, and a CR-only PR no longer false-converges on the content-empty placeholder.
 
+## The active query
+
+When the passive sniff is ambiguous (a rate-limit signal with no reset estimate), cr-fix 2.8.0 posts `@coderabbitai rate limit` on the PR and parses CR's reply (`query-cr-rate-limit.sh`) for `remaining` / `reset_minutes`. Two contract rules, both dogfood-derived:
+
+- **Anchor the reply to your own post's comment id, never to a body match.** Every run posts the identical text, so re-finding "our post" via body-match `last` is ambiguous across runs: while the new post is not yet visible in the list API, the *previous* run's post anchors the filter and its old reply is served as this query's answer — a stale `reset_minutes` drives the fallback decision. `gh pr comment` prints the new comment's URL (`…#issuecomment-<id>`); issue-comment ids are monotonic, so `reply.id > post.id` selects only replies to this query and subsumes same-second `>=` timestamp handling.
+- **The result is per-run idempotent**: persisted to the state file (`rate_limit_query`) and reused across iterations, because the query is an external side effect (a comment on the PR) that must not repeat every iter.
+
 ## Evidence across dogfood runs
 
 Three independent instances confirm the signal is transient and recoverable, not a hard cap:
@@ -59,3 +66,4 @@ Three independent instances confirm the signal is transient and recoverable, not
 4. **PR #54 dogfood** — established the co-reviewer recovery path and the content-empty `cr_state: success` caveat.
 5. **PR #56 (Issue #55 fix)** — code-level correction of `poll-cr-status.sh` + `pre-flight.sh`: the transient placeholder is held non-terminal for `CR_SKIP_GRACE` (default 300s, env-only) rather than collapsing to `rate_limited`.
 6. **PR #104 dogfood** — fourth instance: `Review limit reached` (Fair Usage adaptive limit) under a green `success / Review completed` commit status, with a machine-readable `Next review available in: 41 minutes` the sniffer drops.
+7. **PR #122** (`fix(github-dev): cr-fix iter-4 — id-anchor the active rate-limit query`) — the active query lands (2.8.0) and its stale-anchor bug is reproduced RED against the body-match implementation (fixture `issue-comments-rl-stale.json`: prior-run reply id 501 served as fresh) then fixed via post-id anchoring.

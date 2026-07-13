@@ -13,4 +13,4 @@ node "$repo_root/scripts/sync-hermes-manifests.mjs" --check
 # cr-fix's CLI-fallback and CR-state paths only execute after the primary path
 # fails, so nothing exercised them until they broke in production (issue #105).
 # Fixture-driven, no network, sub-second.
-bash "$repo_root/plugins/github-dev/skills/cr-fix/tests/run-tests.sh" >/dev/null
+bash "$repo_root/plugins/github-dev/skills/cr-fix/tests/run-tests.sh"

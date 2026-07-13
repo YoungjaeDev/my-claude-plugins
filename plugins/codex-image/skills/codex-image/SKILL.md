@@ -69,10 +69,17 @@ Pass instructions to Codex through stdin with `codex exec -`. Do not interpolate
 
 Use host-appropriate stdin syntax. Append `--skip-git-repo-check` to `codex exec` only when no git root was found. Insert `-m <model>`, `-c model_reasoning_effort="<effort>"`, and a non-default `-s <mode>` only when the matching `--model` / `--reasoning` / `--sandbox` argument was supplied; with none given, the command is exactly `codex exec - -C "<project-root>" -s workspace-write` as before.
 
+### Delimiter safety (required every invocation)
+
+The prompt is delivered as the body of a quoted here-document (bash) or here-string (PowerShell) — never interpolated into a shell argument. A *fixed* delimiter is unsafe: if the prompt's own text contains a line equal to the delimiter, the block closes early and the lines after it execute as shell commands. Guard the handoff:
+
+- **Bash — randomize the delimiter.** Pick a fresh token per invocation, e.g. `CODEX_PROMPT_EOF_<8+ random hex/alnum>`, and write that exact literal token in BOTH the opening `<<'TOKEN'` and the closing `TOKEN` line (substitute a concrete suffix for `<random>` in the template below). Then scan the exact prompt text: if any line equals the token, pick a new token and re-check before emitting the command. Keep the delimiter single-quoted so the body is never expanded. Do **not** put the token in a shell variable (`<<"$DELIM"` … `$DELIM`): bash does not parameter-expand the here-document delimiter word, so it would match the literal string `$DELIM` — a fixed, predictable value — and the randomization is lost. The token must be a concrete literal in both places.
+- **PowerShell — the here-string terminator `'@` is fixed** and cannot be randomized. Reject instead: if any line of the prompt begins with `'@`, ask the user to reword that line before generating.
+
 For bash-like shells:
 
 ```bash
-codex exec - [-m <model>] [-c model_reasoning_effort="<effort>"] -C "<project-root>" -s <sandbox, default workspace-write> <<'EOF'
+codex exec - [-m <model>] [-c model_reasoning_effort="<effort>"] -C "<project-root>" -s <sandbox, default workspace-write> <<'CODEX_PROMPT_EOF_<random>'
 Use the built-in image generation capability to create the requested image.
 
 Prompt:
@@ -93,7 +100,7 @@ Requirements:
 3. Never overwrite existing files.
 4. Print the saved file path(s), file size(s), and any tool/model limitation encountered.
 5. If image generation is unavailable in this Codex CLI session, say so directly and do not create placeholders.
-EOF
+CODEX_PROMPT_EOF_<random>
 ```
 
 For PowerShell, set the native-pipe encoding to UTF-8 first, otherwise PowerShell 5.1 transcodes the pipe to ASCII and corrupts non-ASCII text (e.g. Korean becomes `??`):

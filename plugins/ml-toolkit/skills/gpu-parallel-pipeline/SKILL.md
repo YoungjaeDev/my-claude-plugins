@@ -103,13 +103,30 @@ def process_batch_hybrid(batch: list[dict]) -> list[dict]:
 
 Before implementation, check GPU memory:
 ```bash
-if [ -d "plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
+# Codex 0.135 does not export CLAUDE_PLUGIN_ROOT and does not run from the repo
+# CWD, so the resolver adds a plugin-cache branch. It walks cache versions
+# high-to-low and takes the first one that actually contains the skill dir, so an
+# incomplete higher version does not shadow a complete lower one. Each branch
+# verifies its target before committing; the final guard aborts loudly instead of
+# running python against a path that does not exist.
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/gpu-parallel-pipeline" ]; then
+  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/gpu-parallel-pipeline"                 # Claude Code (installed)
+elif [ -d "plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
   SKILL_DIR="plugins/ml-toolkit/skills/gpu-parallel-pipeline"                  # Claude/Codex (repo CWD)
+elif SKILL_DIR=$(
+       while IFS= read -r d; do
+         [ -d "$d/skills/gpu-parallel-pipeline" ] && { printf '%s' "$d/skills/gpu-parallel-pipeline"; break; }
+       done < <(ls -1d "${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"/*/ml-toolkit/*/ 2>/dev/null \
+         | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
+     ); [ -n "$SKILL_DIR" ]; then :                                          # Codex 0.135 plugin cache (highest COMPLETE version)
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
   SKILL_DIR="$HERMES_HOME/plugins/ml-toolkit/skills/gpu-parallel-pipeline"     # Hermes profile install
+elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/gpu-parallel-pipeline" ]; then
+  SKILL_DIR="$HERMES_HOME/skills/gpu-parallel-pipeline"                        # Hermes skill-level install (unverified)
 else
   SKILL_DIR="$HOME/.hermes/plugins/ml-toolkit/skills/gpu-parallel-pipeline"    # Hermes default install
 fi
+[ -d "$SKILL_DIR" ] || { echo "gpu-parallel-pipeline: skill dir not resolved" >&2; exit 1; }
 python "$SKILL_DIR/scripts/check_gpu_memory.py"
 ```
 

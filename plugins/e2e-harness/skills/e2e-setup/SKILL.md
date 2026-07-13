@@ -10,7 +10,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
 
 > **Why this skill exists (the harness-engineering point).** Installing the official agents is NOT enough — out of the box they skip auth setup, can't resolve project-known API errors, and don't know test-account usage, because they lack codebase context. Steps 3-7 below *onboard them like a new hire*: the config, auth scaffold, route-mock guidance, and especially the E2E SSOT doc are the context an agent needs to work autonomously. Skipping them is the usual reason "the official agents didn't just work."
 
-> Bundled templates live at `${CLAUDE_PLUGIN_ROOT}/assets/` under Claude Code; under Codex 0.135 the same `assets/` dir sits next to `skills/` in the plugin cache. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
+> Bundled templates live at `<plugin-root>/assets/`. Resolve `<plugin-root>` with the cross-runtime block in Step 0 (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache, Hermes) — Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so a bare `${CLAUDE_PLUGIN_ROOT}/assets/...` copy fails there. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
 >
 > **Verified against Playwright 1.61.0** (init-agents introduced in 1.56; trace CLI in 1.59). Filenames/output below are current-version facts — Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.
 
@@ -21,6 +21,30 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
 - This skill never assumes `github-dev` or any sibling plugin is installed.
 
 ## Workflow
+
+0. **Resolve the plugin root (cross-runtime)** — run once, reuse `PLUGIN_ROOT` in the `cp` steps below (Steps 5-7). Re-run the block if a later step runs in a fresh shell.
+   ```bash
+   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Every branch verifies
+   # its target (CHK) exists before committing, so a stale env or an incomplete
+   # cache version falls through instead of winning. The cache branch walks
+   # versions high-to-low and takes the first COMPLETE one. HERMES_HOME probes
+   # cover both Hermes layouts; unverified until live Hermes.
+   CHK="assets"
+   PLUGIN_ROOT=""
+   [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+   [ -z "$PLUGIN_ROOT" ] && [ -e "plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="plugins/e2e-harness"
+   if [ -z "$PLUGIN_ROOT" ]; then
+     cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+     while IFS= read -r d; do
+       [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
+     done < <(ls -1d "$cache_root"/*/e2e-harness/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
+   fi
+   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/e2e-harness"   # unverified
+   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                          # unverified (skill-level install)
+   { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "e2e-setup: plugin root not resolved (need $CHK)" >&2; exit 1; }
+   echo "PLUGIN_ROOT=$PLUGIN_ROOT"
+   ```
+   > Skill-level install (`$HERMES_HOME/skills/e2e-setup/`) does not carry the plugin-root `assets/` dir, so the resolver aborts there rather than resolving to a path without the templates — install the full plugin for e2e-setup.
 
 1. **Detect / install Playwright**:
    - Check for `@playwright/test` in `package.json` and a `playwright.config.*`. If absent, propose `npm init playwright@latest` (interactive) or `npm i -D @playwright/test && npx playwright install --with-deps`.
@@ -80,15 +104,15 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    - Add `playwright/.auth/` to `.gitignore` (never commit session state). Credentials come from env (`E2E_USER` / `E2E_PASS`), never hardcoded.
 
 5. **E2E operating SSOT doc**:
-   - Copy `${CLAUDE_PLUGIN_ROOT}/assets/e2e-guidelines.template.md` to the project (default `e2e/AGENTS.md`; offer `.claude/e2e-guidelines.md` as an alternative). This is the single source of truth for *what* to test (CUFs), auth scenarios, environments, mocking policy, conventions, flake policy, CI gating — **distinct** from the repo-wide `AGENTS.md`/`CLAUDE.md`.
+   - Copy `${PLUGIN_ROOT}/assets/e2e-guidelines.template.md` (PLUGIN_ROOT from Step 0) to the project (default `e2e/AGENTS.md`; offer `.claude/e2e-guidelines.md` as an alternative). This is the single source of truth for *what* to test (CUFs), auth scenarios, environments, mocking policy, conventions, flake policy, CI gating — **distinct** from the repo-wide `AGENTS.md`/`CLAUDE.md`.
    - Walk the user through filling the `<...>` placeholders, at minimum the CUF list (used by `e2e-author`).
 
 6. **Network route-mock scaffold**:
-   - Copy `${CLAUDE_PLUGIN_ROOT}/assets/route-mock.scaffold.ts` to `e2e/` (e.g. `e2e/_route-mock.example.ts`) as a reference for `page.route` + `route.fulfill`.
+   - Copy `${PLUGIN_ROOT}/assets/route-mock.scaffold.ts` (PLUGIN_ROOT from Step 0) to `e2e/` (e.g. `e2e/_route-mock.example.ts`) as a reference for `page.route` + `route.fulfill`.
    - **Detect framework**: if Next.js (or another SSR/BFF stack — check `next` in `package.json`), surface the caveat prominently: `page.route` only intercepts **browser** requests; server-side fetches (Server Components, route handlers, `getServerSideProps`) bypass it. Mock those with an E2E-only env flag at the data layer, a stubbed upstream, or a seeded test DB. The scaffold documents all three.
 
 7. **Gated CI workflow**:
-   - Copy `${CLAUDE_PLUGIN_ROOT}/assets/playwright-ci.yml` to `.github/workflows/e2e.yml`.
+   - Copy `${PLUGIN_ROOT}/assets/playwright-ci.yml` (PLUGIN_ROOT from Step 0) to `.github/workflows/e2e.yml`.
    - Customize the `paths:` filter to the project's app/test dirs (keep it narrow — avoid running the suite on every push). The template also supports `e2e`-label force-run.
    - It uploads `playwright-report/` + `test-results/` as artifacts and posts a **PR comment on failure** via `gh pr comment` (no official Playwright PR-comment step exists — this is custom). Remind the user to set `E2E_USER` / `E2E_PASS` secrets and the `E2E_BASE_URL` variable.
    - Validate the YAML if `actionlint` is available; otherwise note it is unvalidated.

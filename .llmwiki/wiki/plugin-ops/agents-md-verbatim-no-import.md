@@ -4,7 +4,7 @@ aliases: [agents-md-pointer-trap, codex-no-at-import, claude-md-imports-agents-m
 last_verified: 2026-07-13
 status: active
 volatility: stable
-sources: 5
+sources: 6
 ---
 
 # AGENTS.md is loaded verbatim — `@import` is Claude-only, and one-directional
@@ -25,7 +25,9 @@ Claude Code never reads `AGENTS.md` as a discovery target. It reads `CLAUDE.md`,
 
 An `AGENTS.md` reduced to `@CLAUDE.md` (or `See @CLAUDE.md`) leaves Codex and Hermes with a ~12-byte file of literal Markdown. Every rule, review guideline, and integration note is gone from their context. **No error, no warning** — the byte-limit/concat path succeeds on a tiny file, so the failure is invisible from the Claude side, which never consulted `AGENTS.md` in the first place.
 
-A *prose* redirect ("read `CLAUDE.md` before starting") half-works: Codex CLI is an agent with file tools and can comply, at the cost of a tool call per session and a soft, model-dependent guarantee. It does **not** reach the Codex GitHub cloud reviewer, which loads the `## Review guidelines` section straight into its system prompt rather than walking files — a redirect there returns the reviewer to generic lint nits on every PR.
+A *prose* redirect ("read `CLAUDE.md` before starting") half-works: Codex CLI is an agent with file tools and can comply, at the cost of a tool call per session and a soft, model-dependent guarantee. It does **not** reach the Codex GitHub cloud reviewer, which loads the `## Review guidelines` section straight into its system prompt rather than following such a prose pointer to other files — a redirect there returns the reviewer to generic lint nits on every PR.
+
+One documented exception narrows the "walks no files" claim: per the Codex best-practices doc, *"If you and your team have a `code_review.md` file and reference it from `AGENTS.md`, Codex can follow that guidance during review as well."* So a **specifically-referenced `code_review.md`** is a file the reviewer *can* follow — but only as a **soft guarantee** ("can follow"), categorically weaker than the hard system-prompt injection of the `## Review guidelines` section itself, and distinct from a vague "read `CLAUDE.md`" prose redirect (which is not a referenced review file and does not work). This repo uses exactly that pattern: `AGENTS.md` keeps a hard-injected P0/P1 minimal core and points at a root `code_review.md` for the full detail.
 
 ## The direction that works
 
@@ -59,4 +61,5 @@ The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a
 3. **agents.md spec** — "AGENTS.md is just standard Markdown. … the agent simply parses the text you provide." Nesting is directory-only.
 4. **Claude Code memory docs** (`code.claude.com/docs/en/memory`) — Claude reads `CLAUDE.md`, not `AGENTS.md`; `@path` imports are a `CLAUDE.md` feature, recursive to four hops; the documented interop pattern is a `CLAUDE.md` that imports `AGENTS.md`.
 
-5. **`codex --help` / `codex doctor` on codex-cli 0.144.1** — `$CODEX_HOME` is the documented config root. The shipped binary also carries the literal `.codex/config.toml` plus `"Error parsing project config file"` / `"Failed to read project config file"`, so a project-level config surface exists; whether `project_doc_max_bytes` is honored there, and under what trust gating (`trust_level` appears in the binary), is **unverified** — `codex doctor` reports only the user-level path.
+5. **OpenAI Codex best-practices doc** (`developers.openai.com/codex/learn/best-practices`, served at `learn.chatgpt.com/guides/best-practices`, verified 2026-07-13) — "If you and your team have a `code_review.md` file and reference it from `AGENTS.md`, Codex can follow that guidance during review as well." The "can follow" wording is what makes this a soft guarantee. The companion GitHub review page (`developers.openai.com/codex/code-review`) confirms the cloud reviewer surfaces only P0/P1 comments.
+6. **`codex --help` / `codex doctor` on codex-cli 0.144.1** — `$CODEX_HOME` is the documented config root. The shipped binary also carries the literal `.codex/config.toml` plus `"Error parsing project config file"` / `"Failed to read project config file"`, so a project-level config surface exists; whether `project_doc_max_bytes` is honored there, and under what trust gating (`trust_level` appears in the binary), is **unverified** — `codex doctor` reports only the user-level path.

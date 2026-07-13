@@ -1,6 +1,6 @@
 {
   "name": "project-init",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Agent-harness project lifecycle. `new` bootstraps an empty dir (.claude/ scaffold, minimal CLAUDE.md, AGENTS.md with Codex GitHub cloud reviewer guidelines, README/CHANGELOG seed, gh repo create + push) behind a preflight guard that refuses non-empty directories. `wiring` is its inverse for existing repos: a read-only 14-axis diagnostic whose verdicts are FAIL / WARN / ASK / INFO / SKIP / OK. Four axes check whether config takes EFFECT rather than merely exists — core.hooksPath, an @import that defeats .claude/rules paths: scoping, MCP servers registered twice so one copy is discarded, and the Codex AGENTS.md byte budget. An ASK is a decision nobody made yet: asked once, persisted to .claude/state/wiring.json. Both consume the shared read-only detector scripts/project_state.sh.",
   "author": {
     "name": "YoungjaeDev"

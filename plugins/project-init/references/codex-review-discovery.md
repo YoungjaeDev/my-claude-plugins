@@ -13,6 +13,10 @@
 
 > 출처: [OpenAI Codex GitHub integration](https://developers.openai.com/codex/integrations/github) — "Codex reads `AGENTS.md` to learn the codebase conventions before reviewing".
 
+핵심 정정 (2026-07-13): "리뷰어는 `AGENTS.md` 섹션만 읽고 참조 파일은 따라가지 않는다" 는 인상은 과장이다. best-practices 문서가 예외를 명시한다 — *"If you and your team have a `code_review.md` file and reference it from `AGENTS.md`, Codex can follow that guidance during review as well."* 즉 `AGENTS.md` 가 명시적으로 참조하는 루트 `code_review.md` 는 리뷰어가 **따라갈 수 있다** (단 "can follow" = 소프트 개런티로, `## Review guidelines` 섹션 자체의 시스템 프롬프트 하드 주입보다 약하다. 임의 산문 "read X" redirect 와는 다르다 — 그건 참조된 리뷰 파일이 아니라 안 따라간다). 이 저장소는 이 패턴을 채택했다: `AGENTS.md` 에 하드 P0/P1 최소본 + 루트 `code_review.md` 전문.
+
+> 출처: [OpenAI Codex best practices](https://developers.openai.com/codex/learn/best-practices) (verified 2026-07-13) — `code_review.md` 소프트 개런티. GitHub cloud reviewer 는 P0/P1 만 코멘트로 표면화: [Codex code review](https://developers.openai.com/codex/code-review).
+
 ## 왜 "레포 생성 시점에" 시드해야 하나
 
 1. **첫 PR 부터 효과**: AGENTS.md 가 main 브랜치에 없으면 첫 PR 리뷰 시 Codex 가 generic 기준 (lint stuff, style nits) 으로 리뷰한다.

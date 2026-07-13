@@ -29,6 +29,13 @@ A *prose* redirect ("read `CLAUDE.md` before starting") half-works: Codex CLI is
 
 One documented exception narrows the "walks no files" claim: per the Codex best-practices doc, *"If you and your team have a `code_review.md` file and reference it from `AGENTS.md`, Codex can follow that guidance during review as well."* So a **specifically-referenced `code_review.md`** is a file the reviewer *can* follow — but only as a **soft guarantee** ("can follow"), categorically weaker than the hard system-prompt injection of the `## Review guidelines` section itself, and distinct from a vague "read `CLAUDE.md`" prose redirect (which is not a referenced review file and does not work). This repo uses exactly that pattern: `AGENTS.md` keeps a hard-injected P0/P1 minimal core and points at a root `code_review.md` for the full detail.
 
+## Splitting detail into `code_review.md` — keep should-block rules hard
+
+Because the reviewer only *soft-follows* `code_review.md` but *hard-injects* the `## Review guidelines` section, the split has a safe boundary and one verbatim-move trap — both surfaced by the Codex reviewer on the split PR itself:
+
+- **All P0/P1 should-block rules stay hard-injected inline; only elaboration goes soft.** A "minimal core" that drops some should-block P1s (`--slurp`, sed-safety, frontmatter, CI-perms) to the referenced file creates a live coverage gap whenever soft-follow is unvalidated — if the reviewer skips the file, those should-block rules vanish from its context. `AGENTS.md` had no byte-budget pressure here (the split *net-shrank* the file, 33.5KB → 29.8KB), so demoting any should-block rule buys nothing and costs coverage. Move only Domain-specific checklists / rationale / Do-not-flag detail.
+- **Verbatim-moved text rebinds its relative references.** A rule reading "이 문서" / "this file" / "위 섹션" meant the *source* file; after the move it silently points at `code_review.md`, which carries no plugin count/tree, so a count-drift rule sent the reviewer to the wrong file. Anchor every such reference to an explicit filename before moving.
+
 ## The direction that works
 
 Official Claude Code memory docs state the inverse pattern:
@@ -53,6 +60,7 @@ The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a
 > Promoted-to: [[agents-md-no-import]]
 > Evidence: .claude/rules/dual-integration.md
 > Evidence: plugins/project-init/references/codex-review-discovery.md
+> Evidence: code_review.md
 > See-also: [[detector-cannot-look-vs-nothing-wrong]]
 
 ## Sources

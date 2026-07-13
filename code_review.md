@@ -3,6 +3,8 @@
 > 이 파일은 이 저장소의 **상세 코드 리뷰 룰**이다. 루트 `AGENTS.md` 의 `## Review guidelines` 섹션이 이 파일을 참조한다. OpenAI Codex best-practices 문서 기준, `AGENTS.md` 가 참조하는 `code_review.md` 를 리뷰어가 리뷰 시 따라가 읽을 수 있다(소프트 개런티): *"If you and your team have a `code_review.md` file and reference it from `AGENTS.md`, Codex can follow that guidance during review as well."* (출처: <https://developers.openai.com/codex/learn/best-practices>). GitHub cloud reviewer 는 이 중 **P0 / P1 만 코멘트로 표면화**한다 (<https://developers.openai.com/codex/code-review>).
 >
 > 한국어로 리뷰한다. 발견사항은 영향 + 근거 (파일/라인) + 수정 방향 순서로 제시한다. 근거가 부족하면 `unverified` 로 표시한다.
+>
+> 유지보수 노트: `AGENTS.md` 의 `## Review guidelines` 는 여기 P0/P1 **should-block 룰의 하드 주입 최소본**을 함께 싣는다 (soft-follow 는 소프트 개런티라 should-block 을 이 파일로만 두지 않는다). 이 파일에 P0/P1 should-block 룰을 추가·삭제하면 그 하드 최소본에도 반영하라. Domain-specific 체크리스트·rationale·elaboration 은 이 파일에만 둔다.
 
 ## Do not flag (린터/포매터 영역)
 - 들여쓰기, 따옴표 스타일, trailing whitespace — 포매터 영역.

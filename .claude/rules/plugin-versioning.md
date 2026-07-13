@@ -22,6 +22,7 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 ## Do's
 
 - **Sync both version files on every bump**: update `plugins/<name>/.claude-plugin/plugin.json` AND the matching entry in `.claude-plugin/marketplace.json` in the same commit.
+- **A change to any file under `plugins/<name>/` is bump-worthy — including bundled `references/` / `docs/` / asset edits, not just code or skills.** Cache-gated users only receive the new content on a version bump, so a docs-only plugin edit still bumps that plugin's PATCH + `metadata.version` (+ Codex/Hermes manifest regen where applicable). Root-level docs (`AGENTS.md`, `README.md`, `code_review.md`, `.claude/rules/*`) are NOT plugin content and bump no plugin.
 - **Bump `metadata.version` in marketplace.json** whenever any plugin version changes. This signals a marketplace release to users.
 - **Update plugin count** in root `AGENTS.md` (`## Plugins (N)` + structure tree) AND `README.md` (description sentence + badge + detail section) when adding or removing a plugin.
 - **Adding a skill to an existing plugin syncs docs too** (distinct from the plugin-count update above — a skill add does NOT change the plugin count): update that plugin's `plugins/<name>/CLAUDE.md` skill listing, and — when the version bump also changed the plugin `description` — the matching one-line description in root `AGENTS.md` and `README.md`. Manifest regen + `metadata.version` bump still apply.

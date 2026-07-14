@@ -6,7 +6,9 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 # E2E Setup — full Playwright harness onboarding
 
-Stand up Playwright's official AI test harness (planner -> generator -> healer) plus the surrounding engineering (auth separation, deterministic mocking, an E2E SSOT doc, gated CI). The harness is the point: a test run is a sensor, a test file is a spec, and the three agents form a self-improving loop. This skill only does **setup + orchestration + CI + integration** — it does not re-implement the agents (Playwright generates them natively).
+Stand up Playwright's official AI test harness (planner -> generator -> healer) plus the surrounding engineering (auth separation, deterministic mocking, an E2E SSOT doc, gated CI). The harness is the point: a test run is a sensor, a test file is a spec, and the three roles form a self-improving loop. This skill only does **setup + orchestration + CI + integration** — it does not re-implement the roles.
+
+> **Two runtime paths (Step 2).** Under **Claude Code**, `init-agents --loop=claude` generates the planner/generator/healer as registerable `.claude/agents/*.md`, and `e2e-author` / `e2e-debug` dispatch them by name (**Path A**). Under **Codex 0.135**, those generated agent files are not registerable as named subagents, so setup skips them, ensures the `.mcp.json` `playwright-test` entry, and the author/debug skills run the same roles as **generic subagents** carrying the bundled `references/role-contracts.md` (**Path B**), or sequentially when no delegation is available (**Path C**). The engineering below (Steps 3-7) and every gate are identical on both paths. (Hermes is forward-compatible only — `e2e-harness` is not yet in `HERMES_ELIGIBLE`, so it does not load on Hermes today; the generic path maps to Hermes `delegate_task` for when it is added.)
 
 > **Why this skill exists (the harness-engineering point).** Installing the official agents is NOT enough — out of the box they skip auth setup, can't resolve project-known API errors, and don't know test-account usage, because they lack codebase context. Steps 3-7 below *onboard them like a new hire*: the config, auth scaffold, route-mock guidance, and especially the E2E SSOT doc are the context an agent needs to work autonomously. Skipping them is the usual reason "the official agents didn't just work."
 
@@ -51,7 +53,14 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    - Always ensure browsers are installed: `npx playwright install --with-deps`.
    - If the user declines installation, stop here — the rest of the harness needs Playwright.
 
-2. **Generate the official agents** (`init-agents`):
+2. **Set up the roles — runtime branch** (planner / generator / healer). Pick the path **once** by capability; the same gates apply on every path (`${PLUGIN_ROOT}/references/role-contracts.md`, "Gates that hold on every path"). Tell the user which path you took in one sentence.
+
+   | Path | Condition | How the roles are set up |
+   |---|---|---|
+   | **A — Claude generated agents** | Running under Claude Code (init-agents can generate registerable `.claude/agents/*.md`). | `init-agents --loop=claude` + verify the generated files. Default on Claude Code. |
+   | **B/C — Codex bundled contracts** | Running under Codex 0.135 (or any runtime that cannot register generated agent files as named subagents). | Do **not** generate/rely on named agents. Ensure the `.mcp.json` `playwright-test` entry and point `e2e-author` / `e2e-debug` at the bundled role contracts. |
+
+   **Path A (Claude Code):**
    ```bash
    npx playwright init-agents --loop=claude
    ```
@@ -60,13 +69,31 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
      - `.claude/agents/playwright-test-planner.md`
      - `.claude/agents/playwright-test-generator.md`
      - `.claude/agents/playwright-test-healer.md`
-     - `.mcp.json` — MCP config for the `playwright-test` server (`npx playwright run-test-mcp-server`). **Confirm this file exists**; init-agents creates it for the claude loop. If it is missing (older Playwright), write it manually:
-       ```json
-       { "mcpServers": { "playwright-test": { "command": "npx", "args": ["playwright", "run-test-mcp-server"] } } }
-       ```
-       Then tell the user to approve the MCP server (`/mcp` or restart) so the agents can drive the browser.
+     - `.mcp.json` — MCP config for the `playwright-test` server (`npx playwright run-test-mcp-server`). **Confirm this file exists**; init-agents creates it for the claude loop. If it is missing (older Playwright), merge it with the recipe below.
      - `seed.spec.ts` at the **repo root** (default environment seed the planner runs first) and `specs/README.md` (test-plan directory).
-   - `init-agents` does **not** generate `playwright.config.*` — handle that in Step 3.
+
+   **Path B/C (Codex — no registerable named agents):**
+   - Do not invent an unsupported loop. Feature-detect `--loop=codex` rather than version-guessing (`npx playwright init-agents --help | grep -qw codex`). Even when it is advertised, Codex 0.135 cannot register the generated agent files as named subagents, so `e2e-author` / `e2e-debug` will dispatch **generic** subagents carrying the bundled contracts (or run the roles sequentially). Running `--loop=codex` is at most an optional scaffold for `.mcp.json` / `seed.spec.ts` / `specs/`; skip agent generation when it is not advertised.
+   - The runtime-neutral planner/generator/healer contracts ship at `${PLUGIN_ROOT}/references/role-contracts.md` (PLUGIN_ROOT from Step 0 — same root that holds `assets/`). `e2e-author` / `e2e-debug` read them via their own Step 0 resolver; no per-project copy is needed.
+
+   **Both paths — ensure the `playwright-test` `.mcp.json` entry (merge, never clobber unrelated servers):**
+   ```bash
+   PW_ENTRY='{"command":"npx","args":["playwright","run-test-mcp-server"]}'
+   if ! command -v jq >/dev/null 2>&1; then
+     echo "jq not found — cannot safely merge .mcp.json. Add this under .mcpServers[\"playwright-test\"] manually: $PW_ENTRY" >&2
+   elif [ -f .mcp.json ]; then
+     if jq -e '.mcpServers["playwright-test"]' .mcp.json >/dev/null 2>&1; then
+       echo ".mcp.json already defines playwright-test — do NOT clobber; show a diff and let the user decide." >&2
+     else
+       tmp=$(mktemp)
+       jq --argjson e "$PW_ENTRY" '.mcpServers["playwright-test"] = $e' .mcp.json > "$tmp" && mv "$tmp" .mcp.json
+     fi
+   else
+     printf '{ "mcpServers": { "playwright-test": %s } }\n' "$PW_ENTRY" > .mcp.json
+   fi
+   ```
+   Then tell the user to approve the MCP server (`/mcp` or restart) so the roles can drive the browser. A conflicting existing `playwright-test` definition is a review-gated merge proposal, never a silent replace.
+   - `init-agents` does **not** generate `playwright.config.*` on either path — handle that in Step 3.
 
 3. **playwright.config — never clobber**:
    - If a `playwright.config.*` already exists: **do not overwrite.** Back it up (`cp playwright.config.ts playwright.config.ts.bak`) and propose a *merge* (add the `setup` project + `dependencies`, a `webServer` if local, `trace: 'on-first-retry'`, `retries` for CI). Show the diff and let the user accept.
@@ -117,7 +144,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    - It uploads `playwright-report/` + `test-results/` as artifacts and posts a **PR comment on failure** via `gh pr comment` (no official Playwright PR-comment step exists — this is custom). Remind the user to set `E2E_USER` / `E2E_PASS` secrets and the `E2E_BASE_URL` variable.
    - Validate the YAML if `actionlint` is available; otherwise note it is unvalidated.
 
-8. **Report**: list every file created/modified, whether `.mcp.json` was present or written, the SSOT doc location, and the next step — author CUF tests with `e2e-harness:e2e-author`.
+8. **Report**: state the runtime path taken (A generated agents / B-C bundled contracts), list every file created/modified, whether `.mcp.json` was present, merged, or written, the SSOT doc location, and the next step — author CUF tests with `e2e-harness:e2e-author`.
 
 ## Out of scope
 

@@ -1,10 +1,10 @@
 ---
 id: cr-rate-limit-progressive-refill
 aliases: [cr-free-tier-disabled, cr-quota-budget, cr-burst-push, cr-active-rate-limit-query]
-last_verified: 2026-07-13
+last_verified: 2026-07-14
 status: active
 volatility: volatile
-sources: 7
+sources: 8
 ---
 
 # CodeRabbit rate-limit: progressive refill, not a plan downgrade
@@ -22,6 +22,20 @@ Per CR's [Fair Usage Limits Policy](https://docs.coderabbit.ai/management/plans#
 - The org's plan is unchanged. "Free tier disabled" refers to CR's **internal review tier** (the free-of-charge review path), not the customer's subscription plan.
 - CR uses **progressive refill** for hourly quotas: reviews trickle back as time passes. There is no clean 60-minute reset window.
 - Wait time depends on recent per-developer activity. A burst of reviews does not block the next one for a fixed hour; it shortens the trickle interval.
+
+## The adaptive Fair-Usage table (Pro+)
+
+The progressive-refill mechanism above is now doc-confirmed with concrete numbers. Per CR's [Fair Usage Limits Policy](https://docs.coderabbit.ai/management/plans#fair-usage-limits-policy) (verified 2026-07-14), the per-hour review allowance is **not fixed** at the plan's headline rate — it adapts *down* with the developer's trailing 7-day review count. For the Pro+ tier this org runs:
+
+| Reviews in last 7 days | Reviews / hour (Pro+) |
+|---|---|
+| 0-29  | 10 (headline rate) |
+| 30-39 | 8 |
+| 90+   | 1, one review at a time |
+
+Intermediate 7-day bands step the hourly allowance down monotonically between these anchors (the Pro tier follows the same shape, reaching 1/hr after 60+ reviews in 7 days). This is the structural cause of the rate-limiting `cr-fix` runs experience: every incremental push consumes one review, so a heavy dogfooding week pushes the developer into the 90+/7d band where only a single review refills per hour — exactly the trickle the mechanism section describes, now with a named cause. The headline "Pro+ = 10/hr" is a ceiling, not a floor. The `.coderabbit.yaml` `auto_pause_after_reviewed_commits: 2` lever attacks this directly by cutting how many reviews a multi-push PR consumes.
+
+**Official self-serve check.** Commenting `@coderabbitai rate limit` (or `@coderabbitai reviews remaining?`) on any PR returns the current remaining count and reset estimate — the same command `cr-fix` automates in `## The active query` below, but usable by hand to see which adaptive band you are in before a burst of pushes.
 
 ## Why this matters for `cr-fix`
 
@@ -67,3 +81,4 @@ Three independent instances confirm the signal is transient and recoverable, not
 5. **PR #56 (Issue #55 fix)** — code-level correction of `poll-cr-status.sh` + `pre-flight.sh`: the transient placeholder is held non-terminal for `CR_SKIP_GRACE` (default 300s, env-only) rather than collapsing to `rate_limited`.
 6. **PR #104 dogfood** — fourth instance: `Review limit reached` (Fair Usage adaptive limit) under a green `success / Review completed` commit status, with a machine-readable `Next review available in: 41 minutes` the sniffer drops.
 7. **PR #122** (`fix(github-dev): cr-fix iter-4 — id-anchor the active rate-limit query`) — the active query lands (2.8.0) and its stale-anchor bug is reproduced RED against the body-match implementation (fixture `issue-comments-rl-stale.json`: prior-run reply id 501 served as fresh) then fixed via post-id anchoring.
+8. **CodeRabbit Fair Usage adaptive rate table** — `https://docs.coderabbit.ai/management/plans#fair-usage-limits-policy` (verified 2026-07-14). The concrete Pro+ per-hour-by-7-day-review-count table (0-29 → 10/hr, 30-39 → 8/hr, 90+ → 1/hr one-at-a-time) plus the official `@coderabbitai rate limit` / `reviews remaining?` self-serve query command — the doc confirmation of the previously reverse-engineered refill lore (Issue #121). Distinct from source 2, which cites the progressive-refill *semantics* on the same page; this row cites the specific adaptive *numbers* and the user-facing query command.

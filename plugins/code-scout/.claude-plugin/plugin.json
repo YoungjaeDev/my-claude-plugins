@@ -1,6 +1,6 @@
 {
   "name": "code-scout",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Multi-axis code & ML research harness. 5-scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, firecrawl tier-3, insane-search tier-4 for WAF / blocked URLs. paper-scout wraps paper-search-tools 8-source MCP family.",
   "skills": [
     "./skills/research-orchestrator",

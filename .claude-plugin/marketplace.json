@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "1.99.0"
+    "version": "2.0.0"
   },
   "plugins": [
     {
@@ -82,7 +82,7 @@
       "name": "paper-search-tools",
       "source": "./plugins/paper-search-tools",
       "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "category": "research"
     },
     {

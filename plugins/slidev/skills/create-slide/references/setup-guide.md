@@ -810,4 +810,3 @@ npx slidev --remote=password123
 - [ ] Set environment variables (if needed)
 - [ ] Confirm HTTPS
 - [ ] Responsive test (mobile/tablet)
-```

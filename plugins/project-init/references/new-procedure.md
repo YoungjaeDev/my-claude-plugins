@@ -135,7 +135,7 @@ If an existing `CLAUDE.md` is present, skip with a notice. Otherwise write it in
 > 사용자의 global `~/.claude/CLAUDE.md` 가 항상 우선한다. 이 파일은 프로젝트 한정 규칙만 보관한다.
 ```
 
-Substitute the placeholders (`<project_name>`, `<one-line description>`) with the Phase 1 answers.
+Substitute the placeholders (`{{PROJECT_NAME}}`, `{{ONE_LINER}}`) with the Phase 1 answers.
 
 ## Phase 4 — AGENTS.md Seed (★ this plugin's differentiator)
 

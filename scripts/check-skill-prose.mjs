@@ -28,12 +28,28 @@ const DEEP_REF_RE = /\b(references|assets|scripts)\/[A-Za-z0-9._-]+\/[A-Za-z0-9.
 function walkFiles(dir, filterName) {
   if (!existsSync(dir)) return [];
   const out = [];
-  for (const ent of readdirSync(dir, { withFileTypes: true })) {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out; // unreadable dir (permission / mid-walk delete) — skip, stay non-blocking
+  }
+  for (const ent of entries) {
     const p = join(dir, ent.name);
     if (ent.isDirectory()) out.push(...walkFiles(p, filterName));
     else if (!filterName || filterName(ent.name)) out.push(p);
   }
   return out;
+}
+
+// Read helper that never throws — a file removed mid-walk or an EACCES must not
+// abort the informational sweep (the whole script is contractually exit-0).
+function safeRead(abs) {
+  try {
+    return readFileSync(abs, 'utf8');
+  } catch {
+    return null;
+  }
 }
 
 // Pure, testable core. Returns an array of warning strings.
@@ -46,7 +62,9 @@ export function collectSkillProseWarnings({ root, lineCeiling = LINE_CEILING }) 
   for (const abs of walkFiles(skillsRoot, (n) => n.endsWith('.md'))) {
     const r = rel(abs);
     if (!r.includes('/skills/')) continue;
-    const lines = readFileSync(abs, 'utf8').split('\n').length;
+    const content = safeRead(abs);
+    if (content === null) continue;
+    const lines = content.split('\n').length;
     if (lines > lineCeiling) {
       warnings.push(`line-ceiling: ${r} is ${lines} lines (> ${lineCeiling}) — consider offloading reference-grade detail`);
     }
@@ -54,7 +72,8 @@ export function collectSkillProseWarnings({ root, lineCeiling = LINE_CEILING }) 
 
   // 2. Deep bundled-reference sweep over each SKILL.md body.
   for (const abs of walkFiles(skillsRoot, (n) => n === 'SKILL.md')) {
-    const body = readFileSync(abs, 'utf8');
+    const body = safeRead(abs);
+    if (body === null) continue;
     const seen = new Set();
     for (const m of body.matchAll(DEEP_REF_RE)) {
       const path = m[0];
@@ -69,12 +88,17 @@ export function collectSkillProseWarnings({ root, lineCeiling = LINE_CEILING }) 
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-  const warnings = collectSkillProseWarnings({ root: ROOT });
-  if (warnings.length) {
-    console.error(`skill-prose: ${warnings.length} informational warning(s) (non-blocking):`);
-    for (const w of warnings) console.error(`  ${w}`);
-  } else {
-    console.error('skill-prose: no progressive-disclosure warnings.');
+  try {
+    const warnings = collectSkillProseWarnings({ root: ROOT });
+    if (warnings.length) {
+      console.error(`skill-prose: ${warnings.length} informational warning(s) (non-blocking):`);
+      for (const w of warnings) console.error(`  ${w}`);
+    } else {
+      console.error('skill-prose: no progressive-disclosure warnings.');
+    }
+  } catch (err) {
+    // Top-level exit-0 fallback — a scan error is still non-blocking by contract.
+    console.error(`skill-prose: scan aborted (${err?.message ?? err}) — treated as non-blocking.`);
   }
   // Always non-blocking — this is a measurement aid, never a gate.
   process.exit(0);

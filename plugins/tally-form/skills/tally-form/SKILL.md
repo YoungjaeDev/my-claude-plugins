@@ -194,4 +194,3 @@ If interactive editing is needed, there is also the official Tally MCP (`claude 
 - GIF generation (a separate project — image *references* are supported, generation is not), the on-screen thank-you text (unsupported by the create API — `redirect` is the alternative), a respondent confirmation email (Tally Pro).
 - Receiving·aggregating submissions, an all-overlap heatmap (when2meet Lv2+) — outside the 1:1-consultation scope.
 - Custom CSS·fonts (Tally paid).
-```

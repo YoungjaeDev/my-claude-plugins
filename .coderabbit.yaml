@@ -1,0 +1,97 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit config for the my-claude-plugins marketplace (Pro+ tier).
+#
+# Warning-mode gates only: every pre_merge_check below is `mode: warning`, never
+# `error`. CodeRabbit's review sandbox has neither Node nor our generators, so it
+# cannot actually run `sync-*-manifests.mjs --check` or the version-triple-sync
+# logic; a hard `error` gate would false-block on checks it cannot execute. The
+# authoritative hard gates stay in GitHub Actions (.github/workflows/validate-codex.yml)
+# and .githooks/pre-commit. These warnings only surface advisories in the Walkthrough.
+#
+# Evaluate-only decision (Issue #121): CodeRabbit's autofix and custom review
+# recipes overlap the /github-dev:cr-fix apply loop, which already judges and
+# applies each finding with repo-specific autonomy. Enabling CR-side autofix would
+# double-drive edits against the same diff. Decision: NOT adopted; no `cr-tune`
+# skill (YAGNI). Recorded here as a deliberate choice, not an oversight.
+reviews:
+  auto_review:
+    # Biggest cost lever. After 2 reviewed commits, stop auto re-reviewing every
+    # incremental push -- each push otherwise consumes one Fair-Usage review, the
+    # structural cause of rate-limiting on multi-push PRs. A manual
+    # `@coderabbitai review` still works on demand.
+    # See .llmwiki/wiki/cr-fix-ops/cr-rate-limit-progressive-refill.md
+    auto_pause_after_reviewed_commits: 2
+    # Skip review entirely while a PR is still work-in-progress.
+    ignore_title_keywords:
+      - WIP
+  path_instructions:
+    - path: "plugins/**"
+      instructions: >-
+        This is a Claude Code / Codex / Hermes plugin marketplace. Skill frontmatter
+        rules: each skill's SKILL.md `description` must stay under 1024 characters
+        (Codex 0.135 silently skips longer ones) and must be quoted if it contains a
+        colon-space (": "), or YAML parses it as a nested mapping and the skill fails
+        to load. Do NOT flag generated manifests as manually edited:
+        `plugins/*/.codex-plugin/plugin.json`, `plugins/*/plugin.yaml`, and
+        `plugins/*/__init__.py` are generator output from
+        `scripts/sync-codex-manifests.mjs` / `scripts/sync-hermes-manifests.mjs`; a
+        diff to them is expected after a version or description change, and the
+        generators' `--check` (run in CI) is the arbiter of correctness. A version
+        bump must update `plugins/<name>/.claude-plugin/plugin.json` and the matching
+        `.claude-plugin/marketplace.json` entry together.
+    - path: ".llmwiki/**"
+      instructions: >-
+        This is the shared LLM-Wiki knowledge tree read by all three runtimes; treat
+        it as prose lore, not code. Cross-references use typed refs only
+        (`> Refines:`, `> Contradicts:`, `> Evidence:`, `> See-also:`) -- flag plain
+        `[[wikilink]]` bodies that are not one of these. Each page carries frontmatter
+        (`id`, `aliases`, `last_verified`, `status`, `volatility`, `sources`); an edit
+        that changes a page's claims should bump `last_verified` and keep the `sources`
+        count consistent with the listed sources. Do not suggest converting these
+        Markdown notes into code or config.
+    - path: "scripts/*.mjs"
+      instructions: >-
+        These are the Codex/Hermes manifest generators (`sync-codex-manifests.mjs`,
+        `sync-hermes-manifests.mjs`). They must use Node 18+ built-ins only -- flag any
+        added runtime dependency (an `import`/`require` of a non-builtin package). Their
+        output lives under `plugins/*/.codex-plugin/`, `plugins/*/plugin.yaml`,
+        `plugins/*/__init__.py`, and `.agents/`; that output is generated, never
+        hand-edited.
+  pre_merge_checks:
+    custom_checks:
+      - name: "Plugin version triple-sync"
+        mode: warning
+        instructions: >-
+          Advisory only (the hard gate is GitHub Actions; CodeRabbit cannot run our
+          Node tooling). PASS if no file under `plugins/<name>/` changed, OR if the
+          changed plugin's `version` is bumped identically in both
+          `plugins/<name>/.claude-plugin/plugin.json` and its entry in
+          `.claude-plugin/marketplace.json`, AND `metadata.version` in
+          `.claude-plugin/marketplace.json` is also bumped. FAIL if a plugin file
+          changed without all three updates in sync. Root docs (AGENTS.md, README.md,
+          code_review.md, .claude/rules/*) are not plugin content and bump nothing.
+      - name: "Codex/Hermes manifest regeneration"
+        mode: warning
+        instructions: >-
+          Advisory only. PASS if no plugin `version`/`description`/skill changed, OR if
+          the corresponding generated manifests were regenerated in the same PR:
+          `plugins/<name>/.codex-plugin/plugin.json` plus `.agents/plugins/marketplace.json`
+          for any eligible plugin, and `plugins/<name>/plugin.yaml` plus `__init__.py`
+          for HERMES_ELIGIBLE plugins. FAIL if a version or description change lacks the
+          matching regenerated manifest diff. CI (`sync-*-manifests.mjs --check`) is
+          authoritative.
+      - name: "Skill description under 1024 chars"
+        mode: warning
+        instructions: >-
+          Advisory only. FAIL if any skill `SKILL.md` `description` frontmatter field
+          added or changed in this PR exceeds 1024 characters -- Codex 0.135 silently
+          skips such skills. Otherwise PASS.
+      - name: "AGENTS.md rule-mirror presence"
+        mode: warning
+        instructions: >-
+          Advisory only. `.claude/rules/*.md` is Claude-only; Codex and Hermes read
+          `AGENTS.md`. FAIL if this PR adds or changes a cross-cutting behavioral rule
+          in `.claude/rules/` without a corresponding mirror block in `AGENTS.md`.
+          Path-scoped mechanical rules (e.g. `plugin-versioning.md`, loaded only when
+          its target files are touched) are exempt. Otherwise PASS.

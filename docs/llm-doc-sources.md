@@ -6,19 +6,39 @@
 
 `mcpdocs` 는 **프로젝트 `.mcp.json` 이 아니라 사용자 스코프**(`~/.claude.json`, `claude mcp add` 로 등록)에 있다. 저장소 루트에는 `mcpdocs` 용 `.mcp.json` 이 없다 (루트에 존재하는 유일한 `.mcp.json` 은 `plugins/paper-search-tools/.mcp.json` 으로 무관한 paper-search 서버다). `mcpdoc` 는 모든 URL 을 단일 서버의 `--urls` 인자로 받으므로, 소스를 추가하려면 전체 목록을 다시 등록한다.
 
-```bash
-# 현재 등록 확인
-claude mcp list | grep mcpdocs
+`mcpdoc` 는 재등록 시 `--urls` 에 준 목록으로 **통째로 교체**하므로, 하나라도 빠뜨리면 그 소스가 사라진다. 아래는 현재 16종 전체 + 신규 `github-docs` 를 명시한 실행 가능한 형태다 (이름에 공백이 있는 항목은 따옴표로 감쌌다). 실행 전 `claude mcp get mcpdocs` 로 현재 등록을 백업해 두면 실패 시 복구할 수 있다.
 
-# 소스 추가: 기존 --urls 목록 끝에 새 항목을 붙여 재등록
+```bash
+# (백업) 현재 --urls 목록 확인 — 아래 목록과 일치하는지 대조
+claude mcp get mcpdocs
+
+# 전체 목록 + github-docs 를 --scope user 로 재등록 (사용자 스코프 = ~/.claude.json)
 claude mcp remove mcpdocs
-claude mcp add mcpdocs -- npx @hapus/mcp-cache uvx --from mcpdoc mcpdoc \
-  --urls <기존 항목들...> github-docs:https://docs.github.com/llms.txt \
+claude mcp add mcpdocs --scope user -- npx @hapus/mcp-cache uvx --from mcpdoc mcpdoc \
+  --urls \
+  coderabbit:https://docs.coderabbit.ai/llms.txt \
+  LangGraph:https://langchain-ai.github.io/langgraph/llms.txt \
+  LangChain:https://python.langchain.com/llms.txt \
+  'LangChain Python Wiki:https://raw.githubusercontent.com/teddynote-lab/mcp-langchain-docs/refs/heads/main/resources/langchain-wiki.md' \
+  'LangGraph Python Wiki:https://raw.githubusercontent.com/teddynote-lab/mcp-langchain-docs/refs/heads/main/resources/langgraph-wiki.md' \
+  cc-agents:https://gist.githubusercontent.com/YoungjaeDev/48821801580a8032b63e4961f127cbff/raw/llms-agents.txt \
+  cc-commands:https://gist.githubusercontent.com/YoungjaeDev/48821801580a8032b63e4961f127cbff/raw/llms-commands.txt \
+  cc-skills:https://gist.githubusercontent.com/YoungjaeDev/48821801580a8032b63e4961f127cbff/raw/llms-skills.txt \
+  cc-mcps:https://gist.githubusercontent.com/YoungjaeDev/48821801580a8032b63e4961f127cbff/raw/llms-mcps.txt \
+  cc-settings:https://gist.githubusercontent.com/YoungjaeDev/48821801580a8032b63e4961f127cbff/raw/llms-settings.txt \
+  cc-hooks:https://gist.githubusercontent.com/YoungjaeDev/48821801580a8032b63e4961f127cbff/raw/llms-hooks.txt \
+  cc-sandbox:https://gist.githubusercontent.com/YoungjaeDev/48821801580a8032b63e4961f127cbff/raw/llms-sandbox.txt \
+  openrouter:https://openrouter.ai/docs/llms.txt \
+  codex:https://developers.openai.com/codex/llms.txt \
+  openai-api:https://developers.openai.com/api/docs/llms.txt \
+  mem0:https://docs.mem0.ai/llms.txt \
+  github-docs:https://docs.github.com/llms.txt \
   --allowed-domains '*' -
 
-# 재시작 후 반영 확인
-# mcpdocs 의 list_doc_sources 가 추가 항목을 보여주면 성공
+# 재시작 후 mcpdocs 의 list_doc_sources 가 17종(신규 github-docs 포함)을 보여주면 성공
 ```
+
+> 보안 주의 — `--allowed-domains '*'` 는 mcpdoc 가 **모든 도메인**에서 문서를 가져오도록 허용한다. mcpdoc 기본값은 각 원격 `llms.txt` 의 호스팅 도메인만 자동 허용하므로, 인덱스가 교차 도메인 문서를 링크하지 않는다면 `*` 없이도 동작한다. 위 소스들은 gist·raw.githubusercontent·각 벤더 도메인에 흩어져 있어 실용상 `*` 를 쓰지만, 더 엄격히 하려면 실제 참조 도메인만 공백으로 나열한다 (`--allowed-domains docs.coderabbit.ai raw.githubusercontent.com gist.githubusercontent.com developers.openai.com ...`).
 
 프로젝트 루트에 별도 `.mcp.json` 을 새로 만들지 않는다 — 사용자 스코프에 이미 같은 서버가 있으면 이중 등록으로 한쪽이 조용히 버려진다.
 

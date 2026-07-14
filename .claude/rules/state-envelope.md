@@ -86,6 +86,9 @@ Record one step as it closes (`reason` only on a skip):
 
 ```bash
 record_step() {  # <n> <done|skipped> [reason]
+  if [ "$2" = "skipped" ] && [ -z "${3:-}" ]; then
+    echo "state-envelope: a skipped step needs a reason" >&2; return 1
+  fi
   local tmp; tmp=$(mktemp)
   jq --argjson step "$1" --arg status "$2" --arg reason "${3:-}" \
      --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \

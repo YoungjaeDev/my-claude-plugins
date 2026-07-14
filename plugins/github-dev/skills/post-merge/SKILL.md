@@ -82,6 +82,9 @@ jq -n --arg rid "post-merge-${PR_NUMBER}" --arg sha "$MERGE_SHA" --arg now "$NOW
 
 # record_step <n> <done|skipped> [reason] — append one entry, bump updated_at.
 record_step() {
+  if [ "$2" = "skipped" ] && [ -z "${3:-}" ]; then
+    echo "post-merge: a skipped step needs a reason" >&2; return 1
+  fi
   local tmp; tmp=$(mktemp)
   jq --argjson step "$1" --arg status "$2" --arg reason "${3:-}" \
      --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \

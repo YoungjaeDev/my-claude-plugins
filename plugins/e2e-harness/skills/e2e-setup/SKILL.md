@@ -75,6 +75,24 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    **Path B/C (Codex — no registerable named agents):**
    - Do not invent an unsupported loop. Feature-detect `--loop=codex` rather than version-guessing (`npx playwright init-agents --help | grep -qw codex`). Even when it is advertised, Codex 0.135 cannot register the generated agent files as named subagents, so `e2e-author` / `e2e-debug` will dispatch **generic** subagents carrying the bundled contracts (or run the roles sequentially). Running `--loop=codex` is at most an optional scaffold for `.mcp.json` / `seed.spec.ts` / `specs/`; skip agent generation when it is not advertised.
    - The runtime-neutral planner/generator/healer contracts ship at `${PLUGIN_ROOT}/references/role-contracts.md` (PLUGIN_ROOT from Step 0 — same root that holds `assets/`). `e2e-author` / `e2e-debug` read them via their own Step 0 resolver; no per-project copy is needed.
+   - **Seed the environment scaffold** — Path A gets `seed.spec.ts` + `specs/README.md` from `init-agents`, but Path B/C skip agent generation, so create the equivalents yourself (the planner runs `seed.spec.ts` first on every path, and `e2e-author` requires it — without this, Codex setup leaves authoring blocked). Skip either file if it already exists. Write `seed.spec.ts` at the repo root:
+     ```ts
+     // Default environment seed the planner runs first (Path B/C stand-in for the
+     // init-agents output). Establishes baseline app state; expand per your app.
+     import { test, expect } from "@playwright/test";
+
+     test("seed: app reachable", async ({ page }) => {
+       await page.goto(process.env.E2E_BASE_URL ?? "http://localhost:3000");
+       await expect(page).toHaveTitle(/.*/);
+     });
+     ```
+     and `specs/README.md` (the test-plan directory):
+     ```md
+     # specs/ — test plans
+
+     Human-readable planner output, one Markdown file per critical user flow.
+     The generator turns an approved `specs/<flow>.md` into `e2e/<flow>.spec.ts`.
+     ```
 
    **Both paths — ensure the `playwright-test` `.mcp.json` entry (merge, never clobber unrelated servers):**
    ```bash
@@ -85,14 +103,18 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
      if jq -e '.mcpServers["playwright-test"]' .mcp.json >/dev/null 2>&1; then
        echo ".mcp.json already defines playwright-test — do NOT clobber; show a diff and let the user decide." >&2
      else
-       tmp=$(mktemp)
-       jq --argjson e "$PW_ENTRY" '.mcpServers["playwright-test"] = $e' .mcp.json > "$tmp" && mv "$tmp" .mcp.json
+       tmp=$(mktemp ./.mcp.json.XXXXXX)  # same dir as target so mv is an atomic rename, not a cross-fs copy
+       if jq --argjson e "$PW_ENTRY" '.mcpServers["playwright-test"] = $e' .mcp.json > "$tmp"; then
+         mv "$tmp" .mcp.json
+       else
+         rm -f "$tmp"; echo ".mcp.json merge failed — left unchanged; add playwright-test manually: $PW_ENTRY" >&2
+       fi
      fi
    else
      printf '{ "mcpServers": { "playwright-test": %s } }\n' "$PW_ENTRY" > .mcp.json
    fi
    ```
-   Then tell the user to approve the MCP server (`/mcp` or restart) so the roles can drive the browser. A conflicting existing `playwright-test` definition is a review-gated merge proposal, never a silent replace.
+   If the merge above reported a failure, stop and fix `.mcp.json` before continuing — setup cannot proceed without the `playwright-test` server. Otherwise, tell the user to approve the MCP server (`/mcp` or restart) so the roles can drive the browser. A conflicting existing `playwright-test` definition is a review-gated merge proposal, never a silent replace.
    - `init-agents` does **not** generate `playwright.config.*` on either path — handle that in Step 3.
 
 3. **playwright.config — never clobber**:

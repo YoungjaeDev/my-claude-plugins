@@ -35,8 +35,12 @@ elif [ -f .mcp.json ]; then
   if jq -e '.mcpServers["playwright-test"]' .mcp.json >/dev/null 2>&1; then
     echo ".mcp.json already defines playwright-test — do NOT clobber; show a diff and let the user decide." >&2
   else
-    tmp=$(mktemp)
-    jq --argjson e "$PW_ENTRY" '.mcpServers["playwright-test"] = $e' .mcp.json > "$tmp" && mv "$tmp" .mcp.json
+    tmp=$(mktemp ./.mcp.json.XXXXXX)  # same dir as target so mv is an atomic rename, not a cross-fs copy
+    if jq --argjson e "$PW_ENTRY" '.mcpServers["playwright-test"] = $e' .mcp.json > "$tmp"; then
+      mv "$tmp" .mcp.json
+    else
+      rm -f "$tmp"; echo ".mcp.json merge failed — left unchanged; add playwright-test manually: $PW_ENTRY" >&2
+    fi
   fi
 else
   printf '{ "mcpServers": { "playwright-test": %s } }\n' "$PW_ENTRY" > .mcp.json

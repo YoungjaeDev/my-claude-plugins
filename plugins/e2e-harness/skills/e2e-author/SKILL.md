@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Task AskUserQuestion
 
 Turn a critical user flow into a reliable Playwright spec by driving the planner and generator **roles**. This skill orchestrates; the roles do the exploration and code generation. A spec read is a behavior contract; a spec run is a sensor.
 
-Two execution paths, same gates: on **Claude Code** the roles are the named agents `e2e-setup` generated via `init-agents --loop=claude` (**Path A**); on **Codex 0.135** those agent files are not registerable as named subagents, so each role runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**). Hermes is forward-compatible only — `e2e-harness` is not yet in `HERMES_ELIGIBLE`, so it does not load on Hermes today; the generic dispatch maps to Hermes `delegate_task` for when it is added.
+Two runtime families, three execution paths, same gates: on **Claude Code** the roles are the named agents `e2e-setup` generated via `init-agents --loop=claude` (**Path A**); on **Codex 0.135** those agent files are not registerable as named subagents, so each role runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**). Hermes is forward-compatible only — `e2e-harness` is not yet in `HERMES_ELIGIBLE`, so it does not load on Hermes today; the generic dispatch maps to Hermes `delegate_task` for when it is added.
 
 ## Precondition check
 

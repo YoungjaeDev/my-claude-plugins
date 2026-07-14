@@ -111,8 +111,11 @@ printf '%s\n%s\n%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"setup-check","version":"1.0.0"}}}' \
   '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-  | docker run -i --rm mcp/paper-search
+  | docker run -i --rm -v /tmp/paper-search-downloads:/downloads mcp/paper-search
 ```
+
+The `-v` mount mirrors the real `.mcp.json` run (use your platform's mount path from step 4), so a
+broken mount surfaces here instead of silently passing `tools/list` with the wrong host directory.
 
 - **Expected** — an `initialize` result for `id:1` (with `serverInfo` and `capabilities`) followed
   by a `tools/list` result for `id:2` listing the search/download/read tools. That confirms both
@@ -122,18 +125,20 @@ printf '%s\n%s\n%s\n' \
 
 ## 6. Connect the MCP server (per runtime)
 
-Steps 1-5 above (Docker + `.mcp.json` + the JSON-RPC verification contract) are identical on every
-runtime — only the final connect/approve surface differs:
+The Docker image + the step 5 JSON-RPC verification contract are runtime-neutral. Only step 4's
+registration and the connect/disable surface differ per runtime:
 
-- **Claude Code** — restart (`exit`, then `claude`) so it reloads `.mcp.json`, run `/mcp`, and confirm
-  the `paper-search` server shows as connected. Tool names then carry the plugin prefix
+- **Claude Code** — the plugin's `.mcp.json` is the registration (step 4). Restart (`exit`, then
+  `claude`) so it reloads `.mcp.json`, run `/mcp`, and confirm the `paper-search` server shows as
+  connected. Tool names then carry the plugin prefix
   `mcp__plugin_paper-search-tools_paper-search__<tool>` (see the `paper-search` usage skill for the
   full tool catalog and the standalone-registration prefix variant).
-- **Codex** — Codex loads this skill in place but does not consume `.mcp.json` through `/mcp`. Register
-  the `paper-search` server in Codex's own MCP configuration (same `docker run` args as step 4), then
-  verify with the step 5 handshake. Discovery is through Codex's MCP surface, not `/mcp`.
-- **Hermes** — load the skill explicitly (`skill_view("paper-search-tools:setup")`), register the server
-  per Hermes' MCP configuration, and verify with the step 5 handshake.
+- **Codex** — installed as a plugin, Codex reads the generated `.codex-plugin/plugin.json`, which
+  already points `mcpServers` at the same `.mcp.json`, so the server is registered automatically —
+  do **not** add a second manual entry. Just run the step 5 handshake to verify. Only a standalone
+  (non-plugin) Codex needs a manual MCP entry with the step-4 `docker run` args.
+- **Hermes** — load the skill explicitly (`skill_view("paper-search-tools:setup")`), register the
+  server per Hermes' MCP configuration with the step-4 `docker run` args, and verify with step 5.
 
 ### Hermes tool-name compatibility
 
@@ -163,4 +168,5 @@ A valid but empty result is not an error. Read the response before concluding se
 
 ## Don't need Paper Search?
 
-Disable the server via the `/mcp` command to stop connection errors without uninstalling.
+Disable the server to stop connection errors without uninstalling: on Claude Code via the `/mcp`
+command; on Codex/Hermes via that runtime's plugin or MCP-server management.

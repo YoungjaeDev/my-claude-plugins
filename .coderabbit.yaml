@@ -16,12 +16,15 @@
 # skill (YAGNI). Recorded here as a deliberate choice, not an oversight.
 reviews:
   auto_review:
-    # Biggest cost lever. After 2 reviewed commits, stop auto re-reviewing every
-    # incremental push -- each push otherwise consumes one Fair-Usage review, the
-    # structural cause of rate-limiting on multi-push PRs. A manual
-    # `@coderabbitai review` still works on demand.
+    # NOTE: `auto_pause_after_reviewed_commits` is intentionally NOT set.
+    # It conflicts with this repo's core workflow: /github-dev:cr-fix pushes one
+    # fix commit per iteration and relies on CodeRabbit auto-reviewing each push
+    # to detect convergence. auto_pause stops auto-review after N reviewed commits
+    # (needing a manual `@coderabbitai review`) and does NOT emit a rate_limited
+    # signal, so cr-fix's Step 6 poll would time out on iter 3+ with no review.
+    # Review-consumption is instead bounded by cr-fix's own MAX_ITER cap +
+    # minor-soft-stop, plus the ignore_title_keywords / path_instructions levers.
     # See .llmwiki/wiki/cr-fix-ops/cr-rate-limit-progressive-refill.md
-    auto_pause_after_reviewed_commits: 2
     # Skip review entirely while a PR is still work-in-progress.
     ignore_title_keywords:
       - WIP

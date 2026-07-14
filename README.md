@@ -232,7 +232,7 @@ Agent(subagent_type="code-scout:paper-scout",
       prompt="query=sparse autoencoder interpretability\nworkspace_dir=$WORKSPACE\nartifact_id=05_paper")
 ```
 
-> 위 `Agent(subagent_type="code-scout:*-scout")` 직접 호출은 **Claude Code 전용**이다. Codex / Hermes 에서는 이 named agent 들이 등록되지 않으므로 `Skill("code-scout:research-orchestrator")` 로 진입하면 orchestrator 가 generic subagent / 순차 fallback 으로 같은 축을 실행한다 (위 "런타임 이식성" 참조).
+> 위 `Agent(subagent_type="code-scout:*-scout")` 직접 호출은 **Claude Code 전용**이다. Codex 에서는 이 named agent 들이 등록되지 않으므로 `Skill("code-scout:research-orchestrator")` 로 진입하면 orchestrator 가 generic subagent / 순차 fallback 으로 같은 축을 실행한다 (Hermes 는 `code-scout` 가 아직 Hermes-eligible 이 아니라 미로드 — 위 "런타임 이식성" 참조).
 
 **Workspace 준비 (위 직접 호출 전에 실제 셸에서):**
 ```bash

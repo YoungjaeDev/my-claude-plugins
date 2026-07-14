@@ -195,7 +195,7 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 ### Research & Search
 
 <details>
-<summary><strong>code-scout</strong> - 다축 코드 & ML 리서치 하네스 (v2.1)</summary>
+<summary><strong>code-scout</strong> - 다축 코드 & ML 리서치 하네스 (v2.2)</summary>
 
 **Skills (entry points):**
 | Skill | Purpose |

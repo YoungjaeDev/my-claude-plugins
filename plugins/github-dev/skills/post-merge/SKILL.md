@@ -63,6 +63,34 @@ esac
 - Verify `state` is `MERGED`. This result is the **authoritative merge signal** (see Guidelines) — no later SHA comparison.
 - Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')` — this is **this PR's** merge commit, used to label the wiki log entry and read diff content. Step 8 derives the merged **file list** from `gh pr diff <N> --name-only` (PR-scoped, merge-method-agnostic, uncapped), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
 
+**Open the run record (state-envelope v0).** With `PR_NUMBER` + `MERGE_SHA` fixed, open a per-run record so every later step's outcome is machine-visible — a step that skipped **silently** was previously invisible. Convention + schema: `.claude/rules/state-envelope.md` (concept mirror in `AGENTS.md`). No shared library — this per-skill `jq` is the whole mechanism, and the file lives under gitignored `.claude/state/`, so it is machine-local and is **never** staged (never added to Step 10's `RUN_TOUCHED`).
+
+```bash
+REC=".claude/state/post-merge-${PR_NUMBER}.json"
+mkdir -p .claude/state/archive
+# Archive a prior same-PR record before overwriting (mirrors cr-fix Step 2).
+[ -f "$REC" ] && mv "$REC" ".claude/state/archive/post-merge-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$.json"
+NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+jq -n --arg rid "post-merge-${PR_NUMBER}" --arg sha "$MERGE_SHA" --arg now "$NOW" \
+  '{schema:"state-envelope/v0", run_id:$rid, status:"in_progress", conclusion:null,
+    started_at:$now, updated_at:$now, anchor_sha:($sha // null), attempt:1,
+    session_id:(env.CLAUDE_SESSION_ID // null), steps:[]}' > "$REC"
+
+# record_step <n> <done|skipped> [reason] — append one entry, bump updated_at.
+record_step() {
+  local tmp; tmp=$(mktemp)
+  jq --argjson step "$1" --arg status "$2" --arg reason "${3:-}" \
+     --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+     '.updated_at = $now
+      | .steps += [ {step: $step, status: $status}
+                    + (if $reason == "" then {} else {reason: $reason} end) ]' \
+     "$REC" > "$tmp" && mv "$tmp" "$REC"
+}
+record_step 1 done
+```
+
+**Recording contract.** After each top-level Step 2-10 closes, append its outcome — `record_step <n> done`, or `record_step <n> skipped "<reason>"` when that step's skip-condition fires (Steps 5, 5.5, 5.7, 9, 9.5 skip silently today, and under Codex Step 7 records `skipped "Codex — Serena unavailable"`; the record is what makes each skip visible). Sub-steps (1.5, 4.5, 4.6, 6.5) fold into their parent top-level entry. **Shell state does not persist across separate tool calls** — `REC` is the deterministic path `.claude/state/post-merge-<PR>.json`, so in the bash block that closes a later step, re-`export REC=...` and re-declare `record_step` (or run the equivalent inline `jq`) before calling it. Step 10 finalizes the envelope to `status: completed`.
+
 ### 1.5. Surface unresolved review items (informational)
 
 A merge can land while `cr-fix` still left findings unresolved — items it autonomously **deferred** (real + high-severity + too invasive for autopilot), or a loop that exited on a cap/timeout rather than converging clean. That signal sits in `cr-fix`'s state file and nobody reads it. This step surfaces it **once, right after the merge is confirmed**. It is **informational — it never blocks cleanup**; like the Step 8 wiki checkpoint it ALWAYS prints exactly one terminal status line so a skip can't pass unnoticed.
@@ -260,7 +288,7 @@ If **any** tracked files were modified by this run — config (`CLAUDE.md`/`AGEN
 Stage **only the exact files this run created or modified** — collect them as you go through Steps 4.6-9.5 (each config file you edited, the `.claude/state/spec.json` + spec file from Step 5.7, README, `CHANGELOG.md` from Step 9.5, any Step 4.6 in-file deprecated-block `Edit`, Serena memory files, and the specific wiki pages `ingest-finding` created/updated). Build that explicit list as `RUN_TOUCHED` and add only those paths — **never `git add` a whole directory** (`.llmwiki/`, `.claude/spec/`, …): a pre-existing untracked draft (e.g. a user's `.llmwiki/wiki/draft.md`) would otherwise be swept into this commit, and Step 2 already decided to leave untracked files alone.
 
 ```bash
-# RUN_TOUCHED = the exact paths this run wrote, gathered across Steps 5.7-9.
+# RUN_TOUCHED = the exact paths this run wrote, gathered across Steps 4.6-9.5.
 # Existence-checked + added one at a time: `git add a b c` is atomic, so one
 # stale path would abort the whole add (and `|| true` would hide it), leaving
 # real changes unstaged.
@@ -271,11 +299,23 @@ done
 
 Skip the commit only when `git diff --cached --quiet` reports nothing staged after the `git add` — a staged-only check; `git status --porcelain` would also count pre-existing untracked files and wrongly attempt an empty-index commit.
 
+**Finalize the run record.** Record this closing step and mark the envelope terminal (see the Step 1 recording contract; re-`export REC` + re-declare `record_step` first since shell state does not persist). The record stays under gitignored `.claude/state/` — do **not** add it to `RUN_TOUCHED`:
+
+```bash
+REC=".claude/state/post-merge-${PR_NUMBER}.json"
+record_step 10 done
+tmp=$(mktemp)
+jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.status = "completed" | .conclusion = "success" | .updated_at = $now' \
+  "$REC" > "$tmp" && mv "$tmp" "$REC"
+```
+
 ## References
 
 - **No-stamp Core Principle + knowledge-routing boundary**: `references/core-principle.md`
 - **Config + Serena learning integration** (Pre-Audit, classification, history rotation, size audit, memory mapping): `references/learning-integration.md`
 - **Unresolved review surface** (Step 1.5 — cr-fix state-file defer list + `final_state`, open-thread proxy): reads `.claude/state/cr-fix-<PR>.json` / `.claude/state/archive/`; field schema in `plugins/github-dev/skills/cr-fix/assets/final-output.schema.json`.
+- **Run-record envelope** (Step 1 + Step 10 — per-step `.claude/state/post-merge-<PR>.json`, schema + archive rotation + per-skill jq): `.claude/rules/state-envelope.md` (concept mirror in `AGENTS.md`).
 - **Mandatory wiki ingest** (absorbed post-merge-wiki — candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
 - **Ephemeral artifact pruning** (Step 4.5 — heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
 - Milestone / Type M-2 diagram mechanics: `skills/update-progress/SKILL.md`

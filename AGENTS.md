@@ -185,7 +185,19 @@
 `.claude/rules/*.md` is auto-loaded by Claude Code — no `@import` required, and Codex/Hermes cannot read the directory at all (their mirror is the "멀티런타임 통합" section above). A rule carrying `paths:` frontmatter loads only when Claude touches a matching file; `@import`ing that same rule expands it unconditionally at launch and kills the scoping, so the first pointer below is deliberately plain (backticks, not `@`).
 
 - `.claude/rules/plugin-versioning.md` — plugin version bump contract and cache-refresh workflow. Scoped via `paths:` to the manifest files, so it loads only when you touch them.
+- `.claude/rules/state-envelope.md` — the state-envelope v0 run-record convention (`.claude/state/<pipeline>-<key>.json` + archive rotation + per-skill jq, no shared library). Scoped via `paths:` to `.claude/state/*.json`. Its concept mirror for Codex/Hermes is the "State-envelope 실행 기록" section below.
 - See @.claude/rules/dual-integration.md for keeping the Claude Code, Codex, and Hermes surfaces in sync when editing guidance, hooks, or derived artifacts (unscoped, always loaded; its cross-runtime content is mirrored in the "멀티런타임 통합" section above, which is what Codex and Hermes actually read).
+
+## State-envelope 실행 기록 (run records, v0)
+
+> `.claude/rules/state-envelope.md` 의 Codex/Hermes 미러다 (그 두 런타임은 `.claude/rules/` 를 못 읽는다). Claude 는 위 `## Modular Rules` 포인터로 원본 규칙에 닿는다. 상세·jq 스니펫은 규칙 파일에 있다.
+
+여러 단계로 이어지는 파이프라인 스킬이 자기 진행 상태를 기계가 읽을 수 있게 남기는 per-run 상태 파일 규약이다. v0 는 **문서화된 규약 + per-skill `jq`** 일 뿐, **공유 라이브러리/스크립트를 두지 않는다**. 각 채택 스킬이 자기 본문에 jq 를 인라인한다.
+
+- **위치·회전**: live 파일은 `.claude/state/<pipeline>-<key>.json` (예: `post-merge-114.json`, 기존 `cr-fix-<PR>.json` 명명 미러). 같은 key 로 재실행하면 새로 쓰기 전에 이전 live 파일을 `.claude/state/archive/<pipeline>-<key>-<timestamp>-$$.json` 로 회전한다 (cr-fix Step 2 미러). `.claude/state/` 는 gitignore + 머신 로컬 — run record 는 절대 커밋하지 않고 스킬의 `RUN_TOUCHED` 스테이징 집합에도 넣지 않는다.
+- **스키마**: `{schema:"state-envelope/v0", run_id, status(queued|in_progress|completed), conclusion, started_at, updated_at, anchor_sha, attempt, session_id, steps[]}`. `steps[]` 는 top-level 단계가 닫힐 때마다 `{step, status: done|skipped, reason?}` 한 항목 (`reason` 은 skipped 에만).
+- **spec-state 와 직교(orthogonal)**: run record 는 `.claude/state/spec.json` 이 **아니다**. `spec.json` (owner: `spec-state:state-tracker`) 은 spec→issue→PR 파이프라인의 크로스런 집계이고, run record 는 스킬 단일 실행의 단계 로그다. 서로 다른 파일·다른 소유자이며 서로 읽거나 쓰지 않는다.
+- **v0 채택자**: `github-dev:post-merge` (Step 1-10 per-step 기록) 하나뿐이다. 다른 스킬 상태 파일의 retrofit 은 후속 변경으로 의도적으로 미룬다.
 
 ## Setup answers
 

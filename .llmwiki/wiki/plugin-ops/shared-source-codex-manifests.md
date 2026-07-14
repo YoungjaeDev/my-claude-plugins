@@ -1,10 +1,10 @@
 ---
 id: shared-source-codex-manifests
 aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, retired-codex-bridge]
-last_verified: 2026-07-06
+last_verified: 2026-07-14
 status: active
 volatility: stable
-sources: 9
+sources: 10
 ---
 
 # Shared-source Codex manifests
@@ -71,16 +71,16 @@ skills | hooks | mcpServers | apps
 `commands` and `agents` exist in Claude's plugin schema but are **not** emitted
 by the generator — Codex does not recognize them. Plugins whose value is
 entirely in `commands` or `agents` therefore have nothing to load on the Codex
-side. The generator excludes them via an `EXCLUDED` set; the current entries
-are `core-config` (Claude-only hooks; Codex has no equivalent hook surface) and
-`codex-image`. The latter is a Claude->Codex *bridge* (it delegates image
-generation to `codex exec`), so syncing it back into Codex would be circular —
-Codex would be asked to load a skill whose only job is to call Codex. So **all
-plugins except those 2 are eligible** for Codex (eligible count = total − 2); the
-absolute number shifts on every plugin add/remove, so the durable invariant is the
-EXCLUDED set, not a fixed count. (`midjourney` was a third member until PR #84
-deleted the plugin — a removed plugin needs no EXCLUDED entry; the drift guard's
-orphan detection covers any stale manifest.) EXCLUDED scopes Codex *manifest
+side. The generator excludes plugins via an `EXCLUDED` set; the **sole** current entry
+is `codex-image` — a Claude->Codex *bridge* (it delegates image generation to
+`codex exec`), so syncing it back into Codex would be circular (Codex asked to
+load a skill whose only job is to call Codex). So **all plugins except that 1 are
+eligible** for Codex (eligible count = total − 1 = 23); the absolute number shifts
+on every plugin add/remove, so the durable invariant is the EXCLUDED set, not a
+fixed count. (`core-config` was the second EXCLUDED member until PR #124 promoted
+it to eligible — see *Native plugin hooks* below; `midjourney` was a third until
+PR #84 deleted the plugin — a removed plugin needs no EXCLUDED entry; the drift
+guard's orphan detection covers any stale manifest.) EXCLUDED scopes Codex *manifest
 eligibility* only — it is not an *install* filter: the `install-skills` wrapper
 (which pushes these skills into Codex/Hermes via `npx skills`) filters by skill
 count, so codex-image stays installable to Codex from that tool (`> See-also:` below).
@@ -94,6 +94,34 @@ the exclusion list (the layout is the `> See-also:` page below).
 `.mcp.json` is treated as a *file* path in the Codex manifest, not a directory
 — a subtle schema difference from Claude's behavior that the generator handles
 when reading per-plugin entries.
+
+## Native plugin hooks (core-config eligibility)
+
+Codex 0.135 **does** support bundled plugin hooks — the earlier assumption that
+it had "no equivalent hook surface" (which kept `core-config` EXCLUDED) was wrong.
+A plugin ships a source-controlled descriptor at `hooks/codex-hooks.json`, and the
+generator wires it into the manifest's top-level `hooks` as a **path**
+(`"hooks": "./hooks/codex-hooks.json"`), not an inlined object — the descriptor
+stays the single source, and Codex's own discovery only finds `hooks/hooks.json`
+by default, so the Codex-named descriptor *must* be declared in the manifest.
+`--check` validates each descriptor's shape (top-level `hooks` object keyed on
+known events, each group `{matcher?, hooks:[{type:"command",command}]}`), that
+every `$PLUGIN_ROOT`-relative script exists, and rejects orphans. The orphan-hooks
+case (descriptor removed but a stale generated `hooks` field survives) is a
+violation **only in `--check`/dry mode** — in write mode the regeneration drops it,
+exactly like an orphan manifest, so it must not fatal-abort before outputs are
+built.
+
+`core-config` therefore left EXCLUDED in PR #124 as a **hooks-only** Codex
+manifest: it has no skills, so its generated `plugin.json` carries only `hooks`
+(the `UserPromptSubmit` prompt-inject descriptor invoked with the `codex` arg).
+Its Python auto-formatter + notification hooks stay Claude-only — they assume
+Claude Write/Edit payloads and Stop/Notification events that do not map onto Codex.
+Codex still requires a `/hooks` trust approval before a plugin's hooks run; the
+bundled descriptor is now the primary path (the legacy hand-copied
+`~/.codex/hooks.json` still works). `PLUGIN_ROOT` is the Codex-provided plugin-root
+env-var (`CLAUDE_PLUGIN_ROOT` is a compat alias), quoted so a path with spaces
+still resolves.
 
 ## Skill-description length guard
 
@@ -205,6 +233,13 @@ does NOT need to retain removed plugins — orphan detection covers that case.
   agents dispatch case + the sequential-checklist runtime fallback for Codex/Hermes
   (no subagent dispatch). Verified against the merged `deck-review/SKILL.md`
   runtime-fallback rule.
+- PR #124 body (merge `c694f1e`) — Codex native plugin hooks + core-config
+  eligibility: the `hooks/codex-hooks.json` descriptor convention wired to the
+  manifest's top-level `hooks` (path form), the `--check` descriptor validation
+  (shape + referenced-script existence + orphan rejection, orphan-hooks scoped to
+  check mode), and the EXCLUDED shrink to `{codex-image}` with `core-config` as a
+  hooks-only manifest. Verified against the merged `sync-codex-manifests.mjs` +
+  `manifest-eligibility.mjs`.
 
 > Supersedes: (retired plugin `codex-bridge` 1.0.0)
 > Refined-by: [[agents-md-verbatim-no-import]]

@@ -1,7 +1,7 @@
 ---
 id: cache-version-pinning
 aliases: [plugin-cache-pinning, startup-version-pin, stale-plugin-version]
-last_verified: 2026-05-29
+last_verified: 2026-07-14
 status: active
 volatility: volatile
 sources: 2

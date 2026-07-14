@@ -17,10 +17,11 @@ dist/
 .claude/.staging/
 .codex/.staging/
 
-# Python bytecode (regenerated on every run)
+# Python bytecode + test cache (regenerated on every run)
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
 
 # Windows reserved names (prevent accidental creation)
 nul

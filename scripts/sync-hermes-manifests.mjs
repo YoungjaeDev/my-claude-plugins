@@ -25,15 +25,7 @@ const PLUGINS_DIR = join(ROOT, 'plugins');
 // EXCLUDED denylist) — add a name here to extend Hermes coverage in a later round.
 // Intentionally absent: core-config (no skills to register), codex-image (codex
 // CLI dependency + redundant with Hermes native image generation).
-const HERMES_ELIGIBLE = new Set([
-  'github-dev',
-  'interview',
-  'anti-slop-design',
-  'tcrei-prompt',
-  'ppt-yeong-style',
-  'ml-toolkit',
-  'brightdata-guide',
-]);
+import { HERMES_ELIGIBLE } from './manifest-eligibility.mjs';
 
 const AUTHOR = 'YoungjaeDev';
 

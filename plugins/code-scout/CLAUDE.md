@@ -15,6 +15,8 @@ Multi-axis code & ML research harness. v2.1 grows the v2.0 4-axis team to a 5-ax
 | Already have artifacts, just need merge | `Agent(subagent_type="code-scout:synthesis-scout")` |
 | General non-code/ML topic (politics / market / history / biographies) | `/deep-research` directly — code-scout doesn't delegate, boundary is intentional |
 
+**Runtime note:** the single-axis `Agent(subagent_type="code-scout:*-scout")` rows above are **Claude-only** — Codex 0.135 exposes the skills but cannot register the `agents/*.md` definitions. Under Codex, enter through `Skill("code-scout:research-orchestrator")`; it detects that the named agents are unregisterable and runs the same axes via generic parallel subagents (or sequential in-agent when delegation is unavailable), synthesizing in-skill. (Hermes is forward-compat: `code-scout` is not yet in `HERMES_ELIGIBLE`, so the skill does not load on Hermes today; the same generic-delegation path is ready via `delegate_task` once it is added.) See `skills/research-orchestrator/references/axis-contracts.md` for the shared contract all three execution paths consume.
+
 For the full routing matrix (should / should-NOT, near-miss disambiguation vs `paper-search-tools`, `deepwiki:ask`, `github-dev:*`, `/deep-research`), see `skills/research-orchestrator/references/agent-routing.md`.
 
 ## Team layout
@@ -36,7 +38,7 @@ research-orchestrator (skill, entry point)
         → $REPORT  (= $WORKSPACE/final_report.md unless caller overrode it)
 ```
 
-All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical order so synthesis merges deterministically. See `skills/research-orchestrator/references/synthesis-rules.md` for dedup keys, trust rubric, and conflict resolution.
+All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical order so synthesis merges deterministically. See `skills/research-orchestrator/references/synthesis-rules.md` for dedup keys, trust rubric, and conflict resolution, and `skills/research-orchestrator/references/axis-contracts.md` for the shared per-axis query shape + result envelope that keeps the named-agent (Claude), generic-subagent (Codex / Hermes), and sequential fallback paths interchangeable.
 
 ## Skills
 
@@ -77,6 +79,7 @@ The legacy `scout` agent remains as a **doc-only deprecation pointer**: it retur
 
 | Version | Notes |
 |---|---|
+| 2.2.0 | `research-orchestrator` now runs under Codex 0.135, where the `agents/*.md` scout definitions are not registerable (Hermes-portable too via `delegate_task`, but `code-scout` is not yet Hermes-eligible so it does not load on Hermes). Adds a Phase 3.5 capability branch: **Path A** named plugin agents (Claude Code — unchanged), **Path B** generic parallel subagents (Codex `Task` / Hermes `delegate_task`), **Path C** sequential in-agent. Synthesis is runtime-independent (named `synthesis-scout` on Path A, in-skill synthesis on B / C). New `references/axis-contracts.md` holds the shared per-axis query shape + result envelope + tool order / fallback / reliability so all three paths stay interchangeable; adds a Hermes tool-name compat table. Claude named-agent quick + deep paths are behaviorally unchanged. |
 | 2.1.1 | Shortens `research-orchestrator` skill description under the Codex 1024-char frontmatter limit (full routing matrix kept in the skill body). Adds a pre-commit hook + `validate-codex.yml` CI guard that enforces the limit on every skill description. |
 | 2.1.0 | Adds `paper-scout` as the 5th axis (wraps paper-search-tools 8-source MCP family — arXiv / Semantic Scholar / Crossref / PubMed / bioRxiv / medRxiv / IACR / Google Scholar — with domain-driven source selection). Wires `insane-search` as `web-scout` tier-4 transport fetch fallback for WAF / 403 / blocked URLs (X / Reddit / Coupang). Documents the `/deep-research` boundary — code-scout owns code/ML/docs/papers, `/deep-research` owns generic topics; orchestrator does not delegate. The v2.0 `deep-scout` doc-only stub is retained for backward compatibility (permanent removal deferred to a future MAJOR release). |
 | 2.0.0 | Harness refactor — 5-scout team (`github` / `hf` / `web` / `docs` / `synthesis`) + `research-orchestrator` skill + `exa-web-search` skill. exa MCP wired into web-scout. Legacy `scout` / `deep-scout` agents stubbed. cr-fix loop converged after 9 substantive fixes across 5 iters (Codex P2 ×8 + CR Major ×1: paper-scout routing, sort merge, mktemp parent + isolation, hf CLI subcommands, workspace propagation, stub auto-delegate, Context7 fallback, synthesis Write permission). Harness audit boost — Phase 0 context-check + partial re-execution mode + follow-up triggers + scout re-invoke rule + test scenarios + negative trigger surface in description. **Breaking**: direct `subagent_type` callers should migrate per table above. |

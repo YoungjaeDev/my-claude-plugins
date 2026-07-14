@@ -1,7 +1,7 @@
 """Shared REST helpers for mem0-ops scripts. stdlib only.
 
 All mem0-ops scripts talk to the mem0 Platform REST API directly
-(v1 entities/delete, v2 list). No dependency on the upstream mem0
+(v1 memories delete + entities list, v2 memories list). No dependency on the upstream mem0
 plugin's scripts or venv.
 """
 

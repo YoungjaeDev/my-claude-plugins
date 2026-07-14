@@ -79,7 +79,7 @@ generate):
 
 Follows the proven Role / Do / Don't / Examples / Source of Truth
 shape (the same pattern this repo uses in
-`.claude/rules/codex-bridge-sync.md`).
+`.claude/rules/dual-integration.md`).
 
 Variant A (path-scoped):
 ```yaml

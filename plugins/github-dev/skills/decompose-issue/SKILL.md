@@ -23,6 +23,16 @@ When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Cod
 
 Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("github-dev:<skill>")` (or ask Hermes to load that qualified skill) rather than relying on bare text like `github-dev:<skill> ...`.
 
+## Cross-runtime interactive input
+
+Every confirmation below runs through a **capability-aware** interactive-input gate, not one hardcoded tool. Read each `AskUserQuestion` mention as this gate:
+
+- **Claude Code** — use `AskUserQuestion`.
+- **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE concise blocking question only where a wrong assumption would be costly (e.g. creating GitHub issues); otherwise proceed on a documented safe default and state the assumption.
+- **Hermes** — use `clarify` (per the compatibility table above).
+
+Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+
 Break down large work items into manageable, independent issues. Follow project guidelines in `@CLAUDE.md`.
 
 ## Workflow
@@ -50,7 +60,7 @@ Break down large work items into manageable, independent issues. Follow project 
 
    Analyze the codebase and design a **10-20 node flowchart** of the project's core workflow. Store as Mermaid in the state file, but present to the user as an ASCII diagram.
 
-   - **Interview: Project Workflow** -- Use AskUserQuestion:
+   - **Interview: Project Workflow** -- Use the interactive-input gate (Claude `AskUserQuestion`):
      > "프로젝트의 전체 워크플로우를 다이어그램으로 정리했습니다. 수정할 부분이 있나요?"
      - Present the proposed workflow as an **ASCII diagram** (terminal cannot render Mermaid)
      - The diagram should capture the main data/control flow (not just layers)
@@ -88,7 +98,7 @@ Break down large work items into manageable, independent issues. Follow project 
 
    #### Step B: Select Scope Nodes
 
-   - **Interview: Milestone Scope** -- Use AskUserQuestion:
+   - **Interview: Milestone Scope** -- Use the interactive-input gate:
      > "이 마일스톤이 커버하는 노드를 선택해 주세요."
      - Present all node IDs from the workflow diagram
      - User selects which nodes are in scope for this milestone (`scopeNodes`)
@@ -97,7 +107,7 @@ Break down large work items into manageable, independent issues. Follow project 
    #### Step C: Module Grouping & Issue Mapping
 
    - Analyze decomposed issues and propose module groupings based on workflow areas
-   - **Interview: Issue-Module-Node Mapping** -- Use AskUserQuestion:
+   - **Interview: Issue-Module-Node Mapping** -- Use the interactive-input gate:
      > "이슈-모듈-노드 매핑이 맞나요?"
      - Show each issue with: proposed module, mapped architecture node
      - User can reassign issues between modules or change node mappings
@@ -105,7 +115,7 @@ Break down large work items into manageable, independent issues. Follow project 
    #### Step D: Issue Dependencies
 
    - Analyze issue order and propose dependency chains
-   - **Interview: Issue Dependencies** -- Use AskUserQuestion:
+   - **Interview: Issue Dependencies** -- Use the interactive-input gate:
      > "이슈 간 의존성(실행 순서)이 맞나요?"
      - Show proposed dependency graph: `#1 -> #2 -> #3`, `#2 -> #4`
      - User can add/remove dependencies
@@ -161,7 +171,7 @@ Break down large work items into manageable, independent issues. Follow project 
      STATEEOF
      ```
 
-10. **Ask about GitHub creation**: Use AskUserQuestion to let user decide on milestone and issue creation
+10. **Ask about GitHub creation**: Use the interactive-input gate to let user decide on milestone and issue creation
     - Create milestone with **Markdown Table** in description.
 
       > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `update-progress.md` "Type M-2"), never in the milestone description.
@@ -199,7 +209,7 @@ Break down large work items into manageable, independent issues. Follow project 
 11. **Add issues to GitHub Project (optional)**
    - Check for existing projects: `gh project list --owner <owner> --format json`
    - If no project exists: Display "No project found. You can create one with `/gh:init-project`" and skip
-   - If project exists: Ask user via AskUserQuestion whether to add issues
+   - If project exists: Ask user via the interactive-input gate whether to add issues
    - If yes: Run `gh project item-add <project-number> --owner <owner> --url <issue-url>` for each issue
 
 ## Issue Sizing Principle

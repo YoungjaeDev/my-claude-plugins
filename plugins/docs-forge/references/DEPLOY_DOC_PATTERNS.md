@@ -1,8 +1,12 @@
-# 배포 문서 패턴
+# Deploy Doc Patterns
 
-클라이언트 전달용 배포 / 절차 문서(`.md`)의 표준 골격, 채워진 예시, 안티패턴. `deploy-doc-guide` 스킬의 `## Quick Reference`가 SSOT이며 이 문서는 그 골격을 구체화한다.
+The standard skeleton, a filled example, and anti-patterns for client-facing
+deployment / procedure documents (`.md`). The `## Quick Reference` in the
+`deploy-doc-guide` skill is the SSOT; this document concretizes that skeleton.
+The skeleton and example below are shown in the Korean-default output form the
+tool generates (use `--lang en` for English labels).
 
-## 골격
+## Skeleton
 
 ```markdown
 # <문서 제목 (--title)>
@@ -31,11 +35,11 @@
 <단계 본문.>
 ```
 
-- 문서 제목은 `# H1`(`--title`), 그 바로 아래에 **무제목 요약 단락**(2-3줄, 자체 섹션 헤딩 없음)을 두고 첫 `##` 위에 배치. 제목이 없으면 요약이 파일 최상단. 요약에 언급한 단계 개수 == `### N.` 헤딩 수.
-- `## 전제조건`의 모든 줄은 `- [ ]`.
-- `## 절차`의 모든 단계는 연속 번호 `### N.`.
+- The document title is `# H1` (`--title`); directly below it, place an **untitled summary paragraph** (2-3 lines, no section heading of its own) above the first `##`. If there is no title, the summary is the very top of the file. The step count named in the summary must equal the number of `### N.` headings.
+- Every line under `## 전제조건` is a `- [ ]` item.
+- Every step under `## 절차` is a contiguously numbered `### N.` heading.
 
-## 채워진 예시
+## Filled example
 
 ```markdown
 # 추론 서비스 배포
@@ -68,10 +72,10 @@
 다이제스트 일치 여부부터 역추적한다.
 ```
 
-> 구조만 참조 모델(`pcb-goldfinger-chamfer` 배포 문서)을 모사했으며 내용은 일반 예시다.
+> Only the structure is modeled on a reference deploy doc (`pcb-goldfinger-chamfer`); the content is a generic example.
 
-## 안티패턴
+## Anti-patterns
 
-- **SSOT 인라인화** — 포트 표, 스키마, 가중치 경로 같은 계약을 절차 본문에 복붙. 명세가 갱신되면 문서가 즉시 거짓이 된다. 링크로 위임할 것.
-- **`### N.` 없는 prose 단계** — "먼저 ~하고, 그다음 ~한다" 식 문단형 절차. 번호 헤딩으로 분해해야 추적·검증 가능.
-- **요약/본문 번호 불일치** — 요약은 "3단계"라 하는데 `### N.`는 4개. 독자가 신뢰를 잃는 첫 신호. number-match 규칙으로 차단.
+- **Inlining the SSOT** — copy-pasting contracts such as port tables, schemas, or weight paths into the procedure body. The moment the spec changes, the doc becomes false. Delegate to a link instead.
+- **Prose steps without `### N.`** — a paragraph-style procedure ("first do X, then do Y"). Decompose it into numbered headings so it is traceable and verifiable.
+- **Summary/body count mismatch** — the summary says "3 steps" but there are 4 `### N.` headings. The first signal that makes a reader lose trust; the number-match rule blocks it.

@@ -1,29 +1,30 @@
-# gh repo create — Owner 추론 + Visibility 결정 트리
+# gh repo create — Owner inference + Visibility decision tree
 
-`/project-init:new` Phase 1 인터뷰와 Phase 6 레포 생성의 의사결정 컨텍스트.
+The decision context for the `/project-init:new` Phase 1 interview and Phase 6 repo creation.
 
-## Owner 추론 (자동 X, 인터뷰 필수)
+## Owner inference (not automatic, interview required)
 
-사용자가 personal account + 부업/소속 org 들을 동시에 가지는 경우가 일반적이라 **owner 자동 결정 금지**. `gh api` 로 후보만 수집하고 `AskUserQuestion` 으로 선택받는다.
+It is common for a user to hold a personal account plus side-project/employer orgs at once, so **never auto-decide the owner**. Collect candidates with `gh api` and take the choice via `AskUserQuestion`.
 
-### 후보 수집 명령
+### Candidate-collection commands
 
 ```bash
 # Personal account
 PERSONAL=$(gh api user --jq '.login')
 
 # Orgs (paginated)
-# gh CLI 는 --slurp 와 --jq 동시 사용을 거부하므로 --slurp 출력을 local jq 로
-# 파이프한다. --paginate 단독 + --jq 는 multi-page 시 jq 가 separate JSON
-# document 를 받아 페이지 경계에서 첫 페이지만 남게 됨 (PR #24 의 실제 finding).
+# gh CLI refuses --slurp and --jq together, so pipe the --slurp output to a
+# local jq. --paginate alone + --jq makes jq receive a separate JSON document
+# per page, leaving only the first page at the page boundary on multi-page
+# results (an actual finding from PR #24).
 ORGS=$(gh api --paginate --slurp /user/orgs | jq -c '[.[][].login]')
 ```
 
-> `--paginate` 만 단독으로 쓰면 30 개 초과 결과가 multi-document 로 흘러서
-> `--jq` 가 첫 페이지만 잡는다. `--slurp` 으로 array-of-arrays 로 묶고
-> `jq '[.[][].login]'` 로 flatten 하는 패턴이 portable + correct.
+> Used alone, `--paginate` streams results beyond 30 as multiple documents, so
+> `--jq` catches only the first page. Bundling them into an array-of-arrays with
+> `--slurp` and flattening with `jq '[.[][].login]'` is the portable, correct pattern.
 
-### 결정 트리
+### Decision tree
 
 ```
 Q: "Where to create the repo?"
@@ -33,38 +34,38 @@ Q: "Where to create the repo?"
 └─ ...
 ```
 
-옵션 description 에 "Personal" / "Organization" 명시 — 사용자가 두 org 가 비슷한 이름일 때 헷갈리지 않게.
+Spell out "Personal" / "Organization" in each option's description — so the user is not confused when two orgs have similar names.
 
-## Visibility 결정
+## Visibility decision
 
 ```
 Q: "Visibility?"
 ├─ Private (Recommended)
 ├─ Public
-└─ Internal     ← org owner 일 때만 노출 (personal 은 internal 불가)
+└─ Internal     ← shown only for an org owner (personal accounts cannot use internal)
 ```
 
-Recommended default 가 Private 인 이유:
-- 신규 프로젝트는 아직 정리되지 않은 secret / debug commit / WIP 코드를 포함할 가능성. 나중에 public 으로 전환은 한 줄이지만 (`gh repo edit --visibility public`), public → private 전환 후 fork 회수는 불가능.
-- 의도가 public OSS 라도 첫 1 주는 private 으로 두고 정리 후 전환하는 패턴이 안전.
+Why the recommended default is Private:
+- A new project may contain not-yet-cleaned secrets / debug commits / WIP code. Switching to public later is one line (`gh repo edit --visibility public`), but after a public → private switch you cannot recall forks.
+- Even if the intent is public OSS, keeping it private for the first week and switching after cleanup is the safe pattern.
 
-> Public 으로 전환 명령: `gh repo edit {{OWNER}}/{{PROJECT_NAME}} --visibility public --accept-visibility-change-consequences`
+> Command to switch to public: `gh repo edit {{OWNER}}/{{PROJECT_NAME}} --visibility public --accept-visibility-change-consequences`
 
-## License 결정
+## License decision
 
-License 는 visibility 와 독립이다 (private 레포에도 license 둘 수 있음).
+License is independent of visibility (a private repo can carry a license too).
 
-| Option | 언제 |
+| Option | When |
 |--------|------|
-| **MIT** (Recommended) | 단순 permissive, 가장 호환성 높음 |
-| **Apache-2.0** | 특허 grant 명시 필요할 때 |
-| **GPL-3.0** | copyleft 의도 (derivative 도 GPL 유지 강제) |
-| **None** | 명시적으로 license 안 둘 때 (private 레포라면 "사실상 all rights reserved") |
+| **MIT** (Recommended) | simple permissive, highest compatibility |
+| **Apache-2.0** | when an explicit patent grant is needed |
+| **GPL-3.0** | copyleft intent (forces derivatives to stay GPL) |
+| **None** | when deliberately not setting a license (for a private repo, effectively "all rights reserved") |
 
-`gh repo create` 의 `--license <name>` 플래그로 자동 LICENSE 파일 생성 가능 (template 사용). 단 license 가 None 이면 생략.
+The `--license <name>` flag of `gh repo create` can auto-generate a LICENSE file (using a template). Omit it when the license is None.
 
 ```bash
-# License 자동 시드
+# Auto-seed the license
 gh repo create "${OWNER}/${PROJECT_NAME}" \
   --${VISIBILITY,,} \
   --description "${ONE_LINER}" \
@@ -72,44 +73,44 @@ gh repo create "${OWNER}/${PROJECT_NAME}" \
   --source=. --remote=origin --push
 ```
 
-> 한계: `gh repo create --license` 는 빈 레포 (코드 없음) 일 때만 license 파일을 자동 생성한다. `--source=.` 와 함께 쓰면 이미 commit 가 있어서 license 자동 생성이 안 될 수 있음 — 그 경우 별도로 `gh api -X POST /repos/.../contents/LICENSE` 로 시드하거나 사용자에게 manual 안내. V1 에서는 명령에 `--license` 만 넣고 실패해도 무시 (사용자 안내).
+> Limitation: `gh repo create --license` auto-generates the license file only for an empty repo (no code). Combined with `--source=.` there are already commits, so license auto-generation may not happen — in that case seed it separately with `gh api -X POST /repos/.../contents/LICENSE` or advise the user to do it manually. In V1, just pass `--license` in the command and ignore failure (advise the user).
 
-## Push 흐름
+## Push flow
 
 ```bash
-# 0. git init (이미 .git 있으면 skip)
+# 0. git init (skip if .git already exists)
 [ -d .git ] || git init -b main
 
-# 1. 모든 시드 파일 stage
+# 1. Stage all seed files
 git add .claude/ CLAUDE.md AGENTS.md README.md CHANGELOG.md
 
 # 2. Initial commit
 git commit -m "chore: bootstrap project skeleton via project-init"
 
-# 3. gh repo create + 자동 push
+# 3. gh repo create + auto push
 gh repo create "${OWNER}/${PROJECT_NAME}" \
   --${VISIBILITY,,} \
   --description "${ONE_LINER}" \
   --source=. --remote=origin --push
 ```
 
-`--source=.` 는 현재 디렉토리를 git source 로 지정. `--remote=origin` 은 자동으로 `origin` remote 등록. `--push` 는 현재 branch 를 push.
+`--source=.` designates the current directory as the git source. `--remote=origin` registers the `origin` remote automatically. `--push` pushes the current branch.
 
-## 실패 시 복구
+## Recovery on failure
 
-| 실패 | 복구 |
+| Failure | Recovery |
 |------|------|
-| `gh repo create` — repo 이름 충돌 | Phase 1 재시도 (다른 이름 선택). local commit 은 그대로 보존. |
-| `gh repo create` — 권한 부족 (org 멤버 X) | Phase 1 owner 재선택 권유. |
-| Push 실패 — 네트워크 / auth | `git remote add origin ...` + `git push -u origin main` 수동 명령 안내. |
-| Initial commit 실패 — gitignore 빠짐 | 임시 `.env`, `node_modules/` 등이 stage 됐는지 확인. `.gitignore` 시드는 V1 scope 밖이라 사용자가 명시적으로 처리. |
+| `gh repo create` — repo name collision | retry Phase 1 (pick a different name). The local commit is preserved as-is. |
+| `gh repo create` — insufficient permission (not an org member) | suggest re-choosing the owner in Phase 1. |
+| Push failure — network / auth | advise the manual `git remote add origin ...` + `git push -u origin main` commands. |
+| Initial commit failure — missing gitignore | check whether a temporary `.env`, `node_modules/`, etc. got staged. `.gitignore` seeding is outside V1 scope, so the user handles it explicitly. |
 
 ## Idempotency
 
-같은 디렉토리에서 `/project-init:new` 두 번째 호출 시:
-1. `.git` 이 이미 존재하면 `git init` skip.
-2. AGENTS.md / CLAUDE.md / README.md / CHANGELOG.md 중 어느 하나라도 이미 존재하면 Phase 4 / 5 에서 해당 파일은 skip + 안내.
-3. `.claude/` 가 이미 있으면 Phase 2 의 `.gitkeep` 만 추가 (디렉토리 구조 자체는 보존).
-4. `gh repo` 가 이미 존재하면 — `gh repo view ${OWNER}/${PROJECT_NAME}` 으로 확인 후 사용자에게 "remote 만 wire 할까요?" 결정.
+On a second `/project-init:new` invocation in the same directory:
+1. If `.git` already exists, skip `git init`.
+2. If any of AGENTS.md / CLAUDE.md / README.md / CHANGELOG.md already exists, skip that file in Phase 4 / 5 and print a notice.
+3. If `.claude/` already exists, add only the Phase 2 `.gitkeep` (the directory structure itself is preserved).
+4. If the `gh repo` already exists — confirm with `gh repo view ${OWNER}/${PROJECT_NAME}`, then ask the user "wire only the remote?".
 
-이 가드는 `scripts/idempotent-seed.sh` 가 담당한다.
+This guard is handled by `scripts/idempotent-seed.sh`.

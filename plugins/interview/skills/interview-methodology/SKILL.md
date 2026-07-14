@@ -18,6 +18,16 @@ When this skill is loaded through Hermes as `interview:interview-methodology`, m
 
 Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("interview:interview-methodology")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
 
+## Cross-runtime interactive input
+
+Every question below runs through a **capability-aware** interactive-input gate, not one hardcoded tool. Read each `AskUserQuestion` mention as this gate:
+
+- **Claude Code** — use `AskUserQuestion`.
+- **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE concise blocking question only where a wrong assumption would be costly; otherwise proceed on a documented safe default and state the assumption.
+- **Hermes** — use `clarify` (per the compatibility table above).
+
+Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+
 A comprehensive framework for conducting thorough requirement-gathering interviews that uncover hidden needs, constraints, and edge cases.
 
 ## Trigger Examples
@@ -48,7 +58,7 @@ Interview"** (whether to interview at all) and the lightweight close in
 **"Interview Completion"** (how much to write). When those apply, they override
 rules 3-5 below.
 
-1. **Use AskUserQuestion tool** for all questions - never just ask in plain text
+1. **Use the interactive-input gate** for all questions (Claude `AskUserQuestion`; see "Cross-runtime interactive input") - never just ask in plain text
 2. **Questions must NOT be obvious** - avoid basic questions the user has already answered
 3. **Don't stop a full interview early** - once committed to a full (breadth-first) interview, cover it; don't bail after 2-3 questions. (Doesn't apply when "When NOT to Interview" already capped the scope at 2-3 targeted questions.)
 4. **Probe deeper on substantive answers** - each response can spawn follow-ups; in depth-first mode this is the primary loop. (Not a mandate to follow up on every trivial confirmation.)
@@ -57,8 +67,8 @@ rules 3-5 below.
 ## When NOT to Interview
 
 Interviewing has a cost — it interrupts the user and delays the work. Skip it (or
-drop to a single clarifying `AskUserQuestion`) when the task is already
-well-specified or low-stakes:
+drop to a single clarifying question through the interactive-input gate) when the
+task is already well-specified or low-stakes:
 
 - The request is already concrete and unambiguous (clear inputs, outputs, and
   acceptance criteria stated).
@@ -138,7 +148,7 @@ and you need full coverage before a comprehensive spec. Batch related questions
 
 ### Depth-first / Socratic (focused mode)
 Target the **single biggest uncertainty** and resolve it before moving on — one
-question (or one tight `AskUserQuestion`) at a time, each chosen by "what is the
+question (or one tight interactive-input gate) at a time, each chosen by "what is the
 one unknown that most changes the implementation right now?". The user's answer
 determines the next question. Best when one or two decisions dominate the design,
 or when a broad questionnaire would feel like a wall of forms. This mode aligns
@@ -158,7 +168,7 @@ default (so a low-stakes call can be a single confirmation, not an essay):
 현재 이해 (Current understanding): what you already know / inferred from the code
 막힌 결정 (Stuck decision):        the specific fork you can't resolve yourself
 추천 답안 (Recommended answer):    your default + a one-line why (mark it Recommended)
-질문 (Question):                   the crisp ask, as AskUserQuestion options
+질문 (Question):                   the crisp ask, as interactive-input gate options
 ```
 
 Leading with a recommended default lets the user accept low-risk decisions with a
@@ -173,7 +183,7 @@ Understand the big picture before diving into details.
 - What does success look like?
 
 ### Phase 2: Deep Dive (5-10 questions)
-Systematically cover each category above. Use AskUserQuestion with multiple-choice options when possible to make answering easier.
+Systematically cover each category above. Use the interactive-input gate with multiple-choice options when possible to make answering easier.
 
 ### Phase 3: Edge Case Exploration (3-5 questions)
 Focus on "what if" scenarios. These often reveal the most important requirements.
@@ -184,7 +194,7 @@ Help the user distinguish must-haves from nice-to-haves.
 ### Phase 5: Validation (1-2 questions)
 Summarize understanding and confirm before finalizing.
 
-## AskUserQuestion Best Practices
+## Interactive-Input Gate Best Practices (Claude: AskUserQuestion)
 
 ### Structure Questions with Options
 ```
@@ -225,7 +235,7 @@ two-question focused session:
 
 When the interview warrants a full spec:
 1. Summarize all requirements back to the user
-2. Ask for confirmation using AskUserQuestion
+2. Ask for confirmation through the interactive-input gate
 3. Write the comprehensive spec to `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`
    - Date: Interview completion date (ISO format)
    - Feature name: kebab-case (e.g., `dark-mode`, `user-authentication`)

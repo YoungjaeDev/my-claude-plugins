@@ -190,6 +190,46 @@ Page-edit summary:
 - Cross-references use typed grammar (`Refines:` / `Contradicts:` / `Evidence:` / `See-also:` / `Supersedes:` / `Superseded-by:` / `Uses:` / `Depends-on:` / `Caused-by:` / `Fixed-by:`), no raw `[[wikilink]]`
 - Superseded pages are `status: stale` + carry `> Superseded-by:` (kept, not deleted)
 - The resolved root's `log.md` has a new entry that lists *every* page touched in this ingest (not just the primary)
+- The **Final self-check** (supersede pairing, below) ran on this run's touched pages and printed no `one-sided:` line
+
+## Final self-check (MANDATORY) — supersede pairing on this run's pages
+
+Ingest can leave a supersede **half-applied**: a new page gets `> Supersedes: [[old]]` but the old page is never flipped to `status: stale`, or a page is marked `status: stale` without a `> Superseded-by:` back-pointer. Either one-sided pair silently corrupts the lifecycle (`lint-wiki`'s "monotonic relationships" rot mode) and won't surface until a much later audit. Before declaring the ingest done, run these three lint-wiki-style checks **scoped to only this run's touched pages** — the exact file list in the log.md block, NOT the whole wiki (`lint-wiki` owns the full sweep). A silent run is the pass; any `one-sided:` line must be fixed first.
+
+Under Hermes, run this block via `terminal` (`Bash`→`terminal`).
+
+```bash
+# WIKI_ROOT: resolved wiki root (.llmwiki/wiki | .claude/wiki | .codex/wiki).
+# TOUCHED:   newline-separated paths of the pages THIS run created/edited
+#            (the log.md block's file list) — never the whole wiki.
+WIKI_ROOT="${WIKI_ROOT:-.llmwiki/wiki}"
+found=$(mktemp)
+printf '%s\n' "$TOUCHED" | while IFS= read -r f; do
+  [ -n "$f" ] && [ -f "$f" ] || continue
+  is_stale=$(LC_ALL=C.UTF-8 grep -cE '^status:[[:space:]]*stale' "$f")
+  has_by=$(LC_ALL=C.UTF-8 grep -cE '^> Superseded-by:' "$f")
+  # 1. a status: stale page must carry a > Superseded-by: back-pointer
+  [ "$is_stale" -gt 0 ] && [ "$has_by" -eq 0 ] && \
+    echo "one-sided: $f is status: stale but has no > Superseded-by:" >> "$found"
+  # 2. a > Superseded-by: back-pointer requires this page be status: stale
+  [ "$has_by" -gt 0 ] && [ "$is_stale" -eq 0 ] && \
+    echo "one-sided: $f has > Superseded-by: but is not status: stale" >> "$found"
+  # 3. every > Supersedes: [[target]] must point at a status: stale page
+  LC_ALL=C.UTF-8 grep -oP '^> Supersedes:\s*\[\[\K[^\]]+' "$f" 2>/dev/null | while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    tgt=$(LC_ALL=C.UTF-8 grep -rlE "^id:[[:space:]]*${id}\$" "$WIKI_ROOT" 2>/dev/null | head -1)
+    if [ -z "$tgt" ]; then
+      echo "one-sided: > Supersedes: [[$id]] in $f — target page not found" >> "$found"
+    elif ! LC_ALL=C.UTF-8 grep -qE '^status:[[:space:]]*stale' "$tgt"; then
+      echo "one-sided: > Supersedes: [[$id]] in $f — target $tgt not status: stale" >> "$found"
+    fi
+  done
+done
+if [ -s "$found" ]; then echo "SELF-CHECK FAIL:"; cat "$found"; else echo "self-check: supersede pairing clean on this run's pages"; fi
+rm -f "$found"
+```
+
+Fix the missing half (mark the old page `status: stale` + `> Superseded-by:`, or add the `> Supersedes:` on the new page), log the fix in the same `log.md` block, then re-run until the check is silent.
 
 ## Anti-patterns
 

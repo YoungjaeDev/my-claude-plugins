@@ -1,21 +1,25 @@
-# MOC 패턴
+# MOC Patterns
 
-임의 폴더용 Map of Content(MOC) 생성의 hook 소싱 사다리, 경량/strict 출력 예시, llm-wiki `index.md` 매핑. `moc-guide` 스킬의 `## Quick Reference`가 SSOT다.
+The hook-sourcing ladder, lightweight/strict output examples, and llm-wiki
+`index.md` mapping for generating a Map of Content (MOC) over an arbitrary
+folder. The `## Quick Reference` in the `moc-guide` skill is the SSOT. Output
+examples below use the Korean-default form (hooks reflect the Korean docs being
+indexed).
 
-## Hook 소싱
+## Hook sourcing
 
-파일별 1줄 hook은 아래 precedence ladder로 결정한다(첫 히트 채택):
+The one-line hook for each file is decided by this precedence ladder (first hit wins):
 
-1. frontmatter `description:` 또는 `summary:`
-2. 첫 `# H1` 다음 첫 비어있지 않은 단락 (~100-120자 절단)
-3. 첫 `##` 소제목 텍스트
-4. 최후: 휴머나이즈한 파일명 + hook = `(요약 없음)` 플래그
+1. frontmatter `description:` or `summary:`
+2. the first non-empty paragraph after the first `# H1` (truncate to ~100-120 chars)
+3. the first `##` subheading text
+4. fallback: humanized filename + a `(요약 없음)` (no-summary) flag
 
-링크 텍스트는 frontmatter `title:` → 첫 `# H1` → 파일명 순. strict 모드에서 frontmatter `id`가 있으면 `[[id]]` 링크 형태 선호.
+Link text precedence: frontmatter `title:` → first `# H1` → filename. In strict mode, when a file's frontmatter carries an `id`, prefer the `[[id]]` link form.
 
-## 경량 출력 예시
+## Lightweight output example
 
-출력1(파일별 hook 불릿)과 출력2(도메인별 테이블)를 같은 `MOC.md` 본문에 둔다.
+Output 1 (per-file hook bullets) and output 2 (per-domain table) go in the same `MOC.md` body.
 
 ```markdown
 # docs MOC
@@ -35,7 +39,7 @@
 | [Rollback](deploy/rollback.md) | (요약 없음) |
 ```
 
-## strict(wiki) 출력 예시
+## Strict (wiki) output example
 
 ```markdown
 # docs Map of Content (MOC)
@@ -51,12 +55,12 @@
 - [Rollback](deploy/rollback.md) — 배포 롤백 절차.
 ```
 
-## llm-wiki index.md 매핑
+## llm-wiki index.md mapping
 
-strict 모드는 `plugins/llm-wiki/skills/bootstrap-wiki/assets/templates/wiki-skeleton/index.md`의 컨벤션을 미러한다:
+Strict mode mirrors the convention in `plugins/llm-wiki/skills/bootstrap-wiki/assets/templates/wiki-skeleton/index.md`:
 
-- `## <domain>` 그룹 + `- [page-title](<domain>/<slug>.md) — 1-line hook` 불릿
-- 2-depth 최대, MOC-first 진입 규칙
-- frontmatter `id` 있으면 `[[id]]` 선호, typed cross-ref(`> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` 등)
+- `## <domain>` group sections plus `- [page-title](<domain>/<slug>.md) — 1-line hook` bullets.
+- 2-depth maximum, MOC-first entry rule.
+- When frontmatter has an `id`, prefer `[[id]]`, with typed cross-refs (`> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` and so on).
 
-단, frontmatter 전체 스키마(`last_verified` / `status` / `volatility` / `sources`)와 staleness 모델은 **강제하지 않는다** — 그 모델과 실제 lore wiki 유지보수는 `llm-wiki` 플러그인(`ingest-finding` / `lint-wiki` 등)에 위임한다. docs-forge MOC는 임의 폴더를 한눈에 보는 일반화된 인덱스이지 lore 시스템이 아니다.
+The full frontmatter schema (`last_verified` / `status` / `volatility` / `sources`) and the staleness model, however, are **not enforced** — that model and the actual lore-wiki maintenance are delegated to the `llm-wiki` plugin (`ingest-finding` / `lint-wiki`, etc.). The docs-forge MOC is a generalized at-a-glance index over an arbitrary folder, not a lore system.

@@ -21,7 +21,7 @@ const PLUGINS_DIR = join(ROOT, 'plugins');
 // deepwiki and project-init were here but are now dual-surface (command + skill);
 // the skill side is what Codex loads, so they leave the EXCLUDED set.
 //   codex-image — Claude->Codex bridge (delegates to codex exec); bridging into Codex is circular
-const EXCLUDED = new Set(['core-config', 'codex-image']);
+import { CODEX_EXCLUDED as EXCLUDED } from './manifest-eligibility.mjs';
 
 // Codex 0.135 manifest top-level supports only `skills`, `hooks`, `mcpServers`, `apps`
 // (see ~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md). `commands`
@@ -33,6 +33,19 @@ const COMPONENT_DIRS = ['skills'];
 // silently skips loading the skill. Claude Code has no such limit, so the guard below
 // is the only place this constraint is enforced on the shared source tree.
 const SKILL_DESC_MAX = 1024;
+
+// Source-controlled Codex hook descriptor, relative to the plugin root. Codex's
+// default hook discovery only picks up `hooks/hooks.json`; this descriptor uses a
+// Codex-specific name, so buildPluginManifest MUST declare it in the generated
+// manifest's top-level `hooks` for Codex to load it.
+const HOOK_DESCRIPTOR_REL = 'hooks/codex-hooks.json';
+
+// Codex 0.135 hook events (learn.chatgpt.com/docs/hooks). A bundled hook descriptor
+// may only key its top-level `hooks` map on these; an unknown event is a bad shape.
+const CODEX_HOOK_EVENTS = new Set([
+  'SessionStart', 'SubagentStart', 'PreToolUse', 'PermissionRequest', 'PostToolUse',
+  'PreCompact', 'PostCompact', 'UserPromptSubmit', 'SubagentStop', 'Stop',
+]);
 
 const MARKETPLACE_NAME = 'my-claude-plugins';
 const MARKETPLACE_DISPLAY = 'My Claude Plugins';
@@ -65,8 +78,7 @@ function readPluginLicense(pluginDir) {
   }
 }
 
-function buildPluginManifest(entry) {
-  const pluginDir = join(PLUGINS_DIR, entry.name);
+export function buildPluginManifest(entry, pluginDir = join(PLUGINS_DIR, entry.name)) {
   const manifest = {
     name: entry.name,
     version: entry.version,
@@ -79,10 +91,92 @@ function buildPluginManifest(entry) {
       manifest[sub] = `./${sub}/`;
     }
   }
+  // Bundled Codex hooks: a source-controlled descriptor at hooks/codex-hooks.json is
+  // wired into the manifest's top-level `hooks` as a relative path (matching the spec's
+  // `"hooks": "./…"` companion-file form). Key order skills -> hooks -> mcpServers mirrors
+  // the Codex 0.135 top-level field order.
+  if (!manifest.hooks && isFile(join(pluginDir, HOOK_DESCRIPTOR_REL))) {
+    manifest.hooks = `./${HOOK_DESCRIPTOR_REL}`;
+  }
   if (!manifest.mcpServers && isFile(join(pluginDir, '.mcp.json'))) {
     manifest.mcpServers = './.mcp.json';
   }
   return manifest;
+}
+
+// Validate a plugin's Codex hook wiring in BOTH directions, mirroring the
+// orphan-manifest guard. Returns an array of violation strings (empty = clean):
+//   source present  -> descriptor parses, top-level `hooks` object keyed only on known
+//                       events, each group a {matcher?, hooks:[{type:"command",command}]},
+//                       and every $PLUGIN_ROOT-relative script referenced exists on disk.
+//   source absent   -> the generated .codex-plugin/plugin.json must NOT declare `hooks`
+//                       (an orphan hooks entry with no backing descriptor).
+export function validatePluginHooks(pluginDir, { checkMode = true } = {}) {
+  const violations = [];
+  const srcPath = join(pluginDir, HOOK_DESCRIPTOR_REL);
+  const genPath = join(pluginDir, '.codex-plugin', 'plugin.json');
+  const hasSrc = isFile(srcPath);
+
+  if (!hasSrc) {
+    // Orphan-hooks case: descriptor removed but a stale generated `hooks` field
+    // survives. This is a violation only in check/dry mode — write mode
+    // regenerates the manifest without `hooks`, curing it like an orphan manifest.
+    if (checkMode && isFile(genPath)) {
+      try {
+        const gen = JSON.parse(readFileSync(genPath, 'utf8'));
+        if (gen.hooks) violations.push(`orphan hooks: ${genPath} declares "hooks" but ${srcPath} is missing`);
+      } catch { /* a broken generated manifest surfaces via the drift compare, not here */ }
+    }
+    return violations;
+  }
+
+  let desc;
+  try { desc = JSON.parse(readFileSync(srcPath, 'utf8')); }
+  catch { violations.push(`malformed JSON: ${srcPath}`); return violations; }
+
+  const hooks = desc && typeof desc === 'object' && !Array.isArray(desc) ? desc.hooks : undefined;
+  if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) {
+    violations.push(`bad shape: ${srcPath} — top-level "hooks" must be an object keyed by event name`);
+    return violations;
+  }
+  const scriptRe = /\$\{?(?:PLUGIN_ROOT|CLAUDE_PLUGIN_ROOT)\}?\/([^\s"']+)/g;
+  for (const [event, groups] of Object.entries(hooks)) {
+    if (!CODEX_HOOK_EVENTS.has(event)) {
+      violations.push(`bad shape: ${srcPath} — unknown hook event "${event}"`);
+      continue;
+    }
+    if (!Array.isArray(groups) || groups.length === 0) {
+      violations.push(`bad shape: ${srcPath} — "${event}" must be a non-empty array`);
+      continue;
+    }
+    for (const group of groups) {
+      if (!group || typeof group !== 'object' || Array.isArray(group)) {
+        violations.push(`bad shape: ${srcPath} — "${event}" group must be an object`);
+        continue;
+      }
+      if ('matcher' in group && typeof group.matcher !== 'string') {
+        violations.push(`bad shape: ${srcPath} — "${event}" matcher must be a string`);
+      }
+      if (!Array.isArray(group.hooks) || group.hooks.length === 0) {
+        violations.push(`bad shape: ${srcPath} — "${event}" group needs a non-empty "hooks" array`);
+        continue;
+      }
+      for (const h of group.hooks) {
+        if (!h || typeof h !== 'object' || h.type !== 'command' || typeof h.command !== 'string' || h.command.trim() === '') {
+          violations.push(`bad shape: ${srcPath} — each "${event}" hook needs {type:"command", command:"…"}`);
+          continue;
+        }
+        let m;
+        scriptRe.lastIndex = 0;
+        while ((m = scriptRe.exec(h.command)) !== null) {
+          if (!isFile(join(pluginDir, m[1]))) {
+            violations.push(`missing script: ${srcPath} references ${m[1]} — not found under ${pluginDir}`);
+          }
+        }
+      }
+    }
+  }
+  return violations;
 }
 
 function buildCatalog(entries) {
@@ -183,6 +277,25 @@ function validateSkillDescriptions(pluginNames) {
   return violations;
 }
 
+// marketplace.json is the description source of truth. Each plugin's
+// .claude-plugin/plugin.json `description` must match its marketplace entry, or
+// Claude Code (which reads plugin.json) and the marketplace registry disagree.
+// Runs over every marketplace plugin (incl. Codex-excluded ones), which still
+// carry a plugin.json that must stay in sync.
+function validateDescriptionParity(entries) {
+  const violations = [];
+  for (const entry of entries) {
+    const manifestPath = join(PLUGINS_DIR, entry.name, '.claude-plugin', 'plugin.json');
+    if (!isFile(manifestPath)) { violations.push({ name: entry.name, path: manifestPath, reason: 'missing plugin.json' }); continue; }
+    let parsed;
+    try { parsed = JSON.parse(readFileSync(manifestPath, 'utf8')); } catch { violations.push({ name: entry.name, path: manifestPath, reason: 'unparseable plugin.json' }); continue; }
+    if ((parsed.description || '') !== (entry.description || '')) {
+      violations.push({ name: entry.name, path: manifestPath, reason: 'description drift' });
+    }
+  }
+  return violations;
+}
+
 function main() {
   const source = readJSON(SOURCE);
   const eligible = source.plugins.filter((p) => !EXCLUDED.has(p.name));
@@ -193,6 +306,30 @@ function main() {
   if (violations.length > 0) {
     console.error(`skill description length violation(s) — Codex 0.135 limit is ${SKILL_DESC_MAX} chars:`);
     for (const v of violations) console.error(`  ${v.len} chars (limit ${SKILL_DESC_MAX}): ${v.path}`);
+    process.exit(1);
+  }
+
+  // plugin.json <-> marketplace.json description parity (marketplace.json is SoT).
+  const parityViolations = validateDescriptionParity(source.plugins);
+  if (parityViolations.length > 0) {
+    console.error('plugin.json description drift — marketplace.json is the source of truth; sync plugin.json to it:');
+    for (const v of parityViolations) console.error(`  ${v.name}: ${v.reason} (${v.path})`);
+    process.exit(1);
+  }
+
+  // Codex hook-descriptor guard — parses/validates each eligible plugin's
+  // hooks/codex-hooks.json (shape + referenced-script existence). Source-present
+  // errors (malformed / bad shape / missing script) abort in every mode. The
+  // orphan-hooks case (descriptor removed, stale generated `hooks` remains) is
+  // check-only — in write mode the regeneration below drops it, same as orphan
+  // manifests, so it must not fatal-abort before outputs are built.
+  const hookViolations = [];
+  for (const entry of eligible) {
+    hookViolations.push(...validatePluginHooks(join(PLUGINS_DIR, entry.name), { checkMode: MODE !== 'write' }));
+  }
+  if (hookViolations.length > 0) {
+    console.error('Codex hook descriptor violation(s):');
+    for (const v of hookViolations) console.error(`  ${v}`);
     process.exit(1);
   }
 
@@ -250,4 +387,8 @@ function main() {
   console.log(`wrote ${outputs.length} manifests: ${created} created, ${updated} updated, ${unchanged} unchanged, ${removed} orphans removed.`);
 }
 
-main();
+// Run as a CLI, but stay a side-effect-free module when imported (the test suite
+// imports buildPluginManifest / validatePluginHooks without triggering a real run).
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

@@ -31,8 +31,8 @@ Comprehensive reference documents in `references/`:
 | `TEMPLATES.md` | Copy-paste templates for 6 project types |
 | `CRO_CHECKLIST.md` | Conversion optimization checklist |
 | `EXAMPLES_ANALYSIS.md` | Detailed analysis of each example project |
-| `DEPLOY_DOC_PATTERNS.md` | Deployment-doc skeleton, filled example, anti-patterns (Korean) |
-| `MOC_PATTERNS.md` | MOC hook-sourcing ladder, lightweight + strict examples (Korean) |
+| `DEPLOY_DOC_PATTERNS.md` | Deployment-doc skeleton, filled example, anti-patterns (Korean-default output examples) |
+| `MOC_PATTERNS.md` | MOC hook-sourcing ladder, lightweight + strict examples (Korean-default output examples) |
 
 ## Analyzed Examples
 

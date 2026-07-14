@@ -186,6 +186,8 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 | `/e2e-harness:e2e-author` | CUF(critical user flow) 선정 → planner 계획서 → **사용자 검토 게이트** → generator 스펙 생성(semantic `getByRole` 강제) → `--repeat-each` 번인으로 플래키 차단 |
 | `/e2e-harness:e2e-debug` | 실패한 CI run/PR 입력 → 트레이스 아티팩트 다운로드 → 헤드리스 trace 분석 → healer 원인 분석·수리(최대 3회 후 skip + 사유 코멘트) → 재실행 검증 |
 
+**Cross-runtime (Claude / Codex):** 세 스킬은 런타임에 따라 두 런타임 계열·세 실행 경로(Path A/B/C)로 갈립니다. **Claude Code** 는 `init-agents --loop=claude` 가 생성한 named agent(planner/generator/healer)를 이름으로 디스패치합니다(**Path A**). **Codex 0.135** 는 그 agent 파일을 named subagent 로 등록하지 못하므로, 번들된 `references/role-contracts.md` 의 역할 계약을 인라인으로 실은 **generic subagent** 로 같은 역할을 실행하거나(**Path B**), 위임이 불가능하면 순차 실행합니다(**Path C**). CUF 선정·계획 검토 게이트·semantic locator·`--repeat-each` 번인·trace-first 진단·healer 3회 상한 등 모든 게이트는 두 경로에서 동일합니다. `--loop=codex` 는 버전 추정이 아니라 feature-detect 로만 사용하고, `.mcp.json` 의 `playwright-test` 항목은 기존 서버를 덮어쓰지 않고 머지합니다. (Hermes 는 forward-compatible — `e2e-harness` 는 아직 `HERMES_ELIGIBLE` 이 아니라 현재 Hermes 에는 로드되지 않으며, generic 경로가 향후 편입 시 `delegate_task` 로 매핑됩니다.)
+
 **Requirements:** Node.js + Playwright (`npm init playwright@latest`), `gh` CLI (e2e-debug 의 CI 트레이스 fetch)
 
 **Loose coupling:** Playwright 미설치 시 graceful degrade. `github-dev` 의 resolve-issue/commit-and-push 는 이 플러그인 없이도 E2E 를 옵트인 감지만 함 (상호 부재에 안전)
@@ -195,7 +197,7 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 ### Research & Search
 
 <details>
-<summary><strong>code-scout</strong> - 다축 코드 & ML 리서치 하네스 (v2.1)</summary>
+<summary><strong>code-scout</strong> - 다축 코드 & ML 리서치 하네스 (v2.2)</summary>
 
 **Skills (entry points):**
 | Skill | Purpose |
@@ -214,6 +216,8 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 | `paper-scout` | paper-search-tools 8-source 래핑 (arXiv/Semantic Scholar/Crossref/PubMed/bioRxiv/medRxiv/IACR/Google Scholar). 도메인별 2-3 source 선택, 학술 신호 감지 시 deep mode 5-axis 에 자동 인입 |
 | `synthesis-scout` | dedup (DOI 포함) / trust ranking (peer-reviewed > arxiv high-cite > arxiv recent) / conflict resolution / 최종 보고서 |
 
+**런타임 이식성 (v2.2.0)**: 이 6개 agent 는 **Claude Code 전용** — Codex 0.135 는 skill 은 노출하지만 `agents/*.md` 를 등록하지 못한다 (Hermes 도 `delegate_task` fallback 대상이지만 `code-scout` 는 아직 Hermes-eligible 이 아니라 로드되지 않는다 — forward-compat). 그 런타임에서는 `research-orchestrator` skill 이 named agent 미등록을 감지해 동일 축을 generic 병렬 subagent (Codex `Task` / Hermes `delegate_task`) 로, 위임 불가 시 현재 에이전트 내 순차 실행으로 돌리고 synthesis 를 in-skill 로 수행한다. 세 경로가 공유하는 계약은 `skills/research-orchestrator/references/axis-contracts.md`. Claude named-agent quick / deep 경로 동작은 무변경.
+
 **경계 — `/deep-research` 와 분리**: code-scout 는 code / ML / docs / papers 도메인 전용. 정책 / 시장 / 역사 / 인물 등 일반 토픽은 sibling `/deep-research` 직접 호출 (7-phase + adversarial verify + state machine). orchestrator 가 위임하지 않음 — 의도된 boundary.
 
 **Usage — Claude Code 호출 (셸 아님, 메인 세션에서 실행):**
@@ -229,6 +233,8 @@ Agent(subagent_type="code-scout:github-scout",
 Agent(subagent_type="code-scout:paper-scout",
       prompt="query=sparse autoencoder interpretability\nworkspace_dir=$WORKSPACE\nartifact_id=05_paper")
 ```
+
+> 위 `Agent(subagent_type="code-scout:*-scout")` 직접 호출은 **Claude Code 전용**이다. Codex 에서는 이 named agent 들이 등록되지 않으므로 `Skill("code-scout:research-orchestrator")` 로 진입하면 orchestrator 가 generic subagent / 순차 fallback 으로 같은 축을 실행한다 (Hermes 는 `code-scout` 가 아직 Hermes-eligible 이 아니라 미로드 — 위 "런타임 이식성" 참조).
 
 **Workspace 준비 (위 직접 호출 전에 실제 셸에서):**
 ```bash
@@ -674,9 +680,9 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인: `core-config` (Claude-only hooks — Codex 에 대응 surface 없음), `codex-image` (Claude->Codex 브리지 — Codex 로 sync 하면 순환). 즉 22 / 24 플러그인이 양쪽에서 skill 단위로 동작. `deepwiki` 와 `project-init` 은 1.41.0 부터 dual-surface (command + skill) 로 양쪽 런타임에서 사용 가능.
+Codex 에서 제외되는 플러그인은 `codex-image` 하나뿐입니다 (Claude->Codex 브리지 — Codex 로 sync 하면 순환). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 23 / 24 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
 
-Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`paper-search-tools`, `docs-forge` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
+Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`docs-forge`, `deepwiki` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
 `--check` 는 manifest drift 외에 **skill `description` 길이**도 검증합니다 (Codex 0.135 는 1024자 초과 description 을 가진 skill 을 silent 하게 skip). 이 가드는 로컬 pre-commit 훅과 CI 양쪽에서 동일하게 실행됩니다:
 
@@ -721,6 +727,36 @@ node scripts/install-skills.mjs
 
 플러그인 그룹 단위로 skill 을 고른 뒤 타겟(`hermes-agent` / `codex`)·scope(global `~/` / project `./`)·Hermes profile 을 선택하면 `npx skills add` 로 설치합니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes profile 은 `HERMES_HOME` env 로 타겟팅합니다.
 
+### CI 가드가 지키는 것 (curation / security)
+
+shared-source 배선은 5개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 다른 도구체인에 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
+
+- `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
+- `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
+- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
+- `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
+- `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
+
+drift·길이·shape 위반은 **차단**(exit 1)이고, prose 경고는 측정치일 뿐 커밋을 막지 않습니다. 어느 가드도 소스를 자동 수정하지 않습니다 — 위반을 보고할 뿐이니, 로컬에서 generator 를 재실행해 파생물을 맞춘 뒤 다시 커밋하세요.
+
+### 머신 로컬 운영 갱신 (PR 밖 오퍼레이터 체크리스트)
+
+Codex 의 UserPromptSubmit 훅과 Hermes 스킬은 이제 **번들 디스크립터/어댑터**로 배포되므로 marketplace 업데이트가 정본입니다. 다만 예전에 손으로 설치한 복사본(수동 `~/.codex/hooks/prompt_inject.sh`, 스킬 단위로 깐 `~/.agents/skills/<...>`)을 쓰던 머신은 그 복사본이 stale 해질 수 있습니다. 아래는 리포지토리 상태를 바꾸지 않는 **머신 로컬 작업**이라 PR 에 포함되지 않으며, marketplace 업데이트 후 한 번 실행합니다:
+
+```bash
+# 1) marketplace 캐시 갱신 (위 "플러그인 업데이트" 절차)
+rm -rf ~/.claude/plugins/cache/my-claude-plugins/
+
+# 2) Codex: 번들 디스크립터로 재설치 (수동 ~/.codex/hooks.json 항목을 쓰던 경우 먼저 제거)
+codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
+codex plugin add core-config@my-claude-plugins   # 이후 /hooks 로 trust 재승인
+
+# 3) Hermes: 스킬 단위 설치본 갱신
+node scripts/install-skills.mjs                  # 또는 hermes plugins install ... --enable
+```
+
+번들 디스크립터/어댑터를 쓰는 신규 설치는 marketplace 업데이트만으로 최신이 됩니다 — 이 체크리스트는 레거시 수동 복사본을 쓰는 머신에만 필요합니다.
+
 ## 요구사항
 
 | 도구 | 용도 | 필수 |
@@ -742,6 +778,7 @@ node scripts/install-skills.mjs
 ├── plugins/
 │   ├── core-config/           # 가이드라인 + 훅
 │   ├── github-dev/            # GitHub 워크플로우
+│   ├── e2e-harness/           # Playwright E2E 테스트 하네스 (setup/author/debug)
 │   ├── code-scout/            # 리소스 탐색
 │   ├── deepwiki/              # 레포 문서화
 │   ├── paper-search-tools/    # 논문 검색
@@ -759,6 +796,7 @@ node scripts/install-skills.mjs
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
 │   ├── anti-slop-design/      # anti-AI-slop 디자인 가드 (web/ppt/dashboard/copy)
 │   ├── ppt-yeong-style/       # yeong 스타일 덱 작성 레이어 — 스킬 3종(메인/lecture-deck/deck-review) + 리뷰 에이전트 4종
+│   ├── tally-form/            # 체크리스트 md -> Tally 설문/문의 폼 빌더
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 │   ├── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)
 │   └── mem0-ops/              # 플릿 레벨 mem0 진단·정리 (fleet-scan/doctor/cleanup)

@@ -1,6 +1,6 @@
 {
   "name": "rules-forge",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "CLAUDE.md generation and .claude/rules/ modular structure with auto mode detection (NEW/TIGHTEN/SPLIT/REORGANIZE), single write-rules skill entrypoint",
   "author": {
     "name": "YoungjaeDev"

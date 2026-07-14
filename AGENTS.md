@@ -10,6 +10,7 @@
 - 사용자가 한국어로 요청하면 한국어로 응답하세요.
 - 변경은 요청 범위에만 한정하고, 관련 없는 파일이나 기존 사용자 변경 사항은 되돌리지 마세요.
 - 파일 탐색과 검색은 우선 `rg`, `rg --files`를 사용하세요.
+- 플러그인 개발 중 라이브러리·런타임·플랫폼 사실을 확인할 때는 `docs/llm-doc-sources.md` 에 정리된 LLM 문서 소스(mcpdocs 등록 + deepwiki 타깃)를 먼저 사용하세요.
 - 문서와 매니페스트가 함께 움직이는 저장소이므로 코드 변경뿐 아니라 `README.md`, 이 문서, marketplace manifest의 동기화 필요성을 항상 확인하세요.
 
 플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.
@@ -127,6 +128,7 @@
 │   ├── anti-slop-design/   # Anti-AI-slop design guard (web/ppt/dashboard/copy)
 │   ├── ppt-yeong-style/    # yeong-style lecture/proposal deck writing layer (on ppt-master)
 │   ├── tally-form/         # Checklist md -> Tally questionnaire/survey form builder
+│   ├── gws-sync/           # Local -> Google Drive one-way proposal sync
 │   └── project-init/       # Day-1 bootstrap (new) + existing-repo setup diagnostic (wiring)
 ├── AGENTS.md               # This file — 정본
 ├── CLAUDE.md               # @AGENTS.md import (한 줄)
@@ -154,19 +156,34 @@
 | 관심사 | Claude Code 표면 | Codex 표면 | Hermes 표면 |
 |---|---|---|---|
 | 최상위 지침 | `CLAUDE.md` (`@AGENTS.md` import), `.claude/rules/*.md` (auto-load) | `AGENTS.md` (verbatim 로드 — `@import` 메커니즘 자체가 없음) | `AGENTS.md` (verbatim) |
-| 프롬프트 주입 hook | 플러그인 `UserPromptSubmit` (`plugin.json` → `hooks/*.sh`) | `~/.codex/hooks.json` → 같은 스크립트, `codex` 포맷 인자 | (별도 hook surface — 현재 미사용) |
+| 프롬프트 주입 hook | 플러그인 `UserPromptSubmit` (`plugin.json` → `hooks/*.sh`) | 번들 `hooks/codex-hooks.json` → 매니페스트 `hooks` 배선 (`codex` 포맷 인자, `/hooks` trust). 레거시 수동 `~/.codex/hooks.json` 도 여전히 동작 | (별도 hook surface — 현재 미사용) |
 | skill | `plugins/*/skills` (native) | 같은 트리 in-place + generated `.codex-plugin/plugin.json` (아래 "Codex 통합") | 같은 트리 in-place + generated `plugin.yaml` + `__init__.py` (아래 "Hermes 통합") |
 | command / subagent | `plugins/*/{commands,agents}` (native) | Codex 0.135 미지원 (Claude-only) | Hermes 미지원 (skill 만) |
 | skill 본문 도구명 | Claude 도구명 (`Bash`, `Read`, ...) | Claude 와 동일 (본문 그대로 읽음) | 본문의 호환 표로 Hermes 도구명 매핑 (`Bash`→`terminal`, `AskUserQuestion`→`clarify`, ...) |
 | 공유 중립 lore | `.llmwiki/` (세 에이전트 동일 루트, fork 금지) | `.llmwiki/` | `.llmwiki/` |
 
 - 최상위 지침은 이 파일 한 곳에만 쓴다. `CLAUDE.md` 는 `@AGENTS.md` 한 줄 import 라 편집할 내용이 없다.
-- Claude hook 을 추가/변경하면 Codex `~/.codex/hooks.json` 대응을 점검한다 (Codex hook 은 별도 `/hooks` trust 필요, 자동 등록 안 됨).
+- Claude hook 을 추가/변경하면 Codex 대응을 점검한다: 플러그인이 번들 `hooks/codex-hooks.json` 디스크립터를 실으면 `node scripts/sync-codex-manifests.mjs` 가 이를 매니페스트 top-level `hooks` 로 배선한다 (레거시 수동 `~/.codex/hooks.json` 경로는 여전히 유효). 어느 쪽이든 Codex hook 은 별도 `/hooks` trust 승인이 필요하다 (자동 등록 안 됨).
 - skill / 버전 / description 을 바꾸면 Codex 매니페스트 재생성(`node scripts/sync-codex-manifests.mjs`) + (Hermes-eligible 이면) Hermes 어댑터 재생성(`node scripts/sync-hermes-manifests.mjs`)이 필요한지 점검한다 ("Codex 통합" / "Hermes 통합" 섹션 + `plugin-versioning.md`).
 - skill 본문을 추가/변경할 때 Hermes 호환 표(Claude/Codex 도구 용어 → Hermes 도구)를 점검한다 — 3런타임 포터블.
+- subagent 위임은 Claude 전용 가속일 뿐이다 — skill 단계의 인라인 크로스런타임 경로가 primary 로 남아야 하고, skill 로직을 agent 정의로 옮기지 않는다 (Codex 0.135 / Hermes 는 agents surface 가 없어 옮긴 로직이 조용히 사라진다).
 - wiki lore 는 `.claude/rules/` 로 승격하지 않는다 — Codex/Hermes 가 못 읽는다. cross-agent insight 는 `.llmwiki/insight/` 로 graduate 후 공유 주입 hook 으로 노출한다.
 - `.llmwiki/` 를 per-agent 로 fork 하지 않는다.
+- Instruction and skill documentation prose is written in English (skill bodies, reference docs, plugin `CLAUDE.md`) so all three runtimes and the Codex cloud reviewer read one language. Domain content is exempt and stays in its source language — copy, form presets, humanize samples, illustrative example outputs, and the i18n / trigger phrases inside a skill `description:` frontmatter field (translating those breaks skill matching).
 - **`AGENTS.md` 를 `CLAUDE.md` 로의 포인터로 축약하지 않는다.** Codex/Hermes 는 `@` 를 확장하지 않아 `@CLAUDE.md` 는 죽은 텍스트이고, "CLAUDE.md 를 먼저 읽어라" 식 산문 redirect 는 Codex GitHub cloud reviewer 에 닿지 않는다 (이 리뷰어는 `## Review guidelines` 섹션을 시스템 프롬프트에 직접 로드한다 — 임의 산문 redirect 는 따라가지 않고, `AGENTS.md` 가 명시적으로 참조하는 `code_review.md` 만 예외적으로 따라갈 수 있다[소프트 개런티, best-practices 문서]). 실패는 조용하다 — 에러 없이 지침만 사라진다. 이 저장소는 반대 방향을 택했다: `AGENTS.md` 가 SSOT 이고 `CLAUDE.md` 는 `@AGENTS.md` 한 줄을 import 한다 (`@import` 는 Claude 전용이라 `CLAUDE.md` 쪽에만 두면 되고, Codex/Hermes 는 `AGENTS.md` 를 직접 읽는다). 심볼릭 링크도 같은 효과를 내지만 Windows 체크아웃에서 `core.symlinks` 가 꺼져 있으면 `CLAUDE.md` 가 링크 대상 문자열 그대로 풀려 깨지므로, 포터블한 `@import` 를 택했다.
+
+## Cross-runtime interactive input policy
+
+사용자에게 되묻는 상호작용은 런타임마다 노출 도구가 다르다. 공유 스킬 본문(세 런타임이 verbatim 으로 읽음)은 특정 도구가 항상 존재한다고 가정하지 말고 **capability-aware** 게이트로 쓴다.
+
+| 런타임 | 상호작용 도구 |
+|---|---|
+| Claude Code | `AskUserQuestion` |
+| Codex | `request_user_input` (노출된 경우). 노출 안 되면, 틀린 가정의 비용이 큰 지점에서만 짧은 blocking 질문 하나를 던지고, 그 외에는 문서화된 안전한 기본값으로 진행한다 |
+| Hermes | `clarify` |
+
+- 새 스킬 본문이 `AskUserQuestion` 을 쓰면 파일럿의 "Cross-runtime interactive input" 블록(위 3런타임 매핑)을 같이 넣거나, 이관을 미룰 경우 `scripts/check-skill-tool-portability.mjs` 의 baseline 에 등록한다. `scripts/check-skill-tool-portability.mjs --check` 가 `.githooks/pre-commit` + `.github/workflows/validate-codex.yml` 에서 이를 강제한다 — 파일럿은 표준 매핑을, baseline 은 등록 사실을, 그 외 새 경로는 실패로 잡는다.
+- **Follow-up debt (#123):** 현재 파일럿은 `interview:interview-methodology` 와 `github-dev:decompose-issue` 2개뿐이다. 나머지 18개 스킬(baseline)은 아직 body 에서 `AskUserQuestion` 을 실제로 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다. Hermes 호환표 행이나 frontmatter `allowed-tools:` 에만 `AskUserQuestion` 이 있고 실제 대화 게이트가 없는 스킬은 debt 가 아니라 가드가 제외한다. baseline 에서 파일럿으로 옮기며 점진 이관한다.
 
 ## 플러그인 변경 규칙
 
@@ -183,7 +200,48 @@
 `.claude/rules/*.md` is auto-loaded by Claude Code — no `@import` required, and Codex/Hermes cannot read the directory at all (their mirror is the "멀티런타임 통합" section above). A rule carrying `paths:` frontmatter loads only when Claude touches a matching file; `@import`ing that same rule expands it unconditionally at launch and kills the scoping, so the first pointer below is deliberately plain (backticks, not `@`).
 
 - `.claude/rules/plugin-versioning.md` — plugin version bump contract and cache-refresh workflow. Scoped via `paths:` to the manifest files, so it loads only when you touch them.
+- `.claude/rules/state-envelope.md` — the state-envelope v0 run-record convention (`.claude/state/<pipeline>-<key>.json` + archive rotation + per-skill jq, no shared library). Scoped via `paths:` to `.claude/state/*.json`. Its concept mirror for Codex/Hermes is the "State-envelope 실행 기록" section below.
 - See @.claude/rules/dual-integration.md for keeping the Claude Code, Codex, and Hermes surfaces in sync when editing guidance, hooks, or derived artifacts (unscoped, always loaded; its cross-runtime content is mirrored in the "멀티런타임 통합" section above, which is what Codex and Hermes actually read).
+
+## State-envelope 실행 기록 (run records, v0)
+
+> `.claude/rules/state-envelope.md` 의 Codex/Hermes 미러다 (그 두 런타임은 `.claude/rules/` 를 못 읽는다). Claude 는 위 `## Modular Rules` 포인터로 원본 규칙에 닿고, Codex/Hermes 에게는 이 미러가 유일 소스이므로 실행 jq 를 아래에 그대로 싣는다 (규칙 파일로 미루지 않는다).
+
+여러 단계로 이어지는 파이프라인 스킬이 자기 진행 상태를 기계가 읽을 수 있게 남기는 per-run 상태 파일 규약이다. v0 는 **문서화된 규약 + per-skill `jq`** 일 뿐, **공유 라이브러리/스크립트를 두지 않는다**. 각 채택 스킬이 자기 본문에 jq 를 인라인한다.
+
+- **위치·회전**: live 파일은 `.claude/state/<pipeline>-<key>.json` (예: `post-merge-114.json`, 기존 `cr-fix-<PR>.json` 명명 미러). 같은 key 로 재실행하면 새로 쓰기 전에 이전 live 파일을 `.claude/state/archive/<pipeline>-<key>-<timestamp>-$$.json` 로 회전한다 (cr-fix Step 2 미러). `.claude/state/` 는 gitignore + 머신 로컬 — run record 는 절대 커밋하지 않고 스킬의 `RUN_TOUCHED` 스테이징 집합에도 넣지 않는다.
+- **스키마**: `{schema:"state-envelope/v0", run_id, status(queued|in_progress|completed), conclusion, started_at, updated_at, anchor_sha, attempt, session_id, steps[]}`. `steps[]` 는 top-level 단계가 닫힐 때마다 `{step, status: done|skipped, reason?}` 한 항목 (`reason` 은 skipped 에만).
+- **spec-state 와 직교(orthogonal)**: run record 는 `.claude/state/spec.json` 이 **아니다**. `spec.json` (owner: `spec-state:state-tracker`) 은 spec→issue→PR 파이프라인의 크로스런 집계이고, run record 는 스킬 단일 실행의 단계 로그다. 서로 다른 파일·다른 소유자이며 서로 읽거나 쓰지 않는다.
+- **v0 채택자**: `github-dev:post-merge` (Step 1-10 per-step 기록) 하나뿐이다. 다른 스킬 상태 파일의 retrofit 은 후속 변경으로 의도적으로 미룬다.
+
+**실행 jq (Codex/Hermes 자립용 — Claude 도 동일 패턴).** 채택 스킬이 본문에 인라인한다 (공유 라이브러리 없음). Init 은 archive 회전 실패 시 이전 기록을 덮어쓰지 않도록 abort 한다:
+
+```bash
+REC=".claude/state/<pipeline>-<key>.json"; mkdir -p .claude/state/archive
+if [ -f "$REC" ]; then
+  mv "$REC" ".claude/state/archive/<pipeline>-<key>-$(date +%Y%m%d-%H%M%S)-$$.json" \
+    || { echo "state-envelope: archive rotation failed" >&2; exit 1; }
+fi
+jq -n --arg rid "<pipeline>-<key>" --arg sha "$ANCHOR_SHA" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{schema:"state-envelope/v0", run_id:$rid, status:"in_progress", conclusion:null,
+    started_at:$now, updated_at:$now, anchor_sha:($sha // null), attempt:1,
+    session_id:(env.CLAUDE_SESSION_ID // null), steps:[]}' > "$REC"
+```
+
+각 단계가 닫힐 때 한 항목 append, 마지막에 finalize — shell 상태는 tool 호출 간 유지되지 않으므로 함수가 아니라 인라인 jq 로 (`reason` 은 skip 에만):
+
+```bash
+# record a completed step:
+tmp=$(mktemp); jq --argjson step "$N" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.updated_at=$now | .steps += [{step:$step, status:"done"}]' "$REC" > "$tmp" && mv "$tmp" "$REC"
+# record a skipped step — reason is REQUIRED; guard it so a skip is never written without one:
+[ -n "$reason" ] || { echo "state-envelope: a skipped step needs a reason" >&2; exit 1; }
+tmp=$(mktemp); jq --argjson step "$N" --arg reason "$reason" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.updated_at=$now | .steps += [{step:$step, status:"skipped", reason:$reason}]' "$REC" > "$tmp" && mv "$tmp" "$REC"
+# finalize (terminal):
+tmp=$(mktemp); jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.status="completed" | .conclusion="success" | .updated_at=$now' "$REC" > "$tmp" && mv "$tmp" "$REC"
+```
 
 ## Setup answers
 
@@ -201,12 +259,13 @@ node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
 - Claude 와 Codex 0.135 가 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 별도 mirror / body transform 없음 (구 `codex-bridge` 플러그인은 1.40.0 에서 제거). Skill 본문은 in-place 로 읽히므로 transform 이 없고, frontmatter 유효성만 남습니다.
-- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 22개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
+- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 23개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
 - 새 플러그인 추가 / 기존 플러그인의 `version` / `description` / `category` 변경 시 반드시 `node scripts/sync-codex-manifests.mjs` 를 실행해 매니페스트를 재생성하세요. `--check` 는 플러그인 제거 후 남은 orphan 매니페스트도 감지합니다.
 - Skill `description` frontmatter 는 1024자 미만으로 유지하세요. Codex 0.135 는 1024자 초과 description 을 가진 skill 을 **silent 하게 skip** 합니다 (Claude Code 는 제한이 없어 위반이 안 보임). `--check` 가 drift 외에 description 길이도 검증하고, 공유 `.githooks/pre-commit` 이 매 커밋마다 실행합니다 — clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화하세요. 전체 trigger 목록 / per-tool rationale 는 description 이 아니라 skill 본문에 두세요.
 - Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
 - Codex 0.135 manifest top-level 은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원합니다 (참조: `~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md`). `commands` / `agents` 는 생성기가 emit 하지 않습니다 — Claude 만 인식하는 필드입니다.
-- Codex 에서 제외할 플러그인은 `scripts/sync-codex-manifests.mjs` 의 `EXCLUDED` 셋에 등록하세요 (현재: `core-config`, `codex-image`). `core-config` 는 Claude-only hooks 라 Codex 에 대응 surface 가 없고, `codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환입니다. 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
+- **번들 Codex hooks**: 플러그인이 소스 관리되는 `hooks/codex-hooks.json` 디스크립터를 실으면 생성기가 이를 매니페스트 top-level `hooks: "./hooks/codex-hooks.json"` 로 배선합니다 (Codex 는 이 파일명을 기본 탐색 `hooks/hooks.json` 로 자동 발견하지 못하므로 매니페스트 선언이 필수). 디스크립터 shape 는 `{ "hooks": { <Event>: [ { "matcher"?, "hooks": [ { "type":"command", "command": "bash \"$PLUGIN_ROOT/…\"" } ] } ] } }` — 이벤트명은 Codex hook 이벤트 집합 (`UserPromptSubmit` / `SessionStart` / `Stop` / `SubagentStop` / `PostToolUse` 등), plugin-root env-var 는 `PLUGIN_ROOT` (`CLAUDE_PLUGIN_ROOT` 는 호환 alias), 경로에 공백이 있을 수 있어 따옴표로 감쌉니다. `--check` 가 디스크립터 파싱·shape·참조 스크립트 존재·orphan (`hooks` 선언 있는데 소스 없음) 을 검증합니다 (`scripts/sync-codex-manifests.test.mjs` 가 fixture 로 RED/GREEN 커버). Codex hook 은 여전히 `/hooks` trust 승인이 필요합니다. `UserPromptSubmit`/`PostToolUse` 훅은 plain stdout 이 아니라 `hookSpecificOutput.additionalContext` JSON 을 내보내야 Codex 가 읽습니다 (공유 스크립트는 `codex` 인자로 분기: core-config `prompt_inject.sh`, llm-wiki `wiki_stale_check.sh` / `wiki_post_commit_hint.sh`).
+- Codex 에서 제외할 플러그인은 `scripts/manifest-eligibility.mjs` 의 `CODEX_EXCLUDED` 셋에 등록하세요 (현재: `codex-image` 하나뿐). `codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환입니다. `core-config` 는 skill 이 없지만 이제 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 sync 되므로 더 이상 제외 대상이 아닙니다 (native Codex `UserPromptSubmit` 훅). 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
 - 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
 
 ## Hermes 통합 (shared-source)
@@ -220,9 +279,9 @@ node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (validate-code
 - 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 7개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`. 커버리지 확장은 allowlist 에 이름 추가.
 - Hermes-eligible 플러그인의 `version` / `description` 을 바꾸면 `node scripts/sync-hermes-manifests.mjs` 를 실행해 어댑터를 재생성하세요. `plugin.yaml` 의 `version` 은 marketplace 파생이므로 `--check` 가 drift + orphan 어댑터를 잡습니다 (수동 동기화 불필요 — 생성으로 해소).
 - `__init__.py` 는 `skills/*/SKILL.md` 를 `<plugin>:<skill>` 으로 등록하는 제네릭 엔트리포인트입니다 (플러그인별 로직 없음, `import yaml`=PyYAML 가정).
-- 공유 skill 본문은 3런타임 포터블이어야 합니다. Claude/Codex 는 도구명이 동일하므로, 본문에 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표(`Bash`→`terminal`, `Read`→`read_file`, `Edit`→`patch`, `AskUserQuestion`→`clarify`, `Task`→`delegate_task`, `Skill`→`skill_view`, 이미지 생성→`image_generate`, `NotebookEdit`→Hermes Jupyter Live Kernel / `write_file`·`patch` 등)를 둡니다. 새 skill 추가/도구 사용 변경 시 이 표를 점검하세요.
+- 공유 skill 본문은 3런타임 포터블이어야 합니다. Claude/Codex 는 도구명이 동일하므로, 본문에 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표(`Bash`→`terminal`, `Read`→`read_file`, `Edit`→`patch`, `AskUserQuestion`→`clarify`, `Task`→`delegate_task`, `Skill`→`skill_view`, 이미지 생성→`image_generate`, `NotebookEdit`→Hermes Jupyter Live Kernel / `write_file`·`patch` 등)를 둡니다. 새 skill 추가/도구 사용 변경 시 이 표를 점검하세요. 신규·편집 skill 은 이 표를 본문마다 다시 타이핑하는 대신 번들 `references/<harness>-tools.md` 로 중앙화하고 본문이 그것을 가리키는 형태를 우선합니다 — 점진 이관이므로 이미 그 본문의 도구 사용을 편집 중일 때만 채택하고, 표를 옮기려고 기존 본문을 새로 쓰지는 않습니다 (surgical-diff).
 - 번들 `scripts/` 를 호출하는 skill 본문은 `${CLAUDE_PLUGIN_ROOT}` 를 그대로 쓰지 마세요 — Codex 0.135 는 이 변수를 export 하지 않아 첫 단계에서 실패합니다. 크로스 런타임 `PLUGIN_ROOT` resolver 블록(`CLAUDE_PLUGIN_ROOT` → 소스트리 `plugins/<name>` → Codex 캐시 탐색)을 본문에 포함하세요 (레퍼런스 구현: project-init, mem0-ops).
-- Hermes plugin 스킬은 opt-in 입니다 — `skill_view("<plugin>:<skill>")` 로 명시 로드, `--enable` 후 새 세션. 어댑터와 무관한 스킬 단위 설치는 `node scripts/install-skills.mjs` (`npx skills`) 로 가능합니다.
+- Hermes plugin 스킬은 **명시 로드**입니다 (passive index 아님) — Claude Code/Codex 0.135 가 `description` 으로 skill 을 자동 표면화하는 것과 달리, Hermes 는 `--enable` 후 새 세션에서 `skill_view("<plugin>:<skill>")` 로 명시 호출해야만 로드됩니다. trigger 문구는 여전히 `description` 에 두되 로드 자체는 의도된 호출이므로, "description 으로 자동 선택됐다" 고 가정하는 본문은 Hermes 에서 틀립니다 (본문 상단 Hermes 호환 노트를 로드 계약으로 취급). 어댑터와 무관한 스킬 단위 설치는 `node scripts/install-skills.mjs` (`npx skills`) 로 가능합니다.
 - 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
 
 ## 검증
@@ -238,7 +297,7 @@ node scripts/sync-hermes-manifests.mjs --check
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 22 entries
+codex plugin list --marketplace my-claude-plugins   # 23 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 

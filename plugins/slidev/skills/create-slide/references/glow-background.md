@@ -1,10 +1,10 @@
 # Glow Background System
 
-> **Rich visual level only.** Minimal 레벨에서는 이 파일의 glow 관련 내용을 사용하지 않는다.
+> **Rich visual level only.** The Minimal level does not use any of the glow content in this file.
 
-nekomeowww의 KubeCon HK 2024 발표 패턴을 기반으로 한 seeded random polygon gradient 배경 시스템이다. 슬라이드마다 고유한 ambient glow가 부드럽게 전환되며, `seedrandom` npm 의존성이 필요하다.
+A seeded-random polygon gradient background system based on nekomeowww's KubeCon HK 2024 presentation pattern. Each slide gets a unique ambient glow that transitions smoothly, and it requires the `seedrandom` npm dependency.
 
-Credits: `@pi0`, `@Atinux` (Nuxt team) 원작 패턴.
+Credits: original pattern by `@pi0`, `@Atinux` (Nuxt team).
 
 ---
 
@@ -14,7 +14,7 @@ Credits: `@pi0`, `@Atinux` (Nuxt team) 원작 패턴.
 npm add -D seedrandom
 ```
 
-TypeScript 타입 지원을 위해 별도 설치가 필요할 수 있다:
+TypeScript type support may need a separate install:
 
 ```bash
 npm add -D @types/seedrandom
@@ -24,7 +24,7 @@ npm add -D @types/seedrandom
 
 ## Full `global-bottom.vue` Code
 
-프로젝트 루트에 `global-bottom.vue` 파일을 생성한다. Slidev는 이 파일을 모든 슬라이드 아래 레이어로 자동 주입한다.
+Create a `global-bottom.vue` file at the project root. Slidev automatically injects this file as a layer beneath every slide.
 
 ```vue
 <script setup lang="ts">
@@ -134,18 +134,18 @@ const polygon3 = computed(() => generatePolygon(Number(glowSeed.value) + 2, 3, g
 
 ## Per-Slide Frontmatter Control
 
-슬라이드별 frontmatter로 glow 동작을 세밀하게 제어한다.
+Control the glow behavior finely with per-slide frontmatter.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `glowSeed` | number | slide number | polygon shape를 결정하는 random seed. 같은 seed는 항상 같은 모양 |
-| `glow` | string | `full` | glow 분포 힌트: `bottom`, `right`, `top`, `left`, `full` |
-| `glowOpacity` | number | `0.12` | glow 레이어 투명도 (0~1). 커버 슬라이드에서 높이면 임팩트 증가 |
-| `glowHue` | number | `0` | 추가 hue-rotate (도 단위). 발표 섹션별 색조 변화에 활용 |
+| `glowSeed` | number | slide number | the random seed that determines the polygon shape. The same seed always gives the same shape |
+| `glow` | string | `full` | glow distribution hint: `bottom`, `right`, `top`, `left`, `full` |
+| `glowOpacity` | number | `0.12` | glow layer opacity (0-1). Raising it on the cover slide increases impact |
+| `glowHue` | number | `0` | extra hue-rotate (in degrees). Use it to shift the tone per presentation section |
 
 ### Example frontmatter
 
-기본 콘텐츠 슬라이드:
+Basic content slide:
 ```yaml
 ---
 class: py-10
@@ -154,7 +154,7 @@ glow: bottom
 ---
 ```
 
-커버 슬라이드 (glow 강조):
+Cover slide (glow emphasis):
 ```yaml
 ---
 layout: center
@@ -163,7 +163,7 @@ glowOpacity: 0.18
 ---
 ```
 
-섹션 전환 슬라이드 (hue 변화):
+Section-transition slide (hue change):
 ```yaml
 ---
 layout: center
@@ -172,7 +172,7 @@ glowHue: 45
 ---
 ```
 
-Global headmatter에서 기본 seed 설정:
+Set the default seed in the global headmatter:
 ```yaml
 glowSeed: 228
 ```
@@ -181,16 +181,16 @@ glowSeed: 228
 
 ## Required CSS
 
-`slides.md`의 scoped style 블록 또는 별도 `style.css`에 반드시 추가해야 한다. 이 CSS가 없으면 슬라이드 기본 배경이 glow를 완전히 가린다.
+This must be added to the scoped style block of `slides.md` or a separate `style.css`. Without this CSS, the slide's default background hides the glow entirely.
 
 ```css
-/* Dark mode에서 slide 배경을 투명하게 만들어 glow가 보이도록 */
+/* In dark mode, make the slide background transparent so the glow shows through */
 .dark #slide-content {
   background-color: black !important;
 }
 ```
 
-`slides.md` 하단에 추가하는 방법:
+How to add it at the bottom of `slides.md`:
 
 ```md
 <style>
@@ -200,60 +200,60 @@ glowSeed: 228
 </style>
 ```
 
-`colorSchema: dark`를 headmatter에 설정하면 항상 dark mode로 렌더링되므로 위 CSS가 항상 적용된다.
+Setting `colorSchema: dark` in the headmatter always renders in dark mode, so the CSS above always applies.
 
 ---
 
 ## Customizing Colors
 
-세 레이어의 gradient 색상을 발표 테마에 맞게 변경한다. AI 클리셰 색상 조합 (보라-초록, 과도한 네온)은 피한다.
+Change the three layers' gradient colors to match the presentation theme. Avoid AI-cliche color combinations (purple-green, excessive neon).
 
-**기본값 (KubeCon 패턴):**
+**Default (KubeCon pattern):**
 - Layer 1: blue `#3b82f6` → `#1a67ed`
 - Layer 2: magenta `#d02ebf` → `#ed0ed6`
 - Layer 3: pastel `#feaffd` → `#aaf7ff` → `#fbbf24`
 
-**Green-themed 발표 (예: 환경/지속가능성 주제):**
+**Green-themed presentation (e.g. environment/sustainability topics):**
 ```css
 .glow-1 { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
 .glow-2 { background: linear-gradient(225deg, #34d399 0%, #6ee7b7 100%); }
 .glow-3 { background: linear-gradient(315deg, #a7f3d0 0%, #67e8f9 50%, #fbbf24 100%); }
 ```
 
-**Orange/amber-themed 발표 (예: 경고/보안 주제):**
+**Orange/amber-themed presentation (e.g. warning/security topics):**
 ```css
 .glow-1 { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
 .glow-2 { background: linear-gradient(225deg, #ef4444 0%, #dc2626 100%); }
 .glow-3 { background: linear-gradient(315deg, #fde68a 0%, #fca5a5 50%, #c4b5fd 100%); }
 ```
 
-**Indigo/violet-themed 발표 (예: AI/ML 주제):**
+**Indigo/violet-themed presentation (e.g. AI/ML topics):**
 ```css
 .glow-1 { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
 .glow-2 { background: linear-gradient(225deg, #8b5cf6 0%, #7c3aed 100%); }
 .glow-3 { background: linear-gradient(315deg, #c4b5fd 0%, #a5b4fc 50%, #67e8f9 100%); }
 ```
 
-색상 선택 원칙:
-- Layer 1, 2는 발표의 주/보조 accent color 사용
-- Layer 3은 pastel 계열로 자연스러운 혼합 효과 생성
-- 세 레이어가 겹칠 때 어색하지 않은 색상 조합 선택
+Color-selection principles:
+- Layers 1 and 2 use the presentation's primary/secondary accent colors
+- Layer 3 uses a pastel family to create a natural blending effect
+- Choose a color combination that is not jarring when the three layers overlap
 
 ---
 
 ## Position Hints Implementation
 
-`glow: bottom` 같은 position hint는 `generatePolygon` 함수의 `positionBias` 파라미터로 구현된다. bias가 적용되면 해당 방향으로 polygon point 분포가 치우친다.
+A position hint like `glow: bottom` is implemented via the `positionBias` parameter of the `generatePolygon` function. When bias is applied, the polygon point distribution skews toward that direction.
 
-| `glow` 값 | 효과 |
+| `glow` value | Effect |
 |-----------|------|
-| `full` | 전체 슬라이드에 균등 분포 (기본값) |
-| `bottom` | 하단에 glow 집중. 다음 섹션 예고 느낌 |
-| `top` | 상단 집중. 헤더 강조 효과 |
-| `right` | 우측 집중. 두 컬럼 레이아웃에서 이미지 쪽 강조 |
-| `left` | 좌측 집중 |
+| `full` | even distribution across the whole slide (default) |
+| `bottom` | glow concentrated at the bottom. A "teasing the next section" feel |
+| `top` | concentrated at the top. A header-emphasis effect |
+| `right` | concentrated on the right. Emphasizes the image side in a two-column layout |
+| `left` | concentrated on the left |
 
-실제 사용 예 (nekomeowww KubeCon 패턴):
+Real usage examples (nekomeowww KubeCon pattern):
 ```yaml
 ---
 class: py-10
@@ -274,7 +274,7 @@ glowSeed: 205
 
 ## Minimal Alternative
 
-Minimal 레벨에서 `global-bottom.vue`는 glow 없이 페이지 번호만 표시한다:
+At the Minimal level, `global-bottom.vue` shows only the page number, without glow:
 
 ```vue
 <script setup lang="ts">
@@ -307,19 +307,19 @@ const currentPage = computed(() => $slidev?.nav?.currentPage ?? 1)
 </style>
 ```
 
-`seedrandom` 의존성 설치 불필요.
+No need to install the `seedrandom` dependency.
 
 ---
 
 ## Quick Reference: CSS Values
 
-glow 시스템의 핵심 CSS 수치 (spec 기준, 임의 변경 금지):
+The core CSS values of the glow system (per spec — do not change arbitrarily):
 
-| Property | Value | 이유 |
+| Property | Value | Reason |
 |----------|-------|------|
-| `filter: blur(...)` | `70px` | 경계가 보이지 않도록 충분히 흐리게 |
-| `transition: clip-path` | `2.5s ease` | 슬라이드 전환 시 자연스러운 polygon 변화 |
-| `transition: opacity` | `2.5s ease` | clip-path와 동기화 |
-| `inset` on `.glow` | `-50%` | blur 처리 후에도 화면 가장자리까지 채우도록 |
-| `glowOpacity` default | `0.12` | 콘텐츠 가독성 방해 없이 subtle하게 |
-| Layer 3 opacity multiplier | `1.5x` | pastel 레이어가 너무 약하게 보이는 것 방지 |
+| `filter: blur(...)` | `70px` | blurry enough that no boundary is visible |
+| `transition: clip-path` | `2.5s ease` | a natural polygon change on slide transition |
+| `transition: opacity` | `2.5s ease` | synchronized with clip-path |
+| `inset` on `.glow` | `-50%` | fill to the screen edges even after blur |
+| `glowOpacity` default | `0.12` | subtle, without hurting content readability |
+| Layer 3 opacity multiplier | `1.5x` | prevents the pastel layer from looking too weak |

@@ -94,6 +94,10 @@ All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate 
 
 Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned by the separate `spec-state` plugin (`state-tracker` skill). llm-wiki tracks knowledge lore; spec-state tracks the work pipeline. The two are independent — install whichever you need.
 
+## Codex hooks (bundled)
+
+All five hooks also ship to Codex via the source-controlled `hooks/codex-hooks.json` descriptor (`UserPromptSubmit` / `SessionStart` ×2 / `Stop` / `SubagentStop` / `PostToolUse:Bash`), which `scripts/sync-codex-manifests.mjs` wires into the generated Codex manifest's top-level `hooks`. Codex reads model-visible context only from a `hookSpecificOutput.additionalContext` JSON envelope (plain stdout is ignored), so `wiki_stale_check.sh` (UserPromptSubmit) and `wiki_post_commit_hint.sh` (PostToolUse) take a `codex` arg that switches their output to that envelope — the Claude no-arg path stays byte-identical. The two SessionStart hints already emit the envelope, and the capture hooks are side-effect only, so those wire as-is. Codex requires a `/hooks` trust approval before the hooks run.
+
 ## Conditional behavior
 
 Hooks and skills no-op silently when no wiki root resolves (none of `.llmwiki/wiki/`, `.claude/wiki/`, `.codex/wiki/` present). Safe to enable globally; nothing fires in repos without the wiki layer.

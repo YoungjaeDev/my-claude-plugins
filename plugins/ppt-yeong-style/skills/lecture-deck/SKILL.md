@@ -38,7 +38,7 @@ description: yeong 강의 덱 전용 운영 규약 — ppt-yeong-style(작성 �
 1. **슬롯 선언**: 미보유 UI는 점선 박스(`stroke-dasharray`) + 설명 + "캡처 후 교체" 라벨로 렌더. `S_<이름>` 명명으로 spec_lock `images` 절 + deck.md `image-slot` 주석에 placeholder임을 명시. 이 상태로 export까지 완주 가능.
 2. **수령 안내는 스킬이 먼저**: 사용자에게 "어느 화면을 어떤 상태로 캡처해 `images/`에 어떤 파일명으로" 넣을지 슬롯 목록으로 안내한다(수동 대기 금지).
 3. **실측 비율 프레임(shrink-to-hug)**: 캡처 수령 시 프레임을 먼저 그리고 이미지를 욱여넣지 말 것 — PIL 등으로 실측 → 필요 시 `_crop` 파생 생성 → 프레임을 이미지 비율에 맞춰 재계산.
-4. **교체 + 3중 등재 해소**: 해당 장 점선 박스 → `<image>` 교체, spec_lock images(placeholder 줄→user row)·deck.md 주석·design_spec §VIII를 같은 커밋에서 동기화. 남은 placeholder 카운트 grep 0 확인.
+4. **교체 + 3중 등재 해소**: 해당 장 점선 박스 → `<image>` 교체, spec_lock images(placeholder 줄→user row)·deck.md 주석·design_spec §VIII를 같은 커밋에서 동기화. 남은 placeholder 카운트 0 확인은 §5b `render-qa.sh` Check 2가 결정론으로 수행한다(수동 grep 대체).
 5. **문구 정합 재검(실측 교훈)**: placeholder 시절 상상으로 쓴 설명 문구는 실물과 어긋날 수 있다 — 캡처가 들어오면 그 장의 키 메시지·카드 문구를 실캡처 기준으로 재검한다(실측: "바뀐 줄만 보여줌" → 실캡처는 쓰기 승인 프롬프트라 "무엇을 어디에 쓸지 먼저 물어봄"으로 정정).
 
 ## §4. 리넘버링 파이프라인 — 장 삽입/삭제 시
@@ -47,11 +47,36 @@ description: yeong 강의 덱 전용 운영 규약 — ppt-yeong-style(작성 �
 
 - **보호 패턴 구분**: 부 divider의 hero_number(부 번호 "03")와 header의 페이지 번호("14")는 둘 다 큰 숫자 텍스트다 — 좌표/스타일 패턴으로 구분해 페이지 번호만 갱신(부 번호를 밀면 divider가 "04부"가 된다).
 - **4중 동기화**: `svg_output/P*.svg` 파일명·내부 페이지번호 + `notes/P*.md` 파일명 + `sources/deck.md` 순서 + `spec_lock.md` page_rhythm(+ `design_spec.md` 로스터). 목차(TOC) 장과 부 구성 문구도 재확인.
-- 리넘버링 후 **quality check 전수** + 대괄호 grep 0 재확인.
+- 리넘버링 후 **§5b `render-qa.sh` 전수 실행** — 대괄호 leak·placeholder 잔량·리넘버 동기화(svg_output ↔ notes)를 한 번에 결정론 검증(수동 대괄호 grep 대체).
 
 ## §5. 표 행 수 변경 시 재배치
 
 행 추가/삭제는 한 행을 끼워넣는 게 아니라 **표 전체 재계산**이다: 행 높이·구분선 y좌표·헤더 밴드·표 바깥 하단 요소(팁 칩·footer 룰·각주)까지 연쇄 이동. 본문 바닥 20pt를 깨지 않는 행 높이를 먼저 정하고(6행이면 40px대) 전체를 다시 그린다. 기존 간격에 한 행만 밀어 넣으면 밴드 정렬이 깨진다(design-qa 적발 대상).
+
+## §5b. 완료 게이트 (MANDATORY) — `render-qa.sh`
+
+덱 출고(빌드 완주) 직전, 그리고 리넘버링(§4)·표 재배치(§5)·스크린샷 교체(§3-4) 뒤에는 "대괄호 grep 0 / placeholder 카운트 0 / 리넘버 동기화" 를 산문으로 눈검사 반복하지 말고 **동봉 스크립트로 결정론 검증**한다. 세 검사를 한 번에 돌린다: ① 렌더 SVG 텍스트의 대괄호 placeholder leak(`[...]`), ② 미교체 스크린샷 슬롯(`캡처 후 교체` 라벨 + deck.md `image-slot` 주석) 잔량, ③ 리넘버 동기화(`svg_output/` ↔ `notes/` 페이지 집합 일치 + 1..N 연속성). 하나라도 FAIL이면 exit 1로 게이트가 발동하고, 통과하면 조용하다(exit 0).
+
+번들 `scripts/` 를 부르므로 Codex 0.135(`CLAUDE_PLUGIN_ROOT` 미export)에서도 돌도록 PLUGIN_ROOT를 먼저 리졸브한다(레퍼런스: project-init·mem0-ops). Hermes에서는 이 블록을 `terminal` 도구로 실행한다(`Bash`→`terminal`).
+
+```bash
+DECK_ROOT="."   # 덱 프로젝트 루트 (svg_output/·notes/·sources/deck.md 의 상위)
+CHK="skills/lecture-deck/scripts/render-qa.sh"
+PLUGIN_ROOT=""
+[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
+[ -z "$PLUGIN_ROOT" ] && [ -e "plugins/ppt-yeong-style/$CHK" ] && PLUGIN_ROOT="plugins/ppt-yeong-style"
+if [ -z "$PLUGIN_ROOT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  candidate=$(ls -1d "$cache_root"/*/ppt-yeong-style/* 2>/dev/null | sort -V | tail -1)
+  [ -n "$candidate" ] && [ -e "$candidate/$CHK" ] && PLUGIN_ROOT="$candidate"
+fi
+[ -n "$PLUGIN_ROOT" ] || { echo "render-qa.sh 미해석 — PLUGIN_ROOT를 ppt-yeong-style 플러그인 루트로 export 후 재시도" >&2; }
+sh "$PLUGIN_ROOT/$CHK" "$DECK_ROOT"   # exit 0 = 통과(게이트 조용), exit 1 = FAIL(게이트 발동)
+```
+
+- exit 1이면 보고된 FAIL 항목을 고친 뒤 재실행 — 통과 전에는 출고/완료 선언 금지.
+- 캡처 대기로 슬롯을 의도적으로 남긴 채 내보내야 하는 예외라면 Check 2 FAIL을 사용자에게 명시적으로 알리고 승인받은 뒤에만 진행한다(조용한 우회 금지).
+- 이 스크립트의 리포트는 `deck-review`의 design-qa 입력(`render_qa`)으로 그대로 넘어간다(§8 / deck-review).
 
 ## §6. 전사 회고 루프 — 강의 후 덱 개정
 

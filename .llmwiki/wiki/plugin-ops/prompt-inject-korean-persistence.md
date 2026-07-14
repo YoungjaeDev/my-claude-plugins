@@ -1,10 +1,10 @@
 ---
 id: prompt-inject-korean-persistence
 aliases: [korean-default-regression, prompt-inject-block, english-regression-workflow]
-last_verified: 2026-06-24
+last_verified: 2026-07-14
 status: active
 volatility: stable
-sources: 2
+sources: 3
 ---
 
 # prompt-inject Korean-default: internal workflow/subagent/English-skill is NOT a "별도 지시"
@@ -50,6 +50,18 @@ quietly adopting an English register for the whole turn while the output-languag
 (Korean) stays explicit and unmissable. The Korean phrasing quoted above is the
 original directive; the current block expresses the same rule in English.
 
+## Compaction drops the block too
+
+A second loss vector, orthogonal to the English-skill regression above: Claude Code
+discards the per-prompt `additionalContext` when it **compacts** the conversation,
+so the whole injected block — the Korean pin *and* the wiki/council pointers —
+silently vanishes mid-session. `core-config` closes this with a `SessionStart` hook
+carrying `matcher: "compact"` that re-runs the *same* `prompt_inject.sh` (no arg)
+right after a compaction. One hook entry, no new script. It is intentionally
+**single-surface (Claude-only)**: the `compact` SessionStart source is a Claude Code
+concept, so the Codex descriptor (`hooks/codex-hooks.json`, `UserPromptSubmit` only)
+is left unchanged rather than assuming Codex compaction behaves the same (PR #119).
+
 ## Scope boundary
 
 This is lore (the *why*). The directive text itself lives in the hook; the
@@ -60,6 +72,7 @@ lives in `plugins/core-config/CLAUDE.md`. Do not duplicate either here.
 
 1. `plugins/core-config/hooks/prompt_inject.sh` — the strengthened fixed block (PR #50).
 2. `plugins/core-config/CLAUDE.md` — the hook's documented purpose ("Claude reverts to English over long sessions") and the Codex manual-copy parity note.
+3. `plugins/core-config/.claude-plugin/plugin.json` — the `SessionStart` `compact` matcher re-injecting the block after compaction (PR #119, Claude-only single-surface).
 
 > Evidence: plugins/core-config/hooks/prompt_inject.sh
 > See-also: [[insight-layer-via-hook]]

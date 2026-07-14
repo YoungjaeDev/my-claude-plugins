@@ -111,14 +111,17 @@ export function buildPluginManifest(entry, pluginDir = join(PLUGINS_DIR, entry.n
 //                       and every $PLUGIN_ROOT-relative script referenced exists on disk.
 //   source absent   -> the generated .codex-plugin/plugin.json must NOT declare `hooks`
 //                       (an orphan hooks entry with no backing descriptor).
-export function validatePluginHooks(pluginDir) {
+export function validatePluginHooks(pluginDir, { checkMode = true } = {}) {
   const violations = [];
   const srcPath = join(pluginDir, HOOK_DESCRIPTOR_REL);
   const genPath = join(pluginDir, '.codex-plugin', 'plugin.json');
   const hasSrc = isFile(srcPath);
 
   if (!hasSrc) {
-    if (isFile(genPath)) {
+    // Orphan-hooks case: descriptor removed but a stale generated `hooks` field
+    // survives. This is a violation only in check/dry mode — write mode
+    // regenerates the manifest without `hooks`, curing it like an orphan manifest.
+    if (checkMode && isFile(genPath)) {
       try {
         const gen = JSON.parse(readFileSync(genPath, 'utf8'));
         if (gen.hooks) violations.push(`orphan hooks: ${genPath} declares "hooks" but ${srcPath} is missing`);
@@ -315,11 +318,15 @@ function main() {
   }
 
   // Codex hook-descriptor guard — parses/validates each eligible plugin's
-  // hooks/codex-hooks.json (shape + referenced-script existence) and rejects orphan
-  // hooks entries. Runs in every mode so `sync` and `--check` both catch it, same as
-  // the skill-description length guard above.
+  // hooks/codex-hooks.json (shape + referenced-script existence). Source-present
+  // errors (malformed / bad shape / missing script) abort in every mode. The
+  // orphan-hooks case (descriptor removed, stale generated `hooks` remains) is
+  // check-only — in write mode the regeneration below drops it, same as orphan
+  // manifests, so it must not fatal-abort before outputs are built.
   const hookViolations = [];
-  for (const entry of eligible) hookViolations.push(...validatePluginHooks(join(PLUGINS_DIR, entry.name)));
+  for (const entry of eligible) {
+    hookViolations.push(...validatePluginHooks(join(PLUGINS_DIR, entry.name), { checkMode: MODE !== 'write' }));
+  }
   if (hookViolations.length > 0) {
     console.error('Codex hook descriptor violation(s):');
     for (const v of hookViolations) console.error(`  ${v}`);

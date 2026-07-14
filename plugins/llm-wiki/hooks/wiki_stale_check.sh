@@ -73,6 +73,10 @@ if [[ "$FMT" == "codex" ]]; then
   esc=${out//\\/\\\\}
   esc=${esc//\"/\\\"}
   esc=${esc//$'\n'/\\n}
+  # Escape the whitespace control chars that could ride in on a stray page path;
+  # the wiki assumes clean *.md filenames, so the exotic U+0000-U+001F set is out of scope.
+  esc=${esc//$'\t'/\\t}
+  esc=${esc//$'\r'/\\r}
   printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"%s"}}\n' "$esc"
 else
   printf '%s\n' "$out"

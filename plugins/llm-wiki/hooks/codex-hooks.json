@@ -5,7 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_stale_check.sh\" codex"
+            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_stale_check.sh\" codex",
+            "timeout": 5
           }
         ]
       }
@@ -15,11 +16,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_start_drain.sh\""
+            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_start_drain.sh\"",
+            "timeout": 5
           },
           {
             "type": "command",
-            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_start_lint_hint.sh\""
+            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_start_lint_hint.sh\"",
+            "timeout": 5
           }
         ]
       }
@@ -29,7 +32,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_capture.sh\""
+            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_capture.sh\"",
+            "timeout": 5
           }
         ]
       }
@@ -39,7 +43,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_capture.sh\""
+            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_capture.sh\"",
+            "timeout": 5
           }
         ]
       }
@@ -50,7 +55,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_post_commit_hint.sh\" codex"
+            "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_post_commit_hint.sh\" codex",
+            "timeout": 5
           }
         ]
       }

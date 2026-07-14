@@ -1,79 +1,79 @@
 # Project-Init Plugin
 
-프로젝트의 **에이전트 하네스 lifecycle** 을 orchestrate. 두 방향이 대칭을 이룬다.
+Orchestrates a project's **agent-harness lifecycle**. The two directions are symmetric.
 
-- `new` — Day-1 셋업 (`.claude/`, CLAUDE.md, AGENTS.md, README/CHANGELOG, gh repo create+push). **빈 디렉토리 전용.**
-- `wiring` — 이미 존재하는 repo 의 하네스 설정 진단. **`new` 의 역방향.** read-only 탐지 후 `AskUserQuestion` 게이트 뒤에서만 수정.
+- `new` — Day-1 setup (`.claude/`, CLAUDE.md, AGENTS.md, README/CHANGELOG, gh repo create + push). **Empty directories only.**
+- `wiring` — diagnoses the harness config of an already-existing repo. **The inverse of `new`.** Read-only detection, then edits only behind an `AskUserQuestion` gate.
 
 ## Surfaces
 
 | Surface | Entry | Description |
 |---------|-------|-------------|
-| Command | `/project-init:new` | 명시적 사용자 호출 — bootstrap 의 primary surface. |
-| Skill | `new` | Codex (및 Claude Code) 의 capability-discovery 용. description 이 좁게 잡혀 "bootstrap a new project in this empty dir" 류만 매치. |
-| Skill | `wiring` | 기존 repo 진단. command surface 없음 — `/project-init:wiring` 스킬 호출로 충분하고, command 는 Codex 로 emit 되지 않아 본문만 이중화된다. |
+| Command | `/project-init:new` | Explicit user invocation — the primary surface for bootstrap. |
+| Skill | `new` | For capability discovery by Codex (and Claude Code). The description is scoped narrowly so only phrases like "bootstrap a new project in this empty dir" match. |
+| Skill | `wiring` | Diagnoses an existing repo. No command surface — a `/project-init:wiring` skill call is enough, and a command would not be emitted to Codex, only duplicating the body. |
 
-`new` 의 두 surface 는 본문 첫 블록에 **preflight hard guard** 를 둔다 — `.git/` / `.claude/` / source-file 이 cwd 에 하나라도 있으면 abort. description 기반 매칭에만 기대지 않고 runtime 에서 강제. `wiring` 에는 이 가드가 없다 (정의상 비어있지 않은 repo 에서만 의미).
+Both surfaces of `new` put a **preflight hard guard** in the first block of the body — if `.git/`, `.claude/`, or a source file exists anywhere in cwd, abort. It does not rely on description-based matching alone; it enforces at runtime. `wiring` has no such guard (by definition it is only meaningful in a non-empty repo).
 
-## 탐지 SSOT
+## Detection SSOT
 
-`scripts/project_state.sh` 가 프로젝트 상태 탐지를 **혼자** 담당한다. 순수 read-only, JSON 한 덩어리 출력.
+`scripts/project_state.sh` is **solely** responsible for project-state detection. Pure read-only, emitting a single JSON blob.
 
-- `wiring` 은 14 축 전체를 소비한다. 그중 4 축은 "파일이 있나"가 아니라 **"그 설정이 실제로 발효하나"** 를 본다 — `core.hooksPath`(clone 마다 켜야 함), `.claude/rules` 의 `paths:` 스코핑을 `@import` 가 무력화했는지, 같은 MCP 서버가 두 user-scope 파일에 등록돼 한쪽 정의가 통째로 버려지는지, Codex `AGENTS.md` 가 `project_doc_max_bytes` 예산 안에 드는지.
-- 결함이 아니라 **결정**인 축(`git remote`, `gws-sync`)은 `ASK` 로 낸다. 답은 `.claude/state/wiring.json` 의 `answers` 에 적히고 스크립트가 그대로 실어 보낸다 — 스킬은 이미 답한 항목을 다시 묻지 않는다. 값은 머신마다 다르므로(Drive 폴더 id 등) gitignored state 에 남고, `CLAUDE.md` 에는 **경로 포인터 한 줄**만 둔다. 매번 짖는 경고는 사람이 무시하게 되고, 그러면 진짜 `FAIL` 도 같이 묻힌다.
-- **`ASK` 는 반드시 묻는 단계를 가진다** (Step 3.5). 보고서에 `(unanswered)` 로 찍기만 하고 묻는 곳이 없으면 답이 기록되지 않고 다음 실행에서 같은 줄이 그대로 반복된다 — 클래스가 장식이 된다. 답하지 않고 닫은 질문은 키를 남기지 않는다. 기록되지 않은 `ASK` 는 기록된 "아니오" 가 아니다.
-- 억제 조건은 **한 곳에만** 쓴다. `gws_sync` 의 판정은 답변만으로 정해지지 않고 `.gws-sync.json` 존재와 `gws` CLI 유무를 함께 읽는다 — 답을 기록한 뒤에도 파일시스템이 움직인다. 같은 조건을 판정표·산문·질문 단계에 세 번 적으면 세 번 어긋난다.
-- **고아 MCP 등록은 다루지 않는다.** 삭제된 플러그인이 남긴 서버는 사용 이력이 있어야 판정 가능해 내장 `/doctor` 의 영역이다. 반면 **중복 등록**은 두 파일 키의 교집합이라 순수 계산이다 — 결정론으로 못 잡는 걸 잡는 척하지 않는다.
-- `idempotent-seed.sh diagnose` 는 이 스크립트를 감싸 legacy 출력 형태(`cwd`/`dir_name`/`git`/`seeded`/`code_signal`)만 골라낸다. 탐지 로직을 다시 구현하지 않는다.
-- **`new` 의 Step 0 hard guard 는 여기에 흡수하지 않는다.** 가드는 의존성 0 (순수 `find`) 이고 `PLUGIN_ROOT` 리졸버보다 **먼저** 돌아야 한다. 스크립트 호출로 바꾸면 "PLUGIN_ROOT 해석 실패 시 가드가 조용히 실행되지 않는" 실패 모드가 새로 생긴다. 안전 장치는 lazy-load 뒤로 옮기지 않는다.
+- `wiring` consumes all 14 axes. Four of them look at not "does the file exist" but **"does the config actually take effect"** — `core.hooksPath` (must be turned on per clone), whether an `@import` has defeated the `paths:` scoping of `.claude/rules`, whether the same MCP server registered in two user-scope files causes one definition to be discarded wholesale, and whether Codex `AGENTS.md` fits within the `project_doc_max_bytes` budget.
+- An axis that is a **decision** rather than a defect (`git remote`, `gws-sync`) is emitted as `ASK`. The answer is written to `answers` in `.claude/state/wiring.json` and the script carries it forward as-is — the skill never re-asks an already-answered item. Because values differ per machine (Drive folder ids, etc.), they stay in gitignored state, and `CLAUDE.md` keeps only a **one-line path pointer**. A warning that barks every run trains people to ignore it, and then a real `FAIL` gets buried with it.
+- **An `ASK` must have a step that actually asks** (Step 3.5). If it is only stamped `(unanswered)` in the report with nowhere to ask, no answer is recorded and the next run repeats the same line verbatim — the class becomes decoration. A question closed without an answer leaves no key. An unrecorded `ASK` is not a recorded "no".
+- Write a suppression condition in **one place only**. The `gws_sync` verdict is not decided by the answer alone — it also reads whether `.gws-sync.json` exists and whether the `gws` CLI is present, so the filesystem moves even after the answer is recorded. Writing the same condition three times across the verdict table, the prose, and the question step means it drifts three ways.
+- **Orphan MCP registrations are not handled.** A server left behind by a deleted plugin needs usage history to judge, so it is the built-in `/doctor`'s territory. A **duplicate registration**, by contrast, is the intersection of two files' keys, so it is pure computation — do not pretend to catch what determinism cannot.
+- `idempotent-seed.sh diagnose` wraps this script and picks out only the legacy output shape (`cwd`/`dir_name`/`git`/`seeded`/`code_signal`). It does not re-implement the detection logic.
+- **The Step 0 hard guard of `new` is not absorbed here.** The guard has zero dependencies (pure `find`) and must run **before** the `PLUGIN_ROOT` resolver. Turning it into a script call would introduce a new failure mode where "the guard silently does not run if PLUGIN_ROOT resolution fails". A safety device is never moved behind a lazy-load.
 
-`find` 는 "없음" 을 exit 1 로 표현한다. `set -o pipefail` 아래서 `find ... | wc -l` 는 정상적인 빈 결과에 스크립트를 죽인다. 모든 `find` 는 `find_or_empty` / `count_files` 헬퍼를 거치고, `code_signal` 은 `head` 로 인한 SIGPIPE 오탐을 피하려고 `-print -quit` 를 쓴다.
+`find` expresses "not found" as exit 1. Under `set -o pipefail`, `find ... | wc -l` kills the script on a legitimate empty result. Every `find` goes through the `find_or_empty` / `count_files` helpers, and `code_signal` uses `-print -quit` to avoid a `head`-induced SIGPIPE false positive.
 
-`jq` 도 같은 함정을 판다. 손상된 사용자 설정 파일 하나에 `jq` 가 non-zero 로 끝나면 그 실패가 명령 치환을 타고 올라와 `set -e` 가 스크립트를 죽인다 — 한 축을 판정하지 못하는 대신 진단이 통째로 사라지고, 사용자는 출력조차 못 본다. 축 하나의 실패는 그 축 안에 가두고 (`mcp.unreadable` 처럼) 나머지 진단은 계속 낸다. 그리고 **"못 봤다" 를 "문제 없다" 로 보고하지 않는다.**
+`jq` digs the same pit. If `jq` exits non-zero on a single corrupted user config file, that failure rides up through command substitution and `set -e` kills the script — instead of failing to judge one axis, the whole diagnostic vanishes and the user sees no output at all. Confine one axis's failure to that axis (like `mcp.unreadable`) and keep emitting the rest of the diagnostic. And **never report "did not see it" as "no problem".**
 
-외부 도구 값을 읽어 `jq --argjson` 에 넘길 때는 원문 형식을 믿지 않는다. TOML 은 값 뒤 인라인 주석과 정수의 `_` 구분자를 허용하므로, `sed` 로 긁어낸 `65536 # bytes` 는 유효한 설정이면서 유효하지 않은 JSON 이다. 숫자는 정규화 후 전부 숫자인지 확인하고, 아니면 문서화된 기본값으로 떨어진다.
+When reading an external tool's value to pass to `jq --argjson`, do not trust the source format. TOML allows an inline comment after a value and a `_` separator in integers, so `65536 # bytes` scraped by `sed` is a valid config yet invalid JSON. Normalize numbers and confirm they are all digits; otherwise fall back to the documented default.
 
-Codex 설정 위치는 `${CODEX_HOME:-$HOME/.codex}` 다 (`codex --help`). `$HOME/.codex` 를 하드코딩하면 `CODEX_HOME` 을 쓰는 머신에서 `config: false` 로 보고되어 approval/sandbox 자세와 doc-budget 판정이 통째로 사라진다.
+The Codex config location is `${CODEX_HOME:-$HOME/.codex}` (`codex --help`). Hardcoding `$HOME/.codex` reports `config: false` on a machine that uses `CODEX_HOME`, wiping out the approval/sandbox posture and doc-budget verdicts wholesale.
 
-## 원칙
+## Principles
 
-- **Preflight hard guard is non-negotiable**: `commands/new.md` 와 `skills/new/SKILL.md` 양쪽 Step 0 에 동일한 가드가 박혀 있다. description 만으로 잘못된 트리거를 막을 수 없다는 전제 — 모델이 description 을 잘못 해석해도 runtime 이 막는다. 가드 제거는 사용자의 명시적 (high-friction, 의도적) 결정이어야 한다.
-- **wiring 은 남의 영역을 진단하지 않는다**: 위키 페이지 건강도는 `/llm-wiki:lint-wiki`, mem0 스토어/설정 자세는 `/mem0-ops:doctor` 가 소유한다. wiring 은 파일시스템 신호만 본다 — "위키가 있는가 / 레이아웃이 맞는가 / 미드레인 캡처가 쌓였는가" 까지. 겹치면 두 진단이 서로 다른 답을 내는 날이 온다.
-- **결함마다 담당 스킬을 지목한다**: 다음 행동이 없는 판정은 노이즈다. 기계적·되돌릴 수 있는 수정 (`.gitignore` 라인, `.tmp/` 생성, `core.hooksPath`, serena `project_name`) 만 wiring 이 직접 고치고, 판단이 필요한 것 (`.staging` 큐레이션, wiki bootstrap/migrate, CLAUDE.md 저작, spec 이전, Serena 온보딩, mem0 변경) 은 전부 위임한다.
-- **Minimal seeding, explicit follow-ups**: Day-1 에 필요한 것만 시드. tech-stack 기반 rules 생성과 wiki 도메인 인터뷰는 **호출 X, 안내만**. 빈 프로젝트에 generic 콘텐츠 만들면 사용자 덮어쓰기 비용 발생.
-- **Owner gate is mandatory**: 사용자가 personal + 다중 org 컨텍스트라 owner 자동 결정 금지. `AskUserQuestion` 으로 명시 선택.
-- **Codex GitHub reviewer surface**: AGENTS.md `## Review guidelines` 섹션이 Codex GitHub cloud reviewer 가 자동으로 읽는 영역. **레포 생성 시점에 시드**해야 첫 PR 부터 효과.
-- **Idempotent re-runs**: 같은 디렉토리에서 두 번째 호출 시 기존 파일 보존 + 단계 skip + 안내 메시지. 절대 덮어쓰지 않음. (단, hard guard 가 .git/.claude 존재만으로도 abort 시키므로 일반 경로에서는 idempotent 재실행이 발생하지 않는다 — 가드를 우회한 partial seed 회복 경로에서만 의미.)
+- **Preflight hard guard is non-negotiable**: the same guard is embedded in Step 0 of both `commands/new.md` and `skills/new/SKILL.md`. The premise is that a description alone cannot block a wrong trigger — even if the model misreads the description, runtime blocks it. Removing the guard must be an explicit (high-friction, deliberate) user decision.
+- **wiring does not diagnose another owner's territory**: wiki-page health is owned by `/llm-wiki:lint-wiki`, and mem0 store/config posture by `/mem0-ops:doctor`. wiring looks only at filesystem signals — "does a wiki exist / is the layout right / has mid-drain capture piled up". Overlap means the day comes when two diagnostics give different answers.
+- **Name the owning skill for each defect**: a verdict with no next action is noise. wiring directly fixes only mechanical, reversible edits (a `.gitignore` line, creating `.tmp/`, `core.hooksPath`, serena `project_name`); anything needing judgment (`.staging` curation, wiki bootstrap/migrate, CLAUDE.md authoring, spec migration, Serena onboarding, mem0 changes) is delegated.
+- **Minimal seeding, explicit follow-ups**: seed only what Day 1 needs. Tech-stack-based rule generation and the wiki-domain interview are **not invoked, only pointed to**. Generating generic content in an empty project imposes an overwrite cost on the user.
+- **Owner gate is mandatory**: since the user has a personal + multiple-org context, never auto-decide the owner. Require an explicit choice via `AskUserQuestion`.
+- **Codex GitHub reviewer surface**: the AGENTS.md `## Review guidelines` section is what the Codex GitHub cloud reviewer reads automatically. It must be **seeded at repo-creation time** to take effect from the first PR.
+- **Idempotent re-runs**: on a second invocation in the same directory, preserve existing files + skip steps + print a notice. Never overwrite. (But since the hard guard aborts on the mere presence of `.git`/`.claude`, an idempotent re-run does not occur on the normal path — it only matters on the recovery path for a partial seed that bypassed the guard.)
 
-## 파일 구성
+## File layout
 
 ```text
 plugins/project-init/
 ├── .claude-plugin/plugin.json
-├── commands/new.md                     # 명시적 슬래시 surface (preflight guard + 포인터)
+├── commands/new.md                     # explicit slash surface (preflight guard + pointer)
 ├── skills/
-│   ├── new/SKILL.md                    # bootstrap 스킬 surface (동일 preflight guard + 포인터)
-│   └── wiring/SKILL.md                # 기존 repo 진단 (read-only 탐지 + 게이트 수정)
+│   ├── new/SKILL.md                    # bootstrap skill surface (same preflight guard + pointer)
+│   └── wiring/SKILL.md                # existing-repo diagnostic (read-only detection + gated edits)
 ├── references/
-│   ├── new-procedure.md                # 본문 (Phase 0–7) — 두 surface 가 공유
+│   ├── new-procedure.md                # the body (Phase 0–7) — shared by both surfaces
 │   ├── codex-review-discovery.md       # AGENTS.md vs /review CLI
-│   └── gh-repo-create-flow.md          # owner 추론 + visibility 결정
-├── assets/                             # 출력물에 직접 들어가는 템플릿
+│   └── gh-repo-create-flow.md          # owner inference + visibility decision
+├── assets/                             # templates that go directly into the output
 │   ├── AGENTS.review-guidelines.md     # general variant (base)
 │   ├── AGENTS.review-guidelines.ml.md  # ML/data variant
-│   ├── AGENTS.review-guidelines.web.md # 웹/풀스택 variant
+│   ├── AGENTS.review-guidelines.web.md # web/full-stack variant
 │   ├── README.minimal.md
 │   └── CHANGELOG.initial.md
 ├── scripts/
 │   ├── infer-github-context.sh         # gh api user + orgs
-│   ├── idempotent-seed.sh              # 충돌 가드 + .claude/ + .llmwiki/ 시드 (diagnose = 래퍼)
-│   └── project_state.sh                # 탐지 SSOT — read-only 14 축 JSON
+│   ├── idempotent-seed.sh              # conflict guard + .claude/ + .llmwiki/ seed (diagnose = wrapper)
+│   └── project_state.sh                # detection SSOT — read-only 14-axis JSON
 └── CLAUDE.md                           # this file
 ```
 
 ## Preflight guard contract
 
-`commands/new.md` 와 `skills/new/SKILL.md` Step 0 에 동일한 POSIX shell 블록:
+The same POSIX shell block sits in Step 0 of `commands/new.md` and `skills/new/SKILL.md`:
 
 ```bash
 FIRST_EXISTING=$(find . -mindepth 1 -maxdepth 5 \
@@ -94,7 +94,7 @@ fi
 - **Abort message**: surfaces cwd + the first offending entry + a redirect to `/rules-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for the "scaffold an existing project" case.
 - **Non-POSIX hosts**: PowerShell-default environments must invoke via `bash -c '<guard>'` (Git Bash / WSL / Cygwin). The intent of the check, not the literal shell, is what matters — equivalent PowerShell rewrites are acceptable as long as they refuse the same conditions.
 
-수정할 때는 두 파일 양쪽을 동시에 업데이트해야 한다. 한쪽만 바꾸면 surface 간 동작이 갈린다.
+When modifying it, update both files at once. Changing only one makes the surfaces diverge in behavior.
 
 ## Cross-runtime plugin root resolution
 
@@ -118,43 +118,43 @@ fi
 - Under **Codex 0.135**, no equivalent env var is currently exposed, so the resolver falls back to `~/.codex/plugins/cache/<marketplace>/project-init/<version>/`. Users can override with `CODEX_PLUGIN_CACHE` or set `PLUGIN_ROOT` directly.
 - All subsequent bash blocks reference `${PLUGIN_ROOT}/scripts/...` and `${PLUGIN_ROOT}/assets/...`. Adding a new asset / script means updating only the procedure file — no per-surface duplication.
 
-## Placeholder 규약
+## Placeholder convention
 
-assets/ 의 템플릿은 다음 placeholder 만 사용한다 (sed 치환):
+The templates under `assets/` use only these placeholders (sed substitution):
 
-| Placeholder | 의미 |
+| Placeholder | Meaning |
 |-------------|------|
-| `{{PROJECT_NAME}}` | 프로젝트 이름 (Phase 1 응답) |
-| `{{ONE_LINER}}` | 한 줄 description |
-| `{{OWNER}}` | personal account 또는 org 이름 |
+| `{{PROJECT_NAME}}` | project name (Phase 1 answer) |
+| `{{ONE_LINER}}` | one-line description |
+| `{{OWNER}}` | personal account or org name |
 | `{{LICENSE}}` | MIT / Apache-2.0 / GPL-3.0 / None |
-| `{{YEAR}}` | 현재 연도 |
+| `{{YEAR}}` | current year |
 
-추가 placeholder 도입 시 `references/new-procedure.md` Phase 4/5 의 sed 라인을 함께 업데이트.
+When introducing a new placeholder, update the sed lines in Phase 4/5 of `references/new-procedure.md` as well.
 
-## AGENTS.md Variant 정책
+## AGENTS.md variant policy
 
-3 개 파일은 동일한 골격을 공유한다:
+The three files share the same skeleton:
 
-1. `## Project context` — `{{PROJECT_NAME}}` + `{{ONE_LINER}}` (1-2 줄)
-2. `## Build / Test / Lint` — 자리 표시자 TODO
-3. `## Review guidelines` — **Codex 클라우드 리뷰어가 읽는 섹션**
-   - `### Do not flag` (린터 영역 — 도구가 처리)
+1. `## Project context` — `{{PROJECT_NAME}}` + `{{ONE_LINER}}` (1-2 lines)
+2. `## Build / Test / Lint` — placeholder TODO
+3. `## Review guidelines` — **the section the Codex cloud reviewer reads**
+   - `### Do not flag` (linter territory — handled by tooling)
    - `### P0 — Correctness / Security`
    - `### P1 — Performance / Maintainability`
-   - `### Domain-specific` (variant 별로 다름; general 은 TODO 만)
+   - `### Domain-specific` (differs per variant; general has only a TODO)
 
-variant 차이는 `### Domain-specific` 섹션 + `### P0` / `### P1` 에 도메인별 1-2 항목 추가. **base 위에 도메인 섹션만 다르게** — 코드 중복 최소화.
+The variant difference is the `### Domain-specific` section plus 1-2 domain-specific items added to `### P0` / `### P1`. **Only the domain sections differ on top of the base** — minimizing code duplication.
 
 ## Out of Scope
 
-- CI/CD workflow seed (`.github/workflows/`) — variant 별 다양성 너무 큼
-- Pre-commit hook seed — 같은 이유
-- Boilerplate auto-download (cookiecutter, copier) — `Skill("code-scout:research-orchestrator")` 별도 호출
-- Multi-language 인터뷰 분기 — 한/영 혼용 단일 버전 유지
+- CI/CD workflow seed (`.github/workflows/`) — too much per-variant variety
+- Pre-commit hook seed — same reason
+- Boilerplate auto-download (cookiecutter, copier) — a separate `Skill("code-scout:research-orchestrator")` call
+- Multi-language interview branching — a single mixed Korean/English version is maintained
 
-## 참조
+## References
 
 - Plugin versioning rules: `.claude/rules/plugin-versioning.md`
 - Codex GitHub integration: <https://developers.openai.com/codex/integrations/github>
-- 관련 follow-up: `/rules-forge:write-rules`, `/llm-wiki:bootstrap-wiki`
+- Related follow-ups: `/rules-forge:write-rules`, `/llm-wiki:bootstrap-wiki`

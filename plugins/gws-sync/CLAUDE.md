@@ -1,32 +1,34 @@
 # gws-sync Plugin
 
-로컬 폴더 → Google Drive **단방향 제안형 동기화**. gws CLI(공식 googleworkspace/cli) 기반 — MCP가 아니라 CLI를 부른다. 인증(`gws auth login`)은 전제.
+Local folder → Google Drive **one-way, proposal-based sync**. Built on the gws
+CLI (the official googleworkspace/cli) — it calls the CLI, not an MCP server.
+Authentication (`gws auth login`) is a prerequisite.
 
 ## Skill
 
 | Skill | Description |
 |-------|-------------|
-| `gws-sync` | 매핑 설정(`.gws-sync.json`) 기억 → Drive 트리 탐색 → 신규·변경 diff 리포트 → **업로드 위치 AskUserQuestion 승인(필수)** → 업로드(기존 파일은 content update — 파일 ID·공유 링크·버전 히스토리 보존). 삭제는 제안만. |
+| `gws-sync` | Remembers the mapping config (`.gws-sync.json`) → walks the Drive tree → produces a new/changed diff report → **requires AskUserQuestion approval of the upload location** → uploads (existing files use a content update, preserving the file ID, share link, and version history). Deletion is proposal-only. |
 
-## 설계 원칙 (하드 룰)
+## Design principles (hard rules)
 
-1. **단방향** — 로컬 → Drive만. Drive 변경을 로컬로 내리지 않는다.
-2. **제안형** — 모든 쓰기는 diff 리포트 + 사용자 승인 뒤에만.
-3. **삭제 자동 실행 금지** — Drive 고아 파일은 목록으로 제안만.
-4. **update ≠ 재업로드** — 기존 파일 갱신은 `files update --upload`(ID 유지). 새 파일을 만들어 링크를 깨지 않는다.
+1. **One-way** — local → Drive only. Drive-side changes are never pulled back down to local.
+2. **Proposal-based** — every write happens only after a diff report plus user approval.
+3. **No automatic deletion** — orphaned Drive files are proposed as a list, never deleted.
+4. **Update ≠ re-upload** — updating an existing file uses `files update --upload` (keeping the ID). It never creates a new file that would break the link.
 
-## 의존
+## Dependencies
 
-- `gws` CLI **필수** — 미설치 시 설치 안내(`npm install -g @googleworkspace/cli` + github.com/googleworkspace/cli) 출력 후 중단. 자동 설치하지 않는다.
-- `references/gws-skills-llms.txt` — 공식 스킬 54종 + 레시피 41종 카탈로그. 사용자 상황에 맞는 미설치 스킬/레시피를 `npx skills add` 문구로 제안하는 인덱스.
+- The `gws` CLI is **required** — if it is missing, print install guidance (`npm install -g @googleworkspace/cli` + github.com/googleworkspace/cli) and stop. Do not install it automatically.
+- `references/gws-skills-llms.txt` — a catalog of the 54 official skills + 41 recipes. An index for proposing an uninstalled skill/recipe that fits the user's situation, via an `npx skills add` line.
 
-## 구조
+## Structure
 
 ```text
 gws-sync/
 ├── .claude-plugin/plugin.json
-├── CLAUDE.md                    # 이 파일
+├── CLAUDE.md                    # this file
 └── skills/gws-sync/
-    ├── SKILL.md                 # 0.전제 확인 → 1.매핑 설정 → 2.위치 승인 → 3.diff→승인→업로드
+    ├── SKILL.md                 # 0. prerequisite check → 1. mapping config → 2. location approval → 3. diff → approval → upload
     └── references/gws-skills-llms.txt
 ```

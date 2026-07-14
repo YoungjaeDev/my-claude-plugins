@@ -4,13 +4,13 @@ description: First-day project bootstrap — interview, .claude/ scaffold, CLAUD
 
 # /project-init:new
 
-새 디렉토리에서 한 번 호출해 "Day 1 ready" 프로젝트를 만든다 — 인터뷰 → 로컬 시드 → gh 레포 생성 → 초기 커밋/푸시.
+Called once in a new directory to produce a "Day 1 ready" project — interview → local seed → gh repo create → initial commit/push.
 
-> **Trigger surface**: 명시적 user invocation 만. 자동 트리거 없음 (잘못된 디렉토리에서 실행되면 위험).
+> **Trigger surface**: explicit user invocation only. No automatic trigger (running it in the wrong directory is dangerous).
 
 ## Step 0 — Preflight hard guard (NON-NEGOTIABLE, runs before any other body content)
 
-이 가드는 `references/new-procedure.md` 의 Phase 0 보다 먼저 실행된다. 비어있지 않은 디렉토리에서는 abort 한다.
+This guard runs before Phase 0 of `references/new-procedure.md`. It aborts in a non-empty directory.
 
 ```bash
 # Hard guard — refuses to run if cwd contains ANYTHING beyond ignorable OS junk.
@@ -40,10 +40,10 @@ The legacy Phase 0 idempotency guard (in the procedure file) is now redundant fo
 
 ## Step 1 — Procedure
 
-가드를 통과하면 전체 Phase 0–7 를 따른다. 본문은 이 플러그인의 `references/new-procedure.md` 에 있다 — `new` skill 도 동일 파일을 가리킨다. Claude Code 에서는 `${CLAUDE_PLUGIN_ROOT}/references/new-procedure.md` 로 해석되고, Codex 에서는 plugin cache 디렉토리 기준 동일 상대 경로 (`references/new-procedure.md`) 로 해석된다.
+Once the guard passes, follow the full Phase 0–7. The body lives in this plugin's `references/new-procedure.md` — the `new` skill points to the same file. Under Claude Code it resolves to `${CLAUDE_PLUGIN_ROOT}/references/new-procedure.md`; under Codex it resolves to the same relative path (`references/new-procedure.md`) against the plugin cache directory.
 
-Reference에 포함된 내용:
-- Phase 0 — Preflight (gh auth, identity, owner candidates 추출).
+What the reference covers:
+- Phase 0 — Preflight (gh auth, identity, owner-candidate extraction).
 - Phase 1 — Project identity interview (name / owner / visibility / license, batched AskUserQuestion).
 - Phase 2 — `.claude/` + `.llmwiki/` scaffold.
 - Phase 3 — CLAUDE.md minimal stub.

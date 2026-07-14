@@ -2,22 +2,22 @@
 
 Shared procedure body for `/project-init:new` (command) and the `new` skill. Both surfaces resolve this file via `references/new-procedure.md` relative to the plugin's installed root — Claude Code exposes that root as `${PLUGIN_ROOT}`; Codex 0.135 places it under `~/.codex/plugins/cache/<marketplace>/project-init/<version>/`.
 
-> **Trigger surface**: 명시적 user invocation 만. 자동 트리거 없음 (잘못된 디렉토리에서 실행되면 위험). The preflight guard below MUST run before any destructive op — both surfaces re-state the guard at the top of their body so it cannot be skipped.
+> **Trigger surface**: explicit user invocation only. No automatic trigger (running it in the wrong directory is dangerous). The preflight guard below MUST run before any destructive op — both surfaces re-state the guard at the top of their body so it cannot be skipped.
 
-## 핵심 원칙
+## Core principles
 
-- **Minimal seeding, explicit follow-ups**: Day 1 에 진짜 필요한 것 (`.claude/` 빈 구조, CLAUDE.md stub, AGENTS.md review guidelines, README/CHANGELOG, gh 레포) 만 시드. tech-stack 기반 rules 생성 (`/rules-forge:write-rules`) 와 wiki domain 인터뷰 (`/llm-wiki:bootstrap-wiki`) 는 **호출하지 않고 Phase 7 안내만**. 빈 프로젝트에 generic 콘텐츠 생성하면 사용자가 덮어쓰는 비용 발생.
-- **Owner gate is mandatory**: 사용자가 부업 컨텍스트 (개인 + 조직 레포) 를 가져 owner 결정은 자동화 금지 — Phase 1 인터뷰에서 반드시 묻는다.
-- **Codex GitHub reviewer surface**: `AGENTS.md` 의 `## Review guidelines` 섹션이 Codex GitHub cloud reviewer 가 자동으로 읽는 영역. 레포 생성 시점에 시드해야 첫 PR 부터 효과.
+- **Minimal seeding, explicit follow-ups**: seed only what Day 1 truly needs (the empty `.claude/` structure, a CLAUDE.md stub, AGENTS.md review guidelines, README/CHANGELOG, the gh repo). Tech-stack-based rule generation (`/rules-forge:write-rules`) and the wiki-domain interview (`/llm-wiki:bootstrap-wiki`) are **not invoked — only pointed to in Phase 7**. Generating generic content in an empty project imposes an overwrite cost on the user.
+- **Owner gate is mandatory**: since the user has a side-project context (personal + org repos), owner selection must not be automated — always ask in the Phase 1 interview.
+- **Codex GitHub reviewer surface**: the `## Review guidelines` section of `AGENTS.md` is what the Codex GitHub cloud reviewer reads automatically. It must be seeded at repo-creation time to take effect from the first PR.
 
-## 사전 조건
+## Prerequisites
 
-- `gh` CLI 설치 + `gh auth status` OK
-- `git` 설치
-- `jq` 설치 (Phase 0 의 `infer-github-context.sh` 와 일부 placeholder 치환 헬퍼가 의존)
-- 현재 디렉토리가 작업 대상 — `pwd` 출력을 사용자에게 보여주고 진행 확인
+- `gh` CLI installed + `gh auth status` OK
+- `git` installed
+- `jq` installed (Phase 0's `infer-github-context.sh` and some placeholder-substitution helpers depend on it)
+- The current directory is the target — show the user the `pwd` output and confirm before proceeding
 
-## Phase 0 — Preflight (자동, no prompt)
+## Phase 0 — Preflight (automatic, no prompt)
 
 ```bash
 # --- Plugin root resolution (cross-runtime) ---------------------------------
@@ -49,33 +49,33 @@ if [ -z "$PLUGIN_ROOT" ] \
   exit 1
 fi
 
-# 인증 확인
+# Auth check
 gh auth status || { echo "[abort] gh CLI not authenticated. Run: gh auth login"; exit 1; }
 
-# Git identity 추출
+# Extract git identity
 GIT_USER_NAME=$(git config --global user.name || echo "")
 GIT_USER_EMAIL=$(git config --global user.email || echo "")
 
-# 현재 디렉토리 상태 진단
+# Diagnose current directory state
 CWD=$(pwd)
 DIR_NAME=$(basename "$CWD")
 HAS_GIT=$([ -d .git ] && echo "yes" || echo "no")
 HAS_CLAUDE=$([ -d .claude ] && echo "yes" || echo "no")
 HAS_CODE=$(find . -maxdepth 2 -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.go" -o -name "*.rs" -o -name "*.java" \) 2>/dev/null | head -1 | wc -l)
 
-# GitHub owner 후보 수집
+# Collect GitHub owner candidates
 bash "$PLUGIN_ROOT/scripts/infer-github-context.sh"
-# 출력: JSON { "personal": "<login>", "orgs": ["<org1>", "<org2>", ...] }
+# Output: JSON { "personal": "<login>", "orgs": ["<org1>", "<org2>", ...] }
 ```
 
 > The hard preflight guard (refusing any cwd content beyond `.git/` and OS metadata) runs **before** this Phase 0 block — see the top of `commands/new.md` and `skills/new/SKILL.md`. The legacy Phase 0 idempotency soft-guard below is retained for backward-compatible behavior on truly-fresh runs (e.g. user removes `.gitkeep` files between attempts) but is now subordinate to the hard guard.
 
-만약 `HAS_CLAUDE=yes` 또는 `.git/` 안에 commit 가 이미 있는 경우 — **idempotency guard** 발동:
-- `AskUserQuestion` 으로 "이미 셋업된 디렉토리. 계속 시도하면 기존 파일은 보존되지만 일부 단계가 skip 됨. 계속?" 확인.
+If `HAS_CLAUDE=yes` or a commit already exists in `.git/` — the **idempotency guard** fires:
+- Confirm via `AskUserQuestion`: "This directory is already set up. Continuing preserves existing files but skips some steps. Continue?"
 
 ## Phase 1 — Project Identity Interview
 
-**Single batched `AskUserQuestion` — 4 questions** (description 은 자유 텍스트라 Other 로 받음).
+**Single batched `AskUserQuestion` — 4 questions** (the description is free text, so take it via Other).
 
 Question 1: **Project name**
 - header: "Name"
@@ -83,31 +83,31 @@ Question 1: **Project name**
 
 Question 2: **Owner**
 - header: "Owner"
-- options: 동적 생성 — Phase 0 의 personal account + 모든 orgs. 각 옵션 description 에 "Personal" / "Organization" 표시.
+- options: generated dynamically — the personal account + all orgs from Phase 0. Mark each option's description "Personal" / "Organization".
 
 Question 3: **Visibility**
 - header: "Visibility"
 - options: "Private (Recommended)" / "Public"
-- (org owner 면 "Internal" 추가)
+- (add "Internal" for an org owner)
 
 Question 4: **License**
 - header: "License"
 - options: "MIT (Recommended)" / "Apache-2.0" / "GPL-3.0" / "None"
 
-> Description (one-liner) 은 별도 평문 질문 X — Phase 1 응답 받은 직후 평문으로 한 줄 짧게 묻거나, AskUserQuestion 의 Other 입력으로 받는다. 평문 description 입력이 더 자연스러우므로 별도 짧은 질문 1 회 허용.
+> The description (one-liner) is not a separate plain-text question — ask it briefly in one line right after the Phase 1 answers, or take it via the AskUserQuestion Other input. A plain-text description is more natural, so one extra short question is allowed.
 
 ## Phase 2 — `.claude/` Scaffold (structure only)
 
 ```bash
 bash ${PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
-# 생성: .claude/{spec,rules}/.gitkeep + .llmwiki/{raw,wiki}/.gitkeep
+# Creates: .claude/{spec,rules}/.gitkeep + .llmwiki/{raw,wiki}/.gitkeep
 ```
 
-`bootstrap-wiki` / `write-rules` 는 호출하지 않는다 — 빈 프로젝트에는 적을 lore 도, tech-stack signal 도 없다.
+Do not invoke `bootstrap-wiki` / `write-rules` — an empty project has no lore to record and no tech-stack signal.
 
 ## Phase 3 — CLAUDE.md Minimal Stub
 
-기존 `CLAUDE.md` 가 있으면 skip with notice. 없으면 다음 형태로 작성:
+If an existing `CLAUDE.md` is present, skip with a notice. Otherwise write it in this form (this stub is the seeded output; keep it in the user's language):
 
 ```markdown
 # <project_name>
@@ -135,39 +135,40 @@ bash ${PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
 > 사용자의 global `~/.claude/CLAUDE.md` 가 항상 우선한다. 이 파일은 프로젝트 한정 규칙만 보관한다.
 ```
 
-placeholder (`<project_name>`, `<one-line description>`) 는 Phase 1 응답으로 치환.
+Substitute the placeholders (`{{PROJECT_NAME}}`, `{{ONE_LINER}}`) with the Phase 1 answers.
 
-## Phase 4 — AGENTS.md Seed (★ 이 플러그인의 차별점)
+## Phase 4 — AGENTS.md Seed (★ this plugin's differentiator)
 
-**Variant 선택**: Phase 1 description 키워드로 추천하되 사용자 확인.
+**Variant selection**: recommend based on Phase 1 description keywords, but confirm with the user.
 
 | Keyword in description | Recommended variant |
 |------------------------|---------------------|
 | "deep learning", "ML", "model", "training", "dataset", "vision", "NLP" | `ml` |
 | "web", "fullstack", "frontend", "backend", "API", "REST", "GraphQL" | `web` |
-| 그 외 / 명확하지 않음 | `general` (base) |
+| otherwise / unclear | `general` (base) |
 
 `AskUserQuestion`:
 - header: "Variant"
-- options: "<recommended> (Recommended)" / 나머지 2 개
+- options: "<recommended> (Recommended)" / the other 2
 
-> 응답을 `VARIANT` 변수에 할당 (예: `general` / `ml` / `web`). 사용자가 비워두거나 응답 누락 시 default `VARIANT=general`.
+> Assign the answer to the `VARIANT` variable (e.g. `general` / `ml` / `web`). If the user leaves it blank or omits the answer, default to `VARIANT=general`.
 
 ```bash
-# Portable in-place sed — GNU sed 는 `sed -i 'cmd' file`, BSD/macOS sed 는
-# `sed -i '' 'cmd' file` 시그니처. `sed --version` 으로 분기한다.
+# Portable in-place sed — GNU sed uses `sed -i 'cmd' file`, BSD/macOS sed uses
+# the `sed -i '' 'cmd' file` signature. Branch on `sed --version`.
 if sed --version >/dev/null 2>&1; then
   sed_inplace() { sed -i "$@"; }
 else
   sed_inplace() { sed -i '' "$@"; }
 fi
 
-# POSIX 소문자화 — ${VAR,,} 는 Bash 4+ 전용이라 macOS 기본 /bin/bash (3.2) 에서
-# bad substitution 으로 깨진다. tr 로 대체 (Phase 6 visibility 정규화에서도 재사용).
+# POSIX lowercasing — ${VAR,,} is Bash 4+ only, so it breaks with a bad
+# substitution on macOS default /bin/bash (3.2). Replace with tr (reused in the
+# Phase 6 visibility normalization too).
 to_lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 
-# AskUserQuestion 라벨 ("ml (Recommended)" / "web" / "general") 을
-# 파일명 토큰 (general|ml|web) 으로 정규화. 알 수 없는 값은 abort.
+# Normalize the AskUserQuestion label ("ml (Recommended)" / "web" / "general")
+# to a filename token (general|ml|web). Abort on an unknown value.
 variant_lower=$(to_lower "$VARIANT")
 case "$variant_lower" in
   *ml*)         VARIANT_FLAG="ml" ;;
@@ -177,11 +178,11 @@ case "$variant_lower" in
 esac
 
 SRC="${PLUGIN_ROOT}/assets/AGENTS.review-guidelines.${VARIANT_FLAG}.md"
-# Variant 가 general 이면 base 파일
+# For the general variant, use the base file
 [ "$VARIANT_FLAG" = "general" ] && SRC="${PLUGIN_ROOT}/assets/AGENTS.review-guidelines.md"
 
-# sed replacement 컨텍스트에서 위험한 문자 (\, &, |) escape — 사용자 입력에
-# "Frontend & Backend" 같은 `&` 가 있으면 sed 가 매치 전체를 다시 삽입한다.
+# Escape characters dangerous in a sed replacement context (\, &, |) — if user
+# input contains a `&` like "Frontend & Backend", sed re-inserts the whole match.
 esc_sed() { printf '%s' "$1" | sed 's/[\\&|]/\\&/g'; }
 PROJECT_NAME_ESC=$(esc_sed "$PROJECT_NAME")
 ONE_LINER_ESC=$(esc_sed "$ONE_LINER")
@@ -190,7 +191,7 @@ LICENSE_ESC=$(esc_sed "$LICENSE")
 
 if [ ! -f AGENTS.md ]; then
   cp "$SRC" AGENTS.md
-  # placeholder 치환 (escape 된 값 사용)
+  # Substitute placeholders (using the escaped values)
   sed_inplace "s|{{PROJECT_NAME}}|${PROJECT_NAME_ESC}|g" AGENTS.md
   sed_inplace "s|{{ONE_LINER}}|${ONE_LINER_ESC}|g" AGENTS.md
   sed_inplace "s|{{OWNER}}|${OWNER_ESC}|g" AGENTS.md
@@ -199,13 +200,13 @@ else
 fi
 ```
 
-AGENTS.md 의 `## Review guidelines` 섹션은 Codex GitHub cloud reviewer 가 자동으로 읽는다 ([OpenAI Codex GitHub integration](https://developers.openai.com/codex/integrations/github)) — 사용자에게 한 줄 안내.
+The `## Review guidelines` section of AGENTS.md is read automatically by the Codex GitHub cloud reviewer ([OpenAI Codex GitHub integration](https://developers.openai.com/codex/integrations/github)) — give the user a one-line note.
 
 ## Phase 5 — README + CHANGELOG
 
 ```bash
-# 새로 시드한 파일만 추적 — 기존 파일에 의도적으로 둔 {{PROJECT_NAME}} 류
-# placeholder 가 변조되지 않도록 cp 한 파일에만 치환을 적용한다.
+# Track only newly-seeded files — apply substitution only to the cp'd files so
+# that deliberate {{PROJECT_NAME}}-style placeholders in existing files are not tampered with.
 SEEDED_FILES=()
 if [ ! -f README.md ]; then
   cp "${PLUGIN_ROOT}/assets/README.minimal.md" README.md
@@ -216,7 +217,7 @@ if [ ! -f CHANGELOG.md ]; then
   SEEDED_FILES+=("CHANGELOG.md")
 fi
 
-# Phase 4 에서 정의한 sed_inplace / *_ESC 재사용 — escape + 플랫폼 portable
+# Reuse sed_inplace / *_ESC defined in Phase 4 — escaped + platform-portable
 for f in "${SEEDED_FILES[@]}"; do
   sed_inplace "s|{{PROJECT_NAME}}|${PROJECT_NAME_ESC}|g" "$f"
   sed_inplace "s|{{ONE_LINER}}|${ONE_LINER_ESC}|g" "$f"
@@ -225,7 +226,7 @@ for f in "${SEEDED_FILES[@]}"; do
 done
 ```
 
-게이트: README.md 첫 30줄 미리보기 후 수정 기회. 한 번 더 호출하지 않고 inline `Edit` 로 즉시 수정.
+Gate: preview the first 30 lines of README.md, then allow edits. Fix inline with `Edit` immediately rather than invoking again.
 
 ## Phase 6 — GitHub Repo Creation
 
@@ -241,12 +242,12 @@ if ! grep -qxF '.claude/state/' .gitignore 2>/dev/null; then
   printf '%s\n' '.claude/state/' >> .gitignore
 fi
 
-# Stage all seeded files (이미 존재한 파일은 git add 가 no-op)
+# Stage all seeded files (git add is a no-op for already-existing files)
 git add .claude/ .llmwiki/ CLAUDE.md AGENTS.md README.md CHANGELOG.md .gitignore
 
-# Idempotent re-run 경로: Phase 4/5 가 모두 skip 했고 staged diff 가 없으면
-# `git commit` 이 `nothing to commit` 으로 실패해 이후 gh repo create 까지
-# abort 된다. staged 변경 존재 여부로 분기한다.
+# Idempotent re-run path: if Phase 4/5 both skipped and there is no staged diff,
+# `git commit` fails with `nothing to commit` and aborts the later gh repo create.
+# Branch on whether staged changes exist.
 if ! git diff --cached --quiet; then
   git commit -m "chore: bootstrap project skeleton via project-init"
 else
@@ -254,12 +255,12 @@ else
 fi
 ```
 
-`AskUserQuestion`: dry-run 미리보기 후 confirm.
+`AskUserQuestion`: confirm after a dry-run preview.
 
 ```bash
-# AskUserQuestion 라벨 ("Private (Recommended)", "Public", "Internal") 을
-# gh CLI 토큰 (private|public|internal) 으로 정규화.
-# Phase 4 의 to_lower 헬퍼 재사용 (POSIX tr — Bash 3.2 호환).
+# Normalize the AskUserQuestion label ("Private (Recommended)", "Public", "Internal")
+# to a gh CLI token (private|public|internal).
+# Reuse the Phase 4 to_lower helper (POSIX tr — Bash 3.2 compatible).
 vis_lower=$(to_lower "$VISIBILITY")
 case "$vis_lower" in
   *private*)  VIS_FLAG="private" ;;
@@ -268,9 +269,9 @@ case "$vis_lower" in
   *) echo "[abort] Unknown visibility: $VISIBILITY"; exit 1 ;;
 esac
 
-# Idempotent re-run 가드: origin remote 가 이미 있으면 `gh repo create
-# --remote=origin` 이 중복 등록을 시도하다 실패한다. 기존 remote 가 가리키는
-# URL 을 노출하고 사용자에게 manual push 명령을 안내한다.
+# Idempotent re-run guard: if an origin remote already exists, `gh repo create
+# --remote=origin` fails trying to register a duplicate. Surface the URL the
+# existing remote points to and give the user a manual push command.
 if git remote get-url origin >/dev/null 2>&1; then
   EXISTING=$(git remote get-url origin)
   echo "[skip] origin remote already exists ($EXISTING) — skipping gh repo create."
@@ -285,7 +286,7 @@ else
 fi
 ```
 
-License 가 None 이 아니면 — gh repo create 후 `gh api` 로 LICENSE 파일 생성하거나 사용자에게 "later" 안내. 단순화를 위해 V1 에서는 안내만.
+If the license is not None — after gh repo create, create the LICENSE file via `gh api`, or advise the user to do it "later". For simplicity, V1 only advises.
 
 ## Phase 7 — Summary + Next Actions
 
@@ -315,19 +316,19 @@ Next actions (call when ready):
      (wiki 적재까지 내장 — 별도 skill 불필요)
 ```
 
-## 실패 처리
+## Failure handling
 
-| 단계 | 실패 시 동작 |
+| Step | Behavior on failure |
 |------|--------------|
-| Preflight hard guard | abort + 안내 (use `/rules-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for non-empty dirs) |
-| Phase 0 — gh auth | abort + 안내 (`gh auth login`) |
-| Phase 0 — idempotency guard 사용자 abort | 즉시 stop, partial seed 보존 |
-| Phase 6 — `gh repo create` | local 변경/커밋은 그대로, push 만 실패. 사용자에게 manual retry 명령 안내 |
-| Phase 6 — repo 이름 충돌 | gh CLI error 메시지 그대로 노출 + Phase 1 재시도 권유 |
+| Preflight hard guard | abort + notice (use `/rules-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for non-empty dirs) |
+| Phase 0 — gh auth | abort + notice (`gh auth login`) |
+| Phase 0 — idempotency guard user abort | stop immediately, preserve the partial seed |
+| Phase 6 — `gh repo create` | local changes/commits stay intact, only push fails. Advise the user of a manual retry command |
+| Phase 6 — repo name collision | surface the gh CLI error message verbatim + suggest retrying Phase 1 |
 
 ## Out of Scope
 
 - CI/CD workflow seed (`.github/workflows/`)
 - pre-commit hook seed
-- 외부 boilerplate auto-download (cookiecutter 등 — 필요하면 `Skill("code-scout:research-orchestrator")` 별도 호출)
-- 다국어 인터뷰 분기 — 한/영 혼용 단일 버전 유지
+- external boilerplate auto-download (cookiecutter etc. — if needed, a separate `Skill("code-scout:research-orchestrator")` call)
+- multi-language interview branching — a single mixed Korean/English version is maintained

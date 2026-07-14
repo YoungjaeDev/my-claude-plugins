@@ -29,6 +29,9 @@ jobs:
       # interactive-input tool: each AskUserQuestion skill is a mapped pilot or reviewed
       # baseline debt. See scripts/check-skill-tool-portability.mjs.
       - run: node scripts/check-skill-tool-portability.mjs --check
+      # Progressive-disclosure smell detector (skill docs > ~500 lines, deep bundled
+      # references). INFORMATIONAL ONLY — always exits 0, never blocks the run.
+      - run: node scripts/check-skill-prose.mjs || true
       # Import each generated Hermes adapter with a stub ctx and assert register_skill
       # fires — catches a generated-but-never-executed adapter regression (PyYAML is
       # preinstalled on ubuntu-latest). See scripts/mock-load-hermes.py.

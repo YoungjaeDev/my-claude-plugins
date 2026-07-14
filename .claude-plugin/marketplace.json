@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.2.0"
+    "version": "2.3.0"
   },
   "plugins": [
     {
@@ -54,7 +54,7 @@
       "name": "notebook",
       "source": "./plugins/notebook",
       "description": "Safe Jupyter notebook editing",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "category": "development"
     },
     {
@@ -89,14 +89,14 @@
       "name": "docs-forge",
       "source": "./plugins/docs-forge",
       "description": "README/CHANGELOG generation with CRO best practices, plus deployment-doc templates and MOC index generation",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "category": "documentation"
     },
     {
       "name": "slidev",
       "source": "./plugins/slidev",
       "description": "Slidev markdown presentation generator with interview workflow and KubeCon-level visual enhancement",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "category": "content"
     },
     {
@@ -131,7 +131,7 @@
       "name": "project-init",
       "source": "./plugins/project-init",
       "description": "Agent-harness project lifecycle. `new` — one-shot first-day bootstrap (interview, .claude/ scaffold, minimal CLAUDE.md, AGENTS.md with Codex GitHub cloud reviewer guidelines in general/ml/web variants, README/CHANGELOG seed, gh repo create + initial push) behind a hardened preflight guard that refuses a non-empty cwd. `wiring` — its inverse for existing repos: a read-only 14-axis setup diagnostic (FAIL / WARN / ASK / INFO / SKIP / OK) covering guidance files, .claude/rules paths: scoping defeated by @import, llm-wiki layout + staging backlog, Serena onboarding, memory posture, MCP duplicate registration, Codex CLI posture + AGENTS.md byte budget, spec homes, gws-sync, .tmp, core.hooksPath, .gitignore coverage. ASK answers persist to .claude/state/wiring.json. Shared read-only detector: scripts/project_state.sh.",
-      "version": "0.4.3",
+      "version": "0.4.4",
       "category": "planning"
     },
     {
@@ -145,14 +145,14 @@
       "name": "anti-slop-design",
       "source": "./plugins/anti-slop-design",
       "description": "Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. Runs a clarify->context->plan->run->audit->revise flow with a two-phase audit gate (pre-emit self-critique + binary slop checklist) and hands Korean copy rewriting to humanize-korean. Source-grounded in 6 OSS anti-slop repos.",
-      "version": "0.3.2",
+      "version": "0.3.3",
       "category": "design"
     },
     {
       "name": "tally-form",
       "source": "./plugins/tally-form",
       "description": "Build Tally questionnaire/survey forms from checklist markdown — deterministic stdlib urllib builder with theme presets (neutral/hermes), section dividers, paragraph-split intros, per-question choices with required + checkbox (multi-select), short-answer inputs (text/number/email/phone/link), native scheduling (matrix grid / date / time), form images (logo/cover/inline IMAGE via hosted URLs incl. GitHub raw shorthand), redirect-on-completion, idempotent publish, and humanize-korean copy routing. Includes dev-survey and lecture-consultation presets plus bundled example fixtures.",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "category": "content"
     },
     {
@@ -166,14 +166,14 @@
       "name": "gws-sync",
       "source": "./plugins/gws-sync",
       "description": "로컬 폴더 → Google Drive 단방향 제안형 동기화 (gws CLI 기반, MCP 아님). 매핑 설정 파일(.gws-sync.json)로 로컬↔Drive 폴더 대응을 기억하고, 실행 시 Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일은 content update로 ID·공유링크 보존). 삭제는 제안만(자동 삭제 금지), Drive→로컬 다운로드 범위 밖. gws 미설치 시 공식 docs 기반 설치 안내 출력 후 중단(자동 설치 안 함). googleworkspace/cli 공식 스킬/레시피 95종 카탈로그(llms.txt)를 references에 동봉 — 상황에 유용한 미설치 스킬을 npx skills add로 제안.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "productivity"
     },
     {
       "name": "mem0-ops",
       "source": "./plugins/mem0-ops",
       "description": "Fleet-level mem0 diagnostics and cleanup — complements the upstream mem0 plugin (which owns per-project quality). fleet-scan reports per-app noise ratio, junk app_id candidates, and app/user_id fragmentation across all apps; doctor checks config posture (MEM0_RERANK env, ~/.mem0/settings.json auto_save precedence trap, project decay flag, hook timeout budget, identity fragmentation); cleanup does backup-then-delete by metadata.type or whole junk app behind a dry-run default plus a skill-layer per-app confirmation gate (the script alone gates on --execute only). stdlib-only REST scripts, zero LLM cost for the deterministic parts.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "productivity"
     }
   ]

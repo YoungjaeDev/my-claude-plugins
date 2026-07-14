@@ -69,7 +69,11 @@ esac
 REC=".claude/state/post-merge-${PR_NUMBER}.json"
 mkdir -p .claude/state/archive
 # Archive a prior same-PR record before overwriting (mirrors cr-fix Step 2).
-[ -f "$REC" ] && mv "$REC" ".claude/state/archive/post-merge-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$.json"
+# Fail closed: a failed archive must abort init, else the jq below clobbers the only live copy.
+if [ -f "$REC" ]; then
+  mv "$REC" ".claude/state/archive/post-merge-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$.json" \
+    || { echo "post-merge: archiving the prior run record failed — aborting to avoid clobbering it" >&2; exit 1; }
+fi
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 jq -n --arg rid "post-merge-${PR_NUMBER}" --arg sha "$MERGE_SHA" --arg now "$NOW" \
   '{schema:"state-envelope/v0", run_id:$rid, status:"in_progress", conclusion:null,
@@ -303,10 +307,12 @@ Skip the commit only when `git diff --cached --quiet` reports nothing staged aft
 
 ```bash
 REC=".claude/state/post-merge-${PR_NUMBER}.json"
-record_step 10 done
+# Step 10 runs in a fresh shell — record_step from Step 1 is out of scope here, so
+# append the closing step and finalize inline (no function dependency).
 tmp=$(mktemp)
 jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  '.status = "completed" | .conclusion = "success" | .updated_at = $now' \
+  '.steps += [{step: 10, status: "done"}]
+   | .status = "completed" | .conclusion = "success" | .updated_at = $now' \
   "$REC" > "$tmp" && mv "$tmp" "$REC"
 ```
 

@@ -190,7 +190,7 @@
 
 ## State-envelope 실행 기록 (run records, v0)
 
-> `.claude/rules/state-envelope.md` 의 Codex/Hermes 미러다 (그 두 런타임은 `.claude/rules/` 를 못 읽는다). Claude 는 위 `## Modular Rules` 포인터로 원본 규칙에 닿는다. 상세·jq 스니펫은 규칙 파일에 있다.
+> `.claude/rules/state-envelope.md` 의 Codex/Hermes 미러다 (그 두 런타임은 `.claude/rules/` 를 못 읽는다). Claude 는 위 `## Modular Rules` 포인터로 원본 규칙에 닿고, Codex/Hermes 에게는 이 미러가 유일 소스이므로 실행 jq 를 아래에 그대로 싣는다 (규칙 파일로 미루지 않는다).
 
 여러 단계로 이어지는 파이프라인 스킬이 자기 진행 상태를 기계가 읽을 수 있게 남기는 per-run 상태 파일 규약이다. v0 는 **문서화된 규약 + per-skill `jq`** 일 뿐, **공유 라이브러리/스크립트를 두지 않는다**. 각 채택 스킬이 자기 본문에 jq 를 인라인한다.
 
@@ -198,6 +198,31 @@
 - **스키마**: `{schema:"state-envelope/v0", run_id, status(queued|in_progress|completed), conclusion, started_at, updated_at, anchor_sha, attempt, session_id, steps[]}`. `steps[]` 는 top-level 단계가 닫힐 때마다 `{step, status: done|skipped, reason?}` 한 항목 (`reason` 은 skipped 에만).
 - **spec-state 와 직교(orthogonal)**: run record 는 `.claude/state/spec.json` 이 **아니다**. `spec.json` (owner: `spec-state:state-tracker`) 은 spec→issue→PR 파이프라인의 크로스런 집계이고, run record 는 스킬 단일 실행의 단계 로그다. 서로 다른 파일·다른 소유자이며 서로 읽거나 쓰지 않는다.
 - **v0 채택자**: `github-dev:post-merge` (Step 1-10 per-step 기록) 하나뿐이다. 다른 스킬 상태 파일의 retrofit 은 후속 변경으로 의도적으로 미룬다.
+
+**실행 jq (Codex/Hermes 자립용 — Claude 도 동일 패턴).** 채택 스킬이 본문에 인라인한다 (공유 라이브러리 없음). Init 은 archive 회전 실패 시 이전 기록을 덮어쓰지 않도록 abort 한다:
+
+```bash
+REC=".claude/state/<pipeline>-<key>.json"; mkdir -p .claude/state/archive
+if [ -f "$REC" ]; then
+  mv "$REC" ".claude/state/archive/<pipeline>-<key>-$(date +%Y%m%d-%H%M%S)-$$.json" \
+    || { echo "state-envelope: archive rotation failed" >&2; exit 1; }
+fi
+jq -n --arg rid "<pipeline>-<key>" --arg sha "$ANCHOR_SHA" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{schema:"state-envelope/v0", run_id:$rid, status:"in_progress", conclusion:null,
+    started_at:$now, updated_at:$now, anchor_sha:($sha // null), attempt:1,
+    session_id:(env.CLAUDE_SESSION_ID // null), steps:[]}' > "$REC"
+```
+
+각 단계가 닫힐 때 한 항목 append, 마지막에 finalize — shell 상태는 tool 호출 간 유지되지 않으므로 함수가 아니라 인라인 jq 로 (`reason` 은 skip 에만):
+
+```bash
+# record one step (done):
+tmp=$(mktemp); jq --argjson step "$N" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.updated_at=$now | .steps += [{step:$step, status:"done"}]' "$REC" > "$tmp" && mv "$tmp" "$REC"
+# finalize (terminal):
+tmp=$(mktemp); jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.status="completed" | .conclusion="success" | .updated_at=$now' "$REC" > "$tmp" && mv "$tmp" "$REC"
+```
 
 ## Setup answers
 

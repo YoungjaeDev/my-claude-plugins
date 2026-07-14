@@ -71,7 +71,10 @@ Init (once the run's key + anchor sha are known):
 ```bash
 REC=".claude/state/<pipeline>-<key>.json"
 mkdir -p .claude/state/archive
-[ -f "$REC" ] && mv "$REC" ".claude/state/archive/<pipeline>-<key>-$(date +%Y%m%d-%H%M%S)-$$.json"
+if [ -f "$REC" ]; then
+  mv "$REC" ".claude/state/archive/<pipeline>-<key>-$(date +%Y%m%d-%H%M%S)-$$.json" \
+    || { echo "state-envelope: archive rotation failed for $REC — aborting so the next write cannot clobber the only live copy" >&2; exit 1; }
+fi
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 jq -n --arg rid "<pipeline>-<key>" --arg sha "$ANCHOR_SHA" --arg now "$NOW" \
   '{schema:"state-envelope/v0", run_id:$rid, status:"in_progress", conclusion:null,

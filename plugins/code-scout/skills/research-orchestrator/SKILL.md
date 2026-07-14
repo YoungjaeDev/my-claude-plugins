@@ -139,7 +139,7 @@ For long-running runs (more than ~2 minutes expected per scout), prefer `Agent({
 The named `code-scout:*-scout` agents do not exist here. Dispatch one **generic** subagent per chosen axis in a single message so they run concurrently. Each task must carry that axis's contract from `references/axis-contracts.md` inline — role, tool order (with documented MCP fallback), the shared query shape, the result-envelope schema, and the reliability rubric — because the generic worker lacks the agent-definition context Path A relies on:
 
 ```text
-delegate_task(prompt="""
+Task(prompt="""   # Codex tool; Hermes maps this to delegate_task (see the compat table below)
   You are the GitHub research axis of code-scout. Contract (from axis-contracts.md):
   - role: repos / code / awesome-lists / issues-PRs
   - tools: date anchor -> gh search repos|code (2-3 variants) -> gh repo view --json ...

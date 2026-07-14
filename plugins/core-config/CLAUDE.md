@@ -8,11 +8,13 @@ Development workflow essentials: Python formatting and notifications.
 |------|---------|-------------|
 | `auto-format-python.py` | Post Write/Edit | Auto-format Python with ruff |
 | `notify_osc.py` | Stop/Notification | Terminal OSC 777 notifications |
-| `prompt_inject.sh` | UserPromptSubmit | Per-prompt compact behavioral block — English rules with a Korean-output mandate + `.llmwiki/insight/`·wiki pointer + `[council]` delegation reminder. Federation labels off by default. Shared Claude + Codex. |
+| `prompt_inject.sh` | UserPromptSubmit + SessionStart:compact | Per-prompt compact behavioral block — English rules with a Korean-output mandate + `.llmwiki/insight/`·wiki pointer + `[council]` delegation reminder. Federation labels off by default. Shared Claude + Codex; the SessionStart:compact re-injection is Claude-only. |
 
-The single `UserPromptSubmit` hook:
+The `prompt_inject.sh` hook:
 
 - `prompt_inject.sh` fires **every** prompt with a fixed ~6-line block: the rules are written in **English**, but the first line mandates a **Korean final reply**, followed by a few core behavioral one-liners (surgical-diff, AskUserQuestion-first, no AI attribution, no emoji, verify-before-report) and a pointer to consult `.llmwiki/insight/` (promoted cross-agent rules) then the wiki MOC *before* reasoning. It does **not** inline insight/wiki content — only the instruction to read it. mem0 federation labels are **off by default** (the pointer is plain); `CORE_CONFIG_FEDERATE_MEM0=1` restores them — the pointer becomes `[AUTHORITATIVE]` (dated/sourced `.llmwiki/` wins on conflict) plus a `[RECALL]` line placing mem0 recall as the secondary layer, **labels only, no mem0 call/read** (the `codex` branch omits `[RECALL]`; Codex has no mem0 layer). The English wording keeps the model from drifting into an English block of its own while still pinning the reply language to Korean, and the pointer is the only reminder either agent gets to check the wiki/insight layer. Zero deps (no `jq`/`python`) — JSON encoding is bash parameter expansion.
+
+- **SessionStart `compact` re-injection (Claude-only).** Claude Code drops the per-prompt `additionalContext` when it compacts the conversation, so the behavioral block and its wiki/council pointers silently vanish mid-session. A `SessionStart` hook with `matcher: "compact"` re-runs the *same* `prompt_inject.sh` (no arg) right after a compaction to restore the block — one hook entry, no new script. It is intentionally **single-surface**: the `compact` SessionStart source is a Claude Code concept, so the Codex descriptor (`hooks/codex-hooks.json`, `UserPromptSubmit` only) is left unchanged rather than assuming Codex compaction behaves the same.
 
 Both extra pointers are conditional on what the machine actually has, mirroring the same rule: never name a path or a tool that is not there.
 

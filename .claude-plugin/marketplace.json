@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.4.0"
+    "version": "2.5.0"
   },
   "plugins": [
     {
       "name": "core-config",
       "source": "./plugins/core-config",
       "description": "Python auto-format + cross-platform notifications + per-prompt behavioral block (`prompt_inject.sh`, shared Claude + Codex). The block is fixed; two pointers are conditional — `.llmwiki/insight/` when a knowledge root resolves in cwd, and a one-line `[council]` delegation reminder when a second-model CLI (codex / agy) is on PATH. The council line is Claude-only (Codex is itself a council member) and names the CLI roster, never a model. Work guidelines live in `~/.claude/CLAUDE.md` (English source of truth; `.ko` companion is not loaded).",
-      "version": "1.11.0",
+      "version": "1.12.0",
       "category": "core"
     },
     {

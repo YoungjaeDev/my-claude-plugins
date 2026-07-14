@@ -1,43 +1,43 @@
-# Slidev 문법 참조 가이드
+# Slidev syntax reference guide
 
-Slidev 프레젠테이션 생성을 위한 완전한 문법 레퍼런스입니다.
+A complete syntax reference for generating Slidev presentations.
 
-## 1. 슬라이드 구분자
+## 1. Slide separators
 
-슬라이드는 `---`로 구분됩니다.
+Slides are separated by `---`.
 
 ```markdown
-# 첫 번째 슬라이드
+# First slide
 
-내용
-
----
-
-# 두 번째 슬라이드
-
-내용
+Content
 
 ---
 
-# 세 번째 슬라이드
+# Second slide
 
-내용
+Content
+
+---
+
+# Third slide
+
+Content
 ```
 
 ## 2. Frontmatter & Headmatter
 
-### Headmatter (첫 번째 슬라이드)
+### Headmatter (the first slide)
 
-전체 프레젠테이션 설정은 첫 슬라이드 상단의 YAML frontmatter에 작성합니다.
+Write the whole-presentation configuration in the YAML frontmatter at the top of the first slide.
 
 ```yaml
 ---
 theme: default
-title: 프레젠테이션 제목
+title: Presentation Title
 info: |
-  ## 프레젠테이션 설명
-  상세 정보를 여러 줄로 작성 가능
-author: 작성자 이름
+  ## Presentation description
+  Details can be written across multiple lines
+author: Author Name
 keywords: slidev, presentation, markdown
 layout: cover
 transition: slide-left
@@ -48,26 +48,26 @@ fonts:
   mono: Fira Code
 ---
 
-# 제목 슬라이드
+# Title slide
 ```
 
-**주요 headmatter 속성:**
+**Key headmatter properties:**
 
-| 속성 | 설명 | 예시 |
+| Property | Description | Example |
 |------|------|------|
-| `theme` | 테마 이름 | `default`, `seriph`, `apple-basic` |
-| `title` | 프레젠테이션 제목 | `"My Presentation"` |
-| `info` | 설명 (다중 라인 가능) | `"## Description\nDetails"` |
-| `author` | 작성자 | `"John Doe"` |
-| `keywords` | 키워드 (쉼표 구분) | `slidev, presentation` |
-| `layout` | 첫 슬라이드 레이아웃 | `cover`, `intro`, `default` |
-| `transition` | 기본 전환 효과 | `slide-left`, `fade`, `zoom` |
-| `mdc` | MDC 문법 활성화 | `true`, `false` |
-| `fonts` | 폰트 설정 | 아래 참조 |
+| `theme` | theme name | `default`, `seriph`, `apple-basic` |
+| `title` | presentation title | `"My Presentation"` |
+| `info` | description (multi-line allowed) | `"## Description\nDetails"` |
+| `author` | author | `"John Doe"` |
+| `keywords` | keywords (comma-separated) | `slidev, presentation` |
+| `layout` | first-slide layout | `cover`, `intro`, `default` |
+| `transition` | default transition | `slide-left`, `fade`, `zoom` |
+| `mdc` | enable MDC syntax | `true`, `false` |
+| `fonts` | font settings | see below |
 
 ### Per-slide Frontmatter
 
-각 슬라이드는 개별 frontmatter를 가질 수 있습니다.
+Each slide can have its own frontmatter.
 
 ```yaml
 ---
@@ -78,50 +78,50 @@ transition: fade-out
 clicks: 3
 ---
 
-# 슬라이드 내용
+# Slide content
 
 ::right::
 
-# 오른쪽 내용
+# Right-side content
 ```
 
-**주요 per-slide frontmatter 속성:**
+**Key per-slide frontmatter properties:**
 
-| 속성 | 설명 | 예시 |
+| Property | Description | Example |
 |------|------|------|
-| `layout` | 슬라이드 레이아웃 | `default`, `two-cols`, `center`, `cover`, `section`, `quote`, `image-right` |
-| `background` | 배경 이미지/색상 | `/path/to/image.jpg`, `#1e1e1e`, `https://example.com/bg.png` |
-| `class` | CSS 클래스 | `text-center`, `dark` |
-| `transition` | 전환 효과 | `slide-left`, `slide-up`, `fade`, `zoom` |
-| `clicks` | 클릭 단계 수 | `3` |
-| `disabled` | 슬라이드 비활성화 | `true` |
-| `hide` | 슬라이드 숨김 | `true` |
-| `routeAlias` | URL 경로 별칭 | `/custom-path` |
-| `src` | 외부 파일 import | `./slides/intro.md` |
-| `zoom` | 확대/축소 비율 | `0.8`, `1.2` |
+| `layout` | slide layout | `default`, `two-cols`, `center`, `cover`, `section`, `quote`, `image-right` |
+| `background` | background image/color | `/path/to/image.jpg`, `#1e1e1e`, `https://example.com/bg.png` |
+| `class` | CSS class | `text-center`, `dark` |
+| `transition` | transition | `slide-left`, `slide-up`, `fade`, `zoom` |
+| `clicks` | number of click steps | `3` |
+| `disabled` | disable the slide | `true` |
+| `hide` | hide the slide | `true` |
+| `routeAlias` | URL path alias | `/custom-path` |
+| `src` | import an external file | `./slides/intro.md` |
+| `zoom` | zoom ratio | `0.8`, `1.2` |
 
 ## 3. Presenter Notes
 
-슬라이드 하단에 HTML 주석으로 발표자 노트를 작성합니다.
+Write presenter notes as an HTML comment at the bottom of a slide.
 
 ```markdown
-# 슬라이드 제목
+# Slide title
 
-슬라이드 내용
+Slide content
 
 <!--
-발표자 노트:
-- 강조할 포인트 1
-- 강조할 포인트 2
-- 예상 소요 시간: 2분
+Presenter notes:
+- Point to emphasize 1
+- Point to emphasize 2
+- Expected time: 2 min
 -->
 ```
 
-발표자 모드(`Presenter View`)에서만 표시됩니다.
+They are shown only in presenter mode (`Presenter View`).
 
 ## 4. Code Blocks
 
-### 기본 문법
+### Basic syntax
 
 ````markdown
 ```typescript
@@ -131,30 +131,30 @@ function greet(name: string): string {
 ```
 ````
 
-### 줄 강조
+### Line highlighting
 
 ````markdown
 ```typescript {2|4-6|all}
 function calculate(a: number, b: number) {
-  const sum = a + b;  // 첫 클릭에 강조
+  const sum = a + b;  // highlighted on the first click
 
-  if (sum > 100) {    // 두 번째 클릭에 4-6줄 강조
+  if (sum > 100) {    // lines 4-6 highlighted on the second click
     return sum * 2;
   }
 
-  return sum;         // 세 번째 클릭에 전체 강조
+  return sum;         // all highlighted on the third click
 }
 ```
 ````
 
-**강조 문법:**
-- `{2}` - 2번 줄
-- `{2,5}` - 2번, 5번 줄
-- `{2-5}` - 2번부터 5번까지
-- `{2|4-6|all}` - 클릭 단계별 강조
-- `{2-5,8,10-12}` - 복합 지정
+**Highlight syntax:**
+- `{2}` - line 2
+- `{2,5}` - lines 2 and 5
+- `{2-5}` - lines 2 through 5
+- `{2|4-6|all}` - highlight per click step
+- `{2-5,8,10-12}` - a compound specification
 
-### 줄 번호
+### Line numbers
 
 ````markdown
 ```python {lines:true}
@@ -165,17 +165,17 @@ def fibonacci(n):
 ```
 ````
 
-### 최대 높이
+### Max height
 
 ````markdown
 ```javascript {maxHeight:'200px'}
-// 긴 코드가 200px을 넘으면 스크롤
+// scrolls when long code exceeds 200px
 const data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-// ... 많은 줄
+// ... many lines
 ```
 ````
 
-### 파일명 표시
+### File name display
 
 ````markdown
 ```typescript {file:'src/utils.ts'}
@@ -185,7 +185,7 @@ export function formatDate(date: Date): string {
 ```
 ````
 
-### 복합 사용
+### Combined usage
 
 ````markdown
 ```go {lines:true,maxHeight:'300px',file:'main.go'} {2,5-7|all}
@@ -201,26 +201,26 @@ func main() {
 
 ## 5. Shiki Magic Move
 
-코드 변경을 애니메이션으로 표현합니다.
+Expresses code changes as an animation.
 
 ````markdown
 ````md magic-move
 ```typescript
-// Step 1: 기본 함수
+// Step 1: a basic function
 function greet(name: string) {
   console.log("Hello " + name);
 }
 ```
 
 ```typescript
-// Step 2: 반환 값 추가
+// Step 2: add a return value
 function greet(name: string): string {
   return "Hello " + name;
 }
 ```
 
 ```typescript
-// Step 3: Template literal 사용
+// Step 3: use a template literal
 function greet(name: string): string {
   return `Hello, ${name}!`;
 }
@@ -228,14 +228,14 @@ function greet(name: string): string {
 ````
 ````
 
-**특징:**
-- 각 코드 블록 사이의 변경사항을 자동으로 애니메이션
-- 클릭할 때마다 다음 단계로 전환
-- 추가/삭제/수정된 라인을 시각적으로 표시
+**Features:**
+- Automatically animates the changes between each code block
+- Advances to the next step on each click
+- Visually shows added/removed/modified lines
 
 ## 6. Monaco Editor
 
-### 기본 편집기
+### Basic editor
 
 ````markdown
 ```typescript {monaco}
@@ -248,17 +248,17 @@ console.log(fibonacci(10));
 ```
 ````
 
-### 실행 가능한 편집기
+### Runnable editor
 
 ````markdown
 ```typescript {monaco-run}
-console.log('실시간 실행 결과를 볼 수 있습니다');
+console.log('You can see the run result in real time');
 const result = [1, 2, 3].map(x => x * 2);
 console.log(result);
 ```
 ````
 
-### Diff 모드
+### Diff mode
 
 ````markdown
 ```typescript {monaco-diff}
@@ -274,22 +274,22 @@ function newFunction(x: number): number {
 ```
 ````
 
-**Monaco 옵션:**
-- `{monaco}` - 편집 가능한 코드 에디터
-- `{monaco-run}` - 실행 가능 (JavaScript/TypeScript)
-- `{monaco-diff}` - 변경사항 비교 (`~~~`로 구분)
+**Monaco options:**
+- `{monaco}` - an editable code editor
+- `{monaco-run}` - runnable (JavaScript/TypeScript)
+- `{monaco-diff}` - compare changes (separated by `~~~`)
 
 ## 7. LaTeX
 
-### Inline 수식
+### Inline math
 
 ```markdown
-피타고라스 정리: $a^2 + b^2 = c^2$
+Pythagorean theorem: $a^2 + b^2 = c^2$
 
-원의 넓이: $A = \pi r^2$
+Area of a circle: $A = \pi r^2$
 ```
 
-### Block 수식
+### Block math
 
 ```markdown
 $$
@@ -306,16 +306,16 @@ $$
 $$
 ```
 
-**LaTeX 예시:**
+**LaTeX examples:**
 
-| 표현 | 코드 |
+| Expression | Code |
 |------|------|
-| 분수 | `\frac{a}{b}` |
-| 제곱근 | `\sqrt{x}` |
-| 시그마 | `\sum_{i=1}^{n} x_i` |
-| 적분 | `\int_{a}^{b} f(x) dx` |
-| 극한 | `\lim_{x \to \infty} f(x)` |
-| 행렬 | `\begin{pmatrix} a & b \\ c & d \end{pmatrix}` |
+| fraction | `\frac{a}{b}` |
+| square root | `\sqrt{x}` |
+| sigma | `\sum_{i=1}^{n} x_i` |
+| integral | `\int_{a}^{b} f(x) dx` |
+| limit | `\lim_{x \to \infty} f(x)` |
+| matrix | `\begin{pmatrix} a & b \\ c & d \end{pmatrix}` |
 
 ## 8. Mermaid Diagrams
 
@@ -324,10 +324,10 @@ $$
 ````markdown
 ```mermaid
 flowchart LR
-    A[시작] --> B{조건}
-    B -->|Yes| C[작업 1]
-    B -->|No| D[작업 2]
-    C --> E[종료]
+    A[Start] --> B{Condition}
+    B -->|Yes| C[Task 1]
+    B -->|No| D[Task 2]
+    C --> E[End]
     D --> E
 ```
 ````
@@ -337,14 +337,14 @@ flowchart LR
 ````markdown
 ```mermaid
 sequenceDiagram
-    participant 사용자
-    participant 서버
+    participant User
+    participant Server
     participant DB
 
-    사용자->>서버: 로그인 요청
-    서버->>DB: 인증 정보 조회
-    DB-->>서버: 사용자 데이터
-    서버-->>사용자: 로그인 성공
+    User->>Server: Login request
+    Server->>DB: Query auth info
+    DB-->>Server: User data
+    Server-->>User: Login success
 ```
 ````
 
@@ -415,20 +415,20 @@ stateDiagram-v2
 ````markdown
 ```mermaid
 gantt
-    title 프로젝트 일정
+    title Project schedule
     dateFormat YYYY-MM-DD
 
-    section 기획
-    요구사항 분석    :a1, 2024-01-01, 7d
-    설계             :a2, after a1, 5d
+    section Planning
+    Requirements analysis :a1, 2024-01-01, 7d
+    Design                :a2, after a1, 5d
 
-    section 개발
-    프론트엔드       :b1, after a2, 14d
-    백엔드           :b2, after a2, 14d
+    section Development
+    Frontend              :b1, after a2, 14d
+    Backend               :b2, after a2, 14d
 
-    section 배포
-    테스트           :c1, after b1, 7d
-    배포             :c2, after c1, 2d
+    section Deployment
+    Testing               :c1, after b1, 7d
+    Deploy                :c2, after c1, 2d
 ```
 ````
 
@@ -436,7 +436,7 @@ gantt
 
 ````markdown
 ```mermaid
-pie title 기술 스택 사용 비율
+pie title Tech-stack usage ratio
     "TypeScript" : 45
     "Python" : 30
     "Go" : 15
@@ -449,16 +449,16 @@ pie title 기술 스택 사용 비율
 ````markdown
 ```mermaid
 C4Context
-    title 시스템 컨텍스트 다이어그램
+    title System context diagram
 
-    Person(user, "사용자", "웹 서비스 사용자")
-    System(webapp, "웹 애플리케이션", "React 기반 SPA")
-    System_Ext(auth, "인증 서비스", "OAuth 2.0")
-    SystemDb(db, "데이터베이스", "PostgreSQL")
+    Person(user, "User", "Web service user")
+    System(webapp, "Web application", "React-based SPA")
+    System_Ext(auth, "Auth service", "OAuth 2.0")
+    SystemDb(db, "Database", "PostgreSQL")
 
-    Rel(user, webapp, "사용")
-    Rel(webapp, auth, "인증 요청")
-    Rel(webapp, db, "데이터 저장/조회")
+    Rel(user, webapp, "Uses")
+    Rel(webapp, auth, "Auth request")
+    Rel(webapp, db, "Store/read data")
 ```
 ````
 
@@ -467,78 +467,78 @@ C4Context
 ````markdown
 ```plantuml
 @startuml
-actor 사용자
-participant "웹 서버" as WEB
-participant "API 서버" as API
-database "데이터베이스" as DB
+actor User
+participant "Web server" as WEB
+participant "API server" as API
+database "Database" as DB
 
-사용자 -> WEB: HTTP Request
+User -> WEB: HTTP Request
 WEB -> API: API Call
 API -> DB: Query
 DB --> API: Result
 API --> WEB: Response
-WEB --> 사용자: HTML
+WEB --> User: HTML
 @enduml
 ```
 ````
 
-**PlantUML 주요 타입:**
-- `@startuml` / `@enduml` - 시작/종료
-- Sequence, Use Case, Class, Activity, Component, State, Object 다이어그램 지원
+**Key PlantUML types:**
+- `@startuml` / `@enduml` - start/end
+- Supports Sequence, Use Case, Class, Activity, Component, State, Object diagrams
 
 ## 10. MDC Syntax
 
-MDC(Markdown Components)를 사용하려면 headmatter에 `mdc: true` 설정이 필요합니다.
+Using MDC (Markdown Components) requires `mdc: true` in the headmatter.
 
-### Inline 스타일
+### Inline styles
 
 ```markdown
 ---
 mdc: true
 ---
 
-# MDC 예시
+# MDC example
 
-[빨간색 텍스트]{style="color:red"}
+[Red text]{style="color:red"}
 
-[큰 텍스트]{style="font-size:2em; font-weight:bold"}
+[Large text]{style="font-size:2em; font-weight:bold"}
 
-[배경색]{style="background-color:yellow; padding:4px"}
+[Background color]{style="background-color:yellow; padding:4px"}
 ```
 
-### Block 컴포넌트
+### Block components
 
 ```markdown
 ::div{class="bg-blue-500 text-white p-4"}
-파란색 배경의 박스
+A box with a blue background
 ::
 
 ::alert{type="warning"}
-경고 메시지입니다
+This is a warning message
 ::
 
-::card{title="제목"}
-카드 내용
+::card{title="Title"}
+Card content
 ::
 ```
 
-### Props 전달
+### Passing props
 
 ```markdown
 ::component{prop1="value1" prop2="value2" class="custom-class"}
-컴포넌트 내용
+Component content
 ::
 ```
 
 ## 11. Scoped CSS
 
-각 슬라이드에 `<style>` 블록을 추가하여 해당 슬라이드에만 적용되는 스타일을 정의할 수 있습니다.
+Add a `<style>` block to each slide to define styles that apply only to that slide.
 
 ```markdown
-# 스타일이 적용된 슬라이드
+# A slide with styling
 
 <div class="custom-box">
-  맞춤 스타일 박스
+  A custom-styled box
 </div>
 
 <style>
@@ -557,10 +557,10 @@ h1 {
 </style>
 ```
 
-**특징:**
-- 슬라이드별로 독립적인 스타일 적용
-- Scoped 스타일이므로 다른 슬라이드에 영향 없음
-- CSS, Sass, Less 모두 사용 가능
+**Features:**
+- Applies independent styling per slide
+- Scoped styles, so no effect on other slides
+- CSS, Sass, and Less all usable
 
 ## 12. Importing Slides
 
@@ -572,14 +572,14 @@ src: ./slides/intro.md
 ---
 ```
 
-### 파일 구조 예시
+### Example file structure
 
 ```
-slides.md           (메인 파일)
+slides.md           (main file)
 slides/
-  ├── intro.md      (소개 슬라이드들)
-  ├── features.md   (기능 슬라이드들)
-  └── conclusion.md (결론 슬라이드들)
+  ├── intro.md      (intro slides)
+  ├── features.md   (feature slides)
+  └── conclusion.md (conclusion slides)
 ```
 
 **slides.md:**
@@ -590,7 +590,7 @@ theme: default
 title: My Presentation
 ---
 
-# 커버 슬라이드
+# Cover slide
 
 ---
 src: ./slides/intro.md
@@ -608,40 +608,40 @@ src: ./slides/conclusion.md
 **slides/intro.md:**
 
 ```markdown
-# 소개
+# Intro
 
-내용
+Content
 
 ---
 
-# 배경
+# Background
 
-배경 설명
+Background description
 ```
 
 ## 13. Slot Sugar
 
-레이아웃의 슬롯을 간편하게 사용하는 문법입니다.
+Syntax for conveniently using a layout's slots.
 
-### two-cols 레이아웃
+### two-cols layout
 
 ```markdown
 ---
 layout: two-cols
 ---
 
-# 왼쪽 내용
+# Left content
 
-왼쪽 컬럼
+Left column
 
 ::right::
 
-# 오른쪽 내용
+# Right content
 
-오른쪽 컬럼
+Right column
 ```
 
-### image-right 레이아웃
+### image-right layout
 
 ```markdown
 ---
@@ -649,74 +649,74 @@ layout: image-right
 image: /images/photo.jpg
 ---
 
-# 텍스트 영역
+# Text area
 
-왼쪽에 텍스트
+Text on the left
 
-오른쪽에 이미지
+Image on the right
 ```
 
-### 커스텀 슬롯
+### Custom slots
 
 ```markdown
 ---
 layout: custom-layout
 ---
 
-# 기본 슬롯
+# Default slot
 
 ::header::
 
-# 헤더 슬롯
+# Header slot
 
 ::footer::
 
-# 푸터 슬롯
+# Footer slot
 
 ::bottom::
 
-# 하단 슬롯
+# Bottom slot
 ```
 
-**주요 슬롯:**
-- `::right::` - 오른쪽 영역
-- `::left::` - 왼쪽 영역 (명시적 사용)
-- `::bottom::` - 하단 영역
-- `::header::` - 헤더 영역
-- `::footer::` - 푸터 영역
+**Key slots:**
+- `::right::` - right area
+- `::left::` - left area (explicit use)
+- `::bottom::` - bottom area
+- `::header::` - header area
+- `::footer::` - footer area
 
 ## 14. Icons
 
-Iconify를 통해 다양한 아이콘 라이브러리를 사용할 수 있습니다.
+Use various icon libraries via Iconify.
 
-### 기본 사용법
+### Basic usage
 
 ```markdown
-# 아이콘 예시
+# Icon example
 
-<mdi-account /> 계정
-<mdi-home /> 홈
-<carbon-email /> 이메일
+<mdi-account /> Account
+<mdi-home /> Home
+<carbon-email /> Email
 <bi-github /> GitHub
 <logos-vue /> Vue.js
 ```
 
-### 스타일 적용
+### Applying styles
 
 ```markdown
 <mdi-check class="text-green-500 text-2xl" />
 <mdi-close style="color: red; font-size: 24px;" />
 ```
 
-### 인라인 사용
+### Inline usage
 
 ```markdown
 Vue <logos-vue class="inline" /> React <logos-react class="inline" />
 ```
 
-**주요 아이콘 세트:**
+**Key icon sets:**
 
-| Prefix | 라이브러리 | 예시 |
+| Prefix | Library | Example |
 |--------|-----------|------|
 | `mdi-` | Material Design Icons | `<mdi-check />` |
 | `carbon-` | Carbon Icons | `<carbon-email />` |
@@ -725,21 +725,21 @@ Vue <logos-vue class="inline" /> React <logos-react class="inline" />
 | `heroicons-` | Heroicons | `<heroicons-home />` |
 | `fa-` | Font Awesome | `<fa-user />` |
 
-**아이콘 검색:** [https://icones.js.org/](https://icones.js.org/)
+**Icon search:** [https://icones.js.org/](https://icones.js.org/)
 
 ## 15. Images
 
-### public/ 폴더 이미지
+### public/ folder images
 
 ```markdown
-# 로컬 이미지
+# Local image
 
-![설명](/images/diagram.png)
+![Description](/images/diagram.png)
 
-<img src="/images/photo.jpg" alt="설명" width="400" />
+<img src="/images/photo.jpg" alt="Description" width="400" />
 ```
 
-**파일 구조:**
+**File structure:**
 
 ```
 public/
@@ -749,25 +749,25 @@ public/
 slides.md
 ```
 
-### 원격 이미지
+### Remote images
 
 ```markdown
-![외부 이미지](https://example.com/image.jpg)
+![External image](https://example.com/image.jpg)
 
 <img src="https://via.placeholder.com/600x400" />
 ```
 
-### 배경 이미지
+### Background image
 
 ```yaml
 ---
 background: /images/background.jpg
 ---
 
-# 배경 이미지가 있는 슬라이드
+# A slide with a background image
 ```
 
-**배경 옵션:**
+**Background options:**
 
 ```yaml
 ---
@@ -777,7 +777,7 @@ backgroundPosition: center
 ---
 ```
 
-### 이미지 레이아웃
+### Image layouts
 
 ```markdown
 ---
@@ -792,12 +792,12 @@ layout: image-right
 image: /images/side.jpg
 ---
 
-# 텍스트
+# Text
 
-왼쪽에 텍스트, 오른쪽에 이미지
+Text on the left, image on the right
 ```
 
-### 이미지와 텍스트 조합
+### Combining images and text
 
 ```markdown
 <div class="grid grid-cols-2 gap-4">
@@ -812,17 +812,17 @@ image: /images/side.jpg
 
 ---
 
-## 실전 예시
+## Practical example
 
-### 완전한 슬라이드 예시
+### A complete slide example
 
 ````markdown
 ---
 theme: default
-title: TypeScript 소개
+title: Intro to TypeScript
 info: |
-  ## TypeScript 기초
-  타입 시스템과 모던 JavaScript
+  ## TypeScript basics
+  The type system and modern JavaScript
 author: John Doe
 keywords: typescript, javascript, types
 layout: cover
@@ -830,42 +830,42 @@ transition: slide-left
 mdc: true
 ---
 
-# TypeScript 소개
+# Intro to TypeScript
 
-정적 타입을 가진 JavaScript 슈퍼셋
+A statically typed JavaScript superset
 
 <div class="abs-br m-6">
   <logos-typescript-icon class="text-4xl" />
 </div>
 
 <!--
-발표 시작 인사
-예상 시간: 1분
+Opening greeting
+Expected time: 1 min
 -->
 
 ---
 layout: two-cols
 ---
 
-# 왜 TypeScript인가?
+# Why TypeScript?
 
-- <mdi-check class="text-green-500" /> 타입 안정성
-- <mdi-check class="text-green-500" /> 개발 생산성 향상
-- <mdi-check class="text-green-500" /> 에디터 지원
+- <mdi-check class="text-green-500" /> Type safety
+- <mdi-check class="text-green-500" /> Better developer productivity
+- <mdi-check class="text-green-500" /> Editor support
 
 ::right::
 
-# JavaScript의 문제
+# Problems with JavaScript
 
-- <mdi-close class="text-red-500" /> 런타임 에러
-- <mdi-close class="text-red-500" /> 타입 불확실성
-- <mdi-close class="text-red-500" /> 리팩토링 어려움
+- <mdi-close class="text-red-500" /> Runtime errors
+- <mdi-close class="text-red-500" /> Type uncertainty
+- <mdi-close class="text-red-500" /> Hard to refactor
 
 ---
 transition: fade-out
 ---
 
-# 기본 타입
+# Basic types
 
 ```typescript {1|3|5-7|all}
 let name: string = "John";
@@ -879,7 +879,7 @@ let point: [number, number] = [10, 20];
 
 ---
 
-# 코드 진화 과정
+# Code evolution
 
 ````md magic-move
 ```javascript
@@ -890,14 +890,14 @@ function add(a, b) {
 ```
 
 ```typescript
-// TypeScript - 타입 추가
+// TypeScript - add types
 function add(a: number, b: number) {
   return a + b;
 }
 ```
 
 ```typescript
-// TypeScript - 반환 타입 명시
+// TypeScript - explicit return type
 function add(a: number, b: number): number {
   return a + b;
 }
@@ -908,9 +908,9 @@ function add(a: number, b: number): number {
 layout: center
 ---
 
-# 수학 공식
+# A math formula
 
-이차방정식의 해: $x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$
+Solution of a quadratic equation: $x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$
 
 $$
 \sum_{i=1}^{n} i = \frac{n(n+1)}{2}
@@ -918,7 +918,7 @@ $$
 
 ---
 
-# 아키텍처
+# Architecture
 
 ```mermaid
 flowchart TB
@@ -935,7 +935,7 @@ background: /images/code-bg.jpg
 class: text-center
 ---
 
-# 감사합니다
+# Thank you
 
 Questions?
 
@@ -950,20 +950,20 @@ h1 {
 
 ---
 
-## 참고사항
+## Notes
 
-1. **파일 인코딩:** UTF-8 사용 필수
-2. **이미지 경로:** `public/` 폴더 기준 절대 경로 (`/images/file.png`)
-3. **코드 블록:** 백틱 3개 또는 4개 사용
-4. **YAML 들여쓰기:** 2 스페이스 권장
-5. **Mermaid:** 복잡한 다이어그램은 렌더링 성능 고려
-6. **LaTeX:** 복잡한 수식은 블록 형식 권장
-7. **MDC:** 테마/레이아웃에 따라 지원 여부 다름
+1. **File encoding:** UTF-8 required
+2. **Image paths:** absolute paths relative to the `public/` folder (`/images/file.png`)
+3. **Code blocks:** use 3 or 4 backticks
+4. **YAML indentation:** 2 spaces recommended
+5. **Mermaid:** consider rendering performance for complex diagrams
+6. **LaTeX:** block form recommended for complex formulas
+7. **MDC:** support varies by theme/layout
 
-## 추가 리소스
+## Additional resources
 
-- [Slidev 공식 문서](https://sli.dev/)
-- [Iconify 아이콘 검색](https://icones.js.org/)
-- [Mermaid 문서](https://mermaid.js.org/)
-- [KaTeX 지원 함수](https://katex.org/docs/supported.html)
-- [Shiki 언어 목록](https://github.com/shikijs/shiki/blob/main/docs/languages.md)
+- [Slidev official docs](https://sli.dev/)
+- [Iconify icon search](https://icones.js.org/)
+- [Mermaid docs](https://mermaid.js.org/)
+- [KaTeX supported functions](https://katex.org/docs/supported.html)
+- [Shiki language list](https://github.com/shikijs/shiki/blob/main/docs/languages.md)

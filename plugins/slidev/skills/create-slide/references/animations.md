@@ -1,201 +1,201 @@
-# Slidev 애니메이션 레퍼런스
+# Slidev animation reference
 
-Slidev는 강력한 애니메이션 시스템을 제공하여 클릭 기반 전환, 텍스트 마킹, 복잡한 모션, 코드 변화 애니메이션 등을 지원합니다.
+Slidev provides a powerful animation system supporting click-based transitions, text marking, complex motion, code-change animation, and more.
 
-## 1. v-click - 기본 클릭 애니메이션
+## 1. v-click - basic click animation
 
-요소를 클릭할 때마다 순차적으로 나타나게 만듭니다.
+Makes elements appear sequentially on each click.
 
-### 태그 방식
+### Tag form
 
 ```md
 <v-click>
 
-첫 번째 클릭에 나타남
+Appears on the first click
 
 </v-click>
 
 <v-click>
 
-두 번째 클릭에 나타남
+Appears on the second click
 
 </v-click>
 
 <v-click>
 
-세 번째 클릭에 나타남
+Appears on the third click
 
 </v-click>
 ```
 
-### 디렉티브 방식 (인라인)
+### Directive form (inline)
 
 ```md
-<div v-click>클릭 1</div>
-<div v-click>클릭 2</div>
-<p v-click>클릭 3</p>
+<div v-click>Click 1</div>
+<div v-click>Click 2</div>
+<p v-click>Click 3</p>
 ```
 
-### 번호 지정
+### Specifying a number
 
-특정 클릭 순서를 지정할 수 있습니다:
+You can specify a particular click order:
 
 ```md
-<div v-click="3">세 번째로 나타남</div>
-<div v-click="1">첫 번째로 나타남</div>
-<div v-click="2">두 번째로 나타남</div>
+<div v-click="3">Appears third</div>
+<div v-click="1">Appears first</div>
+<div v-click="2">Appears second</div>
 ```
 
-### 클릭 후 숨기기
+### Hide after click
 
 ```md
-<div v-click.hide>클릭하면 나타났다가 다음 클릭에 사라짐</div>
-<div v-click>이제 이게 나타남</div>
+<div v-click.hide>Appears on click, then disappears on the next click</div>
+<div v-click>Now this appears</div>
 ```
 
-### 커스텀 클릭 카운트
+### Custom click count
 
-Frontmatter에서 슬라이드의 총 클릭 수를 지정:
+Specify the slide's total click count in frontmatter:
 
 ```md
 ---
 clicks: 5
 ---
 
-# 슬라이드 제목
+# Slide title
 
-<div v-click="1">첫 번째</div>
-<div v-click="2">두 번째</div>
-<div v-click="3">세 번째</div>
-<div v-click="4">네 번째</div>
-<div v-click="5">다섯 번째</div>
+<div v-click="1">First</div>
+<div v-click="2">Second</div>
+<div v-click="3">Third</div>
+<div v-click="4">Fourth</div>
+<div v-click="5">Fifth</div>
 ```
 
-### 실용 예제
+### Practical example
 
 ```md
-# 제품 특징
+# Product features
 
 <v-click>
 
-## 빠른 성능
-10배 빠른 로딩 속도
+## Fast performance
+10x faster loading speed
 
 </v-click>
 
 <v-click>
 
-## 안정성
-99.9% 가동 시간 보장
+## Reliability
+99.9% uptime guaranteed
 
 </v-click>
 
 <v-click>
 
-## 확장성
-무제한 사용자 지원
+## Scalability
+Unlimited user support
 
 </v-click>
 ```
 
 ---
 
-## 2. v-clicks - 자동 순차 애니메이션
+## 2. v-clicks - automatic sequential animation
 
-여러 자식 요소를 자동으로 순차적으로 나타나게 합니다.
+Makes multiple child elements appear automatically in sequence.
 
-### 기본 사용
+### Basic usage
 
 ```md
 <v-clicks>
 
-- 첫 번째 항목
-- 두 번째 항목
-- 세 번째 항목
-- 네 번째 항목
+- First item
+- Second item
+- Third item
+- Fourth item
 
 </v-clicks>
 ```
 
-### Depth 지정
+### Specifying depth
 
-중첩된 요소의 깊이를 제어:
+Control the depth of nested elements:
 
 ```md
 <v-clicks depth="2">
 
-- Level 1 항목
-  - Level 2 항목 (같이 나타남)
-  - Level 2 항목 (같이 나타남)
-- Level 1 항목
-  - Level 2 항목 (같이 나타남)
+- Level 1 item
+  - Level 2 item (appears together)
+  - Level 2 item (appears together)
+- Level 1 item
+  - Level 2 item (appears together)
 
 </v-clicks>
 ```
 
-### Every 속성
+### The every property
 
-N개씩 묶어서 나타나게:
+Reveal in groups of N:
 
 ```md
 <v-clicks every="2">
 
-- 항목 1 (첫 클릭)
-- 항목 2 (첫 클릭)
-- 항목 3 (두 번째 클릭)
-- 항목 4 (두 번째 클릭)
+- Item 1 (first click)
+- Item 2 (first click)
+- Item 3 (second click)
+- Item 4 (second click)
 
 </v-clicks>
 ```
 
-### 복합 예제
+### Compound example
 
 ```md
-# 로드맵
+# Roadmap
 
 <v-clicks>
 
 ## Q1 2024
-- 기능 A 출시
-- 베타 테스트 시작
+- Launch feature A
+- Start the beta test
 
 ## Q2 2024
-- 공식 출시
-- 마케팅 캠페인
+- Official launch
+- Marketing campaign
 
 ## Q3 2024
-- 글로벌 확장
-- 파트너십 체결
+- Global expansion
+- Sign partnerships
 
 </v-clicks>
 ```
 
 ---
 
-## 3. v-after - 이전 클릭과 함께 표시
+## 3. v-after - appear with the previous click
 
-이전 클릭 요소와 동시에 나타나게 합니다.
+Makes an element appear at the same time as the previous click element.
 
-### 기본 사용
+### Basic usage
 
 ```md
-<div v-click>첫 번째 클릭에 나타남</div>
-<div v-after>첫 번째 클릭에 같이 나타남</div>
+<div v-click>Appears on the first click</div>
+<div v-after>Appears together on the first click</div>
 ```
 
-### v-click과 결합
+### Combined with v-click
 
 ```md
-<div v-click="1">첫 번째</div>
-<div v-after>첫 번째와 함께</div>
-<div v-click="2">두 번째</div>
-<div v-after>두 번째와 함께</div>
+<div v-click="1">First</div>
+<div v-after>With the first</div>
+<div v-click="2">Second</div>
+<div v-after>With the second</div>
 ```
 
-### 실용 예제
+### Practical example
 
 ```md
-# 아키텍처
+# Architecture
 
 <div v-click>
 
@@ -226,94 +226,94 @@ Node.js + Express
 
 ---
 
-## 4. v-mark - 인라인 텍스트 마킹
+## 4. v-mark - inline text marking
 
-텍스트를 강조하거나 표시할 수 있습니다.
+Lets you emphasize or mark text.
 
-### 기본 마킹 타입
+### Basic mark types
 
 ```md
-# 텍스트 강조
+# Text emphasis
 
-이것은 <span v-mark>기본 마크</span>입니다.
+This is a <span v-mark>basic mark</span>.
 
-이것은 <span v-mark.underline>밑줄</span>입니다.
+This is an <span v-mark.underline>underline</span>.
 
-이것은 <span v-mark.circle>원형 강조</span>입니다.
+This is a <span v-mark.circle>circle emphasis</span>.
 
-이것은 <span v-mark.highlight>하이라이트</span>입니다.
+This is a <span v-mark.highlight>highlight</span>.
 
-이것은 <span v-mark.box>박스</span>입니다.
+This is a <span v-mark.box>box</span>.
 
-이것은 <span v-mark.strike-through>취소선</span>입니다.
+This is a <span v-mark.strike-through>strikethrough</span>.
 ```
 
-### 색상 지정
+### Specifying color
 
 ```md
-이것은 <span v-mark.underline.red>빨간 밑줄</span>입니다.
+This is a <span v-mark.underline.red>red underline</span>.
 
-이것은 <span v-mark.highlight.yellow>노란 하이라이트</span>입니다.
+This is a <span v-mark.highlight.yellow>yellow highlight</span>.
 
-이것은 <span v-mark.circle.green>초록 원</span>입니다.
+This is a <span v-mark.circle.green>green circle</span>.
 ```
 
-### 클릭과 결합
+### Combined with clicks
 
 ```md
-# 중요 포인트
+# Key points
 
 <div v-click>
 
-성능이 <span v-mark.highlight.yellow v-click>10배</span> 향상되었습니다.
+Performance improved <span v-mark.highlight.yellow v-click>10x</span>.
 
 </div>
 
 <div v-click>
 
-비용은 <span v-mark.strike-through.red v-click>$100</span> <span v-mark.highlight.green v-click>$50</span>으로 절감.
+Cost reduced from <span v-mark.strike-through.red v-click>$100</span> to <span v-mark.highlight.green v-click>$50</span>.
 
 </div>
 ```
 
-### 실용 예제
+### Practical example
 
 ```md
-# 마이그레이션 계획
+# Migration plan
 
 <v-clicks>
 
-- <span v-mark.box>Phase 1</span>: 데이터 백업
-- <span v-mark.box>Phase 2</span>: 시스템 전환
-- <span v-mark.box>Phase 3</span>: 검증 및 모니터링
+- <span v-mark.box>Phase 1</span>: Data backup
+- <span v-mark.box>Phase 2</span>: System cutover
+- <span v-mark.box>Phase 3</span>: Verification and monitoring
 
 </v-clicks>
 
 <div v-click>
 
-⚠️ <span v-mark.highlight.red>주의</span>: 다운타임 예상 시간 2시간
+⚠️ <span v-mark.highlight.red>Caution</span>: expected downtime 2 hours
 
 </div>
 ```
 
 ---
 
-## 5. v-motion - 복잡한 모션 애니메이션
+## 5. v-motion - complex motion animation
 
-CSS 속성을 애니메이션화하여 복잡한 전환 효과를 만듭니다.
+Animate CSS properties to create complex transition effects.
 
-### 기본 사용
+### Basic usage
 
 ```md
 <div
   v-motion
   :initial="{ x: -80 }"
   :enter="{ x: 0 }">
-  왼쪽에서 슬라이드
+  Slide in from the left
 </div>
 ```
 
-### 복합 애니메이션
+### Compound animation
 
 ```md
 <div
@@ -321,11 +321,11 @@ CSS 속성을 애니메이션화하여 복잡한 전환 효과를 만듭니다.
   :initial="{ x: -80, opacity: 0 }"
   :enter="{ x: 0, opacity: 1, transition: { duration: 1000 } }"
   :leave="{ x: 80, opacity: 0 }">
-  페이드 + 슬라이드
+  Fade + slide
 </div>
 ```
 
-### 클릭 기반 모션
+### Click-based motion
 
 ```md
 <div
@@ -334,11 +334,11 @@ CSS 속성을 애니메이션화하여 복잡한 전환 효과를 만듭니다.
   :enter="{ scale: 1 }"
   :click-1="{ scale: 1.5, rotate: 45 }"
   :click-2="{ scale: 1, rotate: 0 }">
-  클릭하면 확대 및 회전
+  Scale and rotate on click
 </div>
 ```
 
-### 딜레이 및 타이밍
+### Delay and timing
 
 ```md
 <div
@@ -353,14 +353,14 @@ CSS 속성을 애니메이션화하여 복잡한 전환 효과를 만듭니다.
       ease: 'easeOut'
     }
   }">
-  딜레이와 이징 적용
+  Delay and easing applied
 </div>
 ```
 
-### 실용 예제: 카드 애니메이션
+### Practical example: card animation
 
 ```md
-# 제품 소개
+# Product intro
 
 <div class="grid grid-cols-3 gap-4">
 
@@ -369,8 +369,8 @@ CSS 속성을 애니메이션화하여 복잡한 전환 효과를 만듭니다.
   :initial="{ y: 100, opacity: 0 }"
   :enter="{ y: 0, opacity: 1, transition: { delay: 0 } }">
 
-## 기능 1
-빠른 성능
+## Feature 1
+Fast performance
 
 </div>
 
@@ -379,8 +379,8 @@ CSS 속성을 애니메이션화하여 복잡한 전환 효과를 만듭니다.
   :initial="{ y: 100, opacity: 0 }"
   :enter="{ y: 0, opacity: 1, transition: { delay: 200 } }">
 
-## 기능 2
-안정성
+## Feature 2
+Reliability
 
 </div>
 
@@ -389,8 +389,8 @@ CSS 속성을 애니메이션화하여 복잡한 전환 효과를 만듭니다.
   :initial="{ y: 100, opacity: 0 }"
   :enter="{ y: 0, opacity: 1, transition: { delay: 400 } }">
 
-## 기능 3
-확장성
+## Feature 3
+Scalability
 
 </div>
 
@@ -399,98 +399,98 @@ CSS 속성을 애니메이션화하여 복잡한 전환 효과를 만듭니다.
 
 ---
 
-## 6. Slide Transitions - 슬라이드 전환 효과
+## 6. Slide Transitions - slide transition effects
 
-슬라이드 간 전환 애니메이션을 제어합니다.
+Controls the transition animation between slides.
 
-### Frontmatter 전환 설정
+### Frontmatter transition setting
 
 ```md
 ---
 transition: slide-left
 ---
 
-# 슬라이드 1
+# Slide 1
 
 ---
 transition: slide-right
 ---
 
-# 슬라이드 2
+# Slide 2
 
 ---
 transition: fade
 ---
 
-# 슬라이드 3
+# Slide 3
 ```
 
-### 사용 가능한 전환 효과
+### Available transitions
 
 ```md
 ---
-# 왼쪽으로 슬라이드
+# slide to the left
 transition: slide-left
 ---
 
 ---
-# 오른쪽으로 슬라이드
+# slide to the right
 transition: slide-right
 ---
 
 ---
-# 위로 슬라이드
+# slide up
 transition: slide-up
 ---
 
 ---
-# 아래로 슬라이드
+# slide down
 transition: slide-down
 ---
 
 ---
-# 페이드
+# fade
 transition: fade
 ---
 
 ---
-# View Transition API 사용 (Chrome 111+)
+# use the View Transition API (Chrome 111+)
 transition: view-transition
 ---
 
 ---
-# 전환 효과 없음
+# no transition
 transition: none
 ---
 ```
 
-### 전역 전환 설정
+### Global transition setting
 
-모든 슬라이드에 기본 전환 효과 적용:
+Apply a default transition to all slides:
 
 ```md
 ---
-# 첫 슬라이드 (전역 설정)
+# first slide (global setting)
 theme: apple-basic
 transition: slide-left
 ---
 
-# 슬라이드 1
+# Slide 1
 
 ---
 
-# 슬라이드 2 (전역 설정 상속)
+# Slide 2 (inherits the global setting)
 
 ---
 transition: fade
 ---
 
-# 슬라이드 3 (개별 설정 우선)
+# Slide 3 (a per-slide setting wins)
 ```
 
-### 커스텀 전환
+### Custom transition
 
-Vue transition 컴포넌트 사용:
+Use a Vue transition component:
 
 ```md
 ---
@@ -517,66 +517,66 @@ transition: my-custom-transition
 
 ---
 
-## 7. Shiki Magic Move - 코드 변화 애니메이션
+## 7. Shiki Magic Move - code-change animation
 
-코드 블록 간 변화를 부드럽게 애니메이션으로 보여줍니다.
+Smoothly animates the changes between code blocks.
 
-### 기본 사용
+### Basic usage
 
 ````md
 # Code Evolution
 
 ````md magic-move
 ```js
-// Step 1: 기본 함수
+// Step 1: a basic function
 function greet(name) {
   console.log('Hello ' + name);
 }
 ```
 
 ```js
-// Step 2: ES6 템플릿 리터럴
+// Step 2: an ES6 template literal
 function greet(name) {
   console.log(`Hello ${name}`);
 }
 ```
 
 ```js
-// Step 3: 화살표 함수
+// Step 3: an arrow function
 const greet = (name) => {
   console.log(`Hello ${name}`);
 };
 ```
 
 ```js
-// Step 4: 최종 버전
+// Step 4: the final version
 const greet = (name) => console.log(`Hello ${name}!`);
 ```
 ````
 ````
 
-### 다중 파일 변화
+### Multi-step change
 
 ````md
 # Refactoring
 
 ````md magic-move
 ```js
-// Before: 모놀리식
+// Before: monolithic
 function processUser(user) {
-  // 검증
+  // validate
   if (!user.email) throw new Error('No email');
 
-  // 처리
+  // process
   const normalized = user.email.toLowerCase();
 
-  // 저장
+  // save
   db.save({ email: normalized });
 }
 ```
 
 ```js
-// After: 모듈화
+// After: modularized
 function validateUser(user) {
   if (!user.email) throw new Error('No email');
 }
@@ -598,19 +598,19 @@ function processUser(user) {
 ````
 ````
 
-### 하이라이트와 결합
+### Combined with highlighting
 
 ````md
 ````md magic-move {lines: true}
 ```js {1}
-// 함수 선언 강조
+// highlight the function declaration
 function calculate(a, b) {
   return a + b;
 }
 ```
 
 ```js {3}
-// 리턴 구문 강조
+// highlight the return statement
 function calculate(a, b) {
   const result = a + b;
   return result;
@@ -618,7 +618,7 @@ function calculate(a, b) {
 ```
 
 ```js {2-3}
-// 본문 강조
+// highlight the body
 function calculate(a, b) {
   const result = a + b;
   console.log(`Result: ${result}`);
@@ -628,21 +628,21 @@ function calculate(a, b) {
 ````
 ````
 
-### 실용 예제: API 진화
+### Practical example: API evolution
 
 ````md
-# API 개선 과정
+# API improvement process
 
 ````md magic-move
 ```js
-// v1: 기본 REST API
+// v1: basic REST API
 app.get('/users', (req, res) => {
   res.json(users);
 });
 ```
 
 ```js
-// v2: 페이지네이션 추가
+// v2: add pagination
 app.get('/users', (req, res) => {
   const { page = 1, limit = 10 } = req.query;
   const start = (page - 1) * limit;
@@ -651,7 +651,7 @@ app.get('/users', (req, res) => {
 ```
 
 ```js
-// v3: 필터링 추가
+// v3: add filtering
 app.get('/users', (req, res) => {
   const { page = 1, limit = 10, role } = req.query;
   let filtered = role ? users.filter(u => u.role === role) : users;
@@ -661,7 +661,7 @@ app.get('/users', (req, res) => {
 ```
 
 ```js
-// v4: 에러 처리 및 타입 안정성
+// v4: error handling and type safety
 app.get('/users', async (req, res) => {
   try {
     const { page = 1, limit = 10, role } = req.query;
@@ -680,34 +680,34 @@ app.get('/users', async (req, res) => {
 
 ---
 
-## 8. Click Markers in Notes - 발표자 노트 자동 스크롤
+## 8. Click Markers in Notes - auto-scroll presenter notes
 
-발표자 노트에 `[click]` 마커를 추가하여 클릭마다 자동으로 스크롤됩니다.
+Add `[click]` markers to presenter notes to auto-scroll on each click.
 
-### 기본 사용
+### Basic usage
 
 ```md
-# 제품 특징
+# Product features
 
 <v-clicks>
 
-- 빠른 성능
-- 높은 안정성
-- 쉬운 확장
+- Fast performance
+- High reliability
+- Easy to scale
 
 </v-clicks>
 
 <!--
-[click] 첫 번째 특징: 성능이 10배 향상되었습니다.
-[click] 두 번째 특징: 99.9% 가동 시간을 보장합니다.
-[click] 세 번째 특징: 수평 확장이 가능합니다.
+[click] First feature: performance improved 10x.
+[click] Second feature: guarantees 99.9% uptime.
+[click] Third feature: horizontal scaling is possible.
 -->
 ```
 
-### 복잡한 예제
+### Complex example
 
 ```md
-# 시스템 아키텍처
+# System architecture
 
 <div v-click>
 
@@ -740,87 +740,87 @@ PostgreSQL + Redis
 </div>
 
 <!--
-[click] Frontend: React 18 사용, TypeScript로 타입 안정성 확보
+[click] Frontend: uses React 18, type safety with TypeScript
 
-[click] API Gateway: Kong으로 rate limiting, Redis로 세션 관리
+[click] API Gateway: rate limiting with Kong, session management with Redis
 
-[click] Backend: 마이크로서비스 아키텍처, 각 서비스는 독립적으로 배포
+[click] Backend: microservice architecture, each service deployed independently
 
-[click] Database: PostgreSQL은 관계형 데이터, Redis는 캐싱 및 세션
+[click] Database: PostgreSQL for relational data, Redis for caching and sessions
 -->
 ```
 
-### 타이밍 힌트
+### Timing hints
 
 ```md
-# 데모
+# Demo
 
 <v-clicks>
 
-1. 로그인
-2. 대시보드 확인
-3. 데이터 업로드
-4. 리포트 생성
+1. Log in
+2. Check the dashboard
+3. Upload data
+4. Generate a report
 
 </v-clicks>
 
 <!--
-[click] 로그인: OAuth 2.0 사용 (예상 시간: 30초)
+[click] Log in: uses OAuth 2.0 (expected time: 30s)
 
-[click] 대시보드: 실시간 메트릭 확인 (예상 시간: 1분)
+[click] Dashboard: check real-time metrics (expected time: 1 min)
 
-[click] 데이터 업로드: CSV 파일 드래그 앤 드롭 (예상 시간: 1분)
+[click] Data upload: drag and drop a CSV file (expected time: 1 min)
 
-[click] 리포트: 자동 생성 및 PDF 다운로드 (예상 시간: 30초)
+[click] Report: auto-generate and download PDF (expected time: 30s)
 
-총 데모 시간: 3분
+Total demo time: 3 min
 -->
 ```
 
 ---
 
-## 애니메이션 조합 패턴
+## Animation combination patterns
 
-### 패턴 1: 순차적 리스트
+### Pattern 1: sequential list
 
 ```md
-# 구현 단계
+# Implementation steps
 
 <v-clicks>
 
-- <span v-mark.box>Phase 1</span>: 요구사항 분석
-- <span v-mark.box>Phase 2</span>: 설계 및 프로토타입
-- <span v-mark.box>Phase 3</span>: 개발 및 테스트
-- <span v-mark.box>Phase 4</span>: 배포 및 모니터링
+- <span v-mark.box>Phase 1</span>: Requirements analysis
+- <span v-mark.box>Phase 2</span>: Design and prototype
+- <span v-mark.box>Phase 3</span>: Development and testing
+- <span v-mark.box>Phase 4</span>: Deployment and monitoring
 
 </v-clicks>
 ```
 
-### 패턴 2: 강조 포인트
+### Pattern 2: emphasized points
 
 ```md
-# 핵심 메트릭
+# Key metrics
 
 <div v-click>
 
-응답 시간: <span v-mark.highlight.green>50ms</span>
+Response time: <span v-mark.highlight.green>50ms</span>
 
 </div>
 
 <div v-click>
 
-처리량: <span v-mark.highlight.blue>10,000 req/s</span>
+Throughput: <span v-mark.highlight.blue>10,000 req/s</span>
 
 </div>
 
 <div v-click>
 
-에러율: <span v-mark.highlight.red>0.01%</span>
+Error rate: <span v-mark.highlight.red>0.01%</span>
 
 </div>
 ```
 
-### 패턴 3: 비교 강조
+### Pattern 3: comparison emphasis
 
 ```md
 # Before vs After
@@ -830,28 +830,28 @@ PostgreSQL + Redis
 <div v-click>
 
 ## Before
-- <span v-mark.strike-through.red>느린 로딩</span>
-- <span v-mark.strike-through.red>높은 메모리 사용</span>
-- <span v-mark.strike-through.red>복잡한 코드</span>
+- <span v-mark.strike-through.red>Slow loading</span>
+- <span v-mark.strike-through.red>High memory usage</span>
+- <span v-mark.strike-through.red>Complex code</span>
 
 </div>
 
 <div v-click>
 
 ## After
-- <span v-mark.highlight.green>빠른 로딩</span>
-- <span v-mark.highlight.green>낮은 메모리 사용</span>
-- <span v-mark.highlight.green>간결한 코드</span>
+- <span v-mark.highlight.green>Fast loading</span>
+- <span v-mark.highlight.green>Low memory usage</span>
+- <span v-mark.highlight.green>Concise code</span>
 
 </div>
 
 </div>
 ```
 
-### 패턴 4: 카드 애니메이션
+### Pattern 4: card animation
 
 ```md
-# 팀 소개
+# Team intro
 
 <div class="grid grid-cols-3 gap-4">
 
@@ -861,7 +861,7 @@ PostgreSQL + Redis
   :enter="{ scale: 1, rotate: 0, transition: { delay: 0 } }">
 
 ## Frontend
-3명
+3 people
 
 </div>
 
@@ -871,7 +871,7 @@ PostgreSQL + Redis
   :enter="{ scale: 1, rotate: 0, transition: { delay: 200 } }">
 
 ## Backend
-4명
+4 people
 
 </div>
 
@@ -881,7 +881,7 @@ PostgreSQL + Redis
   :enter="{ scale: 1, rotate: 0, transition: { delay: 400 } }">
 
 ## DevOps
-2명
+2 people
 
 </div>
 
@@ -890,58 +890,58 @@ PostgreSQL + Redis
 
 ---
 
-## 성능 최적화
+## Performance optimization
 
-### 애니메이션 수 제한
+### Limit the number of animations
 
-슬라이드당 클릭 수를 10개 이하로 유지하는 것이 좋습니다:
+Keeping the click count per slide at 10 or fewer is recommended:
 
 ```md
 ---
-clicks: 10  # 명시적으로 제한
+clicks: 10  # limit explicitly
 ---
 ```
 
-### Transform 우선 사용
+### Prefer transform
 
-성능을 위해 `transform` 속성 사용:
+Use the `transform` property for performance:
 
 ```md
-<!-- 좋음: GPU 가속 -->
+<!-- Good: GPU-accelerated -->
 <div v-motion :initial="{ x: -100 }" :enter="{ x: 0 }">
 
-<!-- 나쁨: 레이아웃 리플로우 -->
+<!-- Bad: layout reflow -->
 <div v-motion :initial="{ left: '-100px' }" :enter="{ left: '0' }">
 ```
 
-### 복잡한 애니메이션 그룹화
+### Group complex animations
 
-여러 요소를 컨테이너로 묶어서 애니메이션:
+Wrap multiple elements in a container to animate them together:
 
 ```md
 <div v-motion :initial="{ opacity: 0 }" :enter="{ opacity: 1 }">
-  <div>항목 1</div>
-  <div>항목 2</div>
-  <div>항목 3</div>
+  <div>Item 1</div>
+  <div>Item 2</div>
+  <div>Item 3</div>
 </div>
 ```
 
 ---
 
-## 디버깅 팁
+## Debugging tips
 
-### 클릭 카운트 확인
+### Check the click count
 
-개발자 도구에서 현재 클릭 상태 확인:
+Check the current click state in devtools:
 
 ```js
-// 브라우저 콘솔
+// browser console
 $slidev.nav.clicks
 ```
 
-### 애니메이션 속도 조절
+### Adjust animation speed
 
-CSS로 전역 애니메이션 속도 조절:
+Adjust global animation speed with CSS:
 
 ```css
 <style>
@@ -951,11 +951,11 @@ CSS로 전역 애니메이션 속도 조절:
 </style>
 ```
 
-### 애니메이션 비활성화 (테스트용)
+### Disable animation (for testing)
 
 ```md
 ---
-clicks: 0  # 모든 클릭 애니메이션 건너뛰기
+clicks: 0  # skip all click animations
 ---
 ```
 

@@ -17,115 +17,115 @@ When this skill is loaded through Hermes as `anti-slop-design:anti-slop-design`,
 
 Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("anti-slop-design:anti-slop-design")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
 
-웹/SaaS 랜딩, 발표 덱(PPT), 대시보드/admin UI, 마케팅·UI 카피를 만들거나 감사·개선할 때 "AI가 만든 티(slop)"를 **생성 전에 차단**하고 **생성 후에 감사**하는 enterprise anti-slop guard.
+An enterprise anti-slop guard for building, auditing, or improving web/SaaS landings, presentation decks (PPT), dashboards/admin UI, and marketing/UI copy — it **blocks the AI-generated look (slop) before generation** and **audits it after**.
 
-**핵심 명제:** slop = 브리프와 무관하게 나오는 기본값(**default-not-choice**). 모든 판정은 "이건 *이* 브리프를 위한 선택인가, *아무* 브리프에나 나올 선택인가"로 환원된다. 색·폰트·레이아웃이 "예쁜가"가 아니라 "선택인가"를 본다.
+**Core proposition:** slop = the default that shows up regardless of the brief (**default-not-choice**). Every verdict reduces to "is this a choice for *this* brief, or a choice that would show up for *any* brief?" It asks not whether the color/font/layout is "pretty" but whether it is "a choice".
 
-## 언제 쓰나
+## When to use
 
-- 위 4개 artifact를 **새로 만들 때**(생성 전 Phase A + 생성 후 Phase B 게이트).
-- 기존 산출물을 **감사/개선**할 때("이 랜딩 AI 티 나는지 봐줘", "덱 slop 잡아줘").
-- 카피의 AI 티를 다룰 때 — 영문은 자체 탐지·스코어링, **한국어 재작성은 humanize-korean에 위임**.
+- When **newly creating** the four artifacts above (a pre-generation Phase A gate + a post-generation Phase B gate).
+- When **auditing/improving** an existing artifact ("check whether this landing looks AI-generated", "catch the slop in this deck").
+- When dealing with AI-tells in copy — English is detected/scored here, but **Korean rewriting is delegated to humanize-korean**.
 
-## 안 하는 것 (scope)
+## What it does not do (scope)
 
-- 디자인 "생성기"가 아니다. 방향·구조·게이트를 제공하고, 실제 구현은 호출자(또는 frontend-design, ppt-master, taste-skill 등)가 한다.
-- 실행형 detection 엔진/편집 차단 hook 없음 — 리포트·권고만 한다.
-- 덱 빌드 실행(md->SVG->pptx)은 기존 도구(ppt-master/codex-image)가 한다. 단 **생성 일관성·납품 전 검증 방법론**(per-slide 병렬 + BUILDKIT, 렌더 검증 함정)은 anti-slop 소관으로 포함 — `references/slop-taxonomy.md` §3 PPT lane.
-- 브랜드 색·폰트를 **기억으로 추측하지 않는다**. 자료 있으면 읽고, 없으면 `references/house-style.md` 기본값, 그래도 없으면 placeholder로 두고 사용자에게 묻는다.
+- It is not a design "generator". It provides direction, structure, and gates; the actual implementation is done by the caller (or frontend-design, ppt-master, a taste-skill, etc.).
+- No executable detection engine / edit-blocking hook — it only reports and recommends.
+- Deck build execution (md->SVG->pptx) is done by the existing tools (ppt-master/codex-image). But the **generation-consistency and pre-delivery verification methodology** (per-slide parallelism + BUILDKIT, render-verification pitfalls) is anti-slop's domain — see `references/slop-taxonomy.md` §3 PPT lane.
+- It does **not guess brand colors/fonts from memory**. If materials exist, read them; if not, use the `references/house-style.md` defaults; if still none, leave a placeholder and ask the user.
 
-## 흐름 (clarify -> context -> plan -> audit(A) -> run -> audit(B) -> revise)
+## Flow (clarify -> context -> plan -> audit(A) -> run -> audit(B) -> revise)
 
 ### 1. Clarify
-artifact 종류(web / ppt / dashboard / copy), 청중, 브랜드, 결정맥락을 식별. 모호하면 `AskUserQuestion` 및 'interview skill'을 통해 좁힌다. 자동 가정 금지.
+Identify the artifact type (web / ppt / dashboard / copy), audience, brand, and decision context. If ambiguous, narrow it via `AskUserQuestion` and the 'interview skill'. No automatic assumptions.
 
 ### 2. Context
-- 해당 lane 규칙(`references/slop-taxonomy.md`의 lane 섹션) + `references/house-style.md` + `references/slop-taxonomy.md`의 VISUAL/STRUCTURAL을 로드.
-- 카피가 범위면 `references/copy-rules.md`도 로드.
-- 브랜드 자료(logo/palette/스크린샷) 있으면 읽어 brand-spec을 잡고, 없으면 house-style 기본값. **색을 지어내지 않는다.**
+- Load the relevant lane rules (the lane sections of `references/slop-taxonomy.md`) + `references/house-style.md` + the VISUAL/STRUCTURAL sections of `references/slop-taxonomy.md`.
+- If copy is in scope, load `references/copy-rules.md` too.
+- If brand materials exist (logo/palette/screenshots), read them to fix the brand-spec; otherwise use the house-style defaults. **Do not invent colors.**
 
 ### 3. Plan
-- "clean / modern / professional" 같은 **모호한 방향 금지**. 구체적 방향 1개를 고른다(예: enterprise editorial / technical minimal / research-lab calm / operator dashboard).
-- 정보 위계(primary/secondary/tertiary)를 먼저 정의.
-- **시각 산출물은 방향을 2~3개 제안하고 사용자가 택1**(show-don't-tell). 한 안만 밀지 않는다.
+- No **vague direction** like "clean / modern / professional". Pick one concrete direction (e.g. enterprise editorial / technical minimal / research-lab calm / operator dashboard).
+- Define the information hierarchy (primary/secondary/tertiary) first.
+- **For visual artifacts, propose 2-3 directions and let the user pick one** (show-don't-tell). Do not push a single option.
 
-### 4. Audit gate — Phase A (생성 전)
-Plan을 6축으로 채점해 emit 전에 통과시킨다(상세 → 아래 "Audit gate (2단계)"의 Phase A).
+### 4. Audit gate — Phase A (pre-generation)
+Score the plan on 6 axes and pass it before emit (details → Phase A under "Audit gate (2 phases)" below).
 
 ### 5. Run
-택1 방향 + lane 규칙 + house-style 기본값으로 산출(또는 호출자에게 전달할 spec 작성). 모든 ban에는 **escape hatch**: 브리프의 명시 요구가 항상 이긴다(브랜드가 보라색이면 보라 허용, 청중이 어린이면 emoji 허용 등). 예외를 쓰면 그 줄에 이유를 명시.
+Produce the artifact (or write the spec to hand to the caller) using the chosen direction + lane rules + house-style defaults. Every ban has an **escape hatch**: an explicit requirement in the brief always wins (if the brand is purple, purple is allowed; if the audience is children, emoji are allowed, etc.). When you use an exception, state the reason on that line.
 
-### 6. Audit gate — Phase B (납품 전)
-아래 12항목 binary 체크리스트(필수, 상세 → 아래 "Audit gate (2단계)"의 Phase B). 카피 포함 시 영문은 `references/copy-rules.md`로 탐지·스코어링하고, **한국어 산문 재작성은 `humanize-korean:humanize-korean`(fast 모드)로 핸드오프** 후 `final.md` 본문만 회수한다.
+### 6. Audit gate — Phase B (pre-delivery)
+The 12-item binary checklist below (required, details → Phase B under "Audit gate (2 phases)"). When copy is included, English is detected/scored via `references/copy-rules.md`, and **Korean prose rewriting is handed off to `humanize-korean:humanize-korean` (fast mode)**, recovering only the body of `final.md`.
 
 ### 7. Revise
-게이트에 걸린 항목을 고친 뒤 최종화. 출력은 항상 다음을 포함:
-1. 사용한 design direction (구체 명칭)
-2. 정보 위계
-3. 적용한 anti-slop 결정 (무엇을 왜 피했나)
-4. 산출물(또는 구현 spec)
-5. 남은 리스크 / trade-off
-6. 게이트 결과 — Phase A 6축 점수(최저 축 포함)와 Phase B 12항목 중 걸렸던 항목·수정 내용(모두 no였으면 그대로 명시)
+Fix the items that failed the gate, then finalize. The output always includes:
+1. the design direction used (concrete name)
+2. the information hierarchy
+3. the anti-slop decisions applied (what was avoided and why)
+4. the artifact (or implementation spec)
+5. remaining risks / trade-offs
+6. gate results — the Phase A 6-axis scores (including the lowest axis) and, of the Phase B 12 items, which failed and how they were fixed (if all were "no", state so)
 
-## Audit gate (2단계)
+## Audit gate (2 phases)
 
-Phase A = 흐름 4번(Plan 직후, Run 이전) · Phase B = 흐름 6번(Run 이후, 납품 전).
+Phase A = flow step 4 (right after Plan, before Run) · Phase B = flow step 6 (after Run, before delivery).
 
-### Phase A — 생성 전 self-critique (도구 불필요, 최고 레버리지)
+### Phase A — pre-generation self-critique (no tools needed, highest leverage)
 
-**self-similarity probe:** "비슷한 브리프를 머릿속으로 처리했을 때 나올 선택과 같은가? 같다면 그건 *이* 브리프를 위한 선택이 아니다 — 교체하고 무엇을 왜 바꿨는지 적는다."
+**self-similarity probe:** "Is this the same choice I would make processing a similar brief in my head? If so, it is not a choice for *this* brief — replace it and note what changed and why."
 
-이어서 plan을 6축 1~5점으로 채점. **한 축이라도 3 미만이면 emit 전에 1회 수정:**
-1. **Philosophy** — "왜"/관점이 있나, 아니면 그냥 레이아웃인가?
-2. **Hierarchy** — 2초 안에 primary/secondary/tertiary가 읽히나?
-3. **Specificity** — 이 브리프처럼 보이나, 아무-페이지처럼 보이나?
-4. **Restraint** — 모든 요소가 제 값을 하나? (Chanel "악세서리 하나 빼기")
-5. **Variety** — 직전 산출물과 구조적으로 다른가? (색만 바꾼 건 불인정)
-6. **Honesty** — 지어낸 metric/testimonial/logo가 0인가?
+Then score the plan on 6 axes, 1-5 points each. **If any axis is below 3, revise once before emit:**
+1. **Philosophy** — is there a "why"/point of view, or is it just a layout?
+2. **Hierarchy** — is primary/secondary/tertiary readable within 2 seconds?
+3. **Specificity** — does it look like this brief, or like any-page?
+4. **Restraint** — does every element earn its place? (Chanel's "take one accessory off")
+5. **Variety** — is it structurally different from the last artifact? (changing only the color does not count)
+6. **Honesty** — are invented metrics/testimonials/logos at 0?
 
-루프 종료 휴리스틱: **"2회 수정은 정상, 3회면 디자인이 아니라 브리프가 틀린 것."** 3회째면 멈추고 브리프를 다시 묻는다.
+Loop-termination heuristic: **"2 revisions is normal; at 3, it is the brief that is wrong, not the design."** On the third, stop and re-ask the brief.
 
-### Phase B — 납품 전 binary 체크리스트
+### Phase B — pre-delivery binary checklist
 
-12항목, **모든 답이 "no"여야 통과**. 하나라도 "yes" = 고친다(납품 금지). 각 항목은 detector + fix 쌍.
+12 items; **all answers must be "no" to pass**. Any "yes" = fix it (delivery blocked). Each item is a detector + fix pair.
 
-| # | tell (답이 "no"여야 함) | fix |
+| # | tell (answer must be "no") | fix |
 |---|---|---|
-| 1 | purple/rainbow/mesh gradient, 또는 gradient text? | flat committed accent, `bg-clip:text` 금지 |
-| 2 | 단일 과용 font(Inter/Roboto/Geist/Space Grotesk)/one-font 페이지, 또는 italic serif/display 헤더(h1-h6/hero/stat — hallmark "top AI tell")? | display+body 의도적 pairing, 헤더는 roman weight |
-| 3 | side-stripe card / card-in-card / icon-tile-above-heading 3-col grid / glassmorphism-as-default·목적없는 shadow? | bg·weight 대비, stripe 제거, 카드 변주, shadow는 elevation 의미 있을 때만 |
-| 4 | cream-default / `#0D1117`-neon / 순수 `#000`·`#fff` base? | anchor hue로 tint한 committed palette |
-| 5 | full-viewport centered hero / 전부 centered? | centered 요소 <=2, 비대칭 도입 |
-| 6 | 장식용 `01/02/03` 번호 / 모든 섹션에 eyebrow chip? | 실제 sequence일 때만, 내용을 encode |
-| 7 | generic Hero->3 features->testimonials->CTA->footer 골격? | 브리프 특정 macrostructure |
-| 8 | 지어낸 metric / 가짜 testimonial / placeholder명(Acme/Jane Doe), 또는 hero가 big-number+small-label+보조stat 템플릿(실수치라도)? | 실제 수치+실제 narrative, 라벨된 placeholder, 또는 질문 |
-| 9 | emoji as icon / icon library 혼용? | 하나의 real icon set |
-| 10 | 손그림 figurative SVG / 재그린 browser·phone·terminal chrome? | 실제 screenshot 또는 회색 placeholder |
-| 11 | over-animation / `transition-all` / 균일 `hover:scale` / `prefers-reduced-motion` 없음? | 하나의 orchestrated moment + reduced-motion |
-| 12 | copy: buzzword / "Not X, it's Y" 대비 / throat-clearing / 지어낸 specifics? | 직접 진술 후 한국어는 humanize-korean로 |
+| 1 | purple/rainbow/mesh gradient, or gradient text? | flat committed accent, no `bg-clip:text` |
+| 2 | a single overused font (Inter/Roboto/Geist/Space Grotesk) / one-font page, or an italic serif/display header (h1-h6/hero/stat — the hallmark "top AI tell")? | deliberate display+body pairing, headers in roman weight |
+| 3 | side-stripe card / card-in-card / icon-tile-above-heading 3-col grid / glassmorphism-as-default·purposeless shadow? | bg·weight contrast, remove the stripe, vary the cards, shadow only when elevation has meaning |
+| 4 | cream-default / `#0D1117`-neon / pure `#000`·`#fff` base? | a committed palette tinted with an anchor hue |
+| 5 | full-viewport centered hero / everything centered? | centered elements <=2, introduce asymmetry |
+| 6 | decorative `01/02/03` numbers / an eyebrow chip on every section? | only when it is a real sequence, encoding content |
+| 7 | generic Hero->3 features->testimonials->CTA->footer skeleton? | a brief-specific macrostructure |
+| 8 | invented metrics / fake testimonials / placeholder names (Acme/Jane Doe), or a hero that is a big-number+small-label+supporting-stat template (even with real numbers)? | real numbers + real narrative, labeled placeholders, or a question |
+| 9 | emoji as icons / mixed icon libraries? | one real icon set |
+| 10 | hand-drawn figurative SVG / redrawn browser·phone·terminal chrome? | a real screenshot or a gray placeholder |
+| 11 | over-animation / `transition-all` / uniform `hover:scale` / no `prefers-reduced-motion`? | one orchestrated moment + reduced-motion |
+| 12 | copy: buzzwords / "Not X, it's Y" contrast / throat-clearing / invented specifics? | direct statements, then hand Korean to humanize-korean |
 
-**numeric floor sweep** (자동검증 가능) — 세부 8항목(contrast·본문 폰트·type-scale·line-length·line-height·색 수·touch target·accent footprint)과 정확한 수치는 `references/slop-taxonomy.md` §4 Numeric floor sweep 표에서 확인한다(아래 "reference 로딩 가이드"의 중복 금지 정책과 동일하게 본문엔 요약만 둔다).
+**numeric floor sweep** (auto-verifiable) — the 8 detail items (contrast·body font·type-scale·line-length·line-height·color count·touch target·accent footprint) with exact numbers are in the `references/slop-taxonomy.md` §4 Numeric floor sweep table (keeping only a summary in the body, per the no-duplication policy in "reference loading guide" below).
 
 ### gate mechanics
-- Phase A 주관 판단을 Phase B 체크리스트보다 **먼저** 형성한다(체크리스트가 비판을 anchoring하지 않도록).
-- 산출물에 self-describing 스탬프(`<!-- anti-slop: A-pass · contrast ok · 1-12 no -->`)를 **반드시 남긴다** — Phase A/B가 실제로 실행됐다는 유일한 사후 증거이므로 생략 금지.
-- 모든 ban은 escape hatch 보유 — "브리프의 명시 요구가 항상 이긴다". 예외는 인라인으로 사유 표기.
+- Form the Phase A subjective judgment **before** the Phase B checklist (so the checklist does not anchor the critique).
+- **Always** leave a self-describing stamp on the artifact (`<!-- anti-slop: A-pass · contrast ok · 1-12 no -->`) — it is the only after-the-fact evidence that Phase A/B actually ran, so never omit it.
+- Every ban has an escape hatch — "an explicit requirement in the brief always wins". Note exceptions inline with a reason.
 
-## reference 로딩 가이드
+## reference loading guide
 
-| 상황 | 로드 |
+| Situation | Load |
 |---|---|
-| 모든 시각 작업 | `references/slop-taxonomy.md` (VISUAL + STRUCTURAL) |
-| lane별 규칙 | `references/slop-taxonomy.md`의 web / ppt / dashboard 섹션 |
-| 카피 포함 | `references/copy-rules.md` (+ 한국어는 humanize-korean 핸드오프) |
-| 기본 제안값 | `references/house-style.md` |
+| all visual work | `references/slop-taxonomy.md` (VISUAL + STRUCTURAL) |
+| per-lane rules | the web / ppt / dashboard sections of `references/slop-taxonomy.md` |
+| copy included | `references/copy-rules.md` (+ hand Korean to humanize-korean) |
+| default suggestions | `references/house-style.md` |
 
-자세한 detector 목록·수치·예시는 본문에 중복하지 말고 reference에서 progressive disclosure로 가져온다.
+Do not duplicate the detailed detector lists·numbers·examples in the body; pull them from the references via progressive disclosure.
 
-## humanize-korean 핸드오프 (카피)
+## humanize-korean handoff (copy)
 
-- 경계: anti-slop-design = 시각/구조 + **영문 카피 탐지·스코어링** 소유. humanize-korean = **한국어 산문 재작성** 소유.
-- 호출: 한국어 카피 재작성이 필요하면 `humanize-korean:humanize-korean`을 호출(기본 fast 모드, >=8000자 또는 정밀 필요 시 strict). 출력 `final.md`의 본문만 회수(HTML 주석 메타 제외).
-- register: 산출물(특히 덱)의 발표 맥락(강연/학술/피치)에 톤앤매너를 맞춰 humanize한다 — 학술/전문가 청중이면 정착 기술용어를 유지(첫 등장 1회 한글 병기)하고 구어체로 평탄화하지 않는다(`copy-rules.md` §1).
-- fallback (필수): `humanize-korean`은 이 marketplace에 번들되지 않은 **외부 의존**이다. 미설치 환경(또는 Codex)에서는 호출이 없어도 lane이 중단되지 않게 graceful degrade — `copy-rules.md`의 한국어 카피 원칙으로 **직접 수동 재작성**하고, humanize-korean이 있으면 그쪽을 우선한다. 의존을 hard-require 하지 않는다.
-- 금지: stop-slop류 무딘 절대금지(부사 전면금지, em-dash 전면금지, 3항목 리스트 금지)를 한국어로 복제하지 않는다 — 전역 가이드·humanize-korean의 한국어 친화 완화 스탠스를 따른다.
+- Boundary: anti-slop-design owns visual/structural + **English copy detection·scoring**. humanize-korean owns **Korean prose rewriting**.
+- Call: when Korean copy rewriting is needed, call `humanize-korean:humanize-korean` (fast mode by default, strict when >=8000 chars or precision is needed). Recover only the body of the output `final.md` (exclude the HTML-comment metadata).
+- register: humanize matched to the artifact's presentation context (lecture/academic/pitch) in tone and manner — for an academic/expert audience, keep established technical terms (Korean gloss once on first appearance) and do not flatten to colloquial style (`copy-rules.md` §1).
+- fallback (required): `humanize-korean` is an **external dependency** not bundled in this marketplace. In an environment where it is not installed (or under Codex), graceful-degrade so the lane does not stop without the call — **rewrite manually and directly** using the Korean-copy principles in `copy-rules.md`, preferring humanize-korean when present. Do not hard-require the dependency.
+- prohibited: do not replicate stop-slop-style blunt absolute bans (a blanket ban on adverbs, a blanket ban on em-dashes, a ban on 3-item lists) in Korean — follow the global guide and humanize-korean's Korean-friendly relaxation stance.

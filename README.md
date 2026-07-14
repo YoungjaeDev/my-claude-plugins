@@ -727,6 +727,36 @@ node scripts/install-skills.mjs
 
 플러그인 그룹 단위로 skill 을 고른 뒤 타겟(`hermes-agent` / `codex`)·scope(global `~/` / project `./`)·Hermes profile 을 선택하면 `npx skills add` 로 설치합니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes profile 은 `HERMES_HOME` env 로 타겟팅합니다.
 
+### CI 가드가 지키는 것 (curation / security)
+
+shared-source 배선은 5개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 다른 도구체인에 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
+
+- `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
+- `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
+- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
+- `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
+- `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
+
+drift·길이·shape 위반은 **차단**(exit 1)이고, prose 경고는 측정치일 뿐 커밋을 막지 않습니다. 어느 가드도 소스를 자동 수정하지 않습니다 — 위반을 보고할 뿐이니, 로컬에서 generator 를 재실행해 파생물을 맞춘 뒤 다시 커밋하세요.
+
+### 머신 로컬 운영 갱신 (PR 밖 오퍼레이터 체크리스트)
+
+Codex 의 UserPromptSubmit 훅과 Hermes 스킬은 이제 **번들 디스크립터/어댑터**로 배포되므로 marketplace 업데이트가 정본입니다. 다만 예전에 손으로 설치한 복사본(수동 `~/.codex/hooks/prompt_inject.sh`, 스킬 단위로 깐 `~/.agents/skills/<...>`)을 쓰던 머신은 그 복사본이 stale 해질 수 있습니다. 아래는 리포지토리 상태를 바꾸지 않는 **머신 로컬 작업**이라 PR 에 포함되지 않으며, marketplace 업데이트 후 한 번 실행합니다:
+
+```bash
+# 1) marketplace 캐시 갱신 (위 "플러그인 업데이트" 절차)
+rm -rf ~/.claude/plugins/cache/my-claude-plugins/
+
+# 2) Codex: 번들 디스크립터로 재설치 (수동 ~/.codex/hooks.json 항목을 쓰던 경우 먼저 제거)
+codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
+codex plugin add core-config@my-claude-plugins   # 이후 /hooks 로 trust 재승인
+
+# 3) Hermes: 스킬 단위 설치본 갱신
+node scripts/install-skills.mjs                  # 또는 hermes plugins install ... --enable
+```
+
+번들 디스크립터/어댑터를 쓰는 신규 설치는 marketplace 업데이트만으로 최신이 됩니다 — 이 체크리스트는 레거시 수동 복사본을 쓰는 머신에만 필요합니다.
+
 ## 요구사항
 
 | 도구 | 용도 | 필수 |

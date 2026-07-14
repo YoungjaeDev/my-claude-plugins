@@ -97,9 +97,27 @@ Assign sequential `artifact_id` slots in dispatch order: `01_github`, `02_hf`, `
 
 Academic signal triggers: "paper", "arxiv", "preprint", "DOI", "SOTA", "benchmark paper", "citation", "venue", "ICML", "NeurIPS", "ICLR", "CVPR", "ACL", "EMNLP", "RSA", "Crypto", "PubMed", "bioRxiv", and Korean equivalents (논문, 인용, 학회, 저널).
 
+### 3.5 Execution capability detection
+
+Before dispatch, pick the execution path **once**. This decides *how* the chosen axes run, not *which* — Phase 3 already fixed the axis set. All three paths consume the shared query shape and emit the shared result envelope in `references/axis-contracts.md`, so synthesis and the final report are identical regardless of path.
+
+| Path | Condition | How the axes run |
+|---|---|---|
+| **A — named plugin agents** | The qualified `code-scout:{axis}-scout` subagents are registered (Claude Code with code-scout installed). | Current named-agent fan-out — Phase 4A / 5A, **unchanged**. Default on Claude Code. |
+| **B — generic parallel subagents** | Named `code-scout:*-scout` are NOT registerable, but a generic subagent-delegation tool is available (Codex `Task`, Hermes `delegate_task`). | Phase 4B — one generic subagent per axis, each carrying its `axis-contracts.md` contract inline. |
+| **C — sequential in-agent** | Neither named agents nor generic delegation is available (delegation unsupported / disabled, or concurrency exhausted / repeated dispatch failure). | Phase 4C — run the axes one at a time in the current agent, following each `axis-contracts.md` contract. |
+
+Detection is a runtime fact: Claude Code registers `agents/*.md` as plugin subagents (Path A); Codex 0.135 and Hermes expose this skill but cannot register those agent files, so they land on Path B and degrade to Path C only when generic delegation is unavailable. **Never silently drop an axis because its named agent is missing — switch paths instead.** Tell the user which path you took in one sentence.
+
 ### 4. Fan-out dispatch
 
-For `deep` mode, dispatch all chosen scouts in a single message so they run concurrently. Always pass the **resolved `$WORKSPACE`** from step 2 — never the literal `/tmp/research/_workspace` string, otherwise parallel orchestrator runs collide:
+Run the axes Phase 3 selected via the path Phase 3.5 chose. Always pass the **resolved `$WORKSPACE`** from step 2 — never a literal fixed path, otherwise parallel orchestrator runs collide. Drop axis lines when fan-out narrows: skip `paper-scout` / `05_paper` in deep dispatches with no academic signal, and skip other axes accordingly. `web`/`web-scout` takes `mode` to choose exa-only (quick) vs exa + WebSearch in parallel (deep); the other axes ignore `mode` — their search surface is single-tool by design.
+
+**Wait for every dispatched axis to finish before step 5** on all paths — partial-result synthesis is a regression of the v1 quality bar. A stalled axis is expected to write a `{ "findings": [], "error": "..." }` artifact rather than hang.
+
+#### 4A. Named plugin agents (Path A — Claude Code, unchanged)
+
+For `deep` mode, dispatch all chosen scouts in a single message so they run concurrently:
 
 ```text
 Agent(subagent_type="code-scout:github-scout",
@@ -114,13 +132,36 @@ Agent(subagent_type="code-scout:paper-scout",
       prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=05_paper")
 ```
 
-Drop the `paper-scout` line in deep dispatches with no academic signal; drop other lines accordingly when fan-out narrows. `web-scout` uses `mode` to decide between exa-only (quick) and exa + WebSearch in parallel (deep). The other scouts ignore `mode` — their search surface is single-tool by design.
-
 For long-running runs (more than ~2 minutes expected per scout), prefer `Agent({...}, {run_in_background: true})` + `Monitor` so the orchestrator can stream progress.
 
-**Wait for every dispatched scout to complete before step 5** — partial-result synthesis is a regression of the v1 quality bar. If a scout times out, it is expected to write a `{ "findings": [], "error": "..." }` artifact rather than hang.
+#### 4B. Generic parallel subagents (Path B — Codex / Hermes)
+
+The named `code-scout:*-scout` agents do not exist here. Dispatch one **generic** subagent per chosen axis in a single message so they run concurrently. Each task must carry that axis's contract from `references/axis-contracts.md` inline — role, tool order (with documented MCP fallback), the shared query shape, the result-envelope schema, and the reliability rubric — because the generic worker lacks the agent-definition context Path A relies on:
+
+```text
+delegate_task(prompt="""
+  You are the GitHub research axis of code-scout. Contract (from axis-contracts.md):
+  - role: repos / code / awesome-lists / issues-PRs
+  - tools: date anchor -> gh search repos|code (2-3 variants) -> gh repo view --json ...
+  - query=<...>  workspace_dir=$WORKSPACE  artifact_id=01_github
+  - write ${workspace_dir}/01_github.json in the shared envelope; url REQUIRED,
+    reliability high|medium|low + evidence[]
+  - on gh rate-limit/auth error: findings:[] + error, never abort the run
+""")
+# ...one such task per chosen axis: 02_hf, 03_web (+mode=deep), 04_docs, 05_paper...
+```
+
+Pass the resolved `$WORKSPACE` and the same optional inputs Phase 3 selected (`mode=deep` for web, `sources=...` for paper). If a generic dispatch fails outright (delegation unsupported / concurrency exhausted), fall to Path C rather than dropping the axis.
+
+#### 4C. Sequential in-agent execution (Path C — no delegation)
+
+When no delegation channel is available, run each chosen axis yourself, one at a time, following its `axis-contracts.md` contract with your own tools (`gh`, `curl` / `uvx hf`, exa / WebSearch, Context7 / DeepWiki, paper-search MCPs). After each axis, write its `${workspace_dir}/${artifact_id}.json` in the shared envelope, then move on. A failed axis writes `findings:[] + error` and you continue — never abandon the remaining axes. This path is slower (no concurrency) but produces byte-identical artifacts, so synthesis is unchanged.
 
 ### 5. Synthesis dispatch
+
+Synthesis is runtime-independent — identical merge, dedup, trust ranking, conflict resolution, and report contract on every path. It is strictly read-only on the workspace (never calls exa / gh / HF, never rewrites a sibling artifact). See `references/synthesis-rules.md` for the merge / trust / conflict rules. **Do not skip synthesis just because the named agent is unavailable** — use the in-skill variant. Pick by capability:
+
+#### 5A. Named synthesis-scout (Path A)
 
 After every fan-out scout has written its artifact:
 
@@ -129,7 +170,9 @@ Agent(subagent_type="code-scout:synthesis-scout",
       prompt="workspace_dir=$WORKSPACE\nquery=<...>\nmode=<quick|deep>\nreport_path=$REPORT")
 ```
 
-Synthesis is strictly read-only on the workspace — it cannot call exa, gh, or HF tools. See `references/synthesis-rules.md` for the merge / trust / conflict rules synthesis-scout follows.
+#### 5B. In-skill synthesis (Paths B and C)
+
+`synthesis-scout` is not registerable under Codex / Hermes. Synthesize in the orchestrator instead: read every `${WORKSPACE}/*.json` in lexical order and apply `references/synthesis-rules.md` (dedup keys, trust rubric, conflict order, coverage / gap detection, recommended-picks) plus the report template in the `synthesis-scout` agent definition, writing `$REPORT`. Under Path B you may hand this to one generic subagent carrying `synthesis-rules.md` inline; the default is to do it directly. Same output either way.
 
 ### 6. Return
 
@@ -137,31 +180,51 @@ Surface the resolved `$REPORT` path and top-3 picks to the user. Do not paste th
 
 ## Quick mode shortcut
 
-For a single-axis query, still allocate the per-run `$WORKSPACE` (so the scout's contract is consistent and you can re-run synthesis later). Dispatch just the one scout with a single `artifact_id`, then either skip synthesis (read the one artifact yourself for an inline summary) or dispatch synthesis-scout for a one-axis report:
+For a single-axis query, still allocate the per-run `$WORKSPACE` (so the axis contract is consistent and you can re-run synthesis later). Dispatch just the one axis with a single `artifact_id` **via the Phase 3.5 path** (4A named agent / 4B generic subagent / 4C sequential), then either skip synthesis (read the one artifact yourself for an inline summary) or run synthesis (5A / 5B) for a one-axis report:
 
 ```text
 # Step 2 already set $WORKSPACE via mktemp.
+# Path A (Claude Code):
 Agent(subagent_type="code-scout:<single>-scout",
       prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=01_<axis>")
+# Path B (Codex / Hermes): a generic subagent carrying the axis's axis-contracts.md
+#   contract inline, writing the same 01_<axis>.json.
+# Path C: run the single axis in-agent.
 
 # Then either: orchestrator reads $WORKSPACE/01_<axis>.json directly and
-# emits a short Markdown summary (cheaper for trivial queries), OR:
-Agent(subagent_type="code-scout:synthesis-scout",
-      prompt="workspace_dir=$WORKSPACE\nquery=<...>\nmode=quick\nreport_path=$REPORT")
+# emits a short Markdown summary (cheaper for trivial queries), OR run synthesis:
+#   Path A: Agent(subagent_type="code-scout:synthesis-scout", ...)
+#   Path B/C: in-skill synthesis over $WORKSPACE/*.json per synthesis-rules.md.
 ```
 
-Do **not** ask the scout to "write findings to stdout" — every scout's contract is artifact-based; ad-hoc stdout-only mode is not supported.
+Do **not** ask the axis to "write findings to stdout" — every axis contract is artifact-based; ad-hoc stdout-only mode is not supported.
 
 ## Failure handling
 
-- Workspace empty after fan-out → synthesis-scout emits an "all axes failed" report; orchestrator surfaces it with `BLOCKED` status and asks user whether to retry with different axes.
-- exa MCP unavailable → web-scout falls back to WebSearch automatically; the orchestrator does not need to know.
-- One axis errors out → synthesis-scout proceeds with what it has and lists the missing axis in `## Gaps`.
+- Workspace empty after fan-out → synthesis (named or in-skill) emits an "all axes failed" report; orchestrator surfaces it with `BLOCKED` status and asks the user whether to retry with different axes.
+- exa MCP unavailable → the web axis falls back to WebSearch per its `axis-contracts.md` contract; the orchestrator does not need to know. Any axis whose MCP is missing follows its own documented fallback rather than aborting the run.
+- One axis errors out → synthesis proceeds with what it has and lists the missing axis in `## Gaps`. A partial axis failure never discards the axes that returned usable evidence.
+- Named `code-scout:*-scout` agents unavailable (Codex / Hermes) → switch to Path B / C (Phase 3.5); never drop an axis for a missing named agent.
+- `synthesis-scout` agent unavailable (Codex / Hermes) → in-skill synthesis (5B); never skip synthesis.
 
 ## Reference files
 
-- `references/agent-routing.md` — full routing matrix (should / should-NOT per scout, near-miss disambiguation vs `paper-search-tools`, `deepwiki:ask`, `github-dev:*`)
-- `references/synthesis-rules.md` — synthesis-scout's dedup keys, trust rubric, and conflict resolution order
+- `references/agent-routing.md` — full routing matrix (should / should-NOT per axis, near-miss disambiguation vs `paper-search-tools`, `deepwiki:ask`, `github-dev:*`)
+- `references/axis-contracts.md` — shared per-axis query shape + result envelope + tool order / fallback / reliability rubric; the SoT the named-agent, generic-agent, and sequential paths all consume
+- `references/synthesis-rules.md` — synthesis dedup keys, trust rubric, and conflict resolution order
+
+## Runtime tool names
+
+This skill dispatches through whatever delegation and file tools the host runtime exposes. Claude and Codex share tool names; Hermes maps as:
+
+| Claude / Codex | Hermes | Used here for |
+|---|---|---|
+| `Agent(subagent_type=...)` / `Task` | `delegate_task` | axis dispatch (4A / 4B) + named synthesis (5A) |
+| `Skill("...")` | `skill_view` | invoking `insane-search` (web axis tier-4 fetch) |
+| `Bash` | `terminal` | `date`, `mktemp`, `gh`, `curl`, `jq`, `find` |
+| `Read` | `read_file` | reading axis artifacts during in-skill synthesis (5B) |
+| `Write` | `write_file` | writing axis artifacts / `$REPORT` |
+| `AskUserQuestion` | `clarify` | confirming a `BLOCKED`-state retry |
 
 ## Examples
 

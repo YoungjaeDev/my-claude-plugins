@@ -25,6 +25,10 @@ jobs:
       # README.md / AGENTS.md plugin name-set + count strings must match the
       # marketplace registry — drift the version files and manifest --checks miss.
       - run: node scripts/check-doc-consistency.mjs
+      # Shared skill bodies (read verbatim by three runtimes) must not assume a single
+      # interactive-input tool: each AskUserQuestion skill is a mapped pilot or reviewed
+      # baseline debt. See scripts/check-skill-tool-portability.mjs.
+      - run: node scripts/check-skill-tool-portability.mjs --check
       # Import each generated Hermes adapter with a stub ctx and assert register_skill
       # fires — catches a generated-but-never-executed adapter regression (PyYAML is
       # preinstalled on ubuntu-latest). See scripts/mock-load-hermes.py.

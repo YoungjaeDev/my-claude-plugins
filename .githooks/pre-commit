@@ -10,6 +10,7 @@ repo_root="$(git rev-parse --show-toplevel)"
 node "$repo_root/scripts/sync-codex-manifests.mjs" --check
 node "$repo_root/scripts/sync-hermes-manifests.mjs" --check
 node "$repo_root/scripts/check-doc-consistency.mjs"
+node "$repo_root/scripts/check-skill-tool-portability.mjs" --check
 # Hermes adapter mock-load — same guard CI runs, so import/registration regressions
 # in generated __init__.py fail at commit time, not only in CI. Skip (not fail) when
 # python3 is absent locally; CI still enforces it.

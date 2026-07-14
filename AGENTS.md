@@ -171,6 +171,19 @@
 - `.llmwiki/` 를 per-agent 로 fork 하지 않는다.
 - **`AGENTS.md` 를 `CLAUDE.md` 로의 포인터로 축약하지 않는다.** Codex/Hermes 는 `@` 를 확장하지 않아 `@CLAUDE.md` 는 죽은 텍스트이고, "CLAUDE.md 를 먼저 읽어라" 식 산문 redirect 는 Codex GitHub cloud reviewer 에 닿지 않는다 (이 리뷰어는 `## Review guidelines` 섹션을 시스템 프롬프트에 직접 로드한다 — 임의 산문 redirect 는 따라가지 않고, `AGENTS.md` 가 명시적으로 참조하는 `code_review.md` 만 예외적으로 따라갈 수 있다[소프트 개런티, best-practices 문서]). 실패는 조용하다 — 에러 없이 지침만 사라진다. 이 저장소는 반대 방향을 택했다: `AGENTS.md` 가 SSOT 이고 `CLAUDE.md` 는 `@AGENTS.md` 한 줄을 import 한다 (`@import` 는 Claude 전용이라 `CLAUDE.md` 쪽에만 두면 되고, Codex/Hermes 는 `AGENTS.md` 를 직접 읽는다). 심볼릭 링크도 같은 효과를 내지만 Windows 체크아웃에서 `core.symlinks` 가 꺼져 있으면 `CLAUDE.md` 가 링크 대상 문자열 그대로 풀려 깨지므로, 포터블한 `@import` 를 택했다.
 
+## Cross-runtime interactive input policy
+
+사용자에게 되묻는 상호작용은 런타임마다 노출 도구가 다르다. 공유 스킬 본문(세 런타임이 verbatim 으로 읽음)은 특정 도구가 항상 존재한다고 가정하지 말고 **capability-aware** 게이트로 쓴다.
+
+| 런타임 | 상호작용 도구 |
+|---|---|
+| Claude Code | `AskUserQuestion` |
+| Codex | `request_user_input` (노출된 경우). 노출 안 되면, 틀린 가정의 비용이 큰 지점에서만 짧은 blocking 질문 하나를 던지고, 그 외에는 문서화된 안전한 기본값으로 진행한다 |
+| Hermes | `clarify` |
+
+- 새 스킬 본문이 `AskUserQuestion` 을 쓰면 파일럿의 "Cross-runtime interactive input" 블록(위 3런타임 매핑)을 같이 넣거나, 이관을 미룰 경우 `scripts/check-skill-tool-portability.mjs` 의 baseline 에 등록한다. `scripts/check-skill-tool-portability.mjs --check` 가 `.githooks/pre-commit` + `.github/workflows/validate-codex.yml` 에서 이를 강제한다 — 파일럿은 표준 매핑을, baseline 은 등록 사실을, 그 외 새 경로는 실패로 잡는다.
+- **Follow-up debt (#123):** 현재 파일럿은 `interview:interview-methodology` 와 `github-dev:decompose-issue` 2개뿐이다. 나머지 25개 스킬(baseline)은 아직 `AskUserQuestion` 을 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다 (27-skill 일괄 재작성은 하지 않는다). baseline 에서 파일럿으로 옮기며 점진 이관한다.
+
 ## 플러그인 변경 규칙
 
 - 플러그인 버전을 올릴 때는 `plugins/<name>/.claude-plugin/plugin.json`과 `.claude-plugin/marketplace.json`의 해당 항목을 같은 변경에 포함하세요.

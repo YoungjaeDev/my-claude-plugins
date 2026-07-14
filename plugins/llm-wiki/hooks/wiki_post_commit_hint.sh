@@ -2,9 +2,33 @@
 # PostToolUse hook (matcher: Bash) — soft-hint when a git commit/push touched files
 # the wiki should know about. Reads tool_input JSON from stdin.
 # Quiet unless we're confident the LLM should consider /llm-wiki:ingest-finding or /github-dev:post-merge.
+#
+# Shared by Claude Code and Codex CLI (via the bundled hooks/codex-hooks.json descriptor):
+#   - no arg  → plain stdout (Claude: stdout becomes additionalContext)
+#   - `codex` → {"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"…"}}
+#               (Codex reads context only from this envelope; plain stdout is ignored).
 
 set -u
 exec 2>/dev/null
+
+FMT="${1:-claude}"
+
+# Emit the hint (plain stdout for Claude, the Codex PostToolUse envelope for `codex`),
+# arm the rate-limit marker, then exit. Zero-dep JSON encoding via bash parameter
+# expansion, mirroring core-config's prompt_inject.sh. Byte-identical Claude output.
+emit() {
+  local msg="$1"
+  if [[ "$FMT" == "codex" ]]; then
+    local esc=${msg//\\/\\\\}
+    esc=${esc//\"/\\\"}
+    esc=${esc//$'\n'/\\n}
+    printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' "$esc"
+  else
+    printf '%s\n' "$msg"
+  fi
+  touch "$marker"  # arm the window only after deciding to emit (never on a suppressed run)
+  exit 0
+}
 
 # Read tool_input JSON from stdin
 input_json=$(cat 2>/dev/null || true)
@@ -75,10 +99,8 @@ fi
 if [[ "$event" == "merge" ]]; then
   # A PR merged. There is no local diff to threshold (remote op), so fire the
   # post-merge hint directly, rate-limited by the merge marker alone.
-  printf '[wiki-ingest-hint] a `gh pr merge` just ran — a PR merged.\n'
-  printf 'Consider /github-dev:post-merge (if the github-dev plugin is installed) — its mandatory wiki step scans the merged diff for ingest candidates. Without github-dev, run /llm-wiki:ingest-finding manually.\n'
-  touch "$marker"  # arm the window only after deciding to print (never on a suppressed run)
-  exit 0
+  emit '[wiki-ingest-hint] a `gh pr merge` just ran — a PR merged.
+Consider /github-dev:post-merge (if the github-dev plugin is installed) — its mandatory wiki step scans the merged diff for ingest candidates. Without github-dev, run /llm-wiki:ingest-finding manually.'
 fi
 
 # event == commit (git commit / git push): threshold on the last commit's diff.
@@ -95,7 +117,4 @@ if (( files_changed < 2 )) && (( lines_changed < 50 )); then
   exit 0
 fi
 
-printf '[wiki-ingest-hint] last commit touched %s file(s), ~%s line(s).\n' "$files_changed" "$lines_changed"
-printf 'Consider /llm-wiki:ingest-finding if the commit surfaced non-obvious lore (provider quirks, debugging stories, design rationale).\n'
-touch "$marker"  # arm the window only after threshold passed + output emitted (fixes touch-before-check)
-exit 0
+emit "$(printf '[wiki-ingest-hint] last commit touched %s file(s), ~%s line(s).\nConsider /llm-wiki:ingest-finding if the commit surfaced non-obvious lore (provider quirks, debugging stories, design rationale).' "$files_changed" "$lines_changed")"

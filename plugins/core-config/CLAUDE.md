@@ -32,30 +32,29 @@ bash prompt_inject.sh        # Claude: plain stdout → additionalContext
 bash prompt_inject.sh codex  # Codex:  {"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"..."}}
 ```
 
-The Claude plugin loader cannot write `~/.codex/`, so the Codex side is a manual one-time setup. Copy the script to a stable path (the plugin cache path is version-pinned and churns on every bump) and register a `UserPromptSubmit` hook:
-
-```bash
-mkdir -p ~/.codex/hooks
-# pick the newest cached version (glob may match several) and fail if none exist
-latest_hook="$(ls -1dt ~/.claude/plugins/cache/my-claude-plugins/core-config/*/hooks/prompt_inject.sh 2>/dev/null | head -n1)"
-[ -n "$latest_hook" ] || { echo "prompt_inject.sh not found in Claude plugin cache" >&2; exit 1; }
-cp "$latest_hook" ~/.codex/hooks/prompt_inject.sh
-chmod +x ~/.codex/hooks/prompt_inject.sh
-```
-
-Then add to `~/.codex/hooks.json` (create it if absent):
+Codex now supports **bundled plugin hooks**, so this ships natively — no hand-copied script and no manual `~/.codex/hooks.json`. The plugin carries a source-controlled descriptor at `hooks/codex-hooks.json`:
 
 ```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      { "hooks": [{ "type": "command", "command": "bash ~/.codex/hooks/prompt_inject.sh codex" }] }
-    ]
-  }
-}
+{ "hooks": { "UserPromptSubmit": [ { "hooks": [ { "type": "command", "command": "bash \"$PLUGIN_ROOT/hooks/prompt_inject.sh\" codex" } ] } ] } }
 ```
 
-Codex requires trusting new hooks: run `/hooks` in a Codex session and approve the entry. Re-copy the script after a `core-config` version bump if you want the latest block text (the `~/.codex/` copy does not auto-update).
+`scripts/sync-codex-manifests.mjs` wires that descriptor into the generated `.codex-plugin/plugin.json` top-level `hooks` (`"hooks": "./hooks/codex-hooks.json"`). `PLUGIN_ROOT` is the Codex-provided plugin-root env-var (`CLAUDE_PLUGIN_ROOT` is a compatibility alias); the path is quoted so a `PLUGIN_ROOT` containing spaces still resolves. Only the `UserPromptSubmit` prompt-inject hook is bundled for Codex — the Python auto-formatter (`auto-format-python.py`) and notification (`notify_osc.py`) hooks stay **Claude-only** (they assume Claude Write/Edit tool payloads and Stop/Notification events, which do not map onto Codex the same way).
+
+Install / trust / verify:
+
+```bash
+# install (Codex marketplace)
+codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
+codex plugin add core-config@my-claude-plugins
+
+# trust — Codex requires approving a plugin's hooks before they run:
+#   run /hooks in a Codex session and approve the core-config UserPromptSubmit entry
+
+# verify — the bundled descriptor emits the Codex envelope on every prompt
+bash "$PLUGIN_ROOT/hooks/prompt_inject.sh" codex   # -> {"hookSpecificOutput":{...}}
+```
+
+The bundled descriptor auto-updates with the plugin (no stale hand-copied script). The legacy manual `~/.codex/hooks.json` path still works if you prefer it, but the bundled descriptor is now the primary integration.
 
 ## Guidelines
 

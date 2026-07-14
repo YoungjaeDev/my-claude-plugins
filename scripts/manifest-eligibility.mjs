@@ -5,9 +5,10 @@
 // guard reads these same sets, so a stale copy would silently pass stale counts.
 
 // Plugins intentionally not bridged to Codex.
-//   core-config — Claude-only hooks / settings (no matching Codex hook surface)
 //   codex-image — the Claude->Codex bridge itself (syncing it to Codex is circular)
-export const CODEX_EXCLUDED = new Set(['core-config', 'codex-image']);
+// core-config was here but is now Codex-eligible: Codex plugins support bundled hooks
+// (hooks/codex-hooks.json), so its prompt_inject UserPromptSubmit hook ships natively.
+export const CODEX_EXCLUDED = new Set(['codex-image']);
 
 // Plugins that get generated Hermes adapters (plugin.yaml + __init__.py).
 export const HERMES_ELIGIBLE = new Set([

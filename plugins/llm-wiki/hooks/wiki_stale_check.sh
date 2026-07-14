@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # UserPromptSubmit hook — soft-hint when this repo's wiki has stale pages.
-# Quiet by default. Anything printed to stdout becomes additionalContext for the LLM.
-# Rate-limited to once per hour per workspace via /tmp marker.
+# Quiet by default. Rate-limited to once per hour per workspace via /tmp marker.
+#
+# Shared by Claude Code and Codex CLI (via the bundled hooks/codex-hooks.json descriptor):
+#   - no arg  → plain stdout (Claude: stdout becomes additionalContext)
+#   - `codex` → {"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}
+#               (Codex reads context only from this envelope; plain stdout is ignored).
 
 set -u
 exec 2>/dev/null  # discard stderr — hooks should never spam the user
+
+FMT="${1:-claude}"
 
 # --- canonical wiki-root resolver (llm-wiki v2) ---
 # Resolution order: .llmwiki/wiki (preferred) -> .claude/wiki (legacy) -> .codex/wiki (legacy fork)
@@ -53,10 +59,23 @@ done < <(find "${scan_dirs[@]}" -maxdepth 3 -type f -name '*.md' \
 n=${#stale[@]}
 (( n == 0 )) && exit 0
 
-# Cap output — show first 5
-printf '[wiki-stale-hint] %d wiki/insight page(s) exceed their volatility window (stable 180d / volatile 30d):\n' "$n"
-for s in "${stale[@]:0:5}"; do printf '  - %s\n' "$s"; done
-(( n > 5 )) && printf '  - ... and %d more\n' "$((n - 5))"
-printf 'Run /lint-wiki for a full report, or /query-wiki + bump last_verified after re-checking each page.\n'
+# Build the hint (cap the listing at the first 5 stale pages).
+out=$(
+  printf '[wiki-stale-hint] %d wiki/insight page(s) exceed their volatility window (stable 180d / volatile 30d):\n' "$n"
+  for s in "${stale[@]:0:5}"; do printf '  - %s\n' "$s"; done
+  (( n > 5 )) && printf '  - ... and %d more\n' "$((n - 5))"
+  printf 'Run /lint-wiki for a full report, or /query-wiki + bump last_verified after re-checking each page.'
+)
+
+# Emit plain (Claude: stdout -> additionalContext) or the Codex UserPromptSubmit
+# envelope (Codex ignores plain stdout). Zero-dep JSON encoding via parameter expansion.
+if [[ "$FMT" == "codex" ]]; then
+  esc=${out//\\/\\\\}
+  esc=${esc//\"/\\\"}
+  esc=${esc//$'\n'/\\n}
+  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"%s"}}\n' "$esc"
+else
+  printf '%s\n' "$out"
+fi
 
 exit 0

@@ -12,7 +12,6 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
-  - Task
 ---
 
 # TCREI Prompt Transformer
@@ -26,7 +25,6 @@ When this skill is loaded through Hermes as `tcrei-prompt:tcrei-prompt`, map Cla
 | Read | read_file |
 | Write | write_file |
 | AskUserQuestion | clarify |
-| Task | delegate_task |
 
 Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("tcrei-prompt:tcrei-prompt")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
 
@@ -289,36 +287,32 @@ Use these refinement prompts if the output needs improvement:
 
 ## Phase 3: Self-Verification (OMC Iterate)
 
-Verify the generated prompt using the OMC verifier agent.
+Verify the generated prompt **inline** — the same model runs the OMC checklist directly, in this session. Do NOT dispatch this to a subagent. Three reasons the previous `Task(subagent_type="claude", model="haiku")` form was invalid and is removed:
 
-### Verification Process
+1. **No dispatch target** — this plugin ships no `agents/` directory, so there is no verifier agent named `claude` (or otherwise) to receive the Task.
+2. **Not portable** — of the three runtimes this skill runs on, only Claude Code has a subagent surface; Codex 0.135 and Hermes have none (`.claude/rules/dual-integration.md` surface map: "not supported by Codex 0.135 — Claude-only / not supported by Hermes — skills only"). A Task dispatch there **silently no-ops**, so Phase 3 would never run on 2 of 3 runtimes.
+3. **Not a valid Task form** — the standard `Task` tool takes no per-call `model=` argument (a subagent's model comes from its agent-definition frontmatter) and has no built-in `claude` subagent_type (the catch-all is `general-purpose`).
 
-Delegate to verifier via Task tool:
+The check is a 6-item pass/fail on a short prompt — there is no context-isolation win from a subagent anyway. Keeping it inline makes Phase 3 run identically on all three runtimes.
 
-```
-Task(
-  subagent_type="claude",
-  model="haiku",
-  prompt="Verify this TCREI prompt for quality:
-    1. Task: Has action verb + output format + constraints?
-    2. Context: Has 2+ of audience / purpose / source material?
-    3. References: Has 1+ of tone / format / sample?
-    4. Evaluate: Has 2+ of must-have / must-not / verify?
-    5. Iterate: Has 2+ refinement prompts with specific numbers/rules/actions?
-    6. Is the entire prompt copy-paste ready (no meta-commentary)?
+### OMC Verification Checklist
 
-    Pass threshold: 5 of 6 criteria met
-    On fail: List deficient items with specific improvement suggestions
+Score the generated prompt against these 6 criteria (pass threshold: **5 of 6**):
 
-    [Full generated prompt here]"
-)
-```
+1. **Task**: has an action verb + output format + constraints?
+2. **Context**: has 2+ of audience / purpose / source material?
+3. **References**: has 1+ of tone / format / sample?
+4. **Evaluate**: has 2+ of must-have / must-not / verify?
+5. **Iterate**: has 2+ refinement prompts with specific numbers / rules / actions?
+6. **Copy-paste ready**: the entire prompt body has no meta-commentary or instructional text?
+
+For each failing criterion, name the deficient item and a specific improvement.
 
 ### On Verification Failure
 
-1. Auto-fix the deficient items identified by the verifier
-2. Re-verify (max 2 retry rounds)
-3. If still below threshold after 2 rounds, output current state and notify user of gaps
+1. Auto-fix the deficient items identified above.
+2. Re-verify (max 2 retry rounds).
+3. If still below threshold after 2 rounds, output the current state and notify the user of the remaining gaps.
 
 ## Phase 4: Final Output and Save
 
@@ -356,6 +350,8 @@ Common gaps by domain with default remediation:
 | **Education** | References (difficulty samples), Iterate (learning progression) | Separate beginner/intermediate, add step-by-step deepening |
 | **Documents** | Context (reader level), References (existing templates) | Distinguish exec/practitioner, reference company templates |
 | **Translation** | References (glossary), Evaluate (consistency) | Unify technical terms, verify tone consistency |
+
+Full before/after worked examples for each of these five domains — Development, Marketing, Documents, Education, Translation — with complete Task/Context/References/Evaluate/Iterate transformations, live in `references/tcrei-patterns.md`. Load it when you need a concrete pattern to model the generated prompt on.
 
 ## Interview Anti-Patterns
 

@@ -50,4 +50,4 @@ Load the skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes
 skill_view("tcrei-prompt:tcrei-prompt")
 ```
 
-The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (`Task`, `Write`, `AskUserQuestion`, `Read`) to Hermes tools (`delegate_task`, `write_file`, `clarify`, `read_file`).
+The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (`Write`, `AskUserQuestion`, `Read`) to Hermes tools (`write_file`, `clarify`, `read_file`). Phase 3 self-verification runs inline (no `Task`/subagent) so it is portable across all three runtimes.

@@ -138,6 +138,38 @@ Standard section order for all CV notebooks:
 4. **Inject insights**: Add Korean insights based on level density
 5. **Generate notebook**: Use NotebookEdit tool to create .ipynb file
 6. **Validate structure**: Ensure all required sections present
+7. **End gate**: validate the generated notebook actually parses (see below) — never hand back a notebook only asserted to be correct
+
+## End Gate (MANDATORY): validate the generated notebook
+
+`NotebookEdit` builds cells but never runs them, so a syntax slip (an unclosed paren, a missing colon) ships silently and the user only hits it mid-run. Before declaring the notebook done, validate it. Two paths — take the strongest one the environment allows:
+
+1. **Execute setup + first-load cells (stronger, env-permitting)** — if `jupyter` is installed and the target env has the notebook's deps, execute the setup and first data-load cells: `jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=120 <notebook>` (slice a temp copy down to the GPU-check / Setup / first Data cells to avoid kicking off a full training run). This catches import and runtime errors py_compile cannot.
+2. **py_compile the code cells (deterministic fallback, always runs)** — no packages or GPU needed. Extract each code cell, strip IPython magics / shell escapes (`!…`, `%…`), and `py_compile` it in order. On the first failure, report **"unverified beyond cell N"** — cells 1..N-1 are syntactically sound, N is where it breaks.
+
+Under Hermes, run this block via `terminal` (`Bash`→`terminal`); it reads the `.ipynb` JSON directly, no `NotebookEdit` needed.
+
+```bash
+NB="notebook.ipynb"           # the generated notebook
+tmp=$(mktemp -d)
+jq -r '.cells[] | select(.cell_type=="code")
+       | (.source | if type=="array" then join("") else . end) | @base64' "$NB" > "$tmp/cells.b64"
+n=0; status=pass
+while IFS= read -r b64; do
+  [ -n "$b64" ] || continue
+  n=$((n+1))
+  printf '%s' "$b64" | base64 -d \
+    | sed 's/^[[:space:]]*[!%].*/pass  # magic stripped/' > "$tmp/cell_$n.py"
+  if ! python3 -m py_compile "$tmp/cell_$n.py" 2>"$tmp/err"; then
+    echo "py_compile FAIL at code cell $n — unverified beyond cell $n:"; sed 's/^/    /' "$tmp/err"
+    status=fail; break
+  fi
+done < "$tmp/cells.b64"
+[ "$status" = pass ] && echo "py_compile: all $n code cell(s) syntactically valid"
+rm -rf "$tmp"
+```
+
+Fix the reported cell and re-run until it passes. If only the stronger nbconvert path failed on a missing dependency, say so explicitly — "unverified beyond cell N, env lacks `<pkg>`" — rather than claiming the notebook runs.
 
 ## NotebookEdit Integration
 

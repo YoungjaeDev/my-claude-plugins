@@ -59,7 +59,15 @@ description: 로컬 폴더 → Google Drive 단방향 제안형 동기화 — gw
    - **Drive 고아**: Drive에만 있음 → **삭제 제안만** ("로컬에 없는 파일 N건 — 삭제는 직접 해주세요" + 목록). 자동 삭제 절대 금지.
 4. **업데이트 대상 ID 재확인(MANDATORY)**: 각 '변경' 파일에 대해 2단계 스캔 결과에서 **승인된 폴더 안·trashed=false·해당 로컬 파일명과 정확히 1건 매칭**되는 Drive item 하나를 확정한다. 캐시 ID가 이 결과와 어긋나거나(폴더 밖·trashed·이름 불일치) 동명 파일이 여러 개면 **자동 진행을 멈추고 AskUserQuestion으로 대상 ID를 사용자에게 고르게 한다**. 확정된 ID로만 캐시를 갱신.
 5. **승인**: 리포트를 보여주고 진행 여부 확인(신규/변경 건수가 0이면 "동기화 최신" 보고 후 종료).
-6. **실행**:
+5b. **승인 매니페스트 고정 (MANDATORY)**: 5의 승인 직후, 실제로 승인된 항목만을 **동결된 매니페스트**로 적는다. 각 항목은 `{local, action(new|update), target, size, mtime}` — `target`은 new면 대상 folderId, update면 4에서 확정한 fileId. 이후 업로드는 **이 매니페스트만** 읽는다. 승인과 실행 사이에 로컬을 다시 스캔해 새로 나타난 파일을 끼워 넣지 않는다 — 승인은 이 목록에 한해서만 유효하다.
+
+   ```json
+   {"approved": [
+     {"local": "exports/deck.pptx", "action": "update", "target": "1eon6SX...", "size": 91234, "mtime": 1720000000},
+     {"local": "exports/notes.pdf", "action": "new", "target": "1aQthLJ...", "size": 20481, "mtime": 1720000100}
+   ]}
+   ```
+6. **실행 — 승인 매니페스트만 (바인딩)**: 매니페스트의 각 항목만 순서대로 처리한다. 각 항목 실행 **직전에** 로컬 파일과 대상 ID를 다시 읽어 매니페스트 값과 대조한다 — 파일이 사라졌거나·크기/mtime가 승인 시점과 달라졌거나·`update` 대상 ID가 §4 확정값과 어긋나면 **그 항목만 건너뛰지 말고 전체 실행을 멈추고**(abort) §3 재-diff·재승인으로 되돌린다(조용한 우회·부분 강행 금지). **매니페스트에 없는 파일은 어떤 경우에도 업로드하지 않는다.**
    - 신규(My Drive 폴더): `gws drive +upload <file> --parent <folderId>` → 반환 ID를 `files` 캐시에 기록.
    - 신규(Shared Drive 폴더): `+upload` 헬퍼는 `supportsAllDrives`를 전달하지 않아 팀 Drive 업로드가 실패한다(upstream googleworkspace/cli #722). 대상 폴더가 Shared Drive면 raw create 경로로 우회 — `gws drive files create --params '{"supportsAllDrives": true}' --params-name-parents ...`(정확한 create 인자·부모 지정 문법은 `gws drive files create --help` 확인). 매핑의 `driveFolderId`가 Shared Drive 소속인지는 2단계 스캔의 `parents`/드라이브 조회로 판별.
    - 변경: 4에서 확정한 ID로만 `gws drive files update --params '{"fileId": "<id>", "supportsAllDrives": true}' --upload <file>` — 새 파일을 만들지 않고 기존 ID를 갱신(update는 My Drive·Shared Drive 모두 `supportsAllDrives`로 처리).
@@ -68,6 +76,7 @@ description: 로컬 폴더 → Google Drive 단방향 제안형 동기화 — gw
 ## 하드 룰
 
 - 쓰기(upload/update)는 diff 리포트 + 승인 없이 실행하지 않는다.
+- **업로드는 §5b 승인 매니페스트에 있는 항목만 대상으로 한다** — 매니페스트에 없는 파일은 업로드 금지, 매니페스트 값과 실물(로컬 파일·대상 ID)이 어긋나면 부분 강행하지 말고 abort 후 재승인. 승인 후 재스캔으로 목록을 늘리지 않는다.
 - 삭제·이동·권한 변경은 이 스킬 범위 밖 — 제안 문구만.
 - Drive → 로컬 다운로드(양방향)는 범위 밖.
 - 대용량/다건이어도 한 파일씩 순차 업로드(부분 실패 시 어디까지 갔는지 보고).

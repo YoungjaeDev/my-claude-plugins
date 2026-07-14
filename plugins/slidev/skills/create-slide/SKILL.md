@@ -5,7 +5,6 @@ description: |
   "make a presentation", "build a deck", "presentation", "slidev". Collects
   information through an interview workflow, then generates slides.md.
   Automatically initializes a Slidev project if one doesn't exist.
-version: 1.0.0
 allowed-tools:
   - Read
   - Write

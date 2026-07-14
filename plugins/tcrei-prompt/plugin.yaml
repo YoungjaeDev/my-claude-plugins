@@ -1,5 +1,5 @@
 name: tcrei-prompt
-version: "1.1.0"
+version: "1.1.1"
 description: "Rewrite prompts using Google's TCREI structure for next-session reuse"
 author: "YoungjaeDev"
 kind: standalone

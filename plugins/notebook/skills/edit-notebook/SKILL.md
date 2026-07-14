@@ -11,7 +11,7 @@ Edit Jupyter Notebook files using NotebookEdit tool only.
 
 ### Tool Selection
 - .ipynb = NotebookEdit only
-- Edit, Write, search_replace 사용 금지
+- `Edit`, `Write`, `Bash(sed/cat)` 사용 금지
 
 ### Cell Insertion: cell_id Tracking (Required)
 

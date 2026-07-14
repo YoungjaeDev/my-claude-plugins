@@ -35,7 +35,62 @@ fi
 
 > **Windows / non-POSIX hosts**: the guard above is POSIX shell. On Codex CLI / Claude Code where the default shell is PowerShell, wrap it: `bash -c '<guard>'` (Git Bash, WSL, or any POSIX shell on PATH). The intent — refuse to proceed if cwd has any content beyond `.git/` and OS metadata — must be honored regardless of how the check is invoked.
 
-If the guard passes, proceed to the full procedure.
+If the guard passes, proceed to the run record, then the full procedure.
+
+## Step 0.5 — Run record (state-envelope v0)
+
+Once the guard passes, open a per-run record so a bootstrap interrupted midway (Phase 1 interview cancelled, `gh repo create` failed) leaves a machine-readable trail of which phases already ran. Convention + schema: `.claude/rules/state-envelope.md` (concept mirror in this repo's `AGENTS.md`). No shared library — this per-skill `jq` is the whole mechanism, and the record lives under `.claude/state/`, so it stays machine-local and is **never** added to the Phase 6 commit.
+
+Because the Step 0 guard aborts on any non-empty cwd, a *normal* re-run never reaches this point — so a pre-existing record means the guard was deliberately bypassed to recover a partial seed. Handle both: a fresh init, or a **resume** that reads `steps[]`, skips the phases already recorded `done`, and keeps appending to the same record.
+
+```bash
+SLUG=$(basename "$(pwd)" | tr -c 'A-Za-z0-9._-' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//')
+[ -n "$SLUG" ] || SLUG="project"
+REC=".claude/state/project-init-${SLUG}.json"
+mkdir -p .claude/state/archive
+if [ -f "$REC" ] && [ "$(jq -r '.status' "$REC" 2>/dev/null)" = "in_progress" ]; then
+  echo "[resume] prior interrupted bootstrap — phases already done (skip these, do not redo):"
+  jq -r '.steps[] | "  phase \(.step): \(.status)" + (if .reason then " ("+.reason+")" else "" end)' "$REC"
+else
+  # fresh run: archive any completed prior record (fail closed), then init a new one
+  if [ -f "$REC" ]; then
+    mv "$REC" ".claude/state/archive/project-init-${SLUG}-$(date +%Y%m%d-%H%M%S)-$$.json" \
+      || { echo "state-envelope: archive rotation failed for $REC — aborting so the next write cannot clobber it" >&2; exit 1; }
+  fi
+  NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  jq -n --arg rid "project-init-${SLUG}" --arg now "$NOW" \
+    '{schema:"state-envelope/v0", run_id:$rid, status:"in_progress", conclusion:null,
+      started_at:$now, updated_at:$now, anchor_sha:null, attempt:1,
+      session_id:(env.CLAUDE_SESSION_ID // null), steps:[]}' > "$REC"
+fi
+
+# record_step <phase-n> <done|skipped> [reason] — append one entry, bump updated_at.
+record_step() {
+  if [ "$2" = "skipped" ] && [ -z "${3:-}" ]; then
+    echo "state-envelope: a skipped phase needs a reason" >&2; return 1
+  fi
+  tmp=$(mktemp)
+  jq --argjson step "$1" --arg status "$2" --arg reason "${3:-}" \
+     --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+     '.updated_at = $now
+      | .steps += [ {step: $step, status: $status}
+                    + (if $reason == "" then {} else {reason: $reason} end) ]' \
+     "$REC" > "$tmp" && mv "$tmp" "$REC"
+}
+```
+
+**Recording contract.** The `step` integer is the phase number. As each Phase 0-7 closes, append its outcome — `record_step <n> done`, or `record_step <n> skipped "<reason>"` when a phase is legitimately skipped (Phase 5 with no license chosen, Phase 6 when the user declines a remote). **Shell state does not persist across separate tool calls** — `REC` is the deterministic path `.claude/state/project-init-<slug>.json`, so in a later phase's bash block re-derive `SLUG`/`REC` and re-declare `record_step` before calling it. After Phase 7 closes, finalize the envelope and keep the record out of the commit:
+
+```bash
+tmp=$(mktemp)
+jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.status = "completed" | .conclusion = "success" | .updated_at = $now' \
+  "$REC" > "$tmp" && mv "$tmp" "$REC"
+```
+
+Under Hermes run these blocks via `terminal`. Note: this record is orthogonal to `.claude/state/spec.json` (owned by `spec-state`) — different file, different concern.
+
+> **Surface scope (v0):** the run record is opened here on the `new` **skill** surface. Wiring the same open + per-phase `record_step` into the shared `references/new-procedure.md` (so the primary `/project-init:new` **command** path records too) is a documented follow-up — the per-phase instrumentation of the shared body is deferred to keep this change surgical. The Phase 6 `.gitignore` seed that keeps the record out of the commit already applies to **both** surfaces.
 
 ## Step 1 — Procedure
 
@@ -49,6 +104,8 @@ Follow the full Phase 0–7 procedure in `references/new-procedure.md` (relative
 - Phase 5 — README + CHANGELOG seed.
 - Phase 6 — `git init` + `gh repo create`.
 - Phase 7 — Summary + next actions.
+
+As each phase closes, `record_step <phase-n> done` (or `skipped "<reason>"`) per the Step 0.5 recording contract; finalize the record after Phase 7.
 
 The procedure file uses `${PLUGIN_ROOT}` for all asset / script references (`scripts/idempotent-seed.sh`, `scripts/infer-github-context.sh`, `assets/AGENTS.review-guidelines.*.md`, `assets/README.minimal.md`, `assets/CHANGELOG.initial.md`). `PLUGIN_ROOT` is resolved at the top of Phase 0 by a portable shell block:
 

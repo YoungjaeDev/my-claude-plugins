@@ -70,7 +70,7 @@ The plugin ships `.mcp.json` with a Linux/macOS default mount:
 Create the host downloads directory:
 
 - **macOS / Linux:** `mkdir -p /tmp/paper-search-downloads`
-- **Windows (PowerShell):** `mkdir -Force $env:TEMP\paper-search-downloads`
+- **Windows (PowerShell):** `mkdir -Force $HOME\paper-search-downloads`
 
 **Windows users must edit the `.mcp.json` volume mount** — the host path format depends on the
 Docker Desktop backend. Replace `<username>` with the actual Windows username:
@@ -87,8 +87,11 @@ The mount passes the key **by name** (`-e SEMANTIC_SCHOLAR_API_KEY`), so Docker 
 from the environment at runtime and the secret never lands in `.mcp.json` or the repo. Keep it
 that way — never inline the key value into a config file or a commit.
 
+Read it at a silent prompt so the value never lands in your shell history (avoid `export KEY="literal"`, which does):
+
 ```bash
-export SEMANTIC_SCHOLAR_API_KEY="your-api-key"
+read -rsp "Semantic Scholar API key: " SEMANTIC_SCHOLAR_API_KEY; echo
+export SEMANTIC_SCHOLAR_API_KEY
 ```
 
 Get a free key at <https://www.semanticscholar.org/product/api>. When confirming the key is set,
@@ -117,12 +120,30 @@ printf '%s\n%s\n%s\n' \
 - **Hangs or prints a JSON-RPC `error`** — the server failed to initialize. Re-check the image
   (step 3) and the daemon (step 2); this is a server failure, not an empty search.
 
-## 6. Connect from Claude Code
+## 6. Connect the MCP server (per runtime)
 
-Restart Claude Code (`exit`, then `claude`) so it reloads `.mcp.json`, then run `/mcp` and confirm
-the `paper-search` server shows as connected. Tool names then carry the plugin prefix
-`mcp__plugin_paper-search-tools_paper-search__<tool>` (see the `paper-search` usage skill for the
-full tool catalog and the standalone-registration prefix variant).
+Steps 1-5 above (Docker + `.mcp.json` + the JSON-RPC verification contract) are identical on every
+runtime — only the final connect/approve surface differs:
+
+- **Claude Code** — restart (`exit`, then `claude`) so it reloads `.mcp.json`, run `/mcp`, and confirm
+  the `paper-search` server shows as connected. Tool names then carry the plugin prefix
+  `mcp__plugin_paper-search-tools_paper-search__<tool>` (see the `paper-search` usage skill for the
+  full tool catalog and the standalone-registration prefix variant).
+- **Codex** — Codex loads this skill in place but does not consume `.mcp.json` through `/mcp`. Register
+  the `paper-search` server in Codex's own MCP configuration (same `docker run` args as step 4), then
+  verify with the step 5 handshake. Discovery is through Codex's MCP surface, not `/mcp`.
+- **Hermes** — load the skill explicitly (`skill_view("paper-search-tools:setup")`), register the server
+  per Hermes' MCP configuration, and verify with the step 5 handshake.
+
+### Hermes tool-name compatibility
+
+When this skill runs under Hermes, map the tool terms used above:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Bash | terminal |
+| Read | read_file |
+| AskUserQuestion | clarify |
 
 ## Troubleshooting — distinguish failure classes
 

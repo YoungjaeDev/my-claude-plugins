@@ -90,6 +90,8 @@ jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 
 Under Hermes run these blocks via `terminal`. Note: this record is orthogonal to `.claude/state/spec.json` (owned by `spec-state`) — different file, different concern.
 
+> **Surface scope (v0):** the run record is opened here on the `new` **skill** surface. Wiring the same open + per-phase `record_step` into the shared `references/new-procedure.md` (so the primary `/project-init:new` **command** path records too) is a documented follow-up — the per-phase instrumentation of the shared body is deferred to keep this change surgical. The Phase 6 `.gitignore` seed that keeps the record out of the commit already applies to **both** surfaces.
+
 ## Step 1 — Procedure
 
 Follow the full Phase 0–7 procedure in `references/new-procedure.md` (relative to this plugin's installed root — `${CLAUDE_PLUGIN_ROOT}/references/new-procedure.md` under Claude Code; the same relative path under the Codex plugin cache):

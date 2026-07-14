@@ -150,7 +150,7 @@ variant 차이는 `### Domain-specific` 섹션 + `### P0` / `### P1` 에 도메�
 
 - CI/CD workflow seed (`.github/workflows/`) — variant 별 다양성 너무 큼
 - Pre-commit hook seed — 같은 이유
-- Boilerplate auto-download (cookiecutter, copier) — `/code-scout:scout` 별도 호출
+- Boilerplate auto-download (cookiecutter, copier) — `Skill("code-scout:research-orchestrator")` 별도 호출
 - Multi-language 인터뷰 분기 — 한/영 혼용 단일 버전 유지
 
 ## 참조

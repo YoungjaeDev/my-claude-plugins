@@ -1,7 +1,8 @@
 name: validate-codex
 
-# Catch Codex + Hermes manifest drift and skill-description length violations at
-# PR time, even if a contributor skipped the local .githooks pre-commit hook.
+# Catch Codex + Hermes manifest drift, skill-description length violations,
+# README/AGENTS doc-consistency drift, and Hermes adapter load breakage at PR
+# time, even if a contributor skipped the local .githooks pre-commit hook.
 on:
   push:
   pull_request:
@@ -21,6 +22,13 @@ jobs:
           node-version: '20'
       - run: node scripts/sync-codex-manifests.mjs --check
       - run: node scripts/sync-hermes-manifests.mjs --check
+      # README.md / AGENTS.md plugin name-set + count strings must match the
+      # marketplace registry — drift the version files and manifest --checks miss.
+      - run: node scripts/check-doc-consistency.mjs
+      # Import each generated Hermes adapter with a stub ctx and assert register_skill
+      # fires — catches a generated-but-never-executed adapter regression (PyYAML is
+      # preinstalled on ubuntu-latest). See scripts/mock-load-hermes.py.
+      - run: python3 scripts/mock-load-hermes.py
       # cr-fix's CLI-fallback / CR-state / rate-limit paths only run after the
       # primary path fails, so nothing exercised them until they broke in
       # production (issues #105, #110). Fixture-driven, no network, sub-second.

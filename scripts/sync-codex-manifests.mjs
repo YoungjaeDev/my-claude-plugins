@@ -183,6 +183,25 @@ function validateSkillDescriptions(pluginNames) {
   return violations;
 }
 
+// marketplace.json is the description source of truth. Each plugin's
+// .claude-plugin/plugin.json `description` must match its marketplace entry, or
+// Claude Code (which reads plugin.json) and the marketplace registry disagree.
+// Runs over every marketplace plugin (incl. Codex-excluded ones), which still
+// carry a plugin.json that must stay in sync.
+function validateDescriptionParity(entries) {
+  const violations = [];
+  for (const entry of entries) {
+    const manifestPath = join(PLUGINS_DIR, entry.name, '.claude-plugin', 'plugin.json');
+    if (!isFile(manifestPath)) continue;
+    let parsed;
+    try { parsed = JSON.parse(readFileSync(manifestPath, 'utf8')); } catch { continue; }
+    if ((parsed.description || '') !== (entry.description || '')) {
+      violations.push({ name: entry.name, path: manifestPath });
+    }
+  }
+  return violations;
+}
+
 function main() {
   const source = readJSON(SOURCE);
   const eligible = source.plugins.filter((p) => !EXCLUDED.has(p.name));
@@ -193,6 +212,14 @@ function main() {
   if (violations.length > 0) {
     console.error(`skill description length violation(s) — Codex 0.135 limit is ${SKILL_DESC_MAX} chars:`);
     for (const v of violations) console.error(`  ${v.len} chars (limit ${SKILL_DESC_MAX}): ${v.path}`);
+    process.exit(1);
+  }
+
+  // plugin.json <-> marketplace.json description parity (marketplace.json is SoT).
+  const parityViolations = validateDescriptionParity(source.plugins);
+  if (parityViolations.length > 0) {
+    console.error('plugin.json description drift — marketplace.json is the source of truth; sync plugin.json to it:');
+    for (const v of parityViolations) console.error(`  ${v.name}: ${v.path}`);
     process.exit(1);
   }
 

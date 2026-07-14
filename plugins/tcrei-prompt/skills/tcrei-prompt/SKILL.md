@@ -6,7 +6,6 @@ description: |
   consistent results when reused in the next session.
   Triggers: "TCREI", "structure this prompt", "prompt enhance", "make a prompt for next session",
   "rewrite as TCREI", "improve this prompt".
-version: 1.0.0
 allowed-tools:
   - Read
   - Write

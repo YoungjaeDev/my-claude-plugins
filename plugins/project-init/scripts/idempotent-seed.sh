@@ -19,7 +19,8 @@ shift || true
 
 cmd_ensure_claude_dirs() {
   # Schema layer (spec, rules) stays under .claude/. Wiki + raw evidence live under the
-  # neutral .llmwiki/ root so codex-bridge's .claude/->.codex/ transform never forks them.
+  # neutral .llmwiki/ root so all three runtimes (Claude/Codex/Hermes) share one copy
+  # instead of a per-agent .claude/ vs .codex/ fork.
   local claude_subdirs=("spec" "rules")
   local llmwiki_subdirs=("raw" "wiki")
   for sub in "${claude_subdirs[@]}"; do

@@ -81,7 +81,7 @@ Envelope rules that hold on **every** path:
 - **Role**: academic literature; metadata-only (no PDF download).
 - **Optional inputs**: `sources` (subset of `arxiv`|`semantic`|`crossref`|`pubmed`|`biorxiv`|`medrxiv`|`iacr`|`google_scholar`), `year_from`, `year_to`, `authors`, `limit`.
 - **Source selection** (pick 2-3, not all 8): CS/ML/AI/NLP/vision/RL → `arxiv`+`semantic`; medical/bio/clinical → `pubmed`+`biorxiv` (+`medrxiv` for epidemiology / clinical-trial); crypto/security → `iacr`+`semantic`; physics/chemistry → `arxiv`+`crossref`; cross-disciplinary → `semantic`+`crossref`. User `sources` overrides.
-- **Tool order**: `mcp__paper-search__search_{source}` (parallel, cap ~5 searches) → optional `..._read_{source}_paper` / `get_crossref_paper_by_doi` for enrichment. Google Scholar has no read tool — enrich DOI hits via `get_crossref_paper_by_doi`. Never call `download_*`.
+- **Tool order**: `mcp__plugin_paper-search-tools_paper-search__search_{source}` (parallel, cap ~5 searches) → optional `..._read_{source}_paper` / `get_crossref_paper_by_doi` for enrichment. Google Scholar has no read tool — enrich DOI hits via `get_crossref_paper_by_doi`. Never call `download_*`.
 - **Finding fields**: `id` (DOI lowercase with `https://doi.org/` stripped, else `arxiv:<id>` / `iacr:<year>/<n>`), `title`, `authors`, `published`, `venue`, `abstract`, `citation_count`, `kind`, plus shared. Top-level `sources_used`.
 - **Reliability**: `high` = peer-reviewed venue or arXiv preprint with citation_count > 100; `medium` = recent arXiv (< 2yr) / workshop / obscure venue; `low` = unverified / retracted / no citations and > 3yr old.
 - **Fallback**: record failed sources in `errors`, keep the rest; `findings: []` + top-level `error` only if all chosen sources fail.

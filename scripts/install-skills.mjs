@@ -261,10 +261,10 @@ function selftest() {
   const plugins = groups.map((g) => g.plugin);
   const assert = (cond, msg) => { if (!cond) { console.error('FAIL:', msg); process.exit(1); } };
 
-  assert(groups.length === 24, `expected 24 skill-bearing plugins, got ${groups.length}`);
-  assert(totalSkills === 47, `expected 47 skills total, got ${totalSkills}`);
+  assert(groups.length === 23, `expected 23 skill-bearing plugins, got ${groups.length}`);
+  assert(totalSkills === 52, `expected 52 skills total, got ${totalSkills}`);
   assert(!plugins.includes('core-config'), 'core-config (0 skills) should be excluded');
-  assert(new Set(groups.flatMap((g) => g.skills.map((s) => s.id))).size === 47, 'skill names must be globally unique for -s targeting');
+  assert(new Set(groups.flatMap((g) => g.skills.map((s) => s.id))).size === 52, 'skill names must be globally unique for -s targeting');
 
   const gh = groups.find((g) => g.plugin === 'github-dev');
   assert(gh && gh.skills.length === 8, 'github-dev should have 8 skills');
@@ -274,5 +274,18 @@ function selftest() {
   console.log(`selftest OK — ${groups.length} plugins, ${totalSkills} skills, name+desc parsed.`);
 }
 
-if (process.argv.includes('--selftest')) selftest();
+function help() {
+  out([
+    "install-skills — pick this marketplace's skills and install them to Codex / Hermes Agent.",
+    '',
+    'Usage:',
+    '  node scripts/install-skills.mjs            interactive install (needs a TTY)',
+    '  node scripts/install-skills.mjs --selftest pure-logic self-check (no TTY/network)',
+    '  node scripts/install-skills.mjs --help     show this help',
+    '',
+  ].join('\n'));
+}
+
+if (process.argv.includes('--help') || process.argv.includes('-h')) help();
+else if (process.argv.includes('--selftest')) selftest();
 else interactive();

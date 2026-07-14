@@ -13,7 +13,7 @@
 //   - a malformed or duplicate baseline entry, or one that overlaps a pilot
 //   - a stale baseline entry (file gone, or debt removed — no AskUserQuestion left)
 //
-// FOLLOW-UP DEBT (issue #123): only the 2 pilots below are migrated. The 25 BASELINE
+// FOLLOW-UP DEBT (issue #123): only the 2 pilots below are migrated. The 18 BASELINE
 // paths still hardcode AskUserQuestion; migrating them to the standardized mapping is
 // deferred fleet work. Move a path from BASELINE to PILOTS as it is migrated.
 //
@@ -40,17 +40,11 @@ const PILOTS = [
 const BASELINE = [
   'plugins/anti-slop-design/skills/anti-slop-design/SKILL.md',
   'plugins/code-scout/skills/research-orchestrator/SKILL.md',
-  'plugins/codex-image/skills/codex-image/SKILL.md',
   'plugins/e2e-harness/skills/e2e-author/SKILL.md',
   'plugins/e2e-harness/skills/e2e-debug/SKILL.md',
-  'plugins/e2e-harness/skills/e2e-setup/SKILL.md',
-  'plugins/github-dev/skills/commit-and-push/SKILL.md',
-  'plugins/github-dev/skills/create-issue-label/SKILL.md',
   'plugins/github-dev/skills/cr-fix/SKILL.md',
   'plugins/github-dev/skills/post-merge/SKILL.md',
-  'plugins/github-dev/skills/release/SKILL.md',
   'plugins/github-dev/skills/resolve-issue/SKILL.md',
-  'plugins/github-dev/skills/update-progress/SKILL.md',
   'plugins/gws-sync/skills/gws-sync/SKILL.md',
   'plugins/llm-wiki/skills/bootstrap-wiki/SKILL.md',
   'plugins/llm-wiki/skills/migrate-wiki/SKILL.md',
@@ -60,7 +54,6 @@ const BASELINE = [
   'plugins/rules-forge/skills/write-rules/SKILL.md',
   'plugins/slidev/skills/create-slide/SKILL.md',
   'plugins/spec-state/skills/state-tracker/SKILL.md',
-  'plugins/tally-form/skills/tally-form/SKILL.md',
   'plugins/tcrei-prompt/skills/tcrei-prompt/SKILL.md',
   'plugins/translator/skills/translate-web-article/SKILL.md',
 ];
@@ -84,7 +77,18 @@ export function checkSkillToolPortability({ root, pilots, baseline }) {
     const abs = join(root, rel);
     return existsSync(abs) ? readFileSync(abs, 'utf8') : null;
   };
-  const usesAsk = (b) => b.includes('AskUserQuestion');
+  // AskUserQuestion appears in two NON-interactive contexts that must not count as
+  // interactive debt: a Hermes compat-table row (`| AskUserQuestion | clarify |`) and a
+  // frontmatter `allowed-tools:` list. A skill carrying only those (no actual gate in the
+  // body) is not interactive — strip those lines before detecting real usage, else every
+  // skill that merely documents the mapping gets pulled into the baseline / flagged.
+  const stripMappingRefs = (b) =>
+    b
+      .split('\n')
+      .filter((line) => !/^\s*\|\s*AskUserQuestion\s*\|/.test(line)) // Hermes compat-table row
+      .filter((line) => !/^\s*allowed-tools\s*:/i.test(line)) // frontmatter tool list
+      .join('\n');
+  const usesAsk = (b) => stripMappingRefs(b).includes('AskUserQuestion');
   const hasMapping = (b) => b.includes(MARKER) && b.includes(CODEX_TOOL);
 
   // 1. Baseline hygiene — shape, duplicates, pilot overlap.

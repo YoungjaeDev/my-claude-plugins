@@ -182,7 +182,7 @@
 | Hermes | `clarify` |
 
 - 새 스킬 본문이 `AskUserQuestion` 을 쓰면 파일럿의 "Cross-runtime interactive input" 블록(위 3런타임 매핑)을 같이 넣거나, 이관을 미룰 경우 `scripts/check-skill-tool-portability.mjs` 의 baseline 에 등록한다. `scripts/check-skill-tool-portability.mjs --check` 가 `.githooks/pre-commit` + `.github/workflows/validate-codex.yml` 에서 이를 강제한다 — 파일럿은 표준 매핑을, baseline 은 등록 사실을, 그 외 새 경로는 실패로 잡는다.
-- **Follow-up debt (#123):** 현재 파일럿은 `interview:interview-methodology` 와 `github-dev:decompose-issue` 2개뿐이다. 나머지 25개 스킬(baseline)은 아직 `AskUserQuestion` 을 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다 (27-skill 일괄 재작성은 하지 않는다). baseline 에서 파일럿으로 옮기며 점진 이관한다.
+- **Follow-up debt (#123):** 현재 파일럿은 `interview:interview-methodology` 와 `github-dev:decompose-issue` 2개뿐이다. 나머지 18개 스킬(baseline)은 아직 body 에서 `AskUserQuestion` 을 실제로 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다. Hermes 호환표 행이나 frontmatter `allowed-tools:` 에만 `AskUserQuestion` 이 있고 실제 대화 게이트가 없는 스킬은 debt 가 아니라 가드가 제외한다. baseline 에서 파일럿으로 옮기며 점진 이관한다.
 
 ## 플러그인 변경 규칙
 

@@ -9,6 +9,15 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 node "$repo_root/scripts/sync-codex-manifests.mjs" --check
 node "$repo_root/scripts/sync-hermes-manifests.mjs" --check
+node "$repo_root/scripts/check-doc-consistency.mjs"
+# Hermes adapter mock-load — same guard CI runs, so import/registration regressions
+# in generated __init__.py fail at commit time, not only in CI. Skip (not fail) when
+# python3 is absent locally; CI still enforces it.
+if command -v python3 >/dev/null 2>&1; then
+  python3 "$repo_root/scripts/mock-load-hermes.py"
+else
+  echo "pre-commit: python3 not found — skipping Hermes mock-load (CI still enforces it)" >&2
+fi
 
 # cr-fix's CLI-fallback and CR-state paths only execute after the primary path
 # fails, so nothing exercised them until they broke in production (issue #105).

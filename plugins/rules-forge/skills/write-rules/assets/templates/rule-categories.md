@@ -77,8 +77,8 @@ conventions, mock policy.
 `tests/fixtures/**`.
 
 **Inspiration**: No bundled example — adapt from this repo's own
-`plugins/codex-bridge/tests/*.test.mjs` pattern (Red-first TDD with
-node --test, fixtures under `tests/fixtures/`).
+`plugins/github-dev/skills/cr-fix/tests/` fixture suite (fixture-driven,
+no network, run in `.githooks/pre-commit` + CI).
 
 **Do/Don't seeds**:
 - Do: Write the failing test before implementation.

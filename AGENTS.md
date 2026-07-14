@@ -128,6 +128,7 @@
 │   ├── anti-slop-design/   # Anti-AI-slop design guard (web/ppt/dashboard/copy)
 │   ├── ppt-yeong-style/    # yeong-style lecture/proposal deck writing layer (on ppt-master)
 │   ├── tally-form/         # Checklist md -> Tally questionnaire/survey form builder
+│   ├── gws-sync/           # Local -> Google Drive one-way proposal sync
 │   └── project-init/       # Day-1 bootstrap (new) + existing-repo setup diagnostic (wiring)
 ├── AGENTS.md               # This file — 정본
 ├── CLAUDE.md               # @AGENTS.md import (한 줄)

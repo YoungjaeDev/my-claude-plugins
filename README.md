@@ -748,6 +748,7 @@ node scripts/install-skills.mjs
 ├── plugins/
 │   ├── core-config/           # 가이드라인 + 훅
 │   ├── github-dev/            # GitHub 워크플로우
+│   ├── e2e-harness/           # Playwright E2E 테스트 하네스 (setup/author/debug)
 │   ├── code-scout/            # 리소스 탐색
 │   ├── deepwiki/              # 레포 문서화
 │   ├── paper-search-tools/    # 논문 검색
@@ -765,6 +766,7 @@ node scripts/install-skills.mjs
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
 │   ├── anti-slop-design/      # anti-AI-slop 디자인 가드 (web/ppt/dashboard/copy)
 │   ├── ppt-yeong-style/       # yeong 스타일 덱 작성 레이어 — 스킬 3종(메인/lecture-deck/deck-review) + 리뷰 에이전트 4종
+│   ├── tally-form/            # 체크리스트 md -> Tally 설문/문의 폼 빌더
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 │   ├── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)
 │   └── mem0-ops/              # 플릿 레벨 mem0 진단·정리 (fleet-scan/doctor/cleanup)

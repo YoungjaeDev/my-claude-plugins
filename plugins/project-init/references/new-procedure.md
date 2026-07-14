@@ -321,5 +321,5 @@ Next actions (call when ready):
 
 - CI/CD workflow seed (`.github/workflows/`)
 - pre-commit hook seed
-- 외부 boilerplate auto-download (cookiecutter 등 — 필요하면 `/code-scout:scout` 별도 호출)
+- 외부 boilerplate auto-download (cookiecutter 등 — 필요하면 `Skill("code-scout:research-orchestrator")` 별도 호출)
 - 다국어 인터뷰 분기 — 한/영 혼용 단일 버전 유지

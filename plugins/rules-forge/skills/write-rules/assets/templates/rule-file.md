@@ -6,7 +6,7 @@ across NEW / SPLIT / REORGANIZE modes. Skill picks Variant A or B
 based on whether the rule has a clear path boundary.
 
 Both variants follow the Role / Do / Don't / Source of Truth shape —
-the style proven in this repo's own .claude/rules/codex-bridge-sync.md
+the style proven in this repo's own .claude/rules/dual-integration.md
 and plugin-versioning.md.
 -->
 

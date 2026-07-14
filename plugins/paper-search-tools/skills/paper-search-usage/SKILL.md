@@ -20,32 +20,41 @@ Search, download, and read academic papers across 8 platforms.
 | Semantic Scholar | Yes | Yes | Yes |
 | CrossRef | Yes | Limited | Limited |
 
+## Tool Naming
+
+Tool names carry an MCP prefix that depends on how the server is registered:
+
+- **Plugin-loaded (this repo's default, Claude Code)** — `mcp__plugin_paper-search-tools_paper-search__<tool>`, e.g. `mcp__plugin_paper-search-tools_paper-search__search_arxiv`. This is the live prefix and the one used in the tables below.
+- **Standalone `.mcp.json`** — if the server is registered directly under the name `paper-search` (not via the plugin), the tools are `mcp__paper-search__<tool>` instead.
+
+Codex 0.135 loads the same `.mcp.json`; its exact tool-name prefix is unverified here — resolve it from Codex's own tool list if the plugin-loaded name does not match.
+
 ## MCP Tools (23)
 
 ### Search Tools
 
 | Tool | Platform | Parameters |
 |------|----------|------------|
-| `mcp__paper-search__search_arxiv` | arXiv | query, max_results=10 |
-| `mcp__paper-search__search_pubmed` | PubMed | query, max_results=10 |
-| `mcp__paper-search__search_biorxiv` | bioRxiv | query, max_results=10 |
-| `mcp__paper-search__search_medrxiv` | medRxiv | query, max_results=10 |
-| `mcp__paper-search__search_google_scholar` | Google Scholar | query, max_results=10 |
-| `mcp__paper-search__search_iacr` | IACR ePrint | query, max_results=10, fetch_details=True |
-| `mcp__paper-search__search_semantic` | Semantic Scholar | query, year (optional), max_results=10 |
-| `mcp__paper-search__search_crossref` | CrossRef | query, max_results=10 |
+| `mcp__plugin_paper-search-tools_paper-search__search_arxiv` | arXiv | query, max_results=10 |
+| `mcp__plugin_paper-search-tools_paper-search__search_pubmed` | PubMed | query, max_results=10 |
+| `mcp__plugin_paper-search-tools_paper-search__search_biorxiv` | bioRxiv | query, max_results=10 |
+| `mcp__plugin_paper-search-tools_paper-search__search_medrxiv` | medRxiv | query, max_results=10 |
+| `mcp__plugin_paper-search-tools_paper-search__search_google_scholar` | Google Scholar | query, max_results=10 |
+| `mcp__plugin_paper-search-tools_paper-search__search_iacr` | IACR ePrint | query, max_results=10, fetch_details=True |
+| `mcp__plugin_paper-search-tools_paper-search__search_semantic` | Semantic Scholar | query, year (optional), max_results=10 |
+| `mcp__plugin_paper-search-tools_paper-search__search_crossref` | CrossRef | query, max_results=10 |
 
 ### Download Tools
 
 | Tool | Platform |
 |------|----------|
-| `mcp__paper-search__download_arxiv` | arXiv |
-| `mcp__paper-search__download_pubmed` | PubMed |
-| `mcp__paper-search__download_biorxiv` | bioRxiv |
-| `mcp__paper-search__download_medrxiv` | medRxiv |
-| `mcp__paper-search__download_iacr` | IACR ePrint |
-| `mcp__paper-search__download_semantic` | Semantic Scholar |
-| `mcp__paper-search__download_crossref` | CrossRef |
+| `mcp__plugin_paper-search-tools_paper-search__download_arxiv` | arXiv |
+| `mcp__plugin_paper-search-tools_paper-search__download_pubmed` | PubMed |
+| `mcp__plugin_paper-search-tools_paper-search__download_biorxiv` | bioRxiv |
+| `mcp__plugin_paper-search-tools_paper-search__download_medrxiv` | medRxiv |
+| `mcp__plugin_paper-search-tools_paper-search__download_iacr` | IACR ePrint |
+| `mcp__plugin_paper-search-tools_paper-search__download_semantic` | Semantic Scholar |
+| `mcp__plugin_paper-search-tools_paper-search__download_crossref` | CrossRef |
 
 Parameters: `paper_id`, `save_path="/downloads"`
 
@@ -53,13 +62,13 @@ Parameters: `paper_id`, `save_path="/downloads"`
 
 | Tool | Platform |
 |------|----------|
-| `mcp__paper-search__read_arxiv_paper` | arXiv |
-| `mcp__paper-search__read_pubmed_paper` | PubMed |
-| `mcp__paper-search__read_biorxiv_paper` | bioRxiv |
-| `mcp__paper-search__read_medrxiv_paper` | medRxiv |
-| `mcp__paper-search__read_iacr_paper` | IACR ePrint |
-| `mcp__paper-search__read_semantic_paper` | Semantic Scholar |
-| `mcp__paper-search__read_crossref_paper` | CrossRef |
+| `mcp__plugin_paper-search-tools_paper-search__read_arxiv_paper` | arXiv |
+| `mcp__plugin_paper-search-tools_paper-search__read_pubmed_paper` | PubMed |
+| `mcp__plugin_paper-search-tools_paper-search__read_biorxiv_paper` | bioRxiv |
+| `mcp__plugin_paper-search-tools_paper-search__read_medrxiv_paper` | medRxiv |
+| `mcp__plugin_paper-search-tools_paper-search__read_iacr_paper` | IACR ePrint |
+| `mcp__plugin_paper-search-tools_paper-search__read_semantic_paper` | Semantic Scholar |
+| `mcp__plugin_paper-search-tools_paper-search__read_crossref_paper` | CrossRef |
 
 Parameters: `paper_id`, `save_path="/downloads"`
 
@@ -69,7 +78,7 @@ Downloaded files are stored at `/tmp/paper-search-downloads` on the host.
 
 | Tool | Description |
 |------|-------------|
-| `mcp__paper-search__get_crossref_paper_by_doi` | Get paper metadata by DOI |
+| `mcp__plugin_paper-search-tools_paper-search__get_crossref_paper_by_doi` | Get paper metadata by DOI |
 
 ## Best Practices
 

@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "1.98.0"
+    "version": "1.99.0"
   },
   "plugins": [
     {
@@ -26,63 +26,63 @@
       "name": "e2e-harness",
       "source": "./plugins/e2e-harness",
       "description": "Playwright E2E test-harness engineering — wraps Playwright's official AI test agents (npx playwright init-agents --loop=claude generates planner/generator/healer). Three skills close the planner -> generator -> healer self-improving loop: e2e-setup onboards the full harness (agents, auth separation via storageState + setup-project dependency, page.route mocking with Next.js BFF/SSR guidance, E2E operating SSOT doc, GitHub Actions CI with trace/report artifact upload + PR-failure comment + path/label gating); e2e-author selects critical user flows and runs planner -> review-gate -> generator with semantic getByRole locators and a --repeat-each burn-in flake gate; e2e-debug downloads the CI trace, inspects it headlessly, and runs the healer with bounded retries (skip-after-3 + reason comment). Never overwrites an existing playwright.config (merge + backup); degrades gracefully when Playwright is not installed.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "testing"
     },
     {
       "name": "code-scout",
       "source": "./plugins/code-scout",
       "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, firecrawl tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate).",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "category": "research"
     },
     {
       "name": "brightdata-guide",
       "source": "./plugins/brightdata-guide",
       "description": "Bright Data web data access via MCP tools + CLI — scraping (Web Unlocker), SERP, 40+ structured web_data_* extractors, browser automation. Guide skill; operator sets BRIGHTDATA_API_KEY, delegate subagents fall back to the bdata CLI.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "research"
     },
     {
       "name": "deepwiki",
       "source": "./plugins/deepwiki",
       "description": "AI-powered GitHub repo documentation. Dual-surface: `/deepwiki:ask` + `/deepwiki:generate-llmstxt` commands and matching skills for fuzzy-trigger discovery.",
-      "version": "1.1.2",
+      "version": "1.1.3",
       "category": "documentation"
     },
     {
       "name": "notebook",
       "source": "./plugins/notebook",
       "description": "Safe Jupyter notebook editing",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "development"
     },
     {
       "name": "ml-toolkit",
       "source": "./plugins/ml-toolkit",
       "description": "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration",
-      "version": "1.4.1",
+      "version": "1.4.2",
       "category": "development"
     },
     {
       "name": "translator",
       "source": "./plugins/translator",
       "description": "Web article translation to Korean",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "content"
     },
     {
       "name": "interview",
       "source": "./plugins/interview",
       "description": "Structured requirements gathering",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "category": "planning"
     },
     {
       "name": "paper-search-tools",
       "source": "./plugins/paper-search-tools",
       "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "category": "research"
     },
     {
@@ -96,56 +96,56 @@
       "name": "slidev",
       "source": "./plugins/slidev",
       "description": "Slidev markdown presentation generator with interview workflow and KubeCon-level visual enhancement",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "category": "content"
     },
     {
       "name": "rules-forge",
       "source": "./plugins/rules-forge",
       "description": "CLAUDE.md generation and .claude/rules/ modular structure with auto mode detection (NEW/TIGHTEN/SPLIT/REORGANIZE), single write-rules skill entrypoint",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "category": "documentation"
     },
     {
       "name": "tcrei-prompt",
       "source": "./plugins/tcrei-prompt",
       "description": "Rewrite prompts using Google's TCREI structure for next-session reuse",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "content"
     },
     {
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
       "description": "Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral .llmwiki/): 5 skills (query/ingest/lint/bootstrap/migrate) + 5 hooks + bootstrap templates. Three soft hints plus an auto-capture/ingest path: a Stop hook mechanically captures ingest candidates to <root>/.staging/ and the next session's SessionStart drain hook surfaces them for ingest-finding curation (capture and curation split). Post-merge wiki ingest is a mandatory, force-logged step inside github-dev:post-merge (the standalone post-merge-wiki skill was removed — breaking, hence the 2.0.0 major bump). Promoted cross-agent rules graduate to .llmwiki/insight/ (via core-config prompt-inject hook), not .claude/rules/. Resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. Agent-facing wiki conventions deduped into references/wiki-conventions.md.",
-      "version": "2.5.1",
+      "version": "2.5.2",
       "category": "memory"
     },
     {
       "name": "spec-state",
       "source": "./plugins/spec-state",
       "description": "Spec/issue/PR work-pipeline aggregate. state-tracker skill manages .claude/state/spec.json (read/init/start/complete). Called by github-dev:post-merge.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "category": "workflow"
     },
     {
       "name": "project-init",
       "source": "./plugins/project-init",
       "description": "Agent-harness project lifecycle. `new` — one-shot first-day bootstrap (interview, .claude/ scaffold, minimal CLAUDE.md, AGENTS.md with Codex GitHub cloud reviewer guidelines in general/ml/web variants, README/CHANGELOG seed, gh repo create + initial push) behind a hardened preflight guard that refuses a non-empty cwd. `wiring` — its inverse for existing repos: a read-only 14-axis setup diagnostic (FAIL / WARN / ASK / INFO / SKIP / OK) covering guidance files, .claude/rules paths: scoping defeated by @import, llm-wiki layout + staging backlog, Serena onboarding, memory posture, MCP duplicate registration, Codex CLI posture + AGENTS.md byte budget, spec homes, gws-sync, .tmp, core.hooksPath, .gitignore coverage. ASK answers persist to .claude/state/wiring.json. Shared read-only detector: scripts/project_state.sh.",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "category": "planning"
     },
     {
       "name": "codex-image",
       "source": "./plugins/codex-image",
       "description": "Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "category": "ai-models"
     },
     {
       "name": "anti-slop-design",
       "source": "./plugins/anti-slop-design",
       "description": "Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. Runs a clarify->context->plan->run->audit->revise flow with a two-phase audit gate (pre-emit self-critique + binary slop checklist) and hands Korean copy rewriting to humanize-korean. Source-grounded in 6 OSS anti-slop repos.",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "category": "design"
     },
     {
@@ -159,7 +159,7 @@
       "name": "ppt-yeong-style",
       "source": "./plugins/ppt-yeong-style",
       "description": "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 스킬 3종: 메인 ppt-yeong-style(미감 시그니처 §0 'Editorial restraint, one committed accent'·md 소스 규약·작성 원칙 16종·밀도 리듬·역할 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·레버 조합 차별화·윤문·렌더 QA + references/ 6종 + 주입 페이로드) + lecture-deck(강의 덱 운영 — 실습 handouts 생성 규약·프롬프트 카드·placeholder→실캡처 스크린샷 슬롯·리넘버링 4중 동기화·전사 회고 루프·강사 노트 태그 + cc-common 47장 레퍼런스) + deck-review(관점별 리뷰 서브에이전트 4종 audience-fit·story-flow·fact-check·design-qa 병렬 오케스트레이션 + codex:rescue 교차 리뷰, 페르소나는 파라미터). 의존 스킬은 있으면 사용, 없으면 생략 + 설치 제안 문구(ppt-master만 prerequisite-stop). ppt-master/slidev로 그냥 'PPT 만들기'와 달리 yeong 규약이 필요할 때.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "category": "design"
     },
     {
@@ -173,7 +173,7 @@
       "name": "mem0-ops",
       "source": "./plugins/mem0-ops",
       "description": "Fleet-level mem0 diagnostics and cleanup — complements the upstream mem0 plugin (which owns per-project quality). fleet-scan reports per-app noise ratio, junk app_id candidates, and app/user_id fragmentation across all apps; doctor checks config posture (MEM0_RERANK env, ~/.mem0/settings.json auto_save precedence trap, project decay flag, hook timeout budget, identity fragmentation); cleanup does backup-then-delete by metadata.type or whole junk app behind a dry-run default plus a skill-layer per-app confirmation gate (the script alone gates on --execute only). stdlib-only REST scripts, zero LLM cost for the deterministic parts.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "productivity"
     }
   ]

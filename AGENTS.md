@@ -217,9 +217,11 @@ jq -n --arg rid "<pipeline>-<key>" --arg sha "$ANCHOR_SHA" --arg now "$(date -u 
 각 단계가 닫힐 때 한 항목 append, 마지막에 finalize — shell 상태는 tool 호출 간 유지되지 않으므로 함수가 아니라 인라인 jq 로 (`reason` 은 skip 에만):
 
 ```bash
-# record one step (done):
-tmp=$(mktemp); jq --argjson step "$N" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  '.updated_at=$now | .steps += [{step:$step, status:"done"}]' "$REC" > "$tmp" && mv "$tmp" "$REC"
+# record one step — done, or skipped with a reason (reason only on skip):
+tmp=$(mktemp); jq --argjson step "$N" --arg status "done" --arg reason "" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '.updated_at=$now | .steps += [ {step:$step, status:$status} + (if $reason=="" then {} else {reason:$reason} end) ]' \
+  "$REC" > "$tmp" && mv "$tmp" "$REC"
+# skip a step: same call with  --arg status "skipped" --arg reason "why the precondition was absent"
 # finalize (terminal):
 tmp=$(mktemp); jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '.status="completed" | .conclusion="success" | .updated_at=$now' "$REC" > "$tmp" && mv "$tmp" "$REC"

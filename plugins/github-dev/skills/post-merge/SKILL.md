@@ -303,12 +303,13 @@ done
 
 Skip the commit only when `git diff --cached --quiet` reports nothing staged after the `git add` — a staged-only check; `git status --porcelain` would also count pre-existing untracked files and wrongly attempt an empty-index commit.
 
-**Finalize the run record.** Record this closing step and mark the envelope terminal (see the Step 1 recording contract; re-`export REC` + re-declare `record_step` first since shell state does not persist). The record stays under gitignored `.claude/state/` — do **not** add it to `RUN_TOUCHED`:
+**Finalize the run record.** Record this closing step and mark the envelope terminal. Step 10 is a fresh shell, so re-set `PR_NUMBER` (the merged PR number) + `REC` first — `record_step` is not used here, the append + finalize are inlined. The record stays under gitignored `.claude/state/` — do **not** add it to `RUN_TOUCHED`:
 
 ```bash
-REC=".claude/state/post-merge-${PR_NUMBER}.json"
-# Step 10 runs in a fresh shell — record_step from Step 1 is out of scope here, so
-# append the closing step and finalize inline (no function dependency).
+# Step 10 runs in a fresh shell — neither PR_NUMBER nor record_step from Step 1 persist.
+# Re-set PR_NUMBER (the merged PR number) so REC points at the real record, not
+# .claude/state/post-merge-.json; the :? guard fails loud if it is empty. Append + finalize inline.
+REC=".claude/state/post-merge-${PR_NUMBER:?Step 10: re-set PR_NUMBER to the merged PR number before finalizing}.json"
 tmp=$(mktemp)
 jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '.steps += [{step: 10, status: "done"}]

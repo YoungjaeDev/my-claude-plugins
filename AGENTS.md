@@ -10,6 +10,7 @@
 - 사용자가 한국어로 요청하면 한국어로 응답하세요.
 - 변경은 요청 범위에만 한정하고, 관련 없는 파일이나 기존 사용자 변경 사항은 되돌리지 마세요.
 - 파일 탐색과 검색은 우선 `rg`, `rg --files`를 사용하세요.
+- 플러그인 개발 중 라이브러리·런타임·플랫폼 사실을 확인할 때는 `docs/llm-doc-sources.md` 에 정리된 LLM 문서 소스(mcpdocs 등록 + deepwiki 타깃)를 먼저 사용하세요.
 - 문서와 매니페스트가 함께 움직이는 저장소이므로 코드 변경뿐 아니라 `README.md`, 이 문서, marketplace manifest의 동기화 필요성을 항상 확인하세요.
 
 플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.

@@ -22,6 +22,7 @@ ppt-yeong-style 파이프라인의 감사 단계((6) anti-slop 감사·윤문, �
 | `personas` | **파라미터** — 사용자에게 확인하거나 deck.md 전역 규약 블록의 청중 정의에서 도출. 페르소나는 에이전트에 하드코딩돼 있지 않다 |
 | `official_sources` | deck.md 출처 절 + 사용자 지정 |
 | `usage_notes` | 실사용 경험 기록(BUILD_PROGRESS·notes 등) — fact-check의 공식 vs 실사용 병기 점검용(없으면 생략 가능) |
+| `render_qa` | `lecture-deck`의 `render-qa.sh` 출력(강의 덱이면) — 대괄호 leak·미교체 placeholder·리넘버 동기화의 **결정론** 결과. design-qa는 이 FAIL 목록을 눈검사보다 우선 소비한다(없으면 design-qa가 자체 검산으로 대체) |
 
 ## 절차
 
@@ -30,7 +31,7 @@ ppt-yeong-style 파이프라인의 감사 단계((6) anti-slop 감사·윤문, �
    - `ppt-yeong-style:audience-fit` (personas 주입)
    - `ppt-yeong-style:story-flow` (qa_reference로 ppt-yeong-style의 `references/ppt-master-and-qa.md` 경로 전달)
    - `ppt-yeong-style:fact-check` (official_sources + usage_notes 경로)
-   - `ppt-yeong-style:design-qa` (render_dir + spec_lock)
+   - `ppt-yeong-style:design-qa` (render_dir + spec_lock + `render_qa` 결정론 결과가 있으면 그 FAIL 목록도 함께)
    md 확정 단계 사전 리뷰면 design-qa는 생략하고 3종만.
 3. **codex 교차 리뷰(조건부)** — `codex:rescue` 스킬이 설치돼 있으면 리포트 종합 전에 1회 호출해 덱 소스(또는 수정 diff)에 대한 독립 리뷰를 받는다. **미설치면 생략하되 설치 제안 문구를 출력한다**: "codex 플러그인(codex:rescue)이 있으면 이 단계에서 교차 리뷰를 자동으로 받습니다 — marketplace에서 codex 플러그인을 설치하면 활성화됩니다."
 4. **종합** — 리포트 3~5건(사전 리뷰·codex 미설치 조합에 따라 3건까지 줄 수 있음)을 장 번호 기준으로 병합해 **장별 수정 티켓**으로 정리:

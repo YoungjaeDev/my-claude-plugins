@@ -233,8 +233,16 @@ done
 # Git init if needed
 [ -d .git ] || git init -b main
 
+# Seed .gitignore BEFORE staging so machine-local run records never enter the
+# initial commit — state-envelope records live under .claude/state/ and must not
+# be committed. `git add .claude/` honors .gitignore for a directory add, so the
+# record is skipped once this line is present (a fresh bootstrap has no .gitignore).
+if ! grep -qxF '.claude/state/' .gitignore 2>/dev/null; then
+  printf '%s\n' '.claude/state/' >> .gitignore
+fi
+
 # Stage all seeded files (이미 존재한 파일은 git add 가 no-op)
-git add .claude/ .llmwiki/ CLAUDE.md AGENTS.md README.md CHANGELOG.md
+git add .claude/ .llmwiki/ CLAUDE.md AGENTS.md README.md CHANGELOG.md .gitignore
 
 # Idempotent re-run 경로: Phase 4/5 가 모두 skip 했고 staged diff 가 없으면
 # `git commit` 이 `nothing to commit` 으로 실패해 이후 gh repo create 까지

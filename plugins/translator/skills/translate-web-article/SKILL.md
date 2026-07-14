@@ -162,6 +162,38 @@ Show warning and continue translation.
 (Body starts here)
 ```
 
+## Step 6: Final Checklist Gate (MANDATORY)
+
+A long translation can silently drop a section or lose an image — the model summarizes instead of translating, or skips a figure. Before declaring the file done, diff the **source** (the raw firecrawl markdown from Step 1, saved to a temp file) against the **generated output** on two deterministic axes: image-ref count and section-heading count. This is a machine check, not a "remember to verify" note — run it and act on the result.
+
+- **Image-ref count** must match exactly. Fewer in the output = a dropped image (content loss); more = a hallucinated image. Rewriting a URL to a local `images/…` path keeps the `![…](…)` count unchanged, so the count is stable across the download step.
+- **Section-heading count** must match. The output's own header block (title + `원문`/`번역일`, ended by `---`) is stripped before counting, so the added title never offsets the comparison — the body must carry every source section, translated in place.
+
+Under Hermes, run this block via `terminal` (`Bash`→`terminal`); `Read`→`read_file`.
+
+```bash
+SRC="/tmp/source-article.md"          # raw firecrawl markdown from Step 1
+OUT="{output_dir}/{article_name}.md"  # the generated translation
+s_img=$(grep -oE '!\[[^]]*\]\([^)]*\)' "$SRC" | wc -l | tr -d ' ')
+o_img=$(grep -oE '!\[[^]]*\]\([^)]*\)' "$OUT" | wc -l | tr -d ' ')
+s_head=$(grep -cE '^#{1,6}[[:space:]]' "$SRC")
+# strip the output's translator header block (through the first '---') so its
+# added title does not inflate the count; compare the body against the source.
+if grep -qE '^---[[:space:]]*$' "$OUT"; then
+  o_head=$(awk 'f{print} /^---[[:space:]]*$/{f=1}' "$OUT" | grep -cE '^#{1,6}[[:space:]]')
+else
+  o_head=$(grep -cE '^#{1,6}[[:space:]]' "$OUT")
+fi
+fail=0
+echo "images: source=$s_img output=$o_img | body headings: source=$s_head output=$o_head"
+[ "$s_img" != "$o_img" ] && { echo "FAIL — image-ref count mismatch (dropped or hallucinated image)"; fail=1; }
+[ "$s_head" != "$o_head" ] && { echo "FAIL — section-heading count differs (a section was dropped or invented)"; fail=1; }
+[ "$fail" -eq 0 ] && echo "PASS — image + section structure preserved"
+exit $fail
+```
+
+On any FAIL, re-translate the missing section / restore the dropped image and re-run until the gate is silent (`PASS`, exit 0). A legitimately merged or split heading (rare) is the one case to override consciously — state it, don't skip the gate.
+
 ## Edge Cases
 
 | Scenario | Handling |

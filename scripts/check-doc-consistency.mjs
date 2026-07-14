@@ -12,6 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CODEX_EXCLUDED, HERMES_ELIGIBLE } from './manifest-eligibility.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const marketplace = JSON.parse(readFileSync(join(ROOT, '.claude-plugin', 'marketplace.json'), 'utf8'));
@@ -20,11 +21,10 @@ const canonical = marketplace.plugins.map((p) => p.name);
 const canonicalSet = new Set(canonical);
 const TOTAL = canonical.length;
 
-// Mirrors of the two generators' scoping constants — kept here so the count
-// checks are self-contained. Update alongside sync-{codex,hermes}-manifests.mjs.
-const CODEX_EXCLUDED = new Set(['core-config', 'codex-image']); // sync-codex-manifests.mjs EXCLUDED
-const HERMES_ELIGIBLE = 7; // sync-hermes-manifests.mjs HERMES_ELIGIBLE size
+// Eligibility comes from the shared SoT the generators also import, so this guard's
+// counts cannot drift from sync-{codex,hermes}-manifests.mjs.
 const CODEX_ELIGIBLE = canonical.filter((n) => !CODEX_EXCLUDED.has(n)).length;
+const HERMES_ELIGIBLE_COUNT = HERMES_ELIGIBLE.size;
 
 const errors = [];
 
@@ -92,7 +92,8 @@ checkCount('README.md Codex share', readme, /(\d+) \/ (\d+) 플러그인/g, [COD
 checkCount('AGENTS.md ## Plugins (N)', agents, /## Plugins \((\d+)\)/g, [TOTAL]);
 checkCount('AGENTS.md eligible N개', agents, /eligible (\d+)개/g, [CODEX_ELIGIBLE]);
 checkCount('AGENTS.md # N entries', agents, /# (\d+) entries/g, [CODEX_ELIGIBLE]);
-checkCount('AGENTS.md 현재 N개', agents, /현재 (\d+)개/g, [HERMES_ELIGIBLE]);
+checkCount('AGENTS.md 현재 N개', agents, /현재 (\d+)개/g, [HERMES_ELIGIBLE_COUNT]);
+checkCount('README.md Hermes 이번 라운드', readme, /이번 라운드 (\d+)개/g, [HERMES_ELIGIBLE_COUNT]);
 
 if (errors.length) {
   console.error('doc-consistency drift detected:');
@@ -100,4 +101,4 @@ if (errors.length) {
   console.error('\nfix README.md / AGENTS.md to match .claude-plugin/marketplace.json.');
   process.exit(1);
 }
-console.log(`doc-consistency OK — ${TOTAL} plugins, Codex-eligible ${CODEX_ELIGIBLE}, Hermes ${HERMES_ELIGIBLE}; trees + table + counts consistent.`);
+console.log(`doc-consistency OK — ${TOTAL} plugins, Codex-eligible ${CODEX_ELIGIBLE}, Hermes ${HERMES_ELIGIBLE_COUNT}; trees + table + counts consistent.`);

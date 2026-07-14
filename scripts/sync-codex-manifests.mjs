@@ -21,7 +21,7 @@ const PLUGINS_DIR = join(ROOT, 'plugins');
 // deepwiki and project-init were here but are now dual-surface (command + skill);
 // the skill side is what Codex loads, so they leave the EXCLUDED set.
 //   codex-image — Claude->Codex bridge (delegates to codex exec); bridging into Codex is circular
-const EXCLUDED = new Set(['core-config', 'codex-image']);
+import { CODEX_EXCLUDED as EXCLUDED } from './manifest-eligibility.mjs';
 
 // Codex 0.135 manifest top-level supports only `skills`, `hooks`, `mcpServers`, `apps`
 // (see ~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md). `commands`
@@ -192,11 +192,11 @@ function validateDescriptionParity(entries) {
   const violations = [];
   for (const entry of entries) {
     const manifestPath = join(PLUGINS_DIR, entry.name, '.claude-plugin', 'plugin.json');
-    if (!isFile(manifestPath)) continue;
+    if (!isFile(manifestPath)) { violations.push({ name: entry.name, path: manifestPath, reason: 'missing plugin.json' }); continue; }
     let parsed;
-    try { parsed = JSON.parse(readFileSync(manifestPath, 'utf8')); } catch { continue; }
+    try { parsed = JSON.parse(readFileSync(manifestPath, 'utf8')); } catch { violations.push({ name: entry.name, path: manifestPath, reason: 'unparseable plugin.json' }); continue; }
     if ((parsed.description || '') !== (entry.description || '')) {
-      violations.push({ name: entry.name, path: manifestPath });
+      violations.push({ name: entry.name, path: manifestPath, reason: 'description drift' });
     }
   }
   return violations;
@@ -219,7 +219,7 @@ function main() {
   const parityViolations = validateDescriptionParity(source.plugins);
   if (parityViolations.length > 0) {
     console.error('plugin.json description drift — marketplace.json is the source of truth; sync plugin.json to it:');
-    for (const v of parityViolations) console.error(`  ${v.name}: ${v.path}`);
+    for (const v of parityViolations) console.error(`  ${v.name}: ${v.reason} (${v.path})`);
     process.exit(1);
   }
 

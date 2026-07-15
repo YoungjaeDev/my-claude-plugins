@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.5.0"
+    "version": "2.5.3"
   },
   "plugins": [
     {
@@ -131,7 +131,7 @@
       "name": "project-init",
       "source": "./plugins/project-init",
       "description": "Agent-harness project lifecycle. `new` — one-shot first-day bootstrap (interview, .claude/ scaffold, minimal CLAUDE.md, AGENTS.md with Codex GitHub cloud reviewer guidelines in general/ml/web variants, README/CHANGELOG seed, gh repo create + initial push) behind a hardened preflight guard that refuses a non-empty cwd. `wiring` — its inverse for existing repos: a read-only 14-axis setup diagnostic (FAIL / WARN / ASK / INFO / SKIP / OK) covering guidance files, .claude/rules paths: scoping defeated by @import, llm-wiki layout + staging backlog, Serena onboarding, memory posture, MCP duplicate registration, Codex CLI posture + AGENTS.md byte budget, spec homes, gws-sync, .tmp, core.hooksPath, .gitignore coverage. ASK answers persist to .claude/state/wiring.json. Shared read-only detector: scripts/project_state.sh.",
-      "version": "0.4.4",
+      "version": "0.5.0",
       "category": "planning"
     },
     {

@@ -95,6 +95,18 @@ while true; do
   elapsed=$((now_ts - start_ts))
   if [ -z "$s" ] && [ "$elapsed" -ge "$EARLY_CHECK_WINDOW" ]; then
     if rl=$(bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
+      # A rate-limit sniff on comment/description TEXT is not authoritative: the
+      # commit-status may have flipped to a terminal success/failure between the
+      # top-of-loop fetch and this probe (a stale rate-limit comment from an
+      # earlier push lingers on the PR). Re-read the commit-state and let a fresh
+      # terminal state win; only emit rate_limited when it is still non-terminal.
+      fresh_obj=$(fetch_cr_state)
+      fresh=$(jq -r 'if (.state // "none") == "none" or (.state // "") == "pending" then "" else .state end' <<<"$fresh_obj")
+      if [ "$fresh" = "success" ] || [ "$fresh" = "failure" ]; then
+        target=$(jq -r '.target_url // ""' <<<"$fresh_obj")
+        printf '{"state":"%s","sha":"%s","pr":%s,"target_url":"%s","source":"poll"}\n' "$fresh" "$SHA" "$PR_NUM" "$target"
+        exit 0
+      fi
       reset=$(jq -r '.reset_minutes_estimate' <<<"$rl")
       hits=$(jq -r '.hits' <<<"$rl")
       printf '{"state":"rate_limited","sha":"%s","pr":%s,"reset_minutes_estimate":%s,"hits":%s,"source":"poll"}\n' \

@@ -186,7 +186,7 @@ This must be added to the scoped style block of `slides.md` or a separate `style
 ```css
 /* In dark mode, make the slide background transparent so the glow shows through */
 .dark #slide-content {
-  background-color: black !important;
+  background-color: transparent !important;
 }
 ```
 
@@ -195,7 +195,7 @@ How to add it at the bottom of `slides.md`:
 ```md
 <style>
 .dark #slide-content {
-  background-color: black !important;
+  background-color: transparent !important;
 }
 </style>
 ```

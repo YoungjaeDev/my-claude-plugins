@@ -239,7 +239,8 @@ repo 규약(AGENTS.md "플러그인 변경 규칙")상, `plugins/<name>/` 아래
 - W2-2 → `project-init` PATCH 범프(현재 0.4.4).
 - W3-1 → `slidev` PATCH 범프.
 - W3-3(행동 시) → `code-scout` PATCH 범프.
-- **W3-2, W3-4 → 범프 불필요**: W3-2는 루트 `AGENTS.md`(플러그인 콘텐츠 아님), W3-4는 core-config CLAUDE.md 한 줄 addendum(범프 대상이나 문서 한 줄 — 사용자 확인 후 처리).
+- **W3-2 → 범프 불필요**: 루트 `AGENTS.md`는 플러그인 콘텐츠가 아니다.
+- **W3-4 → core-config PATCH 범프 필요**: `plugins/core-config/CLAUDE.md` 한 줄 addendum도 `plugins/<name>/` 아래 변경이라 `plugin-versioning.md` 규정상 PATCH + `metadata.version` 범프 대상이다(1.12.0 → 1.12.1, 사용자 확인 후). 문서 한 줄이라는 이유로 예외가 되지 않는다.
 - 어떤 플러그인 버전이든 바뀌면 `marketplace.json` `metadata.version`(marketplace release 버전)도 올린다.
 - Codex/Hermes drift 가드: 모든 PR에서 `node scripts/sync-codex-manifests.mjs --check` + `node scripts/sync-hermes-manifests.mjs --check`.
 

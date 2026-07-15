@@ -375,6 +375,36 @@ is "stale RL comment + status flips success -> poll emits success" \
    "$(jq -r '.state' <<<"$pflip" 2>/dev/null)" success
 rm -rf "$PSHIM"
 
+# W1-2 follow-up (Codex P2): the re-fetch must NOT treat a *free-tier* success
+# (the transient "Review skipped: free tier disabled" placeholder) as terminal —
+# that skips the CR_SKIP_GRACE hold the top-of-loop branch applies. Counter shim:
+# /statuses empty on fetch #1 (→ sniff path), free-tier success on #2+. With
+# CR_SKIP_GRACE=0 the next loop's grace branch routes to rate_limited; the
+# pre-guard re-fetch emitted `success` outright. RED against that by construction.
+TMO4=""; command -v timeout >/dev/null 2>&1 && TMO4="timeout 10"
+FTSHIM=$(mktemp -d); FTCNT="$FTSHIM/n"; echo 0 > "$FTCNT"
+cat > "$FTSHIM/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*)
+    n=\$(cat "$FTCNT"); echo \$((n+1)) > "$FTCNT"
+    if [ "\$n" -eq 0 ]; then echo '[]'
+    else echo '[{"context":"CodeRabbit","state":"success","description":"Review skipped: free tier disabled","target_url":"https://cr/x","created_at":"2026-07-15T00:00:00Z"}]'; fi ;;
+  *"/check-runs"*) echo '{"check_runs":[]}' ;;
+  *"/issues/"*"/comments"*) echo '[]' ;;
+  *"/pulls/"*"/reviews"*) echo '[]' ;;
+  *"/pulls/"*) echo '{"head":{"sha":"deadbeef"}}' ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$FTSHIM/gh"
+ftier=$(PATH="$FTSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 \
+  EARLY_CHECK_WINDOW=0 CR_SKIP_GRACE=0 PUSH_TIME=2020-01-01T00:00:00Z \
+  $TMO4 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
+is "re-fetch free-tier success -> held for grace, not terminal success" \
+   "$(jq -r '.state' <<<"$ftier" 2>/dev/null)" rate_limited
+rm -rf "$FTSHIM"
+
 echo
 echo "pre-flight.sh"
 

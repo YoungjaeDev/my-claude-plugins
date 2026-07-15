@@ -102,6 +102,15 @@ while true; do
       # terminal state win; only emit rate_limited when it is still non-terminal.
       fresh_obj=$(fetch_cr_state)
       fresh=$(jq -r 'if (.state // "none") == "none" or (.state // "") == "pending" then "" else .state end' <<<"$fresh_obj")
+      fresh_desc=$(jq -r '.description // ""' <<<"$fresh_obj")
+      # A fresh success carrying the transient free-tier placeholder is NOT
+      # terminal — emitting it here would skip the CR_SKIP_GRACE hold the
+      # top-of-loop branch applies to that exact row. Fall back into the loop so
+      # the grace logic governs it (it flips to the real "Review completed", or
+      # to rate_limited once grace expires). Mirrors the s="success" guard above.
+      if [ "$fresh" = "success" ] && printf '%s' "$fresh_desc" | grep -qiE '^Review skipped: free tier disabled'; then
+        sleep "$INTERVAL"; continue
+      fi
       if [ "$fresh" = "success" ] || [ "$fresh" = "failure" ]; then
         target=$(jq -r '.target_url // ""' <<<"$fresh_obj")
         printf '{"state":"%s","sha":"%s","pr":%s,"target_url":"%s","source":"poll"}\n' "$fresh" "$SHA" "$PR_NUM" "$target"

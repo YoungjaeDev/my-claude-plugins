@@ -249,7 +249,7 @@ Serena/rules-forge).
 - Extract issue refs from the PR body (`Closes #N` / `Fixes #N` / `Resolves #N`).
 - `gh project list --owner <owner> --format json`. If none, skip silently. Else `gh project item-list` → `gh project field-list` → `gh project item-edit` to set Status to "Done". Skip if the issue is not in the project.
 
-**Record.** `record_step 5 done`, or `record_step 5 skipped "no GitHub Project"` when no project resolves or the issue is not in one.
+**Record.** `record_step 5 done`; on a skip, record the reason that matches which condition fired — `record_step 5 skipped "no GitHub Project"` (no project resolves) or `record_step 5 skipped "issue not in the project"` (a project exists but the issue is not on it). Collapsing both into one reason loses why the step skipped.
 
 ### 5.5. Sync milestone progress (if issues have milestones)
 
@@ -308,7 +308,7 @@ If a `CHANGELOG.md` (or `CHANGELOG`) exists at the repo root **and** the merged 
 
 The `/docs-forge:changelog` **command** is Claude-only (Codex 0.135 emits no command surface) — under Codex, skip the command and do the same edit manually from the `changelog-guide` skill patterns. Skip silently when no CHANGELOG exists or the merge is not changelog-worthy.
 
-**Record.** `record_step 9.5 done`, or `record_step 9.5 skipped "no CHANGELOG"` when none exists or the merge is not changelog-worthy.
+**Record.** `record_step 9.5 done`; on a skip, distinguish the cause — `record_step 9.5 skipped "no CHANGELOG"` (no file at the repo root) or `record_step 9.5 skipped "not changelog-worthy"` (a CHANGELOG exists but the merge is a pure docs/test/chore). One reason for both conditions loses why the step skipped.
 
 ### 10. Commit changes (optional)
 

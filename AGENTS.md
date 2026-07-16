@@ -247,9 +247,9 @@ tmp=$(mktemp); jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 
 `/project-init:wiring` records decisions the filesystem cannot infer — whether this project wants a git remote, whether its deliverables go to Drive — in `.claude/state/wiring.json` (gitignored; values are machine-local). Read that file before re-asking.
 
-## Known limitation — cr-fix portability
+## cr-fix 경로 이식성 (해소됨)
 
-`plugins/github-dev/skills/cr-fix/SKILL.md` 의 36여 path 가 marketplace-repo-relative (`plugins/github-dev/skills/cr-fix/scripts/...`) 로 하드코딩되어 있어, marketplace repo 가 cwd 일 때 (dogfood) 만 동작합니다. 일반 user repo / Codex 양쪽에서 깨집니다 — 이건 shared-source bridge 이전부터 있던 cr-fix 자체의 구조적 결함이고, 별도 follow-up 으로 portable 화 예정 (`${CLAUDE_PLUGIN_ROOT}` 또는 동등한 env-var 사용으로 일관화).
+cr-fix 의 스크립트·레퍼런스 경로는 `plugins/github-dev/skills/cr-fix/SKILL.md` Step 1 의 `SKILL_DIR` resolver (`CLAUDE_PLUGIN_ROOT` → 소스트리 `plugins/github-dev/skills/cr-fix` → Codex 캐시 → Hermes 순) 로 해소된다. 이후 모든 bash 블록은 하드코딩 경로가 아니라 `$SKILL_DIR/scripts/...`·`$SKILL_DIR/references/...` 를 경유하므로 marketplace dogfood 뿐 아니라 일반 user repo·Codex·Hermes 에서도 동작한다. SKILL.md 에 남은 `plugins/github-dev/skills/cr-fix` 리터럴은 전부 resolver 의 fallback 분기 내부이며, `tests/run-tests.sh` 의 "Step 1 SKILL_DIR resolver" 케이스가 회귀를 가드한다.
 
 ## Codex 통합 (shared-source)
 

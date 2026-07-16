@@ -1,10 +1,10 @@
 ---
 id: cr-rate-limit-progressive-refill
 aliases: [cr-free-tier-disabled, cr-quota-budget, cr-burst-push, cr-active-rate-limit-query]
-last_verified: 2026-07-14
+last_verified: 2026-07-16
 status: active
 volatility: volatile
-sources: 8
+sources: 9
 ---
 
 # CodeRabbit rate-limit: progressive refill, not a plan downgrade
@@ -50,6 +50,8 @@ Intermediate 7-day bands step the hourly allowance down monotonically between th
 
 A transient `"Review skipped: free tier disabled"` placeholder is **non-terminal**: hold it in `gate=cr_wait` for `CR_SKIP_GRACE` seconds (default `300`, env-only — no new `--flag`, mirroring `EARLY_CHECK_WINDOW`), then fall through to `rate_limited` once the grace window expires. A genuine `Review limit reached` / `rate limited` routes to `rate_limited` immediately; `error` / `pending` / `failure` paths are untouched. The poll keeps waiting through the grace window instead of terminating on the first `state ∈ {success,failure}`, exiting only when CR flips to `Review completed` (terminal success) or grace expires — so a refill placeholder no longer collapses to the same verdict as a hard cap, and a CR-only PR no longer false-converges on the content-empty placeholder.
 
+**Channel authority on the re-fetch path.** The poll's early-sniff branch re-reads the commit state after a rate-limit sniff so a *stale comment* from an earlier push cannot false-positive over a genuinely completed review. That suppression is legitimate only for the comment channel: the status **description** is SHA-scoped to the current head, so a fresh `success` whose description is itself a limit marker (`Review limit reached`, refill phrasing) is CR's quota-skip row, not a completed review, and must fall through to `rate_limited` instead of being promoted to terminal success. Rule of thumb: comment-channel hits yield to a fresh terminal state; description-channel evidence on the current SHA keeps its authority (`poll-cr-status.sh` marker guard + `pre-flight.sh` fixture "description RL on success -> gate rate_limited").
+
 ## The active query
 
 When the passive sniff is ambiguous (a rate-limit signal with no reset estimate), cr-fix 2.8.0 posts `@coderabbitai rate limit` on the PR and parses CR's reply (`query-cr-rate-limit.sh`) for `remaining` / `reset_minutes`. Two contract rules, both dogfood-derived:
@@ -82,3 +84,4 @@ Three independent instances confirm the signal is transient and recoverable, not
 6. **PR #104 dogfood** — fourth instance: `Review limit reached` (Fair Usage adaptive limit) under a green `success / Review completed` commit status, with a machine-readable `Next review available in: 41 minutes` the sniffer drops.
 7. **PR #122** (`fix(github-dev): cr-fix iter-4 — id-anchor the active rate-limit query`) — the active query lands (2.8.0) and its stale-anchor bug is reproduced RED against the body-match implementation (fixture `issue-comments-rl-stale.json`: prior-run reply id 501 served as fresh) then fixed via post-id anchoring.
 8. **CodeRabbit Fair Usage adaptive rate table** — `https://docs.coderabbit.ai/management/plans#fair-usage-limits-policy` (verified 2026-07-14). The concrete Pro+ per-hour-by-7-day-review-count table (0-29 → 10/hr, 30-39 → 8/hr, 90+ → 1/hr one-at-a-time) plus the official `@coderabbitai rate limit` / `reviews remaining?` self-serve query command — the doc confirmation of the previously reverse-engineered refill lore (Issue #121). Distinct from source 2, which cites the progressive-refill *semantics* on the same page; this row cites the specific adaptive *numbers* and the user-facing query command.
+9. **PR #147 + Issue #57** (`fix(github-dev): cr-fix rate-limit false positive`) — the channel-authority rule on the re-fetch path: `pre-flight.sh` overrides a comment-channel rate-limit hit with a fresh terminal success (`gate=proceed`, description authority retained) and `poll-cr-status.sh` refuses to promote a fresh success whose description is itself a limit marker. Fixture-locked in `tests/run-tests.sh` ("comment RL over terminal success -> gate proceed", "description RL on success -> gate rate_limited", "stale RL comment + status flips success -> poll emits success"). Root scenario: #56's self-referential trigger-phrase quote (Issue #57).

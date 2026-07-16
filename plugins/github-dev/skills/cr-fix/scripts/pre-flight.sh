@@ -169,8 +169,15 @@ case "$cr_state" in
     ;;
 esac
 
-# Rate-limit overrides everything except failure.
-if [ "$rate_limit_source" != "none" ] && [ "$gate" != "failure" ]; then
+# Rate-limit overrides everything except failure — but a comment-only sniff does
+# NOT override a CR that already carries an authoritative terminal state. The
+# commit-status/check-run is the authority; a lingering rate-limit *comment* (a
+# stale notice from an earlier push, or CR's in-place edit that outlived the real
+# review) must not flip an already-successful review to rate_limited. The
+# description/both channels are commit-status-derived, so they keep override
+# authority; only the pure body-derived "comment" channel is suppressed here.
+if [ "$rate_limit_source" != "none" ] && [ "$gate" != "failure" ] \
+   && ! { [ "$cr_actionable" = "true" ] && [ "$rate_limit_source" = "comment" ]; }; then
   gate="rate_limited"
 fi
 

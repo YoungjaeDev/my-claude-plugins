@@ -1,6 +1,6 @@
 # Rate-limit Fallback Decision Table
 
-Triggered by `scripts/sniff-cr-rate-limit.sh` detecting a CR rate-limit comment within ~30s of CR-status silence. SKILL.md Step 7c uses this table.
+Triggered by `scripts/sniff-cr-rate-limit.sh` detecting a CR rate-limit comment within ~30s of CR-status silence. A `comment`-channel hit routes here **only while the commit-status is non-terminal** — if the status has already flipped to `success`/`failure`, that authoritative state wins and this table is not entered (see `pre-flight-rules.md`). SKILL.md Step 7c uses this table.
 
 ## --cr-source resolution
 

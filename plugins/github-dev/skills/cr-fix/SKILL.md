@@ -289,7 +289,7 @@ fi
 # Step 7d (CLI) / Step 8b (Codex inline) handle the source directly.
 ```
 
-`poll-cr-status.sh` self-escapes when it detects a CR rate-limit body within the first 30s window. With `INTERVAL=8s` (default), the polling cycle is fast enough that the user-facing wakeup feels interactive. Termination branches:
+`poll-cr-status.sh` self-escapes when it detects a CR rate-limit body within the first 30s window — but only after re-reading the commit-status and finding it still non-terminal. A status that flipped to `success`/`failure` between the top-of-loop fetch and the sniff wins over a lingering rate-limit comment, so a stale notice from an earlier push cannot mask a review that has actually finished. With `INTERVAL=8s` (default), the polling cycle is fast enough that the user-facing wakeup feels interactive. Termination branches:
 
 - `state="success"` → Step 6b
 - `state="failure"` → `final_state=failure`, break

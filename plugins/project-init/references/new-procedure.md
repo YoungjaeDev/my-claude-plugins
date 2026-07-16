@@ -97,7 +97,8 @@ else
   jq -n --arg rid "project-init-${SLUG}" --arg now "$NOW" \
     '{schema:"state-envelope/v0", run_id:$rid, status:"in_progress", conclusion:null,
       started_at:$now, updated_at:$now, anchor_sha:null, attempt:1,
-      session_id:(env.CLAUDE_SESSION_ID // null), steps:[]}' > "$REC"
+      session_id:(env.CLAUDE_SESSION_ID // null), steps:[]}' > "$REC" \
+    || { echo "state-envelope: init write failed for $REC" >&2; exit 1; }
 fi
 
 # record_step <phase-n> <done|skipped> [reason] — append one entry, bump updated_at.
@@ -111,7 +112,8 @@ record_step() {
      '.updated_at = $now
       | .steps += [ {step: $step, status: $status}
                     + (if $reason == "" then {} else {reason: $reason} end) ]' \
-     "$REC" > "$tmp" && mv "$tmp" "$REC"
+     "$REC" > "$tmp" && mv "$tmp" "$REC" \
+    || { echo "state-envelope: record_step write failed for $REC" >&2; exit 1; }
 }
 record_step 0 done
 ```
@@ -379,7 +381,8 @@ Next actions (call when ready):
 tmp=$(mktemp)
 jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '.status = "completed" | .conclusion = "success" | .updated_at = $now' \
-  "$REC" > "$tmp" && mv "$tmp" "$REC"
+  "$REC" > "$tmp" && mv "$tmp" "$REC" \
+  || { echo "state-envelope: finalize write failed for $REC" >&2; exit 1; }
 ```
 
 ## Failure handling

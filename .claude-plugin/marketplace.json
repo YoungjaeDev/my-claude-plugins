@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.5.3"
+    "version": "2.5.4"
   },
   "plugins": [
     {
@@ -96,7 +96,7 @@
       "name": "slidev",
       "source": "./plugins/slidev",
       "description": "Slidev markdown presentation generator with interview workflow and KubeCon-level visual enhancement",
-      "version": "1.2.2",
+      "version": "1.2.3",
       "category": "content"
     },
     {

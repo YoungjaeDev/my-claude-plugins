@@ -212,7 +212,7 @@
 - **위치·회전**: live 파일은 `.claude/state/<pipeline>-<key>.json` (예: `post-merge-114.json`, 기존 `cr-fix-<PR>.json` 명명 미러). 같은 key 로 재실행하면 새로 쓰기 전에 이전 live 파일을 `.claude/state/archive/<pipeline>-<key>-<timestamp>-$$.json` 로 회전한다 (cr-fix Step 2 미러). `.claude/state/` 는 gitignore + 머신 로컬 — run record 는 절대 커밋하지 않고 스킬의 `RUN_TOUCHED` 스테이징 집합에도 넣지 않는다.
 - **스키마**: `{schema:"state-envelope/v0", run_id, status(queued|in_progress|completed), conclusion, started_at, updated_at, anchor_sha, attempt, session_id, steps[]}`. `steps[]` 는 top-level 단계가 닫힐 때마다 `{step, status: done|skipped, reason?}` 한 항목 (`reason` 은 skipped 에만).
 - **spec-state 와 직교(orthogonal)**: run record 는 `.claude/state/spec.json` 이 **아니다**. `spec.json` (owner: `spec-state:state-tracker`) 은 spec→issue→PR 파이프라인의 크로스런 집계이고, run record 는 스킬 단일 실행의 단계 로그다. 서로 다른 파일·다른 소유자이며 서로 읽거나 쓰지 않는다.
-- **v0 채택자**: `github-dev:post-merge` (Step 1-10 per-step 기록) 하나뿐이다. 다른 스킬 상태 파일의 retrofit 은 후속 변경으로 의도적으로 미룬다.
+- **v0 채택자**: `github-dev:post-merge` (Step 1-10 per-step 기록) 와 `project-init:new` (Phase 0.5 run record — resume 지원 + fail-loud 쓰기). 다른 스킬 상태 파일의 retrofit 은 후속 변경으로 의도적으로 미룬다.
 
 **실행 jq (Codex/Hermes 자립용 — Claude 도 동일 패턴).** 채택 스킬이 본문에 인라인한다 (공유 라이브러리 없음). Init 은 archive 회전 실패 시 이전 기록을 덮어쓰지 않도록 abort 한다:
 
@@ -247,9 +247,9 @@ tmp=$(mktemp); jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 
 `/project-init:wiring` records decisions the filesystem cannot infer — whether this project wants a git remote, whether its deliverables go to Drive — in `.claude/state/wiring.json` (gitignored; values are machine-local). Read that file before re-asking.
 
-## Known limitation — cr-fix portability
+## cr-fix 경로 이식성 (해소됨)
 
-`plugins/github-dev/skills/cr-fix/SKILL.md` 의 36여 path 가 marketplace-repo-relative (`plugins/github-dev/skills/cr-fix/scripts/...`) 로 하드코딩되어 있어, marketplace repo 가 cwd 일 때 (dogfood) 만 동작합니다. 일반 user repo / Codex 양쪽에서 깨집니다 — 이건 shared-source bridge 이전부터 있던 cr-fix 자체의 구조적 결함이고, 별도 follow-up 으로 portable 화 예정 (`${CLAUDE_PLUGIN_ROOT}` 또는 동등한 env-var 사용으로 일관화).
+cr-fix 의 스크립트·레퍼런스 경로는 `plugins/github-dev/skills/cr-fix/SKILL.md` Step 1 의 `SKILL_DIR` resolver (`CLAUDE_PLUGIN_ROOT` → 소스트리 `plugins/github-dev/skills/cr-fix` → Codex 캐시 → Hermes 순) 로 해소된다. 이후 모든 bash 블록은 하드코딩 경로가 아니라 `$SKILL_DIR/scripts/...`·`$SKILL_DIR/references/...` 를 경유하므로 marketplace dogfood 뿐 아니라 일반 user repo·Codex·Hermes 에서도 동작한다. SKILL.md 에 남은 `plugins/github-dev/skills/cr-fix` 리터럴은 전부 resolver 의 fallback 분기 내부이며, `tests/run-tests.sh` 의 "Step 1 SKILL_DIR resolver" 케이스가 회귀를 가드한다.
 
 ## Codex 통합 (shared-source)
 

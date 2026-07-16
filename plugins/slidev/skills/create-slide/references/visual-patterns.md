@@ -157,7 +157,7 @@ Simpler neutral card without color semantics. Used for challenge/info cards wher
 </div>
 ```
 
-**Note:** Requires dark background (`colorSchema: dark` + `.dark #slide-content { background-color: black !important; }` in CSS) to be visible.
+**Note:** Requires dark background (`colorSchema: dark` + `.dark #slide-content { background-color: transparent !important; }` in CSS) to be visible.
 
 ---
 
@@ -309,7 +309,7 @@ Place in the slide's `<style scoped>` block or in a global `style.css`.
 
 ```css
 .dark #slide-content {
-  background-color: black !important;
+  background-color: transparent !important;
 }
 ```
 

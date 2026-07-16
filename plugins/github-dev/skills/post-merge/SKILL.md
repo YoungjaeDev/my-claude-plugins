@@ -156,6 +156,8 @@ fi
 - Modified/staged (`M`/`A`/`D`) — prompt via `AskUserQuestion`: **stash** (`git stash push -m "post-merge: temp save"`) / **discard** (`git restore --staged --worktree -- .` — reverts tracked changes only; never `git clean`, so pre-existing untracked files/drafts are preserved per the rule above) / **abort**.
 - If stashed, prompt at the end of the run for **pop** / **apply** / **later**.
 
+**Record.** Close this step: `record_step 2 done`. Every closing bash block is a fresh shell, so re-`export REC=".claude/state/post-merge-${PR_NUMBER}.json"` and re-declare `record_step` (copy the definition from Step 1) before the call — this re-declaration applies to every step below.
+
 ### 3. Switch to base branch
 
 ```bash
@@ -163,6 +165,8 @@ git fetch origin
 git checkout <baseRefName>
 git pull origin <baseRefName>
 ```
+
+**Record.** `record_step 3 done`.
 
 ### 4. Clean up local branch
 
@@ -238,20 +242,28 @@ Skip silently when: no marker is found, or the user selects skip-all.
 **Codex**: runs identically (gh/git/grep/AskUserQuestion only — no
 Serena/rules-forge).
 
+**Record.** After Steps 4-4.6 close, `record_step 4 done` — sub-steps 4.5 and 4.6 fold into this single entry.
+
 ### 5. Update GitHub Project status (optional)
 
 - Extract issue refs from the PR body (`Closes #N` / `Fixes #N` / `Resolves #N`).
 - `gh project list --owner <owner> --format json`. If none, skip silently. Else `gh project item-list` → `gh project field-list` → `gh project item-edit` to set Status to "Done". Skip if the issue is not in the project.
 
+**Record.** `record_step 5 done`; on a skip, record the reason that matches which condition fired — `record_step 5 skipped "no GitHub Project"` (no project resolves) or `record_step 5 skipped "issue not in the project"` (a project exists but the issue is not on it). Collapsing both into one reason loses why the step skipped.
+
 ### 5.5. Sync milestone progress (if issues have milestones)
 
 For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `skills/update-progress/SKILL.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
+
+**Record.** `record_step 5.5 done`, or `record_step 5.5 skipped "no milestone"` when no related issue carries one.
 
 ### 5.7. Update `.claude/state/spec.json` (if present)
 
 - If `.claude/state/spec.json` exists, move the `in_progress` entry whose `linked.pr` matches the merged PR (or `linked.issue`) to `completed` with `merge_sha` (first 7 chars) + `completed_at` (today, UTC `YYYY-MM-DD`), and set the spec file's frontmatter `status: merged`.
 - Mechanics are owned by `spec-state:state-tracker` — invoke `/spec-state:state-tracker complete <spec-path>` if installed; otherwise apply the direct JSON edit per `plugins/spec-state/skills/state-tracker/SKILL.md`.
 - Skip silently if no matching entry, or if `.claude/state/` does not exist.
+
+**Record.** `record_step 5.7 done`, or `record_step 5.7 skipped "no spec.json entry"` when no matching entry exists or `.claude/state/` is absent.
 
 ### 6. Integrate learnings into config files
 
@@ -261,9 +273,13 @@ Read `gh pr diff <PR_NUMBER>` + the PR body, then weave each learning into the *
 
 Full procedure — Pre-Audit (scrub existing stamps first), the classification/placement table, the integration process, modular-rule-file structure, the pre-presentation stamp self-check, History Rotation (6.4), and the Normative Doc Size Audit (6.5, with `rules-forge:split` / `claude-md-improver` routing) — lives in **`references/learning-integration.md`**. Apply its Core Principle (`references/core-principle.md`) to every added/modified line; present a diff-style proposal before applying.
 
+**Record.** `record_step 6 done` — folds in the 6.5 normative-doc size audit.
+
 ### 7. Update Serena memory (Claude-only — Codex skips)
 
 If Serena MCP is available, integrate PR learnings into existing memory files as native content (no `post_merge_prN.md`, no `## Post-Merge` headers). Pre-Audit, the memory-file mapping table, and the self-check are in **`references/learning-integration.md`** ("Serena memory"). Skip if Serena is unavailable or under Codex.
+
+**Record.** `record_step 7 done`, or `record_step 7 skipped "Serena unavailable"` (under Codex, `record_step 7 skipped "Codex — Serena unavailable"`).
 
 ### 8. Wiki lore ingest (MANDATORY)
 
@@ -278,15 +294,21 @@ Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`);
 
 Set `WIKI_AUTOINGEST=0` to disable the ingest work for a run; the checkpoint line still prints (`no-lore (disabled via WIKI_AUTOINGEST=0)`), so disabling is visible, not silent.
 
+**Record.** `record_step 8 done` — Step 8 is mandatory and always reaches its checkpoint, so it records `done` even on the `no-lore` path.
+
 ### 9. Update README.md (if needed — humanize-korean/docs-forge are Claude-only)
 
 If the PR changed features/commands/install/usage/deps and a README exists: draft the changes, then refine. If the README is Korean and the `humanize-korean` plugin is installed, apply `/humanize-korean:humanize-korean` to strip AI-writing tells; if it is not installed (it is a user-external plugin, not bundled here), do the equivalent pass by manual edit. Then apply `/docs-forge:readme` guidelines. Both skill passes are Claude-only — under Codex skip them and keep the manual edit. Present for confirmation. Skip if no README-relevant changes.
+
+**Record.** `record_step 9 done`, or `record_step 9 skipped "no README changes"`.
 
 ### 9.5. Update CHANGELOG (if present)
 
 If a `CHANGELOG.md` (or `CHANGELOG`) exists at the repo root **and** the merged PR is changelog-worthy (a user-visible feature / fix / breaking change — not a pure docs/test/chore merge), reflect the merge into it. Mirror Step 9's guide-driven approach: read the `docs-forge:changelog-guide` skill + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md` and apply the patterns **manually** (Keep-a-Changelog grouping, the `Unreleased` section, semantic-version discipline, no per-PR stamp noise in normative entries). Derive the entry from `gh pr diff <PR_NUMBER>` + the PR body, place it under the right `Unreleased` heading (Added / Changed / Fixed / Removed), present a diff-style proposal before applying, and add the file to `RUN_TOUCHED` for Step 10.
 
 The `/docs-forge:changelog` **command** is Claude-only (Codex 0.135 emits no command surface) — under Codex, skip the command and do the same edit manually from the `changelog-guide` skill patterns. Skip silently when no CHANGELOG exists or the merge is not changelog-worthy.
+
+**Record.** `record_step 9.5 done`; on a skip, distinguish the cause — `record_step 9.5 skipped "no CHANGELOG"` (no file at the repo root) or `record_step 9.5 skipped "not changelog-worthy"` (a CHANGELOG exists but the merge is a pure docs/test/chore). One reason for both conditions loses why the step skipped.
 
 ### 10. Commit changes (optional)
 

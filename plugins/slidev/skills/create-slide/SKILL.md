@@ -350,8 +350,8 @@ All Minimal items above, plus:
   /* v-mark scaling */
   .rough-annotation > path[stroke-width='2'] { stroke-width: calc(2px * var(--slidev-slide-scale)); }
 
-  /* dark background override */
-  .dark #slide-content { background-color: black !important; }
+  /* dark-mode #slide-content: transparent so a glow layer shows through (falls back to the dark root when there's no glow) */
+  .dark #slide-content { background-color: transparent !important; }
   ```
 
 ### Code Block Writing

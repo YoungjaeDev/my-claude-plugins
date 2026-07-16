@@ -56,7 +56,7 @@ The sniff script (`scripts/sniff-cr-rate-limit.sh`) checks three locations:
 2. review body (`submitted_at > push_time`).
 3. commit-status `description` (no time check; latest CodeRabbit status only).
 
-Hit on ANY of the three → rate-limited.
+Hit on ANY of the three → rate-limited — **except** a `comment`-channel-only hit while the commit-status already reports a terminal `success`/`failure`. The commit-status/check-run is authoritative, so a lingering rate-limit comment (stale from an earlier push, or CR's in-place edit that outlived the real review) does not override it. The `description` and `both` channels are commit-status-derived and keep override authority.
 
 ## Codex review id read
 
@@ -96,7 +96,7 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
 | `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | `cr_skip_age < CR_SKIP_GRACE` | `cr_wait` (transient, hold for the real `Review completed`) |
 | `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | `cr_skip_age ≥ CR_SKIP_GRACE` | `rate_limited` (genuine disable) |
 | `success` | `Review limit reached` / `rate limited` | n/a | n/a | n/a | n/a | `rate_limited` |
-| `success` | none | yes | n/a | n/a | n/a | `rate_limited` |
+| `success` | none | yes (`comment` channel) | n/a | n/a | n/a | `proceed` — comment sniff is not authoritative over a terminal commit-status; the `description`/`both` channels still route to `rate_limited` |
 | `pending` / `in_progress` / `""` | n/a | n/a | n/a | n/a | n/a | `cr_wait` |
 | `failure` | n/a | n/a | n/a | n/a | n/a | `failure` |
 | `error` | n/a | n/a | n/a | n/a | n/a | `cr_wait` (treat as transient, retry-by-polling) |

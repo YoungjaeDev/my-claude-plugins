@@ -345,6 +345,116 @@ pout=$(OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 PUSH_TIME=x \
   $TMO bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
 is "persistent error -> terminal state error" "$(jq -r '.state' <<<"$pout" 2>/dev/null)" error
 
+# W1-2: a rate-limit *comment* lingering on a PR whose commit-status has already
+# flipped to terminal success must NOT route the poll to rate_limited. The sniff
+# fires on the empty first fetch (s=""), but the re-fetch sees success and wins.
+# Counter shim: /statuses empty on fetch #1 (→ sniff path), success on #2+
+# (→ re-fetch). RED against the pre-re-fetch poll by construction (it emitted
+# rate_limited straight from the sniff hit without re-confirming the status).
+TMO3=""; command -v timeout >/dev/null 2>&1 && TMO3="timeout 10"
+PSHIM=$(mktemp -d); PCNT="$PSHIM/n"; echo 0 > "$PCNT"
+cat > "$PSHIM/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*)
+    n=\$(cat "$PCNT"); echo \$((n+1)) > "$PCNT"
+    if [ "\$n" -eq 0 ]; then echo '[]'
+    else echo '[{"context":"CodeRabbit","state":"success","description":"Review completed","target_url":"https://cr/x","created_at":"2026-07-15T00:00:00Z"}]'; fi ;;
+  *"/check-runs"*) echo '{"check_runs":[]}' ;;
+  *"/issues/"*"/comments"*) echo '[{"user":{"login":"coderabbitai[bot]"},"created_at":"2026-07-15T00:00:00Z","updated_at":"2026-07-15T00:00:00Z","body":"Review limit reached"}]' ;;
+  *"/pulls/"*"/reviews"*) echo '[]' ;;
+  *"/pulls/"*) echo '{"head":{"sha":"deadbeef"}}' ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$PSHIM/gh"
+pflip=$(PATH="$PSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 \
+  EARLY_CHECK_WINDOW=0 PUSH_TIME=2020-01-01T00:00:00Z \
+  $TMO3 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
+is "stale RL comment + status flips success -> poll emits success" \
+   "$(jq -r '.state' <<<"$pflip" 2>/dev/null)" success
+rm -rf "$PSHIM"
+
+# W1-2 follow-up (Codex P2): the re-fetch must NOT treat a *free-tier* success
+# (the transient "Review skipped: free tier disabled" placeholder) as terminal —
+# that skips the CR_SKIP_GRACE hold the top-of-loop branch applies. Counter shim:
+# /statuses empty on fetch #1 (→ sniff path), free-tier success on #2+. With
+# CR_SKIP_GRACE=0 the next loop's grace branch routes to rate_limited; the
+# pre-guard re-fetch emitted `success` outright. RED against that by construction.
+TMO4=""; command -v timeout >/dev/null 2>&1 && TMO4="timeout 10"
+FTSHIM=$(mktemp -d); FTCNT="$FTSHIM/n"; echo 0 > "$FTCNT"
+cat > "$FTSHIM/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*)
+    n=\$(cat "$FTCNT"); echo \$((n+1)) > "$FTCNT"
+    if [ "\$n" -eq 0 ]; then echo '[]'
+    else echo '[{"context":"CodeRabbit","state":"success","description":"Review skipped: free tier disabled","target_url":"https://cr/x","created_at":"2026-07-15T00:00:00Z"}]'; fi ;;
+  *"/check-runs"*) echo '{"check_runs":[]}' ;;
+  *"/issues/"*"/comments"*) echo '[]' ;;
+  *"/pulls/"*"/reviews"*) echo '[]' ;;
+  *"/pulls/"*) echo '{"head":{"sha":"deadbeef"}}' ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$FTSHIM/gh"
+ftier=$(PATH="$FTSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 \
+  EARLY_CHECK_WINDOW=0 CR_SKIP_GRACE=0 PUSH_TIME=2020-01-01T00:00:00Z \
+  $TMO4 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
+is "re-fetch free-tier success -> held for grace, not terminal success" \
+   "$(jq -r '.state' <<<"$ftier" 2>/dev/null)" rate_limited
+rm -rf "$FTSHIM"
+
+echo
+echo "pre-flight.sh"
+
+# W1-2: a comment-channel rate-limit sniff must NOT override an authoritative
+# terminal CR success. The commit-status/check-run is the authority; a lingering
+# rate-limit *comment* (stale from an earlier push, or CR's in-place edit) is only
+# a hint. With cr_state=success + channel=comment, the gate must be proceed, not
+# rate_limited. RED against the unconditional override by construction.
+FSHIM=$(mktemp -d); FST="$FSHIM/state.json"; echo '{}' > "$FST"
+cat > "$FSHIM/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*) echo '[{"context":"CodeRabbit","state":"success","description":"Review completed","target_url":"https://cr/x","created_at":"2026-07-15T00:00:00Z"}]' ;;
+  *"/check-runs"*) echo '{"check_runs":[]}' ;;
+  *"/issues/"*"/comments"*) echo '[{"user":{"login":"coderabbitai[bot]"},"created_at":"2026-07-15T00:00:00Z","updated_at":"2026-07-15T00:00:00Z","body":"Review limit reached"}]' ;;
+  *"/pulls/"*"/reviews"*) echo '[]' ;;
+  *"/pulls/"*) echo '{"head":{"sha":"deadbeef"}}' ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$FSHIM/gh"
+pf=$(PATH="$FSHIM:$PATH" NO_CODEX=true OWNER=o REPO=r PR_NUM=42 CUR_SHA=s \
+  PUSH_TIME=2020-01-01T00:00:00Z STATE_FILE="$FST" \
+  bash "$SCRIPTS/pre-flight.sh" 2>/dev/null)
+is "comment RL over terminal success -> gate proceed" \
+   "$(jq -r '.gate' <<<"$pf" 2>/dev/null)" proceed
+is "comment RL over terminal success -> source still comment" \
+   "$(jq -r '.rate_limit_source' <<<"$pf" 2>/dev/null)" comment
+
+# Control: a description-channel rate-limit (commit-status derived, authoritative)
+# on a success row DOES still route to rate_limited — the fix suppresses only the
+# comment channel. GREEN on both old and new implementations by construction.
+cat > "$FSHIM/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*) echo '[{"context":"CodeRabbit","state":"success","description":"Review limit reached","target_url":"","created_at":"2026-07-15T00:00:00Z"}]' ;;
+  *"/check-runs"*) echo '{"check_runs":[]}' ;;
+  *"/issues/"*"/comments"*) echo '[]' ;;
+  *"/pulls/"*"/reviews"*) echo '[]' ;;
+  *"/pulls/"*) echo '{"head":{"sha":"deadbeef"}}' ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+pfd=$(PATH="$FSHIM:$PATH" NO_CODEX=true OWNER=o REPO=r PR_NUM=42 CUR_SHA=s \
+  PUSH_TIME=2020-01-01T00:00:00Z STATE_FILE="$FST" \
+  bash "$SCRIPTS/pre-flight.sh" 2>/dev/null)
+is "description RL on success -> gate rate_limited (authority retained)" \
+   "$(jq -r '.gate' <<<"$pfd" 2>/dev/null)" rate_limited
+rm -rf "$FSHIM"
+
 echo
 echo "SKILL.md snippet contracts (mirror SKILL.md prose blocks)"
 

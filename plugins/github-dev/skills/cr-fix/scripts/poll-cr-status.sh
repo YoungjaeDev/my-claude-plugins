@@ -95,6 +95,37 @@ while true; do
   elapsed=$((now_ts - start_ts))
   if [ -z "$s" ] && [ "$elapsed" -ge "$EARLY_CHECK_WINDOW" ]; then
     if rl=$(bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
+      # A rate-limit sniff on comment/description TEXT is not authoritative: the
+      # commit-status may have flipped to a terminal success/failure between the
+      # top-of-loop fetch and this probe (a stale rate-limit comment from an
+      # earlier push lingers on the PR). Re-read the commit-state and let a fresh
+      # terminal state win; only emit rate_limited when it is still non-terminal.
+      fresh_obj=$(fetch_cr_state)
+      fresh=$(jq -r 'if (.state // "none") == "none" or (.state // "") == "pending" then "" else .state end' <<<"$fresh_obj")
+      fresh_desc=$(jq -r '.description // ""' <<<"$fresh_obj")
+      # A fresh success carrying the transient free-tier placeholder is NOT
+      # terminal — emitting it here would skip the CR_SKIP_GRACE hold the
+      # top-of-loop branch applies to that exact row. Fall back into the loop so
+      # the grace logic governs it (it flips to the real "Review completed", or
+      # to rate_limited once grace expires). Mirrors the s="success" guard above.
+      if [ "$fresh" = "success" ] && printf '%s' "$fresh_desc" | grep -qiE '^Review skipped: free tier disabled'; then
+        sleep "$INTERVAL"; continue
+      fi
+      # A fresh success whose description is itself a rate-limit marker
+      # ("Review limit reached", refill phrasing) is CR's quota-skip row for
+      # THIS SHA — the description channel is authoritative, so it must not be
+      # promoted to a completed review. Blank it so the rate_limited emit below
+      # stays the terminal state; only comment-only (stale-prone) hits are
+      # suppressed by a fresh terminal success.
+      if [ "$fresh" = "success" ] && printf '%s' "$fresh_desc" \
+           | grep -qiE 'rate limited by coderabbit\.ai|More reviews will be available in|Next review available in|Review limit reached'; then
+        fresh=""
+      fi
+      if [ "$fresh" = "success" ] || [ "$fresh" = "failure" ]; then
+        target=$(jq -r '.target_url // ""' <<<"$fresh_obj")
+        printf '{"state":"%s","sha":"%s","pr":%s,"target_url":"%s","source":"poll"}\n' "$fresh" "$SHA" "$PR_NUM" "$target"
+        exit 0
+      fi
       reset=$(jq -r '.reset_minutes_estimate' <<<"$rl")
       hits=$(jq -r '.hits' <<<"$rl")
       printf '{"state":"rate_limited","sha":"%s","pr":%s,"reset_minutes_estimate":%s,"hits":%s,"source":"poll"}\n' \

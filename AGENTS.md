@@ -212,7 +212,7 @@
 - **위치·회전**: live 파일은 `.claude/state/<pipeline>-<key>.json` (예: `post-merge-114.json`, 기존 `cr-fix-<PR>.json` 명명 미러). 같은 key 로 재실행하면 새로 쓰기 전에 이전 live 파일을 `.claude/state/archive/<pipeline>-<key>-<timestamp>-$$.json` 로 회전한다 (cr-fix Step 2 미러). `.claude/state/` 는 gitignore + 머신 로컬 — run record 는 절대 커밋하지 않고 스킬의 `RUN_TOUCHED` 스테이징 집합에도 넣지 않는다.
 - **스키마**: `{schema:"state-envelope/v0", run_id, status(queued|in_progress|completed), conclusion, started_at, updated_at, anchor_sha, attempt, session_id, steps[]}`. `steps[]` 는 top-level 단계가 닫힐 때마다 `{step, status: done|skipped, reason?}` 한 항목 (`reason` 은 skipped 에만).
 - **spec-state 와 직교(orthogonal)**: run record 는 `.claude/state/spec.json` 이 **아니다**. `spec.json` (owner: `spec-state:state-tracker`) 은 spec→issue→PR 파이프라인의 크로스런 집계이고, run record 는 스킬 단일 실행의 단계 로그다. 서로 다른 파일·다른 소유자이며 서로 읽거나 쓰지 않는다.
-- **v0 채택자**: `github-dev:post-merge` (Step 1-10 per-step 기록) 하나뿐이다. 다른 스킬 상태 파일의 retrofit 은 후속 변경으로 의도적으로 미룬다.
+- **v0 채택자**: `github-dev:post-merge` (Step 1-10 per-step 기록) 와 `project-init:new` (Phase 0.5 run record — resume 지원 + fail-loud 쓰기). 다른 스킬 상태 파일의 retrofit 은 후속 변경으로 의도적으로 미룬다.
 
 **실행 jq (Codex/Hermes 자립용 — Claude 도 동일 패턴).** 채택 스킬이 본문에 인라인한다 (공유 라이브러리 없음). Init 은 archive 회전 실패 시 이전 기록을 덮어쓰지 않도록 abort 한다:
 

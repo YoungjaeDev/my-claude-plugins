@@ -13,9 +13,10 @@ own `jq` snippets; this file is only the schema they agree on.
 
 Give multi-step pipeline skills a uniform run-record shape so a step that skipped
 **silently** is visible after the fact, and so a re-run can find and archive the prior
-attempt. Introduced narrow: the first and only v0 adopter is `github-dev:post-merge`
-(per-step records). Retrofitting other skills' state files onto this envelope is
-deliberately deferred to a later change.
+attempt. Introduced narrow: the v0 adopters are `github-dev:post-merge` (per-step
+records) and `project-init:new` (Phase 0.5 run record with resume + fail-loud writes).
+Retrofitting other skills' state files onto this envelope is deliberately deferred to
+a later change.
 
 ## Location & rotation
 

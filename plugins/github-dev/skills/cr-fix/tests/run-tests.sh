@@ -587,5 +587,36 @@ gcap2=$(bash -euo pipefail -c '
 is "grace-cap codex_wait: pre-flight remaining wins" "$gcap2" 500
 
 echo
+echo "path-trust.sh"
+
+# The Step 9c gate runs this per finding. It used GNU-only `realpath -m`, so on
+# BSD/macOS it aborted under `set -e` for EVERY path — including valid ones —
+# and the gate's `|| { skip; continue; }` branch turned that into "every finding
+# is untrusted", converging the loop to a false `final_state=clean` (issue #152).
+PT="$SCRIPTS/path-trust.sh"
+PT_ROOT=$(mktemp -d); trap 'rm -rf "$PT_ROOT"' EXIT
+mkdir -p "$PT_ROOT/sub/nested" "$PT_ROOT/../pt-outside-$$"
+: > "$PT_ROOT/README.md"; : > "$PT_ROOT/sub/nested/deep.txt"
+
+pt() { bash "$PT" "$PT_ROOT" "$1" >/dev/null 2>&1; printf '%s' "$?"; }
+
+is "in-repo file at root"            "$(pt 'README.md')"            0
+is "in-repo nested file"             "$(pt 'sub/nested/deep.txt')"  0
+# The whole reason `-m` was there: a fix may create a file that does not exist yet.
+is "not-yet-created file in repo"    "$(pt 'sub/brand-new.md')"     0
+is "not-yet-created nested dir file" "$(pt 'sub/nested/new.txt')"   0
+# Containment must still hold.
+is "parent escape rejected"          "$(pt '../escape.md')"         1
+is "mid-path .. rejected"            "$(pt 'sub/../../escape.md')"  1
+is "absolute path rejected"          "$(pt '/etc/passwd')"          1
+is "home-relative rejected"          "$(pt '~/secrets')"            1
+# A symlink pointing outside the repo must not smuggle a write past the gate.
+ln -s "$PT_ROOT/../pt-outside-$$" "$PT_ROOT/link-out" 2>/dev/null \
+  && is "symlink escaping repo rejected" "$(pt 'link-out/x.md')" 1 \
+  || ok "symlink escaping repo rejected (skipped: ln -s unavailable)"
+# Nonexistent intermediate dir has no resolvable parent — reject, do not crash.
+is "unresolvable parent rejected"    "$(pt 'no/such/dir/f.md')"     1
+
+echo
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

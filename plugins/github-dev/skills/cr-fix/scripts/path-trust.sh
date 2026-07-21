@@ -16,8 +16,17 @@ case "$P" in
   *../*|*/..|..) echo "untrusted-path: .. segment: $P" >&2; exit 1;;
 esac
 
-abs=$(realpath -m -- "$REPO_ROOT/$P")
-repo_abs=$(realpath -- "$REPO_ROOT")
+# `realpath -m` is GNU-only (BSD/macOS realpath rejects it), and bare `realpath`
+# is no substitute: both GNU and BSD error on a path that does not exist yet,
+# which cr-fix needs to validate for files a fix is about to create. `cd` + `pwd -P`
+# is POSIX and resolves symlinks the same way, so the containment check below keeps
+# its meaning on macOS, Linux, and Git Bash alike. `..` segments are already
+# rejected above, so only the parent needs resolving.
+parent=$(cd "$(dirname -- "$REPO_ROOT/$P")" 2>/dev/null && pwd -P) \
+  || { echo "untrusted-path: unresolvable parent: $P" >&2; exit 1; }
+abs="$parent/$(basename -- "$P")"
+repo_abs=$(cd "$REPO_ROOT" 2>/dev/null && pwd -P) \
+  || { echo "untrusted-path: unresolvable repo root: $REPO_ROOT" >&2; exit 1; }
 case "$abs" in
   "$repo_abs"/*|"$repo_abs") ;;
   *) echo "untrusted-path: resolves outside repo: $P → $abs" >&2; exit 1;;

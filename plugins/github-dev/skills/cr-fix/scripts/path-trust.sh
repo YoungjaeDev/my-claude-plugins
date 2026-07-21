@@ -18,13 +18,34 @@ esac
 
 # `realpath -m` is GNU-only (BSD/macOS realpath rejects it), and bare `realpath`
 # is no substitute: both GNU and BSD error on a path that does not exist yet,
-# which cr-fix needs to validate for files a fix is about to create. `cd` + `pwd -P`
-# is POSIX and resolves symlinks the same way, so the containment check below keeps
-# its meaning on macOS, Linux, and Git Bash alike. `..` segments are already
-# rejected above, so only the parent needs resolving.
-parent=$(cd "$(dirname -- "$REPO_ROOT/$P")" 2>/dev/null && pwd -P) \
-  || { echo "untrusted-path: unresolvable parent: $P" >&2; exit 1; }
-abs="$parent/$(basename -- "$P")"
+# which cr-fix needs to validate for files a fix is about to create.
+#
+# Resolving only the parent is NOT enough: if the final component is itself a
+# symlink pointing outside the repo, the reconstructed path still looks in-repo
+# and the containment check below passes, letting a downstream Edit write outside
+# the trust boundary. So follow a final-component symlink chain too, re-resolving
+# the parent each hop. `cd` + `pwd -P` + `readlink` are portable across macOS,
+# Linux, and Git Bash. `..` segments are already rejected above.
+resolve_path() {
+  _p="$1" _n=0
+  while :; do
+    _d=$(dirname -- "$_p"); _b=$(basename -- "$_p")
+    _d=$(cd "$_d" 2>/dev/null && pwd -P) || return 1
+    _p="$_d/$_b"
+    [ -L "$_p" ] || break
+    _n=$((_n + 1))
+    [ "$_n" -gt 40 ] && return 1   # symlink loop / excessive nesting
+    _link=$(readlink -- "$_p") || return 1
+    case "$_link" in
+      /*) _p="$_link" ;;
+      *)  _p="$_d/$_link" ;;
+    esac
+  done
+  printf '%s\n' "$_p"
+}
+
+abs=$(resolve_path "$REPO_ROOT/$P") \
+  || { echo "untrusted-path: unresolvable path: $P" >&2; exit 1; }
 repo_abs=$(cd "$REPO_ROOT" 2>/dev/null && pwd -P) \
   || { echo "untrusted-path: unresolvable repo root: $REPO_ROOT" >&2; exit 1; }
 case "$abs" in

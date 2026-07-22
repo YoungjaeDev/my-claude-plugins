@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 25개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-25-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -107,6 +107,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
 | | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 스킬 3종(메인 작성 규약 + `lecture-deck` 강의 덱 운영 + `deck-review` 리뷰 오케스트레이션) + 리뷰 서브에이전트 4종(audience-fit·story-flow·fact-check·design-qa). md 규약·원칙 16종·밀도 리듬·역할 기반 색·앱 UI 실물 강제·전사 회고 루프·스크린샷 슬롯·리넘버링. 진입점 SKILL.md + references/ + 주입 프롬프트 |
 | **Productivity** | `gws-sync` | 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반). 매핑 설정 기억 → Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일 content update로 ID·공유링크 보존). 삭제는 제안만. gws 미설치 시 설치 안내 후 중단. googleworkspace/cli 스킬 95종 카탈로그(llms.txt) 동봉 |
+| **Productivity** | `plaud-note-taking` | PLAUD 음성 녹음 노트(Whisper 전사록 + 별도 LLM 요약) 검토·정정. **요약이 아니라 전사록 기준**으로 STT 오인식(한·영 코드스위칭·고유명사·수치)을 프로젝트 용어 사전에 맞춰 고치고, 애매한 담당자·기한·수치와 "요약이 지어낸 결정"은 `interview:interview-methodology`(grill-me) 위임으로 캐물어 확정, 원본은 손대지 않고 `.llmwiki/raw/transcripts/`에 `*.corrected.md` 생성 |
 
 ## 설치 옵션
 
@@ -636,6 +637,23 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 
 </details>
 
+<details>
+<summary><strong>plaud-note-taking</strong> - PLAUD 노트(전사록+요약) STT·용어 정정</summary>
+
+PLAUD 음성 녹음기가 만든 노트를 검토·정정합니다. PLAUD는 녹음 하나당 **두 산출물**을 냅니다 — Whisper STT **전사록**과, 그 전사록을 다시 LLM이 요약한 **별도 요약**. 이 스킬의 철칙은 **요약이 아니라 전사록을 기준으로 정정**하는 것입니다 (요약은 없던 결정을 매끄럽게 지어낼 수 있음).
+
+**입력/출력:** 손으로 `.llmwiki/raw/transcripts/`에 올린 `<YYYY-MM-DD-slug>.transcript.txt`(+선택 `.note.txt`)를 읽어, 같은 폴더에 `<slug>.corrected.md`를 씁니다. **원본은 절대 수정하지 않습니다.**
+
+**정정 규율(보수적):**
+- STT 최대 오류원인 **한국어+영어 코드스위칭**(기술용어·고유명사)을 `terminology.md` 프로젝트 용어 사전 근거로 정정
+- 숫자·날짜·금액·계약 조건은 추측 금지 → `[확인 필요]`
+- 화자 `Speaker N`은 추정값 — 실명·담당자로 확정하지 않음
+- 태깅: `[확인됨]` / `[정정]` / `[해석]` / `[확인 필요]`
+
+**Open question → grill me:** 애매한 담당자·기한·수치·화자 귀속과 "요약이 지어낸 결정"은 `interview:interview-methodology` relentless 위임으로 하나씩 집요하게 캐물어 확정하고, 남으면 `[확인 필요]`로 둡니다.
+
+</details>
+
 ## Configuration
 
 ### settings.json
@@ -680,7 +698,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인은 `codex-image` 하나뿐입니다 (Claude->Codex 브리지 — Codex 로 sync 하면 순환). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 23 / 24 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
+Codex 에서 제외되는 플러그인은 `codex-image` 하나뿐입니다 (Claude->Codex 브리지 — Codex 로 sync 하면 순환). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 24 / 25 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`docs-forge`, `deepwiki` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -733,7 +751,7 @@ shared-source 배선은 5개 가드가 매 PR 과 매 커밋(`.githooks/pre-comm
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
 - `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
-- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
+- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 25 / Codex-eligible 24 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
 
@@ -799,6 +817,7 @@ node scripts/install-skills.mjs                  # 또는 hermes plugins install
 │   ├── tally-form/            # 체크리스트 md -> Tally 설문/문의 폼 빌더
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 │   ├── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)
+│   ├── plaud-note-taking/     # PLAUD 노트(Whisper 전사록+LLM 요약) STT·용어 정정
 │   └── mem0-ops/              # 플릿 레벨 mem0 진단·정리 (fleet-scan/doctor/cleanup)
 ├── AGENTS.md                 # 세 런타임 공통 최상위 지침 (정본)
 ├── CLAUDE.md                 # @AGENTS.md import

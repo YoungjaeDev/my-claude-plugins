@@ -13,7 +13,7 @@
 //   - a malformed or duplicate baseline entry, or one that overlaps a pilot
 //   - a stale baseline entry (file gone, or debt removed — no AskUserQuestion left)
 //
-// FOLLOW-UP DEBT (issue #123): only the 2 pilots below are migrated. The 18 BASELINE
+// FOLLOW-UP DEBT (issue #123): only the 2 pilots below are migrated. The 19 BASELINE
 // paths still hardcode AskUserQuestion; migrating them to the standardized mapping is
 // deferred fleet work. Move a path from BASELINE to PILOTS as it is migrated.
 //
@@ -49,6 +49,7 @@ const BASELINE = [
   'plugins/llm-wiki/skills/bootstrap-wiki/SKILL.md',
   'plugins/llm-wiki/skills/migrate-wiki/SKILL.md',
   'plugins/mem0-ops/skills/cleanup/SKILL.md',
+  'plugins/plaud-note-taking/skills/plaud-note-taking/SKILL.md',
   'plugins/ppt-yeong-style/skills/ppt-yeong-style/SKILL.md',
   'plugins/project-init/skills/wiring/SKILL.md',
   'plugins/rules-forge/skills/write-rules/SKILL.md',

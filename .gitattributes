@@ -1,0 +1,9 @@
+# Shell scripts and generated JS/Python must stay LF even on Windows checkouts.
+# Git for Windows defaults to core.autocrlf=true, which would rewrite these to
+# CRLF; bash then fails on every line with `$'\r': command not found` (and a
+# `#!/usr/bin/env bash\r` shebang gives "bad interpreter"). Scoped to text types
+# on purpose — a blanket `* text=auto` would corrupt binary assets under
+# plugins/*/assets/.
+*.sh   text eol=lf
+*.mjs  text eol=lf
+*.py   text eol=lf

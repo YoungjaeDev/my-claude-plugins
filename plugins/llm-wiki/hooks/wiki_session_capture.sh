@@ -36,7 +36,9 @@ extract() { # $1=key
   if command -v jq >/dev/null 2>&1; then
     v=$(printf '%s' "$input_json" | jq -r --arg k "$key" '.[$k] // empty' 2>/dev/null)
   fi
-  [[ -z "$v" ]] && v=$(printf '%s' "$input_json" | LC_ALL=C.UTF-8 grep -oP "\"$key\"\\s*:\\s*\"\\K[^\"]+" | head -1)
+  # BSD grep has no -P/\K; sed BRE capture. $key is a fixed literal supplied by
+  # the caller (cwd/…), not user input, so it needs no regex escaping here.
+  [[ -z "$v" ]] && v=$(printf '%s' "$input_json" | LC_ALL=C.UTF-8 sed -n 's/.*"'"$key"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
   printf '%s' "$v"
 }
 cwd=$(extract cwd)

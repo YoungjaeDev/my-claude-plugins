@@ -70,7 +70,7 @@ User-global work guidelines live in `~/.claude/CLAUDE.md` (SSOT, auto-loaded by 
 
 ## Requirements
 
-- `uv` and `ruff` for Python auto-formatting
+- `ruff` for Python auto-formatting (invoked directly if on `PATH`, else via `uv run ruff` when `uv` is present; the hook no-ops with a one-line stderr note when neither is found)
 - **Unix**: Terminal with OSC 777 support for notifications
 - **Windows**: BurntToast PowerShell module for toast notifications
   ```powershell

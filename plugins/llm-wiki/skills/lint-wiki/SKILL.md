@@ -53,19 +53,28 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    grep -rh "^id:" .llmwiki/wiki/ | sort | uniq -d
    grep -rh "^aliases:" .llmwiki/wiki/ | tr ',' '\n' | sort | uniq -d
    # For each duplicate id AND each duplicate alias, list the pages forming the
-   # cluster (to score + remedy). $tok is PCRE-quoted with \Q...\E so an id or
-   # alias containing regex metacharacters (. + ( ...) can't break the search.
-   dup_ids=$(LC_ALL=C.UTF-8 grep -rhoP '^id:\s*\K\S+' .llmwiki/wiki/ | sort | uniq -d)
-   dup_aliases=$(LC_ALL=C.UTF-8 grep -rhoP '^aliases:\s*\[\K[^\]]+' .llmwiki/wiki/ \
+   # cluster (to score + remedy). BSD grep has no -P/\K/\Q\E; extract values with
+   # a portable sed capture, and match a token by shell string compare (=/case) so
+   # an id or alias containing regex metacharacters (. + ( ...) needs no escaping.
+   dup_ids=$(LC_ALL=C.UTF-8 grep -rh '^id:' .llmwiki/wiki/ \
+             | sed -n 's/^id:[[:space:]]*\([^[:space:]]*\).*/\1/p' | sort | uniq -d)
+   dup_aliases=$(LC_ALL=C.UTF-8 grep -rh '^aliases:' .llmwiki/wiki/ \
+                 | sed -n 's/^aliases:[[:space:]]*\[\([^]]*\)\].*/\1/p' \
                  | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
                  | grep -v '^$' | sort | uniq -d)
    for tok in $dup_ids; do
      printf '== id cluster: %s ==\n' "$tok"
-     LC_ALL=C.UTF-8 grep -rlP "^id:\s*\Q$tok\E\b" .llmwiki/wiki/
+     grep -rl '^id:' .llmwiki/wiki/ | while IFS= read -r f; do
+       v=$(sed -n 's/^id:[[:space:]]*\([^[:space:]]*\).*/\1/p' "$f" | head -1)
+       [ "$v" = "$tok" ] && printf '%s\n' "$f"
+     done
    done
    for tok in $dup_aliases; do
      printf '== alias cluster: %s ==\n' "$tok"   # Low-overlap row: same alias, distinct ids
-     LC_ALL=C.UTF-8 grep -rlP "^aliases:.*\Q$tok\E" .llmwiki/wiki/
+     grep -rl '^aliases:' .llmwiki/wiki/ | while IFS= read -r f; do
+       al=$(grep '^aliases:' "$f" | head -1)
+       case "$al" in *"$tok"*) printf '%s\n' "$f";; esac
+     done
    done
    ```
    For each duplicate cluster, **score the overlap and propose one concrete
@@ -99,11 +108,15 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```bash
    today=$(date +%s)
    while IFS= read -r f; do
-     d=$(LC_ALL=C.UTF-8 grep -oP '^last_verified:\s*\K\d{4}-\d{2}-\d{2}' "$f" || true)
+     # BSD grep has no -P/\K; portable sed capture. date -d is GNU-only, so fall
+     # back to BSD `date -j -f` and skip the page if neither parses (an empty
+     # substitution would otherwise abort the arithmetic below).
+     d=$(LC_ALL=C.UTF-8 sed -n 's/^last_verified:[[:space:]]*\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\).*/\1/p' "$f" | head -1)
      [[ -z "$d" ]] && continue
-     vol=$(LC_ALL=C.UTF-8 grep -oP '^volatility:\s*\K\S+' "$f" || true)
+     vol=$(LC_ALL=C.UTF-8 sed -n 's/^volatility:[[:space:]]*\([^[:space:]]*\).*/\1/p' "$f" | head -1)
      [[ "$vol" == "volatile" ]] && window=30 || window=180
-     age_days=$(( (today - $(date -d "$d" +%s)) / 86400 ))
+     d_ts=$(date -d "$d" +%s 2>/dev/null || date -j -f '%Y-%m-%d' "$d" +%s 2>/dev/null) || continue
+     age_days=$(( (today - d_ts) / 86400 ))
      [[ $age_days -gt $window ]] && printf '%s (%d days, %s window %dd)\n' "$f" "$age_days" "${vol:-stable}" "$window"
    done < <(find .llmwiki/wiki .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name 'log.md' -not -name 'log-[0-9][0-9][0-9][0-9].md' 2>/dev/null)
    ```
@@ -112,7 +125,7 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
 5. **Orphan scan** (pages not in index, indexed pages that don't exist):
    ```bash
    diff <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md' -not -name 'log-[0-9][0-9][0-9][0-9].md' | sort) \
-        <(LC_ALL=C.UTF-8 grep -oP '\(\K[^)]+\.md' .llmwiki/wiki/index.md | sed 's|^|.llmwiki/wiki/|' | sort)
+        <(LC_ALL=C.UTF-8 grep -oE '\([^)]+\.md' .llmwiki/wiki/index.md | sed 's|^(||; s|^|.llmwiki/wiki/|' | sort)
    ```
 
 6. **MOC integrity** (cross-refs to non-existent pages):
@@ -131,8 +144,9 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
      LC_ALL=C.UTF-8 grep -q '^> Superseded-by:' "$f" || printf 'stale without Superseded-by: %s\n' "$f"
    done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md' -not -name 'log-[0-9][0-9][0-9][0-9].md')
 
-   # > Supersedes: targets that are NOT status: stale
-   LC_ALL=C.UTF-8 grep -rhoP '^> Supersedes:\s*\[\[\K[^\]]+' .llmwiki/wiki/ | sort -u | while IFS= read -r id; do
+   # > Supersedes: targets that are NOT status: stale (BSD grep has no -P/\K; sed capture)
+   LC_ALL=C.UTF-8 grep -rh '^> Supersedes:' .llmwiki/wiki/ \
+     | sed -n 's/^> Supersedes:[[:space:]]*\[\[\([^]]*\)\]\].*/\1/p' | sort -u | while IFS= read -r id; do
      [[ -z "$id" ]] && continue
      tgt=$(LC_ALL=C.UTF-8 grep -rl "^id:\s*$id\b" .llmwiki/wiki/ | head -1)
      [[ -z "$tgt" ]] && { printf 'Supersedes target missing: %s\n' "$id"; continue; }
@@ -148,7 +162,9 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
     [ -d .llmwiki/insight ] || echo "no insight layer (skip)"
 
     # 10a. promoted_from resolves to an existing wiki page that is NOT stale
-    LC_ALL=C.UTF-8 grep -rhoP '^promoted_from:\s*\[\[\K[^\]]+' .llmwiki/insight/ 2>/dev/null | sort -u | while IFS= read -r id; do
+    #      (BSD grep has no -P/\K; sed capture)
+    LC_ALL=C.UTF-8 grep -rh '^promoted_from:' .llmwiki/insight/ 2>/dev/null \
+      | sed -n 's/^promoted_from:[[:space:]]*\[\[\([^]]*\)\]\].*/\1/p' | sort -u | while IFS= read -r id; do
       [[ -z "$id" ]] && continue
       tgt=$(LC_ALL=C.UTF-8 grep -rl "^id:\s*$id\b" .llmwiki/wiki/ | head -1)
       [[ -z "$tgt" ]] && { printf 'promoted_from target missing: %s\n' "$id"; continue; }
@@ -189,7 +205,7 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
     ```bash
     LC_ALL=C.UTF-8
     while IFS= read -r f; do
-      n=$(LC_ALL=C.UTF-8 grep -cP '^> (Refines|Contradicts|Evidence|See-also|Supersedes|Superseded-by|Uses|Depends-on|Caused-by|Fixed-by):' "$f")
+      n=$(LC_ALL=C.UTF-8 grep -cE '^> (Refines|Contradicts|Evidence|See-also|Supersedes|Superseded-by|Uses|Depends-on|Caused-by|Fixed-by):' "$f")
       [[ "$n" -eq 0 ]] && printf 'link-poverty: %s (0 typed cross-refs)\n' "$f"
     done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md' -not -name 'log-[0-9][0-9][0-9][0-9].md' 2>/dev/null)
     ```
@@ -199,7 +215,7 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
     ```bash
     LC_ALL=C.UTF-8
     cur_year=$(date +%Y)
-    LC_ALL=C.UTF-8 grep -oP '^## \K\d{4}' .llmwiki/wiki/log.md 2>/dev/null | sort -u \
+    LC_ALL=C.UTF-8 sed -n 's/^## \([0-9]\{4\}\).*/\1/p' .llmwiki/wiki/log.md 2>/dev/null | sort -u \
       | awk -v y="$cur_year" '$1 < y {printf "log-rotation due: %s entries in log.md -> migrate to log-%s.md\n", $1, $1}'
     ```
     If any `## YYYY-...` entry predates the current year, suggest migrating that year's block into a sibling `log-YYYY.md` (newest-first preserved; `grep '## ' log*.md` still recovers the full time-series). Report-only — the migration itself is a manual / `ingest-finding` op, logged like any other event. (Convention: `${PLUGIN_ROOT}/references/wiki-conventions.md` § log.md discipline.)

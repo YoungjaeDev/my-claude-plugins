@@ -215,7 +215,7 @@ printf '%s\n' "$TOUCHED" | while IFS= read -r f; do
   [ "$has_by" -gt 0 ] && [ "$is_stale" -eq 0 ] && \
     echo "one-sided: $f has > Superseded-by: but is not status: stale" >> "$found"
   # 3. every > Supersedes: [[target]] must point at a status: stale page
-  LC_ALL=C.UTF-8 grep -oP '^> Supersedes:\s*\[\[\K[^\]]+' "$f" 2>/dev/null | while IFS= read -r id; do
+  LC_ALL=C.UTF-8 sed -n 's/^> Supersedes:[[:space:]]*\[\[\([^]]*\)\]\].*/\1/p' "$f" 2>/dev/null | while IFS= read -r id; do
     [ -n "$id" ] || continue
     tgt=$(LC_ALL=C.UTF-8 grep -rlE "^id:[[:space:]]*${id}\$" "$WIKI_ROOT" 2>/dev/null | head -1)
     if [ -z "$tgt" ]; then

@@ -39,7 +39,8 @@ cmd=""
 if command -v jq >/dev/null 2>&1; then
   cmd=$(printf '%s' "$input_json" | jq -r '.tool_input.command // empty' 2>/dev/null)
 else
-  cmd=$(printf '%s' "$input_json" | LC_ALL=C.UTF-8 grep -oP '"command"\s*:\s*"\K[^"]+' | head -1)
+  # BSD grep has no -P/\K; sed BRE capture of the first "command":"..." value.
+  cmd=$(printf '%s' "$input_json" | LC_ALL=C.UTF-8 sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
 fi
 [[ -z "$cmd" ]] && exit 0
 
@@ -106,9 +107,10 @@ fi
 # event == commit (git commit / git push): threshold on the last commit's diff.
 # HEAD~1..HEAD is valid here — a local commit did move local HEAD.
 files_changed=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l || echo 0)
+# awk alone parses the fixed-format shortstat — a number immediately followed by
+# an insertion/deletion token — with no PCRE lookahead (BSD grep lacks -P).
 lines_changed=$(git diff --shortstat HEAD~1 HEAD 2>/dev/null \
-                | LC_ALL=C.UTF-8 grep -oP '\d+(?= insertion| deletion)' \
-                | awk '{s+=$1} END{print s+0}' 2>/dev/null || echo 0)
+                | awk '{for(i=1;i<=NF;i++) if($(i+1)~/^insertion|^deletion/) s+=$i; print s+0}' 2>/dev/null || echo 0)
 [[ -z "$lines_changed" ]] && lines_changed=0
 
 # Threshold: 2+ files OR 50+ lines. Below threshold, leave the marker UNTOUCHED so a

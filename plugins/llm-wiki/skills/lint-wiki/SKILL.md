@@ -145,7 +145,7 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```bash
    # stale pages missing a > Superseded-by: pointer
    while IFS= read -r f; do
-     LC_ALL=C.UTF-8 grep -q '^status:\s*stale' "$f" || continue
+     LC_ALL=C.UTF-8 grep -q '^status:[[:space:]]*stale' "$f" || continue
      LC_ALL=C.UTF-8 grep -q '^> Superseded-by:' "$f" || printf 'stale without Superseded-by: %s\n' "$f"
    done < <(find .llmwiki/wiki -name '*.md' -not -name 'index.md' -not -name 'log.md' -not -name 'log-[0-9][0-9][0-9][0-9].md')
 
@@ -153,9 +153,13 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    LC_ALL=C.UTF-8 grep -rh '^> Supersedes:' .llmwiki/wiki/ \
      | sed -n 's/^> Supersedes:[[:space:]]*\[\[\([^]]*\)\]\].*/\1/p' | sort -u | while IFS= read -r id; do
      [[ -z "$id" ]] && continue
-     tgt=$(LC_ALL=C.UTF-8 grep -rl "^id:\s*$id\b" .llmwiki/wiki/ | head -1)
+     # BSD grep has no \s/\b; find the page whose id EQUALS $id by extracting the
+     # value and comparing with `=` (an anchored regex would need $id escaped).
+     tgt=$(grep -rl '^id:' .llmwiki/wiki/ | while IFS= read -r f; do
+       [ "$(sed -n 's/^id:[[:space:]]*\([^[:space:]]*\).*/\1/p' "$f" | head -1)" = "$id" ] && { printf '%s\n' "$f"; break; }
+     done)
      [[ -z "$tgt" ]] && { printf 'Supersedes target missing: %s\n' "$id"; continue; }
-     LC_ALL=C.UTF-8 grep -q '^status:\s*stale' "$tgt" || printf 'Supersedes target not stale: %s (%s)\n' "$id" "$tgt"
+     LC_ALL=C.UTF-8 grep -q '^status:[[:space:]]*stale' "$tgt" || printf 'Supersedes target not stale: %s (%s)\n' "$id" "$tgt"
    done
    ```
    Flag mismatches for the user — every `status: stale` page should have a `> Superseded-by:`, and every `> Supersedes:` should point at a page now `status: stale`.
@@ -171,9 +175,12 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
     LC_ALL=C.UTF-8 grep -rh '^promoted_from:' .llmwiki/insight/ 2>/dev/null \
       | sed -n 's/^promoted_from:[[:space:]]*\[\[\([^]]*\)\]\].*/\1/p' | sort -u | while IFS= read -r id; do
       [[ -z "$id" ]] && continue
-      tgt=$(LC_ALL=C.UTF-8 grep -rl "^id:\s*$id\b" .llmwiki/wiki/ | head -1)
+      # BSD grep has no \s/\b; match by exact id value (see the Supersedes block).
+      tgt=$(grep -rl '^id:' .llmwiki/wiki/ | while IFS= read -r f; do
+        [ "$(sed -n 's/^id:[[:space:]]*\([^[:space:]]*\).*/\1/p' "$f" | head -1)" = "$id" ] && { printf '%s\n' "$f"; break; }
+      done)
       [[ -z "$tgt" ]] && { printf 'promoted_from target missing: %s\n' "$id"; continue; }
-      LC_ALL=C.UTF-8 grep -q '^status:\s*stale' "$tgt" && printf 'promoted_from target is stale: %s (%s)\n' "$id" "$tgt"
+      LC_ALL=C.UTF-8 grep -q '^status:[[:space:]]*stale' "$tgt" && printf 'promoted_from target is stale: %s (%s)\n' "$id" "$tgt"
     done
 
     # 10b. conciseness — insight entries must stay condensed (tip, not body)
@@ -181,7 +188,7 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
 
     # 10c. every insight entry declares tier + promoted_from
     while IFS= read -r f; do
-      LC_ALL=C.UTF-8 grep -q '^tier:\s*insight' "$f" || printf 'insight entry missing tier: %s\n' "$f"
+      LC_ALL=C.UTF-8 grep -q '^tier:[[:space:]]*insight' "$f" || printf 'insight entry missing tier: %s\n' "$f"
       LC_ALL=C.UTF-8 grep -q '^promoted_from:' "$f" || printf 'insight entry missing promoted_from: %s\n' "$f"
     done < <(find .llmwiki/insight -name '*.md' -not -name 'index.md' -not -name '_insight-template.md' 2>/dev/null)
     ```

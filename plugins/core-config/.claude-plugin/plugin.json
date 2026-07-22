@@ -1,6 +1,6 @@
 {
   "name": "core-config",
-  "version": "1.12.1",
+  "version": "1.12.2",
   "description": "Python auto-format + cross-platform notifications + per-prompt behavioral block (`prompt_inject.sh`, shared Claude + Codex). The block is fixed; two pointers are conditional — `.llmwiki/insight/` when a knowledge root resolves in cwd, and a one-line `[council]` delegation reminder when a second-model CLI (codex / agy) is on PATH. The council line is Claude-only (Codex is itself a council member) and names the CLI roster, never a model. Work guidelines live in `~/.claude/CLAUDE.md` (English source of truth; `.ko` companion is not loaded).",
   "hooks": {
     "UserPromptSubmit": [

@@ -237,6 +237,35 @@ Since issues are larger, content must be **more detailed**:
 3. **Code snippets** - key patterns or structures to implement
 4. **Edge cases** - known gotchas or considerations
 
+### Wide Refactors: the expand-contract exception
+
+Context-completable vertical slices are the default, but a **wide refactor** — a
+mechanical change that touches many call sites of one form (a renamed API, a
+changed signature, a moved type) — cannot be a single vertical slice without a
+giant blast radius, and cannot be split by feature. Sequence it as
+**expand -> migrate -> contract** instead:
+
+1. **Expand** (one issue): add the new form *beside* the old so nothing breaks
+   yet — both coexist.
+2. **Migrate** (one issue *per batch*, each blocked by Expand): move call sites
+   to the new form in batches sized by blast radius (per package, per directory).
+   Each batch is its own issue so each stays context-completable and green.
+3. **Contract** (one issue, blocked by *every* Migrate): delete the old form once
+   no caller remains.
+
+Keep each Migrate batch independently green — that is what lets `/github-dev:resolve-issue`
+drive it, since resolve-issue branches each issue off the default branch and
+gates BUILD/TEST before the PR. Only if a batch genuinely cannot stay green
+alone, fall back to a shared **integration branch**: the Migrate batches target
+it instead of the default branch, and a single **integrate-and-verify** issue
+`dependsOn` *every* Migrate batch and promises green. This fallback is a manual, multi-issue branch flow —
+resolve-issue's one-branch-per-issue model does not drive it, so sequence it by
+hand. In that path **Contract must block on integrate-and-verify, not on the
+individual Migrate issues** (`dependsOn: [<integrate-and-verify #>]`), or the old
+form could be deleted before the combined migration is validated. Record every
+blocking edge with `dependsOn` so the milestone dependency graph renders the
+expand -> migrate -> contract order.
+
 ---
 
 ## Milestone Description Guidelines

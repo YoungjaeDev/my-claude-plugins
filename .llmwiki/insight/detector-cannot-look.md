@@ -1,0 +1,34 @@
+---
+id: detector-cannot-look
+aliases: [could-not-look-false-clean, degraded-answer-not-nothing, pipefail-detector-silent-noop]
+tier: insight
+promoted_from: [[detector-cannot-look-vs-nothing-wrong]]
+evidence_count: 4
+last_verified: 2026-07-22
+status: active
+volatility: stable
+sources: 1
+---
+
+# A detector must never convert "could not look" into "nothing wrong"
+
+A read-only check that cannot evaluate an axis must say so, keep going, and never emit an all-clear for the part it could not inspect. The failure hides as success in four shapes, all observed in this repo across 4 PRs:
+
+- **`pipefail` abort** — `find`/`jq` inside `$(...)` exits non-zero on normal input (`find` = no match, `jq` = corrupt file) and `set -euo pipefail` kills the whole diagnostic → no output, reads as "tool broken" not "your config is."
+- **`|| true` false-clean** — patching the abort with `|| true` turns it invisible: empty/`[]`/`"x"` all yield "no duplicates found," a lie for "I could not compare."
+- **Degraded remote payload** — a well-formed but partial API answer (GraphQL null envelope, missing `pageInfo`, probe rc 0 read as 404) flows through `// []` into a confident empty result the convergence loop reads as clean.
+- **Non-portable tool** — the check's own binary can't run on this OS (`realpath -m` on BSD aborts under `set -e`), so its gate skips every item and the loop converges `final_state=clean` — auto-merge eligible. Invisible in an interactive shell where a `grep`→ugrep shim masks it, so re-verify under `env -i PATH=/usr/bin:/bin`.
+
+**When to apply**: writing or reviewing any script that answers "is X wired up / clean / resolved?" — config detectors, review gates, convergence loops, merge gates. Guard on the exact question asked, require the full expected shape, give the gate test coverage, and verify tool portability under stock userland.
+
+**Why**: every instance ships disguised as an edge case and is found only by running the script against the ugly input / wrong platform, not by reading it. The cost is real: a gate that can't look green-lit an auto-merge of unresolved CRITICAL findings.
+
+Full mode-by-mode analysis, fixes, and per-PR provenance stay in the `promoted_from:` wiki page.
+
+## Sources
+
+- `.llmwiki/wiki/plugin-ops/detector-cannot-look-vs-nothing-wrong.md` — the promoted source page (Modes 1-5, PRs #104/#106/#122/#153).
+
+> Evidence: .llmwiki/wiki/plugin-ops/detector-cannot-look-vs-nothing-wrong.md
+> See-also: [[detector-cannot-look-vs-nothing-wrong]]
+> See-also: [[stock-userland-verification]]

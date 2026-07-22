@@ -43,11 +43,12 @@ scan_dirs=("$wiki_root")
 [[ "$wiki_root" == ".llmwiki/wiki" && -d ".llmwiki/insight" ]] && scan_dirs+=(".llmwiki/insight")
 
 while IFS= read -r f; do
-  d=$(LC_ALL=C.UTF-8 grep -oP '^last_verified:\s*\K\d{4}-\d{2}-\d{2}' "$f" 2>/dev/null | head -1)
+  # BSD grep has no -P/\K; sed BRE capture is portable (macOS/Linux/Git Bash).
+  d=$(LC_ALL=C.UTF-8 sed -n 's/^last_verified:[[:space:]]*\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\).*/\1/p' "$f" 2>/dev/null | head -1)
   [[ -z "$d" ]] && continue
   d_ts=$(date -d "$d" +%s 2>/dev/null || date -j -f '%Y-%m-%d' "$d" +%s 2>/dev/null) || continue
   # Per-page volatility window: volatile -> 30d, stable/absent -> 180d
-  vol=$(LC_ALL=C.UTF-8 grep -oP '^volatility:\s*\K\S+' "$f" 2>/dev/null | head -1)
+  vol=$(LC_ALL=C.UTF-8 sed -n 's/^volatility:[[:space:]]*\([^[:space:]]*\).*/\1/p' "$f" 2>/dev/null | head -1)
   if [[ "$vol" == "volatile" ]]; then window=30; else window=180; fi
   age_days=$(( (today_ts - d_ts) / 86400 ))
   if (( age_days > window )); then

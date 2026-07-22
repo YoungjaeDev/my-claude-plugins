@@ -38,7 +38,9 @@ fi
 touch "$marker"
 
 # Find newest lint-wiki date in the log
-newest=$(LC_ALL=C.UTF-8 grep -oP '^##\s+\K\d{4}-\d{2}-\d{2}(?=.*\(lint-wiki\))' "$log_file" 2>/dev/null | sort -r | head -1)
+# BSD grep has no -P/\K/lookahead. A single sed BRE folds the lookahead in: match
+# a `## <date> ... (lint-wiki)` header line and capture just the date.
+newest=$(LC_ALL=C.UTF-8 sed -n 's/^##[[:space:]]\{1,\}\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\).*(lint-wiki).*/\1/p' "$log_file" 2>/dev/null | sort -r | head -1)
 
 msg=""
 if [[ -z "$newest" ]]; then

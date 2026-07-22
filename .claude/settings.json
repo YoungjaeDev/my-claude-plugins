@@ -24,7 +24,8 @@
       "./plugins/codex-image",
       "./plugins/brightdata-guide",
       "./plugins/gws-sync",
-      "./plugins/mem0-ops"
+      "./plugins/mem0-ops",
+      "./plugins/plaud-note-taking"
     ]
   }
 }

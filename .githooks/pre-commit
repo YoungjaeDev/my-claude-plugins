@@ -7,20 +7,30 @@
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
-node "$repo_root/scripts/sync-codex-manifests.mjs" --check
-node "$repo_root/scripts/sync-hermes-manifests.mjs" --check
-node "$repo_root/scripts/check-doc-consistency.mjs"
-node "$repo_root/scripts/check-skill-tool-portability.mjs" --check
-# Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
-# regardless, but the `|| true` keeps it non-blocking even if node itself errors.
-node "$repo_root/scripts/check-skill-prose.mjs" || true
+
+# node drives the drift/consistency guards. Skip (not fail) when it is absent
+# locally — same posture as the python3 guard below — so a machine without node
+# can still commit; CI installs node and enforces all of these on the PR.
+if command -v node >/dev/null 2>&1; then
+  node "$repo_root/scripts/sync-codex-manifests.mjs" --check
+  node "$repo_root/scripts/sync-hermes-manifests.mjs" --check
+  node "$repo_root/scripts/check-doc-consistency.mjs"
+  node "$repo_root/scripts/check-skill-tool-portability.mjs" --check
+  # Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
+  # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
+  node "$repo_root/scripts/check-skill-prose.mjs" || true
+else
+  echo "pre-commit: node not found — skipping Codex/Hermes/doc guards (CI still enforces them)" >&2
+fi
 # Hermes adapter mock-load — same guard CI runs, so import/registration regressions
-# in generated __init__.py fail at commit time, not only in CI. Skip (not fail) when
-# python3 is absent locally; CI still enforces it.
-if command -v python3 >/dev/null 2>&1; then
+# in generated __init__.py fail at commit time, not only in CI. The adapters
+# `import yaml`, so the guard checks both python3 AND PyYAML; skip (not fail) when
+# either is absent locally so a bare interpreter can still commit. CI installs both
+# and enforces it on the PR.
+if command -v python3 >/dev/null 2>&1 && python3 -c 'import yaml' >/dev/null 2>&1; then
   python3 "$repo_root/scripts/mock-load-hermes.py"
 else
-  echo "pre-commit: python3 not found — skipping Hermes mock-load (CI still enforces it)" >&2
+  echo "pre-commit: python3+PyYAML not both present — skipping Hermes mock-load (CI still enforces it)" >&2
 fi
 
 # cr-fix's CLI-fallback and CR-state paths only execute after the primary path

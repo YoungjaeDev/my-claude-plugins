@@ -1,10 +1,10 @@
 ---
 id: detector-cannot-look-vs-nothing-wrong
 aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean]
-last_verified: 2026-07-13
+last_verified: 2026-07-22
 status: active
 volatility: stable
-sources: 3
+sources: 4
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -58,17 +58,31 @@ PR #122 found five instances of the identical invariant in `cr-fix`'s GitHub fet
 
 Local detectors (Modes 1-3) fail via exit codes and `pipefail`; remote fetchers fail via degraded payloads that still parse. Same rule both ways: **an answer you could not fully retrieve is not an answer of "nothing there".**
 
+## Mode 5: the detector's own tool is non-portable — "clean" because it could not run
+
+The first four modes all fail on *ugly input*. Mode 5 fails on a *healthy input the tool cannot examine on this platform*. `cr-fix`'s per-finding gate `scripts/path-trust.sh` used GNU-only `realpath -m`; on BSD/macOS realpath rejects `-m` (`illegal option`), and under `set -euo pipefail` the command substitution aborted the script — for *every* path, including legitimate in-repo ones. The Step 9c gate is `path-trust.sh ... || { log "untrusted path"; auto_judge_skip++; continue; }`, so a tool that cannot run on this OS reads as "every finding is untrusted." A skip touches neither `applied_this_cycle` nor `deferred_this_cycle`, so Step 13's `applied==0 && deferred==0` fired `final_state=clean` — the one state that is auto-merge eligible. A reviewer's CRITICAL finding could ride an auto-merge through a gate that never read it, and the run is indistinguishable from a genuinely clean one (same `final_state`; the only tell is a `skip` count that shares its counter with legitimate YAGNI skips; the disambiguating `auto_judge_log` entry is never written because `continue` jumps past it).
+
+Two compounding traps found fixing it:
+
+- **Bare `realpath` is not the portable substitute.** GNU *and* BSD realpath both error on a path that does not exist yet, and cr-fix must validate paths for files a fix is about to *create* — which is exactly what `-m` allowed. The portable form resolves the parent with `cd` + `pwd -P` and re-appends the basename.
+- **Resolving only the parent reopened the trust boundary.** A symlinked *final* component pointing outside the repo then looks in-repo and passes containment (the first fix's own review, #153, caught this as a Critical). The resolver must follow a final-component symlink chain (`readlink`, re-resolving the parent each hop, with a loop cap) — which `realpath -m` had done for free.
+
+The meta-lesson beyond containment: **a detector written and tested on one platform can be a silent no-op on another, and a no-op detector reports "nothing wrong."** The break is invisible in an interactive shell where a `grep` shim masks it — see [[stock-userland-verification]] — so portability claims for detector tooling must be re-verified under `env -i PATH=/usr/bin:/bin`, and the gate itself given test coverage (path-trust.sh had none, which is why CI passed clean while it rejected every path).
+
 ## Why this recurs
 
 Each instance arrives disguised as an edge case ("who has a corrupt config?"), and each one is discovered only by running the script against the ugly input rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis says so, keeps going, and never converts ignorance into an all-clear.**
 
 > See-also: [[jq-capture-yields-empty]]
 > See-also: [[worktree-squash-merge-gotchas]]
+> See-also: [[stock-userland-verification]]
 > Evidence: plugins/project-init/scripts/project_state.sh
 > Evidence: plugins/project-init/CLAUDE.md
+> Evidence: plugins/github-dev/skills/cr-fix/scripts/path-trust.sh
 
 ## Sources
 
 1. **PR #104** (`feat(project-init): add wiring skill with shared state detector`) — the `find` / `pipefail` instance. `find ... | wc -l` killed the script on an empty match; `find | head -1 | grep -q .` inverted its own result via SIGPIPE(141). Fixed with `find_or_empty` / `count_files` helpers and `-print -quit`.
 2. **PR #106** (`feat(project-init): ASK verdict class + three efficacy axes for wiring`) — the `jq` instances. Reproduced across corrupt / empty / `[]` / `"x"` / top-level-array `~/.claude.json`, and across `65536`, `65536 # bytes`, `65_536`, `"65536"`, `abc`, key-absent, config-absent for `project_doc_max_bytes`. Before the fix: exit 2 or exit 5, zero output. After: exit 0 in every case, with `mcp.unreadable` naming the file it could not read.
 3. **PR #122** (`fix(github-dev): cr-fix correctness repair set`) — the remote-fetcher instances (Mode 4): `fetch-cr-threads.sh` null-envelope false-clean + pagination coherence (fixtures `gql-null-repository` / `gql-null-pullrequest` / `gql-missing-pageinfo` / `gql-cursorless-next`), `auto-merge-gate.sh` probe rc 0 (`probe failure -> protection_http 0`), `cr-commit-state.sh` `state:"error"` channel + `ERROR_STREAK_MAX` terminal poller test.
+4. **PR #153** (`fix(github-dev): cr-fix path-trust works on BSD/macOS userland`) — the non-portable-tool instance (Mode 5): `path-trust.sh` `realpath -m` aborted under `set -e` on BSD/macOS for every path, so the Step 9c gate skipped every finding and Step 13 converged `final_state=clean` (auto-merge eligible). Fixed with a POSIX `cd`+`pwd -P`+`readlink` resolver that also follows a final-component symlink chain (a Critical the fix's own review surfaced), plus the first test coverage for the gate (12 cases, RED-verified against both prior revisions). Surfaced by a macOS-26 compatibility audit of all 24 plugins.

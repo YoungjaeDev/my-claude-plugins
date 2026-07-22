@@ -6,6 +6,15 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-22 — post-merge #153: BSD/macOS userland breaks + stock-userland verification (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `70456bc` — cr-fix path-trust works on BSD/macOS userland (#152). Surfaced by a full macOS 26 (Apple Silicon, bash 3.2, BSD userland) compatibility audit of all 24 plugins; this PR fixed only the blocking prerequisite (cr-fix's own path-trust gate), the rest deferred to a follow-up issue. Config integration (Step 6): `code_review.md` cross-platform bullet extended (`realpath -m` GNU-only; bare `realpath` not a substitute — both GNU/BSD fail on not-yet-existing paths; `cd`+`pwd -P`+`readlink` for the final-component symlink) and a new stock-userland verification rule; `AGENTS.md` P1 mirror updated (`sed -i`·`realpath -m` GNU-only). Those are review-rule mechanics (config), the two wiki items below are lore.
+
+- `plugin-ops/detector-cannot-look-vs-nothing-wrong.md`: new `## Mode 5` — the same "could not look → false clean" invariant, but the detector broke because its own tool was non-portable, not because the input was ugly. `realpath -m` under `set -euo pipefail` aborted for every path on BSD; the Step 9c gate's `|| { skip; continue; }` turned that into "every finding untrusted", and skip touches neither applied nor deferred, so Step 13 declared `final_state=clean` — the one auto-merge-eligible state. Fourth PR in the family (#104/#106/#122/#153), the graduation candidate the 2026-07-13 drain flagged and deferred. sources 3 → 4, last_verified → 2026-07-22.
+- `plugin-ops/stock-userland-verification.md` (NEW): an interactive shell can route `grep` through a shim (ugrep) that accepts `-P`, so a `grep -oP` break looks like it works; hooks run as child processes that do not inherit the shell function, and Codex/Hermes have no shim at all. A portability claim verified in the interactive shell is unsound — re-verify under `env -i PATH=/usr/bin:/bin`. Evidenced by this PR's RED (the first symlink-escape test falsely passed under the shim) and the audit's 7 `grep -oP` hits across llm-wiki hooks. volatility stable, sources 2.
+- insight graduation: `detector-cannot-look-vs-nothing-wrong` → `.llmwiki/insight/detector-cannot-look.md` — meets all four criteria (recurs across 4 PRs, generalizable, costly [auto-merge of unresolved findings], stabilized). MOC hook added to `insight/index.md`.
+- `index.md`: detector hook extended (Mode 5 / non-portable-tool family); new stock-userland-verification entry.
+
 ## 2026-07-13 — post-merge #130: heredoc prompt-handoff injection defense (post-merge)
 
 Diff log written before applying the page edit (git-revertible). Merge SHA `936781a` — codex-image heredoc shell-injection fix (#112). A second injection surface on the same skill, distinct from the `-i "<path>"` argument case already on the page: the prompt-body heredoc handoff. Config integration: none — security-design lore, routed to the wiki.

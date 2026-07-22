@@ -188,8 +188,10 @@ Four rules separate this from a polite interview:
    repo or tools can answer — when a frontier question needs a fact, dispatch a
    sub-agent or run the lookup yourself and keep pressing the rest of the
    frontier while it resolves (a pending fact-find blocks only the questions
-   downstream of it). Never autonomously settle a judgment call that is the
-   user's to make.
+   downstream of it). Fact-finding is **read-only**: it may read files, run
+   read-only queries, and search — it must not write files, run mutating
+   commands, or send data, since that would slip work past the act-gate. Never
+   autonomously settle a judgment call that is the user's to make.
 
 ### Per-question scaffold
 

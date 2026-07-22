@@ -1,7 +1,7 @@
 ---
 name: interview-methodology
-description: This skill should be used when conducting in-depth user interviews, "gathering requirements", "interview me", "ask me questions", "understand my needs before implementing", "spec-based development", or when preparing comprehensive specifications before implementation.
-version: 0.3.0
+description: This skill should be used when conducting in-depth user interviews, "gathering requirements", "interview me", "ask me questions", "understand my needs before implementing", "spec-based development", when preparing comprehensive specifications before implementation, or when relentlessly stress-testing an existing plan or decision ("grill me", "poke holes in this", "집요하게 캐물어").
+version: 0.4.0
 ---
 
 # Interview Methodology
@@ -157,6 +157,36 @@ you are walking down the decision that matters.
 
 The two modes compose: open breadth-first to map the territory, then switch to
 focused mode when one answer opens a deep, consequential branch.
+
+### Relentless / stress-test mode (adversarial)
+
+Use when the user hands you an existing plan, design, or decision and wants it
+*pressed*, not gathered — triggers like "grill me", "stress-test this", "poke
+holes in this", "집요하게 캐물어". This mode **inverts the default posture**: the two
+modes above optimize for *not bothering* the user, but here the user has
+explicitly asked to be bothered, so **"When NOT to Interview" does not apply** —
+there is no 2-3 question cap and no early exit. Press every branch of the
+decision tree until you and the user reach a genuine shared understanding.
+
+Four rules separate this from a polite interview:
+
+1. **No escape hatches.** Do not offer to skip, defer, or "just proceed". The
+   session ends when the plan is sound, not when it is merely tolerable.
+2. **Hard act-gate.** Do not act on the plan — no implementation, no spec write,
+   no edits — until the user *explicitly confirms* you have reached shared
+   understanding. An agent that answers its own open questions and starts working
+   has broken this rule.
+3. **Walk the dependency frontier.** Ask the decisions whose prerequisites are
+   already settled first; a question whose answer depends on another still-open
+   question belongs to a *later* round. Early answers are allowed to reshape
+   later questions — which is exactly why you never batch a downstream question
+   ahead of its prerequisite.
+4. **Facts are yours, decisions are theirs.** Never ask the user anything the
+   repo or tools can answer — when a frontier question needs a fact, dispatch a
+   sub-agent or run the lookup yourself and keep pressing the rest of the
+   frontier while it resolves (a pending fact-find blocks only the questions
+   downstream of it). Never autonomously settle a judgment call that is the
+   user's to make.
 
 ### Per-question scaffold
 

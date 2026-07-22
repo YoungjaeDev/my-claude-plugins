@@ -64,7 +64,10 @@ scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
      self-correction, or a cited trusted source. Context is a signal that *flags* a candidate —
      it is not standalone authorization to rewrite a proper noun or a number. When the only
      basis is "it probably means X", flag `[확인 필요]` instead of correcting.
-   - Terminology fixes use **only** the verified entries in `terminology.md`. A term not in the
+   - Terminology fixes use **only** verified entries in the **project's** term dictionary at
+     `.llmwiki/raw/transcripts/terminology.md`. On first run, seed it by copying the bundled
+     `references/terminology.md` template (the bundled file is an empty template, never the live
+     dictionary — a plugin-cache copy cannot hold a project's terms). A term not in the
      dictionary is not corrected from memory — it becomes an open question or a proposed
      dictionary addition.
    - **Numbers, dates, prices, contract terms**: never "clean up" by guessing. If STT-suspect
@@ -83,10 +86,12 @@ scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
    anything the user defers as `[확인 필요]`.
 
 5. **Write the corrected file.** Produce `<slug>.corrected.md` in the same folder using
-   `templates/corrected-note.md`. Do not edit `terminology.md` yourself — if recurring unknown
-   terms look worth adding, list them as candidates at the bottom of the corrected file for the
-   user to confirm later. Do not dump raw personal data (phone numbers, emails, credentials)
-   into the corrected file.
+   `templates/corrected-note.md`. **Never silently overwrite an existing corrected file** — the
+   user may have hand-edited it; if `<slug>.corrected.md` already exists, write the next free
+   `<slug>.corrected-vN.md` (or ask before overwriting). Do not edit the project dictionary
+   yourself — if recurring unknown terms look worth adding, list them as candidates at the
+   bottom of the corrected file for the user to confirm later. Do not dump raw personal data
+   (phone numbers, emails, credentials) into the corrected file.
 
 ## Prohibitions
 
@@ -129,5 +134,5 @@ scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
 
 - `references/plaud-note-format.md` — what a PLAUD note is; STT error classes; transcript-over-summary rule.
 - `references/correction-policy.md` — the four states and when each applies; open-question rules.
-- `references/terminology.md` — the verified project term dictionary (the only basis for a terminology `[정정]`).
+- `references/terminology.md` — empty template for the project term dictionary (seeded into `.llmwiki/raw/transcripts/terminology.md`; the only basis for a terminology `[정정]`).
 - `templates/corrected-note.md` — the `*.corrected.md` output format.

@@ -1,9 +1,14 @@
-# Project term dictionary
+# Project term dictionary (template)
 
-The **only** basis for a terminology `[정정]`. This mirrors PLAUD's own Custom Vocabulary: a
-verified map from what STT tends to produce → the correct project spelling. Populate it per
-project. A term is added only after the user confirms it, or a trusted project doc verifies it —
-never because it "appears a lot" in a transcript.
+This bundled file is an **empty template**, not the live dictionary. The live, per-project
+dictionary lives in the user's project at `.llmwiki/raw/transcripts/terminology.md` — the skill
+seeds it by copying this template on first run, then reads and grows that copy (a plugin-cache
+file cannot hold a project's terms and is wiped on cache refresh).
+
+It is the **only** basis for a terminology `[정정]`, mirroring PLAUD's own Custom Vocabulary: a
+verified map from what STT tends to produce → the correct project spelling. A term is added only
+after the user confirms it, or a trusted project doc verifies it — never because it "appears a
+lot" in a transcript.
 
 ## Entries
 

@@ -15,6 +15,11 @@ When this skill is loaded through Hermes as `interview:interview-methodology`, m
 | AskUserQuestion | clarify |
 | Read | read_file |
 | Write | write_file |
+| Task (sub-agent) | delegate_task |
+| Bash | terminal |
+| Grep/Glob | search_files |
+
+The last three cover the relentless mode's read-only fact-dispatch (dispatch a sub-agent, run a lookup, search) so a Hermes `grill me` session can follow rule 4 instead of stalling.
 
 Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("interview:interview-methodology")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
 

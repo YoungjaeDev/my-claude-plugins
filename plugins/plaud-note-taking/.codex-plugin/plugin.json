@@ -1,0 +1,10 @@
+{
+  "name": "plaud-note-taking",
+  "version": "0.1.0",
+  "description": "Review and correct PLAUD voice-recorder notes (Whisper transcript + separate LLM summary). Fixes STT misrecognition (Korean+English code-switching, proper nouns, numbers) against a project term dictionary, grill-me interviews to resolve ambiguities, and writes a transcript-grounded *.corrected.md back to .llmwiki/raw/transcripts without touching the originals.",
+  "author": {
+    "name": "YoungjaeDev"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

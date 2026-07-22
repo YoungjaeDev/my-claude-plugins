@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.5.9"
+    "description": "Personal Claude Code plugin collection with 25 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
+    "version": "2.6.0"
   },
   "plugins": [
     {
@@ -174,6 +174,13 @@
       "source": "./plugins/mem0-ops",
       "description": "Fleet-level mem0 diagnostics and cleanup — complements the upstream mem0 plugin (which owns per-project quality). fleet-scan reports per-app noise ratio, junk app_id candidates, and app/user_id fragmentation across all apps; doctor checks config posture (MEM0_RERANK env, ~/.mem0/settings.json auto_save precedence trap, project decay flag, hook timeout budget, identity fragmentation); cleanup does backup-then-delete by metadata.type or whole junk app behind a dry-run default plus a skill-layer per-app confirmation gate (the script alone gates on --execute only). stdlib-only REST scripts, zero LLM cost for the deterministic parts.",
       "version": "0.1.2",
+      "category": "productivity"
+    },
+    {
+      "name": "plaud-note-taking",
+      "source": "./plugins/plaud-note-taking",
+      "description": "Review and correct PLAUD voice-recorder notes (Whisper transcript + separate LLM summary). Fixes STT misrecognition (Korean+English code-switching, proper nouns, numbers) against a project term dictionary, grill-me interviews to resolve ambiguities, and writes a transcript-grounded *.corrected.md back to .llmwiki/raw/transcripts without touching the originals.",
+      "version": "0.1.0",
       "category": "productivity"
     }
   ]

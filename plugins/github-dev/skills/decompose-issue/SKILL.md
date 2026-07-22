@@ -237,6 +237,27 @@ Since issues are larger, content must be **more detailed**:
 3. **Code snippets** - key patterns or structures to implement
 4. **Edge cases** - known gotchas or considerations
 
+### Wide Refactors: the expand-contract exception
+
+Context-completable vertical slices are the default, but a **wide refactor** — a
+mechanical change that touches many call sites of one form (a renamed API, a
+changed signature, a moved type) — cannot be a single vertical slice without a
+giant blast radius, and cannot be split by feature. Sequence it as
+**expand -> migrate -> contract** instead:
+
+1. **Expand** (one issue): add the new form *beside* the old so nothing breaks
+   yet — both coexist.
+2. **Migrate** (one issue *per batch*, each blocked by Expand): move call sites
+   to the new form in batches sized by blast radius (per package, per directory).
+   Each batch is its own issue so each stays context-completable and green.
+3. **Contract** (one issue, blocked by *every* Migrate): delete the old form once
+   no caller remains.
+
+If a migrate batch genuinely can't stay green on its own, let the batches share
+an integration branch that all block a final **integrate-and-verify** issue —
+green is promised only there. Record the blocking edges with `dependsOn` so the
+milestone dependency graph renders the expand -> migrate -> contract order.
+
 ---
 
 ## Milestone Description Guidelines

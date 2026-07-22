@@ -1,9 +1,11 @@
 # Project term dictionary (template)
 
 This bundled file is an **empty template**, not the live dictionary. The live, per-project
-dictionary lives in the user's project at `.llmwiki/raw/transcripts/terminology.md` — the skill
-seeds it by copying this template on first run, then reads and grows that copy (a plugin-cache
-file cannot hold a project's terms and is wiped on cache refresh).
+dictionary lives in the user's project at `.claude/plaud-note-taking/terminology.md` — a stable
+config path outside `.llmwiki/raw/` (which llm-wiki treats as immutable, date-named evidence, so
+a growing dictionary must not live there). The skill seeds it by copying this template on first
+run, then reads and grows that copy (a plugin-cache file cannot hold a project's terms and is
+wiped on cache refresh).
 
 It is the **only** basis for a terminology `[정정]`, mirroring PLAUD's own Custom Vocabulary: a
 verified map from what STT tends to produce → the correct project spelling. A term is added only

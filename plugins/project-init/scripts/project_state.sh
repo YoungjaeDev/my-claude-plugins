@@ -224,6 +224,20 @@ fi
 if [ "$MCP_USER" -gt 0 ] && [ "$MCP_SETTINGS" -gt 0 ]; then
   MCP_DUPES=$(comm -12 <(mcp_keys "$HOME/.claude.json") <(mcp_keys "$HOME/.claude/settings.json") | jq -Rsc 'split("\n") | map(select(length>0))')
 fi
+# 중복 이름의 엔트리 본문 비교. 이름이 같아도 정의가 다르면 (drift) 지는 사본의
+# 편집이 한 번도 효력을 가진 적 없다는 뜻 — 내용 동일 중복(WARN)과 급이 다르다 (FAIL).
+# jq -S 로 키 순서를 정규화해 비교하고, 실패는 이 축 안에 가둔다.
+MCP_DRIFTED='[]'
+if [ "$MCP_DUPES" != '[]' ]; then
+  _drift=""
+  while IFS= read -r _k; do
+    [ -n "$_k" ] || continue
+    _a=$(jq -Sc --arg k "$_k" '.mcpServers[$k]' "$HOME/.claude.json" 2>/dev/null || printf null)
+    _b=$(jq -Sc --arg k "$_k" '.mcpServers[$k]' "$HOME/.claude/settings.json" 2>/dev/null || printf null)
+    [ "$_a" = "$_b" ] || _drift="${_drift}${_k}"$'\n'
+  done < <(printf '%s' "$MCP_DUPES" | jq -r '.[]')
+  MCP_DRIFTED=$(printf '%s' "$_drift" | jq -Rsc 'split("\n") | map(select(length>0))')
+fi
 
 # --- .claude/rules 스코핑 무력화 -------------------------------------------
 # `paths:` frontmatter 는 조건부 로드다. 그런데 CLAUDE.md 가 같은 파일을 `@import`
@@ -307,7 +321,7 @@ jq -nc \
   --argjson gi_state "$GI_STATE" --argjson gi_serena "$GI_SERENA" --argjson gi_staging "$GI_STAGING" \
   --argjson gi_env "$GI_ENV" \
   --argjson mcp_user "$MCP_USER" --argjson mcp_settings "$MCP_SETTINGS" --argjson mcp_dupes "$MCP_DUPES" \
-  --argjson mcp_unreadable "$MCP_UNREADABLE" \
+  --argjson mcp_drifted "$MCP_DRIFTED" --argjson mcp_unreadable "$MCP_UNREADABLE" \
   --argjson rules_defeated "$RULES_DEFEATED" \
   --argjson codex_config "$CODEX_CONFIG" --arg codex_approval "$CODEX_APPROVAL" \
   --arg codex_sandbox "$CODEX_SANDBOX" --arg codex_model "$CODEX_MODEL" \
@@ -351,7 +365,7 @@ jq -nc \
     gws_sync: { cli: $gws_cli, config: $gws_config },
     tmp: { dir: $tmp_dir, gitignored: $tmp_ignored, stale_files: $tmp_stale, stale_days: $stale_days },
     gitignore: { claude_state: $gi_state, serena: $gi_serena, llmwiki_staging: $gi_staging, tmp: $tmp_ignored, env: $gi_env },
-    mcp: { user_json: $mcp_user, settings_json: $mcp_settings, duplicates: $mcp_dupes, unreadable: $mcp_unreadable },
+    mcp: { user_json: $mcp_user, settings_json: $mcp_settings, duplicates: $mcp_dupes, duplicates_drifted: $mcp_drifted, unreadable: $mcp_unreadable },
     rules_scoping: { paths_defeated_by_import: $rules_defeated },
     codex: {
       config: $codex_config,

@@ -76,13 +76,13 @@ Map the JSON to verdicts. Suppress an `ASK` only when its key in `.answers` hold
 |---|---|---|---|---|---|
 | git | `.git` | `initialized: false` | `commits: 0` | **ASK** `remote_origin: false` — "push할 원격을 만들까요?" (`git_remote`) | `git init` / `gh repo create` |
 | hooksPath | `.git.hooks_path`, `.hooks_dir_present` | — | `hooks_dir_present: true` but `hooks_path: null` | — | `git config core.hooksPath .githooks` |
-| guidance | `.seeded.claude_md`, `.guidance` | `claude_md: false` | `cross_runtime_gap: true` | — | `/rules-forge:write-rules` |
+| guidance | `.seeded.claude_md`, `.guidance` | `claude_md: false`; `cross_runtime_gap: true` | — | — | `/rules-forge:write-rules` |
 | rules scoping | `.rules_scoping` | — | `paths_defeated_by_import` non-empty | — | drop the `@` (mechanical, Step 4) |
 | llm-wiki | `.llmwiki` | `staging_pending > 0` | `state: absent`; `state: legacy`; `state: current` but `insight_layer: false` or `raw_source_buckets: false` | — | pending → `/llm-wiki:ingest-finding`; absent → `/llm-wiki:bootstrap-wiki`; legacy → `/llm-wiki:migrate-wiki` |
 | serena | `.serena` | — | `state: not-registered` / `registered`; `name_drift: true` | — | onboard via Serena MCP `onboarding`; drift → edit `.serena/project.yml` |
 | memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md`; `mem0_settings: true` but `federate_labels: false`; `mem0_project_mapped: false` | — | see "Memory posture" below |
-| mcp config | `.mcp` | — | `duplicates` non-empty; `unreadable` non-empty | — | collapse to one file (see below) |
-| codex | `.codex` | — | `agents_md_bytes + global_agents_md_bytes` ≥ 80% of `project_doc_max_bytes` | **INFO** otherwise when `config: true` | over budget → trim `AGENTS.md`; else visibility only |
+| mcp config | `.mcp` | `duplicates_drifted` non-empty | `duplicates` non-empty (identical copies); `unreadable` non-empty | — | collapse to one file (see below) |
+| codex | `.codex` | `agents_md_bytes + global_agents_md_bytes` > `project_doc_max_bytes` | same sum ≥ 80% of `project_doc_max_bytes` | **INFO** otherwise when `config: true` | over cap → trim `AGENTS.md` or raise `project_doc_max_bytes`; else visibility only |
 | spec | `.spec` | — | `missing_frontmatter > 0` | **INFO** `claude_spec > 0` **and** `superpowers_spec > 0` | `/spec-state:state-tracker init` |
 | gws-sync | `.gws_sync`, `.answers.gws_sync` | — | `config: true` but `cli: false` | **ASK** / **OK** / **SKIP** / **INFO** per the table in "gws-sync is a two-step ASK" | `/gws-sync:gws-sync` |
 | .tmp | `.tmp` | — | `dir: true` and `gitignored: false`; `stale_files > 0` | — | mechanical fix (Step 4) |
@@ -95,7 +95,7 @@ Existence checks answer "is it there?". These four answer "**does it take effect
 
 - **hooksPath.** `.githooks/` is tracked; `core.hooksPath` is per-clone git config that is *not*. A fresh clone has the hook scripts and no hook. Silent until CI catches it after the push. When `.githooks/` is absent the axis says nothing — plenty of repos don't use it.
 - **rules scoping.** A `.claude/rules/*.md` carrying `paths:` frontmatter is meant to load only when Claude touches matching files. `@import`ing that same file from `CLAUDE.md` expands it unconditionally at launch, so the scoping is dead and its tokens are paid every session. Fix: drop the `@` and wrap the path in backticks — import parsing skips code spans, so the line survives as a human pointer.
-- **mcp config.** When the same server name appears in both `~/.claude.json` and `~/.claude/settings.json`, Claude Code picks one entry whole and discards the other — fields are never merged. Two definitions that have drifted mean one file's edits have never once taken effect. Report the duplicate names and say plainly that editing the losing copy does nothing. Orphan registrations (a server left behind by a deleted plugin) need usage history to identify — that is the built-in `/doctor`'s job, not this skill's.
+- **mcp config.** When the same server name appears in both `~/.claude.json` and `~/.claude/settings.json`, Claude Code picks one entry whole and discards the other — fields are never merged. The detector compares the entry bodies: a name in `duplicates_drifted` carries two *different* definitions, so the losing file's edits have never once taken effect — that is a `FAIL`, user intent silently dropped. Identical copies stay a `WARN`: redundant, but nothing is being lost today. Either way, report the names and say plainly that editing the losing copy does nothing. Orphan registrations (a server left behind by a deleted plugin) need usage history to identify — that is the built-in `/doctor`'s job, not this skill's.
 
   `unreadable` is a separate `WARN`. A user-scope file that is not valid JSON cannot be compared, and the detector refuses to answer "no duplicates" when what it means is "could not look". Name the file and say the duplicate check did not run.
 
@@ -103,7 +103,7 @@ Existence checks answer "is it there?". These four answer "**does it take effect
 
 `approval_policy: "never"` with `sandbox_mode: "danger-full-access"` means a `/codex:rescue` edits the working tree without asking. That is a legitimate dev-box choice, so it is not a defect — but it should never be a surprise. Print it. The one part of this axis that *is* a verdict is the doc budget below. Same for `model_pinned`: pinning freezes the model that `codex-image` deliberately leaves unpinned to auto-track the latest, which is maintenance debt, not breakage.
 
-Also print the Codex doc budget when `AGENTS.md` exists: `agents_md_bytes + global_agents_md_bytes` against `project_doc_max_bytes`. Codex concatenates root-down and truncates at the cap — and the tail of `AGENTS.md` is usually `## Review guidelines`, the part the GitHub cloud reviewer loads into its system prompt. So the budget is a `WARN` at 80% and above, not an `INFO`: past the cap the guidance is silently gone, with no error anywhere. Below 80% it is `INFO`, visibility only.
+Also print the Codex doc budget when `AGENTS.md` exists: `agents_md_bytes + global_agents_md_bytes` against `project_doc_max_bytes`. Codex concatenates root-down and truncates at the cap — and the tail of `AGENTS.md` is usually `## Review guidelines`, the part the GitHub cloud reviewer loads into its system prompt. The verdict is two-tier: **over the cap (> 100%) is `FAIL`** — the truncation has already happened, guidance is being lost right now with no error anywhere, and what falls off is by position the review-critical tail. **≥ 80% is `WARN`**, approaching the cliff. Below 80% it is `INFO`, visibility only. Remediation for the FAIL: trim `AGENTS.md`, or raise `project_doc_max_bytes` in `~/.codex/config.toml` (machine-local — say so when suggesting it).
 
 ### gws-sync is a two-step ASK
 
@@ -129,8 +129,9 @@ Two ways this axis silently misbehaves, both closed by the table above. Treating
 
 Two spec homes is `INFO`, not `WARN`: state which one this project prefers (`.claude/spec/` unless the project says otherwise) and leave the files where they are. Only `missing_frontmatter > 0` is a `WARN`, because a spec without `status:` frontmatter is invisible to `spec-state` regardless of which directory it sits in. Never move spec files as part of "apply all".
 
-Three verdicts need an explanation the JSON cannot carry:
+Some verdicts need an explanation the JSON cannot carry:
 
+- **`cross_runtime_gap: true` is FAIL, not WARN.** `.claude/rules/*.md` exist but `AGENTS.md` does not, so every Codex/Hermes session runs with zero project guidance — silently, with no error on their side. One runtime losing its entire instruction surface is guidance loss, not degradation.
 - **`staging_pending > 0` is FAIL, not WARN.** The llm-wiki Stop-hook captured session lore into `.llmwiki/.staging/`, and the SessionStart drain never curated it. That directory is gitignored, so the lore is one `rm` from being lost permanently.
 - **The memory FAIL keys on `native_auto_memory_enabled`, never on `native_memory_md`.** File presence is a proxy for a feature being on, and the two diverge the moment auto-memory is disabled: `MEMORY.md` survives the setting change. Keying the verdict on the file would keep reporting a conflict this skill already helped resolve. A leftover `MEMORY.md` with auto-memory off is a WARN (dead files), not a FAIL.
 - **`gitignore.env: false` is FAIL.** An untracked-but-uncovered `.env` is one `git add -A` from committing credentials. The other gitignore entries only leak local state.

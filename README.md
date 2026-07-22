@@ -466,7 +466,7 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 
 스펙 기반 개발을 위한 구조화된 인터뷰.
 
-**Modes:** breadth-first (5-phase 전수) + depth-first / Socratic (가장 큰 불확실성 1개씩 focused). 코드베이스로 답할 수 있는 건 묻지 않고, 이미 구체적인 요청엔 인터뷰 생략.
+**Modes:** breadth-first (5-phase 전수) + depth-first / Socratic (가장 큰 불확실성 1개씩 focused) + relentless / stress-test (기존 계획을 집요하게 압박 — "grill me"). 코드베이스로 답할 수 있는 건 묻지 않고, 이미 구체적인 요청엔 인터뷰 생략(단 stress-test 모드는 예외 — 명시 요청 시 압박).
 
 **Phases (breadth-first):**
 1. Context Gathering

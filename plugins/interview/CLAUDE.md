@@ -20,10 +20,11 @@ Conduct thorough interviews to uncover hidden needs, constraints, and edge cases
 - "spec-based development"
 - Feature requests without detailed specs
 
-## Two Modes
+## Three Modes
 
 - **Breadth-first** (the 5-phase flow) - sweep every category; for large, multi-decision work.
 - **Depth-first / Socratic (focused)** - target the single biggest uncertainty, one question at a time; for one-or-two-decision work. The two compose (map breadth-first, then dive focused).
+- **Relentless / stress-test (adversarial)** - for "grill me" / "poke holes in this": press an existing plan, inverting the default "don't bother the user" posture. "When NOT to Interview" does not apply; adds a hard act-gate (no action until the user confirms shared understanding), dependency-frontier ordering, and non-blocking fact-dispatch.
 
 ## Interview Phases (breadth-first mode)
 

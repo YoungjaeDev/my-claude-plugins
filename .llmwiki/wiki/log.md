@@ -499,3 +499,9 @@ Diff log written before applying the page edits (git-revertible).
 ## 2026-07-17 — post-drain re-capture skip (ingest-finding)
 
 - staging drain: consumed 1 marker (pending-d4d66fc5) — the Stop hook re-captured session d4d66fc5 AFTER the 2026-07-16 drain that already folded its self-capture (see the 2026-07-16 entry above). Dedup verdict: duplicate, no pages touched.
+
+## 2026-07-22 — adopt-by-posture-diff insight from mattpocock/skills batch (ingest-finding)
+
+- plugin-ops/skill-authoring-source-grounded-then-audit.md: added §4 "Adopt from an external library: gap-fill / reflect / skip, and diff posture not rules" — grill-me overlapped interview-methodology on ~90% of rules yet its value was the opposite default posture (relentless vs restrained), so it landed as a new mode, not a port. last_verified 2026-06-18 -> 2026-07-22, sources 2 -> 3.
+- insight graduation: declined — one-off (single session), stays wiki lore per the recurs-across-sessions criterion.
+- routing dedup: the merged skill rules (relentless mode, expand-contract, tautological-test, wiring FAIL verdicts, mcp drift) are skill-internal and already homed in their skill bodies — not re-recorded here.

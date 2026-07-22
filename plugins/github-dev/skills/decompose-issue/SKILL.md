@@ -253,10 +253,18 @@ giant blast radius, and cannot be split by feature. Sequence it as
 3. **Contract** (one issue, blocked by *every* Migrate): delete the old form once
    no caller remains.
 
-If a migrate batch genuinely can't stay green on its own, let the batches share
-an integration branch that all block a final **integrate-and-verify** issue —
-green is promised only there. Record the blocking edges with `dependsOn` so the
-milestone dependency graph renders the expand -> migrate -> contract order.
+Keep each Migrate batch independently green — that is what lets `/github-dev:resolve-issue`
+drive it, since resolve-issue branches each issue off the default branch and
+gates BUILD/TEST before the PR. Only if a batch genuinely cannot stay green
+alone, fall back to a shared **integration branch**: the Migrate batches target
+it instead of the default branch, and it is a single **integrate-and-verify**
+issue that promises green. This fallback is a manual, multi-issue branch flow —
+resolve-issue's one-branch-per-issue model does not drive it, so sequence it by
+hand. In that path **Contract must block on integrate-and-verify, not on the
+individual Migrate issues** (`dependsOn: [<integrate-and-verify #>]`), or the old
+form could be deleted before the combined migration is validated. Record every
+blocking edge with `dependsOn` so the milestone dependency graph renders the
+expand -> migrate -> contract order.
 
 ---
 

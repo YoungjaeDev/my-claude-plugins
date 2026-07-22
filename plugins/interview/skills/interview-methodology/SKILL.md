@@ -137,7 +137,7 @@ multi-decision work — not a reflex for every request.
 - What's the cost of NOT doing this?
 - Are there regulatory or legal considerations?
 
-## Two Interview Modes
+## Three Interview Modes
 
 Pick the mode that fits the uncertainty, and say which you're using:
 
@@ -171,7 +171,10 @@ decision tree until you and the user reach a genuine shared understanding.
 Four rules separate this from a polite interview:
 
 1. **No escape hatches.** Do not offer to skip, defer, or "just proceed". The
-   session ends when the plan is sound, not when it is merely tolerable.
+   session ends when the plan is sound, not when it is merely tolerable. This
+   constrains *your* offers, not the user's control: an explicit user request to
+   stop, cancel, or proceed anyway always overrides and ends the mode at once —
+   you simply never volunteer the shortcut yourself.
 2. **Hard act-gate.** Do not act on the plan — no implementation, no spec write,
    no edits — until the user *explicitly confirms* you have reached shared
    understanding. An agent that answers its own open questions and starts working

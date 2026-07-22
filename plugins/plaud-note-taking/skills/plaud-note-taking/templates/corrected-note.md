@@ -5,7 +5,7 @@ content. Keep it readable — one fact per line, no tables of raw transcript, no
 
 ```md
 # {회의/녹음 제목} (corrected)
-자료: {slug}.transcript.txt (+ {slug}.note.txt) · PLAUD (Whisper STT + LLM 요약)
+자료: {slug}.transcript.txt · PLAUD (Whisper STT)  {요약 .note.txt 가 있을 때만 " (+ {slug}.note.txt) · LLM 요약" 을 덧붙인다}
 정정 기준: 전사록 근거, terminology.md · 정정일 {YYYY-MM-DD}
 
 ## 요약 (확인된 내용만)

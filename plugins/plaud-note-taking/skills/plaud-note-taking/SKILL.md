@@ -31,8 +31,8 @@ edits the uploaded originals. It sorts every span into four states (see
 `references/correction-policy.md`), tagged inline in the corrected file:
 
 - `[확인됨]` — present in the transcript and not in conflict with a trusted source.
-- `[정정]` — a misrecognition fixable with certain evidence (`terminology.md` or an
-  in-transcript self-correction). Keep original → corrected → basis.
+- `[정정]` — a misrecognition fixable with certain evidence: a `terminology.md` entry, an
+  in-transcript self-correction, or a cited trusted source. Keep original → corrected → basis.
 - `[해석]` — useful context inferred from flow, not stated verbatim. Never promote to a
   decision, action item, or commitment.
 - `[확인 필요]` — ambiguous / conflicting / STT-suspect. Becomes an open question.
@@ -57,8 +57,13 @@ scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
 
 3. **Correct** (conservative — `references/correction-policy.md` + `references/terminology.md`):
    - STT fixes target the known error zone: Korean+English **code-switched tech terms**,
-     **proper nouns** (company / product / person), garbled **English loanwords**, dropped or
-     merged sentences, and orthography (맞춤법). Fix only with contextual + terminology basis.
+     **proper nouns** (company / product / person), garbled **English loanwords**, and
+     orthography (맞춤법). **Dropped or merged sentences are not reconstructed** — leave them
+     `[확인 필요]` unless the boundary re-segments unambiguously (never invent missing content).
+   - A correction needs a defensible basis: a `terminology.md` entry, an in-transcript
+     self-correction, or a cited trusted source. Context is a signal that *flags* a candidate —
+     it is not standalone authorization to rewrite a proper noun or a number. When the only
+     basis is "it probably means X", flag `[확인 필요]` instead of correcting.
    - Terminology fixes use **only** the verified entries in `terminology.md`. A term not in the
      dictionary is not corrected from memory — it becomes an open question or a proposed
      dictionary addition.
@@ -110,7 +115,7 @@ scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
 
 ## 정정한 표현
 - "투디제로" → "2dzero"        (terminology.md)
-- "지피티 포" → "GPT-4"        (STT 코드스위칭, 기술용어)
+- "리액트" → "React"          (terminology.md — 코드스위칭 기술용어)
 
 ## 확인 필요
 - [OQ-01] 가격표 수정 담당자는 누구인가요?

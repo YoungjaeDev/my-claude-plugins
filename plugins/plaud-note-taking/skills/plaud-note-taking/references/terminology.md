@@ -7,11 +7,11 @@ never because it "appears a lot" in a transcript.
 
 ## Entries
 
+The dictionary starts **empty** for a new project — no live row ships by default. Add only
+verified entries (see "How to add an entry"); the row shape is illustrated there.
+
 | STT misrecognition (candidates) | Correct spelling | Basis |
 |---|---|---|
-| _(example)_ 투디제로, 투디 제로, 2D 제로 | 2dzero | example row — replace with your project's terms |
-
-Start from an empty table for a new project; the row above only shows the shape.
 
 ## How to add an entry
 

@@ -43,9 +43,9 @@ stack until meaning shifts. Prioritize these correction targets:
 
 | Error class | What to expect | Correction stance |
 |---|---|---|
-| **Code-switched tech terms** (KO + EN) | The #1 error zone — embedded English is approximated by the single-language model. | Fix from `terminology.md` / context; the biggest win. |
+| **Code-switched tech terms** (KO + EN) | The #1 error zone — embedded English is approximated by the single-language model. | Fix from `terminology.md` or a cited source; context only flags a candidate. The biggest win. |
 | **Proper nouns** (company / product / person) | Pronunciation-dependent misrecognition. | Fix only from the dictionary or a cited source; else open question. |
-| **English loanwords** | Mangled or half-transliterated. | Fix from context + dictionary. |
+| **English loanwords** | Mangled or half-transliterated. | Fix from the dictionary; context only flags a candidate. |
 | **Dropped / merged sentences** | Fragments omitted; sentences fused on overlap. | Mark `[확인 필요]`; do not invent the missing content. |
 | **Orthography (맞춤법)** | Severe on noisy audio. | Fix spelling without changing meaning. |
 | **Numbers / dates / prices / terms** | STT reliably mangles these; no safe auto-fix. | **Never guess** — flag `[확인 필요]`. |

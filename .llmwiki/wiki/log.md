@@ -6,6 +6,12 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-22 — post-merge #161: grep -oP → POSIX porting traps (post-merge)
+
+Diff log written before applying the page edit (git-revertible). Merge SHA `f4a58c3` — the second macOS/BSD sweep PR (#160): converted all 18 `grep -oP`/`-cP`/`-rhoP`/`-rlP` sites in llm-wiki to portable sed/awk/exact-compare, plus `.githooks/pre-commit` node/PyYAML guards, `.gitattributes` CRLF pinning, and core-config ruff resolution. Config integration (Step 6): none new — the cross-platform review rules already landed in `code_review.md`/`AGENTS.md`/`llm-wiki/CLAUDE.md` via #153's post-merge, so this PR's incremental lore (the porting traps caught in review) routes to the wiki. Also removed 6 `.remember/*` backup-daemon files that a local auto-backup process swept into the PR branch, and gitignored `.remember/`.
+
+- `plugin-ops/stock-userland-verification.md`: new `## Porting traps: grep -oP → POSIX` section — three traps that the #161 review surfaced when replacing PCRE extraction: (1) a greedy sed `.*"key"` prefix selects the LAST match on the line, not the first, so `grep -oP … | head -1` first-match semantics are silently inverted — use awk `match()` (first occurrence) instead; (2) `awk '{…; print}'` prints nothing on empty input (awk exits 0, so a `|| echo 0` fallback never fires) — move the print into `END{}`; (3) both the sed and awk JSON fallbacks stop at the first unescaped-looking `"`, so an escaped quote in a value truncates it (pre-existing, tolerated on the jq-absent fallback path). sources 2 → 3, last_verified 2026-07-22.
+
 ## 2026-07-22 — post-merge #153: BSD/macOS userland breaks + stock-userland verification (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `70456bc` — cr-fix path-trust works on BSD/macOS userland (#152). Surfaced by a full macOS 26 (Apple Silicon, bash 3.2, BSD userland) compatibility audit of all 24 plugins; this PR fixed only the blocking prerequisite (cr-fix's own path-trust gate), the rest deferred to a follow-up issue. Config integration (Step 6): `code_review.md` cross-platform bullet extended (`realpath -m` GNU-only; bare `realpath` not a substitute — both GNU/BSD fail on not-yet-existing paths; `cd`+`pwd -P`+`readlink` for the final-component symlink) and a new stock-userland verification rule; `AGENTS.md` P1 mirror updated (`sed -i`·`realpath -m` GNU-only). Those are review-rule mechanics (config), the two wiki items below are lore.

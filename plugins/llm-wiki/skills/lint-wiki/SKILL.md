@@ -69,11 +69,16 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
        [ "$v" = "$tok" ] && printf '%s\n' "$f"
      done
    done
-   for tok in $dup_aliases; do
+   # Iterate line-by-line (not `for tok in $dup_aliases`) so an alias containing
+   # spaces is not word-split, and compare parsed alias tokens by exact `=` so
+   # `foo` does not match `foobar` the way a substring `case` would.
+   printf '%s\n' "$dup_aliases" | while IFS= read -r tok; do
+     [ -n "$tok" ] || continue
      printf '== alias cluster: %s ==\n' "$tok"   # Low-overlap row: same alias, distinct ids
      grep -rl '^aliases:' .llmwiki/wiki/ | while IFS= read -r f; do
-       al=$(grep '^aliases:' "$f" | head -1)
-       case "$al" in *"$tok"*) printf '%s\n' "$f";; esac
+       sed -n 's/^aliases:[[:space:]]*\[\([^]]*\)\].*/\1/p' "$f" | head -1 \
+         | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+         | while IFS= read -r a; do [ "$a" = "$tok" ] && { printf '%s\n' "$f"; break; }; done
      done
    done
    ```

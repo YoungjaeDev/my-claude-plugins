@@ -7,3 +7,6 @@
 *.sh   text eol=lf
 *.mjs  text eol=lf
 *.py   text eol=lf
+# Extensionless shell hooks — a CRLF checkout makes bash die at `set -euo
+# pipefail\r` on the first line, breaking the Windows commit path.
+.githooks/* text eol=lf

@@ -36,9 +36,14 @@ extract() { # $1=key
   if command -v jq >/dev/null 2>&1; then
     v=$(printf '%s' "$input_json" | jq -r --arg k "$key" '.[$k] // empty' 2>/dev/null)
   fi
-  # BSD grep has no -P/\K; sed BRE capture. $key is a fixed literal supplied by
-  # the caller (cwd/…), not user input, so it needs no regex escaping here.
-  [[ -z "$v" ]] && v=$(printf '%s' "$input_json" | LC_ALL=C.UTF-8 sed -n 's/.*"'"$key"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+  # BSD grep has no -P/\K. awk match() finds the FIRST "$key":"..." (a greedy sed
+  # `.*` would select the LAST). $key is a fixed literal from the caller (cwd/…),
+  # passed via -v so it is not a regex; portable across GNU/BSD awk.
+  [[ -z "$v" ]] && v=$(printf '%s' "$input_json" | LC_ALL=C.UTF-8 awk -v k="$key" '
+    match($0, "\"" k "\"[[:space:]]*:[[:space:]]*\"") {
+      s = substr($0, RSTART + RLENGTH)
+      if (match(s, /"/)) { print substr(s, 1, RSTART - 1); exit }
+    }')
   printf '%s' "$v"
 }
 cwd=$(extract cwd)

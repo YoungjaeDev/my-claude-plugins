@@ -224,19 +224,16 @@ fi
 if [ "$MCP_USER" -gt 0 ] && [ "$MCP_SETTINGS" -gt 0 ]; then
   MCP_DUPES=$(comm -12 <(mcp_keys "$HOME/.claude.json") <(mcp_keys "$HOME/.claude/settings.json") | jq -Rsc 'split("\n") | map(select(length>0))')
 fi
-# 중복 이름의 엔트리 본문 비교. 이름이 같아도 정의가 다르면 (drift) 지는 사본의
-# 편집이 한 번도 효력을 가진 적 없다는 뜻 — 내용 동일 중복(WARN)과 급이 다르다 (FAIL).
-# jq -S 로 키 순서를 정규화해 비교하고, 실패는 이 축 안에 가둔다.
+# 중복 이름의 엔트리 본문 비교. 이름이 같아도 정의가 다르면 (drift) 현재 구성에서
+# 지는 사본이 무효라는 뜻 — 내용 동일 중복(WARN)과 급이 다르다 (FAIL). 비교는
+# jq 한 표현식 안에서 두 파일을 slurp 해 수행한다: 이름을 shell 로 개행 구분 전송하면
+# 개행 포함 키가 쪼개져 오분류되므로 (그리고 jq 객체 == 는 키 순서 무관), 전 과정을
+# jq 안에 가둔다. 두 파일은 이 지점에서 이미 readable 이 확인됐다 (MCP_DUPES 조건).
 MCP_DRIFTED='[]'
 if [ "$MCP_DUPES" != '[]' ]; then
-  _drift=""
-  while IFS= read -r _k; do
-    [ -n "$_k" ] || continue
-    _a=$(jq -Sc --arg k "$_k" '.mcpServers[$k]' "$HOME/.claude.json" 2>/dev/null || printf null)
-    _b=$(jq -Sc --arg k "$_k" '.mcpServers[$k]' "$HOME/.claude/settings.json" 2>/dev/null || printf null)
-    [ "$_a" = "$_b" ] || _drift="${_drift}${_k}"$'\n'
-  done < <(printf '%s' "$MCP_DUPES" | jq -r '.[]')
-  MCP_DRIFTED=$(printf '%s' "$_drift" | jq -Rsc 'split("\n") | map(select(length>0))')
+  MCP_DRIFTED=$(jq -c --slurpfile a "$HOME/.claude.json" --slurpfile b "$HOME/.claude/settings.json" \
+    '[ .[] | . as $k | select(($a[0].mcpServers[$k]) != ($b[0].mcpServers[$k])) ]' \
+    <<<"$MCP_DUPES" 2>/dev/null || printf '[]')
 fi
 
 # --- .claude/rules 스코핑 무력화 -------------------------------------------

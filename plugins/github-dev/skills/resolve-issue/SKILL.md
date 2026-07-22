@@ -135,12 +135,13 @@ Before starting the workflow:
    - **File edits**: For non-code files or complex multi-line changes
    - **Sub-agents**: For large-scale parallel modifications
    - **If TDD enabled** (marker detected in Step 1):
-     - **Prefer the shared TDD skill**: If `superpowers:test-driven-development` is installed, invoke it and follow its discipline. It is the source of truth for TDD rigor (RED -> GREEN -> REFACTOR with tracer-bullet vertical slices, never refactor while RED, test behavior over implementation, mock only at boundaries).
+     - **Prefer the shared TDD skill**: If `superpowers:test-driven-development` is installed, invoke it and follow its discipline. It is the source of truth for TDD rigor (RED -> GREEN -> REFACTOR with tracer-bullet vertical slices, never refactor while RED, test behavior over implementation, mock only at boundaries, and **independent expected values** — never assert a value the test recomputed the way the code does).
      - **Fallback (skill not installed)**: `superpowers` is an external plugin and MUST NOT be a hard dependency — Codex and minimal installs may lack it, and this skill must not break there. When it is absent, degrade gracefully to these four built-in rules:
        1. **Tracer-bullet vertical slice** — one failing test -> one minimal implementation -> repeat. Do not write a batch of tests up front (no horizontal slicing).
        2. **Strict RED -> GREEN** — watch the test fail first, then write the minimum to pass. Never refactor while a test is RED.
        3. **Behavior over implementation** — assert through the public interface only; do not couple tests to internal structure.
        4. **Mock at the boundary** — stub only external collaborators (network / DB / clock / filesystem); never mock internal collaborators.
+       5. **Independent expected values** — the expected value in an assertion must come from an independent source of truth (a known-good literal, a worked example, or the spec), never recomputed the way the code does (`expect(add(a, b)).toBe(a + b)` is tautological — it passes RED while the function is missing, then can never disagree with the code again).
    - **If TDD not enabled**: Implement features directly according to the plan
    - **Execution verification required**: For Python scripts, executables, or any runnable code, always execute to verify correct behavior. Do not rely solely on file existence or previous results.
 

@@ -1,10 +1,10 @@
 ---
 id: detector-cannot-look-vs-nothing-wrong
 aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean]
-last_verified: 2026-07-22
+last_verified: 2026-07-24
 status: active
 volatility: stable
-sources: 4
+sources: 5
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -69,13 +69,18 @@ Two compounding traps found fixing it:
 
 The meta-lesson beyond containment: **a detector written and tested on one platform can be a silent no-op on another, and a no-op detector reports "nothing wrong."** The break is invisible in an interactive shell where a `grep` shim masks it — see [[stock-userland-verification]] — so portability claims for detector tooling must be re-verified under `env -i PATH=/usr/bin:/bin`, and the gate itself given test coverage (path-trust.sh had none, which is why CI passed clean while it rejected every path).
 
+## Mode 6: the search tool's default scope excludes part of the target — "0 hits" because it never looked
+
+Modes 1-5 are committed detector *scripts*; Mode 6 is the same trap in an ad-hoc verification *command*. A removal/parity gate over this repo — "prove the retired vendor token is gone" — was run as `rg -i firecrawl --glob '!docs/**' …`, which returned 0 hits and read as "fully removed." But **recursive ripgrep skips dot-directories by default**, so the grep never looked in `.claude-plugin/marketplace.json`, `.agents/`, or `.claude/settings.json` — exactly where the generated manifests and the tracked load-list live. A stale `firecrawl tier-3` string survived in the code-scout manifest description and passed the parity gate; it was caught only by re-running with `rg --hidden`. A true parity/removal gate over this repo must pass `--hidden` (the generated Codex/Hermes manifests + settings live under dot-dirs). Sibling trap in the same PR: a plugin CHANGELOG that names the retired vendor token *in prose* re-breaks a repo-wide token-parity check — describe a removed dependency by its slot ("the tier-3 fetch tool"), not its vendor name. Distinct from the `rg`-is-a-shell-function shadowing in [[stock-userland-verification]]: here the tool runs fine, its **default coverage** is the blind spot.
+
 ## Why this recurs
 
-Each instance arrives disguised as an edge case ("who has a corrupt config?"), and each one is discovered only by running the script against the ugly input rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis says so, keeps going, and never converts ignorance into an all-clear.**
+Each instance arrives disguised as an edge case ("who has a corrupt config?", "who greps a dot-dir?"), and each one is discovered only by running the check against the input it silently skips rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis — whether because it aborted, degraded, could not run, or never looked there — says so, keeps going, and never converts ignorance into an all-clear.**
 
 > See-also: [[jq-capture-yields-empty]]
 > See-also: [[worktree-squash-merge-gotchas]]
 > See-also: [[stock-userland-verification]]
+> See-also: [[brightdata-cli-preflight-quirks]]
 > Evidence: plugins/project-init/scripts/project_state.sh
 > Evidence: plugins/project-init/CLAUDE.md
 > Evidence: plugins/github-dev/skills/cr-fix/scripts/path-trust.sh
@@ -86,3 +91,4 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?"), a
 2. **PR #106** (`feat(project-init): ASK verdict class + three efficacy axes for wiring`) — the `jq` instances. Reproduced across corrupt / empty / `[]` / `"x"` / top-level-array `~/.claude.json`, and across `65536`, `65536 # bytes`, `65_536`, `"65536"`, `abc`, key-absent, config-absent for `project_doc_max_bytes`. Before the fix: exit 2 or exit 5, zero output. After: exit 0 in every case, with `mcp.unreadable` naming the file it could not read.
 3. **PR #122** (`fix(github-dev): cr-fix correctness repair set`) — the remote-fetcher instances (Mode 4): `fetch-cr-threads.sh` null-envelope false-clean + pagination coherence (fixtures `gql-null-repository` / `gql-null-pullrequest` / `gql-missing-pageinfo` / `gql-cursorless-next`), `auto-merge-gate.sh` probe rc 0 (`probe failure -> protection_http 0`), `cr-commit-state.sh` `state:"error"` channel + `ERROR_STREAK_MAX` terminal poller test.
 4. **PR #153** (`fix(github-dev): cr-fix path-trust works on BSD/macOS userland`) — the non-portable-tool instance (Mode 5): `path-trust.sh` `realpath -m` aborted under `set -e` on BSD/macOS for every path, so the Step 9c gate skipped every finding and Step 13 converged `final_state=clean` (auto-merge eligible). Fixed with a POSIX `cd`+`pwd -P`+`readlink` resolver that also follows a final-component symlink chain (a Critical the fix's own review surfaced), plus the first test coverage for the gate (12 cases, RED-verified against both prior revisions). Surfaced by a macOS-26 compatibility audit of all 24 plugins.
+5. **PR #164** (`feat(search-stack): replace firecrawl with brightdata, remove slidev plugin`) — the default-scope instance (Mode 6): a `rg -i firecrawl` removal/parity gate returned 0 hits while a stale `firecrawl tier-3` string survived in `.claude-plugin/`/`.agents/` (recursive ripgrep skips dot-dirs by default); caught only by `rg --hidden`. See [[brightdata-cli-preflight-quirks]] for the migration's other lore.

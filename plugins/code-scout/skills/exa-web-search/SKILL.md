@@ -18,8 +18,8 @@ How to use the exa MCP tools (`mcp__exa__web_search_exa`, `mcp__exa__web_fetch_e
 | `mcp__exa__web_search_exa` | semantic web search returning ranked results with highlights | low | always start here |
 | `mcp__exa__web_fetch_exa` | full-page extraction for a single URL | medium | when highlights aren't enough |
 | `WebSearch` (built-in) | keyword web search | low | exa fallback only |
-| `mcp__firecrawl__firecrawl_scrape` | JS-aware fetch | medium | Tier 3 — `web_fetch_exa` failed on SPA / Cloudflare |
-| `Skill("insane-search:insane-search", url=...)` | WAF / anti-bot transport fallback | high | Tier 4 — `firecrawl_scrape` also blocked (WAF / 403 / challenge); URL must already be known |
+| `mcp__brightdata__scrape_as_markdown` | JS-aware fetch with bot-detection bypass | medium | Tier 3 — `web_fetch_exa` failed on SPA / Cloudflare |
+| `Skill("insane-search:insane-search", url=...)` | WAF / anti-bot transport fallback | high | Tier 4 — `scrape_as_markdown` also blocked (WAF / 403 / challenge); URL must already be known |
 
 ## `web_search_exa` call shape
 
@@ -98,19 +98,21 @@ WebSearch({
 })
 ```
 
-## Fetch fallback — `firecrawl_scrape`
+## Fetch fallback — `scrape_as_markdown`
 
-`web_fetch_exa` is the default extractor (cheaper, returns the same canonical URL space as the search). Switch to `mcp__firecrawl__firecrawl_scrape` **only** when `web_fetch_exa` fails: timeout, 403, empty body, JS-heavy SPA, or Cloudflare / anti-bot interstitial. Record `firecrawl_scrape` in `fetch_tools_used`.
+`web_fetch_exa` is the default extractor (cheaper, returns the same canonical URL space as the search). Switch to `mcp__brightdata__scrape_as_markdown` **only** when `web_fetch_exa` fails: timeout, 403, empty body, JS-heavy SPA, or Cloudflare / anti-bot interstitial. Record `brightdata_scrape` in `fetch_tools_used`.
 
-Do **not** use other firecrawl tools from this skill:
-- `firecrawl_search` — overlaps with exa/WebSearch; adds a 3rd partial-coverage axis without enough lift.
-- `firecrawl_deep_research` — runs its own multi-step research; competes with `research-orchestrator`'s own flow. Strict no.
-- `firecrawl_crawl` / `firecrawl_map` — site-wide crawls are out of scope for a research scout.
-- `firecrawl_extract` — structured-field extraction (prices, ratings) is a different domain.
+Bright Data occupies the fetch slot only — stay inside it:
+- `mcp__brightdata__search_engine` / `search_engine_batch` — do **not** use as a search axis here. Search belongs to exa and `WebSearch` above; a third partial-coverage axis adds cost without enough lift.
+- `web_data_*` structured extractors — structured-field extraction (prices, ratings, profiles) is a different domain, and these need Pro groups this skill does not assume.
+- `scraping_browser_*` — browser automation is out of scope for a research scout.
+- `scrape_batch` — site-wide or list-wide fetching is out of scope; this skill retries one failed URL at a time.
+
+If Bright Data is not configured, do not quietly drop to a weaker fetch. Follow the `brightdata-guide` preflight (MCP tools → CLI installed → authenticated → default zone), report the failing gate, and record it in `errors[]`.
 
 ## Tier-4 fetch fallback — `insane-search`
 
-When `web_fetch_exa` returns 403/challenge **and** `firecrawl_scrape` also fails (typical pattern: X/Twitter, Reddit, Coupang, gated dashboards behind WAF), retry once with `Skill("insane-search:insane-search", url=...)`. **`insane-search` is an optional plugin** (see `plugins/code-scout/CLAUDE.md` requirements section): if the skill is not installed, or the invocation errors with skill-not-found / load failure, skip the tier-4 retry entirely and emit the finding from `Highlights` alone, recording `insane_search: not_installed` (or the error string) in `errors[]`. Otherwise it runs its own 5-phase transport escalation internally (official API index → lightweight probes → TLS impersonation → real browser → parallel) and returns a single verdict — caller only consumes it:
+When `web_fetch_exa` returns 403/challenge **and** `scrape_as_markdown` also fails (typical pattern: X/Twitter, Reddit, Coupang, gated dashboards behind WAF), retry once with `Skill("insane-search:insane-search", url=...)`. **`insane-search` is an optional plugin** (see `plugins/code-scout/CLAUDE.md` requirements section): if the skill is not installed, or the invocation errors with skill-not-found / load failure, skip the tier-4 retry entirely and emit the finding from `Highlights` alone, recording `insane_search: not_installed` (or the error string) in `errors[]`. Otherwise it runs its own 5-phase transport escalation internally (official API index → lightweight probes → TLS impersonation → real browser → parallel) and returns a single verdict — caller only consumes it:
 
 | verdict | meaning | action |
 |---|---|---|

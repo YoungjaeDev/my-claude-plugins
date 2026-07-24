@@ -10,7 +10,7 @@ Translate web articles to Korean markdown with intelligent image captioning.
 
 ## Features
 
-- Fetch web pages via firecrawl MCP
+- Fetch web pages via Bright Data MCP (`scrape_as_markdown`), with the `bdata` CLI as the terminal fallback
 - Translate text to natural Korean
 - Keep technical terms in English
 - VLM analysis for image captions
@@ -30,7 +30,7 @@ Translate web articles to Korean markdown with intelligent image captioning.
 
 ## Workflow
 
-1. Fetch page via firecrawl
+1. Fetch page via Bright Data
 2. Ask user for output directory and image options
 3. Translate text (keep tech terms)
 4. Analyze images with VLM for Korean captions
@@ -38,7 +38,7 @@ Translate web articles to Korean markdown with intelligent image captioning.
 
 ## Requirements
 
-- firecrawl MCP configured
+- Bright Data MCP configured, or the `bdata` CLI installed and authenticated with a default zone (see the `brightdata-guide` preflight)
 - VLM capability for image analysis
 
 ## Output

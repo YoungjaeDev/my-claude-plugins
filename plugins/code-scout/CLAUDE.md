@@ -29,7 +29,7 @@ research-orchestrator (skill, entry point)
   ├─ fan-out (parallel) ──────────────────────────────┐
   │   github-scout    (gh search repos/code)          │
   │   hf-scout        (uvx hf + HF REST)              │ → $WORKSPACE/{NN}_{axis}.json
-  │   web-scout       (exa → firecrawl → insane)      │
+  │   web-scout       (exa → brightdata → insane)     │
   │   docs-scout      (context7 + deepwiki)           │
   │   paper-scout     (paper-search-tools 8-source)   │
   │                                                   │
@@ -70,7 +70,7 @@ The legacy `scout` agent remains as a **doc-only deprecation pointer**: it retur
 - `gh` CLI authenticated (github-scout)
 - `uv`, `jq` (hf-scout, resource-finder wrappers)
 - exa MCP enabled in `~/.claude/settings.json` (web-scout primary; falls back to built-in `WebSearch`)
-- firecrawl MCP enabled (web-scout tier-3 fetch fallback)
+- brightdata MCP enabled (web-scout tier-3 fetch fallback; `bdata` CLI is the delegate-subagent path — see the `brightdata-guide` preflight)
 - `insane-search` plugin installed (web-scout tier-4 fetch fallback for WAF / blocked pages; optional but recommended)
 - Context7 + DeepWiki MCPs enabled (docs-scout)
 - `paper-search-tools` plugin installed and its MCP running (paper-scout)
@@ -79,6 +79,7 @@ The legacy `scout` agent remains as a **doc-only deprecation pointer**: it retur
 
 | Version | Notes |
 |---|---|
+| 2.3.0 | Moves `web-scout`'s tier-3 fetch slot onto Bright Data `scrape_as_markdown`, replacing the scraping MCP retired in this release. The exa-first pipeline is unchanged — only the tier-3 tool swaps, and tier-4 `insane-search` now triggers when `scrape_as_markdown` is the one that gets blocked. Adds a scope guard so the axis stays fetch-only (no `search_engine` as a search axis, no `web_data_*` / `scraping_browser_*` / `scrape_batch`) and routes an unconfigured Bright Data through the `brightdata-guide` four-gate preflight, recording the failing gate in `errors` instead of silently downgrading the fetch. Drops the routing row for the presentation plugin retired in this release. |
 | 2.2.0 | `research-orchestrator` now runs under Codex 0.135, where the `agents/*.md` scout definitions are not registerable (Hermes-portable too via `delegate_task`, but `code-scout` is not yet Hermes-eligible so it does not load on Hermes). Adds a Phase 3.5 capability branch: **Path A** named plugin agents (Claude Code — unchanged), **Path B** generic parallel subagents (Codex `Task` / Hermes `delegate_task`), **Path C** sequential in-agent. Synthesis is runtime-independent (named `synthesis-scout` on Path A, in-skill synthesis on B / C). New `references/axis-contracts.md` holds the shared per-axis query shape + result envelope + tool order / fallback / reliability so all three paths stay interchangeable; adds a Hermes tool-name compat table. Claude named-agent quick + deep paths are behaviorally unchanged. |
 | 2.1.1 | Shortens `research-orchestrator` skill description under the Codex 1024-char frontmatter limit (full routing matrix kept in the skill body). Adds a pre-commit hook + `validate-codex.yml` CI guard that enforces the limit on every skill description. |
 | 2.1.0 | Adds `paper-scout` as the 5th axis (wraps paper-search-tools 8-source MCP family — arXiv / Semantic Scholar / Crossref / PubMed / bioRxiv / medRxiv / IACR / Google Scholar — with domain-driven source selection). Wires `insane-search` as `web-scout` tier-4 transport fetch fallback for WAF / 403 / blocked URLs (X / Reddit / Coupang). Documents the `/deep-research` boundary — code-scout owns code/ML/docs/papers, `/deep-research` owns generic topics; orchestrator does not delegate. The v2.0 `deep-scout` doc-only stub is retained for backward compatibility (permanent removal deferred to a future MAJOR release). |

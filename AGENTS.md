@@ -15,7 +15,7 @@
 
 플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.
 
-## Plugins (25)
+## Plugins (24)
 
 ### Core
 | Plugin | Description |
@@ -35,7 +35,7 @@
 ### Research & Search
 | Plugin | Description |
 |--------|-------------|
-| `code-scout` | Multi-axis research harness — 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl tier-3 + insane-search tier-4 for WAF/blocked URLs. paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics. |
+| `code-scout` | Multi-axis research harness — 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + brightdata tier-3 + insane-search tier-4 for WAF/blocked URLs. paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics. |
 | `deepwiki` | AI-powered GitHub repo documentation |
 | `paper-search-tools` | Academic paper search (arXiv, PubMed, Semantic Scholar, etc.) |
 | `brightdata-guide` | Bright Data web data access via MCP tools + CLI — scraping (Web Unlocker), SERP, structured web_data_* extractors, browser automation. Operator sets BRIGHTDATA_API_KEY; delegate subagents fall back to the bdata CLI |
@@ -63,11 +63,6 @@
 |--------|-------------|
 | `interview` | Structured requirements gathering |
 | `project-init` | Agent-harness project lifecycle. `new` — first-day bootstrap (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + README/CHANGELOG + gh repo create), preflight-guarded to empty dirs. `wiring` — read-only 14-axis setup diagnostic for existing repos, verdicts `FAIL/WARN/ASK/INFO/SKIP/OK`. Four axes ask whether config takes *effect*, not just exists: `core.hooksPath`, an `@import` that defeats `.claude/rules` `paths:` scoping, MCP servers registered twice (one copy silently discarded), Codex `AGENTS.md` byte budget. `ASK` = a decision nobody made yet — asked once, persisted to `.claude/state/wiring.json`. Shared detector `scripts/project_state.sh` |
-
-### Presentation
-| Plugin | Description |
-|--------|-------------|
-| `slidev` | Slidev markdown presentation generator with interview workflow |
 
 ### Documentation
 | Plugin | Description |
@@ -121,7 +116,6 @@
 │   ├── interview/          # Requirements
 │   ├── docs-forge/         # README/CHANGELOG + deploy-doc + MOC
 │   ├── rules-forge/        # write-rules skill (auto mode detection)
-│   ├── slidev/             # Presentation generator
 │   ├── tcrei-prompt/       # TCREI prompt structuring
 │   ├── llm-wiki/           # LLM-Wiki 3-layer (wiki lore)
 │   ├── mem0-ops/           # Fleet-level mem0 diagnostics/cleanup (fleet-scan/doctor/cleanup)
@@ -261,7 +255,7 @@ node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
 - Claude 와 Codex 0.135 가 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 별도 mirror / body transform 없음 (구 `codex-bridge` 플러그인은 1.40.0 에서 제거). Skill 본문은 in-place 로 읽히므로 transform 이 없고, frontmatter 유효성만 남습니다.
-- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 24개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
+- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 23개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
 - 새 플러그인 추가 / 기존 플러그인의 `version` / `description` / `category` 변경 시 반드시 `node scripts/sync-codex-manifests.mjs` 를 실행해 매니페스트를 재생성하세요. `--check` 는 플러그인 제거 후 남은 orphan 매니페스트도 감지합니다.
 - Skill `description` frontmatter 는 1024자 미만으로 유지하세요. Codex 0.135 는 1024자 초과 description 을 가진 skill 을 **silent 하게 skip** 합니다 (Claude Code 는 제한이 없어 위반이 안 보임). `--check` 가 drift 외에 description 길이도 검증하고, 공유 `.githooks/pre-commit` 이 매 커밋마다 실행합니다 — clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화하세요. 전체 trigger 목록 / per-tool rationale 는 description 이 아니라 skill 본문에 두세요.
 - Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
@@ -299,7 +293,7 @@ node scripts/sync-hermes-manifests.mjs --check
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 24 entries
+codex plugin list --marketplace my-claude-plugins   # 23 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 

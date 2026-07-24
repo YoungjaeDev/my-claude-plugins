@@ -53,7 +53,6 @@ const BASELINE = [
   'plugins/ppt-yeong-style/skills/ppt-yeong-style/SKILL.md',
   'plugins/project-init/skills/wiring/SKILL.md',
   'plugins/rules-forge/skills/write-rules/SKILL.md',
-  'plugins/slidev/skills/create-slide/SKILL.md',
   'plugins/spec-state/skills/state-tracker/SKILL.md',
   'plugins/tcrei-prompt/skills/tcrei-prompt/SKILL.md',
   'plugins/translator/skills/translate-web-article/SKILL.md',

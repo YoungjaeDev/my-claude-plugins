@@ -149,18 +149,6 @@
       "category": "documentation"
     },
     {
-      "name": "slidev",
-      "source": {
-        "source": "local",
-        "path": "./plugins/slidev"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "content"
-    },
-    {
       "name": "rules-forge",
       "source": {
         "source": "local",

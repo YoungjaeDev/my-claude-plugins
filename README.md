@@ -729,7 +729,7 @@ shared-source 배선은 5개 가드가 매 PR 과 매 커밋(`.githooks/pre-comm
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
 - `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
-- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 25 / Codex-eligible 24 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
+- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
 

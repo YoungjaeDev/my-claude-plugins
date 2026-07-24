@@ -22,7 +22,7 @@ How to tell which you have: look at your available tools. If you see `search_eng
 
 ## Preflight — four gates, in order, before the first Bright Data call
 
-Bright Data is a primary search and fetch path, not a garnish, so an unconfigured setup must **stop and surface the setup step** instead of quietly falling back to the agent's built-in web search. Run the gates in order and stop at the first one that fails.
+Bright Data is a primary search and fetch path, not a garnish, so an unconfigured setup must **stop and surface the setup step** instead of quietly falling back to the agent's built-in web search. Gate 1 is a fork, not a hurdle: when the MCP tools ARE present you are already done — call them (Part A) and skip gates 2-4 entirely, since those check only the CLI path. Gates 2-4 run only when gate 1 finds no MCP tools (the `delegate_task` subagent case), and there you run them in order and stop at the first that fails. An MCP-only session with no CLI installed is fully configured — it must never be stopped at gate 2.
 
 | # | Gate | How to check | If it fails |
 | --- | --- | --- | --- |

@@ -131,7 +131,7 @@ Pick the tier that matches the question. This list is the global default and ove
 
 - **Default search** — brightdata `search_engine`. Real Google SERP as JSON, 5,000 free requests per month.
 - **Concept and material discovery** — exa (semantic, paid credits). Use it when the right keyword is not yet known and the question is what exists at all.
-- **A small single lookup** — WebSearch / WebFetch. One trivial fact, no crawl.
+- **A small single lookup** — WebSearch / WebFetch. One trivial fact, no crawl. This tier is a deliberate choice made up front for a genuinely trivial fact; it is not a fallback for a Bright Data search that came back blocked or unconfigured — that case follows the preflight-stop below, never a silent hop to the built-in tools.
 - **Blocked, or the parse failed** — brightdata `scrape_as_markdown`. For structured extraction use the CLI `bdata pipelines <type>` instead.
 - **Platform official APIs, media and subtitles, high volume with no quota** — insane-search.
 - **Codebase investigation** — `context7` (with `mcpdocs`) for library documentation, `deepwiki` for a repository's internals. This is not a web-search job.

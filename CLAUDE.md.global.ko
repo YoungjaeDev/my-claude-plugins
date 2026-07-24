@@ -127,7 +127,7 @@ Always execute code after writing. 다음은 prose / bullet summary / structured
 
 - **검색 기본** — brightdata `search_engine`. 실 Google SERP를 JSON으로 받으며 월 5,000건 무료.
 - **개념·자료 발굴** — exa (시맨틱, 유료 크레딧). 적절한 키워드를 아직 모르고 "무엇이 존재하는가"를 묻는 단계에서 쓴다.
-- **사소한 단건 조회** — WebSearch / WebFetch. 사실 하나, 크롤 없음.
+- **사소한 단건 조회** — WebSearch / WebFetch. 사실 하나, 크롤 없음. 이 티어는 진짜 사소한 사실 하나를 위해 처음부터 고른 선택이지, 차단·미설정으로 실패한 Bright Data 검색의 폴백이 아니다 — 그 경우는 아래 preflight-중단을 따르며, 내장 도구로 조용히 넘어가지 않는다.
 - **차단됐거나 파싱이 실패했을 때** — brightdata `scrape_as_markdown`. 구조화 추출이 필요하면 대신 CLI `bdata pipelines <type>`.
 - **플랫폼 공식 API·미디어와 자막·쿼터 없는 대량 처리** — insane-search.
 - **코드베이스 조사** — 라이브러리 문서는 `context7`(+`mcpdocs`), 저장소 내부는 `deepwiki`. 이건 웹 검색으로 풀 일이 아니다.

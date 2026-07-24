@@ -125,13 +125,27 @@ Applies to documents that persist as files, not to session conversation.
 - Verify library usage and current facts against official documentation or a trustworthy up-to-date source.
 - When a request matches an available skill's conditions, follow that `SKILL.md`.
 
+### Search / web access
+
+Pick the tier that matches the question. This list is the global default and overrides a plugin's own "prefer my tool" wording — including `brightdata-guide`'s instruction to prefer Bright Data over the built-in web tools.
+
+- **Default search** — brightdata `search_engine`. Real Google SERP as JSON, 5,000 free requests per month.
+- **Concept and material discovery** — exa (semantic, paid credits). Use it when the right keyword is not yet known and the question is what exists at all.
+- **A small single lookup** — WebSearch / WebFetch. One trivial fact, no crawl.
+- **Blocked, or the parse failed** — brightdata `scrape_as_markdown`. For structured extraction use the CLI `bdata pipelines <type>` instead.
+- **Platform official APIs, media and subtitles, high volume with no quota** — insane-search.
+- **Codebase investigation** — `context7` (with `mcpdocs`) for library documentation, `deepwiki` for a repository's internals. This is not a web-search job.
+
+Quality gate: results existing is not the same as passing. Finish only when you hold evidence that answers the question. When the return is thin, move to the next tier rather than reporting what came back.
+
+Setup: Bright Data is a primary path, not a fallback, so when it is not configured follow the `brightdata-guide` preflight (MCP tools → CLI installed → authenticated → default zone) and stop with its setup guidance. Never silently downgrade to the built-in web search.
+
+Pro mode stays off. Propose promoting to `&pro=1` only when repeated `web_data_*` structured extraction is actually needed.
+
 ### MCP servers
 
-- `context7` — library documentation
-- `deepwiki` — GitHub repo analysis
-- `mcpdocs` — documentation fetching
-- `firecrawl` — web scraping / search
-- `serena` — semantic code analysis (symbols / references)
+- Docs / reference — `context7` (library documentation), `mcpdocs` (documentation fetching), `deepwiki` (GitHub repo analysis)
+- Code analysis — `serena` (symbols / references)
 
 Use MCP and external tools within the priority order of the tools provided to the current session and the instructions above them.
 

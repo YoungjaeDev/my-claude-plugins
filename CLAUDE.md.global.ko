@@ -121,13 +121,27 @@ Always execute code after writing. 다음은 prose / bullet summary / structured
 - 라이브러리 사용법이나 최신 정보는 공식 문서 / 신뢰 가능한 최신 출처로 확인한다.
 - 요청이 사용 가능한 skill의 조건에 맞으면 해당 `SKILL.md`를 따른다.
 
+### 검색 / 웹 접근
+
+질문에 맞는 티어를 고른다. 이 목록이 글로벌 기본값이며, 플러그인이 자기 도구를 우선하라고 쓴 문구를 덮어쓴다 — `brightdata-guide`의 "내장 웹 도구보다 Bright Data 우선" 지침도 여기에 포함된다.
+
+- **검색 기본** — brightdata `search_engine`. 실 Google SERP를 JSON으로 받으며 월 5,000건 무료.
+- **개념·자료 발굴** — exa (시맨틱, 유료 크레딧). 적절한 키워드를 아직 모르고 "무엇이 존재하는가"를 묻는 단계에서 쓴다.
+- **사소한 단건 조회** — WebSearch / WebFetch. 사실 하나, 크롤 없음.
+- **차단됐거나 파싱이 실패했을 때** — brightdata `scrape_as_markdown`. 구조화 추출이 필요하면 대신 CLI `bdata pipelines <type>`.
+- **플랫폼 공식 API·미디어와 자막·쿼터 없는 대량 처리** — insane-search.
+- **코드베이스 조사** — 라이브러리 문서는 `context7`(+`mcpdocs`), 저장소 내부는 `deepwiki`. 이건 웹 검색으로 풀 일이 아니다.
+
+품질 게이트: 결과가 나왔다는 것과 통과했다는 것은 다르다. 질문에 답하는 근거를 손에 쥐었을 때만 끝낸다. 돌아온 내용이 빈약하면 받은 것을 그대로 보고하지 말고 다음 티어로 넘어간다.
+
+셋업: Bright Data는 폴백이 아니라 주 경로이므로, 설정되지 않았으면 `brightdata-guide`의 preflight(MCP 도구 → CLI 설치 → 인증 → 기본 zone)를 따라 셋업 안내와 함께 멈춘다. 내장 웹 검색으로 조용히 저하시키지 않는다.
+
+Pro 모드는 끈 상태를 유지한다. `web_data_*` 구조화 추출이 반복적으로 실제 필요할 때만 `&pro=1` 승격을 제안한다.
+
 ### MCP 서버
 
-- `context7` — 라이브러리 문서
-- `deepwiki` — GitHub repo 분석
-- `mcpdocs` — 문서 fetching
-- `firecrawl` — 웹 스크래핑 / 검색
-- `serena` — semantic code analysis (symbols / references)
+- 문서 / 레퍼런스 — `context7`(라이브러리 문서), `mcpdocs`(문서 fetching), `deepwiki`(GitHub repo 분석)
+- 코드 분석 — `serena`(symbols / references)
 
 MCP·외부 도구는 현재 세션에 제공된 도구와 상위 지침의 우선순위 안에서 사용한다.
 

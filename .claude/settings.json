@@ -10,7 +10,6 @@
       "./plugins/ml-toolkit",
       "./plugins/translator",
       "./plugins/interview",
-      "./plugins/slidev",
       "./plugins/rules-forge",
       "./plugins/tcrei-prompt",
       "./plugins/llm-wiki",

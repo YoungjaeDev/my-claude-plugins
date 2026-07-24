@@ -9,7 +9,7 @@ Generate a well-structured `llms.txt` following the llms.txt standard.
 ## Argument parsing
 
 `$ARGUMENTS` may be either:
-- A URL (starts with `http`) — produces llms.txt via firecrawl map + scrape.
+- A URL (starts with `http`) — produces llms.txt via sitemap discovery + Bright Data scrape.
 - A local path — produces llms.txt by walking markdown/docs files with Glob + Read.
 
 If `$ARGUMENTS` is empty or ambiguous, prompt the user for the input source.

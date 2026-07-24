@@ -1,6 +1,6 @@
 ---
 name: ppt-yeong-style
-description: "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 덱 유형·md 소스 규약·작성 원칙 16종·밀도 리듬(중간 강화 기본)·역할 기반 색 팔레트·codex-image vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 흐름 review·공식 로고 fetch·윤문·렌더 QA를 한 세션·어느 repo에서든 일관 적용. ppt-master/slidev로 그냥 'PPT/슬라이드 만들기'와 달리, yeong 특유의 담백한 명사구 제목·anti-slop 본문 + 표지/목차/전환 pop 무드·일상 비유 보조선이 필요할 때. 트리거 — 'yeong 스타일 덱', '강의 덱/실습 덱 만들어줘', '제안서 슬라이드 만들어줘', 'ppt-master로 강의자료', '발표자료 yeong 스타일로', 'yeong style lecture/proposal deck', even when this skill is not named. 일반 'PPT 만들어줘'는 ppt-master, 'slidev 슬라이드'는 slidev로 — 이 스킬은 yeong 규약이 필요할 때만."
+description: "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 덱 유형·md 소스 규약·작성 원칙 16종·밀도 리듬(중간 강화 기본)·역할 기반 색 팔레트·codex-image vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 흐름 review·공식 로고 fetch·윤문·렌더 QA를 한 세션·어느 repo에서든 일관 적용. ppt-master로 그냥 'PPT/슬라이드 만들기'와 달리, yeong 특유의 담백한 명사구 제목·anti-slop 본문 + 표지/목차/전환 pop 무드·일상 비유 보조선이 필요할 때. 트리거 — 'yeong 스타일 덱', '강의 덱/실습 덱 만들어줘', '제안서 슬라이드 만들어줘', 'ppt-master로 강의자료', '발표자료 yeong 스타일로', 'yeong style lecture/proposal deck', even when this skill is not named. 일반 'PPT 만들어줘'는 ppt-master로 — 이 스킬은 yeong 규약이 필요할 때만."
 ---
 
 # ppt-yeong-style
@@ -70,7 +70,7 @@ yeong이 **강의/실습/제안/학술 덱**을 만들 때 적용하는 작성 �
 
 **쓴다:** 강의·실습·제안·학술 덱을 yeong 규약대로 만들거나 감사·개선할 때. "강의 덱 만들어줘", "제안서 슬라이드", "ppt-master로 강의자료 yeong 스타일로".
 
-**안 쓴다:** 그냥 "PPT 만들어줘"(엔진만 필요 → ppt-master), "slidev 슬라이드"(→ slidev). 정확한 라벨·표만 필요한 단발 SVG, 디자인 감사 단독(→ anti-slop-design).
+**안 쓴다:** 그냥 "PPT 만들어줘"(엔진만 필요 → ppt-master). 정확한 라벨·표만 필요한 단발 SVG, 디자인 감사 단독(→ anti-slop-design).
 
 > 강의/제안 덱은 **생성 비용이 크다.** 사양(아래 §1 파이프라인 (1)~(4)) 확정 전에는 빌드(Step 5) 진입 금지. 모호하면 추측 말고 먼저 질문.
 

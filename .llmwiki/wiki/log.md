@@ -6,6 +6,14 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-24 — post-merge #164: brightdata CLI preflight quirks + rg hidden-path parity blindspot (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `b5d288f` — search-stack migration (firecrawl→brightdata + slidev plugin removal). Config integration (Step 6): none new — plugin counts / version bumps / the code-scout brightdata tier landed in the merge itself, and the plugin-removal-is-MINOR rule already lives in `.claude/rules/plugin-versioning.md`; the durable lore is provider-quirk + a verification debugging-story, routed here.
+
+- research-harness/brightdata-cli-preflight-quirks.md: new page, status: active, volatility: volatile, sources: 3 — the Bright Data CLI (bdata 0.3.2) preflight quirks (`budget` exits 0 on 403; `search` needs `default_zone_serp` while `scrape` needs only `default_zone_unlocker`; `scrape_batch` group ambiguity; Pro is a tool-group toggle not a billing tier) + the global search-stack tier + preflight-stop contract.
+- plugin-ops/detector-cannot-look-vs-nothing-wrong.md: add Mode 6 (recursive `rg` skips dot-dirs → a parity/removal grep reports a false all-clear while a hidden manifest still holds the token), + Evidence line, sources 4→5, last_verified 2026-07-24.
+- index.md: added research-harness/brightdata-cli-preflight-quirks.md hook.
+
 ## 2026-07-22 — post-merge #161: grep -oP → POSIX porting traps (post-merge)
 
 Diff log written before applying the page edit (git-revertible). Merge SHA `f4a58c3` — the second macOS/BSD sweep PR (#160): converted all 18 `grep -oP`/`-cP`/`-rhoP`/`-rlP` sites in llm-wiki to portable sed/awk/exact-compare, plus `.githooks/pre-commit` node/PyYAML guards, `.gitattributes` CRLF pinning, and core-config ruff resolution. Config integration (Step 6): none new — the cross-platform review rules already landed in `code_review.md`/`AGENTS.md`/`llm-wiki/CLAUDE.md` via #153's post-merge, so this PR's incremental lore (the porting traps caught in review) routes to the wiki. Also removed 6 `.remember/*` backup-daemon files that a local auto-backup process swept into the PR branch, and gitignored `.remember/`.

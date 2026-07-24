@@ -17,5 +17,5 @@ See `references/generate-llmstxt-procedure.md` in this plugin's installed root f
 
 This skill does NOT call the DeepWiki MCP — the procedure only uses Bright Data (URL mode) or Glob + Read (local mode). Pick the row for the input you pass:
 
-- **URL mode**: Bright Data MCP must be available (`mcp__brightdata__scrape_as_markdown`, `mcp__brightdata__scrape_batch`), or the `bdata` CLI as the terminal fallback. If neither is reachable, run the `brightdata-guide` four-gate preflight, report the failing gate, and stop instead of degrading to a plain fetch. Internet connection required (the scrape hits external sites).
+- **URL mode**: Bright Data MCP must be available — `mcp__brightdata__scrape_as_markdown` is the one hard requirement; `scrape_batch` is used when present and otherwise stood in for by looping `scrape_as_markdown` per URL (it may sit in a Pro group a default Rapid/Free MCP does not load). The `bdata` CLI is the terminal fallback for both. If none is reachable, run the `brightdata-guide` four-gate preflight, report the failing gate, and stop instead of degrading to a plain fetch. Internet connection required (the scrape hits external sites).
 - **Local directory mode**: read permission on the target directory. No MCP or network required.

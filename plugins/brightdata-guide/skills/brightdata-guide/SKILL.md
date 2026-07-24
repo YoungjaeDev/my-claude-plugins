@@ -20,6 +20,23 @@ Both paths hit the same Bright Data platform and the same 5,000 free requests/mo
 
 How to tell which you have: look at your available tools. If you see `search_engine`/`scrape_as_markdown`, use MCP. If you only see `terminal` (no Bright Data tools), use the CLI via terminal. Do not fall back to the agent's built-in web search.
 
+## Preflight — four gates, in order, before the first Bright Data call
+
+Bright Data is a primary search and fetch path, not a garnish, so an unconfigured setup must **stop and surface the setup step** instead of quietly falling back to the agent's built-in web search. Gate 1 is a fork, not a hurdle: when the MCP tools ARE present you are already done — call them (Part A) and skip gates 2-4 entirely, since those check only the CLI path. Gates 2-4 run only when gate 1 finds no MCP tools (the `delegate_task` subagent case), and there you run them in order and stop at the first that fails. An MCP-only session with no CLI installed is fully configured — it must never be stopped at gate 2.
+
+| # | Gate | How to check | If it fails |
+| --- | --- | --- | --- |
+| 1 | MCP tools present | Is `search_engine` or `scrape_as_markdown` in your tool registry? | Not fatal — this is the normal `delegate_task` subagent case. Fall through to gate 2 and use the CLI. |
+| 2 | CLI installed | `command -v bdata \|\| command -v brightdata` | **STOP.** Report that neither the Bright Data MCP tools nor the `bdata` CLI is reachable and surface the install step from `references/mcp-setup.md`. Do not install it yourself and do not run shell-piped installers. |
+| 3 | Authenticated | `bdata zones` — a printed zone table means the credentials work | **STOP.** Ask the operator to run `bdata login` once (add `-d` for an SSH or headless machine) or to export `BRIGHTDATA_API_KEY`. Never pass a key on the command line. |
+| 4 | Default zone set | `bdata config get default_zone_serp` and `bdata config get default_zone_unlocker` — exit status 1 means unset | **STOP.** Run `bdata zones`, surface the zone names it prints, and ask the operator to run `brightdata config set default_zone_serp <zone>` plus `brightdata config set default_zone_unlocker <zone>` (or to export `BRIGHTDATA_SERP_ZONE` / `BRIGHTDATA_UNLOCKER_ZONE`). Do not edit their config yourself. |
+
+Gate 3 is judged on its output, not its exit status. `bdata budget` returns exit 0 even when the API answers `403 … lacks the required permissions`, so a check that only tests `$?` reports a broken token as healthy. `bdata zones` prints a real zone table when the credentials work; treat an auth or permission message in the output as a failure whatever the exit status says.
+
+Gate 4 exists because `bdata search` and `bdata scrape` fail with `No zone specified` until a default is configured. Many accounts have no `serp`-type zone at all — an `unblocker` zone serves both keys, so `default_zone_serp` and `default_zone_unlocker` may point at the same zone name.
+
+Failing a gate ends the task with the setup guidance. Never substitute the agent's built-in web search for a Bright Data call the preflight blocked — that silent downgrade is the exact failure this preflight exists to prevent. Skills that route their search or fetch step through Bright Data cite this preflight rather than restating it.
+
 ---
 
 # Part A — Bright Data MCP
@@ -287,6 +304,7 @@ Use this when the Bright Data MCP tools are **not** in your tool registry — mo
 - The `bdata` CLI (alias of `brightdata`) is installed on the machine by the operator, one time, out of band. If `bdata` is not found, **surface that to the user and stop** — do not install it yourself, do not run shell-piped installers, do not modify global packages.
 - Auth is one-time too: the operator runs `bdata login` once (browser or device OAuth), or exports `BRIGHTDATA_API_KEY` in the environment. **Never pass an API key inside a command or prompt** — rely on the saved login or the env var. Saved credentials live under the user's config dir.
 - No-install option the operator may choose: a version-pinned `npx --yes --package @brightdata/cli@<version> brightdata <command>`. Treat `bdata` below as either the installed binary or that npx form.
+- A **default zone** is required before `bdata search` / `bdata scrape` will run without an explicit `--zone`; without one they fail with `No zone specified`. Check with `bdata config get default_zone_serp` and `bdata config get default_zone_unlocker` (exit status 1 means unset). When either is missing, run `bdata zones` to list the account's zones and surface the exact commands for the operator — `brightdata config set default_zone_serp <zone>` and `brightdata config set default_zone_unlocker <zone>`, or the `BRIGHTDATA_SERP_ZONE` / `BRIGHTDATA_UNLOCKER_ZONE` env vars. Do not edit the config yourself. Many accounts expose no `serp`-type zone, in which case an `unblocker` zone is the right value for both keys.
 
 ## Core commands
 
@@ -319,6 +337,6 @@ Parse prices from the JSON or markdown output. Keep brand, item, price, currency
 
 1. Are `search_engine` / `scrape_as_markdown` in your tools? → use **MCP** (Part A).
 2. Only `terminal` available, no Bright Data tools? → use the **CLI** above.
-3. `bdata` not installed or not logged in? → tell the user; do not auto-install and do not hardcode keys.
+3. `bdata` not installed, not logged in, or no default zone? → run the four-gate preflight above, tell the user which gate failed and its exact fix, and stop. Do not auto-install, do not hardcode keys, and do not fall back to built-in web search.
 
 Full command, flag, and pipeline-type reference: `references/cli-commands.md`.

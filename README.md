@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 25개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-25-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -28,7 +28,7 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 - **리서치** - arXiv/PubMed 논문 검색, GitHub 레포 문서화, 보일러플레이트 탐색
 - **멀티모달** - Claude→Codex 이미지 생성 브리지, 웹 페이지 번역
 - **문서화** - README/CHANGELOG, CLAUDE.md 모듈화, PRD/Tech Spec 생성
-- **시각화** - Mermaid 다이어그램, Slidev 프레젠테이션
+- **시각화** - Mermaid 다이어그램
 
 ## 빠른 시작
 
@@ -86,7 +86,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Core** | `core-config` | Python 포매팅, 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh`, Claude+Codex 공유). 조건부 포인터 2종: cwd 에 knowledge root 가 있으면 `.llmwiki/insight/`, PATH 에 `codex` / `agy` 가 있으면 한 줄짜리 `[council]` 위임 리마인더 (Claude 전용) (work guidelines 는 `~/.claude/CLAUDE.md`) |
 | **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
 | **Testing** | `e2e-harness` | Playwright E2E 테스트 하네스 엔지니어링 — 공식 planner/generator/healer AI 에이전트 래핑 (`npx playwright init-agents --loop=claude`). e2e-setup(하네스 온보딩 + 인증 분리 + route 모킹 + CI 트레이스 아티팩트/PR 코멘트/게이팅), e2e-author(planner→generator + `--repeat-each` 번인 플래키 게이트), e2e-debug(헤드리스 trace 분석 + healer 자가수리 루프). Playwright 부재 시 graceful degrade |
-| **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + firecrawl(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음) |
+| **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + brightdata(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음) |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
 | | `brightdata-guide` | Bright Data 웹 데이터 (MCP 툴 + CLI) — 스크래핑(Web Unlocker), SERP, 구조화 web_data_* 추출, 브라우저 자동화. operator 가 BRIGHTDATA_API_KEY 설정 |
@@ -96,7 +96,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
 | | `tally-form` | 체크리스트 md → Tally 설문/상담 폼 빌드·게시 (테마 프리셋, 구분선, 문항별 보기·필수·복수선택·단답, matrix/date/time 일정 조율, 이미지·redirect, idempotent) |
-| **Presentation** | `slidev` | Slidev 마크다운 프레젠테이션 생성 (인터뷰 워크플로우) |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) + 배포 문서 템플릿 + MOC 인덱스 |
@@ -204,7 +203,7 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 | Skill | Purpose |
 |-------|---------|
 | `research-orchestrator` | 메인 진입점. 쿼리 → mode 감지 (quick/deep) → fan-out → synthesis-scout 합성. |
-| `exa-web-search` | web-scout 의 exa MCP + 4-tier fetch (exa → firecrawl → insane-search) 사용 가이드. |
+| `exa-web-search` | web-scout 의 exa MCP + 4-tier fetch (exa → brightdata → insane-search) 사용 가이드. |
 | `resource-finder` | github/hf-scout 의 검색 hygiene cheat-sheet. |
 
 **Agent team (6, all `opus`):**
@@ -212,7 +211,7 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 |-------|------|
 | `github-scout` | `gh search repos/code`, awesome-list discovery |
 | `hf-scout` | `uvx hf` + HF REST API (models/datasets/spaces) |
-| `web-scout` | exa MCP 우선, WebSearch fallback (Reddit/SO/블로그/뉴스). fetch 4-tier: exa → firecrawl → **insane-search** (WAF/403/challenge URL, X/Reddit/Coupang 등) |
+| `web-scout` | exa MCP 우선, WebSearch fallback (Reddit/SO/블로그/뉴스). fetch 4-tier: exa → brightdata → **insane-search** (WAF/403/challenge URL, X/Reddit/Coupang 등) |
 | `docs-scout` | Context7 (라이브러리 docs) + DeepWiki (repo Q&A) |
 | `paper-scout` | paper-search-tools 8-source 래핑 (arXiv/Semantic Scholar/Crossref/PubMed/bioRxiv/medRxiv/IACR/Google Scholar). 도메인별 2-3 source 선택, 학술 신호 감지 시 deep mode 5-axis 에 자동 인입 |
 | `synthesis-scout` | dedup (DOI 포함) / trust ranking (peer-reviewed > arxiv high-cite > arxiv recent) / conflict resolution / 최종 보고서 |
@@ -344,7 +343,7 @@ Bright Data 플랫폼으로 웹 데이터 작업을 수행하는 가이드 스�
 웹 페이지를 한국어 마크다운으로 번역.
 
 **Features:**
-- firecrawl MCP로 페칭
+- Bright Data MCP(`scrape_as_markdown`)로 페칭, `bdata` CLI 는 터미널 폴백
 - VLM 이미지 분석
 - 코드/테이블 보존
 
@@ -514,26 +513,6 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 
 </details>
 
-### Presentation
-
-<details>
-<summary><strong>slidev</strong> - Slidev 프레젠테이션 생성</summary>
-
-인터뷰 기반 워크플로우로 Slidev 마크다운 프레젠테이션 생성.
-
-**Workflow:**
-1. Auto-detect: Slidev 프로젝트 존재 여부 확인
-2. Setup: `npm init slidev@latest` (필요 시)
-3. Interview: 주제, 대상, 시간, 구조, 테마 수집
-4. Generate: slides.md 생성
-5. Review: 슬라이드 구조 요약 + 실행 커맨드
-
-**Themes:** apple-basic, seriph, geist, purplin, academic, bricks
-
-**Triggers:** "PT 만들어줘", "create a slide", "make a presentation"
-
-</details>
-
 ### Documentation & Rules
 
 <details>
@@ -615,7 +594,7 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 
 **구조:** `agents/` 4종 + `skills/ppt-yeong-style/`(SKILL.md + `references/` 6종 + `assets/injection-prompt.md`) + `skills/lecture-deck/`(+cc-common 레퍼런스) + `skills/deck-review/`. 실물 PPTX/PDF 바이너리는 미포함 — cc-lesson-deck repo·Drive 링크 참조.
 
-> 그냥 "PPT 만들어줘"는 `ppt-master`, "slidev 슬라이드"는 `slidev` — 이 스킬은 yeong 규약이 필요할 때만 트리거됩니다.
+> 그냥 "PPT 만들어줘"는 `ppt-master` — 이 스킬은 yeong 규약이 필요할 때만 트리거됩니다.
 
 </details>
 
@@ -671,7 +650,6 @@ PLAUD 음성 녹음기가 만든 노트를 검토·정정합니다. PLAUD는 녹
       "./plugins/ml-toolkit",
       "./plugins/translator",
       "./plugins/interview",
-      "./plugins/slidev",
       "./plugins/docs-forge",
       "./plugins/rules-forge",
       "./plugins/tcrei-prompt",
@@ -698,7 +676,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인은 `codex-image` 하나뿐입니다 (Claude->Codex 브리지 — Codex 로 sync 하면 순환). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 24 / 25 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
+Codex 에서 제외되는 플러그인은 `codex-image` 하나뿐입니다 (Claude->Codex 브리지 — Codex 로 sync 하면 순환). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 23 / 24 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`docs-forge`, `deepwiki` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -751,7 +729,7 @@ shared-source 배선은 5개 가드가 매 PR 과 매 커밋(`.githooks/pre-comm
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
 - `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
-- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 25 / Codex-eligible 24 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
+- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
 
@@ -806,7 +784,6 @@ node scripts/install-skills.mjs                  # 또는 hermes plugins install
 │   ├── translator/            # 번역
 │   ├── codex-image/           # Claude->Codex 이미지 생성 브리지
 │   ├── interview/             # 요구사항 수집
-│   ├── slidev/                # 프레젠테이션 생성
 │   ├── docs-forge/            # README/CHANGELOG + 배포 문서 + MOC 생성
 │   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화

@@ -1,6 +1,6 @@
 ---
 name: translate-web-article
-description: Convert web pages to Korean markdown documents. Fetches page via firecrawl, translates text to Korean, analyzes images with VLM for Korean captions, preserves code/tables with explanations. Use for tech blogs, papers, documentation. Triggers on "translate web page", "blog to Korean", "translate this article".
+description: Convert web pages to Korean markdown documents. Fetches page via Bright Data, translates text to Korean, analyzes images with VLM for Korean captions, preserves code/tables with explanations. Use for tech blogs, papers, documentation. Triggers on "translate web page", "blog to Korean", "translate this article".
 ---
 
 # Web Article Translator
@@ -12,7 +12,7 @@ Converts web pages to Korean markdown while analyzing images with VLM to generat
 ```
 URL Input
     |
-    +-- Fetch page via firecrawl (markdown + links)
+    +-- Fetch page via Bright Data (markdown)
     |
     +-- Ask user options via AskUserQuestion
     |   +-- Output directory
@@ -28,14 +28,16 @@ URL Input
 
 ## Step 1: Fetch Web Page
 
-Use firecrawl MCP:
+Use Bright Data MCP:
 
 ```
-mcp__firecrawl__firecrawl_scrape
+mcp__brightdata__scrape_as_markdown
 - url: target URL
-- formats: ["markdown", "links"]
-- onlyMainContent: true
 ```
+
+The tool takes only `url` and always returns the whole page as markdown — there is no format list and no main-content switch. Two consequences for the steps below: strip site chrome (nav, footer, share widgets) while translating rather than expecting the fetcher to have removed it, and read links off the inline markdown (`[text](url)`, image `![alt](src)`) instead of a separate links array.
+
+When the Bright Data MCP tools are absent, fall back to the terminal — `bdata scrape <url> -f markdown`. If neither path is available, run the `brightdata-guide` four-gate preflight (MCP tools → CLI installed → authenticated → default zone), report the gate that failed, and stop. Do not substitute a plain built-in fetch, which the blocked and JS-heavy pages this skill targets will simply defeat.
 
 Return error for inaccessible pages:
 - Login required
@@ -164,7 +166,9 @@ Show warning and continue translation.
 
 ## Step 6: Final Checklist Gate (MANDATORY)
 
-A long translation can silently drop a section or lose an image — the model summarizes instead of translating, or skips a figure. Before declaring the file done, diff the **source** (the raw firecrawl markdown from Step 1, saved to a temp file) against the **generated output** on two deterministic axes: image-ref count and section-heading count. This is a machine check, not a "remember to verify" note — run it and act on the result.
+A long translation can silently drop a section or lose an image — the model summarizes instead of translating, or skips a figure. Before declaring the file done, diff the **source** against the **generated output** on two deterministic axes: image-ref count and section-heading count. This is a machine check, not a "remember to verify" note — run it and act on the result.
+
+Save as the source temp file the **main-content markdown you set out to translate — with the site chrome already stripped** (nav, footer, share widgets, cookie banners), not the raw whole-page dump Bright Data returned. `scrape_as_markdown` returns the entire page, so its nav headings and widget images would inflate the source counts and fail this gate against a correctly chrome-free translation. Both sides must count the same body.
 
 - **Image-ref count** must match exactly. Fewer in the output = a dropped image (content loss); more = a hallucinated image. Rewriting a URL to a local `images/…` path keeps the `![…](…)` count unchanged, so the count is stable across the download step.
 - **Section-heading count** must match. The output's own header block (title + `원문`/`번역일`, ended by `---`) is stripped before counting, so the added title never offsets the comparison — the body must carry every source section, translated in place.
@@ -172,7 +176,7 @@ A long translation can silently drop a section or lose an image — the model su
 Under Hermes, run this block via `terminal` (`Bash`→`terminal`); `Read`→`read_file`.
 
 ```bash
-SRC="/tmp/source-article.md"          # raw firecrawl markdown from Step 1
+SRC="/tmp/source-article.md"          # main-content markdown from Step 1 (chrome already stripped)
 OUT="{output_dir}/{article_name}.md"  # the generated translation
 s_img=$(grep -oE '!\[[^]]*\]\([^)]*\)' "$SRC" | wc -l | tr -d ' ')
 o_img=$(grep -oE '!\[[^]]*\]\([^)]*\)' "$OUT" | wc -l | tr -d ' ')
@@ -223,4 +227,4 @@ scripts/download_image.sh "https://example.com/image.png"
 
 - Cannot process PDF directly
 - Cannot process video content
-- Dynamic JS-rendered content (if firecrawl fails)
+- Dynamic JS-rendered content (if the Bright Data scrape fails)

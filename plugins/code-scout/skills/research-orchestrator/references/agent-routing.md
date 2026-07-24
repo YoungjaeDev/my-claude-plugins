@@ -47,8 +47,7 @@ When the deep query **also** carries an academic signal (paper / arxiv / SOTA / 
 4. "Download arxiv 2406.04093 PDF" → `paper-search-tools` `download_*` directly (paper-scout is metadata-only)
 5. "한국 대선 정책 리서치" / "tesla market share history" / "general policy / biography / market trend" — anything **outside the code/ML domain** → `/deep-research` directly. Its 7-phase + adversarial verify + state machine is built for generic topics; code-scout 5-axis routes are tuned for code/ML and would mis-route. **Orchestrator does NOT delegate to /deep-research** — boundary is intentional, user invokes it themselves.
 6. "Translate this article" → `translator` plugin
-7. "Create a slide deck" → `slidev` plugin
-8. "Generate a CHANGELOG entry" → `docs-forge:changelog`
+7. "Generate a CHANGELOG entry" → `docs-forge:changelog`
 
 ## Near-miss disambiguation
 

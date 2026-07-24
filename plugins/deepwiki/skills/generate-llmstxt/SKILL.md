@@ -5,7 +5,7 @@ description: Use when generating an llms.txt index file from a URL or local dire
 
 # Generate llms.txt
 
-Generate a well-structured `llms.txt` from a URL (via firecrawl map + scrape) or a local directory (via Glob + Read). Same workflow as the `/deepwiki:generate-llmstxt` command.
+Generate a well-structured `llms.txt` from a URL (via sitemap discovery + Bright Data scrape) or a local directory (via Glob + Read). Same workflow as the `/deepwiki:generate-llmstxt` command.
 
 1. Confirm the input source: URL or local path. If ambiguous, ask.
 2. Follow the workflow in the procedure file for the matched input type.
@@ -15,7 +15,7 @@ See `references/generate-llmstxt-procedure.md` in this plugin's installed root f
 
 ## Requirements
 
-This skill does NOT call the DeepWiki MCP — the procedure only uses firecrawl (URL mode) or Glob + Read (local mode). Pick the row for the input you pass:
+This skill does NOT call the DeepWiki MCP — the procedure only uses Bright Data (URL mode) or Glob + Read (local mode). Pick the row for the input you pass:
 
-- **URL mode**: firecrawl MCP must be available (`mcp__firecrawl__firecrawl_map`, `mcp__firecrawl__firecrawl_scrape`). Internet connection required (the scrape hits external sites).
+- **URL mode**: Bright Data MCP must be available — `mcp__brightdata__scrape_as_markdown` is the one hard requirement; `scrape_batch` is used when present and otherwise stood in for by looping `scrape_as_markdown` per URL (it may sit in a Pro group a default Rapid/Free MCP does not load). The `bdata` CLI is the terminal fallback for both. If none is reachable, run the `brightdata-guide` four-gate preflight, report the failing gate, and stop instead of degrading to a plain fetch. Internet connection required (the scrape hits external sites).
 - **Local directory mode**: read permission on the target directory. No MCP or network required.

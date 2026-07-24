@@ -46,7 +46,7 @@ In conversational use (skill surface) the model can pick the right capability wi
 | `mcp__deepwiki__read_wiki_structure` | Get documentation topics. |
 | `mcp__deepwiki__read_wiki_contents` | Get full documentation. |
 | `mcp__deepwiki__ask_question` | AI-powered Q&A. |
-| `mcp__firecrawl__firecrawl_map` / `firecrawl_scrape` | URL-mode `generate-llmstxt`. |
+| `mcp__brightdata__scrape_as_markdown` / `scrape_batch` | URL-mode `generate-llmstxt` (sitemap discovery runs on `curl`; `bdata` CLI is the terminal fallback). |
 
 ## Best practices
 
@@ -58,5 +58,5 @@ In conversational use (skill surface) the model can pick the right capability wi
 ## Requirements
 
 - DeepWiki MCP server configured in the host runtime. Setup: <https://mcp.deepwiki.com/>. If the MCP is missing, the skill will fail at the first `mcp__deepwiki__*` tool call — that is a host-side configuration step, not something this plugin auto-installs.
-- For `generate-llmstxt` URL mode, the firecrawl MCP must be available as well.
+- For `generate-llmstxt` URL mode, the Bright Data MCP must be available as well, or the `bdata` CLI installed, authenticated, and given a default zone (see the `brightdata-guide` preflight).
 - Internet connection (queries the DeepWiki API).

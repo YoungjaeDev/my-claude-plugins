@@ -150,7 +150,7 @@ Print a fixed-width table, most severe first. Name the remediation on every non-
 [WARN] rules       plugin-versioning.md has paths: scoping, but CLAUDE.md @imports it
                    -> scoping is dead; ~2k tokens loaded every session. mechanical fix
 [WARN] mcp         7 servers registered twice (~/.claude.json wins, settings.json copy inert)
-                   -> context7 deepwiki exa firecrawl mcpdocs notion shadcn-ui
+                   -> context7 deepwiki exa brave mcpdocs notion shadcn-ui
 [ASK ] gws-sync    does this project publish deliverables to Drive?  (unanswered)
 [ASK ] git         no origin remote — create one?                    (unanswered)
 [INFO] codex       approval=never sandbox=danger-full-access -> /codex:rescue edits unprompted

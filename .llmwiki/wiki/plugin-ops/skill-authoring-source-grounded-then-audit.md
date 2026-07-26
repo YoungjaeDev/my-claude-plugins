@@ -1,10 +1,10 @@
 ---
 id: skill-authoring-source-grounded-then-audit
 aliases: [skill-authoring-methodology, source-grounded-skill, coverage-audit, documented-vs-enforced]
-last_verified: 2026-07-22
+last_verified: 2026-07-27
 status: active
 volatility: stable
-sources: 3
+sources: 4
 ---
 
 # Skill authoring: source-ground, then coverage-audit
@@ -48,6 +48,8 @@ A reference skill can also grow from your **own dogfooded usage**, not only exte
 
 The non-obvious trap: **a rule-by-rule diff undersells a famous skill.** `grill-me` (a 6-line stub delegating to a one-paragraph `/grilling`) overlapped our 301-line `interview-methodology` on ~90% of its *rules* — one-question-at-a-time, recommend-an-answer, facts-vs-decisions, a confirmation gate were all already present. Its fame was the opposite default **posture**: relentless-by-default, where ours is restrained-by-default (a whole "When NOT to Interview" escape hatch that actively suppresses grilling). The value lived in the posture and defaults, not the enumerable rules, so the right adoption was a **new mode that inverts the default**, not a port of the skill. Diff the posture and the defaults, not just the rule list — then install-and-use for a real capability gap, merge the mechanism for an overlap, add a mode when only the character differs.
 
+A fourth lane sits outside that triage, for when none of the three fit: **diverge-fork** — take ownership of the source and steer it where upstream would never go. The tell is that the wanted changes are *structural* rather than additive: a rename, cutting the author's funnel (star-prompts, update-check hooks, usage markers), collapsing a 1,400-line SKILL.md, re-designing against your own runtime contract. Two things have to be said out loud before choosing it. A fork does not make upstream updates *faster*, it makes them *zero*, so the real question is whether the skill is a core routine often enough to justify paying the ownership cost forever — "upstream is slow" is a symptom that a fork answers by deleting the dependency, not by speeding it up. And try upstream first: a doc-consistency PR into that same repo the day before showed the other half of the ledger — an external repo cannot run your review loop (its bot configuration belongs to its maintainer) and the merge runs on their clock, which is the evidence for "upstream would never take this", not an assumption about it. The rename is a free side effect rather than mere taste: it dissolves the name collision with the original, so both can stay installed side by side until the fork clears its acceptance bar.
+
 > See-also: [[shared-source-codex-manifests]]
 > Evidence: docs/superpowers/specs/2026-06-16-anti-slop-design-skill-design.md
 > Evidence: docs/references/anti-slop-design-oss-synthesis.md
@@ -57,3 +59,4 @@ The non-obvious trap: **a rule-by-rule diff undersells a famous skill.** `grill-
 - PR #63 (`feat/anti-slop-design`, merge `1ea9f41`) — anti-slop-design v0.1.0 build + ultracode coverage audit. Spec + 6-repo synthesis under `docs/`.
 - PR #71 (`feat/70-anti-slop-ppt-lane`, merge `c20b26b`) — anti-slop-design v0.2.0 PPT-lane reinforcement; §3 dogfood-harvest + interview-gate discipline, distilled from a real 27-slide KCI deck build.
 - PRs #154/#156/#158 — mattpocock/skills adoption batch. §4 adopt-triage + posture-diff, from comparing `grill-me`/`grilling` against `interview:interview-methodology` (landed as the relentless mode in #156).
+- `.claude/spec/2026-07-23-adopt-gptaku-team-skill-builder.md` — §4's diverge-fork lane, from the relentless interview that decided to fork `kkirikkiri` / `skillers-suda` into self-governed plugins, plus the Agent-Teams doc PR filed into upstream `fivetaku/kkirikkiri` the day before, which is where the external-repo review-loop limit was observed.

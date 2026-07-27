@@ -192,6 +192,16 @@ const hermesInstalled = () => isDir(HERMES_BASE);
 
 // One `npx skills add` spawn per (agent, profile). Selection passed as repeated
 // `-s <name>` flags (comma is NOT a valid separator for this CLI).
+//
+// `skills` is deliberately UNPINNED. A CodeRabbit review (#168) flagged the
+// floating `npx skills` as a supply-chain risk, which is fair in general — but
+// this is an interactive installer a human runs by hand, never a CI step, so the
+// exposure is one attended invocation rather than an automated pipeline. Pinning
+// buys that back at the cost of an owner: someone has to bump `skills@<version>`
+// here and in the README, and an unbumped pin rots silently while the upstream
+// CLI is still moving fast. Revisit as a pair — switch to `skills@<version>` and
+// name a bump cadence (or wire renovate/dependabot) in the same change; a pin
+// with no bump owner is worse than the float.
 function installFor(agent, skills, globalScope, profile) {
   const args = ['--yes', 'skills', 'add', ROOT, '-a', agent];
   for (const s of skills) args.push('-s', s);

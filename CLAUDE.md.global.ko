@@ -201,7 +201,7 @@ MCP·외부 도구는 현재 세션에 제공된 도구와 상위 지침의 우�
 - 수 시간+ 작업은 OS 레벨로 분리: `setsid nohup <cmd> > log 2>&1 </dev/null &`. 검증은 `ps -o pid,sid` 에서 **PID==SID**(세션 리더 = 컨트롤링 터미널 없음) → SSH 끊김·셸 종료에도 생존.
 - 멀티스텝 작업(예: train→eval→aggregate)은 단계마다 에이전트 재개에 의존하지 말고 **self-contained 드라이버 스크립트 하나**로 묶어 OS 프로세스만으로 완주하게 한다. 진행은 status 파일, 완료는 sentinel 파일로 노출하고, 재실행은 idempotent(완료 unit skip)하게 한다.
 - detached 작업은 하네스 완료 알림이 없으므로 확인은 on-demand(status / sentinel / log grep), 사용자 재접속 시 점검.
-- pod / 원격 인터랙티브 세션에서는 tmux / screen 으로 세션을 유지해 같은 disconnect-survival 효과를 낸다(RunPod base image 는 tmux 미포함이라 bootstrap 설치 필요 — `~/.claude/rules/runpod.md` R10).
+- pod / 원격 인터랙티브 세션에서는 tmux / screen 으로 세션을 유지해 같은 disconnect-survival 효과를 낸다(RunPod base image 는 tmux 미포함이라 bootstrap 설치 필요 — `runpod-ops` 스킬, R10). RunPod pod / Network Volume 작업 전에는 `runpod-ops` 스킬을 먼저 호출한다 — pod 생성 플래그, MooseFS 함정, 크레덴셜 전파, 비용 규율이 그 안에 있다.
 
 ### 위임 (council)
 

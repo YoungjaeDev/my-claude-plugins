@@ -205,7 +205,7 @@ Work spanning hours or more (large training runs, sweeps, batches) must not be t
 - Work spanning hours goes to the OS level: `setsid nohup <cmd> > log 2>&1 </dev/null &`. Verify with `ps -o pid,sid` that **PID == SID** (session leader = no controlling terminal), which survives SSH drops and shell exits.
 - For multi-step work (train → eval → aggregate), do not rely on agent resumption between steps. Bundle it into **one self-contained driver script** that runs to completion as a plain OS process. Expose progress through a status file and completion through a sentinel file, and make re-runs idempotent (skip completed units).
 - Detached work sends no harness completion notification, so check it on demand (status / sentinel / log grep) and inspect when the user reconnects.
-- On pods and remote interactive sessions, use tmux or screen for the same disconnect-survival property (the RunPod base image ships without tmux, so bootstrap must install it — `~/.claude/rules/runpod.md` R10).
+- On pods and remote interactive sessions, use tmux or screen for the same disconnect-survival property (the RunPod base image ships without tmux, so bootstrap must install it — `runpod-ops` skill, R10). Invoke the `runpod-ops` skill before any RunPod pod / Network Volume work — it carries the pod-create flags, MooseFS pitfalls, credential propagation, and cost discipline.
 
 ### Delegation (council)
 

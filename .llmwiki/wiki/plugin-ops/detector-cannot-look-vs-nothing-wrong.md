@@ -1,10 +1,10 @@
 ---
 id: detector-cannot-look-vs-nothing-wrong
 aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean]
-last_verified: 2026-07-24
+last_verified: 2026-07-27
 status: active
 volatility: stable
-sources: 5
+sources: 6
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -73,6 +73,16 @@ The meta-lesson beyond containment: **a detector written and tested on one platf
 
 Modes 1-5 are committed detector *scripts*; Mode 6 is the same trap in an ad-hoc verification *command*. A removal/parity gate over this repo — "prove the retired vendor token is gone" — was run as `rg -i firecrawl --glob '!docs/**' …`, which returned 0 hits and read as "fully removed." But **recursive ripgrep skips dot-directories by default**, so the grep never looked in `.claude-plugin/marketplace.json`, `.agents/`, or `.claude/settings.json` — exactly where the generated manifests and the tracked load-list live. A stale `firecrawl tier-3` string survived in the code-scout manifest description and passed the parity gate; it was caught only by re-running with `rg --hidden`. A true parity/removal gate over this repo must pass `--hidden` (the generated Codex/Hermes manifests + settings live under dot-dirs). Sibling trap in the same PR: a plugin CHANGELOG that names the retired vendor token *in prose* re-breaks a repo-wide token-parity check — describe a removed dependency by its slot ("the tier-3 fetch tool"), not its vendor name. Distinct from the `rg`-is-a-shell-function shadowing in [[stock-userland-verification]]: here the tool runs fine, its **default coverage** is the blind spot.
 
+## Mode 7: the recommender checked the documented enforcement surface, not the one in use
+
+Modes 1-6 all answer "is anything wrong?" Mode 7 is the same trap in a diagnostic that answers "is this safe to **delete**?" — and there the uninspected axis is not where the target lives but *what enforces it*.
+
+A `/doctor` run over this repo proposed cutting the 31-line ASCII directory tree from `AGENTS.md` as content a session could reconstruct from `ls plugins/`. Derivable it is; removable it was not. `scripts/check-doc-consistency.mjs` — reached through `git config core.hooksPath .githooks` — asserts that tree lists all 24 marketplace plugins, so the trim was rejected at `git commit` with `doc-consistency drift detected: AGENTS.md tree: missing core-config, github-dev, …`. The diagnostic's own instructions *did* say to cross-check removal candidates against a pre-commit hook and the lint/format configs, and it did check `.pre-commit-config.yaml` and the lint configs. This repo enforces through a **git-native `core.hooksPath` hook directory** instead, so the documented cross-check named a surface the repo does not use and never enumerated the one it does.
+
+The verdict was therefore confidently wrong on an axis that was never read — an all-clear for enforcement the check did not look for. The general form: **before calling content redundant, enumerate every mechanism that could be consuming it, not just the mechanisms your checklist happens to name.** For a "is this file/block still needed?" question in any repo that means, at minimum, `core.hooksPath` and `.githooks/`, `.github/workflows/`, and the standard lint/format configs — a hook directory is invisible to a check that only greps for `.pre-commit-config.yaml`.
+
+A second lesson from the fix, on the way out: when the guard *is* found and the enforced content still deserves to go, delete the assertion only after proving the coverage is redundant. Here the adjacent `## Plugins`-table assertion already compared the same canonical name-set bidirectionally, verified by removing one table row and confirming the guard still exits 1 — so dropping the tree assertion cost no detection. Deleting a guard because it blocked you, without that proof, converts Mode 7 into a self-inflicted Mode 1.
+
 ## Why this recurs
 
 Each instance arrives disguised as an edge case ("who has a corrupt config?", "who greps a dot-dir?"), and each one is discovered only by running the check against the input it silently skips rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis — whether because it aborted, degraded, could not run, or never looked there — says so, keeps going, and never converts ignorance into an all-clear.**
@@ -92,3 +102,4 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?", "w
 3. **PR #122** (`fix(github-dev): cr-fix correctness repair set`) — the remote-fetcher instances (Mode 4): `fetch-cr-threads.sh` null-envelope false-clean + pagination coherence (fixtures `gql-null-repository` / `gql-null-pullrequest` / `gql-missing-pageinfo` / `gql-cursorless-next`), `auto-merge-gate.sh` probe rc 0 (`probe failure -> protection_http 0`), `cr-commit-state.sh` `state:"error"` channel + `ERROR_STREAK_MAX` terminal poller test.
 4. **PR #153** (`fix(github-dev): cr-fix path-trust works on BSD/macOS userland`) — the non-portable-tool instance (Mode 5): `path-trust.sh` `realpath -m` aborted under `set -e` on BSD/macOS for every path, so the Step 9c gate skipped every finding and Step 13 converged `final_state=clean` (auto-merge eligible). Fixed with a POSIX `cd`+`pwd -P`+`readlink` resolver that also follows a final-component symlink chain (a Critical the fix's own review surfaced), plus the first test coverage for the gate (12 cases, RED-verified against both prior revisions). Surfaced by a macOS-26 compatibility audit of all 24 plugins.
 5. **PR #164** (`feat(search-stack): replace firecrawl with brightdata, remove slidev plugin`) — the default-scope instance (Mode 6): a `rg -i firecrawl` removal/parity gate returned 0 hits while a stale `firecrawl tier-3` string survived in `.claude-plugin/`/`.agents/` (recursive ripgrep skips dot-dirs by default); caught only by `rg --hidden`. See [[brightdata-cli-preflight-quirks]] for the migration's other lore.
+6. **PR #167** (`docs(agents): drop derivable directory tree`) — the enforcement-surface instance (Mode 7): a `/doctor` trim proposal judged the `AGENTS.md` directory tree derivable-and-removable after cross-checking `.pre-commit-config.yaml` + lint configs, but this repo enforces via `core.hooksPath` → `.githooks/pre-commit` → `scripts/check-doc-consistency.mjs`, which asserts the tree's 24-plugin name-set; the cut was caught only at `git commit` (exit 1). Resolved by dropping the now-redundant `AGENTS.md tree` assertion after proving the adjacent `## Plugins`-table assertion covers the same canonical set bidirectionally (negative test: removing one table row still exits 1), keeping the `README.md tree` assertion, and adding the guard to the `AGENTS.md` `## 검증` list.

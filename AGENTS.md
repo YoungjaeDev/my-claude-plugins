@@ -255,7 +255,10 @@ node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (validate-code
 ```bash
 node scripts/sync-codex-manifests.mjs --check
 node scripts/sync-hermes-manifests.mjs --check
+node scripts/check-doc-consistency.mjs
 ```
+
+`check-doc-consistency.mjs` 는 README 구조 트리·`## Plugins` 표·문서에 박힌 카운트 문자열을 marketplace.json 과 대조하고 `.githooks/pre-commit` 에서 차단한다. 문서 블록이 관례가 아니라 기계적으로 강제된다는 뜻이므로, 어떤 문서 내용을 "코드에서 재생성 가능하니 지워도 된다" 고 판단하기 전에 훅이 그 블록을 요구하는지 먼저 확인한다. 가드 5종 전체 설명은 `README.md` 의 "CI 가드가 지키는 것".
 
 - 로컬 Codex CLI 에서 marketplace 등록 확인:
 

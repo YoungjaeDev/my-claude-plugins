@@ -93,4 +93,4 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 
 ## Runtime tool names
 
-Dispatch and file tools differ by runtime. Claude and Codex share names; Hermes (forward-compat only — not loaded today) maps as: `Task` → `delegate_task` (healer dispatch), `Bash` → `terminal` (`npx playwright trace`, `gh run download`, resolver), `Read` → `read_file` (the role contract), `Write`/`Edit` → `write_file`/`patch` (patch the spec), `AskUserQuestion` → `clarify`. Full contract + table: `${PLUGIN_ROOT}/references/role-contracts.md`.
+Dispatch and file tools differ by runtime. Claude and Codex share names; Hermes maps as: `Task` → `delegate_task` (healer dispatch), `Bash` → `terminal` (`npx playwright trace`, `gh run download`, resolver), `Read` → `read_file` (the role contract), `Write`/`Edit` → `write_file`/`patch` (patch the spec), `AskUserQuestion` → `clarify`. Full contract + table: `${PLUGIN_ROOT}/references/role-contracts.md`.

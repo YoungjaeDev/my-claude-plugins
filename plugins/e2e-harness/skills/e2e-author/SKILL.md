@@ -80,4 +80,4 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
 
 ## Runtime tool names
 
-Dispatch and file tools differ by runtime. Claude and Codex share names; Hermes (forward-compat only — not loaded today) maps as: `Task` → `delegate_task` (planner/generator dispatch), `Bash` → `terminal` (`npx playwright`, resolver), `Read` → `read_file` (the role contract, specs), `Write`/`Edit` → `write_file`/`patch`, `AskUserQuestion` → `clarify` (CUF selection + review gate). Full contract + table: `${PLUGIN_ROOT}/references/role-contracts.md`.
+Dispatch and file tools differ by runtime. Claude and Codex share names; Hermes maps as: `Task` → `delegate_task` (planner/generator dispatch), `Bash` → `terminal` (`npx playwright`, resolver), `Read` → `read_file` (the role contract, specs), `Write`/`Edit` → `write_file`/`patch`, `AskUserQuestion` → `clarify` (CUF selection + review gate). Full contract + table: `${PLUGIN_ROOT}/references/role-contracts.md`.

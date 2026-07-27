@@ -51,7 +51,7 @@ Claude Code 밖에서는 플러그인이 아니라 **스킬 단위**로 설치�
 node scripts/install-skills.mjs
 ```
 
-플러그인 그룹에서 원하는 스킬을 고른 뒤 타겟(`hermes-agent` / `codex`)과 scope(global `~/` / project `./`)를 선택하면 끝입니다. Hermes 는 `~/.hermes/skills/`, Codex 는 `~/.codex/skills/` 에 설치되고, 두 런타임 모두 거기 있는 스킬을 자동으로 인덱싱합니다 (Hermes 에서는 슬래시 커맨드로도 잡힙니다).
+플러그인 그룹에서 원하는 스킬을 고른 뒤 타겟(`hermes-agent` / `codex`)과 scope(global `~/` / project `./`)를 선택하면 끝입니다. global 설치 경로는 Hermes 가 `~/.hermes/skills/`, Codex 가 `~/.agents/skills/` 입니다 (실측 2026-07-27 — `~/.codex/skills/` 에는 `.system` 만 들어있습니다). 두 런타임 모두 자기 경로의 스킬을 자동으로 인덱싱합니다 (Hermes 에서는 슬래시 커맨드로도 잡힙니다).
 
 특정 스킬만 바로 넣으려면 `npx skills` 를 직접 써도 됩니다:
 
@@ -704,7 +704,7 @@ npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent -s cr-fix -g
 npx skills add . -l          # 이 저장소가 노출하는 스킬 목록
 ```
 
-커버리지는 allowlist 가 아니라 "스킬을 가진 플러그인 전부" 입니다 (현재 23 플러그인 / 52 스킬). 설치 경로는 Hermes `~/.hermes/skills/`, Codex `~/.codex/skills/` 이고, 두 런타임 모두 그 디렉터리를 자동 인덱싱합니다 — Hermes 에서는 `skills_list()` 에 노출되며 슬래시 커맨드로도 잡힙니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes 프로필은 `HERMES_HOME` env 로 타겟팅합니다.
+커버리지는 allowlist 가 아니라 "스킬을 가진 플러그인 전부" 입니다 (현재 23 플러그인 / 52 스킬). global 설치 경로는 Hermes `~/.hermes/skills/`, Codex `~/.agents/skills/` 이고(실측 2026-07-27 — `~/.codex/skills/` 는 `.system` 전용), 두 런타임 모두 그 디렉터리를 자동 인덱싱합니다 — Hermes 에서는 `skills_list()` 에 노출되며 슬래시 커맨드로도 잡힙니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes 프로필은 `HERMES_HOME` env 로 타겟팅합니다.
 
 스킬 이름은 평평하게 설치됩니다 (`github-dev:cr-fix` 가 아니라 `cr-fix`). 이 저장소의 52개는 서로 유니크하며 `--selftest` 가 이를 강제하지만, 다른 출처의 스킬과 이름이 겹치지 않는지는 확인이 필요합니다.
 

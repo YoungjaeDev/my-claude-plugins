@@ -38,11 +38,10 @@ reviews:
         (Codex 0.135 silently skips longer ones) and must be quoted if it contains a
         colon-space (": "), or YAML parses it as a nested mapping and the skill fails
         to load. Do NOT flag generated manifests as manually edited:
-        `plugins/*/.codex-plugin/plugin.json`, `plugins/*/plugin.yaml`, and
-        `plugins/*/__init__.py` are generator output from
-        `scripts/sync-codex-manifests.mjs` / `scripts/sync-hermes-manifests.mjs`; a
-        diff to them is expected after a version or description change, and the
-        generators' `--check` (run in CI) is the arbiter of correctness. A version
+        `plugins/*/.codex-plugin/plugin.json` is generator output from
+        `scripts/sync-codex-manifests.mjs`; a
+        diff to it is expected after a version or description change, and the
+        generator's `--check` (run in CI) is the arbiter of correctness. A version
         bump must update `plugins/<name>/.claude-plugin/plugin.json` and the matching
         `.claude-plugin/marketplace.json` entry together.
     - path: ".llmwiki/**"
@@ -57,12 +56,12 @@ reviews:
         Markdown notes into code or config.
     - path: "scripts/*.mjs"
       instructions: >-
-        These are the Codex/Hermes manifest generators (`sync-codex-manifests.mjs`,
-        `sync-hermes-manifests.mjs`). They must use Node 18+ built-ins only -- flag any
-        added runtime dependency (an `import`/`require` of a non-builtin package). Their
-        output lives under `plugins/*/.codex-plugin/`, `plugins/*/plugin.yaml`,
-        `plugins/*/__init__.py`, and `.agents/`; that output is generated, never
-        hand-edited.
+        These are the Codex manifest generator (`sync-codex-manifests.mjs`) and the
+        skills installer (`install-skills.mjs`). They must use Node 18+ built-ins only --
+        flag any added runtime dependency (an `import`/`require` of a non-builtin package).
+        The generator's output lives under `plugins/*/.codex-plugin/` and `.agents/`;
+        that output is generated, never hand-edited. Hermes has no generated artifact --
+        `install-skills.mjs` wraps `npx skills`, which reads the source tree directly.
   pre_merge_checks:
     custom_checks:
       - name: "Plugin version triple-sync"
@@ -82,9 +81,9 @@ reviews:
           Advisory only. PASS if no plugin `version`/`description`/skill changed, OR if
           the corresponding generated manifests were regenerated in the same PR:
           `plugins/<name>/.codex-plugin/plugin.json` plus `.agents/plugins/marketplace.json`
-          for any eligible plugin, and `plugins/<name>/plugin.yaml` plus `__init__.py`
-          for HERMES_ELIGIBLE plugins. FAIL if a version or description change lacks the
-          matching regenerated manifest diff. CI (`sync-*-manifests.mjs --check`) is
+          for any Codex-eligible plugin. Hermes has no generated artifact, so nothing is
+          expected on that side. FAIL if a version or description change lacks the
+          matching regenerated manifest diff. CI (`sync-codex-manifests.mjs --check`) is
           authoritative.
       - name: "Skill description under 1024 chars"
         mode: warning

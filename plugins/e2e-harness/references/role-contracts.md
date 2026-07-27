@@ -87,7 +87,7 @@ Each role drives the app through the approved `playwright-test` MCP server. A ge
 
 ## Runtime tool names
 
-These skills dispatch and read through whatever tools the host runtime exposes. Claude and Codex share tool names; Hermes (forward-compat only — not loaded today) maps as:
+These skills dispatch and read through whatever tools the host runtime exposes. Claude and Codex share tool names; Hermes maps as:
 
 | Claude / Codex | Hermes | Used here for |
 |---|---|---|

@@ -1,5 +1,5 @@
 ---
-paths: .claude-plugin/marketplace.json, plugins/*/.claude-plugin/plugin.json, plugins/*/CLAUDE.md, plugins/*/plugin.yaml
+paths: .claude-plugin/marketplace.json, plugins/*/.claude-plugin/plugin.json, plugins/*/CLAUDE.md
 ---
 
 # Plugin Versioning Rules
@@ -14,7 +14,7 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 
 - `plugins/<name>/.claude-plugin/plugin.json` — per-plugin manifest. Bumping `version` triggers Claude Code's plugin cache refresh.
 - `.claude-plugin/marketplace.json` — marketplace registry. Contains per-plugin `version` (must match `plugin.json`) and top-level `metadata.version` (bumped once per marketplace release).
-- `plugins/<name>/plugin.yaml` + `plugins/<name>/__init__.py` — Hermes adapters for HERMES_ELIGIBLE plugins, **generated** by `scripts/sync-hermes-manifests.mjs` from `marketplace.json` (`plugin.yaml` `version` / `description` are marketplace-derived; `__init__.py` is a generic skill-registration entrypoint). Do not hand-edit — bump the marketplace entry and re-run the generator. `sync-hermes-manifests.mjs --check` guards adapter drift + orphans, so this is no longer a manual three-way sync. (`sync-codex-manifests.mjs --check` validates Codex manifests only.)
+- Hermes has **no versioned artifact** — `npx skills` (`scripts/install-skills.mjs`) reads the source tree at install time, so a version bump needs no Hermes-side regeneration and no drift guard. The generated `plugin.yaml` + `__init__.py` adapters were retired in #166.
 - `AGENTS.md` (root) — plugin count summary (keep in sync when adding/removing plugins). Root `CLAUDE.md` is a one-line `@AGENTS.md` import; edit `AGENTS.md`.
 - `README.md` — user-facing plugin count + badge.
 - `.claude/settings.json` — tracked local-load list (`plugins.local`). A plugin absent here is registered in the marketplace but does NOT auto-load in local dev.
@@ -27,8 +27,8 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 - **Update plugin count** in root `AGENTS.md` (`## Plugins (N)` + structure tree) AND `README.md` (description sentence + badge + detail section) when adding or removing a plugin.
 - **Adding a skill to an existing plugin syncs docs too** (distinct from the plugin-count update above — a skill add does NOT change the plugin count): update that plugin's `plugins/<name>/CLAUDE.md` skill listing, and — when the version bump also changed the plugin `description` — the matching one-line description in root `AGENTS.md` and `README.md`. Manifest regen + `metadata.version` bump still apply.
 - **Update the Codex-eligible count too** — distinct from the total and easy to miss. Adding/removing a plugin changes the Codex-eligible number (total − 1 EXCLUDED: `codex-image`; `core-config` is now Codex-eligible as a hooks-only manifest). Fix it in `AGENTS.md`'s Codex-integration section (`eligible 23개`) and `README.md`'s Codex section (`N / M plugins`). Neither the version files nor `sync-codex-manifests.mjs --check` catches a stale eligible count.
-- **Sync the `AGENTS.md` count-homes too** — beyond `## Plugins (N)`, `AGENTS.md` carries two counts that no `--check` guards: the Hermes-allowlist count (`현재 N개: …`) and the Codex verification comment (`# N entries`). A Hermes-eligible plugin add left both stale until a reviewer caught it. Update them in the same change as the plugin-count and Codex-eligible bumps.
-- **Re-run both generators after any version / description change** — `node scripts/sync-codex-manifests.mjs` (regenerates `.codex-plugin/` + catalog) and `node scripts/sync-hermes-manifests.mjs` (regenerates `plugin.yaml` + `__init__.py` for HERMES_ELIGIBLE plugins). Both `--check` guards run in `.githooks/pre-commit` + `.github/workflows/validate-codex.yml`, so unregenerated output fails CI.
+- **Sync the `AGENTS.md` count-homes too** — beyond `## Plugins (N)`, `AGENTS.md` carries the Codex verification comment (`# N entries`), which no `--check` guards. Update it in the same change as the plugin-count and Codex-eligible bumps.
+- **Re-run the Codex generator after any version / description change** — `node scripts/sync-codex-manifests.mjs` (regenerates `.codex-plugin/` + catalog). Its `--check` guard runs in `.githooks/pre-commit` + `.github/workflows/validate-codex.yml`, so unregenerated output fails CI.
 - **Register new plugins in `.claude/settings.json`** (`plugins.local` array, `./plugins/<name>`) when adding a plugin — this tracked file is what auto-loads plugins locally; marketplace registration alone does not. Neither the version files nor `sync-codex-manifests.mjs --check` catch this omission.
 - **Adhere to semver** at the plugin level: `MAJOR.MINOR.PATCH`. PATCH for fixes, MINOR for backward-compatible features, MAJOR for breaking changes.
 - **Document cache workaround** in release notes and user docs — the manual `rm -rf` is the only reliable refresh path until the Claude Code plugin cache bugs are fixed upstream.
@@ -53,7 +53,7 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 2. Update the matching `version` in `.claude-plugin/marketplace.json`.
 3. Bump `metadata.version` in `.claude-plugin/marketplace.json`.
 4. (If adding/removing a plugin) update plugin counts in `AGENTS.md` and `README.md`, and add/remove its `./plugins/<name>` entry in `.claude/settings.json` (`plugins.local`).
-5. Re-run `node scripts/sync-codex-manifests.mjs` and `node scripts/sync-hermes-manifests.mjs` to regenerate derived manifests/adapters.
+5. Re-run `node scripts/sync-codex-manifests.mjs` to regenerate the derived Codex manifests.
 6. Commit all changes together.
 
 ## User Update Workflow

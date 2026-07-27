@@ -1,6 +1,6 @@
 {
   "name": "e2e-harness",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Playwright E2E test-harness engineering — wraps Playwright's official AI test agents (npx playwright init-agents --loop=claude generates planner/generator/healer). Three skills close the planner -> generator -> healer self-improving loop: e2e-setup onboards the full harness (agents, auth separation via storageState + setup-project dependency, page.route mocking with Next.js BFF/SSR guidance, E2E operating SSOT doc, GitHub Actions CI with trace/report artifact upload + PR-failure comment + path/label gating); e2e-author selects critical user flows and runs planner -> review-gate -> generator with semantic getByRole locators and a --repeat-each burn-in flake gate; e2e-debug downloads the CI trace, inspects it headlessly, and runs the healer with bounded retries (skip-after-3 + reason comment). Never overwrites an existing playwright.config (merge + backup); degrades gracefully when Playwright is not installed.",
   "author": {
     "name": "YoungjaeDev"

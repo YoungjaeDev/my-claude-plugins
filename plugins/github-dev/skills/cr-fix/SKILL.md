@@ -21,7 +21,7 @@ When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Cod
 | Task | delegate_task |
 | Monitor | process |
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("github-dev:<skill>")` (or ask Hermes to load that qualified skill) rather than relying on bare text like `github-dev:<skill> ...`.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to run the skill. Installed into `~/.hermes/skills/` by `npx skills`, this skill is indexed automatically — it appears in `skills_list()` and as a slash command under its **flat** name (`<skill>`, not `github-dev:<skill>`).
 
 Self-contained skill that owns the full review-resolution loop. One Claude turn drives the entire pipeline; wait phases use `Bash(run_in_background=true)` + `Monitor` so token cost is ~0 during reviews.
 

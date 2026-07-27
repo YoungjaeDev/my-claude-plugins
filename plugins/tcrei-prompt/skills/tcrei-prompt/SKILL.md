@@ -26,7 +26,7 @@ When this skill is loaded through Hermes as `tcrei-prompt:tcrei-prompt`, map Cla
 | Write | write_file |
 | AskUserQuestion | clarify |
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("tcrei-prompt:tcrei-prompt")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Installed into `~/.hermes/skills/` by `npx skills`, this skill is indexed automatically — it appears in `skills_list()` and as a slash command under its **flat** name `tcrei-prompt`.
 
 Rewrites rough prompts into Google's TCREI 5-step structure and outputs
 copy-paste-ready prompts for the next session. Based on Google's Prompting

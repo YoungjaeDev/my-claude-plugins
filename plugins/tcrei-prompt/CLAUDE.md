@@ -37,17 +37,13 @@ Google's Prompting Essentials (Coursera) 5-step structure:
 
 ## Hermes Agent
 
-Install this plugin from the monorepo subdirectory:
+Install the skill (`npx skills`, wrapped by the repo's installer):
 
 ```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/tcrei-prompt --enable
-hermes gateway restart  # if using Hermes through a messaging gateway
+node scripts/install-skills.mjs                                             # interactive picker
+npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent -s tcrei-prompt -g
 ```
 
-Load the skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes session after `--enable`):
-
-```text
-skill_view("tcrei-prompt:tcrei-prompt")
-```
+It lands in `~/.hermes/skills/tcrei-prompt/`, which Hermes indexes automatically — it shows up in `skills_list()` and as a slash command under its **flat** name `tcrei-prompt`, not `tcrei-prompt:tcrei-prompt`.
 
 The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (`Write`, `AskUserQuestion`, `Read`) to Hermes tools (`write_file`, `clarify`, `read_file`). Phase 3 self-verification runs inline (no `Task`/subagent) so it is portable across all three runtimes.

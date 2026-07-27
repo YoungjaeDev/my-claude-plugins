@@ -10,17 +10,13 @@ Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and cop
 
 ## Hermes Agent
 
-Install this plugin from the monorepo subdirectory:
+Install the skill (`npx skills`, wrapped by the repo's installer):
 
 ```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/anti-slop-design --enable
-hermes gateway restart  # if using Hermes through a messaging gateway
+node scripts/install-skills.mjs                                              # interactive picker
+npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent -s anti-slop-design -g
 ```
 
-Load the skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes session after `--enable`):
+It lands in `~/.hermes/skills/anti-slop-design/`, which Hermes indexes automatically — it shows up in `skills_list()` and as a slash command under its **flat** name `anti-slop-design`, not `anti-slop-design:anti-slop-design`.
 
-```text
-skill_view("anti-slop-design:anti-slop-design")
-```
-
-The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (`AskUserQuestion`, `Read`, `Skill`) to Hermes tools (`clarify`, `read_file`, `skill_view`). The Korean-copy handoff to `humanize-korean` runs via `skill_view("humanize-korean:humanize-korean")` under Hermes.
+The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (`AskUserQuestion`, `Read`, `Skill`) to Hermes tools (`clarify`, `read_file`, `skill_view`). The Korean-copy handoff runs against the separately-installed `humanize-korean` skill.

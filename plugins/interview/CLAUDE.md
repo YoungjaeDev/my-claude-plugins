@@ -61,17 +61,13 @@ Full spec at `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`:
 
 ## Hermes Agent
 
-Install this plugin from the monorepo subdirectory:
+Install the skill (`npx skills`, wrapped by the repo's installer):
 
 ```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/interview --enable
-hermes gateway restart  # if using Hermes through a messaging gateway
+node scripts/install-skills.mjs                                                    # interactive picker
+npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent -s interview-methodology -g
 ```
 
-Load the skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes session after `--enable`):
-
-```text
-skill_view("interview:interview-methodology")
-```
+It lands in `~/.hermes/skills/interview-methodology/`, which Hermes indexes automatically — it shows up in `skills_list()` and as a slash command under its **flat** name `interview-methodology`, not `interview:interview-methodology`.
 
 The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (e.g. `AskUserQuestion`, `Read`, `Write`) to Hermes tools (`clarify`, `read_file`, `write_file`).

@@ -1,6 +1,6 @@
 {
   "name": "anti-slop-design",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. Runs a clarify->context->plan->run->audit->revise flow with a two-phase audit gate (pre-emit self-critique + binary slop checklist) and hands Korean copy rewriting to humanize-korean. Source-grounded in 6 OSS anti-slop repos.",
   "author": {
     "name": "YoungjaeDev"

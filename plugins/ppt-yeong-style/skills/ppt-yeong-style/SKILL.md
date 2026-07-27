@@ -17,9 +17,9 @@ When this skill is loaded through Hermes as `ppt-yeong-style:ppt-yeong-style`, m
 | Skill | skill_view (list available via skills_list) |
 | (image generation) | image_generate |
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ppt-yeong-style:ppt-yeong-style")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Installed into `~/.hermes/skills/` by `npx skills`, this skill is indexed automatically — it appears in `skills_list()` and as a slash command under its **flat** name `ppt-yeong-style`.
 
-**Hermes 전제**: 이 스킬은 외부 `ppt-master` 플러그인의 빌드 엔진(`uv run` 스크립트)에 의존한다. Hermes 세션에서는 (1) `ppt-master` 플러그인이 enable 되어 있고 (2) `uv`가 설치되어 있어야 한다. 둘 중 하나라도 없으면 빌드 단계 진입 전에 중단하고 사용자에게 설치를 요청한다 (`skill_view("ppt-master:ppt-master")`로 엔진 스킬 로드 가능).
+**Hermes 전제**: 이 스킬은 외부 `ppt-master` 플러그인의 빌드 엔진(`uv run` 스크립트)에 의존한다. Hermes 세션에서는 (1) `ppt-master` 플러그인이 enable 되어 있고 (2) `uv`가 설치되어 있어야 한다. 둘 중 하나라도 없으면 빌드 단계 진입 전에 중단하고 사용자에게 설치를 요청한다.
 
 ## 목차
 

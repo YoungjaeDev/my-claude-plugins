@@ -97,22 +97,16 @@ See `core-config/guidelines/ml-guidelines.md` for common ML pitfalls (BGR/RGB, b
 
 ## Hermes Agent
 
-Install this plugin from the monorepo subdirectory:
+Install the skills you want (`npx skills`, wrapped by the repo's installer):
 
 ```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/ml-toolkit --enable
-hermes gateway restart  # if using Hermes through a messaging gateway
+node scripts/install-skills.mjs                                   # interactive picker
+npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent \
+  -s ml-dev-principles -s gpu-parallel-pipeline -s cv-explorer \
+  -s cv-notebook -s gradio-cv-app -g                              # or name them directly
 ```
 
-Load a skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes session after `--enable`):
-
-```text
-skill_view("ml-toolkit:ml-dev-principles")
-skill_view("ml-toolkit:gpu-parallel-pipeline")
-skill_view("ml-toolkit:cv-explorer")
-skill_view("ml-toolkit:cv-notebook")
-skill_view("ml-toolkit:gradio-cv-app")
-```
+They land in `~/.hermes/skills/<skill>/`, which Hermes indexes automatically — each shows up in `skills_list()` and as a slash command under its **flat** name (`ml-dev-principles`, `gpu-parallel-pipeline`, `cv-explorer`, `cv-notebook`, `gradio-cv-app`), not `ml-toolkit:<skill>`.
 
 Notes:
 - Skill bodies carry a Hermes compatibility table mapping Claude/Codex tool terms (`Bash`, `Write`, `NotebookEdit`, ...) to Hermes tools (`terminal`, `write_file`, ...).

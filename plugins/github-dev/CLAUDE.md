@@ -33,23 +33,25 @@ GitHub workflow automation skills for Claude Code. All workflows are skills (no 
 
 ## Hermes Agent
 
-Hermes can install only this plugin from the monorepo subdirectory:
+Install the workflows you want as skills (`npx skills`, wrapped by the repo's installer):
 
 ```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
-hermes gateway restart  # if using Hermes through a messaging gateway
+node scripts/install-skills.mjs                                   # interactive picker
+npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent \
+  -s cr-fix -s resolve-issue -s commit-and-push -g                # or name them directly
 ```
 
-Hermes exposes the existing workflows as namespaced plugin skills. Load them explicitly with `skill_view` or ask Hermes to load the qualified skill:
+They land in `~/.hermes/skills/<skill>/`, which Hermes indexes automatically — each one shows up in `skills_list()` and as a slash command. Ask for them by their **flat** name:
 
 ```text
-skill_view("github-dev:commit-and-push")
-skill_view("github-dev:resolve-issue")  # then provide the issue number in the same request
-skill_view("github-dev:cr-fix")         # then provide flags such as --cr-source auto
+cr-fix            # then provide flags such as --cr-source auto
+resolve-issue     # then provide the issue number in the same request
+commit-and-push
 ```
 
 Notes:
-- Hermes uses `github-dev:<skill>` qualified skill names rather than Claude slash commands, and plugin-provided skills are explicit opt-in loads.
+- Names are flat, not `github-dev:<skill>` — the qualified form belonged to the plugin-adapter route retired in #166.
+- `-a hermes-agent` copies rather than symlinks, so re-run the installer (or `npx skills update`) after changing a skill body.
 - Start a fresh Hermes session after enabling the plugin so the plugin skill registry is rebuilt.
 - The skill bodies include a Hermes compatibility table mapping Claude/Codex tool terms (`Bash`, `Read`, `Edit`, `AskUserQuestion`, `Task`, `Monitor`) to Hermes tools (`terminal`, `read_file`, `patch`, `clarify`, `delegate_task`, `process`).
 

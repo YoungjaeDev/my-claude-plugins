@@ -16,7 +16,7 @@ When this skill is loaded through Hermes as `ml-toolkit:cv-notebook`, map Claude
 | Edit | patch |
 | NotebookEdit | Hermes "Jupyter Live Kernel" skill, or write_file / patch on the .ipynb JSON |
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ml-toolkit:cv-notebook")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Installed into `~/.hermes/skills/` by `npx skills`, this skill is indexed automatically — it appears in `skills_list()` and as a slash command under its **flat** name `cv-notebook`, not `ml-toolkit:cv-notebook`.
 
 > **NotebookEdit across runtimes**: Claude and Codex use the `NotebookEdit` tool to author `.ipynb` cells (the global rule forbids hand-editing notebook JSON under Claude). Under Hermes there is no `NotebookEdit` tool — use the Hermes "Jupyter Live Kernel" skill, or write/patch the `.ipynb` JSON directly with `write_file` / `patch` (Hermes' Claude/GPT brain can emit valid notebook JSON).
 

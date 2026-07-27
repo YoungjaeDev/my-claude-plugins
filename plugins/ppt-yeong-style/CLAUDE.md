@@ -50,18 +50,14 @@ ppt-yeong-style/
 
 ## Hermes Agent
 
-monorepo 서브디렉토리에서 플러그인을 설치:
+스킬을 설치 (`npx skills`, 저장소 설치기가 래핑):
 
 ```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/ppt-yeong-style --enable
-hermes gateway restart  # 메시징 게이트웨이로 Hermes를 쓰는 경우
+node scripts/install-skills.mjs                                                 # 대화형 선택
+npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent -s ppt-yeong-style -g
 ```
 
-스킬을 명시적으로 로드 (Hermes plugin skill은 opt-in, `--enable` 후 새 Hermes 세션 시작):
-
-```text
-skill_view("ppt-yeong-style:ppt-yeong-style")
-```
+`~/.hermes/skills/ppt-yeong-style/` 에 설치되고 Hermes가 자동으로 인덱싱한다 — `skills_list()` 에 노출되고 슬래시 커맨드로도 잡힌다. 이름은 **평평**해서 `ppt-yeong-style:ppt-yeong-style` 이 아니라 `ppt-yeong-style` 이다.
 
 - 스킬 본문은 Claude/Codex 도구 용어(`Bash`, `Read`, `AskUserQuestion`, 이미지 생성, `Skill`)를 Hermes 도구(`terminal`, `read_file`, `clarify`, `image_generate`, `skill_view`)로 매핑하는 호환 표를 포함한다.
 - 전제: 빌드 엔진인 외부 `ppt-master` 플러그인 enable + `uv` 설치가 필요하다. 미설치 시 빌드 진입 전 중단.

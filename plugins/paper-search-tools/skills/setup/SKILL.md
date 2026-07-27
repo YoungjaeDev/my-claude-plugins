@@ -137,8 +137,11 @@ registration and the connect/disable surface differ per runtime:
   already points `mcpServers` at the same `.mcp.json`, so the server is registered automatically —
   do **not** add a second manual entry. Just run the step 5 handshake to verify. Only a standalone
   (non-plugin) Codex needs a manual MCP entry with the step-4 `docker run` args.
-- **Hermes** — load the skill explicitly (`skill_view("paper-search-tools:setup")`), register the
-  server per Hermes' MCP configuration with the step-4 `docker run` args, and verify with step 5.
+- **Hermes** — install this skill with `npx skills` (it lands in `~/.hermes/skills/setup/` and is
+  indexed automatically, under the flat name `setup`), register the server per Hermes' MCP
+  configuration with the step-4 `docker run` args, and verify with step 5. Note that `npx skills`
+  carries skills only — the bundled `.mcp.json` does not travel with it, which is why the MCP entry
+  is registered by hand here.
 
 ### Hermes tool-name compatibility
 

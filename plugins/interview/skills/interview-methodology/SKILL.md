@@ -21,7 +21,7 @@ When this skill is loaded through Hermes as `interview:interview-methodology`, m
 
 The last three cover the relentless mode's read-only fact-dispatch (dispatch a sub-agent, run a lookup, search) so a Hermes `grill me` session can follow rule 4 instead of stalling.
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("interview:interview-methodology")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Installed into `~/.hermes/skills/` by `npx skills`, this skill is indexed automatically — it appears in `skills_list()` and as a slash command under its **flat** name `interview-methodology`, not `interview:interview-methodology`.
 
 ## Cross-runtime interactive input
 

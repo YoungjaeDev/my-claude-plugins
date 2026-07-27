@@ -16,7 +16,7 @@ When this skill is loaded through Hermes as `ml-toolkit:gpu-parallel-pipeline`, 
 | Write | write_file |
 | Edit | patch |
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ml-toolkit:gpu-parallel-pipeline")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Installed into `~/.hermes/skills/` by `npx skills`, this skill is indexed automatically — it appears in `skills_list()` and as a slash command under its **flat** name `gpu-parallel-pipeline`, not `ml-toolkit:gpu-parallel-pipeline`.
 
 ## Overview
 

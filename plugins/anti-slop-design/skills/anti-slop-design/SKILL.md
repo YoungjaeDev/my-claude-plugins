@@ -15,7 +15,7 @@ When this skill is loaded through Hermes as `anti-slop-design:anti-slop-design`,
 | AskUserQuestion | clarify |
 | Skill | skill_view (list available via skills_list) |
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("anti-slop-design:anti-slop-design")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Installed into `~/.hermes/skills/` by `npx skills`, this skill is indexed automatically — it appears in `skills_list()` and as a slash command under its **flat** name `anti-slop-design`.
 
 An enterprise anti-slop guard for building, auditing, or improving web/SaaS landings, presentation decks (PPT), dashboards/admin UI, and marketing/UI copy — it **blocks the AI-generated look (slop) before generation** and **audits it after**.
 

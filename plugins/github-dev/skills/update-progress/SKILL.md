@@ -21,7 +21,7 @@ When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Cod
 | Task | delegate_task |
 | Monitor | process |
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("github-dev:<skill>")` (or ask Hermes to load that qualified skill) rather than relying on bare text like `github-dev:<skill> ...`.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to run the skill. Installed into `~/.hermes/skills/` by `npx skills`, this skill is indexed automatically — it appears in `skills_list()` and as a slash command under its **flat** name (`<skill>`, not `github-dev:<skill>`).
 
 Manually sync project progress to GitHub milestones and issues. Regenerates architecture diagrams and updates tracking sections. Follow project guidelines in `@CLAUDE.md`.
 

@@ -15,7 +15,7 @@ When this skill is loaded through Hermes as `ml-toolkit:ml-dev-principles`, map 
 | Read | read_file |
 | Write | write_file |
 
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ml-toolkit:ml-dev-principles")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
+Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Installed into `~/.hermes/skills/` by `npx skills`, this skill is indexed automatically — it appears in `skills_list()` and as a slash command under its **flat** name `ml-dev-principles`, not `ml-toolkit:ml-dev-principles`.
 
 ML·멀티모달·CV 작업을 *어떻게* 진행할지에 대한 범용 규율(어떤 라이브러리를 쓰느냐가 아니라). 작업 시작 시 한 번 훑고 적용한다. 한 문장 요약: **집계/규칙 텍스트만 보지 말고 실제(이미지·원문·util)를 직접 봐라.**
 

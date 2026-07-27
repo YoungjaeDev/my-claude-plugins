@@ -342,9 +342,15 @@ cat > "$GSHIM2/gh" <<SH
 cat "$FIX/pr-reviews-codex-none.json"
 SH
 chmod +x "$GSHIM2/gh"
+# Keep run_capped's status: empty stdout alone cannot tell "the watchdog killed a
+# still-waiting poll" (the pass condition) from "setup broke and the child died
+# instantly" (a false green). Measured: SIGTERM -> 143, missing script -> 127,
+# both with empty stdout. Asserting 143 is what makes the empty-output check mean
+# anything. (CodeRabbit 🟠 Major, PR #183)
 g=$(run_capped 3 env PATH="$GSHIM2:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[555]' INTERVAL=1 \
-      bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null) || true
+      bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null); g_rc=$?
 is "no unprocessed review -> no terminal line" "$g" ""
+is "no unprocessed review -> watchdog killed it (not an early exit)" "$g_rc" 143
 rm -rf "$GSHIM2"
 
 echo

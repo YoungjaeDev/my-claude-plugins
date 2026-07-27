@@ -6,6 +6,18 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-27 — #166: Hermes plugin adapter retired, npx skills is the sole Hermes path (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). PR #166 deletes `scripts/sync-hermes-manifests.mjs`, `scripts/mock-load-hermes.py`, and the 7 generated `plugin.yaml` + `__init__.py` adapter pairs, plus the `HERMES_ELIGIBLE` allowlist and both Hermes CI/pre-commit guards. Hermes now gets skills only through `npx skills` (`scripts/install-skills.mjs`). Supersede, not overwrite — the adapter page keeps real historical value (the `register_skill` signature settlement, the git-pull-only update model, the generated-but-never-executed blind spot).
+
+- plugin-ops/hermes-plugin-adapter.md: status active→stale, add `> Superseded-by: [[skills-install-wrapper]]` + a retirement note at the top; body kept intact as the record of a retired mechanism. last_verified 2026-07-27, sources 5→7 (adds the #166 entry and corrects a pre-existing off-by-one — the page already carried 6 `## Sources` bullets under `sources: 5`).
+- plugin-ops/skills-install-wrapper.md: add `> Supersedes: [[hermes-plugin-adapter]]`; record that this is now the only Hermes delivery path, that `~/.hermes/skills/` is Hermes' skill SoT with passive `skills_list()` + slash-command exposure (retiring the `skill_view()` opt-in load contract), that `-a hermes-agent` installs by COPY not symlink (measured), and that the layout-divergence caveat resolves to the single flat layout. Skill count 47→52. last_verified 2026-07-27, sources 2→4.
+- plugin-ops/shared-source-codex-manifests.md: See-also target retargeted to [[skills-install-wrapper]] (the live Hermes page) — the stale adapter page is no longer the right entry point.
+- plugin-ops/agents-md-verbatim-no-import.md: same See-also retarget.
+- index.md: rewrote both plugin-ops hooks (skills-install-wrapper now carries the Hermes contract; hermes-plugin-adapter marked retired).
+
+No insight graduation: the finding is one PR old, so it fails the "recurs across 2+ independent sessions" bar.
+
 ## 2026-07-24 — post-merge #164: brightdata CLI preflight quirks + rg hidden-path parity blindspot (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `b5d288f` — search-stack migration (firecrawl→brightdata + slidev plugin removal). Config integration (Step 6): none new — plugin counts / version bumps / the code-scout brightdata tier landed in the merge itself, and the plugin-removal-is-MINOR rule already lives in `.claude/rules/plugin-versioning.md`; the durable lore is provider-quirk + a verification debugging-story, routed here.

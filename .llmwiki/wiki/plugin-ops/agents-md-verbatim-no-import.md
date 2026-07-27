@@ -56,7 +56,7 @@ The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a
 
 > Refines: [[shared-source-codex-manifests]]
 > See-also: [[insight-layer-via-hook]]
-> See-also: [[hermes-plugin-adapter]]
+> See-also: [[skills-install-wrapper]]
 > Promoted-to: [[agents-md-no-import]]
 > Evidence: .claude/rules/dual-integration.md
 > Evidence: plugins/project-init/references/codex-review-discovery.md

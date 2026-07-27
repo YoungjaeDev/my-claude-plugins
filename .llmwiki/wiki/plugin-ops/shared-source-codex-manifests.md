@@ -15,7 +15,7 @@ generator (`scripts/sync-codex-manifests.mjs`, ~140 LOC, zero runtime
 dependencies) emits Codex's required catalog files from `.claude-plugin/
 marketplace.json`; both runtimes then read the same skill bodies in place.
 
-> See-also: [[hermes-plugin-adapter]]
+> See-also: [[skills-install-wrapper]]
 
 A third runtime, Hermes Agent, now consumes the same tree via a native
 `plugin.yaml` + `__init__.py` adapter (github-dev pilot) — "Claude + Codex" is

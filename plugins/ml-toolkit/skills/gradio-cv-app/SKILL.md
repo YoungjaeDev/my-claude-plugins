@@ -7,7 +7,7 @@ description: Creates professional Gradio computer vision apps. Applies a refined
 
 ## Hermes Agent Compatibility
 
-When this skill is loaded through Hermes as `ml-toolkit:gradio-cv-app`, map Claude/Codex tool names to Hermes tools:
+When this skill runs under Hermes, map Claude/Codex tool names to Hermes tools:
 
 | Claude/Codex term | Hermes tool |
 |---|---|

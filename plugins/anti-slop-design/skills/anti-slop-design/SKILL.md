@@ -7,7 +7,7 @@ description: "Anti-AI-slop design guard for websites/SaaS landing, presentation 
 
 ## Hermes Agent Compatibility
 
-When this skill is loaded through Hermes as `anti-slop-design:anti-slop-design`, map Claude/Codex tool names to Hermes tools:
+When this skill runs under Hermes, map Claude/Codex tool names to Hermes tools:
 
 | Claude/Codex term | Hermes tool |
 |---|---|

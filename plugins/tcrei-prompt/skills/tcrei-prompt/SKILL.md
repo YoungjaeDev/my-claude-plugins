@@ -18,7 +18,7 @@ allowed-tools:
 
 ## Hermes Agent Compatibility
 
-When this skill is loaded through Hermes as `tcrei-prompt:tcrei-prompt`, map Claude/Codex tool names to Hermes tools:
+When this skill runs under Hermes, map Claude/Codex tool names to Hermes tools:
 
 | Claude/Codex term | Hermes tool |
 |---|---|

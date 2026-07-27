@@ -710,6 +710,23 @@ npx skills add . -l          # 이 저장소가 노출하는 스킬 목록
 
 > 이전에는 Hermes 용 네이티브 어댑터(`plugin.yaml` + `__init__.py`)를 `scripts/sync-hermes-manifests.mjs` 로 생성했습니다. 7 플러그인 / 20 스킬만 덮으면서 버전 범프마다 재생성과 drift 가드를 요구했고 로드에 `skill_view()` 명시 호출이 필요해, #166 에서 제거하고 `npx skills` 경로로 일원화했습니다.
 
+#### 기존 `hermes plugins install` 사용자 마이그레이션 (필수, 순서 주의)
+
+이전 안내대로 `hermes plugins install .../plugins/<name> --enable` 로 설치했다면 **업데이트하기 전에 먼저 스킬을 설치하세요.** `hermes plugins update` 는 버전 비교 없는 순수 `git pull` 이라, 이 릴리스를 그대로 당기면 등록 엔트리포인트인 `plugin.yaml` / `__init__.py` 가 사라지면서 **해당 플러그인의 스킬이 전부 사라집니다** — 그 자리를 채워줄 것이 자동으로 설치되지는 않습니다.
+
+```bash
+# 1) 먼저 스킬을 설치한다 (아직 레거시 플러그인이 살아있는 상태에서)
+node scripts/install-skills.mjs                  # 또는 npx skills add ... -a hermes-agent -g
+
+# 2) ~/.hermes/skills/ 에 실제로 들어왔는지 확인한다
+ls ~/.hermes/skills/
+
+# 3) 확인된 뒤에 레거시 플러그인을 비활성화 / 제거한다
+hermes plugins disable <name>
+```
+
+이미 `hermes plugins update` 를 먼저 돌려버렸다면 스킬만 다시 설치하면 복구됩니다 (1단계). 데이터 손실은 없고, 사라지는 것은 등록 상태뿐입니다.
+
 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
 
 ### CI 가드가 지키는 것 (curation / security)

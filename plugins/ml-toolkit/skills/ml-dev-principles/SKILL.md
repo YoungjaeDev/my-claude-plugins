@@ -7,7 +7,7 @@ description: General working discipline for ML / multimodal / CV development (ho
 
 ## Hermes Agent Compatibility
 
-When this skill is loaded through Hermes as `ml-toolkit:ml-dev-principles`, map Claude/Codex tool names to Hermes tools:
+When this skill runs under Hermes, map Claude/Codex tool names to Hermes tools:
 
 | Claude/Codex term | Hermes tool |
 |---|---|

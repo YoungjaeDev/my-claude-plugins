@@ -7,7 +7,7 @@ description: "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master �
 
 ## Hermes Agent Compatibility
 
-When this skill is loaded through Hermes as `ppt-yeong-style:ppt-yeong-style`, map Claude/Codex tool names to Hermes tools:
+When this skill runs under Hermes, map Claude/Codex tool names to Hermes tools:
 
 | Claude/Codex term | Hermes tool |
 |---|---|

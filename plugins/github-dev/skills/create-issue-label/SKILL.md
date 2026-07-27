@@ -8,7 +8,7 @@ allowed-tools: Read Bash Glob Grep
 
 ## Hermes Agent Compatibility
 
-When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Codex tool names to Hermes tools:
+When this skill runs under Hermes, map Claude/Codex tool names to Hermes tools:
 
 | Claude/Codex term | Hermes tool |
 |---|---|

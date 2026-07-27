@@ -1,10 +1,10 @@
 ---
 id: detector-cannot-look-vs-nothing-wrong
 aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean]
-last_verified: 2026-07-24
+last_verified: 2026-07-27
 status: active
 volatility: stable
-sources: 5
+sources: 6
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -73,6 +73,12 @@ The meta-lesson beyond containment: **a detector written and tested on one platf
 
 Modes 1-5 are committed detector *scripts*; Mode 6 is the same trap in an ad-hoc verification *command*. A removal/parity gate over this repo — "prove the retired vendor token is gone" — was run as `rg -i firecrawl --glob '!docs/**' …`, which returned 0 hits and read as "fully removed." But **recursive ripgrep skips dot-directories by default**, so the grep never looked in `.claude-plugin/marketplace.json`, `.agents/`, or `.claude/settings.json` — exactly where the generated manifests and the tracked load-list live. A stale `firecrawl tier-3` string survived in the code-scout manifest description and passed the parity gate; it was caught only by re-running with `rg --hidden`. A true parity/removal gate over this repo must pass `--hidden` (the generated Codex/Hermes manifests + settings live under dot-dirs). Sibling trap in the same PR: a plugin CHANGELOG that names the retired vendor token *in prose* re-breaks a repo-wide token-parity check — describe a removed dependency by its slot ("the tier-3 fetch tool"), not its vendor name. Distinct from the `rg`-is-a-shell-function shadowing in [[stock-userland-verification]]: here the tool runs fine, its **default coverage** is the blind spot.
 
+## Mode 7: the sweep greps the artifact's name but not its callers — "0 hits" because it searched the wrong noun
+
+Mode 6 is the right query with too narrow a *scope*; Mode 7 is full scope with the wrong *query*. Retiring a mechanism (PR #166, the Hermes plugin adapter) was verified by grepping the deleted artifact names — `sync-hermes`, `HERMES_ELIGIBLE`, `plugin.yaml`, `__init__.py` — which came back clean. But 24 files across 7 plugins still carried the *user-facing commands that depend on those artifacts*: `hermes plugins install .../plugins/<name> --enable` (needs the deleted `plugin.yaml`) and `skill_view("<plugin>:<skill>")` (a qualified name that no longer exists once skills install flat). None of those lines contains any of the searched tokens, so the sweep could not see them. A user following the surviving docs fails immediately.
+
+The rule: **a removal sweep needs two queries — the artifact's identifiers, and the call sites that consume it.** Write the second query by asking "what would a user or a script have typed to *use* this thing?", not "what is this thing called". Instruction repos make this sharper than code repos, where a compiler or import error would have surfaced the dangling caller; prose has no such backstop, so the grep is the only gate. Related failure of the same shape: a `> See-also:` or `paths:` glob pointing at a deleted file, which likewise carries none of the artifact's own tokens.
+
 ## Why this recurs
 
 Each instance arrives disguised as an edge case ("who has a corrupt config?", "who greps a dot-dir?"), and each one is discovered only by running the check against the input it silently skips rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis — whether because it aborted, degraded, could not run, or never looked there — says so, keeps going, and never converts ignorance into an all-clear.**
@@ -92,3 +98,4 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?", "w
 3. **PR #122** (`fix(github-dev): cr-fix correctness repair set`) — the remote-fetcher instances (Mode 4): `fetch-cr-threads.sh` null-envelope false-clean + pagination coherence (fixtures `gql-null-repository` / `gql-null-pullrequest` / `gql-missing-pageinfo` / `gql-cursorless-next`), `auto-merge-gate.sh` probe rc 0 (`probe failure -> protection_http 0`), `cr-commit-state.sh` `state:"error"` channel + `ERROR_STREAK_MAX` terminal poller test.
 4. **PR #153** (`fix(github-dev): cr-fix path-trust works on BSD/macOS userland`) — the non-portable-tool instance (Mode 5): `path-trust.sh` `realpath -m` aborted under `set -e` on BSD/macOS for every path, so the Step 9c gate skipped every finding and Step 13 converged `final_state=clean` (auto-merge eligible). Fixed with a POSIX `cd`+`pwd -P`+`readlink` resolver that also follows a final-component symlink chain (a Critical the fix's own review surfaced), plus the first test coverage for the gate (12 cases, RED-verified against both prior revisions). Surfaced by a macOS-26 compatibility audit of all 24 plugins.
 5. **PR #164** (`feat(search-stack): replace firecrawl with brightdata, remove slidev plugin`) — the default-scope instance (Mode 6): a `rg -i firecrawl` removal/parity gate returned 0 hits while a stale `firecrawl tier-3` string survived in `.claude-plugin/`/`.agents/` (recursive ripgrep skips dot-dirs by default); caught only by `rg --hidden`. See [[brightdata-cli-preflight-quirks]] for the migration's other lore.
+6. **PR #168** (`chore: retire Hermes plugin adapters in favor of npx skills`) — the wrong-noun instance (Mode 7), plus a same-PR recurrence of Mode 6. The removal sweep grepped `sync-hermes|HERMES_ELIGIBLE|mock-load-hermes` and reported clean twice: once missing `.coderabbit.yaml` / `.claude/rules/plugin-versioning.md` / `.claude-plugin/marketplace.json` because `--hidden` was absent (Mode 6, repeated even though this page already documented it), and once missing 24 files whose surviving text was `hermes plugins install` / `skill_view(...)` rather than any searched token (Mode 7). CodeRabbit caught the first class, Codex the second. Same PR also produced [[skills-install-wrapper]]'s measured install facts.

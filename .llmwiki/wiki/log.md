@@ -6,6 +6,14 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-27 — #166 review: removal sweeps must grep the callers, not just the artifact (ingest-finding)
+
+Diff log written before applying the page edit (git-revertible). Second ingest of the day, from PR #168's review round rather than its authoring. A removal sweep that grepped only the deleted artifact names (`sync-hermes`, `HERMES_ELIGIBLE`, `plugin.yaml`) reported clean while 24 files across 7 plugins still instructed users to run `hermes plugins install` and `skill_view("<plugin>:<skill>")` — the *callers* of the deleted artifact. Codex review caught it. Same page as the existing default-scope trap because both are the same question: "did the detector look where the breakage actually is?"
+
+- plugin-ops/detector-cannot-look-vs-nothing-wrong.md: add Mode 7 (removal sweep greps the artifact's name but not the user-facing commands that depend on it) + a `## Sources` entry for PR #168; sources 5→6, last_verified 2026-07-24 → 2026-07-27.
+
+No insight graduation: Mode 6 (the sibling trap) has not graduated either, and the page is already the consolidated home for this failure family.
+
 ## 2026-07-27 — #166: Hermes plugin adapter retired, npx skills is the sole Hermes path (ingest-finding)
 
 Diff log written before applying the page edits (git-revertible). PR #166 deletes `scripts/sync-hermes-manifests.mjs`, `scripts/mock-load-hermes.py`, and the 7 generated `plugin.yaml` + `__init__.py` adapter pairs, plus the `HERMES_ELIGIBLE` allowlist and both Hermes CI/pre-commit guards. Hermes now gets skills only through `npx skills` (`scripts/install-skills.mjs`). Supersede, not overwrite — the adapter page keeps real historical value (the `register_skill` signature settlement, the git-pull-only update model, the generated-but-never-executed blind spot).

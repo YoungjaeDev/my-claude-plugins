@@ -19,6 +19,21 @@ ok()   { pass=$((pass+1)); printf '  ok   %s\n' "$1"; }
 bad()  { fail=$((fail+1)); printf '  FAIL %s\n     expected: %s\n     actual:   %s\n' "$1" "$2" "$3"; }
 is()   { [ "$2" = "$3" ] && ok "$1" || bad "$1" "$3" "$2"; }
 
+# run_capped SECS CMD... -- run CMD, SIGTERM it after SECS, pass its stdout through.
+# The portable stand-in for GNU `timeout`, which stock macOS/BSD does not ship;
+# used where the script under test only ends on an external signal. Always used
+# (never gated behind `command -v timeout`) so the GNU CI leg exercises the same
+# path a Mac takes -- a fallback only BSD reaches is a fallback that rots.
+# The watchdog's own stdout is closed, or command substitution would block on it.
+run_capped() {
+  local secs=$1; shift
+  "$@" & local cmd_pid=$!
+  ( sleep "$secs"; kill -TERM "$cmd_pid" 2>/dev/null ) >/dev/null 2>&1 & local wd_pid=$!
+  wait "$cmd_pid" 2>/dev/null; local rc=$?
+  kill -TERM "$wd_pid" 2>/dev/null; wait "$wd_pid" 2>/dev/null
+  return "$rc"
+}
+
 echo "parse-cr-cli-jsonl.sh"
 
 # CLI 0.6.5: `suggestions` holds patch STRINGS. `.suggestions[0].line` aborted jq
@@ -315,20 +330,22 @@ rm -rf "$GSHIM"
 # empty id. Without jq -r the empty jq result printed the two-char string '""',
 # which passed [ -n ] and ended the until-loop on round 1 (reproduced live:
 # grace poll returned {"codex_review_id":""} instantly). RED against the -s
-# variant by construction. Needs GNU timeout as the loop-breaker; skipped on
-# BSD/macOS where the suite runs via pre-commit without coreutils.
-if command -v timeout >/dev/null 2>&1; then
-  GSHIM2=$(mktemp -d)
-  cat > "$GSHIM2/gh" <<SH
+# variant by construction. poll-codex-grace.sh has no bounded-round env (its
+# contract is "caller wraps with a timeout"), so this case needs a real
+# loop-breaker. It used GNU `timeout`, absent on stock macOS/BSD, so the whole
+# block was skipped there and this regression had zero coverage on the platform
+# the pre-commit hook actually runs on. run_capped is the portable stand-in;
+# env(1) carries the environment so no assignment leaks into the shell.
+GSHIM2=$(mktemp -d)
+cat > "$GSHIM2/gh" <<SH
 #!/usr/bin/env bash
 cat "$FIX/pr-reviews-codex-none.json"
 SH
-  chmod +x "$GSHIM2/gh"
-  g=$(PATH="$GSHIM2:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[555]' INTERVAL=1 \
-        timeout 3 bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null) || true
-  is "no unprocessed review -> no terminal line" "$g" ""
-  rm -rf "$GSHIM2"
-fi
+chmod +x "$GSHIM2/gh"
+g=$(run_capped 3 env PATH="$GSHIM2:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[555]' INTERVAL=1 \
+      bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null) || true
+is "no unprocessed review -> no terminal line" "$g" ""
+rm -rf "$GSHIM2"
 
 echo
 echo "poll-cr-status.sh"

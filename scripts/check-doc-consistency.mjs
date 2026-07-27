@@ -83,7 +83,9 @@ const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
 const agents = readFileSync(join(ROOT, 'AGENTS.md'), 'utf8');
 
 compareSet('README.md tree', treePluginNames(readme));
-compareSet('AGENTS.md tree', treePluginNames(agents));
+// AGENTS.md carries no structure tree (the directory layout is derivable from
+// `ls plugins/`). Its plugin name-set is guarded by the ## Plugins table below,
+// which asserts the same canonical set in both directions.
 compareSet('AGENTS.md ## Plugins table', agentsTablePlugins(agents));
 
 checkCount('README.md badge', readme, /plugins-(\d+)-blue/g, [TOTAL]);

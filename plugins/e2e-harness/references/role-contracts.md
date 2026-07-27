@@ -6,7 +6,7 @@ Shared planner / generator / healer role contracts consumed by **all three execu
 - **Path B — generic subagents (Codex 0.135).** Codex exposes these skills but cannot register `.claude/agents/*.md` as named subagents, so it dispatches one **generic** subagent per role, carrying that role's contract from this file inline (`Task(prompt=...)`). This file is the portable condensation of the generated agents' behavior.
 - **Path C — sequential in-agent.** When no delegation channel is available, the skill executes each role itself, one at a time, following the contract below.
 
-> Hermes is **forward-compatible, not active**: `e2e-harness` is not in `HERMES_ELIGIBLE` (`scripts/sync-hermes-manifests.mjs`), so this plugin does not load on Hermes today. The Path B dispatch maps to Hermes `delegate_task` (see the tool-name table at the end) for when/if `e2e-harness` is added to the allowlist; on the live non-Claude runtime (Codex) the tool is `Task`.
+> **Hermes takes Path B as well.** Its skills are installed with `npx skills` (`scripts/install-skills.mjs`), and like Codex it registers no `.claude/agents/*.md`, so the same generic dispatch applies — the tool is `delegate_task` under Hermes and `Task` under Codex (see the tool-name table at the end).
 
 Keep these contracts in sync with the behavior of the init-agents-generated agents (verified on Playwright 1.61 — see `.llmwiki/wiki/e2e-harness-ops/playwright-ai-harness.md`) when either changes.
 

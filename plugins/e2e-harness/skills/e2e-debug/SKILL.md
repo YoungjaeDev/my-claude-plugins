@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Task AskUserQuestion
 
 The third leg of the harness. A CI failure is a sensor reading; this skill turns it back into a green test (or an honest quarantine), closing the planner -> generator -> **healer** self-improving loop.
 
-Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `e2e-setup` generated (**Path A**); on **Codex 0.135** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**). Hermes is forward-compatible only — `e2e-harness` is not yet in `HERMES_ELIGIBLE`, so it does not load on Hermes today; the generic dispatch maps to Hermes `delegate_task` for when it is added.
+Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `e2e-setup` generated (**Path A**); on **Codex 0.135** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**). Hermes loads these skills too (installed via `npx skills`) and registers no named agents either, so it takes the same generic dispatch, mapping `Task` to `delegate_task`.
 
 > **Verified against Playwright 1.61.0.** The headless `npx playwright trace` CLI was introduced in 1.59; the subcommand set below is confirmed on 1.61. The GUI viewer `npx playwright show-trace <trace.zip>` is also available if a human wants to look.
 

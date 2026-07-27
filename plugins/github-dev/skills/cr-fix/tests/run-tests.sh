@@ -522,9 +522,10 @@ fi
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
 elif [ -d "plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="plugins/github-dev/skills/cr-fix"
 elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then SKILL_DIR="$CODEX_CAND/skills/cr-fix"
-elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then SKILL_DIR="$HERMES_HOME/skills/cr-fix"
-else SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"; fi
+elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
+elif [ -d "$HOME/.hermes/plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"
+else SKILL_DIR="$HOME/.hermes/skills/cr-fix"; fi
 printf '%s' "$SKILL_DIR"
 SH
 # From a non-source-tree cwd so the source-tree branch cannot win.
@@ -540,6 +541,19 @@ mkdir -p "$RS/cache2/zeta/github-dev/2.10.0/skills/cr-fix" \
          "$RS/cache2/alpha/github-dev/3.0.0/skills/cr-fix"
 got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache2" HERMES_HOME="" bash resolver.sh)
 is "resolver: version outranks marketplace name" "$got" "$RS/cache2/alpha/github-dev/3.0.0/skills/cr-fix"
+
+# Default Hermes profile (HERMES_HOME unset) must land on the FLAT layout that
+# `npx skills` actually writes. Every $HERMES_HOME-guarded branch is skipped when
+# the var is unset, so before #166's fix the final fallback returned the retired
+# plugin-adapter path and parse-args.sh was unreachable. (Codex P1)
+HH=$(mktemp -d)
+got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/empty-cache" HOME="$HH" bash -c 'unset HERMES_HOME; . ./resolver.sh')
+is "resolver: unset HERMES_HOME -> flat default" "$got" "$HH/.hermes/skills/cr-fix"
+# A profile that still carries the legacy adapter layout keeps resolving to it.
+mkdir -p "$HH/.hermes/plugins/github-dev/skills/cr-fix"
+got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/empty-cache" HOME="$HH" bash -c 'unset HERMES_HOME; . ./resolver.sh')
+is "resolver: legacy plugin layout still wins when present" "$got" "$HH/.hermes/plugins/github-dev/skills/cr-fix"
+rm -rf "$HH"
 
 # Fresh env (no cache at all) must not kill an errexit caller — the unguarded
 # CODEX_CAND ls substitution died rc=2 under set -euo pipefail. (counsel P1)

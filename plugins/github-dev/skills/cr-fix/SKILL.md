@@ -77,14 +77,17 @@ elif [ -d "plugins/github-dev/skills/cr-fix" ]; then
   SKILL_DIR="plugins/github-dev/skills/cr-fix"
 elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then
   SKILL_DIR="$CODEX_CAND/skills/cr-fix"
-elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then
-  SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then
-  # unverified flat Hermes layout (no live-Hermes confirmation yet) — additive
-  # branch guarded by -d, never rewrites the plugin-layout branch above
+  # Flat layout — what `npx skills` produces, and the only Hermes layout since #166.
   SKILL_DIR="$HERMES_HOME/skills/cr-fix"
-else
+elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then
+  # Legacy plugin-adapter layout, kept for a profile installed before #166.
+  SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
+elif [ -d "$HOME/.hermes/plugins/github-dev/skills/cr-fix" ]; then
   SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"
+else
+  # Default profile (HERMES_HOME unset) — npx skills installs flat here.
+  SKILL_DIR="$HOME/.hermes/skills/cr-fix"
 fi
 
 eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
@@ -92,7 +95,7 @@ eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
 
 Sets: `SKILL_DIR, MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, MINOR_STOP, GENERALIZE, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
 
-`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex 0.135 cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`), the active Hermes profile install (`$HERMES_HOME/plugins/github-dev/...` then the flat `$HERMES_HOME/skills/cr-fix` layout), then the default `~/.hermes/plugins/github-dev/...` install. Without the `${CLAUDE_PLUGIN_ROOT}` and Codex-cache branches, an invocation outside the source tree resolved to a non-existent Hermes path and `parse-args.sh` was unreachable. All `scripts/` and `references/` paths below resolve relative to this.
+`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex 0.135 cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`), the active Hermes profile (flat `$HERMES_HOME/skills/cr-fix` first, then the legacy `$HERMES_HOME/plugins/github-dev/...` adapter layout), the legacy default `~/.hermes/plugins/github-dev/...`, and finally the flat default `~/.hermes/skills/cr-fix`. Without the `${CLAUDE_PLUGIN_ROOT}` and Codex-cache branches, an invocation outside the source tree resolved to a non-existent Hermes path and `parse-args.sh` was unreachable. The **last** branch is the one that matters for a normal Hermes install: `npx skills` writes the flat layout, and with `HERMES_HOME` unset (the default profile) every `$HERMES_HOME`-guarded branch is skipped, so a final fallback pointing at the retired plugin layout would strand the skill before it parses a single argument. All `scripts/` and `references/` paths below resolve relative to this.
 
 ## Step 2: Resolve repo / PR / START_SHA + pre-flight setup
 

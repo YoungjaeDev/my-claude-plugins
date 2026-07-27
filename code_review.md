@@ -21,7 +21,7 @@
 
 ## P1 — Performance / Maintainability
 - **Plugin versioning 위반** — `plugins/<name>/.claude-plugin/plugin.json` 와 `.claude-plugin/marketplace.json` 의 version 불일치, `metadata.version` 누락.
-- **Plugin count drift** — `AGENTS.md` / `README.md` 의 플러그인 수 / badge / 트리가 marketplace.json 과 어긋남.
+- **Plugin count drift** — `AGENTS.md` 의 플러그인 수 / 목록, `README.md` 의 플러그인 수 / badge / 트리가 marketplace.json 과 어긋남.
 - **`gh api --paginate` + `--jq` 조합에 `--slurp` 누락** — multi-page 응답에서 jq 가 multiple JSON document 받음. 단, `gh` 는 `--slurp` 와 `--jq` 동시 사용을 거부하므로 `gh api --paginate --slurp ENDPOINT | jq ...` 패턴을 쓴다.
 - **Idempotency 회귀** — 같은 디렉토리 재실행 시 사용자 파일 덮어쓰기, `git commit` 이 변경 없을 때 `nothing to commit` 으로 abort, 이미 등록된 `origin` remote 에 `gh repo create --remote=origin` 충돌, 등. `[ -f X ] || cp ...` / `git diff --cached --quiet` / `git remote get-url origin` 류 가드를 한 곳에 모아 점검.
 - **Cross-platform shell 가정** — `sed -i 'cmd'` 는 GNU-only, BSD/macOS 는 `sed -i '' 'cmd'` 시그니처. `${VAR,,}` 는 Bash 4+ 전용이라 macOS 기본 `/bin/bash` 3.2 에서 bad substitution 으로 깨짐. `realpath -m` 도 GNU-only (BSD 는 `illegal option`) 이고, 맨 `realpath` 는 GNU/BSD 양쪽 다 미존재 경로에서 실패하므로 대체재가 아니다 — 아직 없는 경로까지 다루려면 `cd` + `pwd -P` 로 부모를 해석하되, 최종 컴포넌트 symlink 도 `readlink` 로 따라가야 containment 검사가 뚫리지 않는다. 전부 detect+branch (`sed --version`) 또는 POSIX alternative (`tr '[:upper:]' '[:lower:]'`) 사용.

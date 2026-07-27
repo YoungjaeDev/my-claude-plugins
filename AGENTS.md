@@ -97,39 +97,7 @@
 
 ## 저장소 구조
 
-```
-.
-├── .claude/
-│   └── settings.json       # Plugin configuration
-├── plugins/
-│   ├── core-config/        # Guidelines + hooks
-│   ├── github-dev/         # GitHub workflow
-│   ├── e2e-harness/        # Playwright E2E test-harness (setup/author/debug)
-│   ├── code-scout/         # Resource discovery
-│   ├── deepwiki/           # Repo docs
-│   ├── paper-search-tools/ # Academic papers
-│   ├── brightdata-guide/   # Bright Data web-data guide (MCP + CLI)
-│   ├── notebook/           # Jupyter
-│   ├── ml-toolkit/         # ML tools
-│   ├── translator/         # Translation
-│   ├── codex-image/        # Claude->Codex image gen bridge
-│   ├── interview/          # Requirements
-│   ├── docs-forge/         # README/CHANGELOG + deploy-doc + MOC
-│   ├── rules-forge/        # write-rules skill (auto mode detection)
-│   ├── tcrei-prompt/       # TCREI prompt structuring
-│   ├── llm-wiki/           # LLM-Wiki 3-layer (wiki lore)
-│   ├── mem0-ops/           # Fleet-level mem0 diagnostics/cleanup (fleet-scan/doctor/cleanup)
-│   ├── spec-state/         # spec/issue/PR work-pipeline aggregate
-│   ├── anti-slop-design/   # Anti-AI-slop design guard (web/ppt/dashboard/copy)
-│   ├── ppt-yeong-style/    # yeong-style lecture/proposal deck writing layer (on ppt-master)
-│   ├── tally-form/         # Checklist md -> Tally questionnaire/survey form builder
-│   ├── gws-sync/           # Local -> Google Drive one-way proposal sync
-│   ├── plaud-note-taking/  # PLAUD note (Whisper transcript + LLM summary) STT + terminology correction
-│   └── project-init/       # Day-1 bootstrap (new) + existing-repo setup diagnostic (wiring)
-├── AGENTS.md               # This file — 정본
-├── CLAUDE.md               # @AGENTS.md import (한 줄)
-└── README.md               # Full documentation
-```
+디렉터리 배치 자체는 `ls plugins/` 로 확인한다. 아래는 그 배치만 봐서는 알 수 없는 각 경로의 역할과 편집 금지 여부다.
 
 - `AGENTS.md`: 이 문서. 세 런타임 공통 최상위 지침 + 플러그인 목록 + 구조 요약.
 - `CLAUDE.md`: `@AGENTS.md` 를 import 하는 한 줄 파일. Claude Code 진입점일 뿐, 별도 내용이 없습니다.
@@ -187,7 +155,7 @@
 - `plugins/<name>/` 아래 **어떤 파일이든** 바뀌면 버전 범프 대상입니다 — 코드/스킬뿐 아니라 번들 `references/`·`docs`·asset 편집도 포함. 캐시로 게이트된 사용자는 버전 범프가 있어야 새 내용을 받으므로, 문서만 고쳐도 해당 플러그인 PATCH + `metadata.version`을 올립니다 (Codex-eligible 이면 매니페스트 재생성). 반면 루트 문서(`AGENTS.md`, `README.md`, `code_review.md`, `.claude/rules/*`)는 플러그인 콘텐츠가 아니라 어떤 플러그인도 범프하지 않습니다.
 - Hermes-eligible 플러그인: `plugins/<name>/plugin.yaml`(Hermes 어댑터)의 `version`은 `sync-hermes-manifests.mjs` 가 marketplace 에서 파생해 생성하므로, 버전 범프 후 `node scripts/sync-hermes-manifests.mjs` 재실행으로 갱신하세요. `sync-hermes-manifests.mjs --check` 가 drift 를 가드하므로 수동 동기화는 불필요합니다 (단 Codex `--check` 는 Codex 매니페스트만 봅니다).
 - 어떤 플러그인 버전이든 변경하면 `.claude-plugin/marketplace.json`의 `metadata.version`도 marketplace release 버전으로 올리세요.
-- 플러그인을 추가하거나 제거하면 이 문서의 `## Plugins (N)` 수와 구조 트리, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 문서의 미러 카운트(Hermes allowlist `현재 N개`, Codex 검증 주석 `# N entries`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다.
+- 플러그인을 추가하거나 제거하면 이 문서의 `## Plugins (N)` 수와 목록, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 문서의 미러 카운트(Hermes allowlist `현재 N개`, Codex 검증 주석 `# N entries`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다.
 - 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다.
 - Claude Code 플러그인 캐시 이슈 때문에 사용자 문서나 릴리스 안내에는 필요 시 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 후 marketplace update 및 Claude Code 재시작 절차를 유지하세요.
 
@@ -313,7 +281,7 @@ codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 
 ### 핵심 최소본 (전문은 `code_review.md`)
 - **P0 (must-block)** — secret/token 노출, 사용자 확인 없는 destructive `gh` 명령 (`gh pr merge` / `gh repo create` / `gh api`), Codex 매니페스트 (`.agents/**`, `plugins/*/.codex-plugin/**`) 손편집, shell injection (사용자 입력 unquoted).
-- **P1 (should-block)** — 모든 should-block 규칙은 하드 유지한다 (soft-follow 미검증이므로 code_review.md 로 demote 하지 않는다): plugin version/count drift (`plugin.json` ↔ `marketplace.json` ↔ AGENTS/README 트리·배지·`metadata.version`), idempotency 회귀 (재실행 시 사용자 파일 덮어쓰기·`nothing to commit` abort·`origin` 충돌), cross-platform shell 가정 (`sed -i`·`realpath -m` GNU-only / `${VAR,,}` Bash 4+), `gh api --paginate`+`--jq` 에 `--slurp` 누락, sed 치환 안전성 (`&`·구분자·`\` escape, 사용자 입력 정화), API 실패를 빈 결과로 삼키는 패턴 (`gh api ... || echo "[]"`), skill/command frontmatter `name`/`description` 누락·오류, `Read`/`Edit` 영역을 `Bash cat`/`sed` 로 우회, 새 dependency·GitHub Actions·CI/CD 권한 변경 (최소 권한·lockfile·supply-chain).
+- **P1 (should-block)** — 모든 should-block 규칙은 하드 유지한다 (soft-follow 미검증이므로 code_review.md 로 demote 하지 않는다): plugin version/count drift (`plugin.json` ↔ `marketplace.json` ↔ AGENTS 플러그인 목록·README 트리·배지·`metadata.version`), idempotency 회귀 (재실행 시 사용자 파일 덮어쓰기·`nothing to commit` abort·`origin` 충돌), cross-platform shell 가정 (`sed -i`·`realpath -m` GNU-only / `${VAR,,}` Bash 4+), `gh api --paginate`+`--jq` 에 `--slurp` 누락, sed 치환 안전성 (`&`·구분자·`\` escape, 사용자 입력 정화), API 실패를 빈 결과로 삼키는 패턴 (`gh api ... || echo "[]"`), skill/command frontmatter `name`/`description` 누락·오류, `Read`/`Edit` 영역을 `Bash cat`/`sed` 로 우회, 새 dependency·GitHub Actions·CI/CD 권한 변경 (최소 권한·lockfile·supply-chain).
 - **Do not flag** — 포매터 영역 (들여쓰기·따옴표·trailing whitespace), import 순서, 단순 typo, 루트 `CLAUDE.md` 가 `@AGENTS.md` 한 줄 포인터인 것 ("CLAUDE.md 가 없다/내용 없다" 지적은 오탐).
 - 위 P0/P1/Do-not-flag 은 하드 최소본이다. **elaboration 만 soft** — 발견사항 제시 순서, Domain-specific 플러그인 추가/제거·skill 추가 문서 동기화 상세 체크리스트, 도입-버전 마커 오탐 예외, plugin-cache refresh 등 **전문은 [`code_review.md`](code_review.md)**.
 

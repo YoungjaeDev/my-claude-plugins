@@ -13,7 +13,7 @@
 - 플러그인 개발 중 라이브러리·런타임·플랫폼 사실을 확인할 때는 `docs/llm-doc-sources.md` 에 정리된 LLM 문서 소스(mcpdocs 등록 + deepwiki 타깃)를 먼저 사용하세요.
 - 문서와 매니페스트가 함께 움직이는 저장소이므로 코드 변경뿐 아니라 `README.md`, 이 문서, marketplace manifest의 동기화 필요성을 항상 확인하세요.
 
-플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.
+플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/install-skills.mjs` → `npx skills`)가 함께 읽습니다 — one source, three runtimes.
 
 ## Plugins (24)
 
@@ -108,10 +108,9 @@
 - `plugins/<name>/`: 각 플러그인의 원본 디렉터리.
 - `plugins/<name>/.claude-plugin/plugin.json`: 플러그인별 매니페스트와 버전.
 - `plugins/<name>/.codex-plugin/plugin.json`: Codex 0.135 용 매니페스트 (generated, do not edit by hand).
-- `plugins/<name>/plugin.yaml` + `plugins/<name>/__init__.py`: Hermes Agent 어댑터 (HERMES_ELIGIBLE 플러그인만, generated, do not edit by hand).
 - `.agents/plugins/marketplace.json`: Codex marketplace 카탈로그 (generated).
 - `scripts/sync-codex-manifests.mjs`: Codex 매니페스트 생성기. `--check` 로 drift 가드, `--dry-run` 으로 출력 미리보기.
-- `scripts/sync-hermes-manifests.mjs`: Hermes 어댑터 생성기. `--check` drift + orphan 가드, `--dry-run` 미리보기.
+- `scripts/install-skills.mjs`: 스킬 설치 진입점. `npx skills` 를 감싸 Codex·Hermes 에 스킬을 설치한다. Hermes 는 생성 산출물이 없다 (이 스크립트가 유일한 경로).
 
 ## 멀티런타임 통합 (Claude Code ↔ Codex ↔ Hermes Agent)
 
@@ -121,14 +120,14 @@
 |---|---|---|---|
 | 최상위 지침 | `CLAUDE.md` (`@AGENTS.md` import), `.claude/rules/*.md` (auto-load) | `AGENTS.md` (verbatim 로드 — `@import` 메커니즘 자체가 없음) | `AGENTS.md` (verbatim) |
 | 프롬프트 주입 hook | 플러그인 `UserPromptSubmit` (`plugin.json` → `hooks/*.sh`) | 번들 `hooks/codex-hooks.json` → 매니페스트 `hooks` 배선 (`codex` 포맷 인자, `/hooks` trust). 레거시 수동 `~/.codex/hooks.json` 도 여전히 동작 | (별도 hook surface — 현재 미사용) |
-| skill | `plugins/*/skills` (native) | 같은 트리 in-place + generated `.codex-plugin/plugin.json` (아래 "Codex 통합") | 같은 트리 in-place + generated `plugin.yaml` + `__init__.py` (아래 "Hermes 통합") |
+| skill | `plugins/*/skills` (native) | 같은 트리 in-place + generated `.codex-plugin/plugin.json` (아래 "Codex 통합") | 같은 트리에서 `npx skills` 로 `~/.hermes/skills/` 에 설치 — 생성 산출물 없음 (아래 "Hermes 통합") |
 | command / subagent | `plugins/*/{commands,agents}` (native) | Codex 0.135 미지원 (Claude-only) | Hermes 미지원 (skill 만) |
 | skill 본문 도구명 | Claude 도구명 (`Bash`, `Read`, ...) | Claude 와 동일 (본문 그대로 읽음) | 본문의 호환 표로 Hermes 도구명 매핑 (`Bash`→`terminal`, `AskUserQuestion`→`clarify`, ...) |
 | 공유 중립 lore | `.llmwiki/` (세 에이전트 동일 루트, fork 금지) | `.llmwiki/` | `.llmwiki/` |
 
 - 최상위 지침은 이 파일 한 곳에만 쓴다. `CLAUDE.md` 는 `@AGENTS.md` 한 줄 import 라 편집할 내용이 없다.
 - Claude hook 을 추가/변경하면 Codex 대응을 점검한다: 플러그인이 번들 `hooks/codex-hooks.json` 디스크립터를 실으면 `node scripts/sync-codex-manifests.mjs` 가 이를 매니페스트 top-level `hooks` 로 배선한다 (레거시 수동 `~/.codex/hooks.json` 경로는 여전히 유효). 어느 쪽이든 Codex hook 은 별도 `/hooks` trust 승인이 필요하다 (자동 등록 안 됨).
-- skill / 버전 / description 을 바꾸면 Codex 매니페스트 재생성(`node scripts/sync-codex-manifests.mjs`) + (Hermes-eligible 이면) Hermes 어댑터 재생성(`node scripts/sync-hermes-manifests.mjs`)이 필요한지 점검한다 ("Codex 통합" / "Hermes 통합" 섹션 + `plugin-versioning.md`).
+- skill / 버전 / description 을 바꾸면 Codex 매니페스트 재생성(`node scripts/sync-codex-manifests.mjs`)이 필요한지 점검한다 ("Codex 통합" 섹션 + `plugin-versioning.md`). Hermes 쪽에는 재생성할 산출물이 없다 — 설치본은 `npx skills` 가 소스 트리에서 직접 가져간다.
 - skill 본문을 추가/변경할 때 Hermes 호환 표(Claude/Codex 도구 용어 → Hermes 도구)를 점검한다 — 3런타임 포터블.
 - subagent 위임은 Claude 전용 가속일 뿐이다 — skill 단계의 인라인 크로스런타임 경로가 primary 로 남아야 하고, skill 로직을 agent 정의로 옮기지 않는다 (Codex 0.135 / Hermes 는 agents surface 가 없어 옮긴 로직이 조용히 사라진다).
 - wiki lore 는 `.claude/rules/` 로 승격하지 않는다 — Codex/Hermes 가 못 읽는다. cross-agent insight 는 `.llmwiki/insight/` 로 graduate 후 공유 주입 hook 으로 노출한다.
@@ -153,9 +152,9 @@
 
 - 플러그인 버전을 올릴 때는 `plugins/<name>/.claude-plugin/plugin.json`과 `.claude-plugin/marketplace.json`의 해당 항목을 같은 변경에 포함하세요.
 - `plugins/<name>/` 아래 **어떤 파일이든** 바뀌면 버전 범프 대상입니다 — 코드/스킬뿐 아니라 번들 `references/`·`docs`·asset 편집도 포함. 캐시로 게이트된 사용자는 버전 범프가 있어야 새 내용을 받으므로, 문서만 고쳐도 해당 플러그인 PATCH + `metadata.version`을 올립니다 (Codex-eligible 이면 매니페스트 재생성). 반면 루트 문서(`AGENTS.md`, `README.md`, `code_review.md`, `.claude/rules/*`)는 플러그인 콘텐츠가 아니라 어떤 플러그인도 범프하지 않습니다.
-- Hermes-eligible 플러그인: `plugins/<name>/plugin.yaml`(Hermes 어댑터)의 `version`은 `sync-hermes-manifests.mjs` 가 marketplace 에서 파생해 생성하므로, 버전 범프 후 `node scripts/sync-hermes-manifests.mjs` 재실행으로 갱신하세요. `sync-hermes-manifests.mjs --check` 가 drift 를 가드하므로 수동 동기화는 불필요합니다 (단 Codex `--check` 는 Codex 매니페스트만 봅니다).
+- Hermes 쪽에는 버전을 담은 생성 산출물이 없습니다 — 설치본은 `npx skills` 가 소스 트리에서 직접 가져가므로 별도 재생성이나 drift 가드가 필요 없습니다.
 - 어떤 플러그인 버전이든 변경하면 `.claude-plugin/marketplace.json`의 `metadata.version`도 marketplace release 버전으로 올리세요.
-- 플러그인을 추가하거나 제거하면 이 문서의 `## Plugins (N)` 수와 목록, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 문서의 미러 카운트(Hermes allowlist `현재 N개`, Codex 검증 주석 `# N entries`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다.
+- 플러그인을 추가하거나 제거하면 이 문서의 `## Plugins (N)` 수와 목록, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 문서의 미러 카운트(Codex 검증 주석 `# N entries`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다.
 - 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다.
 - Claude Code 플러그인 캐시 이슈 때문에 사용자 문서나 릴리스 안내에는 필요 시 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 후 marketplace update 및 Claude Code 재시작 절차를 유지하세요.
 
@@ -235,26 +234,25 @@ node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ## Hermes 통합 (shared-source)
 
 ```bash
-node scripts/sync-hermes-manifests.mjs           # write adapters
-node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (validate-codex.yml + .githooks/pre-commit)
+node scripts/install-skills.mjs              # 대화형 설치 (스킬 선택 → 타겟 → scope)
+node scripts/install-skills.mjs --selftest   # 검색 로직 self-check (TTY·네트워크 불필요)
 ```
 
-- Hermes Agent 도 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 어댑터(`plugin.yaml` + `__init__.py`)는 `scripts/sync-hermes-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성합니다 — `plugins/<name>/plugin.yaml` / `__init__.py` 를 손으로 편집하지 마세요.
-- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 7개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`. 커버리지 확장은 allowlist 에 이름 추가.
-- Hermes-eligible 플러그인의 `version` / `description` 을 바꾸면 `node scripts/sync-hermes-manifests.mjs` 를 실행해 어댑터를 재생성하세요. `plugin.yaml` 의 `version` 은 marketplace 파생이므로 `--check` 가 drift + orphan 어댑터를 잡습니다 (수동 동기화 불필요 — 생성으로 해소).
-- `__init__.py` 는 `skills/*/SKILL.md` 를 `<plugin>:<skill>` 으로 등록하는 제네릭 엔트리포인트입니다 (플러그인별 로직 없음, `import yaml`=PyYAML 가정).
+- Hermes Agent 도 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 다만 **생성 산출물이 없습니다** — `npx skills`(vercel-labs/skills)가 `.claude-plugin/marketplace.json` 을 직접 파싱해 `plugins/<name>/skills/*/SKILL.md` 를 찾아 `~/.hermes/skills/` 로 설치합니다. `scripts/install-skills.mjs` 는 그 위에 플러그인 그룹 선택기와 `HERMES_HOME` 프로필 타겟팅만 얹은 zero-dep 래퍼입니다.
+- 커버리지는 allowlist 가 아니라 "스킬을 가진 플러그인 전부"입니다 (현재 23 플러그인 / 52 스킬). 유지할 명단이 없으므로 플러그인을 추가해도 Hermes 쪽에 할 일이 없습니다.
+- `~/.hermes/skills/` 는 Hermes 의 skill SoT 이고, 여기 설치된 스킬은 `skills_list()` 에 자동 노출되며 슬래시 커맨드가 됩니다 (공식 docs). 즉 `description` 기반 표면화가 Claude Code·Codex 와 동일하게 동작합니다.
+- 설치는 심볼릭 링크가 기본이라 `~/.agents/skills/<skill>` 하나를 정본으로 두고 각 에이전트 디렉터리가 그걸 가리킵니다. 이름은 평평합니다 — `github-dev:cr-fix` 가 아니라 `cr-fix` 이므로 외부 스킬과 이름이 겹치지 않게 유지하세요.
+- 이전의 네이티브 어댑터(`plugin.yaml` + `__init__.py`)와 `scripts/sync-hermes-manifests.mjs` 생성기는 #166 에서 제거했습니다. 어댑터는 7 플러그인 / 20 스킬만 덮으면서 버전 범프마다 재생성과 `--check` 를 요구했고, 로드에 `skill_view("<plugin>:<skill>")` 명시 호출이 필요했습니다.
 - 공유 skill 본문은 3런타임 포터블이어야 합니다. Claude/Codex 는 도구명이 동일하므로, 본문에 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표(`Bash`→`terminal`, `Read`→`read_file`, `Edit`→`patch`, `AskUserQuestion`→`clarify`, `Task`→`delegate_task`, `Skill`→`skill_view`, 이미지 생성→`image_generate`, `NotebookEdit`→Hermes Jupyter Live Kernel / `write_file`·`patch` 등)를 둡니다. 새 skill 추가/도구 사용 변경 시 이 표를 점검하세요. 신규·편집 skill 은 이 표를 본문마다 다시 타이핑하는 대신 번들 `references/<harness>-tools.md` 로 중앙화하고 본문이 그것을 가리키는 형태를 우선합니다 — 점진 이관이므로 이미 그 본문의 도구 사용을 편집 중일 때만 채택하고, 표를 옮기려고 기존 본문을 새로 쓰지는 않습니다 (surgical-diff).
 - 번들 `scripts/` 를 호출하는 skill 본문은 `${CLAUDE_PLUGIN_ROOT}` 를 그대로 쓰지 마세요 — Codex 0.135 는 이 변수를 export 하지 않아 첫 단계에서 실패합니다. 크로스 런타임 `PLUGIN_ROOT` resolver 블록(`CLAUDE_PLUGIN_ROOT` → 소스트리 `plugins/<name>` → Codex 캐시 탐색)을 본문에 포함하세요 (레퍼런스 구현: project-init, mem0-ops).
-- Hermes plugin 스킬은 **명시 로드**입니다 (passive index 아님) — Claude Code/Codex 0.135 가 `description` 으로 skill 을 자동 표면화하는 것과 달리, Hermes 는 `--enable` 후 새 세션에서 `skill_view("<plugin>:<skill>")` 로 명시 호출해야만 로드됩니다. trigger 문구는 여전히 `description` 에 두되 로드 자체는 의도된 호출이므로, "description 으로 자동 선택됐다" 고 가정하는 본문은 Hermes 에서 틀립니다 (본문 상단 Hermes 호환 노트를 로드 계약으로 취급). 어댑터와 무관한 스킬 단위 설치는 `node scripts/install-skills.mjs` (`npx skills`) 로 가능합니다.
-- 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
+- `install-skills.mjs` 는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
 
 ## 검증
 
-- Codex / Hermes 매니페스트 drift 가드 (모든 PR 에서 실행):
+- Codex 매니페스트 drift 가드 (모든 PR 에서 실행):
 
 ```bash
 node scripts/sync-codex-manifests.mjs --check
-node scripts/sync-hermes-manifests.mjs --check
 ```
 
 - 로컬 Codex CLI 에서 marketplace 등록 확인:

@@ -43,21 +43,20 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 
 설치 후 `/github-dev:resolve-issue 123` 같은 명령어로 바로 사용 가능합니다.
 
-### Hermes Agent에서 github-dev만 설치
+### Hermes Agent / Codex에 스킬 설치
 
-Hermes Agent는 모노레포의 `plugins/github-dev` 서브디렉터리만 설치할 수 있습니다:
+Claude Code 밖에서는 플러그인이 아니라 **스킬 단위**로 설치합니다. 대화형 설치기가 `npx skills` 를 감싸고 있습니다:
 
 ```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
-hermes gateway restart  # Slack/Telegram 등 gateway 사용 시
+node scripts/install-skills.mjs
 ```
 
-설치 후 새 Hermes 세션에서 plugin skill을 명시적으로 로드합니다 (`github-dev:<skill>`은 system prompt/skills_list에 자동 노출되지 않는 opt-in 대상입니다):
+플러그인 그룹에서 원하는 스킬을 고른 뒤 타겟(`hermes-agent` / `codex`)과 scope(global `~/` / project `./`)를 선택하면 끝입니다. Hermes 는 `~/.hermes/skills/`, Codex 는 `~/.codex/skills/` 에 설치되고, 두 런타임 모두 거기 있는 스킬을 자동으로 인덱싱합니다 (Hermes 에서는 슬래시 커맨드로도 잡힙니다).
 
-```text
-skill_view("github-dev:resolve-issue")  # 이후 이슈 번호와 함께 실행 요청
-skill_view("github-dev:cr-fix")         # 이후 --cr-source auto 등 인자와 함께 실행 요청
-skill_view("github-dev:commit-and-push")
+특정 스킬만 바로 넣으려면 `npx skills` 를 직접 써도 됩니다:
+
+```bash
+npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent -s cr-fix -s post-merge -g
 ```
 
 ## 플러그인 업데이트
@@ -186,7 +185,7 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 | `/e2e-harness:e2e-author` | CUF(critical user flow) 선정 → planner 계획서 → **사용자 검토 게이트** → generator 스펙 생성(semantic `getByRole` 강제) → `--repeat-each` 번인으로 플래키 차단 |
 | `/e2e-harness:e2e-debug` | 실패한 CI run/PR 입력 → 트레이스 아티팩트 다운로드 → 헤드리스 trace 분석 → healer 원인 분석·수리(최대 3회 후 skip + 사유 코멘트) → 재실행 검증 |
 
-**Cross-runtime (Claude / Codex):** 세 스킬은 런타임에 따라 두 런타임 계열·세 실행 경로(Path A/B/C)로 갈립니다. **Claude Code** 는 `init-agents --loop=claude` 가 생성한 named agent(planner/generator/healer)를 이름으로 디스패치합니다(**Path A**). **Codex 0.135** 는 그 agent 파일을 named subagent 로 등록하지 못하므로, 번들된 `references/role-contracts.md` 의 역할 계약을 인라인으로 실은 **generic subagent** 로 같은 역할을 실행하거나(**Path B**), 위임이 불가능하면 순차 실행합니다(**Path C**). CUF 선정·계획 검토 게이트·semantic locator·`--repeat-each` 번인·trace-first 진단·healer 3회 상한 등 모든 게이트는 두 경로에서 동일합니다. `--loop=codex` 는 버전 추정이 아니라 feature-detect 로만 사용하고, `.mcp.json` 의 `playwright-test` 항목은 기존 서버를 덮어쓰지 않고 머지합니다. (Hermes 는 forward-compatible — `e2e-harness` 는 아직 `HERMES_ELIGIBLE` 이 아니라 현재 Hermes 에는 로드되지 않으며, generic 경로가 향후 편입 시 `delegate_task` 로 매핑됩니다.)
+**Cross-runtime (Claude / Codex):** 세 스킬은 런타임에 따라 두 런타임 계열·세 실행 경로(Path A/B/C)로 갈립니다. **Claude Code** 는 `init-agents --loop=claude` 가 생성한 named agent(planner/generator/healer)를 이름으로 디스패치합니다(**Path A**). **Codex 0.135** 는 그 agent 파일을 named subagent 로 등록하지 못하므로, 번들된 `references/role-contracts.md` 의 역할 계약을 인라인으로 실은 **generic subagent** 로 같은 역할을 실행하거나(**Path B**), 위임이 불가능하면 순차 실행합니다(**Path C**). CUF 선정·계획 검토 게이트·semantic locator·`--repeat-each` 번인·trace-first 진단·healer 3회 상한 등 모든 게이트는 두 경로에서 동일합니다. `--loop=codex` 는 버전 추정이 아니라 feature-detect 로만 사용하고, `.mcp.json` 의 `playwright-test` 항목은 기존 서버를 덮어쓰지 않고 머지합니다. (Hermes 도 이 스킬들을 로드하며 named agent 를 등록하지 못하는 것은 Codex 와 같아, 같은 generic 경로를 `delegate_task` 로 매핑해 실행합니다.)
 
 **Requirements:** Node.js + Playwright (`npm init playwright@latest`), `gh` CLI (e2e-debug 의 CI 트레이스 fetch)
 
@@ -216,7 +215,7 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 | `paper-scout` | paper-search-tools 8-source 래핑 (arXiv/Semantic Scholar/Crossref/PubMed/bioRxiv/medRxiv/IACR/Google Scholar). 도메인별 2-3 source 선택, 학술 신호 감지 시 deep mode 5-axis 에 자동 인입 |
 | `synthesis-scout` | dedup (DOI 포함) / trust ranking (peer-reviewed > arxiv high-cite > arxiv recent) / conflict resolution / 최종 보고서 |
 
-**런타임 이식성 (v2.2.0)**: 이 6개 agent 는 **Claude Code 전용** — Codex 0.135 는 skill 은 노출하지만 `agents/*.md` 를 등록하지 못한다 (Hermes 도 `delegate_task` fallback 대상이지만 `code-scout` 는 아직 Hermes-eligible 이 아니라 로드되지 않는다 — forward-compat). 그 런타임에서는 `research-orchestrator` skill 이 named agent 미등록을 감지해 동일 축을 generic 병렬 subagent (Codex `Task` / Hermes `delegate_task`) 로, 위임 불가 시 현재 에이전트 내 순차 실행으로 돌리고 synthesis 를 in-skill 로 수행한다. 세 경로가 공유하는 계약은 `skills/research-orchestrator/references/axis-contracts.md`. Claude named-agent quick / deep 경로 동작은 무변경.
+**런타임 이식성 (v2.2.0)**: 이 6개 agent 는 **Claude Code 전용** — Codex 0.135 는 skill 은 노출하지만 `agents/*.md` 를 등록하지 못한다 (Hermes 도 이 skill 을 로드하되 마찬가지로 named agent 는 등록하지 못해 `delegate_task` fallback 을 탄다). 그 런타임에서는 `research-orchestrator` skill 이 named agent 미등록을 감지해 동일 축을 generic 병렬 subagent (Codex `Task` / Hermes `delegate_task`) 로, 위임 불가 시 현재 에이전트 내 순차 실행으로 돌리고 synthesis 를 in-skill 로 수행한다. 세 경로가 공유하는 계약은 `skills/research-orchestrator/references/axis-contracts.md`. Claude named-agent quick / deep 경로 동작은 무변경.
 
 **경계 — `/deep-research` 와 분리**: code-scout 는 code / ML / docs / papers 도메인 전용. 정책 / 시장 / 역사 / 인물 등 일반 토픽은 sibling `/deep-research` 직접 호출 (7-phase + adversarial verify + state machine). orchestrator 가 위임하지 않음 — 의도된 boundary.
 
@@ -234,7 +233,7 @@ Agent(subagent_type="code-scout:paper-scout",
       prompt="query=sparse autoencoder interpretability\nworkspace_dir=$WORKSPACE\nartifact_id=05_paper")
 ```
 
-> 위 `Agent(subagent_type="code-scout:*-scout")` 직접 호출은 **Claude Code 전용**이다. Codex 에서는 이 named agent 들이 등록되지 않으므로 `Skill("code-scout:research-orchestrator")` 로 진입하면 orchestrator 가 generic subagent / 순차 fallback 으로 같은 축을 실행한다 (Hermes 는 `code-scout` 가 아직 Hermes-eligible 이 아니라 미로드 — 위 "런타임 이식성" 참조).
+> 위 `Agent(subagent_type="code-scout:*-scout")` 직접 호출은 **Claude Code 전용**이다. Codex 에서는 이 named agent 들이 등록되지 않으므로 `Skill("code-scout:research-orchestrator")` 로 진입하면 orchestrator 가 generic subagent / 순차 fallback 으로 같은 축을 실행한다 (Hermes 도 같은 경로를 타되 도구명이 `delegate_task` 다 — 위 "런타임 이식성" 참조).
 
 **Workspace 준비 (위 직접 호출 전에 실제 셸에서):**
 ```bash
@@ -689,47 +688,36 @@ git config core.hooksPath .githooks
 
 활성화하면 매 커밋 전에 `node scripts/sync-codex-manifests.mjs --check` 가 돌아 drift / 길이 위반을 차단합니다. 훅을 건너뛴 기여자도 PR 시 `.github/workflows/validate-codex.yml` 이 동일 명령으로 잡습니다.
 
-### Hermes Agent (shared source)
+### 스킬 설치 (Hermes Agent / Codex)
 
-Hermes Agent 도 동일한 `plugins/<name>/` 트리를 네이티브로 읽습니다. 어댑터(`plugin.yaml` + `__init__.py`)는 `scripts/sync-hermes-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성:
-
-```bash
-# 어댑터 생성 / 재생성 (eligible 플러그인의 version·description 변경 시)
-node scripts/sync-hermes-manifests.mjs
-
-# PR drift 가드 — CI(validate-codex.yml) + .githooks/pre-commit 에서 실행
-node scripts/sync-hermes-manifests.mjs --check
-
-# Hermes 에 플러그인 단위 설치 (plugin.yaml 어댑터 필요)
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
-hermes gateway restart  # 메시징 게이트웨이 사용 시
-```
-
-어댑터 필드는 marketplace 엔트리에서 파생되고(`plugin.yaml` name/version/description, `__init__.py` 는 SKILL.md 를 `<plugin>:<skill>` 로 등록하는 제네릭 엔트리포인트 — 플러그인별 로직 없음), 대상은 `HERMES_ELIGIBLE` allowlist (이번 라운드 7개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`) 입니다. allowlist 에 이름을 추가하면 커버리지가 확장됩니다. `--check` 가 어댑터 drift + orphan 어댑터를 잡습니다. 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
-
-플러그인 스킬은 opt-in 이라 enable 후 `skill_view("<plugin>:<skill>")` 로 명시 로드합니다 (`--enable` 후 새 Hermes 세션 시작).
-
-**설치 두 경로:**
-- **플러그인 단위** (`hermes plugins install .../plugins/<name>` — 위 `plugin.yaml` 어댑터 필요, 이번 PR 이 5개 추가). 플러그인 전체를 Hermes 에 등록.
-- **스킬 단위** (`node scripts/install-skills.mjs` → `npx skills` — 어댑터와 무관, 어댑터 없는 플러그인도 가능). 개별 skill 만 설치.
-
-### 스킬을 Hermes / Codex 에 설치 (스킬 단위)
-
-이 마켓플레이스의 skill 을 **스킬 단위**로 Hermes Agent 와 Codex 에 설치하는 대화형 도구 (위 `plugin.yaml` 어댑터와 무관 — 어댑터 없는 플러그인도 설치 가능). `npx skills`(vercel-labs/skills) 를 래핑하며 Node builtin 만 사용(zero-dep):
+Hermes Agent 도 동일한 `plugins/<name>/` 트리를 읽습니다. 다만 **생성 산출물이 없습니다** — `npx skills`([vercel-labs/skills](https://github.com/vercel-labs/skills))가 `.claude-plugin/marketplace.json` 을 직접 파싱해 `plugins/<name>/skills/*/SKILL.md` 를 찾아 설치합니다. `scripts/install-skills.mjs` 는 그 위에 플러그인 그룹 선택기와 Hermes 프로필 타겟팅만 얹은 zero-dep 래퍼입니다:
 
 ```bash
+# 대화형 — 스킬 선택 → 타겟(hermes-agent / codex) → scope(global / project) → Hermes 프로필
 node scripts/install-skills.mjs
+
+# 검색 로직 self-check (TTY·네트워크 불필요)
+node scripts/install-skills.mjs --selftest
+
+# npx skills 직접 사용
+npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent -s cr-fix -g
+npx skills add . -l          # 이 저장소가 노출하는 스킬 목록
 ```
 
-플러그인 그룹 단위로 skill 을 고른 뒤 타겟(`hermes-agent` / `codex`)·scope(global `~/` / project `./`)·Hermes profile 을 선택하면 `npx skills add` 로 설치합니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes profile 은 `HERMES_HOME` env 로 타겟팅합니다.
+커버리지는 allowlist 가 아니라 "스킬을 가진 플러그인 전부" 입니다 (현재 23 플러그인 / 52 스킬). 설치 경로는 Hermes `~/.hermes/skills/`, Codex `~/.codex/skills/` 이고, 두 런타임 모두 그 디렉터리를 자동 인덱싱합니다 — Hermes 에서는 `skills_list()` 에 노출되며 슬래시 커맨드로도 잡힙니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes 프로필은 `HERMES_HOME` env 로 타겟팅합니다.
+
+스킬 이름은 평평하게 설치됩니다 (`github-dev:cr-fix` 가 아니라 `cr-fix`). 이 저장소의 52개는 서로 유니크하며 `--selftest` 가 이를 강제하지만, 다른 출처의 스킬과 이름이 겹치지 않는지는 확인이 필요합니다.
+
+> 이전에는 Hermes 용 네이티브 어댑터(`plugin.yaml` + `__init__.py`)를 `scripts/sync-hermes-manifests.mjs` 로 생성했습니다. 7 플러그인 / 20 스킬만 덮으면서 버전 범프마다 재생성과 drift 가드를 요구했고 로드에 `skill_view()` 명시 호출이 필요해, #166 에서 제거하고 `npx skills` 경로로 일원화했습니다.
+
+공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
 
 ### CI 가드가 지키는 것 (curation / security)
 
-shared-source 배선은 5개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 다른 도구체인에 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
+shared-source 배선은 4개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 다른 도구체인에 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
-- `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
-- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
+- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 23)가 `manifest-eligibility.mjs` SoT 와 일치.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
 
@@ -737,7 +725,7 @@ drift·길이·shape 위반은 **차단**(exit 1)이고, prose 경고는 측정�
 
 ### 머신 로컬 운영 갱신 (PR 밖 오퍼레이터 체크리스트)
 
-Codex 의 UserPromptSubmit 훅과 Hermes 스킬은 이제 **번들 디스크립터/어댑터**로 배포되므로 marketplace 업데이트가 정본입니다. 다만 예전에 손으로 설치한 복사본(수동 `~/.codex/hooks/prompt_inject.sh`, 스킬 단위로 깐 `~/.agents/skills/<...>`)을 쓰던 머신은 그 복사본이 stale 해질 수 있습니다. 아래는 리포지토리 상태를 바꾸지 않는 **머신 로컬 작업**이라 PR 에 포함되지 않으며, marketplace 업데이트 후 한 번 실행합니다:
+Codex 의 UserPromptSubmit 훅은 이제 **번들 디스크립터**로 배포되므로 marketplace 업데이트가 정본입니다. 다만 예전에 손으로 설치한 복사본(수동 `~/.codex/hooks/prompt_inject.sh`)이나 `npx skills` 로 깐 스킬 사본(`~/.agents/skills/<...>`)을 쓰던 머신은 그 복사본이 stale 해질 수 있습니다. 아래는 리포지토리 상태를 바꾸지 않는 **머신 로컬 작업**이라 PR 에 포함되지 않으며, marketplace 업데이트 후 한 번 실행합니다:
 
 ```bash
 # 1) marketplace 캐시 갱신 (위 "플러그인 업데이트" 절차)
@@ -747,11 +735,11 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add core-config@my-claude-plugins   # 이후 /hooks 로 trust 재승인
 
-# 3) Hermes: 스킬 단위 설치본 갱신
-node scripts/install-skills.mjs                  # 또는 hermes plugins install ... --enable
+# 3) Hermes / Codex: 스킬 설치본 갱신
+npx skills update -g                             # 또는 node scripts/install-skills.mjs 로 재설치
 ```
 
-번들 디스크립터/어댑터를 쓰는 신규 설치는 marketplace 업데이트만으로 최신이 됩니다 — 이 체크리스트는 레거시 수동 복사본을 쓰는 머신에만 필요합니다.
+번들 디스크립터를 쓰는 신규 설치는 marketplace 업데이트만으로 최신이 됩니다 — 이 체크리스트는 레거시 수동 복사본이나 별도 스킬 설치본을 쓰는 머신에만 필요합니다.
 
 ## 요구사항
 
@@ -761,9 +749,9 @@ node scripts/install-skills.mjs                  # 또는 hermes plugins install
 | `gh` | GitHub 플러그인 | github-dev |
 | `uv` | Python MCP 서버 | core-config |
 | `ruff` | Python 포매팅 | core-config |
-| Node 18+ | Codex/Hermes 매니페스트 생성기 런타임 | `scripts/sync-{codex,hermes}-manifests.mjs` |
+| Node 18+ | Codex 매니페스트 생성기 + 스킬 설치기 런타임 | `scripts/sync-codex-manifests.mjs`, `scripts/install-skills.mjs` |
 | Codex CLI 0.135+ | shared-source 네이티브 로드 (`.codex-plugin/plugin.json`) | Codex 사용자 |
-| Hermes Agent | shared-source 네이티브 로드 (`plugin.yaml` + `__init__.py`) | Hermes 사용자 |
+| Hermes Agent | `npx skills` 로 `~/.hermes/skills/` 에 스킬 설치 | Hermes 사용자 |
 
 ## 프로젝트 구조
 

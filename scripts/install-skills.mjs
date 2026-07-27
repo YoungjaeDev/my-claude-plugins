@@ -2,6 +2,13 @@
 // Skills installer TUI — pick this marketplace's skills and install them to
 // Hermes Agent / Codex by wrapping `npx skills` (vercel-labs/skills).
 //
+// This is the ONLY delivery path for Hermes: since #166 there is no generated
+// Hermes adapter, so `npx skills` reading .claude-plugin/marketplace.json in place
+// is what puts skills in ~/.hermes/skills/ (where Hermes indexes them into
+// skills_list() and exposes them as slash commands). Codex additionally has the
+// generated .codex-plugin manifests, which carry hooks and MCP servers that skills
+// alone cannot.
+//
 // Zero-dep: Node builtins only. Run directly:
 //   node scripts/install-skills.mjs            interactive install
 //   node scripts/install-skills.mjs --selftest pure-logic self-check (no TTY/network)
@@ -250,7 +257,7 @@ async function interactive() {
   out('\n=== summary ===\n');
   for (const r of results) out(`  ${r.ok ? 'OK  ' : 'FAIL'} ${r.agent}${r.ok ? '' : ` (exit ${r.code})`}\n`);
   out(`  ${skills.length} skill(s): ${skills.join(', ')}\n`);
-  out(`  lockfile: global → ~/.agents/skills-lock.json · project → ./skills-lock.json (managed by npx skills)\n`);
+  out(`  lockfile: global → ~/.agents/.skill-lock.json · project → ./skills-lock.json (managed by npx skills)\n`);
   if (results.some((r) => !r.ok)) process.exitCode = 1;
 }
 

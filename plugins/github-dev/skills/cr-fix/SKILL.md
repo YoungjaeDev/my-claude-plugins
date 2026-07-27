@@ -83,10 +83,14 @@ elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then
   # Legacy plugin-adapter layout, kept for a profile installed before #166.
   SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
+elif [ -d "$HOME/.hermes/skills/cr-fix" ]; then
+  # Default profile, flat — where npx skills installs. Probed BEFORE the legacy
+  # path so a half-migrated machine carrying both dirs runs the current copy.
+  SKILL_DIR="$HOME/.hermes/skills/cr-fix"
 elif [ -d "$HOME/.hermes/plugins/github-dev/skills/cr-fix" ]; then
-  SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"
+  SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"   # legacy default install
 else
-  # Default profile (HERMES_HOME unset) — npx skills installs flat here.
+  # Nothing on disk — name the path a fresh install would use, not the retired one.
   SKILL_DIR="$HOME/.hermes/skills/cr-fix"
 fi
 

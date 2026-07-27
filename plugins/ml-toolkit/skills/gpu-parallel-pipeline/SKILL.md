@@ -123,10 +123,12 @@ elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/gpu-parallel-pipelin
   SKILL_DIR="$HERMES_HOME/skills/gpu-parallel-pipeline"                        # Hermes profile, flat (npx skills)
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
   SKILL_DIR="$HERMES_HOME/plugins/ml-toolkit/skills/gpu-parallel-pipeline"     # legacy plugin-adapter layout
+elif [ -d "$HOME/.hermes/skills/gpu-parallel-pipeline" ]; then
+  SKILL_DIR="$HOME/.hermes/skills/gpu-parallel-pipeline"                       # default profile, flat (npx skills)
 elif [ -d "$HOME/.hermes/plugins/ml-toolkit/skills/gpu-parallel-pipeline" ]; then
   SKILL_DIR="$HOME/.hermes/plugins/ml-toolkit/skills/gpu-parallel-pipeline"    # legacy default install
 else
-  SKILL_DIR="$HOME/.hermes/skills/gpu-parallel-pipeline"                       # default profile, flat (npx skills)
+  SKILL_DIR="$HOME/.hermes/skills/gpu-parallel-pipeline"                       # nothing on disk — name the fresh-install path
 fi
 [ -d "$SKILL_DIR" ] || { echo "gpu-parallel-pipeline: skill dir not resolved" >&2; exit 1; }
 python "$SKILL_DIR/scripts/check_gpu_memory.py"

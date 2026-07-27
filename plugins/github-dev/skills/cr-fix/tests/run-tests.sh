@@ -524,6 +524,7 @@ elif [ -d "plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="plugins/github-d
 elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then SKILL_DIR="$CODEX_CAND/skills/cr-fix"
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then SKILL_DIR="$HERMES_HOME/skills/cr-fix"
 elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
+elif [ -d "$HOME/.hermes/skills/cr-fix" ]; then SKILL_DIR="$HOME/.hermes/skills/cr-fix"
 elif [ -d "$HOME/.hermes/plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"
 else SKILL_DIR="$HOME/.hermes/skills/cr-fix"; fi
 printf '%s' "$SKILL_DIR"
@@ -549,10 +550,15 @@ is "resolver: version outranks marketplace name" "$got" "$RS/cache2/alpha/github
 HH=$(mktemp -d)
 got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/empty-cache" HOME="$HH" bash -c 'unset HERMES_HOME; . ./resolver.sh')
 is "resolver: unset HERMES_HOME -> flat default" "$got" "$HH/.hermes/skills/cr-fix"
-# A profile that still carries the legacy adapter layout keeps resolving to it.
+# Legacy-only machine (never re-installed via npx skills) still resolves.
 mkdir -p "$HH/.hermes/plugins/github-dev/skills/cr-fix"
 got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/empty-cache" HOME="$HH" bash -c 'unset HERMES_HOME; . ./resolver.sh')
-is "resolver: legacy plugin layout still wins when present" "$got" "$HH/.hermes/plugins/github-dev/skills/cr-fix"
+is "resolver: legacy-only machine still resolves" "$got" "$HH/.hermes/plugins/github-dev/skills/cr-fix"
+# Half-migrated machine (both dirs present) must run the CURRENT copy, not the
+# stale adapter one left behind by the old install. (CR Major)
+mkdir -p "$HH/.hermes/skills/cr-fix"
+got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/empty-cache" HOME="$HH" bash -c 'unset HERMES_HOME; . ./resolver.sh')
+is "resolver: flat beats legacy when both exist" "$got" "$HH/.hermes/skills/cr-fix"
 rm -rf "$HH"
 
 # Fresh env (no cache at all) must not kill an errexit caller — the unguarded

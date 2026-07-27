@@ -239,7 +239,8 @@ node scripts/install-skills.mjs --selftest   # 검색 로직 self-check (TTY·�
 ```
 
 - Hermes Agent 도 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 다만 **생성 산출물이 없습니다** — `npx skills`(vercel-labs/skills)가 `.claude-plugin/marketplace.json` 을 직접 파싱해 `plugins/<name>/skills/*/SKILL.md` 를 찾아 `~/.hermes/skills/` 로 설치합니다. `scripts/install-skills.mjs` 는 그 위에 플러그인 그룹 선택기와 `HERMES_HOME` 프로필 타겟팅만 얹은 zero-dep 래퍼입니다.
-- 커버리지는 allowlist 가 아니라 "스킬을 가진 플러그인 전부"입니다 (현재 23 플러그인 / 52 스킬). 유지할 명단이 없으므로 플러그인을 추가해도 Hermes 쪽에 할 일이 없습니다.
+- **설치** 커버리지는 allowlist 가 아니라 "스킬을 가진 플러그인 전부"입니다 (현재 23 플러그인 / 52 스킬). 유지할 명단이 없으므로 플러그인을 추가해도 Hermes 쪽에 할 일이 없습니다.
+- **설치 가능 ≠ 실행 가능.** `npx skills` 는 `skills/<skill>/` 디렉터리 안만 나릅니다 — 그 하위 `scripts/`·`references/`·`assets/` 는 따라오지만 **plugin-level 파일은 오지 않습니다** (실측 2026-07-27: `-s cr-fix` 는 scripts 23개 포함 온전, `-s e2e-author` 는 `SKILL.md` 하나만). 따라서 (a) plugin-level 파일에 의존하는 스킬(`e2e-harness`·`deepwiki`·`docs-forge`·`llm-wiki`)과 (b) Hermes 에 없는 도구를 강제하는 스킬(`notebook:edit-notebook` 의 `NotebookEdit` 전용 규칙)은 설치돼도 실행되지 않습니다. (a) 부류는 이전 어댑터 allowlist 에도 없어 Hermes 에서 동작한 적이 없습니다. 설치기는 이를 필터링하지 않습니다 — 필터는 방금 없앤 allowlist 의 재도입이기 때문입니다. **새 skill 이 번들 파일을 쓸 때는 plugin-level 이 아니라 `skills/<skill>/` 안에 두세요.**
 - `~/.hermes/skills/` 는 Hermes 의 skill SoT 이고, 여기 설치된 스킬은 `skills_list()` 에 자동 노출되며 슬래시 커맨드가 됩니다 (공식 docs). 즉 `description` 기반 표면화가 Claude Code·Codex 와 동일하게 동작합니다.
 - 설치 방식은 `npx skills` 가 정합니다 — 문서상 기본은 심볼릭 링크(`~/.agents/skills/<skill>` 를 정본으로 두고 각 에이전트 디렉터리가 가리킴)이고 `--copy` 또는 링크 불가 시 복사입니다. 다만 `-a hermes-agent` 는 실측(2026-07-27, skills v1.5.20)에서 링크가 아니라 **복사**로 설치됐으므로, 소스 트리를 고쳐도 Hermes 설치본에 자동 반영되지 않습니다 — 재설치하거나 `npx skills update` 를 도세요.
 - 이름은 평평하게 설치됩니다 — `github-dev:cr-fix` 가 아니라 `cr-fix` 이므로 외부 스킬과 이름이 겹치지 않게 유지하세요.

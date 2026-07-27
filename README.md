@@ -704,7 +704,14 @@ npx skills add YoungjaeDev/my-claude-plugins -a hermes-agent -s cr-fix -g
 npx skills add . -l          # 이 저장소가 노출하는 스킬 목록
 ```
 
-커버리지는 allowlist 가 아니라 "스킬을 가진 플러그인 전부" 입니다 (현재 23 플러그인 / 52 스킬). global 설치 경로는 Hermes `~/.hermes/skills/`, Codex `~/.agents/skills/` 이고(실측 2026-07-27 — `~/.codex/skills/` 는 `.system` 전용), 두 런타임 모두 그 디렉터리를 자동 인덱싱합니다 — Hermes 에서는 `skills_list()` 에 노출되며 슬래시 커맨드로도 잡힙니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes 프로필은 `HERMES_HOME` env 로 타겟팅합니다.
+**설치** 커버리지는 allowlist 가 아니라 "스킬을 가진 플러그인 전부" 입니다 (현재 23 플러그인 / 52 스킬). global 설치 경로는 Hermes `~/.hermes/skills/`, Codex `~/.agents/skills/` 이고(실측 2026-07-27 — `~/.codex/skills/` 는 `.system` 전용), 두 런타임 모두 그 디렉터리를 자동 인덱싱합니다 — Hermes 에서는 `skills_list()` 에 노출되며 슬래시 커맨드로도 잡힙니다.
+
+> **설치된다고 전부 동작하는 것은 아닙니다.** `npx skills` 는 스킬 디렉터리 **안**만 나릅니다 — `skills/<skill>/` 하위의 `scripts/`·`references/`·`assets/` 는 따라오지만 그 **위**의 plugin-level 파일은 오지 않습니다 (실측 2026-07-27: `-s cr-fix` 는 scripts 23개까지 온전히, `-s e2e-author` 는 `SKILL.md` 하나만). 그래서 두 부류는 Hermes 에서 설치는 되지만 실행되지 않습니다:
+>
+> - **plugin-level 파일에 의존하는 스킬** — `e2e-harness`(`references/role-contracts.md` 없으면 abort), `deepwiki`, `docs-forge`, `llm-wiki`. 이들은 이전 어댑터 allowlist 에도 없었으므로 Hermes 에서 동작한 적이 없습니다 (이번 변경이 만든 회귀가 아님).
+> - **Hermes 에 없는 도구를 강제하는 스킬** — 예: `notebook:edit-notebook` 은 `NotebookEdit` 전용이고 `Edit`/`Write` 대체를 금지합니다.
+>
+> 스킬별 Hermes 이식성 감사는 별도 작업입니다. 설치기는 이를 필터링하지 않습니다 — 필터를 두면 방금 없앤 allowlist 가 이름만 바꿔 돌아오기 때문입니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes 프로필은 `HERMES_HOME` env 로 타겟팅합니다.
 
 스킬 이름은 평평하게 설치됩니다 (`github-dev:cr-fix` 가 아니라 `cr-fix`). 이 저장소의 52개는 서로 유니크하며 `--selftest` 가 이를 강제하지만, 다른 출처의 스킬과 이름이 겹치지 않는지는 확인이 필요합니다.
 

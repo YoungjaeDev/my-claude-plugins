@@ -127,7 +127,16 @@ else
   SKILL_DIR="$HOME/.hermes/plugins/ml-toolkit/skills/gpu-parallel-pipeline"    # Hermes default install
 fi
 [ -d "$SKILL_DIR" ] || { echo "gpu-parallel-pipeline: skill dir not resolved" >&2; exit 1; }
-python3 "$SKILL_DIR/scripts/check_gpu_memory.py"
+
+# No single interpreter name works everywhere: macOS 12.3+ dropped `python`, and
+# a python.org Windows install ships `python` plus the `py` launcher but no
+# `python3`. Windows matters here because CUDA is actually available there.
+# Indexed array (Bash 2+, so 3.2-safe) so `py -3` stays two words under quoting.
+if   command -v python3 >/dev/null 2>&1; then PY=(python3)
+elif command -v python  >/dev/null 2>&1; then PY=(python)
+elif command -v py      >/dev/null 2>&1; then PY=(py -3)
+else echo "gpu-parallel-pipeline: no Python interpreter on PATH" >&2; exit 1; fi
+"${PY[@]}" "$SKILL_DIR/scripts/check_gpu_memory.py"
 ```
 
 **Rule of thumb:**

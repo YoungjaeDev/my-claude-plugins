@@ -354,6 +354,46 @@ is "no unprocessed review -> watchdog killed it (not an early exit)" "$g_rc" 143
 rm -rf "$GSHIM2"
 
 echo
+echo "engagement-gate.sh"
+
+# CR does NOT post a new comment when a re-review finds nothing — it EDITS its
+# existing walkthrough comment in place. Counting only `created_at` therefore
+# reads a genuine clean re-review as "CR never looked at this push", which Step
+# 8c turns into an infinite wait and finally cr_inactive, so --auto-merge can
+# never fire on the normal converged path. Reproduced on PR #183: commit status
+# said "Review completed" at 14:23:22 while the comment still carried
+# created_at 14:10:37. The sibling sniff-cr-rate-limit.sh:25 already anchors on
+# `created_at > $t or updated_at > $t`; the gate was left behind. RED against
+# the created_at-only filter by construction. (issue #184)
+ESHIM=$(mktemp -d)
+cat > "$ESHIM/gh" <<SH
+#!/usr/bin/env bash
+case "\$3" in
+  *pulls*reviews) echo '[]';;
+  *) cat "$FIX/issue-comments-cr-edited-in-place.json";;
+esac
+SH
+chmod +x "$ESHIM/gh"
+e=$(PATH="$ESHIM:$PATH" bash "$SCRIPTS/engagement-gate.sh" o r 42 "2026-07-27T14:20:43Z" 2>/dev/null) || true
+is "in-place comment edit after push counts as engagement" "$e" 1
+rm -rf "$ESHIM"
+
+# The inverse must still hold, or the gate would call every stale walkthrough
+# "engaged" and Step 8c would declare a PR converged that CR never re-read.
+ESHIM2=$(mktemp -d)
+cat > "$ESHIM2/gh" <<SH
+#!/usr/bin/env bash
+case "\$3" in
+  *pulls*reviews) echo '[]';;
+  *) cat "$FIX/issue-comments-cr-stale-only.json";;
+esac
+SH
+chmod +x "$ESHIM2/gh"
+e2=$(PATH="$ESHIM2:$PATH" bash "$SCRIPTS/engagement-gate.sh" o r 42 "2026-07-27T14:20:43Z" 2>/dev/null) || true
+is "comment untouched since before the push is not engagement" "$e2" 0
+rm -rf "$ESHIM2"
+
+echo
 echo "poll-cr-status.sh"
 
 # A persistent fetch error (state:"error" from cr-commit-state.sh) must become

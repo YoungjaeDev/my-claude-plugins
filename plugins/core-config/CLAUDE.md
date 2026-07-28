@@ -7,7 +7,7 @@ Development workflow essentials: Python formatting and notifications.
 | Hook | Trigger | Description |
 |------|---------|-------------|
 | `auto-format-python.py` | Post Write/Edit | Auto-format Python with ruff |
-| `notify_osc.py` | Stop/Notification | Terminal OSC 777 notifications |
+| `notify_osc.py` | Stop/Notification | Native notification per platform — macOS `osascript`, Windows BurntToast toast, Linux terminal OSC 777 |
 | `prompt_inject.sh` | UserPromptSubmit + SessionStart:compact | Per-prompt compact behavioral block — English rules with a Korean-output mandate + `.llmwiki/insight/`·wiki pointer + `[council]` delegation reminder. Federation labels off by default. Shared Claude + Codex; the SessionStart:compact re-injection is Claude-only. |
 
 The `prompt_inject.sh` hook:
@@ -71,7 +71,8 @@ User-global work guidelines live in `~/.claude/CLAUDE.md` (SSOT, auto-loaded by 
 ## Requirements
 
 - `ruff` for Python auto-formatting (invoked directly if on `PATH`, else via `uv run ruff` when `uv` is present; the hook no-ops with a one-line stderr note when neither is found)
-- **Unix**: Terminal with OSC 777 support for notifications
+- **macOS**: nothing to install — notifications go through `osascript` (Notification Center). A terminal that speaks OSC 777 (WezTerm, kitty) is used as the fallback when `osascript` cannot run; Terminal.app does not implement OSC 777, which is why the native path is tried first.
+- **Linux**: Terminal with OSC 777 support for notifications
 - **Windows**: BurntToast PowerShell module for toast notifications
   ```powershell
   Install-Module -Name BurntToast -Scope CurrentUser

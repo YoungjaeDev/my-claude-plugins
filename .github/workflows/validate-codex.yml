@@ -76,7 +76,14 @@ jobs:
         run: |
           fail=0
           for t in sed date stat; do
-            if "$t" --version >/dev/null 2>&1; then
+            # Presence first. `"$t" --version` failing means EITHER "BSD rejects
+            # the flag" OR "the tool is not installed", and folding those together
+            # would report an absent tool as a healthy BSD one -- the exact
+            # could-not-look-reads-as-nothing-wrong bug this step exists to prevent.
+            if ! command -v "$t" >/dev/null 2>&1; then
+              echo "::error::$t is not on PATH — cannot tell whether this runner has a BSD userland"
+              fail=1
+            elif "$t" --version >/dev/null 2>&1; then
               echo "::error::$t on PATH is a GNU build ($(command -v "$t")) — Homebrew coreutils shadow the BSD tool, so this leg is not testing BSD"
               fail=1
             else

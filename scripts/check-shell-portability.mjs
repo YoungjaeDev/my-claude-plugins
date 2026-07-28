@@ -31,29 +31,37 @@ import { readFileSync } from 'node:fs'
 // alt:   the POSIX / portable replacement named in the failure message
 // probe: extra regex whose presence nearby proves the author branched on it
 const RULES = [
-  { id: 'md5sum',      token: /(^|[\s|(`$])md5sum\b/,            bsd: /\b(cksum|md5)\b/,        alt: 'cksum (POSIX) or `md5sum || md5`' },
-  { id: 'sha256sum',   token: /(^|[\s|(`$])sha256sum\b/,         bsd: /\bshasum\b/,             alt: '`sha256sum || shasum -a 256`' },
-  { id: 'sed -i',      token: /\bsed\s+(-[a-zA-Z]*\s+)*-i(\s|$)(?!\s*(''|""))/, bsd: /sed\s+-i\s+''/,           alt: "a sed_inplace() helper branching on `sed --version` (GNU takes `-i`, BSD takes `-i ''`)" },
-  { id: 'sed -r',      token: /\bsed\s+(-[a-zA-Z]*\s+)*-r(\s|$)/, alt: 'sed -E (accepted by both GNU and BSD)' },
-  { id: 'grep -P',     token: /\bgrep\s+(-[a-zA-Z]*\s+)*-[a-zA-Z]*P(\s|$)/, alt: "sed -n 's/…/\\1/p' or awk (BSD grep has no PCRE at all)" },
-  { id: 'date -d',     token: /\bdate\s+(-[a-zA-Z]+\s+)*-d(\s|=)/, bsd: /\bdate\s+-j\b/,          alt: '`date -d … || date -j -f FMT …`' },
-  { id: 'stat -c',     token: /\bstat\s+(-[a-zA-Z]+\s+)*-c(\s|=)/, bsd: /\bstat\s+(-[a-zA-Z]+\s+)*-f\b/, alt: '`stat -c … || stat -f …`' },
-  { id: 'timeout',     token: /(^|[\s|(`$])timeout\s+\d/,        alt: 'a bash watchdog (see cr-fix tests run_capped) -- stock macOS has no timeout(1)' },
-  { id: 'tac',         token: /(^|[\s|(`$])tac(\s|$)/,           bsd: /\btail\s+-r\b/,          alt: 'tail -r' },
-  { id: 'nproc',       token: /(^|[\s|(`$])nproc(\s|$)/,         bsd: /sysctl\s+-n\s+hw\.ncpu/, alt: '`nproc || sysctl -n hw.ncpu`' },
-  { id: 'realpath -m', token: /\brealpath\s+(-[a-zA-Z]+\s+)*-m(\s|$)/, alt: 'cd + pwd -P on the parent, then re-append the basename (see cr-fix path-trust.sh)' },
-  { id: 'readlink -f', token: /\breadlink\s+(-[a-zA-Z]+\s+)*-f(\s|$)/, alt: 'a readlink loop, or guard on macOS >= 12.3' },
-  { id: 'bash4-case',  token: /\$\{[A-Za-z_][A-Za-z0-9_]*(,,|\^\^)\}/, alt: "tr '[:upper:]' '[:lower:]' -- macOS /bin/bash is 3.2" },
-  { id: 'bash4-mapfile', token: /(^|[\s;&|(])(mapfile|readarray)(\s|$)/, alt: 'a while read -r loop -- mapfile is bash 4+' },
-  { id: 'bash4-assoc', token: /\bdeclare\s+(-[a-zA-Z]+\s+)*-A(\s|$)/, alt: 'parallel indexed arrays -- associative arrays are bash 4+' },
-  { id: 'bash4-nameref', token: /\b(declare|local)\s+(-[a-zA-Z]+\s+)*-n(\s|$)/, alt: 'pass the value, not the name -- namerefs are bash 4.3+' },
-]
+  { id: 'md5sum', tool: 'md5sum',      token: /(^|[\s|(`$])md5sum\b/,            bsd: /\b(cksum|md5)\b/,        alt: 'cksum (POSIX) or `md5sum || md5`' },
+  { id: 'sha256sum', tool: 'sha256sum',   token: /(^|[\s|(`$])sha256sum\b/,         bsd: /\bshasum\b/,             alt: '`sha256sum || shasum -a 256`' },
+  { id: 'sed -i', tool: 'sed',      token: /\bsed\s+(-[a-zA-Z]*\s+)*-i(\s|$)(?!\s*(''|""))/, bsd: /sed\s+-i\s+''/,           alt: "a sed_inplace() helper branching on `sed --version` (GNU takes `-i`, BSD takes `-i ''`)" },
+  { id: 'sed -r', tool: 'sed',      token: /\bsed\s+(-[a-zA-Z]*\s+)*-[a-zA-Z]*r[a-zA-Z]*(\s|$)/, alt: 'sed -E (accepted by both GNU and BSD)' },
+  { id: 'grep -P', tool: 'grep',     token: /\bgrep\s+(-[a-zA-Z]*\s+)*-[a-zA-Z]*P[a-zA-Z]*(\s|$)/, alt: "sed -n 's/…/\\1/p' or awk (BSD grep has no PCRE at all)" },
+  { id: 'date -d', tool: 'date',     token: /\bdate\s+(-[a-zA-Z]+\s+)*-[a-zA-Z]*d[a-zA-Z]*(\s|=)/, bsd: /\bdate\s+-j\b/,          alt: '`date -d … || date -j -f FMT …`' },
+  { id: 'stat -c', tool: 'stat',     token: /\bstat\s+(-[a-zA-Z]+\s+)*-[a-zA-Z]*c[a-zA-Z]*(\s|=)/, bsd: /\bstat\s+(-[a-zA-Z]+\s+)*-f\b/, alt: '`stat -c … || stat -f …`' },
+  { id: 'timeout', tool: 'timeout',     token: /(^|[\s|(`$])timeout\s+\d/,        alt: 'a bash watchdog (see cr-fix tests run_capped) -- stock macOS has no timeout(1)' },
+  { id: 'tac', tool: 'tac',         token: /(^|[\s|(`$])tac(\s|$)/,           bsd: /\btail\s+-r\b/,          alt: 'tail -r' },
+  { id: 'nproc', tool: 'nproc',       token: /(^|[\s|(`$])nproc(\s|$)/,         bsd: /sysctl\s+-n\s+hw\.ncpu/, alt: '`nproc || sysctl -n hw.ncpu`' },
+  { id: 'realpath -m', tool: 'realpath', token: /\brealpath\s+(-[a-zA-Z]+\s+)*-m(\s|$)/, alt: 'cd + pwd -P on the parent, then re-append the basename (see cr-fix path-trust.sh)' },
+  { id: 'readlink -f', tool: 'readlink', token: /\breadlink\s+(-[a-zA-Z]+\s+)*-f(\s|$)/, alt: 'a readlink loop, or guard on macOS >= 12.3' },
+  { id: 'bash4-case', tool: 'bash',  token: /\$\{[A-Za-z_][A-Za-z0-9_]*(,,|\^\^)\}/, alt: "tr '[:upper:]' '[:lower:]' -- macOS /bin/bash is 3.2" },
+  { id: 'bash4-mapfile', tool: 'bash', token: /(^|[\s;&|(])(mapfile|readarray)(\s|$)/, alt: 'a while read -r loop -- mapfile is bash 4+' },
+  { id: 'bash4-assoc', tool: 'bash', token: /\bdeclare\s+(-[a-zA-Z]+\s+)*-A(\s|$)/, alt: 'parallel indexed arrays -- associative arrays are bash 4+' },
+  { id: 'bash4-nameref', tool: 'bash', token: /\b(declare|local)\s+(-[a-zA-Z]+\s+)*-n(\s|$)/, alt: 'pass the value, not the name -- namerefs are bash 4.3+' },
+].map((r) => ({ ...r, probe: toolProbe(r.tool) }))
 
 // A probe or an alternative anywhere in this window proves the author handled it.
 // A GNU-first idiom often puts its BSD counterpart on the NEXT lines
 // (`ts=$(date -d …) && return; ts=$(date -j -f …) && return`), so look both ways.
 const WINDOW = 4
-const PROBE = /command\s+-v\s|--version|type\s+-P\s|sort\s+-V\s*<\s*\/dev\/null|\bcase\s+"?\$\(uname/
+// A probe must name the tool it is probing. A generic /command -v/ let an
+// UNRELATED probe nearby clear a finding: `command -v node || exit` two lines
+// above an `md5sum` call marked the md5sum handled. `uname` branching is the one
+// probe that legitimately covers any tool, so it stays generic.
+const GENERIC_PROBE = /\bcase\s+"?\$\(uname|\buname\s+-s\b/
+function toolProbe(tool) {
+  const t = tool.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(command\\s+-v\\s+${t}|type\\s+-P\\s+${t}|\\b${t}\\s+(-[a-zA-Z]+\\s+)*--version|${t}\\s+-V\\s*<\\s*/dev/null)`)
+}
 const ESCAPE = /#\s*portability-ok/
 
 // Rule text and lore DESCRIBE these constructs; they never run them.
@@ -131,7 +139,8 @@ for (const file of files) {
         if (near === undefined) continue
         if (ESCAPE.test(near)) { handled = true; break }
         const nearCode = stripComment(near)
-        if (PROBE.test(nearCode)) { handled = true; break }
+        if (GENERIC_PROBE.test(nearCode)) { handled = true; break }
+        if (rule.probe.test(nearCode)) { handled = true; break }
         if (rule.bsd && k !== 0 && rule.bsd.test(nearCode)) { handled = true; break }
       }
       if (handled) continue

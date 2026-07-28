@@ -203,12 +203,26 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
    b. **Each issue body** (Type M-2 Mermaid, marker-based replacement):
       ```bash
       # For each issue in the milestone:
-      CURRENT_BODY=$(gh issue view $ISSUE_NUM --json body --jq '.body')
+      CURRENT_BODY=$(gh issue view "$ISSUE_NUM" --json body --jq '.body')
 
       # Check for existing markers
-      if echo "$CURRENT_BODY" | grep -q "<!-- project-tracking-start -->"; then
-        # Replace section between markers
-        NEW_BODY=$(echo "$CURRENT_BODY" | sed '/<!-- project-tracking-start -->/,/<!-- project-tracking-end -->/c\<!-- project-tracking-start -->\n'"$TRACKING_SECTION"'\n<!-- project-tracking-end -->')
+      if printf '%s\n' "$CURRENT_BODY" | grep -q "<!-- project-tracking-start -->"; then
+        # Replace section between markers.
+        # awk, not `sed c\`: BSD sed rejects text on the same line as `c\`
+        # ("extra characters after \ at the end of c command") and does not expand
+        # \n inside a/i/c text. sed then wrote nothing to stdout, NEW_BODY became
+        # empty, and the unchecked `gh issue edit --body ""` below wiped the issue.
+        # TRACKING_SECTION goes through the environment rather than `awk -v`,
+        # because -v processes backslash escapes in the value.
+        # END exits non-zero on a start marker with no matching end, so a
+        # malformed body fails the guard below instead of being truncated.
+        NEW_BODY=$(TRACKING_SECTION="$TRACKING_SECTION" awk '
+          BEGIN { sec = ENVIRON["TRACKING_SECTION"] }
+          index($0, "<!-- project-tracking-start -->") { print; print sec; skip = 1; next }
+          index($0, "<!-- project-tracking-end -->")   { skip = 0 }
+          !skip
+          END { if (skip) exit 1 }
+        ' <<< "$CURRENT_BODY") || NEW_BODY=""
       else
         # Append tracking section at end
         NEW_BODY="$CURRENT_BODY
@@ -218,7 +232,12 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
       <!-- project-tracking-end -->"
       fi
 
-      gh issue edit $ISSUE_NUM --body "$NEW_BODY"
+      # An empty body would destroy the issue. Never edit on an empty result.
+      if [ -z "$NEW_BODY" ]; then
+        echo "update-progress: marker replacement produced an empty body for #$ISSUE_NUM; skipping" >&2
+      else
+        gh issue edit "$ISSUE_NUM" --body "$NEW_BODY"
+      fi
       ```
 
    c. **Open PRs** (Type M-2 Mermaid, same marker logic):
@@ -226,8 +245,13 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
       # For issues with open PRs:
       PR_NUMBER=$(gh pr list --search "head:feat/$ISSUE_NUM" --json number --jq '.[0].number')
       if [ -n "$PR_NUMBER" ]; then
-        # Same marker-based replacement as issues
-        gh pr edit $PR_NUMBER --body "$NEW_PR_BODY"
+        # Same marker-based replacement as issues -- including the awk form and
+        # the empty-body guard. An empty --body would wipe the PR description.
+        if [ -z "$NEW_PR_BODY" ]; then
+          echo "update-progress: marker replacement produced an empty body for PR #$PR_NUMBER; skipping" >&2
+        else
+          gh pr edit "$PR_NUMBER" --body "$NEW_PR_BODY"
+        fi
       fi
       ```
 

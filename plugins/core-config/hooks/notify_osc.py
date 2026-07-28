@@ -40,11 +40,14 @@ def _send_darwin(title: str, body: str) -> bool:
         "display notification (item 1 of argv) with title (item 2 of argv)\n"
         "end run"
     )
+    # 3s, not the hook's full 5000ms budget: a stalled osascript must still leave
+    # the caller room to fall through to _send_osc before Claude Code kills the
+    # hook, or the fallback exists on paper only.
     try:
         proc = subprocess.run(
             ["osascript", "-e", script, body, title],
             capture_output=True,
-            timeout=5,
+            timeout=3,
         )
         return proc.returncode == 0
     except Exception:

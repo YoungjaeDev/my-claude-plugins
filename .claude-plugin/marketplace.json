@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.7.2"
+    "version": "2.7.3"
   },
   "plugins": [
     {
@@ -61,7 +61,7 @@
       "name": "ml-toolkit",
       "source": "./plugins/ml-toolkit",
       "description": "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration",
-      "version": "1.4.3",
+      "version": "1.4.4",
       "category": "development"
     },
     {
@@ -124,7 +124,7 @@
       "name": "project-init",
       "source": "./plugins/project-init",
       "description": "Agent-harness project lifecycle. `new` — one-shot first-day bootstrap (interview, .claude/ scaffold, minimal CLAUDE.md, AGENTS.md with Codex GitHub cloud reviewer guidelines in general/ml/web variants, README/CHANGELOG seed, gh repo create + initial push) behind a hardened preflight guard that refuses a non-empty cwd. `wiring` — its inverse for existing repos: a read-only 14-axis setup diagnostic (FAIL / WARN / ASK / INFO / SKIP / OK) covering guidance files, .claude/rules paths: scoping defeated by @import, llm-wiki layout + staging backlog, Serena onboarding, memory posture, MCP duplicate registration, Codex CLI posture + AGENTS.md byte budget, spec homes, gws-sync, .tmp, core.hooksPath, .gitignore coverage. ASK answers persist to .claude/state/wiring.json. Shared read-only detector: scripts/project_state.sh.",
-      "version": "0.6.1",
+      "version": "0.6.2",
       "category": "planning"
     },
     {
@@ -152,7 +152,7 @@
       "name": "ppt-yeong-style",
       "source": "./plugins/ppt-yeong-style",
       "description": "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 스킬 3종: 메인 ppt-yeong-style(미감 시그니처 §0 'Editorial restraint, one committed accent'·md 소스 규약·작성 원칙 16종·밀도 리듬·역할 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·레버 조합 차별화·윤문·렌더 QA + references/ 6종 + 주입 페이로드) + lecture-deck(강의 덱 운영 — 실습 handouts 생성 규약·프롬프트 카드·placeholder→실캡처 스크린샷 슬롯·리넘버링 4중 동기화·전사 회고 루프·강사 노트 태그 + cc-common 47장 레퍼런스) + deck-review(관점별 리뷰 서브에이전트 4종 audience-fit·story-flow·fact-check·design-qa 병렬 오케스트레이션 + codex:rescue 교차 리뷰, 페르소나는 파라미터). 의존 스킬은 있으면 사용, 없으면 생략 + 설치 제안 문구(ppt-master만 prerequisite-stop). ppt-master로 그냥 'PPT 만들기'와 달리 yeong 규약이 필요할 때.",
-      "version": "0.9.3",
+      "version": "0.9.4",
       "category": "design"
     },
     {

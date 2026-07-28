@@ -315,7 +315,7 @@ HF_HOME=/path/to/huggingface/cache
 #### Using venv
 ```bash
 # Create virtual environment
-python -m venv .venv
+python3 -m venv .venv
 
 # Activate
 source .venv/bin/activate  # Linux/Mac

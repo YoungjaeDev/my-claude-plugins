@@ -127,7 +127,7 @@ else
   SKILL_DIR="$HOME/.hermes/plugins/ml-toolkit/skills/gpu-parallel-pipeline"    # Hermes default install
 fi
 [ -d "$SKILL_DIR" ] || { echo "gpu-parallel-pipeline: skill dir not resolved" >&2; exit 1; }
-python "$SKILL_DIR/scripts/check_gpu_memory.py"
+python3 "$SKILL_DIR/scripts/check_gpu_memory.py"
 ```
 
 **Rule of thumb:**

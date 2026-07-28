@@ -40,3 +40,53 @@ jobs:
       # primary path fails, so nothing exercised them until they broke in
       # production (issues #105, #110). Fixture-driven, no network, sub-second.
       - run: bash plugins/github-dev/skills/cr-fix/tests/run-tests.sh
+      # code_review.md P1 forbids unguarded GNU-only shell constructs, and until
+      # now nothing enforced it -- md5sum shipped in translator and collapsed every
+      # downloaded image to one filename on macOS (issue #172). Flags a construct
+      # only when no fallback, capability probe, or `# portability-ok:` sits near it.
+      - run: node scripts/check-shell-portability.mjs
+
+  # The BSD fallbacks the suite is full of can only be proven on a BSD userland.
+  # Without this leg every `stat -c || stat -f` and `date -d || date -j` branch is
+  # asserted on the GNU half alone and the other half rots unexecuted (issue #182).
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - name: runner userland (informational)
+        run: |
+          echo "bash on PATH: $(which -a bash | tr '\n' ' ')"
+          echo "PATH bash:    $(bash --version | head -1)"
+          echo "/bin/bash:    $(/bin/bash --version | head -1)"
+          for t in sed grep date stat jq md5sum timeout gsed gdate gstat; do
+            printf '%-8s %s\n' "$t" "$(command -v "$t" || echo '(absent)')"
+          done
+      # `env -i PATH=/usr/bin:/bin` is the obvious way to force stock userland and
+      # it is WRONG here: on macOS jq lives under Homebrew, not /usr/bin, and the
+      # suite is built on jq -- the run would die on a missing tool rather than
+      # exercise anything. Keep the full PATH so jq resolves, and assert instead
+      # that the tools whose GNU/BSD split this leg exists to cover really are the
+      # BSD ones. GNU builds answer --version; the BSD ones reject it, so a
+      # SUCCEEDING --version means Homebrew coreutils shadowed the system tool and
+      # this leg would be re-testing the GNU half the ubuntu job already covers.
+      # Failing loudly beats a green run that proved nothing.
+      - name: assert stock BSD userland
+        run: |
+          fail=0
+          for t in sed date stat; do
+            if "$t" --version >/dev/null 2>&1; then
+              echo "::error::$t on PATH is a GNU build ($(command -v "$t")) — Homebrew coreutils shadow the BSD tool, so this leg is not testing BSD"
+              fail=1
+            else
+              echo "ok: $t is the BSD build ($(command -v "$t"))"
+            fi
+          done
+          command -v jq >/dev/null 2>&1 || { echo "::error::jq is absent; the suite cannot run"; fail=1; }
+          exit "$fail"
+      # /bin/bash explicitly, never `bash`: the runner image may carry Homebrew's
+      # bash 5 earlier on PATH, and a real Mac user's /bin/bash is 3.2. Running the
+      # suite under 5 would let a bash-4-only construct pass here and break for them.
+      - name: cr-fix suite under /bin/bash (3.2) + BSD tools
+        run: /bin/bash plugins/github-dev/skills/cr-fix/tests/run-tests.sh

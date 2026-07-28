@@ -20,7 +20,11 @@
 # only has to turn newlines into \n.
 
 set -u
-exec 2>/dev/null  # discard stderr — hooks should never spam the user
+# Hooks must never spam the user, so stderr is discarded — but a discarded
+# stderr also hides a future GNU-only construct that has no `||` fallback,
+# leaving a silent no-op on macOS with nothing to diagnose. Set WIKI_HOOK_DEBUG
+# (any value) to keep stderr and see what the hook is actually saying.
+[ -n "${WIKI_HOOK_DEBUG:-}" ] || exec 2>/dev/null
 
 export LC_ALL=C.UTF-8
 

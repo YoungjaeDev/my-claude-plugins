@@ -314,8 +314,11 @@ HF_HOME=/path/to/huggingface/cache
 
 #### Using venv
 ```bash
-# Create virtual environment
-python -m venv .venv
+# Create virtual environment (runs before activation, so it resolves against the
+# system PATH: macOS 12.3+ has no `python`, and a python.org Windows install has
+# no `python3` -- only `python` and the `py` launcher)
+python3 -m venv .venv        # Linux/Mac
+# py -3 -m venv .venv        # Windows
 
 # Activate
 source .venv/bin/activate  # Linux/Mac

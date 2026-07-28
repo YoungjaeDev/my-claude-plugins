@@ -43,7 +43,14 @@ b_hits=$(grep -REl '>[^<]*\[[^]]*\][^<]*<' "$SVG_DIR" 2>/dev/null || true)
 if [ -n "$b_hits" ]; then
   fail=1
   echo "  FAIL — bracket placeholder(s) leaked into rendered text:"
-  for f in $b_hits; do
+  # Iterate on newline boundaries: `for f in $b_hits` word-splits on IFS and
+  # glob-expands, so an absolute DECK_ROOT containing a space arrives here as two
+  # fragments, the grep below fails on both, and its stderr is discarded -- the
+  # FAIL detail degrades to half-paths with (0) counts. The gate itself is
+  # unaffected (fail=1 is already set above); this is the report, which is what
+  # the user reads to find the leak.
+  printf '%s\n' "$b_hits" | while IFS= read -r f; do
+    [ -n "$f" ] || continue
     c=$(grep -Eo '>[^<]*\[[^]]*\][^<]*<' "$f" 2>/dev/null | wc -l | tr -d ' ')
     echo "    $f ($c)"
   done

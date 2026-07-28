@@ -30,14 +30,19 @@ if [ -z "$PLUGIN_ROOT" ]; then
   # Best-effort Codex cache lookup. Order: latest version directory under the
   # configured marketplace name; user override via $CODEX_PLUGIN_CACHE.
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-  # Prefer `sort -V` (GNU) for proper semver ordering; macOS / BSD sort lacks
-  # -V and would fail silently, so fall back to plain lexicographic sort.
-  # Picks fine for typical X.Y.Z under 10 — covers the realistic version range
-  # the plugin cache will ever hold for a single plugin.
+  # Sort on the version basename, not the full path: with two marketplace dirs a
+  # name like zeta/project-init/0.4.0 would otherwise outrank alpha/project-init/0.6.0.
+  # `sort -V` orders X.Y.Z properly and is present on GNU and on Apple's FreeBSD
+  # sort (10.13+), but the probe stays for userlands that predate it; the fallback
+  # is a numeric dotted-field sort, because plain lexicographic ranks 0.6.0 above
+  # 0.10.0 and would resolve to an older cached version. Same form as
+  # plugins/github-dev/skills/cr-fix/SKILL.md, whose regression test guards it.
   if sort -V </dev/null >/dev/null 2>&1; then
-    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort -V | tail -1)
+    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null \
+      | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2-)
   else
-    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort | tail -1)
+    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null \
+      | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2-)
   fi
   [ -n "$candidate" ] && [ -d "$candidate" ] && PLUGIN_ROOT="$candidate"
 fi
@@ -61,7 +66,11 @@ CWD=$(pwd)
 DIR_NAME=$(basename "$CWD")
 HAS_GIT=$([ -d .git ] && echo "yes" || echo "no")
 HAS_CLAUDE=$([ -d .claude ] && echo "yes" || echo "no")
-HAS_CODE=$(find . -maxdepth 2 -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.go" -o -name "*.rs" -o -name "*.java" \) 2>/dev/null | head -1 | wc -l)
+# yes/no like its neighbours, not a count: BSD `wc -l` right-pads its output, so
+# the old `| head -1 | wc -l` form yielded "       1" here while HAS_GIT and
+# HAS_CLAUDE were clean tokens. `-print -quit` also stops at the first match
+# instead of walking the whole tree.
+HAS_CODE=$([ -n "$(find . -maxdepth 2 -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.go" -o -name "*.rs" -o -name "*.java" \) -print -quit 2>/dev/null)" ] && echo "yes" || echo "no")
 
 # Collect GitHub owner candidates
 bash "$PLUGIN_ROOT/scripts/infer-github-context.sh"

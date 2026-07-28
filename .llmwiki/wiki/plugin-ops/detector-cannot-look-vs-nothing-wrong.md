@@ -4,7 +4,7 @@ aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-s
 last_verified: 2026-07-28
 status: active
 volatility: stable
-sources: 7
+sources: 8
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -33,6 +33,10 @@ if ! mcp_readable "$f"; then unreadable+=("$f"); fi
 Once the abort is patched with `|| true`, the failure becomes invisible instead of fatal. `jq -r '.mcpServers // {} | keys[]' "$f" 2>/dev/null | sort || true` returns **zero keys** for a corrupt file, a file whose `.mcpServers` is `"x"` (jq errors on `keys` of a string), and a file whose `.mcpServers` is `[]` (jq returns array *indices*). All three then report **"no duplicate MCP servers"**, which is a lie: the truth is "I could not compare them."
 
 Guard on the question you are actually asking. "Is this valid JSON?" is not the question — an empty file is valid input to `jq`, and `{"mcpServers": []}` is valid JSON. The question is "can I enumerate `mcpServers` as an object?", and everything else is `unreadable`, reported as its own state.
+
+The sharper form of this mode is not "someone forgot the guard" but **the guard absorbed more than it was written to absorb**. `command -v python3 >/dev/null 2>&1 && python3 hook.py || true` reads as "no-op when python3 is missing", and that is what its author intended; the trailing `|| true` in fact covers the whole `&&` chain, so "python3 is not installed" and "python3 ran the hook and it died" both exit 0. Formatting or notifications stop working entirely and the hook runner still sees success. Measured on the shipped command: a hook script exiting 3 reported rc 0 before and rc 3 after rewriting to `if command -v python3 …; then python3 hook.py; fi` — an `if` whose condition is false yields 0, and the taken branch's status propagates, so the syntax itself bounds what is swallowed. Prefer the form whose absorption is limited by structure over the one that depends on reading operator precedence correctly.
+
+The provenance is worth keeping: the rule that caught this (`code_review.md` P1 — do not put `|| true` where the exit status *is* the signal) had been added two merges earlier by the same author, and the Codex reviewer cited that exact line back at them. A written invariant does not stop you from violating it in a shape you have not seen yet; the reviewer that reads your rules is what closes that gap.
 
 ## Mode 3: the value crosses into `--argjson`
 
@@ -95,6 +99,8 @@ The consequence is the inverse of a false clean and just as bad. A genuine conve
 
 This is the third appearance of Mode 4's "reading the wrong surface" inside one skill (`cr-commit-state.sh` dual-surface, then `auto-merge-gate.sh` re-deriving instead of delegating, now `engagement-gate.sh`). The pattern is not that the surface is hard to find — it is that **widening a signal's definition is not done when the reporting caller is fixed.** Grep every consumer of that signal and sweep them in the same change; a sibling left on the narrow definition is a latent recurrence with a different symptom.
 
+Second occurrence, one merge later: every hook command in the two Claude plugin manifests spelled its path `bash ${CLAUDE_PLUGIN_ROOT}/...` unquoted, while the paired Codex descriptors — same scripts, same repo, source-controlled beside them — already quoted all seven of theirs, with the reason written out in `plugins/core-config/CLAUDE.md`. The rule had been derived and recorded; it was applied to one of the two surfaces that needed it.
+
 ## Why this recurs
 
 Each instance arrives disguised as an edge case ("who has a corrupt config?", "who greps a dot-dir?"), and each one is discovered only by running the check against the input it silently skips rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis — whether because it aborted, degraded, could not run, or never looked there — says so, keeps going, and never converts ignorance into an all-clear.**
@@ -107,6 +113,7 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?", "w
 > Evidence: plugins/project-init/CLAUDE.md
 > Evidence: plugins/github-dev/skills/cr-fix/scripts/path-trust.sh
 > Evidence: plugins/github-dev/skills/cr-fix/scripts/engagement-gate.sh
+> Evidence: plugins/core-config/.claude-plugin/plugin.json
 
 ## Sources
 
@@ -117,3 +124,4 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?", "w
 5. **PR #164** (`feat(search-stack): replace firecrawl with brightdata, remove slidev plugin`) — the default-scope instance (Mode 6): a `rg -i firecrawl` removal/parity gate returned 0 hits while a stale `firecrawl tier-3` string survived in `.claude-plugin/`/`.agents/` (recursive ripgrep skips dot-dirs by default); caught only by `rg --hidden`. See [[brightdata-cli-preflight-quirks]] for the migration's other lore.
 6. **PR #167** (`docs(agents): drop derivable directory tree`) — the enforcement-surface instance (Mode 7): a `/doctor` trim proposal judged the `AGENTS.md` directory tree derivable-and-removable after cross-checking `.pre-commit-config.yaml` + lint configs, but this repo enforces via `core.hooksPath` → `.githooks/pre-commit` → `scripts/check-doc-consistency.mjs`, which asserts the tree's 24-plugin name-set; the cut was caught only at `git commit` (exit 1). Resolved by dropping the now-redundant `AGENTS.md tree` assertion after proving the adjacent `## Plugins`-table assertion covers the same canonical set bidirectionally (negative test: removing one table row still exits 1), keeping the `README.md tree` assertion, and adding the guard to the `AGENTS.md` `## 검증` list.
 7. **PR #183** (`fix: macOS/BSD broken 2건`) — the unswept-sibling instance (Mode 8): `engagement-gate.sh` counted CR comments by `created_at` only while `sniff-cr-rate-limit.sh:25` had already been widened to `created_at or updated_at`, so a clean re-review (CR edits its walkthrough in place) read as `cr_engagement=0` and `--auto-merge` was unreachable on the converged path; fixtures `issue-comments-cr-edited-in-place` / `issue-comments-cr-stale-only` guard both directions. Same PR carried the Mode 5 producer variant (`md5sum` mid-pipeline exits 0 from `head`, collapsing every image to `img_.png`) and the `|| true`-erases-the-asserted-status false green.
+8. **PR #185** (`fix(core-config,llm-wiki): hook wiring`) — the guard-scope instance (Mode 2): `command -v python3 && python3 hook.py || true` absorbed both "python3 absent" and "python3 present, hook failed" (measured rc 0 vs 3), fixed with an `if` branch whose absorption is bounded by syntax. Caught by the Codex reviewer citing the `code_review.md` P1 rule that PR #183 had added two merges earlier. Same PR carried Mode 8's second occurrence (11 unquoted `${CLAUDE_PLUGIN_ROOT}` hook commands against 7 already-quoted Codex descriptors) and a macOS notification path that fired on every Stop and displayed nothing (OSC 777 is an rxvt extension Terminal.app does not implement).

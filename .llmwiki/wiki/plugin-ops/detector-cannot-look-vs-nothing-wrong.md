@@ -4,7 +4,7 @@ aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-s
 last_verified: 2026-07-28
 status: active
 volatility: stable
-sources: 8
+sources: 9
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -101,6 +101,18 @@ This is the third appearance of Mode 4's "reading the wrong surface" inside one 
 
 Second occurrence, one merge later: every hook command in the two Claude plugin manifests spelled its path `bash ${CLAUDE_PLUGIN_ROOT}/...` unquoted, while the paired Codex descriptors — same scripts, same repo, source-controlled beside them — already quoted all seven of theirs, with the reason written out in `plugins/core-config/CLAUDE.md`. The rule had been derived and recorded; it was applied to one of the two surfaces that needed it.
 
+## Mode 9: the audit's own question bounds what it can find
+
+Modes 1-8 are all about a *check* that cannot look. Mode 9 is about the *question* the check was given: a portability audit scoped to one platform is blind to two classes by construction, and neither shows up as a gap in its own report.
+
+**A defect that breaks everywhere never answers "what breaks on BSD?"** The `project-init` plugin-cache resolver sorted whole paths, so the marketplace directory name was compared before the version was ever reached: measured with `zeta/project-init/0.4.0` against `alpha/project-init/0.10.0`, both plain `sort` **and `sort -V`** return `zeta/0.4.0`. That is simply wrong, on GNU as much as on BSD — which is exactly why a macOS-shaped question did not surface it. The audit found the adjacent half (a lexicographic fallback ranking `0.6.1` above `0.10.0`), because that half *is* platform-flavored.
+
+**The fix's reverse regression is invisible to the same question.** "macOS 12.3+ has no `python`" is true, and `python` → `python3` follows from it — but a python.org Windows install ships `python.exe` and the `py` launcher and no `python3`, so the same edit breaks the platform it was not asked about. It happened twice in one PR (a venv-creation line whose block carries a Windows branch two rows down, and a CUDA memory-check call site) and both were caught by the reviewer, not the audit. No single interpreter name is correct; the answer is a probe (`python3` → `python` → `py -3`) or per-OS spellings, held in an indexed array so `py -3` survives quoting.
+
+**A severity derived inside the lens does not transfer.** That CUDA call site was rated *cosmetic*, reasoned as "macOS has no CUDA, so the script exits either way and only the message changes". Correct for macOS, and void everywhere else: Windows has CUDA, the feature is real there, and the same edit is a functional break rather than a message change. When a rating's justification is a property of one platform, the rating is scoped to that platform too.
+
+The practical rule: **before shipping a portability fix, ask what the changed line does on every platform the surrounding block serves — not only the one that prompted the change.** A block that carries an `# Windows` comment is telling you its audience; the audit's title is not.
+
 ## Why this recurs
 
 Each instance arrives disguised as an edge case ("who has a corrupt config?", "who greps a dot-dir?"), and each one is discovered only by running the check against the input it silently skips rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis — whether because it aborted, degraded, could not run, or never looked there — says so, keeps going, and never converts ignorance into an all-clear.**
@@ -125,3 +137,4 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?", "w
 6. **PR #167** (`docs(agents): drop derivable directory tree`) — the enforcement-surface instance (Mode 7): a `/doctor` trim proposal judged the `AGENTS.md` directory tree derivable-and-removable after cross-checking `.pre-commit-config.yaml` + lint configs, but this repo enforces via `core.hooksPath` → `.githooks/pre-commit` → `scripts/check-doc-consistency.mjs`, which asserts the tree's 24-plugin name-set; the cut was caught only at `git commit` (exit 1). Resolved by dropping the now-redundant `AGENTS.md tree` assertion after proving the adjacent `## Plugins`-table assertion covers the same canonical set bidirectionally (negative test: removing one table row still exits 1), keeping the `README.md tree` assertion, and adding the guard to the `AGENTS.md` `## 검증` list.
 7. **PR #183** (`fix: macOS/BSD broken 2건`) — the unswept-sibling instance (Mode 8): `engagement-gate.sh` counted CR comments by `created_at` only while `sniff-cr-rate-limit.sh:25` had already been widened to `created_at or updated_at`, so a clean re-review (CR edits its walkthrough in place) read as `cr_engagement=0` and `--auto-merge` was unreachable on the converged path; fixtures `issue-comments-cr-edited-in-place` / `issue-comments-cr-stale-only` guard both directions. Same PR carried the Mode 5 producer variant (`md5sum` mid-pipeline exits 0 from `head`, collapsing every image to `img_.png`) and the `|| true`-erases-the-asserted-status false green.
 8. **PR #185** (`fix(core-config,llm-wiki): hook wiring`) — the guard-scope instance (Mode 2): `command -v python3 && python3 hook.py || true` absorbed both "python3 absent" and "python3 present, hook failed" (measured rc 0 vs 3), fixed with an `if` branch whose absorption is bounded by syntax. Caught by the Codex reviewer citing the `code_review.md` P1 rule that PR #183 had added two merges earlier. Same PR carried Mode 8's second occurrence (11 unquoted `${CLAUDE_PLUGIN_ROOT}` hook commands against 7 already-quoted Codex descriptors) and a macOS notification path that fired on every Stop and displayed nothing (OSC 777 is an rxvt extension Terminal.app does not implement).
+9. **PR #186** (`fix: 이식성 잔여`) — the audit-lens instance (Mode 9): a macOS-scoped portability audit missed a resolver bug that breaks identically on GNU (whole-path sort lets the marketplace name outrank the version, `sort -V` included), and missed both reverse regressions its own fixes introduced on Windows (`python3` is absent from a python.org install) — the reviewer caught both. Also showed a severity rating inheriting the lens's scope: a call site rated cosmetic on "macOS has no CUDA anyway" is a real functional break on Windows, where CUDA exists. Fixed with a `python3`/`python`/`py -3` probe in an indexed array and a basename sort key.

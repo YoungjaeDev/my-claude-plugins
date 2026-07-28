@@ -105,9 +105,11 @@ PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 if [ -z "$PLUGIN_ROOT" ]; then
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
   if sort -V </dev/null >/dev/null 2>&1; then
-    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort -V | tail -1)
+    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null \
+      | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2-)
   else
-    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null | sort | tail -1)
+    candidate=$(ls -1d "$cache_root"/*/project-init/* 2>/dev/null \
+      | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2-)
   fi
   [ -n "$candidate" ] && [ -d "$candidate" ] && PLUGIN_ROOT="$candidate"
 fi
@@ -116,6 +118,7 @@ fi
 
 - Under **Claude Code**, `${CLAUDE_PLUGIN_ROOT}` is set automatically and the resolver short-circuits on the first branch.
 - Under **Codex 0.135**, no equivalent env var is currently exposed, so the resolver falls back to `~/.codex/plugins/cache/<marketplace>/project-init/<version>/`. Users can override with `CODEX_PLUGIN_CACHE` or set `PLUGIN_ROOT` directly.
+- **The sort key is the version basename, not the full path.** Sorting whole paths compares the marketplace directory name before it ever reaches the version, so `zeta/project-init/0.4.0` beats `alpha/project-init/0.10.0` — and `sort -V` does not save you, because it too starts at the first differing component. The `awk` prefix puts the version first and `cut -f2-` recovers the path. The `sort -V` probe stays for userlands that predate it (Apple's FreeBSD sort has had `-V` since 10.13, so this is rarer than it looks), and its fallback is a numeric dotted-field sort rather than plain `sort`, which would rank `0.6.1` above `0.10.0`. Same form as `plugins/github-dev/skills/cr-fix/SKILL.md`, whose `tests/run-tests.sh` case guards it.
 - All subsequent bash blocks reference `${PLUGIN_ROOT}/scripts/...` and `${PLUGIN_ROOT}/assets/...`. Adding a new asset / script means updating only the procedure file — no per-surface duplication.
 
 ## Placeholder convention

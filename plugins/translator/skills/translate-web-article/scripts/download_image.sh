@@ -13,8 +13,16 @@ if [ -z "$IMAGE_URL" ]; then
     exit 1
 fi
 
-# Generate hash from URL for unique filename
-URL_HASH=$(echo -n "$IMAGE_URL" | md5sum | cut -d' ' -f1 | head -c 12)
+# Generate hash from URL for unique filename.
+# POSIX `cksum`, not `md5sum`: md5sum does not exist on stock macOS, and because
+# it sat mid-pipeline the substitution still exited 0 (the status came from
+# `head`), so `set -e` never fired and every URL collapsed to `img_.png` —
+# multi-image articles silently overwrote one file and reported success.
+URL_HASH=$(printf '%s' "$IMAGE_URL" | cksum | cut -d' ' -f1)
+if [ -z "$URL_HASH" ]; then
+    echo "Error: failed to hash image URL" >&2
+    exit 1
+fi
 
 # Extract extension from URL (default to png)
 EXT=$(echo "$IMAGE_URL" | grep -oE '\.(png|jpg|jpeg|gif|webp|svg)' | tail -1 || echo ".png")

@@ -9,7 +9,11 @@
 #               (Codex reads context only from this envelope; plain stdout is ignored).
 
 set -u
-exec 2>/dev/null
+# Hooks must never spam the user, so stderr is discarded — but a discarded
+# stderr also hides a future GNU-only construct that has no `||` fallback,
+# leaving a silent no-op on macOS with nothing to diagnose. Set WIKI_HOOK_DEBUG
+# (any value) to keep stderr and see what the hook is actually saying.
+[ -n "${WIKI_HOOK_DEBUG:-}" ] || exec 2>/dev/null
 
 FMT="${1:-claude}"
 
@@ -111,7 +115,10 @@ fi
 
 # event == commit (git commit / git push): threshold on the last commit's diff.
 # HEAD~1..HEAD is valid here — a local commit did move local HEAD.
-files_changed=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l || echo 0)
+# tr strips BSD wc's leading pad: (( )) skips it so the threshold below is
+# correct either way, but the hint string is model-visible context and
+# "touched        3 file(s)" is noise in it.
+files_changed=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l | tr -d '[:space:]' || echo 0)
 # awk alone parses the fixed-format shortstat — a number immediately followed by
 # an insertion/deletion token — with no PCRE lookahead (BSD grep lacks -P).
 lines_changed=$(git diff --shortstat HEAD~1 HEAD 2>/dev/null \

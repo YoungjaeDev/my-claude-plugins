@@ -66,8 +66,20 @@ The `--license <name>` flag of `gh repo create` can auto-generate a LICENSE file
 
 ```bash
 # Auto-seed the license
+# ${VISIBILITY,,} is a Bash 4 expansion; macOS /bin/bash is 3.2 and fails with
+# "bad substitution". Normalize with the POSIX tr helper the executable
+# procedure already uses (new-procedure.md Phase 4/6), and match on a token
+# rather than passing the raw answer straight into a CLI flag.
+to_lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+case "$(to_lower "$VISIBILITY")" in
+  *private*)  VIS_FLAG="private" ;;
+  *public*)   VIS_FLAG="public" ;;
+  *internal*) VIS_FLAG="internal" ;;
+  *) echo "unknown visibility: $VISIBILITY" >&2; exit 1 ;;
+esac
+
 gh repo create "${OWNER}/${PROJECT_NAME}" \
-  --${VISIBILITY,,} \
+  --${VIS_FLAG} \
   --description "${ONE_LINER}" \
   --license "${LICENSE}" \
   --source=. --remote=origin --push
@@ -88,8 +100,20 @@ git add .claude/ CLAUDE.md AGENTS.md README.md CHANGELOG.md
 git commit -m "chore: bootstrap project skeleton via project-init"
 
 # 3. gh repo create + auto push
+# ${VISIBILITY,,} is a Bash 4 expansion; macOS /bin/bash is 3.2 and fails with
+# "bad substitution". Normalize with the POSIX tr helper the executable
+# procedure already uses (new-procedure.md Phase 4/6), and match on a token
+# rather than passing the raw answer straight into a CLI flag.
+to_lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+case "$(to_lower "$VISIBILITY")" in
+  *private*)  VIS_FLAG="private" ;;
+  *public*)   VIS_FLAG="public" ;;
+  *internal*) VIS_FLAG="internal" ;;
+  *) echo "unknown visibility: $VISIBILITY" >&2; exit 1 ;;
+esac
+
 gh repo create "${OWNER}/${PROJECT_NAME}" \
-  --${VISIBILITY,,} \
+  --${VIS_FLAG} \
   --description "${ONE_LINER}" \
   --source=. --remote=origin --push
 ```

@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """GPU memory check utility for parallel pipeline planning.
 
 Reports available GPU memory and recommends workers per GPU based on model size.
 
 Usage:
-    python check_gpu_memory.py
-    python check_gpu_memory.py --model-memory 5.0  # Specify model memory in GB
+    python3 check_gpu_memory.py
+    python3 check_gpu_memory.py --model-memory 5.0  # Specify model memory in GB
 """
 
 from __future__ import annotations

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Claude Code Notification Script.
 
-Cross-platform compatible (Windows/Linux/macOS).
 Windows: BurntToast PowerShell Toast notifications.
-Unix: OSC 777 terminal notifications.
+macOS:   osascript notification, falling back to OSC 777.
+Linux:   OSC 777 terminal notifications.
 """
 
 import json
@@ -16,8 +16,42 @@ def send_notification(title: str, body: str):
     """Send platform-appropriate notification."""
     if sys.platform == "win32":
         _send_toast(title, body)
+    elif sys.platform == "darwin":
+        # OSC 777 is an rxvt-unicode extension that Terminal.app does not
+        # implement, so the Unix path below fires on every Stop and shows the
+        # user nothing. Try the native notification first and keep OSC as the
+        # fallback for the terminals that do speak it (WezTerm, kitty).
+        if not _send_darwin(title, body):
+            _send_osc(title, body)
     else:
         _send_osc(title, body)
+
+
+def _send_darwin(title: str, body: str) -> bool:
+    """Post a macOS notification via osascript; False when it could not run.
+
+    The text is handed to an ``on run argv`` handler as arguments rather than
+    interpolated into the AppleScript source. Interpolating would break on a
+    title containing a double quote, and would make any notification text
+    executable AppleScript -- the body can come from a hook payload.
+    """
+    script = (
+        "on run argv\n"
+        "display notification (item 1 of argv) with title (item 2 of argv)\n"
+        "end run"
+    )
+    # 3s, not the hook's full 5000ms budget: a stalled osascript must still leave
+    # the caller room to fall through to _send_osc before Claude Code kills the
+    # hook, or the fallback exists on paper only.
+    try:
+        proc = subprocess.run(
+            ["osascript", "-e", script, body, title],
+            capture_output=True,
+            timeout=3,
+        )
+        return proc.returncode == 0
+    except Exception:
+        return False
 
 
 def _send_toast(title: str, body: str):

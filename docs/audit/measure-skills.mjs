@@ -58,6 +58,10 @@ function extractDescription(text) {
 
 function walkDepth(dir, base, acc) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    // .DS_Store is gitignored, so it never shows in a diff -- but this script
+    // walks the working tree, and on a Mac Finder leaves one in every visited
+    // directory, inflating ref_files by one for the affected skill.
+    if (entry.name.startsWith('.')) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
       walkDepth(full, base, acc);
@@ -122,18 +126,27 @@ function measure(root) {
 
 const root = process.cwd();
 const rows = measure(root);
+// Ties on `lines` used to keep readdir order, which differs between ext4 and
+// APFS -- so regenerating skill-measurements.csv on a Mac produced a diff with
+// no content change (there are real ties in it: 39, 52, 67, 81). Break ties on
+// plugin+skill with plain byte comparison; localeCompare would swap one
+// platform dependency for an ICU one.
+const byLinesThenName = (a, b) =>
+  b.lines - a.lines ||
+  (a.plugin < b.plugin ? -1 : a.plugin > b.plugin ? 1 : 0) ||
+  (a.skill < b.skill ? -1 : a.skill > b.skill ? 1 : 0);
 const cols = ['plugin', 'skill', 'lines', 'body_tokens', 'desc_chars', 'desc_tokens',
   'sections', 'ref_files', 'ref_depth', 'has_scripts', 'v_lines', 'v_desc', 'v_refdepth'];
 
 if (process.argv.includes('--md')) {
   console.log('| ' + cols.join(' | ') + ' |');
   console.log('|' + cols.map(() => '---').join('|') + '|');
-  for (const r of rows.sort((a, b) => b.lines - a.lines)) {
+  for (const r of rows.sort(byLinesThenName)) {
     console.log('| ' + cols.map((c) => r[c]).join(' | ') + ' |');
   }
 } else {
   console.log(cols.join(','));
-  for (const r of rows.sort((a, b) => b.lines - a.lines)) {
+  for (const r of rows.sort(byLinesThenName)) {
     console.log(cols.map((c) => r[c]).join(','));
   }
 }

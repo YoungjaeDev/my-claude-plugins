@@ -725,15 +725,18 @@ node scripts/install-skills.mjs
 
 ### CI 가드가 지키는 것 (curation / security)
 
-shared-source 배선은 5개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 다른 도구체인에 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
+shared-source 배선은 6개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 다른 도구체인에 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
 - `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
 - `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
+- `check-shell-portability.mjs` — GNU 전용 셸 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우 차단. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하고, 증거는 코드만 인정합니다(대체재를 언급하는 주석은 폴백이 아님). 예외는 `# portability-ok: <사유>`.
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
 
-drift·길이·shape 위반은 **차단**(exit 1)이고, prose 경고는 측정치일 뿐 커밋을 막지 않습니다. 어느 가드도 소스를 자동 수정하지 않습니다 — 위반을 보고할 뿐이니, 로컬에서 generator 를 재실행해 파생물을 맞춘 뒤 다시 커밋하세요.
+CI 는 여기에 더해 **macOS 레그**(`validate-codex.yml` 의 `macos` job)를 돌립니다. cr-fix 스위트가 품은 BSD 폴백들은 GNU 러너에서 절반만 실행되므로, macOS 레그가 그 나머지 절반이 실제로 도는 유일한 지점입니다. `env -i PATH=/usr/bin:/bin` 는 쓰지 않습니다 — macOS 에서 `jq` 가 Homebrew 경로에 있어 스위트가 도구 부재로 죽습니다. 대신 `sed`/`date`/`stat` 이 BSD 빌드인지 assert 하고(Homebrew coreutils 가 시스템 도구를 가리면 실패), 스위트는 `/bin/bash` 로 돌려 bash 3.2 를 강제합니다.
+
+drift·길이·shape·이식성 위반은 **차단**(exit 1)이고, prose 경고는 측정치일 뿐 커밋을 막지 않습니다. 어느 가드도 소스를 자동 수정하지 않습니다 — 위반을 보고할 뿐이니, 로컬에서 generator 를 재실행해 파생물을 맞춘 뒤 다시 커밋하세요.
 
 ### 머신 로컬 운영 갱신 (PR 밖 오퍼레이터 체크리스트)
 

@@ -16,6 +16,10 @@ if command -v node >/dev/null 2>&1; then
   node "$repo_root/scripts/sync-hermes-manifests.mjs" --check
   node "$repo_root/scripts/check-doc-consistency.mjs"
   node "$repo_root/scripts/check-skill-tool-portability.mjs" --check
+  # GNU-only shell constructs shipped without a BSD fallback. code_review.md P1
+  # has forbidden these for a while with nothing enforcing it, which is how
+  # md5sum reached translator and broke image downloads on macOS (issue #172).
+  node "$repo_root/scripts/check-shell-portability.mjs"
   # Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
   # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
   node "$repo_root/scripts/check-skill-prose.mjs" || true

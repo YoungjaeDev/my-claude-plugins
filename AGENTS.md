@@ -256,9 +256,14 @@ node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (validate-code
 node scripts/sync-codex-manifests.mjs --check
 node scripts/sync-hermes-manifests.mjs --check
 node scripts/check-doc-consistency.mjs
+node scripts/check-shell-portability.mjs
 ```
 
-`check-doc-consistency.mjs` 는 README 구조 트리·`## Plugins` 표·문서에 박힌 카운트 문자열을 marketplace.json 과 대조하고 `.githooks/pre-commit` 에서 차단한다. 문서 블록이 관례가 아니라 기계적으로 강제된다는 뜻이므로, 어떤 문서 내용을 "코드에서 재생성 가능하니 지워도 된다" 고 판단하기 전에 훅이 그 블록을 요구하는지 먼저 확인한다. 가드 5종 전체 설명은 `README.md` 의 "CI 가드가 지키는 것".
+`check-doc-consistency.mjs` 는 README 구조 트리·`## Plugins` 표·문서에 박힌 카운트 문자열을 marketplace.json 과 대조하고 `.githooks/pre-commit` 에서 차단한다. 문서 블록이 관례가 아니라 기계적으로 강제된다는 뜻이므로, 어떤 문서 내용을 "코드에서 재생성 가능하니 지워도 된다" 고 판단하기 전에 훅이 그 블록을 요구하는지 먼저 확인한다. 가드 6종 전체 설명은 `README.md` 의 "CI 가드가 지키는 것".
+
+`check-shell-portability.mjs` 는 `code_review.md` P1 의 크로스플랫폼 규칙을 기계적으로 강제한다 — GNU 전용 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우만 잡는다. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하며, 증거는 **코드여야 하고 주석은 인정하지 않는다** (대체재를 언급하는 주석이 실제 폴백으로 계수되면 이 가드가 존재하는 이유인 `md5sum` 자체가 새어나간다). 정말 예외인 줄은 `# portability-ok: <사유>` 로 표시한다. `.llmwiki/`·`.claude/spec/`·`code_review.md`·`AGENTS.md` 는 그 구문을 *설명*할 뿐이라 스캔에서 제외된다.
+
+macOS CI 레그(`validate-codex.yml` 의 `macos` job)는 BSD 폴백이 실제로 실행되는 유일한 지점이다. `env -i PATH=/usr/bin:/bin` 는 쓰지 않는다 — macOS 에서 `jq` 가 Homebrew 경로에 있어 스위트가 도구 부재로 죽는다. 대신 `sed`/`date`/`stat` 이 `--version` 을 거부하는지(=BSD 빌드인지) assert 하고, Homebrew coreutils 가 시스템 도구를 가리면 시끄럽게 실패시킨다. 스위트는 `bash` 가 아니라 `/bin/bash` 로 돌려 bash 3.2 를 강제한다 (러너 PATH 의 Homebrew bash 5 로 돌면 bash-4 전용 구문이 여기서 통과하고 사용자에게서 깨진다).
 
 - 로컬 Codex CLI 에서 marketplace 등록 확인:
 

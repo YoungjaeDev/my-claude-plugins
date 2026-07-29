@@ -34,6 +34,7 @@ const CODEX_TOOL = 'request_user_input';
 const PILOTS = [
   'plugins/interview/skills/interview-methodology/SKILL.md',
   'plugins/github-dev/skills/decompose-issue/SKILL.md',
+  'plugins/council/skills/convene/SKILL.md',
 ];
 
 // Reviewed baseline debt — skills that still hardcode AskUserQuestion, migration deferred.

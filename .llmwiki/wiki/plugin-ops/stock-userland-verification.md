@@ -1,10 +1,10 @@
 ---
 id: stock-userland-verification
-aliases: [grep-ugrep-shim, interactive-shell-masks-portability, env-i-verification, portability-claim-unsound-in-shell]
-last_verified: 2026-07-22
+aliases: [grep-ugrep-shim, interactive-shell-masks-portability, env-i-verification, portability-claim-unsound-in-shell, env-i-tool-absence, assert-bsd-userland]
+last_verified: 2026-07-29
 status: active
 volatility: stable
-sources: 3
+sources: 4
 ---
 
 # Verify shell portability under stock userland, not the interactive shell
@@ -32,6 +32,15 @@ env -i PATH=/usr/bin:/bin bash script.sh    # what a hook / Codex / Hermes actua
 
 This is the empirical counterpart to the static rule in `code_review.md` ("cross-platform shell 가정"): the review rule says *don't write GNU-only constructs*, this says *and don't trust an interactive-shell test that a GNU-only construct is portable*.
 
+### The rule's floor: the stripped environment must still contain the tools
+
+`env -i PATH=/usr/bin:/bin` is sound only for a script whose entire tool set is in stock userland. When the script needs a tool that is *not* — and on macOS `jq` is not; it lives in the Homebrew prefix — the run dies on tool absence having verified nothing, and the failure is easy to misread as a portability finding. The trap is that this is platform-asymmetric: Linux ships `/usr/bin/jq`, so the same command passes there. Confirming the form locally on Linux proves it works on the platform you were not asking about.
+
+For that case, invert the technique: keep `PATH` intact so the non-stock tool resolves, and instead **assert that the tools under test are the BSD builds**. GNU answers `--version`; BSD refuses. So `--version` *succeeding* means Homebrew coreutils have shadowed the system tools and the run is silently re-testing the GNU half that the Linux job already covers — fail loudly there, because a green that proves nothing is worse than a red. Two corollaries:
+
+- **Invoke `/bin/bash`, not `bash`.** A CI image may put Homebrew bash 5 ahead on `PATH`, while the `/bin/bash` a real Mac user has is 3.2. Under `bash` a bash-4-only construct passes in CI and breaks for the user — the same "verified nothing" shape one layer up.
+- **A BSD fallback branch that never executes is not evidence.** A suite full of `stat -c … || stat -f …` pairs asserts only the GNU half while it runs on GNU runners; the BSD leg is the only place the other half is exercised at all.
+
 ## Porting traps: `grep -oP` → POSIX
 
 Replacing PCRE extraction with portable tooling has three traps, each caught in the #160 review after the mechanical conversion looked correct:
@@ -55,3 +64,4 @@ The masking is invisible by construction — the whole point of a shim is that `
 1. **PR #153** (`fix(github-dev): cr-fix path-trust works on BSD/macOS userland`) — the RED verification of the first symlink-escape test falsely *passed* until re-run stock, because the runner's `grep` shim masked the BSD behavior; all findings re-checked under `env -i PATH=/usr/bin:/bin`.
 2. **macOS-26 compatibility audit** (24-plugin sweep, 2026-07-22) — `grep -oP` found in 7 llm-wiki hook/skill sites, each `2>/dev/null`-suppressed so BSD grep's failure surfaced as a silent empty value rather than an error; the shim hid every one in interactive use.
 3. **PR #160/#161** (`fix(llm-wiki,core-config): portable extraction for BSD/macOS userland`) — converted all 18 `grep -[oc]P` sites to sed/awk/exact-compare; the review surfaced the three porting traps above (greedy-sed last-match, awk empty-input, escaped-quote) after the mechanical conversion first looked correct. Each replacement re-verified under `env -i PATH=/usr/bin:/bin` to return the same value the PCRE form did.
+4. **PR #187** (`feat(ci): 셸 이식성 가드 + macOS 레그`) — the macOS CI leg, the first place the suite's BSD fallback branches execute at all. `env -i PATH=/usr/bin:/bin` was the obvious wiring and was wrong here: the suite is built on `jq`, absent from macOS stock userland, so the leg would have died having tested nothing while passing on Linux. Replaced with an assert that `sed`/`date`/`stat` reject `--version` (= BSD builds), a loud failure when Homebrew coreutils shadow them, and `/bin/bash` to pin bash 3.2. The assert logic was checked for discriminating power by running it on GNU Linux, where it exits 1.

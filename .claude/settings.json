@@ -21,6 +21,7 @@
       "./plugins/tally-form",
       "./plugins/ppt-yeong-style",
       "./plugins/codex-image",
+      "./plugins/council",
       "./plugins/brightdata-guide",
       "./plugins/gws-sync",
       "./plugins/mem0-ops",

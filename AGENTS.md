@@ -15,7 +15,7 @@
 
 플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.
 
-## Plugins (24)
+## Plugins (25)
 
 ### Core
 | Plugin | Description |
@@ -44,6 +44,7 @@
 | Plugin | Description |
 |--------|-------------|
 | `codex-image` | Claude->Codex image generation bridge (delegates to Codex CLI image gen via ChatGPT OAuth, no OpenAI API key). Claude-only — excluded from Codex sync |
+| `council` | Cross-vendor deliberation (`/council:convene`). Three seats — codex (`gpt-5.6-sol`), agy (`gemini-3.6-flash-high`), Claude (`opus`) — answer independently, hand their follow-up questions to the user through a re-question gate, then rebut each other; the chair (main session, not a seat) synthesizes. Seat models pinned in a weekly-TTL registry at `~/.claude/council-models.json`; expiry always asks rather than auto-upgrading. Same-family consensus discount offsets the chair and Claude seat sharing weights. Output to git-tracked `.council/<date>-<slug>/`. Claude-only — excluded from Codex sync (seating codex under Codex is circular, and the Claude seat needs the Agent tool) |
 
 ### Development Tools
 | Plugin | Description |
@@ -155,7 +156,7 @@
 - `plugins/<name>/` 아래 **어떤 파일이든** 바뀌면 버전 범프 대상입니다 — 코드/스킬뿐 아니라 번들 `references/`·`docs`·asset 편집도 포함. 캐시로 게이트된 사용자는 버전 범프가 있어야 새 내용을 받으므로, 문서만 고쳐도 해당 플러그인 PATCH + `metadata.version`을 올립니다 (Codex-eligible 이면 매니페스트 재생성). 반면 루트 문서(`AGENTS.md`, `README.md`, `code_review.md`, `.claude/rules/*`)는 플러그인 콘텐츠가 아니라 어떤 플러그인도 범프하지 않습니다.
 - Hermes-eligible 플러그인: `plugins/<name>/plugin.yaml`(Hermes 어댑터)의 `version`은 `sync-hermes-manifests.mjs` 가 marketplace 에서 파생해 생성하므로, 버전 범프 후 `node scripts/sync-hermes-manifests.mjs` 재실행으로 갱신하세요. `sync-hermes-manifests.mjs --check` 가 drift 를 가드하므로 수동 동기화는 불필요합니다 (단 Codex `--check` 는 Codex 매니페스트만 봅니다).
 - 어떤 플러그인 버전이든 변경하면 `.claude-plugin/marketplace.json`의 `metadata.version`도 marketplace release 버전으로 올리세요.
-- 플러그인을 추가하거나 제거하면 이 문서의 `## Plugins (N)` 수와 목록, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 문서의 미러 카운트(Hermes allowlist `현재 N개`, Codex 검증 주석 `# N entries`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다.
+- 플러그인을 추가하거나 제거하면 이 문서의 `## Plugins (N)` 수와 목록, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 문서의 미러 카운트(Hermes allowlist `현재 N개`, Codex 검증 주석 `# N entries`)와 `README.md` 의 "CI 가드가 지키는 것" 절에 산문으로 적힌 총계(`총 N / Codex-eligible N / Hermes N`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다. 마지막 것은 `check-doc-consistency` 가 README 총계를 `(\d+) / (\d+) 플러그인` 형태로만 매칭하는데 그 문장은 숫자 뒤에 `플러그인` 이 없어서입니다. 가드가 자기 자신을 설명하는 문장이 stale 해도 가드는 통과합니다.
 - 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다.
 - Claude Code 플러그인 캐시 이슈 때문에 사용자 문서나 릴리스 안내에는 필요 시 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 후 marketplace update 및 Claude Code 재시작 절차를 유지하세요.
 
@@ -229,7 +230,7 @@ node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 - Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
 - Codex 0.135 manifest top-level 은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원합니다 (참조: `~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md`). `commands` / `agents` 는 생성기가 emit 하지 않습니다 — Claude 만 인식하는 필드입니다.
 - **번들 Codex hooks**: 플러그인이 소스 관리되는 `hooks/codex-hooks.json` 디스크립터를 실으면 생성기가 이를 매니페스트 top-level `hooks: "./hooks/codex-hooks.json"` 로 배선합니다 (Codex 는 이 파일명을 기본 탐색 `hooks/hooks.json` 로 자동 발견하지 못하므로 매니페스트 선언이 필수). 디스크립터 shape 는 `{ "hooks": { <Event>: [ { "matcher"?, "hooks": [ { "type":"command", "command": "bash \"$PLUGIN_ROOT/…\"" } ] } ] } }` — 이벤트명은 Codex hook 이벤트 집합 (`UserPromptSubmit` / `SessionStart` / `Stop` / `SubagentStop` / `PostToolUse` 등), plugin-root env-var 는 `PLUGIN_ROOT` (`CLAUDE_PLUGIN_ROOT` 는 호환 alias), 경로에 공백이 있을 수 있어 따옴표로 감쌉니다. `--check` 가 디스크립터 파싱·shape·참조 스크립트 존재·orphan (`hooks` 선언 있는데 소스 없음) 을 검증합니다 (`scripts/sync-codex-manifests.test.mjs` 가 fixture 로 RED/GREEN 커버). Codex hook 은 여전히 `/hooks` trust 승인이 필요합니다. `UserPromptSubmit`/`PostToolUse` 훅은 plain stdout 이 아니라 `hookSpecificOutput.additionalContext` JSON 을 내보내야 Codex 가 읽습니다 (공유 스크립트는 `codex` 인자로 분기: core-config `prompt_inject.sh`, llm-wiki `wiki_stale_check.sh` / `wiki_post_commit_hint.sh`).
-- Codex 에서 제외할 플러그인은 `scripts/manifest-eligibility.mjs` 의 `CODEX_EXCLUDED` 셋에 등록하세요 (현재: `codex-image` 하나뿐). `codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환입니다. `core-config` 는 skill 이 없지만 이제 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 sync 되므로 더 이상 제외 대상이 아닙니다 (native Codex `UserPromptSubmit` 훅). 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
+- Codex 에서 제외할 플러그인은 `scripts/manifest-eligibility.mjs` 의 `CODEX_EXCLUDED` 셋에 등록하세요 (현재: `codex-image`, `council` 둘). `codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환입니다. `council` 은 codex 를 의석으로 앉히므로 Codex 에서 돌리면 codex 가 자기 자신을 소환하는 순환이고, Claude 의석이 Agent 도구를 필요로 하는데 Codex 에는 대응 표면이 없습니다. `core-config` 는 skill 이 없지만 이제 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 sync 되므로 더 이상 제외 대상이 아닙니다 (native Codex `UserPromptSubmit` 훅). 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
 - 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
 
 ## Hermes 통합 (shared-source)
@@ -256,9 +257,14 @@ node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (validate-code
 node scripts/sync-codex-manifests.mjs --check
 node scripts/sync-hermes-manifests.mjs --check
 node scripts/check-doc-consistency.mjs
+node scripts/check-shell-portability.mjs
 ```
 
-`check-doc-consistency.mjs` 는 README 구조 트리·`## Plugins` 표·문서에 박힌 카운트 문자열을 marketplace.json 과 대조하고 `.githooks/pre-commit` 에서 차단한다. 문서 블록이 관례가 아니라 기계적으로 강제된다는 뜻이므로, 어떤 문서 내용을 "코드에서 재생성 가능하니 지워도 된다" 고 판단하기 전에 훅이 그 블록을 요구하는지 먼저 확인한다. 가드 5종 전체 설명은 `README.md` 의 "CI 가드가 지키는 것".
+`check-doc-consistency.mjs` 는 README 구조 트리·`## Plugins` 표·문서에 박힌 카운트 문자열을 marketplace.json 과 대조하고 `.githooks/pre-commit` 에서 차단한다. 문서 블록이 관례가 아니라 기계적으로 강제된다는 뜻이므로, 어떤 문서 내용을 "코드에서 재생성 가능하니 지워도 된다" 고 판단하기 전에 훅이 그 블록을 요구하는지 먼저 확인한다. 가드 6종 전체 설명은 `README.md` 의 "CI 가드가 지키는 것".
+
+`check-shell-portability.mjs` 는 `code_review.md` P1 의 크로스플랫폼 규칙을 기계적으로 강제한다 — GNU 전용 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우만 잡는다. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하며, 증거는 **코드여야 하고 주석은 인정하지 않는다** (대체재를 언급하는 주석이 실제 폴백으로 계수되면 이 가드가 존재하는 이유인 `md5sum` 자체가 새어나간다). 정말 예외인 줄은 `# portability-ok: <사유>` 로 표시한다. `.llmwiki/`·`.claude/spec/`·`code_review.md`·`AGENTS.md` 는 그 구문을 *설명*할 뿐이라 스캔에서 제외된다.
+
+macOS CI 레그(`validate-codex.yml` 의 `macos` job)는 BSD 폴백이 실제로 실행되는 유일한 지점이다. `env -i PATH=/usr/bin:/bin` 는 쓰지 않는다 — macOS 에서 `jq` 가 Homebrew 경로에 있어 스위트가 도구 부재로 죽는다. 대신 `sed`/`date`/`stat` 이 `--version` 을 거부하는지(=BSD 빌드인지) assert 하고, Homebrew coreutils 가 시스템 도구를 가리면 시끄럽게 실패시킨다. 스위트는 `bash` 가 아니라 `/bin/bash` 로 돌려 bash 3.2 를 강제한다 (러너 PATH 의 Homebrew bash 5 로 돌면 bash-4 전용 구문이 여기서 통과하고 사용자에게서 깨진다).
 
 - 로컬 Codex CLI 에서 marketplace 등록 확인:
 

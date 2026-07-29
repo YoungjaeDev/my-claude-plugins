@@ -15,7 +15,7 @@
 
 플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.
 
-## Plugins (24)
+## Plugins (25)
 
 ### Core
 | Plugin | Description |
@@ -44,6 +44,7 @@
 | Plugin | Description |
 |--------|-------------|
 | `codex-image` | Claude->Codex image generation bridge (delegates to Codex CLI image gen via ChatGPT OAuth, no OpenAI API key). Claude-only — excluded from Codex sync |
+| `council` | Cross-vendor deliberation (`/council:convene`). Three seats — codex (`gpt-5.6-sol`), agy (`gemini-3.6-flash-high`), Claude (`opus`) — answer independently, hand their follow-up questions to the user through a re-question gate, then rebut each other; the chair (main session, not a seat) synthesizes. Seat models pinned in a weekly-TTL registry at `~/.claude/council-models.json`; expiry always asks rather than auto-upgrading. Same-family consensus discount offsets the chair and Claude seat sharing weights. Output to git-tracked `.council/<date>-<slug>/`. Claude-only — excluded from Codex sync (seating codex under Codex is circular, and the Claude seat needs the Agent tool) |
 
 ### Development Tools
 | Plugin | Description |
@@ -229,7 +230,7 @@ node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 - Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
 - Codex 0.135 manifest top-level 은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원합니다 (참조: `~/.codex/skills/.system/plugin-creator/references/plugin-json-spec.md`). `commands` / `agents` 는 생성기가 emit 하지 않습니다 — Claude 만 인식하는 필드입니다.
 - **번들 Codex hooks**: 플러그인이 소스 관리되는 `hooks/codex-hooks.json` 디스크립터를 실으면 생성기가 이를 매니페스트 top-level `hooks: "./hooks/codex-hooks.json"` 로 배선합니다 (Codex 는 이 파일명을 기본 탐색 `hooks/hooks.json` 로 자동 발견하지 못하므로 매니페스트 선언이 필수). 디스크립터 shape 는 `{ "hooks": { <Event>: [ { "matcher"?, "hooks": [ { "type":"command", "command": "bash \"$PLUGIN_ROOT/…\"" } ] } ] } }` — 이벤트명은 Codex hook 이벤트 집합 (`UserPromptSubmit` / `SessionStart` / `Stop` / `SubagentStop` / `PostToolUse` 등), plugin-root env-var 는 `PLUGIN_ROOT` (`CLAUDE_PLUGIN_ROOT` 는 호환 alias), 경로에 공백이 있을 수 있어 따옴표로 감쌉니다. `--check` 가 디스크립터 파싱·shape·참조 스크립트 존재·orphan (`hooks` 선언 있는데 소스 없음) 을 검증합니다 (`scripts/sync-codex-manifests.test.mjs` 가 fixture 로 RED/GREEN 커버). Codex hook 은 여전히 `/hooks` trust 승인이 필요합니다. `UserPromptSubmit`/`PostToolUse` 훅은 plain stdout 이 아니라 `hookSpecificOutput.additionalContext` JSON 을 내보내야 Codex 가 읽습니다 (공유 스크립트는 `codex` 인자로 분기: core-config `prompt_inject.sh`, llm-wiki `wiki_stale_check.sh` / `wiki_post_commit_hint.sh`).
-- Codex 에서 제외할 플러그인은 `scripts/manifest-eligibility.mjs` 의 `CODEX_EXCLUDED` 셋에 등록하세요 (현재: `codex-image` 하나뿐). `codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환입니다. `core-config` 는 skill 이 없지만 이제 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 sync 되므로 더 이상 제외 대상이 아닙니다 (native Codex `UserPromptSubmit` 훅). 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
+- Codex 에서 제외할 플러그인은 `scripts/manifest-eligibility.mjs` 의 `CODEX_EXCLUDED` 셋에 등록하세요 (현재: `codex-image`, `council` 둘). `codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환입니다. `council` 은 codex 를 의석으로 앉히므로 Codex 에서 돌리면 codex 가 자기 자신을 소환하는 순환이고, Claude 의석이 Agent 도구를 필요로 하는데 Codex 에는 대응 표면이 없습니다. `core-config` 는 skill 이 없지만 이제 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 sync 되므로 더 이상 제외 대상이 아닙니다 (native Codex `UserPromptSubmit` 훅). 이후 marketplace 에서 제거된 플러그인은 EXCLUDED 에 남길 필요 없습니다 — drift 가드의 orphan 감지가 매니페스트 잔존을 잡아냅니다.
 - 생성기는 Node 18+ built-in 만 사용합니다. 런타임 의존성을 추가하지 마세요.
 
 ## Hermes 통합 (shared-source)

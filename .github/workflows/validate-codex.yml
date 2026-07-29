@@ -40,6 +40,12 @@ jobs:
       # primary path fails, so nothing exercised them until they broke in
       # production (issues #105, #110). Fixture-driven, no network, sub-second.
       - run: bash plugins/github-dev/skills/cr-fix/tests/run-tests.sh
+      # convene ships no scripts -- its runner contracts are shell inside SKILL.md,
+      # so nothing executes them. A dropped `< /dev/null` on the agy call blocks
+      # that seat forever (--print-timeout does not bound it), and parsing codex
+      # stdout instead of its -o file reads hook lines as the answer. Neither is
+      # a GNU-only construct, so check-shell-portability cannot see them.
+      - run: bash plugins/council/skills/convene/tests/run-tests.sh
       # code_review.md P1 forbids unguarded GNU-only shell constructs, and until
       # now nothing enforced it -- md5sum shipped in translator and collapsed every
       # downloaded image to one filename on macOS (issue #172). Flags a construct
@@ -97,3 +103,5 @@ jobs:
       # suite under 5 would let a bash-4-only construct pass here and break for them.
       - name: cr-fix suite under /bin/bash (3.2) + BSD tools
         run: /bin/bash plugins/github-dev/skills/cr-fix/tests/run-tests.sh
+      - name: convene suite under /bin/bash (3.2) + BSD tools
+        run: /bin/bash plugins/council/skills/convene/tests/run-tests.sh

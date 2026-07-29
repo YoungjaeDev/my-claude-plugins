@@ -6,6 +6,16 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-29 — post-merge #189: testing shell that lives in a document + cross-vendor council design (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `af75c84` — the `council` plugin (25th), driven through 5 cr-fix iterations (39 findings, 35 applied). Config integration (Step 6): the README guard-section count-home went to `.claude/rules/plugin-versioning.md` + its `AGENTS.md` mirror, so it is deliberately NOT duplicated here. TOCTOU itself is textbook and is not recorded; the environment fact that `CLAUDE_SESSION_ID` is not exported (only `CODEX_COMPANION_SESSION_ID`) is, inside the council page.
+
+- plugin-ops/testing-shell-embedded-in-docs.md: new page, status: active, volatility: stable, sources: 2 — a skill whose shell lives in `SKILL.md` has no executable under test; a hand-mirrored copy in the test file passes while the real block rots, so extract the fence and run it. Anchor extraction on fence *content*, not ordinal. Grepping for a construct is not testing it (an awk with a status-overwriting `END{exit}` passed a presence grep for four iterations). Prose-leak detection by pattern loses to Korean/bullets/headings — `bash -n` is the parser.
+- plugin-ops/council-cross-vendor-design.md: new page, status: active, volatility: stable, sources: 2 — chair and a same-model seat share weights, so the seat's agreement manufactures false consensus in a 3-seat vote (mitigated by a same-family consensus discount + an adversarial role, with Opus still chosen because round 2 is an attack task). A policy TTL must be a constant in code, never a field read back from the file it governs. Confirmed pins reach the writer as a file written by the `Write` tool, never as shell source.
+- plugin-ops/detector-cannot-look-vs-nothing-wrong.md: extend Mode 10 with the scope wrinkle — an assertion satisfied by a *sibling copy* elsewhere in the document, or by the searched-for string appearing in a *comment*, is the same "evidence of the wrong kind" failure; require per-scope coverage and track the guard statement itself. sources 6→7, last_verified 2026-07-29.
+- insight/detector-cannot-look.md: mirror the scope wrinkle into the promoted "looked and let go" bullet, evidence_count 7→8, last_verified 2026-07-29.
+- index.md: added 2 hooks under plugin-ops.
+
 ## 2026-07-24 — post-merge #164: brightdata CLI preflight quirks + rg hidden-path parity blindspot (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `b5d288f` — search-stack migration (firecrawl→brightdata + slidev plugin removal). Config integration (Step 6): none new — plugin counts / version bumps / the code-scout brightdata tier landed in the merge itself, and the plugin-removal-is-MINOR rule already lives in `.claude/rules/plugin-versioning.md`; the durable lore is provider-quirk + a verification debugging-story, routed here.

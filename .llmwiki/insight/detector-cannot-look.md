@@ -3,7 +3,7 @@ id: detector-cannot-look
 aliases: [could-not-look-false-clean, degraded-answer-not-nothing, pipefail-detector-silent-noop]
 tier: insight
 promoted_from: [[detector-cannot-look-vs-nothing-wrong]]
-evidence_count: 7
+evidence_count: 8
 last_verified: 2026-07-29
 status: active
 volatility: stable
@@ -12,7 +12,7 @@ sources: 1
 
 # A detector must never convert "could not look" into "nothing wrong"
 
-A read-only check that cannot evaluate an axis must say so, keep going, and never emit an all-clear for the part it could not inspect. The failure hides as success in six shapes, all observed in this repo across 6 PRs (the fifth inverts the symptom — a false block instead of a false clean — but has the same cause):
+A read-only check that cannot evaluate an axis must say so, keep going, and never emit an all-clear for the part it could not inspect. The failure hides as success in seven shapes, all observed in this repo across 7 PRs (the fifth inverts the symptom — a false block instead of a false clean — but has the same cause):
 
 - **`pipefail` abort** — `find`/`jq` inside `$(...)` exits non-zero on normal input (`find` = no match, `jq` = corrupt file) and `set -euo pipefail` kills the whole diagnostic → no output, reads as "tool broken" not "your config is."
 - **`|| true` false-clean, and its wider form: guard scope** — patching the abort with `|| true` turns it invisible (empty/`[]`/`"x"` all yield "no duplicates found," a lie for "I could not compare"). The subtler failure is a guard that absorbs more than intended: `cmd -v X && X … || true` covers the whole `&&` chain, so "X absent" (intended) and "X ran and failed" (must not be hidden) both exit 0. Use `if cmd -v X …; then X …; fi`, whose absorption is bounded by syntax rather than by operator precedence.
@@ -22,6 +22,8 @@ A read-only check that cannot evaluate an axis must say so, keep going, and neve
 
 - **The audit's own question** — a check scoped to one platform/dimension cannot report on the ones it never asked about, including the platform its own fix just broke. A defect that fails identically everywhere does not answer "what breaks on BSD?", and a severity justified by one platform's properties ("macOS has no CUDA, so it exits anyway") is scoped to that platform too. Before shipping a portability fix, ask what the changed line does on every platform the surrounding block serves.
 
+- **Looked, and let go** — a check that runs fine but accepts the wrong evidence. Two shapes: the exemption is wider than the case it must admit (a nearby *comment* counted as proof of a fallback cleared the very `md5sum` defect the guard existed for), and the *scope* is wider than the property (a document-wide grep for a guard stays green when one of four sites loses it, because a sibling's copy answers the search). When an assertion is satisfied by something other than the thing it names, tighten the scope and assert the construct's position — not the pattern. Its mirror image: a check that looked perfectly at a **copy**. A test that re-types the logic it guards passes forever while the original drifts, so run the artifact, not a replica of it.
+
 **When to apply**: writing or reviewing any script that answers "is X wired up / clean / resolved?" — config detectors, review gates, convergence loops, merge gates. Guard on the exact question asked, require the full expected shape, give the gate test coverage, and verify tool portability under stock userland — checking first that the stripped environment still contains what the script needs, or the run proves nothing rather than proving portability.
 
 **Why**: every instance ships disguised as an edge case and is found only by running the script against the ugly input / wrong platform, not by reading it. The cost is real: a gate that can't look green-lit an auto-merge of unresolved CRITICAL findings.
@@ -30,8 +32,9 @@ Full mode-by-mode analysis, fixes, and per-PR provenance stay in the `promoted_f
 
 ## Sources
 
-- `.llmwiki/wiki/plugin-ops/detector-cannot-look-vs-nothing-wrong.md` — the promoted source page (Modes 1-10, PRs #104/#106/#122/#153/#164/#167/#183/#185/#186/#187).
+- `.llmwiki/wiki/plugin-ops/detector-cannot-look-vs-nothing-wrong.md` — the promoted source page (Modes 1-10, PRs #104/#106/#122/#153/#164/#167/#183/#185/#186/#187/#189).
 
 > Evidence: .llmwiki/wiki/plugin-ops/detector-cannot-look-vs-nothing-wrong.md
 > See-also: [[detector-cannot-look-vs-nothing-wrong]]
 > See-also: [[stock-userland-verification]]
+> See-also: [[testing-shell-embedded-in-docs]]

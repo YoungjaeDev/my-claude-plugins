@@ -13,9 +13,11 @@
 //   - a malformed or duplicate baseline entry, or one that overlaps a pilot
 //   - a stale baseline entry (file gone, or debt removed — no AskUserQuestion left)
 //
-// FOLLOW-UP DEBT (issue #123): only the 2 pilots below are migrated. The 19 BASELINE
-// paths still hardcode AskUserQuestion; migrating them to the standardized mapping is
-// deferred fleet work. Move a path from BASELINE to PILOTS as it is migrated.
+// FOLLOW-UP DEBT (issue #123): only the PILOTS below are migrated. The BASELINE paths
+// still hardcode AskUserQuestion; migrating them to the standardized mapping is deferred
+// fleet work. Move a path from BASELINE to PILOTS as it is migrated. The counts are
+// deliberately not restated here — the arrays are the SoT and this run prints both live,
+// so a number in this comment only goes stale on every migration and every plugin removal.
 //
 // Zero-dep: Node 18+ builtins only. Run: node scripts/check-skill-tool-portability.mjs --check
 

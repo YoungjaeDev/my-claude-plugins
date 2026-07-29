@@ -41,3 +41,8 @@ fi
 # fails, so nothing exercised them until they broke in production (issue #105).
 # Fixture-driven, no network, sub-second.
 bash "$repo_root/plugins/github-dev/skills/cr-fix/tests/run-tests.sh"
+
+# convene has no bundled scripts — its runner contracts live as shell inside
+# SKILL.md, where nothing executes them. Dropping `< /dev/null` from the agy call
+# makes the seat block forever, and check-shell-portability does not cover it.
+bash "$repo_root/plugins/council/skills/convene/tests/run-tests.sh"

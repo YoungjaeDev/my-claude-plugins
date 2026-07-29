@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 25개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-25-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -91,6 +91,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
 | | `brightdata-guide` | Bright Data 웹 데이터 (MCP 툴 + CLI) — 스크래핑(Web Unlocker), SERP, 구조화 web_data_* 추출, 브라우저 자동화. operator 가 BRIGHTDATA_API_KEY 설정 |
 | **AI Models** | `codex-image` | Claude->Codex 이미지 생성 브리지 (ChatGPT OAuth, OpenAI API key 불필요) |
+| | `council` | 이종 벤더 심의 (`/council:convene`) — codex(GPT) + agy(Gemini) + Claude(Opus) 3인이 독립 의견 → 사용자 재질문 관문 → 상호 반박 → 의장 합성. 좌석 모델은 `~/.claude/council-models.json` 에 주간 TTL 로 고정 |
 | **Dev Tools** | `notebook` | Jupyter 노트북 안전 편집 |
 | | `ml-toolkit` | ML/멀티모달 개발 원칙, GPU 병렬 처리, Gradio CV 앱 |
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
@@ -307,6 +308,33 @@ Bright Data 플랫폼으로 웹 데이터 작업을 수행하는 가이드 스�
 - Claude-only 브리지 — Codex sync 에서 제외 (순환 방지)
 
 **Requirements:** Codex CLI 설치 + ChatGPT OAuth 로그인
+
+</details>
+
+<details>
+<summary><strong>council</strong> - 이종 벤더 3인 심의</summary>
+
+`/council:convene` 으로 하나의 질문을 서로 다른 회사가 만든 세 모델에게 동시에 던지고, 그 셋이 서로의 답을 읽고 반박하게 한 뒤, 합의된 것과 끝내 갈린 것을 문서로 남깁니다. Claude 서브에이전트를 여러 개 띄우는 것은 가중치를 공유하므로 관점이 늘지 않는다는 문제를 정면으로 겨냥합니다.
+
+**의석 (의장은 의석이 아님):**
+
+| 좌석 | 실행 | 기본 고정값 |
+|---|---|---|
+| codex | `codex exec` | `gpt-5.6-sol` / effort `xhigh` / tier `fast` |
+| agy | `agy --print` | `gemini-3.6-flash-high` |
+| claude | `Agent` 도구 model 오버라이드 | `opus` |
+
+**Features:**
+- 2라운드 프로토콜 — 독립 의견 → 사용자 재질문 관문 → 상호 반박 → 의장 합성
+- 주간 TTL 모델 레지스트리 (`~/.claude/council-models.json`) — 만료 시 `agy models` 와 `~/.codex/models_cache.json` 의 실제 목록을 근거로 제시하며 **항상 질문**, 자동 승급 없음
+- 동족 합의 할인 — 의장과 Claude 좌석이 가중치를 공유하므로, 동의 사실만으로는 합의 근거로 세지 않고 새 논거를 가져왔을 때만 계수
+- 사전 컨텍스트는 파일로 환원 불가능한 것만 — mem0 기억, Serena 심볼 그래프, code-scout 리서치 (파일은 경로만 전달)
+- 산출물은 git 추적되는 `.council/<날짜>-<슬러그>/` — 좌석별 로그 + `consensus.md`
+- 좌석은 독립적으로 실패하며 결석은 반드시 명시 (agy 는 1회 재시도 후 결석)
+- 합의 결과를 코드에 자동 적용하지 않음 — 결론 제시 후 정지
+- Claude-only — Codex sync 에서 제외 (순환 방지 + Agent 도구 부재)
+
+**Requirements:** `codex` / `agy` CLI (없는 좌석은 결석 처리되고 나머지로 진행), `jq`
 
 </details>
 
@@ -676,7 +704,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인은 `codex-image` 하나뿐입니다 (Claude->Codex 브리지 — Codex 로 sync 하면 순환). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 23 / 24 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
+Codex 에서 제외되는 플러그인은 `codex-image` 와 `council` 둘입니다 (`codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환, `council` 은 codex 를 의석으로 앉히므로 Codex 에서 돌리면 자기 자신을 소환하는 순환이고 Claude 의석이 Agent 도구를 필요로 함). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 23 / 25 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`docs-forge`, `deepwiki` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -729,12 +757,14 @@ shared-source 배선은 6개 가드가 매 PR 과 매 커밋(`.githooks/pre-comm
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
 - `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
-- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
+- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 25 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
 - `check-shell-portability.mjs` — GNU 전용 셸 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우 차단. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하고, 증거는 코드만 인정합니다(대체재를 언급하는 주석은 폴백이 아님). 예외는 `# portability-ok: <사유>`.
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
 
-CI 는 여기에 더해 **macOS 레그**(`validate-codex.yml` 의 `macos` job)를 돌립니다. cr-fix 스위트가 품은 BSD 폴백들은 GNU 러너에서 절반만 실행되므로, macOS 레그가 그 나머지 절반이 실제로 도는 유일한 지점입니다. `env -i PATH=/usr/bin:/bin` 는 쓰지 않습니다 — macOS 에서 `jq` 가 Homebrew 경로에 있어 스위트가 도구 부재로 죽습니다. 대신 `sed`/`date`/`stat` 이 BSD 빌드인지 assert 하고(Homebrew coreutils 가 시스템 도구를 가리면 실패), 스위트는 `/bin/bash` 로 돌려 bash 3.2 를 강제합니다.
+가드와 별개로 두 개의 픽스처 스위트가 같은 자리에서 돕니다 — `plugins/github-dev/skills/cr-fix/tests/run-tests.sh` (1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로)와 `plugins/council/skills/convene/tests/run-tests.sh` (스킬 본문에만 존재해 아무도 실행하지 않는 codex/agy 호출 계약 + 레지스트리 TTL 산술). 후자가 지키는 것은 이식성 가드가 볼 수 없는 종류입니다 — agy 호출에서 `< /dev/null` 이 빠지면 그 의석이 영원히 멈추는데, 그건 GNU 전용 구문이 아니라서 `check-shell-portability` 의 관심사가 아닙니다.
+
+CI 는 여기에 더해 **macOS 레그**(`validate-codex.yml` 의 `macos` job)를 돌립니다. 두 스위트가 품은 BSD 폴백들은 GNU 러너에서 절반만 실행되므로, macOS 레그가 그 나머지 절반이 실제로 도는 유일한 지점입니다. `env -i PATH=/usr/bin:/bin` 는 쓰지 않습니다 — macOS 에서 `jq` 가 Homebrew 경로에 있어 스위트가 도구 부재로 죽습니다. 대신 `sed`/`date`/`stat` 이 BSD 빌드인지 assert 하고(Homebrew coreutils 가 시스템 도구를 가리면 실패), 스위트는 `/bin/bash` 로 돌려 bash 3.2 를 강제합니다.
 
 drift·길이·shape·이식성 위반은 **차단**(exit 1)이고, prose 경고는 측정치일 뿐 커밋을 막지 않습니다. 어느 가드도 소스를 자동 수정하지 않습니다 — 위반을 보고할 뿐이니, 로컬에서 generator 를 재실행해 파생물을 맞춘 뒤 다시 커밋하세요.
 
@@ -786,6 +816,7 @@ node scripts/install-skills.mjs                  # 또는 hermes plugins install
 │   ├── ml-toolkit/            # ML 개발
 │   ├── translator/            # 번역
 │   ├── codex-image/           # Claude->Codex 이미지 생성 브리지
+│   ├── council/               # 이종 벤더 3인 심의 (codex + agy + Opus)
 │   ├── interview/             # 요구사항 수집
 │   ├── docs-forge/            # README/CHANGELOG + 배포 문서 + MOC 생성
 │   ├── rules-forge/           # write-rules 스킬 (자동 모드 감지)

@@ -1,10 +1,10 @@
 ---
 id: detector-cannot-look-vs-nothing-wrong
-aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean]
-last_verified: 2026-07-28
+aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean, guard-exemption-too-wide, comment-as-evidence]
+last_verified: 2026-07-29
 status: active
 volatility: stable
-sources: 9
+sources: 10
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -113,6 +113,16 @@ Modes 1-8 are all about a *check* that cannot look. Mode 9 is about the *questio
 
 The practical rule: **before shipping a portability fix, ask what the changed line does on every platform the surrounding block serves — not only the one that prompted the change.** A block that carries an `# Windows` comment is telling you its audience; the audit's title is not.
 
+## Mode 10: the guard leaks through its own exemption
+
+Modes 1-9 are checks that could not look. Mode 10 is a check that looked, and then let the finding go — because the mechanism that suppresses false positives was wider than intended. Every non-trivial guard needs one: a denylist that also fires on correct code is turned off within a week. That exemption is where the guard leaks.
+
+**Prose is not evidence of a code property.** `check-shell-portability.mjs` counts a GNU-only token only when nothing *nearby* makes it portable — a same-line `||`, a capability probe, a BSD counterpart within a few lines, or an explicit `# portability-ok:` marker. The first version also accepted a nearby **comment**. The repo had a comment mentioning `cksum` sitting above a `md5sum` line, so the guard cleared the exact defect it had been built to catch — the one that collapsed every image in an article into a single file on macOS and reported success. A comment describes an intention; the guard's question is what the code does. Comments are now stripped before counting.
+
+**An exemption stated loosely admits the case it excludes.** The same guard skipped `sed -i` "when followed by a quote", meaning to admit BSD's mandatory-empty-argument `sed -i ''`. Written that way it also admitted `sed -i "s/a/b/"` — the GNU form, the thing being hunted. Only the empty-argument shape is BSD; the exclusion has to say so.
+
+The generalization: **state the exemption as narrowly as the thing it must admit, and require evidence of the same kind as the property being checked.** A guard is only as good as its allowlist, and an allowlist is tested by feeding it the defects the guard exists for — this one was verified in both directions, 0 findings on the clean tree and exactly 6 on a worktree with the six real defects from this PR series reinjected.
+
 ## Why this recurs
 
 Each instance arrives disguised as an edge case ("who has a corrupt config?", "who greps a dot-dir?"), and each one is discovered only by running the check against the input it silently skips rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis — whether because it aborted, degraded, could not run, or never looked there — says so, keeps going, and never converts ignorance into an all-clear.**
@@ -138,3 +148,4 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?", "w
 7. **PR #183** (`fix: macOS/BSD broken 2건`) — the unswept-sibling instance (Mode 8): `engagement-gate.sh` counted CR comments by `created_at` only while `sniff-cr-rate-limit.sh:25` had already been widened to `created_at or updated_at`, so a clean re-review (CR edits its walkthrough in place) read as `cr_engagement=0` and `--auto-merge` was unreachable on the converged path; fixtures `issue-comments-cr-edited-in-place` / `issue-comments-cr-stale-only` guard both directions. Same PR carried the Mode 5 producer variant (`md5sum` mid-pipeline exits 0 from `head`, collapsing every image to `img_.png`) and the `|| true`-erases-the-asserted-status false green.
 8. **PR #185** (`fix(core-config,llm-wiki): hook wiring`) — the guard-scope instance (Mode 2): `command -v python3 && python3 hook.py || true` absorbed both "python3 absent" and "python3 present, hook failed" (measured rc 0 vs 3), fixed with an `if` branch whose absorption is bounded by syntax. Caught by the Codex reviewer citing the `code_review.md` P1 rule that PR #183 had added two merges earlier. Same PR carried Mode 8's second occurrence (11 unquoted `${CLAUDE_PLUGIN_ROOT}` hook commands against 7 already-quoted Codex descriptors) and a macOS notification path that fired on every Stop and displayed nothing (OSC 777 is an rxvt extension Terminal.app does not implement).
 9. **PR #186** (`fix: 이식성 잔여`) — the audit-lens instance (Mode 9): a macOS-scoped portability audit missed a resolver bug that breaks identically on GNU (whole-path sort lets the marketplace name outrank the version, `sort -V` included), and missed both reverse regressions its own fixes introduced on Windows (`python3` is absent from a python.org install) — the reviewer caught both. Also showed a severity rating inheriting the lens's scope: a call site rated cosmetic on "macOS has no CUDA anyway" is a real functional break on Windows, where CUDA exists. Fixed with a `python3`/`python`/`py -3` probe in an indexed array and a basename sort key.
+10. **PR #187** (`feat(ci): 셸 이식성 가드 + macOS 레그`) — the exemption-leak instance (Mode 10), found while building `scripts/check-shell-portability.mjs`, the guard that finally gives `code_review.md` P1's cross-platform rule enforcement. Its false-positive suppression counted a nearby comment as evidence of a fallback, and a `cksum`-mentioning comment above a fixed `md5sum` line made the guard pass the very defect from PR #172 that motivated it; the `sed -i` exclusion, written as "followed by a quote" to admit BSD's `sed -i ''`, admitted GNU `sed -i "s/a/b/"` too. Both closed, then verified in both directions — 245 files with 0 findings, and exactly 6 findings on a worktree with this PR series' six real defects reinjected.

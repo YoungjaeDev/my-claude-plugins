@@ -31,6 +31,17 @@ Topical names only (e.g., `## Process Lifecycle`, `## Crawler Throttling`). PR n
 
 "X is async" (current-state). NOT "X was changed to async in PR #50" (history). NOT "Previously we used Y; now we use X (#50)" (transition narrative).
 
+## Generalize the rule, not the instance
+
+A merged PR shows one concrete case. Record the rule that case is an instance of, not the case. This is a separate axis from stamp removal: a line can carry no `(#N)`, no date, and perfect current-state tone while still encoding a literal that only ever fires on this one diff — every check above passes and the rule is still worthless on the next PR.
+
+- Bad — `'Q4 매출' 열이 있으면 해당 열을 숫자로 변환한다`
+- Good — `열 이름에 매출·금액·수량 등 수치를 암시하는 키워드가 있으면 해당 열을 숫자 타입으로 변환한다`
+
+**Test.** Would this line still be true for the next PR that touches the same subsystem? If it only fires on the exact literal from this diff — a column name, a file name, a threshold, a plugin name — it is an instance, not a rule. Restate it at the level of the property that made the literal matter.
+
+**Floor.** Generalize up to the property, not past it. A rule that no longer names what to check (`데이터를 적절히 처리한다`) has been generalized into nothing — keep the discriminating property concrete even when the example is not.
+
 ## Language consistency
 
 Match the language of the surrounding section. If the existing doc/section is Korean, write the new bullet in Korean; if English, write English. Never introduce a second language into a single-language section — mid-sentence code-switching breaks readability and grep. Inspect the file's dominant language before writing; when unsure, use the language of the closest sibling bullet.

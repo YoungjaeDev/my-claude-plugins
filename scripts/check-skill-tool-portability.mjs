@@ -39,7 +39,6 @@ const PILOTS = [
 
 // Reviewed baseline debt — skills that still hardcode AskUserQuestion, migration deferred.
 const BASELINE = [
-  'plugins/anti-slop-design/skills/anti-slop-design/SKILL.md',
   'plugins/code-scout/skills/research-orchestrator/SKILL.md',
   'plugins/e2e-harness/skills/e2e-author/SKILL.md',
   'plugins/e2e-harness/skills/e2e-debug/SKILL.md',
@@ -51,7 +50,6 @@ const BASELINE = [
   'plugins/llm-wiki/skills/migrate-wiki/SKILL.md',
   'plugins/mem0-ops/skills/cleanup/SKILL.md',
   'plugins/plaud-note-taking/skills/plaud-note-taking/SKILL.md',
-  'plugins/ppt-yeong-style/skills/ppt-yeong-style/SKILL.md',
   'plugins/project-init/skills/wiring/SKILL.md',
   'plugins/rules-forge/skills/write-rules/SKILL.md',
   'plugins/spec-state/skills/state-tracker/SKILL.md',

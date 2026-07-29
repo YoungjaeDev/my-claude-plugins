@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 25 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.8.0"
+    "description": "Personal Claude Code plugin collection with 23 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
+    "version": "2.9.0"
   },
   "plugins": [
     {
@@ -19,7 +19,7 @@
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; --auto-merge + --skip-minor + --cr-source retained), project tracking, release. All workflows are now skills (commit-and-push, create-issue-label, decompose-issue, update-progress, resolve-issue, release, cr-fix, post-merge) — no commands surface, so they run under Codex too. post-merge runs a mandatory built-in wiki-lore ingest step (absorbed llm-wiki:post-merge-wiki) plus an optional Step 4.5 ephemeral-artifact pruning gate (heuristic candidates → AskUserQuestion → git rm). 2.8.0 correctness repairs: CR-state fetch failures map to a real error channel (no longer masked as a clean 'none'), a null-repository GraphQL response fails loudly instead of a silent false-clean convergence, and an active `@coderabbitai rate limit` query resolves ambiguous passive rate-limit sniffs.",
-      "version": "2.11.1",
+      "version": "2.11.2",
       "category": "github"
     },
     {
@@ -142,25 +142,11 @@
       "category": "ai-models"
     },
     {
-      "name": "anti-slop-design",
-      "source": "./plugins/anti-slop-design",
-      "description": "Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. Runs a clarify->context->plan->run->audit->revise flow with a two-phase audit gate (pre-emit self-critique + binary slop checklist) and hands Korean copy rewriting to humanize-korean. Source-grounded in 6 OSS anti-slop repos.",
-      "version": "0.3.3",
-      "category": "design"
-    },
-    {
       "name": "tally-form",
       "source": "./plugins/tally-form",
       "description": "Build Tally questionnaire/survey forms from checklist markdown — deterministic stdlib urllib builder with theme presets (neutral/hermes), section dividers, paragraph-split intros, per-question choices with required + checkbox (multi-select), short-answer inputs (text/number/email/phone/link), native scheduling (matrix grid / date / time), form images (logo/cover/inline IMAGE via hosted URLs incl. GitHub raw shorthand), redirect-on-completion, idempotent publish, and humanize-korean copy routing. Includes dev-survey and lecture-consultation presets plus bundled example fixtures.",
       "version": "1.2.2",
       "category": "content"
-    },
-    {
-      "name": "ppt-yeong-style",
-      "source": "./plugins/ppt-yeong-style",
-      "description": "yeong 스타일 강의·제안 덱 작성 규약 — ppt-master 빌드 엔진 위에 얹는 작성 레이어(엔진 자체가 아님). 스킬 3종: 메인 ppt-yeong-style(미감 시그니처 §0 'Editorial restraint, one committed accent'·md 소스 규약·작성 원칙 16종·밀도 리듬·역할 기반 색·codex-image vs SVG 경계·앱 UI 실물 강제·레버 조합 차별화·윤문·렌더 QA + references/ 6종 + 주입 페이로드) + lecture-deck(강의 덱 운영 — 실습 handouts 생성 규약·프롬프트 카드·placeholder→실캡처 스크린샷 슬롯·리넘버링 4중 동기화·전사 회고 루프·강사 노트 태그 + cc-common 47장 레퍼런스) + deck-review(관점별 리뷰 서브에이전트 4종 audience-fit·story-flow·fact-check·design-qa 병렬 오케스트레이션 + codex:rescue 교차 리뷰, 페르소나는 파라미터). 의존 스킬은 있으면 사용, 없으면 생략 + 설치 제안 문구(ppt-master만 prerequisite-stop). ppt-master로 그냥 'PPT 만들기'와 달리 yeong 규약이 필요할 때.",
-      "version": "0.9.4",
-      "category": "design"
     },
     {
       "name": "gws-sync",

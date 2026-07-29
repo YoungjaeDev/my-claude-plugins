@@ -49,8 +49,29 @@ echo "document structure"
 # An unclosed fence swallows the prose that follows it, and the extractor then
 # hands that prose to bash as if it were script. Caught exactly that in review.
 is "code fences are balanced" "$(( $(grep -c '^```' "$SKILL") % 2 ))" 0
-is "no markdown prose inside a bash fence" \
-   "$(awk '/^```bash$/{inb=1;next} inb&&/^```$/{inb=0;next} inb&&/^\*\*[A-Z"]/{n++} END{print n+0}' "$SKILL")" 0
+
+# Every ```bash fence must PARSE as shell. A pattern hunt for prose is a losing
+# game — Korean text, bullets and headings all slip past a `**Uppercase` regex,
+# and `#`-prefixed markdown is indistinguishable from a shell comment. `bash -n`
+# is the actual parser, so it rejects leaked prose and plain syntax errors alike
+# without guessing what prose looks like.
+# Split each fence into its own file rather than piping — `base64 -w0` is GNU-only
+# and the macOS leg runs this same suite.
+FT=$(mktemp -d "${TMPDIR:-/tmp}/council-fences-XXXXXX")
+awk -v dir="$FT" '
+  /^```bash$/ { inb=1; n++; f=sprintf("%s/fence-%03d.sh", dir, n); next }
+  inb && /^```$/ { inb=0; close(f); next }
+  inb { print > f }
+' "$SKILL"
+bad_fences=0; fence_no=0
+for f in "$FT"/fence-*.sh; do
+  [ -e "$f" ] || break
+  fence_no=$((fence_no + 1))
+  bash -n "$f" 2>/dev/null || { bad_fences=$((bad_fences + 1)); echo "     unparseable: $f" >&2; }
+done
+rm -rf "$FT"
+is "every bash fence parses as shell" "$bad_fences" 0
+is "the document has bash fences to check" "$([ "$fence_no" -ge 5 ] && echo enough || echo "only $fence_no")" enough
 
 echo
 echo "runner contracts in SKILL.md"
@@ -78,19 +99,31 @@ has "seat blocks re-hydrate their pins"  'DIR=$(cat ".claude/state/council-run-$
 # Two concurrent councils in one repo must not share a run pointer.
 has "run pointer is keyed by session"    'DIR=$(cat ".claude/state/council-run-$RUN_KEY")'
 # RUN_KEY lands in a filename, so it needs the same gate $SLUG gets — in EVERY
-# fence that interpolates it, not just somewhere in the document. A presence grep
-# would let one site lose its gate while another site's copy kept the test green.
-is "every RUN_KEY fence validates the id" \
+# fence that interpolates it, and BEFORE the first use. Two weaker versions of this
+# assertion shipped before: one grepped the document (a sibling fence's copy kept it
+# green) and one matched the charset anywhere in the fence (a comment mentioning the
+# charset kept it green). Track the guard statement itself, and require it earlier
+# in the fence than the first interpolation.
+is "every RUN_KEY fence validates before use" \
    "$(awk '
-      /^```bash$/ { inb=1; uses=0; gate=0; next }
-      inb && /^```$/ { if (uses && !gate) bad++; inb=0; next }
+      /^```bash$/ { inb=1; gate=0; bad_here=0; next }
+      inb && /^```$/ { bad += bad_here; inb=0; next }
       inb {
-        if (index($0, "council-run-$RUN_KEY") || index($0, "council-run-shared")) uses=1
-        if (index($0, "A-Za-z0-9._-")) gate=1
+        if ($0 ~ /case[[:space:]]+"\$RUN_KEY"[[:space:]]+in/) gate=1
+        if ((index($0, "council-run-$RUN_KEY") || index($0, "council-run-shared")) && !gate) bad_here=1
       }
       END { print bad+0 }' "$SKILL")" 0
 # With no session id there is no safe way to separate two runs — refuse the second.
-has "no-session-id concurrency is refused" 'another run is already active at'
+# The claim must be atomic: a check-then-write pointer lets both runs see "free".
+has "shared-run claim uses an atomic mkdir" 'if ! mkdir "$LOCK" 2>/dev/null; then'
+# A finished run must release the lock or it blocks every later invocation forever.
+has "shared lock is released at the end"    'rmdir ".claude/state/council-lock-shared"'
+# mkdir -p succeeds on an existing directory, so it cannot arbitrate a race.
+has "run directory is allocated atomically" 'until mkdir "$DIR" 2>/dev/null; do'
+# The preflight must probe the same config the seat call uses.
+has "probe carries the service tier"        '-c service_tier="\"$CODEX_TIER\"" \'
+# The Claude seat has no CLI list — its candidate set is the Agent tool's enum.
+has "claude pin is checked against the enum" 'sonnet|opus|haiku|fable) ;;'
 # A read failure must not masquerade as a retired model.
 has "unread lists are reported separately" 'LIST_UNREAD=codex reason=cache-unparseable'
 # A user's deliberate `false` must not gain a duplicate key above it.
@@ -218,7 +251,18 @@ is "unparseable pin file is refused" "$(try_pins 'not json at all')" 1
 is "command substitution is refused"  "$(try_pins '{"codex":{"model":"$(touch '"$T"'/pwned)","effort":"xhigh","service_tier":"fast"},"agy":{"model":"a"},"claude":{"model":"opus"}}')" 1
 is "injection did not execute"        "$([ -e "$T/pwned" ] && echo yes || echo no)" no
 is "quote injection is refused"       "$(try_pins '{"codex":{"model":"a\"; rm -rf /tmp/x; \"","effort":"xhigh","service_tier":"fast"},"agy":{"model":"a"},"claude":{"model":"opus"}}')" 1
+# The Claude seat has no CLI to query, so a plausible-but-wrong name is charset-clean
+# and would only fail when the seat launches. The enum is the candidate list.
+is "off-enum claude pin is refused"   "$(try_pins '{"codex":{"model":"m","effort":"xhigh","service_tier":"fast"},"agy":{"model":"a"},"claude":{"model":"claude-opus-4"}}')" 1
+# Every refusal above must have been a no-op on the registry. This has to run
+# BEFORE any case that writes successfully, or it compares against a stale copy.
 is "every refused write left the registry alone" "$(cat "$REG")" "$before"
+
+# ...and the four legal values must actually get through, so the gate is a filter
+# rather than a wall.
+is "every enum value is accepted"     "$(for m in sonnet opus haiku fable; do
+      try_pins '{"codex":{"model":"m","effort":"xhigh","service_tier":"fast"},"agy":{"model":"a"},"claude":{"model":"'"$m"'"}}'
+    done | sort -u | tr -d '\n')" 0
 seed_pins                           # restore good pins for any later case
 
 echo

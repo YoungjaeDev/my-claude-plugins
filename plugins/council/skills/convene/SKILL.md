@@ -206,6 +206,14 @@ for k in codex.model codex.effort codex.service_tier agy.model claude.model; do
   esac
 done
 
+# The Claude seat has no CLI to query, so its candidate list is a fixed enum — the
+# four values the Agent tool accepts. Without this, a plausible-looking answer like
+# "claude-opus-4" is charset-clean, gets written, and only fails when the seat launches.
+case "$(jq -r '.claude.model' "$PINS")" in
+  sonnet|opus|haiku|fable) ;;
+  *) echo "council: claude pin must be one of sonnet|opus|haiku|fable" >&2; exit 1 ;;
+esac
+
 mkdir -p "$HOME/.claude"
 tmp=$(mktemp "${TMPDIR:-/tmp}/council-reg-XXXXXX")
 if jq -n --slurpfile p "$PINS" \
@@ -335,14 +343,20 @@ it **branches on the probe's exit status**: a probe whose result is never checke
 
 ```bash
 REG="$HOME/.claude/council-models.json"
-CODEX_MODEL=$(jq -r '.seats.codex.model'  "$REG")
-CODEX_EFFORT=$(jq -r '.seats.codex.effort' "$REG")
+CODEX_MODEL=$(jq -r '.seats.codex.model'        "$REG")
+CODEX_EFFORT=$(jq -r '.seats.codex.effort'      "$REG")
+CODEX_TIER=$(jq -r '.seats.codex.service_tier'  "$REG")
 out=$(mktemp "${TMPDIR:-/tmp}/council-probe-XXXXXX")
 
+# The probe must carry the SAME configuration the Round 1 call will use, service
+# tier included. Leaving the tier out lets a pin whose model and effort are still
+# accepted pass here and fail at the seat, which is the one thing a preflight is
+# supposed to prevent.
 if ! command -v codex >/dev/null 2>&1; then
   echo "SEAT=codex ABSENT reason=binary-not-on-path"
 elif codex exec --strict-config -s read-only --skip-git-repo-check \
        -m "$CODEX_MODEL" -c model_reasoning_effort="\"$CODEX_EFFORT\"" \
+       -c service_tier="\"$CODEX_TIER\"" \
        -o "$out" - <<'PROBE'
 reply with exactly: OK
 PROBE
@@ -374,10 +388,6 @@ case "$SLUG" in
     exit 1 ;;
 esac
 
-BASE=".council/$(date -u +%Y-%m-%d)-$SLUG"; DIR="$BASE"; n=2
-while [ -e "$DIR" ]; do DIR="$BASE-$n"; n=$((n+1)); done
-mkdir -p "$DIR"
-
 # Shell variables do NOT survive between tool calls — each bash block below is a
 # separate process. Park the run directory where later blocks can re-read it.
 # .claude/state/ is gitignored and machine-local, which is what a run pointer is.
@@ -392,20 +402,47 @@ case "$RUN_KEY" in
   *[!A-Za-z0-9._-]*) echo "council: session id has characters outside [A-Za-z0-9._-]" >&2; exit 1 ;;
 esac
 
-mkdir -p .claude/state
+mkdir -p .claude/state .council
 if [ -z "$RUN_KEY" ]; then
-  # No runtime session id: there is no safe way to tell two concurrent councils
-  # apart, so refuse the second one instead of letting it overwrite the first.
+  # No runtime session id: two concurrent councils cannot be told apart, so one of
+  # them must lose. `mkdir` is the claim because it is atomic — a check-then-write
+  # on a pointer file lets both runs observe "free" and then both write it.
   RUN_KEY=shared
-  PTR=".claude/state/council-run-shared"
-  if [ -f "$PTR" ] && [ -d "$(cat "$PTR")" ]; then
-    echo "council: another run is already active at $(cat "$PTR") and this runtime exposes no" >&2
-    echo "session id to separate them. Finish that council, or remove $PTR to reclaim it." >&2
+  LOCK=".claude/state/council-lock-shared"
+  if ! mkdir "$LOCK" 2>/dev/null; then
+    echo "council: another run holds $LOCK and this runtime exposes no session id to" >&2
+    echo "separate them. Remove that directory once the other council has finished." >&2
     exit 1
   fi
 fi
-printf '%s\n' "$DIR" > ".claude/state/council-run-$RUN_KEY"
+
+# Allocate the run directory atomically for the same reason: `mkdir -p` succeeds on
+# a directory that already exists, so two runs racing on the same date and slug
+# would both "win" the [ -e ] check and then share one directory, overwriting each
+# other's prompts and answers. Plain `mkdir` fails when the name is taken, which
+# makes the creation itself the loop condition.
+BASE=".council/$(date -u +%Y-%m-%d)-$SLUG"; DIR="$BASE"; n=2
+until mkdir "$DIR" 2>/dev/null; do
+  [ "$n" -gt 999 ] && { echo "council: cannot allocate a run directory under $BASE" >&2; exit 1; }
+  DIR="$BASE-$n"; n=$((n+1))
+done
+
+printf '%s\n' "$DIR" > ".claude/state/council-run-$RUN_KEY" \
+  || { echo "council: failed to record the run pointer" >&2; exit 1; }
 echo "DIR=$DIR RUN_KEY=$RUN_KEY"
+```
+
+**Release the lock when the council ends.** The `shared` lock is held for the whole run, and
+nothing else clears it — a finished council would otherwise block every later invocation, and
+telling the user to "finish that council" cannot help because it already did. Step 5 removes it
+on both the success and the give-up path:
+
+```bash
+RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
+case "$RUN_KEY" in *[!A-Za-z0-9._-]*) echo "council: invalid session id" >&2; exit 1 ;; esac
+rm -f ".claude/state/council-run-$RUN_KEY"
+[ "$RUN_KEY" = shared ] && rmdir ".claude/state/council-lock-shared" 2>/dev/null
+exit 0
 ```
 
 The directory is **git-tracked** — it is the decision record, not scratch. The run pointer under

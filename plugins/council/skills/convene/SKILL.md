@@ -51,11 +51,22 @@ was chosen for. A timestamp that is missing, non-numeric, or in the future is tr
 for the same reason: those are the shapes a corrupted or tampered registry takes, and none of
 them should buy indefinite freshness.
 
+Freshness also requires the pins to actually be there. A registry whose `checked_at_epoch` is
+recent but whose `seats` block is missing, malformed, or empty would otherwise read as `fresh`,
+and the seats would then run with a model name of `null`. Anything that fails to parse or is
+missing a seat pin is `expired` — that routes it back through confirmation instead of forward
+into a broken call.
+
 ```bash
 REG="$HOME/.claude/council-models.json"
 TTL=$(( 7 * 86400 ))          # policy constant — not configurable from the file
 if [ ! -f "$REG" ]; then
   echo "STATE=missing"
+elif ! jq -e '(.seats.codex.model // "") != "" and (.seats.codex.effort // "") != ""
+              and (.seats.agy.model // "") != "" and (.seats.claude.model // "") != ""' \
+       "$REG" >/dev/null 2>&1; then
+  # covers unparseable JSON (jq exits non-zero) and any absent/empty seat pin
+  echo "STATE=expired"
 else
   NOW=$(date +%s)
   CHECKED=$(jq -r '.checked_at_epoch // empty' "$REG")
@@ -71,10 +82,38 @@ else
 fi
 ```
 
-- `STATE=fresh` — go to Step 1. Ask nothing.
+- `STATE=fresh` — the pins are still current; run the validity check below and, if it passes, go
+  to Step 1 without asking anything.
 - `STATE=missing` or `STATE=expired` — confirm the pins with the user before convening. Expiry
   **always** asks, even when nothing changed. Deciding whether a newer model is actually better
   belongs to the user, and a silent upgrade drifts into unintended spend.
+
+### Fresh does not mean valid
+
+A CLI update can retire a model inside the seven-day window. The failure table says a pin that
+has vanished from the candidate list is asked about **before** expiry, so `fresh` cannot skip
+straight to Step 1 — otherwise the run reaches Round 1 with a dead pin and merely records the
+seat as absent, which reads as "the seat failed" rather than "your pin is gone". The check is
+local and cheap:
+
+```bash
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"   # codex honors CODEX_HOME; see project_state.sh
+REG="$HOME/.claude/council-models.json"
+CM=$(jq -r '.seats.codex.model' "$REG"); AM=$(jq -r '.seats.agy.model' "$REG")
+
+if [ -f "$CODEX_DIR/models_cache.json" ] \
+   && ! jq -e --arg m "$CM" 'any(.models[]; .slug == $m)' "$CODEX_DIR/models_cache.json" >/dev/null 2>&1; then
+  echo "STALE_PIN=codex:$CM"
+fi
+if command -v agy >/dev/null 2>&1 && agy models >/dev/null 2>&1 \
+   && ! agy models | grep -qxF "$AM"; then
+  echo "STALE_PIN=agy:$AM"
+fi
+```
+
+Any `STALE_PIN=` line means: tell the user which pin disappeared and ask for a replacement, even
+though the TTL has not elapsed. A list that could not be read is **not** evidence a pin is gone —
+say nothing in that case rather than inventing a retirement.
 
 Gather the real candidate lists first so the question carries evidence rather than guesses:
 
@@ -84,13 +123,17 @@ Gather the real candidate lists first so the question carries evidence rather th
 # login or an unparseable cache would be reported as "not installed", and the
 # pin question would then be asked with no real candidate list behind it.
 
-# codex: slugs plus the reasoning levels each one accepts
-if [ ! -f "$HOME/.codex/models_cache.json" ]; then
+# codex: slugs plus the reasoning levels each one accepts.
+# Resolve through CODEX_HOME — codex layers `$CODEX_HOME/<name>.config.toml`, so on a
+# machine that sets it, `$HOME/.codex` is a directory the running CLI never reads.
+# Same rule the repo's own detector applies (plugins/project-init/scripts/project_state.sh).
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
+if [ ! -f "$CODEX_DIR/models_cache.json" ]; then
   echo "(codex model cache absent)"
 elif ! jq -r '
   .models[] | select(.visibility != "hide")
   | "\(.slug)  efforts=\([.supported_reasoning_levels[].effort] | join(","))  speed=\(.additional_speed_tiers // [] | join(","))"
-' "$HOME/.codex/models_cache.json"; then
+' "$CODEX_DIR/models_cache.json"; then
   echo "(codex model cache unreadable — present but unparseable)" >&2
 fi
 
@@ -107,41 +150,55 @@ do not present the missing side as "no models available". A pin confirmed agains
 failed to load is a pin confirmed against nothing.
 
 Show the current pins next to those lists and ask through the interactive-input gate whether to
-keep or change them. Accept a natural-language answer ("codex를 luna로 바꿔줘"). Then write the
-file — note `checked_at_epoch`, which keeps the TTL arithmetic off `date -d` and portable:
+keep or change them. Accept a natural-language answer ("codex를 luna로 바꿔줘"), and resolve it
+against the candidate list you just printed — a name that is not on the list goes back to the
+user rather than into the registry. Then write the file; `checked_at_epoch` is what keeps the TTL
+arithmetic off `date -d` and portable.
 
-Write it through a temp file. A bare `>` truncates the registry before `jq` runs, so a failing
-`jq` would destroy a perfectly good set of pins and silently send the next run back to first-run
-defaults.
+**The confirmed pins never pass through shell source.** Two failure modes sit on either side of
+that rule: hard-coding defaults into the block throws the user's actual choice away, and pasting
+their answer into a quoted string hands `$(…)` and stray quotes to the shell. Neither is
+necessary — the pins are data, so write them as data.
 
-The five pins came from the interactive gate in a *previous* tool call, so they are gone by the
-time this block runs. **Assign them literally here** with the values the user just confirmed —
-and refuse to write when any is empty, or the registry silently becomes five empty strings in
-otherwise-valid JSON and every later seat call fails on an empty model name.
+First record the confirmed answer with the **`Write` tool** (not a heredoc, not `echo`) to
+`.claude/state/council-pins.json`. Nothing in that path is parsed by a shell, so no value the
+user typed can become a command:
+
+```json
+{
+  "codex":  {"model": "gpt-5.6-sol", "effort": "xhigh", "service_tier": "fast"},
+  "agy":    {"model": "gemini-3.6-flash-high"},
+  "claude": {"model": "opus"}
+}
+```
+
+Then this block reads that file, checks every pin against a conservative charset, and hands the
+values to `jq` through `--arg` (argv, never re-parsed). A pin outside the charset or missing
+altogether stops the write rather than landing a registry that looks valid:
 
 ```bash
-# Substitute the confirmed pins — these are literals, not inherited variables.
-CODEX_MODEL="gpt-5.6-sol"; CODEX_EFFORT="xhigh"; CODEX_TIER="fast"
-AGY_MODEL="gemini-3.6-flash-high"; CLAUDE_MODEL="opus"
+PINS=".claude/state/council-pins.json"
+REG="$HOME/.claude/council-models.json"
+jq -e '.' "$PINS" >/dev/null 2>&1 || { echo "council: $PINS missing or unparseable" >&2; exit 1; }
 
-for v in CODEX_MODEL CODEX_EFFORT CODEX_TIER AGY_MODEL CLAUDE_MODEL; do
-  eval "val=\$$v"
-  [ -n "$val" ] || { echo "council: $v is empty — refusing to write the registry" >&2; exit 1; }
+for k in codex.model codex.effort codex.service_tier agy.model claude.model; do
+  v=$(jq -r ".$k // empty" "$PINS")
+  case "$v" in
+    ''|*[!a-zA-Z0-9._-]*)
+      echo "council: pin $k is empty or has characters outside [a-zA-Z0-9._-]: '$v'" >&2; exit 1 ;;
+  esac
 done
 
 mkdir -p "$HOME/.claude"
-REG="$HOME/.claude/council-models.json"
 tmp=$(mktemp "${TMPDIR:-/tmp}/council-reg-XXXXXX")
-if jq -n \
-  --arg cm "$CODEX_MODEL" --arg ce "$CODEX_EFFORT" --arg ct "$CODEX_TIER" \
-  --arg am "$AGY_MODEL" --arg clm "$CLAUDE_MODEL" \
+if jq -n --slurpfile p "$PINS" \
   --argjson now "$(date +%s)" --arg today "$(date -u +%Y-%m-%d)" '
   {schema: "council-models/v1",
    checked_at: $today, checked_at_epoch: $now,
    seats: {
-     codex:  {model: $cm, effort: $ce, service_tier: $ct},
-     agy:    {model: $am},
-     claude: {model: $clm}
+     codex:  {model: $p[0].codex.model, effort: $p[0].codex.effort, service_tier: $p[0].codex.service_tier},
+     agy:    {model: $p[0].agy.model},
+     claude: {model: $p[0].claude.model}
    },
    codex_config: {check_for_update_on_startup: true}}
 ' > "$tmp"; then
@@ -152,6 +209,10 @@ else
   exit 1
 fi
 ```
+
+Write it through the temp file, as above. A bare `>` truncates the registry before `jq` runs, so
+a failing `jq` would destroy a perfectly good set of pins and silently send the next run back to
+first-run defaults.
 
 Defaults on first run: codex `gpt-5.6-sol` / `xhigh` / `fast`, agy `gemini-3.6-flash-high`,
 claude `opus`.
@@ -173,11 +234,38 @@ A machine with no `config.toml` yet still needs the setting, so create the file 
 skipping. And **verify after writing** — a write that failed while the run continued would let
 the probe below pass with the key still absent, which reads as "configured" when it is not.
 
+Both the presence check and the verification must be **TOML-scope aware**. A plain `grep` for the
+key matches one nested under `[projects."…"]` just as happily as a top-level one, so it would
+report "already configured" while the effective setting is still absent — and it would accept
+`= false` as success. The `awk` below only counts a `true` assignment that appears before the
+first table header.
+
 ```bash
-CFG="$HOME/.codex/config.toml"
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"   # codex honors CODEX_HOME (project_state.sh)
+CFG="$CODEX_DIR/config.toml"
 KEY='check_for_update_on_startup'
-mkdir -p "$(dirname "$CFG")"; [ -f "$CFG" ] || : > "$CFG"
-if ! grep -qE "^[[:space:]]*$KEY[[:space:]]*=" "$CFG"; then
+
+# top_level_true -> exit 0 only when the key is set to true ABOVE the first [table].
+# The status is decided in a single END exit: an `exit 0` inside a main rule jumps
+# to END, and an `exit` there would overwrite it — the awk trap that made an
+# earlier version reject a correctly-configured file every time.
+top_level_true() {
+  awk -v key="$KEY" '
+    done_scan { next }
+    /^[[:space:]]*\[/ { done_scan = 1; next }          # first table ends top level
+    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
+      v = $0
+      sub(/^[^=]*=[[:space:]]*/, "", v)                # drop "key ="
+      sub(/#.*$/, "", v)                               # drop an inline comment
+      sub(/[[:space:]]+$/, "", v)
+      if (v == "true") ok = 1
+      done_scan = 1; next
+    }
+    END { exit ok ? 0 : 1 }' "$1"
+}
+
+mkdir -p "$CODEX_DIR"; [ -f "$CFG" ] || : > "$CFG"
+if ! top_level_true "$CFG"; then
   tmp=$(mktemp "${TMPDIR:-/tmp}/codex-cfg-XXXXXX")
   # Emit the key before the first `[table]` line; if the file has no table at
   # all, every line is already top-level and the key goes at the end.
@@ -191,8 +279,8 @@ if ! grep -qE "^[[:space:]]*$KEY[[:space:]]*=" "$CFG"; then
   fi
 fi
 # Verify rather than assume: this is the line that makes "configured" mean something.
-grep -qE "^[[:space:]]*$KEY[[:space:]]*=" "$CFG" \
-  || { echo "council: $KEY still absent after the write — treat it as NOT set" >&2; exit 1; }
+top_level_true "$CFG" \
+  || { echo "council: $KEY is not a top-level true after the write — treat it as NOT set" >&2; exit 1; }
 ```
 
 Confirm the result parses before relying on it — `codex exec --strict-config` rejects a malformed
@@ -201,23 +289,37 @@ or unknown-key config, so one probe call proves the edit landed as a top-level k
 Verify a pin is still valid on the installed CLI before relying on it. This costs one fast call
 and catches a config key that a codex upgrade removed:
 
-Guard it on `codex` being installed. The failure policy says a missing binary is an absent seat
-and the council proceeds without it — an unguarded probe would kill the run with
-`command not found` before that path is ever reached.
+Three things this block must get right, each of which was wrong in an earlier draft. It
+re-reads the pins (this is a separate tool call, so nothing from the write block survives). It
+guards on `codex` being installed — the failure policy makes a missing binary an absent seat, and
+an unguarded probe would kill the run with `command not found` before that path is reached. And
+it **branches on the probe's exit status**: a probe whose result is never checked is not a check.
 
 ```bash
-if command -v codex >/dev/null 2>&1; then
-  codex exec --strict-config -s read-only --skip-git-repo-check \
-    -m "$CODEX_MODEL" -c model_reasoning_effort="\"$CODEX_EFFORT\"" - <<'PROBE'
+REG="$HOME/.claude/council-models.json"
+CODEX_MODEL=$(jq -r '.seats.codex.model'  "$REG")
+CODEX_EFFORT=$(jq -r '.seats.codex.effort' "$REG")
+out=$(mktemp "${TMPDIR:-/tmp}/council-probe-XXXXXX")
+
+if ! command -v codex >/dev/null 2>&1; then
+  echo "SEAT=codex ABSENT reason=binary-not-on-path"
+elif codex exec --strict-config -s read-only --skip-git-repo-check \
+       -m "$CODEX_MODEL" -c model_reasoning_effort="\"$CODEX_EFFORT\"" \
+       -o "$out" - <<'PROBE'
 reply with exactly: OK
 PROBE
+then
+  echo "SEAT=codex OK"
 else
-  echo "council: codex absent — seat marked absent, continuing with the remaining seats"
+  echo "SEAT=codex FAILED reason=probe-rejected-model-or-config"
 fi
+rm -f "$out"
 ```
 
-An unknown key fails with `unknown configuration field`; an unknown model fails in seconds with
-an HTTP 400. Neither hangs.
+`SEAT=codex FAILED` is **not** the same as absent — the binary is there and rejected the pinned
+model or the config. Surface it and offer the registry question rather than silently seating a
+model that will fail again in Round 1. An unknown key fails with `unknown configuration field`;
+an unknown model fails in seconds with an HTTP 400. Neither hangs.
 
 ---
 
@@ -241,8 +343,12 @@ mkdir -p "$DIR"
 # Shell variables do NOT survive between tool calls — each bash block below is a
 # separate process. Park the run directory where later blocks can re-read it.
 # .claude/state/ is gitignored and machine-local, which is what a run pointer is.
-mkdir -p .claude/state && printf '%s\n' "$DIR" > .claude/state/council-current-run
-echo "DIR=$DIR"
+# Key it by session: two councils running in the same repo would otherwise share
+# one pointer, and the first session would start writing its prompts and answers
+# into the second's git-tracked decision record, corrupting both.
+RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
+mkdir -p .claude/state && printf '%s\n' "$DIR" > ".claude/state/council-run-$RUN_KEY"
+echo "DIR=$DIR RUN_KEY=$RUN_KEY"
 ```
 
 The directory is **git-tracked** — it is the decision record, not scratch. The run pointer under
@@ -255,7 +361,8 @@ in scope. Skipping it hands empty model names and an empty output path to the fi
 
 ```bash
 REG="$HOME/.claude/council-models.json"
-DIR=$(cat .claude/state/council-current-run)
+RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
+DIR=$(cat ".claude/state/council-run-$RUN_KEY")
 CODEX_MODEL=$(jq -r '.seats.codex.model'        "$REG")
 CODEX_EFFORT=$(jq -r '.seats.codex.effort'      "$REG")
 CODEX_TIER=$(jq -r '.seats.codex.service_tier'  "$REG")
@@ -263,6 +370,10 @@ AGY_MODEL=$(jq -r '.seats.agy.model'            "$REG")
 CLAUDE_MODEL=$(jq -r '.seats.claude.model'      "$REG")
 [ -n "$DIR" ] && [ -d "$DIR" ] || { echo "council: no active run directory" >&2; exit 1; }
 ```
+
+`RUN_KEY` falls back to `shared` when neither session variable is exported, which is exactly
+today's single-pointer behavior — the isolation is a strict improvement where an id exists and a
+no-op where it does not.
 
 ### What to pre-collect, and what not to
 
@@ -297,7 +408,9 @@ Run the three seats. They must not see each other's answers in this round.
 ```bash
 # Re-hydrate first — see "Re-hydrating state in every later block" in Step 1.
 # Without it $CODEX_MODEL and $DIR are empty here and the call fails immediately.
-REG="$HOME/.claude/council-models.json"; DIR=$(cat .claude/state/council-current-run)
+REG="$HOME/.claude/council-models.json"
+RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
+DIR=$(cat ".claude/state/council-run-$RUN_KEY")
 CODEX_MODEL=$(jq -r '.seats.codex.model' "$REG")
 CODEX_EFFORT=$(jq -r '.seats.codex.effort' "$REG")
 CODEX_TIER=$(jq -r '.seats.codex.service_tier' "$REG")
@@ -313,7 +426,9 @@ codex exec -s read-only --skip-git-repo-check \
 
 ```bash
 # Re-hydrate first (Step 1) — a separate tool call means a separate process.
-REG="$HOME/.claude/council-models.json"; DIR=$(cat .claude/state/council-current-run)
+REG="$HOME/.claude/council-models.json"
+RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
+DIR=$(cat ".claude/state/council-run-$RUN_KEY")
 AGY_MODEL=$(jq -r '.seats.agy.model' "$REG")
 
 # agy — prompt is a shell argument, so quote the expansion and keep --print LAST.

@@ -27,15 +27,20 @@ bad() { fail=$((fail+1)); printf '  FAIL %s\n     expected: %s\n     actual:   %
 is()  { [ "$2" = "$3" ] && ok "$1" || bad "$1" "$3" "$2"; }
 has() { grep -qF -- "$2" "$SKILL" && ok "$1" || bad "$1" "present: $2" "absent"; }
 
-# Pull the Nth ```bash fence that follows a heading containing $1, verbatim.
-# This is what keeps the executable cases honest: the bytes under test are the
+# Pull the first ```bash fence whose body contains $1, verbatim. Anchoring on
+# content rather than an ordinal is deliberate: inserting one new fence earlier in
+# the document would silently shift a positional index onto the wrong block, and
+# the suite would then test something other than what it claims to.
+# This is what keeps the executable cases honest — the bytes under test are the
 # bytes the skill instructs an agent to run.
-extract_bash_block() {
-  awk -v anchor="$1" -v want="$2" '
-    !found { if (index($0, anchor)) found = 1; next }
-    !inb   { if ($0 == "```bash") { n++; if (n == want) inb = 1 } ; next }
-    $0 == "```" { exit }
-    { print }
+extract_bash_block_with() {
+  awk -v marker="$1" '
+    /^```bash$/ { inb=1; n=0; hit=0; next }
+    inb && /^```$/ {
+      if (hit) { for (i = 1; i <= n; i++) print buf[i]; exit }
+      inb=0; next
+    }
+    inb { buf[++n] = $0; if (index($0, marker)) hit=1 }
   ' "$SKILL"
 }
 
@@ -60,7 +65,15 @@ has "codex effort is quoted as TOML"        'model_reasoning_effort="\"$CODEX_EF
 has "TTL uses epoch arithmetic"  'checked_at_epoch'
 
 # Nothing set in one bash block survives into the next; the seat blocks must say so.
-has "seat blocks re-hydrate their pins"  'DIR=$(cat .claude/state/council-current-run)'
+has "seat blocks re-hydrate their pins"  'DIR=$(cat ".claude/state/council-run-$RUN_KEY")'
+# Two concurrent councils in one repo must not share a run pointer.
+has "run pointer is keyed by session"    'RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"'
+# codex reads $CODEX_HOME when set; $HOME/.codex is then a directory it never opens.
+has "codex paths resolve through CODEX_HOME" 'CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"'
+# A probe whose exit status is never inspected is not a check.
+has "codex probe branches on its result" 'SEAT=codex FAILED reason=probe-rejected-model-or-config'
+# Confirmed pins are data, never shell source.
+has "pins are read from a JSON file"     'PINS=".claude/state/council-pins.json"'
 # $SLUG reaches a path and comes from free text.
 has "SLUG is validated before path use"  '*[!a-z0-9-]*'
 # A bare `>` truncates the registry before jq runs.
@@ -68,7 +81,7 @@ has "registry is written through a temp file" 'mv "$tmp" "$REG"'
 # check_for_update_on_startup is top-level; appending nests it under the last table.
 has "codex config key goes before the first table" 'print key " = true"; done=1'
 # A codex-less machine is an absent seat, not a dead run.
-has "codex probe is guarded on the binary"         'if command -v codex >/dev/null 2>&1; then'
+has "codex probe is guarded on the binary"         'if ! command -v codex >/dev/null 2>&1; then'
 # A TTL read back from the file it governs is not a guarantee.
 has "TTL is a constant, not a registry field"      'TTL=$(( 7 * 86400 ))'
 # The chair must not silently field a two-seat council as if it were three.
@@ -79,9 +92,9 @@ has "registry is global"                 '$HOME/.claude/council-models.json'
 echo
 echo "registry behavior (blocks extracted from SKILL.md, not re-typed)"
 
-ANCHOR='## Step 0 — resolve the model registry'
-READER=$(extract_bash_block "$ANCHOR" 1)
-WRITER=$(extract_bash_block "$ANCHOR" 3)
+READER=$(extract_bash_block_with 'TTL=$(( 7 * 86400 ))')
+WRITER=$(extract_bash_block_with 'council-models/v1')
+CFGBLOCK=$(extract_bash_block_with 'top_level_true')
 
 # A renamed heading or a reordered fence must fail loudly, not silently extract
 # nothing and let every case below "pass" against an empty script.
@@ -92,17 +105,29 @@ case "$WRITER" in *'council-models/v1'*) ok "writer block extracted from SKILL.m
 
 T=$(mktemp -d "${TMPDIR:-/tmp}/council-tests-XXXXXX")
 trap 'rm -rf "$T"' EXIT
-mkdir -p "$T/home"
+mkdir -p "$T/home" "$T/cwd/.claude/state"
 REG="$T/home/.claude/council-models.json"
+PINS="$T/cwd/.claude/state/council-pins.json"
+
+# The writer resolves $PINS relative to the working directory, so both the reader
+# and the writer run from a throwaway cwd as well as a throwaway HOME.
+seed_pins() {
+  cat > "$PINS" <<'PINEOF'
+{"codex":{"model":"gpt-5.6-sol","effort":"xhigh","service_tier":"fast"},
+ "agy":{"model":"gemini-3.6-flash-high"},
+ "claude":{"model":"opus"}}
+PINEOF
+}
+seed_pins
 
 # Run the extracted reader against a throwaway HOME and report just its verdict.
 state_of() { HOME="$T/home" bash -c "$READER" 2>/dev/null | sed -n 's/^STATE=//p'; }
 # Run the extracted writer with NOTHING injected. Feeding the pins in through the
-# environment is what previously hid the real defect: the documented block never
+# environment is what previously hid a real defect: the documented block never
 # re-assigned them, so following the skill literally wrote five empty strings
-# while this suite stayed green. If the block stops being self-contained, the
-# pin assertions below go empty and fail — which is the point.
-write_registry() { HOME="$T/home" bash -c "$WRITER" >/dev/null 2>&1; }
+# while this suite stayed green. The pins now arrive as a FILE the agent wrote
+# with the Write tool, so no user value is ever parsed by a shell.
+write_registry() { ( cd "$T/cwd" && HOME="$T/home" bash -c "$WRITER" ) >/dev/null 2>&1; }
 # Rewind checked_at_epoch by $1 days without touching anything else.
 age_registry() {
   jq --argjson o "$(( $(date +%s) - $1 * 86400 ))" '.checked_at_epoch=$o' "$REG" > "$T/x" \
@@ -148,18 +173,66 @@ write_registry                      # restore a good registry
 before=$(cat "$REG")
 mkdir -p "$T/nojq"
 printf '#!/bin/sh\nexit 1\n' > "$T/nojq/jq"; chmod +x "$T/nojq/jq"
-if HOME="$T/home" PATH="$T/nojq:$PATH" bash -c "$WRITER" >/dev/null 2>&1; then rc=0; else rc=1; fi
+if ( cd "$T/cwd" && HOME="$T/home" PATH="$T/nojq:$PATH" bash -c "$WRITER" ) >/dev/null 2>&1; then rc=0; else rc=1; fi
 is "writer reports failure when jq fails" "$rc" 1
 is "failed write keeps the old registry"  "$(cat "$REG")" "$before"
 
-# Empty pins must be refused outright rather than written as valid-looking JSON.
-WRITER_EMPTY=$(printf '%s\n' "$WRITER" | awk \
-  '/^CODEX_MODEL=/ {print "CODEX_MODEL=\"\"; CODEX_EFFORT=\"\"; CODEX_TIER=\"\""; next}
-   /^AGY_MODEL=/   {print "AGY_MODEL=\"\"; CLAUDE_MODEL=\"\""; next}
-   {print}')
-if HOME="$T/home" bash -c "$WRITER_EMPTY" >/dev/null 2>&1; then rc=0; else rc=1; fi
-is "empty pins are refused"               "$rc" 1
-is "refused write leaves the registry alone" "$(cat "$REG")" "$before"
+# The pin file is the trust boundary — every bad shape must stop the write.
+try_pins() {  # $1 = pin-file body; echoes the writer's exit code
+  printf '%s\n' "$1" > "$PINS"
+  if ( cd "$T/cwd" && HOME="$T/home" bash -c "$WRITER" ) >/dev/null 2>&1; then echo 0; else echo 1; fi
+}
+is "empty pin value is refused"  "$(try_pins '{"codex":{"model":"","effort":"xhigh","service_tier":"fast"},"agy":{"model":"a"},"claude":{"model":"opus"}}')" 1
+is "missing seat is refused"     "$(try_pins '{"codex":{"model":"m","effort":"xhigh","service_tier":"fast"},"claude":{"model":"opus"}}')" 1
+is "unparseable pin file is refused" "$(try_pins 'not json at all')" 1
+# Shell metacharacters must be rejected by the charset gate, not executed.
+is "command substitution is refused"  "$(try_pins '{"codex":{"model":"$(touch '"$T"'/pwned)","effort":"xhigh","service_tier":"fast"},"agy":{"model":"a"},"claude":{"model":"opus"}}')" 1
+is "injection did not execute"        "$([ -e "$T/pwned" ] && echo yes || echo no)" no
+is "quote injection is refused"       "$(try_pins '{"codex":{"model":"a\"; rm -rf /tmp/x; \"","effort":"xhigh","service_tier":"fast"},"agy":{"model":"a"},"claude":{"model":"opus"}}')" 1
+is "every refused write left the registry alone" "$(cat "$REG")" "$before"
+seed_pins                           # restore good pins for any later case
+
+echo
+echo "codex config block — TOML scope (extracted from SKILL.md, executed)"
+
+case "$CFGBLOCK" in *check_for_update_on_startup*) ok "config block extracted from SKILL.md" ;;
+  *) bad "config block extracted from SKILL.md" "block defining top_level_true" "$(printf '%.60s' "$CFGBLOCK")" ;; esac
+
+# Run the real block against a throwaway CODEX_HOME seeded with $1, then report
+# whether the setting ends up recognised as a top-level true. Grepping for the
+# awk's presence is not enough — an `exit 0` inside a main rule jumps to END,
+# where a second `exit` would silently overwrite the status. Only executing it
+# catches that.
+cfg_verdict() {
+  local home="$T/codex-$RANDOM$$"; mkdir -p "$home"
+  printf '%s\n' "$1" > "$home/config.toml"
+  if ( CODEX_HOME="$home" HOME="$T/home" bash -c "$CFGBLOCK" ) >/dev/null 2>&1; then
+    # block succeeded — report what the file now says at top level
+    awk '/^[[:space:]]*\[/{exit} /^[[:space:]]*check_for_update_on_startup[[:space:]]*=/{
+           sub(/^[^=]*=[[:space:]]*/,""); sub(/#.*$/,""); sub(/[[:space:]]+$/,""); print; exit}' \
+      "$home/config.toml"
+  else
+    echo "BLOCKED"
+  fi
+}
+
+is "already-true config is accepted as-is" \
+   "$(cfg_verdict 'model = "x"
+check_for_update_on_startup = true
+[projects."a"]')" true
+is "inline comment after true is accepted" \
+   "$(cfg_verdict 'check_for_update_on_startup = true # keep me')" true
+# The key nested under a table is NOT the effective setting — the block must add
+# a real top-level one rather than declaring success.
+is "table-scoped key gets a top-level one added" \
+   "$(cfg_verdict 'model = "x"
+[projects."a"]
+check_for_update_on_startup = true')" true
+is "an empty config gains the key" "$(cfg_verdict '')" true
+# A config that ends inside a table is the shape that made a naive append nest the key.
+is "config ending in a table still gets top level" \
+   "$(cfg_verdict '[hooks.state."a"]
+enabled = true')" true
 
 echo
 echo "$pass passed, $fail failed"

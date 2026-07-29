@@ -10,11 +10,12 @@
 #      `--print-timeout` does not bound it. Parsing codex stdout instead of its
 #      `-o` file picks up hook lines and token counts as if they were the answer.
 #      Neither failure is caught by check-shell-portability.
-#   2. Registry TTL arithmetic (execute it). The freshness decision is what stops
-#      the skill from either nagging weekly or silently running a stale pin.
+#   2. Registry behavior (execute it). The blocks are EXTRACTED FROM SKILL.md and
+#      run against a throwaway HOME — never re-typed here. A copy would let a
+#      regression in the real Step 0 block leave this suite green, which is the
+#      one outcome that makes the suite worse than having none.
 #
-# No network and no CLI calls: the runner contracts are read out of the document,
-# and the TTL block runs against a temp registry.
+# No network and no CLI calls.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,13 +27,24 @@ bad() { fail=$((fail+1)); printf '  FAIL %s\n     expected: %s\n     actual:   %
 is()  { [ "$2" = "$3" ] && ok "$1" || bad "$1" "$3" "$2"; }
 has() { grep -qF -- "$2" "$SKILL" && ok "$1" || bad "$1" "present: $2" "absent"; }
 
+# Pull the Nth ```bash fence that follows a heading containing $1, verbatim.
+# This is what keeps the executable cases honest: the bytes under test are the
+# bytes the skill instructs an agent to run.
+extract_bash_block() {
+  awk -v anchor="$1" -v want="$2" '
+    !found { if (index($0, anchor)) found = 1; next }
+    !inb   { if ($0 == "```bash") { n++; if (n == want) inb = 1 } ; next }
+    $0 == "```" { exit }
+    { print }
+  ' "$SKILL"
+}
+
 echo "runner contracts in SKILL.md"
 
 # agy blocks forever without this redirect; --print-timeout does not bound it.
 has "agy call closes stdin with < /dev/null" '--print "$AGY_PROMPT" < /dev/null'
 # Go's flag parser eats the next token as the prompt, so --print must come last.
 has "--print is the last flag before the prompt" '--model "$AGY_MODEL" --print'
-has "agy model comes from the registry"          '$AGY_MODEL'
 
 # codex stdout interleaves hook lines and a token count; -o carries the answer.
 has "codex captures its answer with -o"     '-o "$DIR/r1-codex.md"'
@@ -47,54 +59,81 @@ has "codex effort is quoted as TOML"        'model_reasoning_effort="\"$CODEX_EF
 # would just false-flag this file's own explanation of why epochs are used.
 has "TTL uses epoch arithmetic"  'checked_at_epoch'
 
+# Nothing set in one bash block survives into the next; the seat blocks must say so.
+has "seat blocks re-hydrate their pins"  'DIR=$(cat .claude/state/council-current-run)'
+# $SLUG reaches a path and comes from free text.
+has "SLUG is validated before path use"  '*[!a-z0-9-]*'
+# A bare `>` truncates the registry before jq runs.
+has "registry is written through a temp file" 'mv "$tmp" "$REG"'
+# check_for_update_on_startup is top-level; appending nests it under the last table.
+has "codex config key goes before the first table" 'print "check_for_update_on_startup = true"; done=1'
 # The chair must not silently field a two-seat council as if it were three.
-has "absent seats are recorded"  '결석'
+has "absences reach the chat summary"    '결석 whenever any seat was absent'
 # Registry is global, not per-repo — a new repo must not re-ask on day one.
-has "registry is global"         '$HOME/.claude/council-models.json'
+has "registry is global"                 '$HOME/.claude/council-models.json'
 
 echo
-echo "registry TTL arithmetic"
+echo "registry behavior (blocks extracted from SKILL.md, not re-typed)"
+
+ANCHOR='## Step 0 — resolve the model registry'
+READER=$(extract_bash_block "$ANCHOR" 1)
+WRITER=$(extract_bash_block "$ANCHOR" 3)
+
+# A renamed heading or a reordered fence must fail loudly, not silently extract
+# nothing and let every case below "pass" against an empty script.
+case "$READER" in *checked_at_epoch*) ok "reader block extracted from SKILL.md" ;;
+  *) bad "reader block extracted from SKILL.md" "block containing checked_at_epoch" "$(printf '%.60s' "$READER")" ;; esac
+case "$WRITER" in *'council-models/v1'*) ok "writer block extracted from SKILL.md" ;;
+  *) bad "writer block extracted from SKILL.md" "block containing council-models/v1" "$(printf '%.60s' "$WRITER")" ;; esac
 
 T=$(mktemp -d "${TMPDIR:-/tmp}/council-tests-XXXXXX")
 trap 'rm -rf "$T"' EXIT
-REG="$T/council-models.json"
+mkdir -p "$T/home"
+REG="$T/home/.claude/council-models.json"
 
-# state_of REG -> missing | fresh | expired  (the Step 0 block, verbatim)
-state_of() {
-  if [ ! -f "$1" ]; then echo missing; return; fi
-  local now checked ttl
-  now=$(date +%s)
-  checked=$(jq -r '.checked_at_epoch // 0' "$1")
-  ttl=$(( $(jq -r '.ttl_days // 7' "$1") * 86400 ))
-  if [ $(( now - checked )) -gt "$ttl" ]; then echo expired; else echo fresh; fi
+# Run the extracted reader against a throwaway HOME and report just its verdict.
+state_of() { HOME="$T/home" bash -c "$READER" 2>/dev/null | sed -n 's/^STATE=//p'; }
+# Run the extracted writer the same way, with the pins it expects in the env.
+write_registry() {
+  HOME="$T/home" CODEX_MODEL=gpt-5.6-sol CODEX_EFFORT=xhigh CODEX_TIER=fast \
+    AGY_MODEL=gemini-3.6-flash-high CLAUDE_MODEL=opus bash -c "$WRITER" >/dev/null 2>&1
+}
+# Rewind checked_at_epoch by $1 days without touching anything else.
+age_registry() {
+  jq --argjson o "$(( $(date +%s) - $1 * 86400 ))" '.checked_at_epoch=$o' "$REG" > "$T/x" \
+    && mv "$T/x" "$REG"
 }
 
-is "absent registry reads as missing" "$(state_of "$REG")" missing
+is "absent registry reads as missing"     "$(state_of)" missing
 
-# The Step 0 writer, verbatim.
-jq -n --arg cm gpt-5.6-sol --arg ce xhigh --arg ct fast \
-      --arg am gemini-3.6-flash-high --arg clm opus \
-      --argjson now "$(date +%s)" --arg today "$(date -u +%Y-%m-%d)" '
-  {schema: "council-models/v1",
-   checked_at: $today, checked_at_epoch: $now, ttl_days: 7,
-   seats: {codex: {model: $cm, effort: $ce, service_tier: $ct},
-           agy: {model: $am}, claude: {model: $clm}},
-   codex_config: {check_for_update_on_startup: true}}' > "$REG"
-
-is "freshly written registry is fresh"    "$(state_of "$REG")" fresh
+write_registry
+is "writer creates the registry"          "$([ -f "$REG" ] && echo yes || echo no)" yes
+is "freshly written registry is fresh"    "$(state_of)" fresh
 is "all three seats are pinned"           "$(jq -r '.seats | keys | join(",")' "$REG")" "agy,claude,codex"
 is "claude seat defaults to opus"         "$(jq -r '.seats.claude.model' "$REG")" opus
 is "codex seat carries effort and tier"   "$(jq -r '.seats.codex | "\(.effort)/\(.service_tier)"' "$REG")" "xhigh/fast"
+is "codex update setting is recorded"     "$(jq -r '.codex_config.check_for_update_on_startup' "$REG")" true
 
-# One day inside the window still counts as fresh; one day past it does not.
-jq --argjson o "$(( $(date +%s) - 6*86400 ))" '.checked_at_epoch=$o' "$REG" > "$T/x" && mv "$T/x" "$REG"
-is "6 days old is still fresh"            "$(state_of "$REG")" fresh
-jq --argjson o "$(( $(date +%s) - 8*86400 ))" '.checked_at_epoch=$o' "$REG" > "$T/x" && mv "$T/x" "$REG"
-is "8 days old has expired"               "$(state_of "$REG")" expired
+age_registry 6; is "6 days old is still fresh"  "$(state_of)" fresh
+# The boundary itself: at exactly ttl_days the pin is due, not good for one more second.
+age_registry 7; is "exactly 7 days has expired" "$(state_of)" expired
+age_registry 8; is "8 days old has expired"     "$(state_of)" expired
 
 # A registry with no timestamp must expire rather than be trusted forever.
 jq 'del(.checked_at_epoch)' "$REG" > "$T/x" && mv "$T/x" "$REG"
-is "registry without a timestamp expires" "$(state_of "$REG")" expired
+is "registry without a timestamp expires" "$(state_of)" expired
+
+# A failed write must leave the previous pins intact rather than truncate them.
+# This is the whole point of the temp-file indirection: with a bare `>` the
+# registry is already gone by the time jq reports failure.
+write_registry                      # restore a good registry
+before=$(cat "$REG")
+mkdir -p "$T/nojq"
+printf '#!/bin/sh\nexit 1\n' > "$T/nojq/jq"; chmod +x "$T/nojq/jq"
+HOME="$T/home" CODEX_MODEL=gpt-5.6-sol CODEX_EFFORT=xhigh CODEX_TIER=fast \
+  AGY_MODEL=gemini-3.6-flash-high CLAUDE_MODEL=opus \
+  PATH="$T/nojq:$PATH" bash -c "$WRITER" >/dev/null 2>&1
+is "failed write keeps the old registry"  "$(cat "$REG")" "$before"
 
 echo
 echo "$pass passed, $fail failed"

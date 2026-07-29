@@ -44,17 +44,29 @@ synthesizes. **The chair is not a seat and does not vote.**
 Seat models are pinned in `~/.claude/council-models.json` so they survive across repos and are
 confirmed at most once a week.
 
+The seven-day window is a **constant here, never a field read back from the registry.** A TTL
+taken from the file it governs is not a guarantee — one hand-edited `ttl_days` and the pins never
+come up for confirmation again, which is exactly the "always ask on expiry" property this design
+was chosen for. A timestamp that is missing, non-numeric, or in the future is treated as expired
+for the same reason: those are the shapes a corrupted or tampered registry takes, and none of
+them should buy indefinite freshness.
+
 ```bash
 REG="$HOME/.claude/council-models.json"
+TTL=$(( 7 * 86400 ))          # policy constant — not configurable from the file
 if [ ! -f "$REG" ]; then
   echo "STATE=missing"
 else
   NOW=$(date +%s)
-  CHECKED=$(jq -r '.checked_at_epoch // 0' "$REG")
-  TTL=$(( $(jq -r '.ttl_days // 7' "$REG") * 86400 ))
-  # -ge, not -gt: at exactly ttl_days the pin has reached its stated life and is
-  # due for confirmation. -gt would keep it fresh for one more second.
-  if [ $(( NOW - CHECKED )) -ge "$TTL" ]; then echo "STATE=expired"; else echo "STATE=fresh"; fi
+  CHECKED=$(jq -r '.checked_at_epoch // empty' "$REG")
+  case "$CHECKED" in
+    ''|*[!0-9]*) echo "STATE=expired" ;;                    # absent or not a number
+    *)
+      AGE=$(( NOW - CHECKED ))
+      # -ge, not -gt: at exactly seven days the pin has reached its stated life
+      # and is due. A negative age means a future timestamp — also expired.
+      if [ "$AGE" -lt 0 ] || [ "$AGE" -ge "$TTL" ]; then echo "STATE=expired"; else echo "STATE=fresh"; fi ;;
+  esac
   jq -r '.seats | to_entries[] | "\(.key)=\(.value | tostring)"' "$REG"
 fi
 ```
@@ -102,7 +114,21 @@ Write it through a temp file. A bare `>` truncates the registry before `jq` runs
 `jq` would destroy a perfectly good set of pins and silently send the next run back to first-run
 defaults.
 
+The five pins came from the interactive gate in a *previous* tool call, so they are gone by the
+time this block runs. **Assign them literally here** with the values the user just confirmed —
+and refuse to write when any is empty, or the registry silently becomes five empty strings in
+otherwise-valid JSON and every later seat call fails on an empty model name.
+
 ```bash
+# Substitute the confirmed pins — these are literals, not inherited variables.
+CODEX_MODEL="gpt-5.6-sol"; CODEX_EFFORT="xhigh"; CODEX_TIER="fast"
+AGY_MODEL="gemini-3.6-flash-high"; CLAUDE_MODEL="opus"
+
+for v in CODEX_MODEL CODEX_EFFORT CODEX_TIER AGY_MODEL CLAUDE_MODEL; do
+  eval "val=\$$v"
+  [ -n "$val" ] || { echo "council: $v is empty — refusing to write the registry" >&2; exit 1; }
+done
+
 mkdir -p "$HOME/.claude"
 REG="$HOME/.claude/council-models.json"
 tmp=$(mktemp "${TMPDIR:-/tmp}/council-reg-XXXXXX")
@@ -111,7 +137,7 @@ if jq -n \
   --arg am "$AGY_MODEL" --arg clm "$CLAUDE_MODEL" \
   --argjson now "$(date +%s)" --arg today "$(date -u +%Y-%m-%d)" '
   {schema: "council-models/v1",
-   checked_at: $today, checked_at_epoch: $now, ttl_days: 7,
+   checked_at: $today, checked_at_epoch: $now,
    seats: {
      codex:  {model: $cm, effort: $ce, service_tier: $ct},
      agy:    {model: $am},
@@ -143,18 +169,30 @@ top-level key, and a real `config.toml` ends inside a table (`[projects."…"]`,
 `[hooks.state."…"]`). A line appended to the end belongs to that last table, so the setting
 silently does nothing and `--strict-config` may reject the file outright.
 
+A machine with no `config.toml` yet still needs the setting, so create the file rather than
+skipping. And **verify after writing** — a write that failed while the run continued would let
+the probe below pass with the key still absent, which reads as "configured" when it is not.
+
 ```bash
 CFG="$HOME/.codex/config.toml"
-if [ -f "$CFG" ] && ! grep -qE '^[[:space:]]*check_for_update_on_startup[[:space:]]*=' "$CFG"; then
+KEY='check_for_update_on_startup'
+mkdir -p "$(dirname "$CFG")"; [ -f "$CFG" ] || : > "$CFG"
+if ! grep -qE "^[[:space:]]*$KEY[[:space:]]*=" "$CFG"; then
   tmp=$(mktemp "${TMPDIR:-/tmp}/codex-cfg-XXXXXX")
   # Emit the key before the first `[table]` line; if the file has no table at
   # all, every line is already top-level and the key goes at the end.
-  awk 'BEGIN{done=0}
-       !done && /^[[:space:]]*\[/ {print "check_for_update_on_startup = true"; done=1}
+  if awk -v key="$KEY" 'BEGIN{done=0}
+       !done && /^[[:space:]]*\[/ {print key " = true"; done=1}
        {print}
-       END{if(!done) print "check_for_update_on_startup = true"}' "$CFG" > "$tmp" \
-    && mv "$tmp" "$CFG" || { rm -f "$tmp"; echo "council: codex config update failed" >&2; }
+       END{if(!done) print key " = true"}' "$CFG" > "$tmp" && mv "$tmp" "$CFG"; then
+    :
+  else
+    rm -f "$tmp"; echo "council: codex config write failed — $KEY NOT set" >&2; exit 1
+  fi
 fi
+# Verify rather than assume: this is the line that makes "configured" mean something.
+grep -qE "^[[:space:]]*$KEY[[:space:]]*=" "$CFG" \
+  || { echo "council: $KEY still absent after the write — treat it as NOT set" >&2; exit 1; }
 ```
 
 Confirm the result parses before relying on it — `codex exec --strict-config` rejects a malformed
@@ -163,11 +201,19 @@ or unknown-key config, so one probe call proves the edit landed as a top-level k
 Verify a pin is still valid on the installed CLI before relying on it. This costs one fast call
 and catches a config key that a codex upgrade removed:
 
+Guard it on `codex` being installed. The failure policy says a missing binary is an absent seat
+and the council proceeds without it — an unguarded probe would kill the run with
+`command not found` before that path is ever reached.
+
 ```bash
-codex exec --strict-config -s read-only --skip-git-repo-check \
-  -m "$CODEX_MODEL" -c model_reasoning_effort="\"$CODEX_EFFORT\"" - <<'PROBE'
+if command -v codex >/dev/null 2>&1; then
+  codex exec --strict-config -s read-only --skip-git-repo-check \
+    -m "$CODEX_MODEL" -c model_reasoning_effort="\"$CODEX_EFFORT\"" - <<'PROBE'
 reply with exactly: OK
 PROBE
+else
+  echo "council: codex absent — seat marked absent, continuing with the remaining seats"
+fi
 ```
 
 An unknown key fails with `unknown configuration field`; an unknown model fails in seconds with

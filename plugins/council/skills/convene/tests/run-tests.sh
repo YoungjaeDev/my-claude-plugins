@@ -66,7 +66,11 @@ has "SLUG is validated before path use"  '*[!a-z0-9-]*'
 # A bare `>` truncates the registry before jq runs.
 has "registry is written through a temp file" 'mv "$tmp" "$REG"'
 # check_for_update_on_startup is top-level; appending nests it under the last table.
-has "codex config key goes before the first table" 'print "check_for_update_on_startup = true"; done=1'
+has "codex config key goes before the first table" 'print key " = true"; done=1'
+# A codex-less machine is an absent seat, not a dead run.
+has "codex probe is guarded on the binary"         'if command -v codex >/dev/null 2>&1; then'
+# A TTL read back from the file it governs is not a guarantee.
+has "TTL is a constant, not a registry field"      'TTL=$(( 7 * 86400 ))'
 # The chair must not silently field a two-seat council as if it were three.
 has "absences reach the chat summary"    '결석 whenever any seat was absent'
 # Registry is global, not per-repo — a new repo must not re-ask on day one.
@@ -93,11 +97,12 @@ REG="$T/home/.claude/council-models.json"
 
 # Run the extracted reader against a throwaway HOME and report just its verdict.
 state_of() { HOME="$T/home" bash -c "$READER" 2>/dev/null | sed -n 's/^STATE=//p'; }
-# Run the extracted writer the same way, with the pins it expects in the env.
-write_registry() {
-  HOME="$T/home" CODEX_MODEL=gpt-5.6-sol CODEX_EFFORT=xhigh CODEX_TIER=fast \
-    AGY_MODEL=gemini-3.6-flash-high CLAUDE_MODEL=opus bash -c "$WRITER" >/dev/null 2>&1
-}
+# Run the extracted writer with NOTHING injected. Feeding the pins in through the
+# environment is what previously hid the real defect: the documented block never
+# re-assigned them, so following the skill literally wrote five empty strings
+# while this suite stayed green. If the block stops being self-contained, the
+# pin assertions below go empty and fail — which is the point.
+write_registry() { HOME="$T/home" bash -c "$WRITER" >/dev/null 2>&1; }
 # Rewind checked_at_epoch by $1 days without touching anything else.
 age_registry() {
   jq --argjson o "$(( $(date +%s) - $1 * 86400 ))" '.checked_at_epoch=$o' "$REG" > "$T/x" \
@@ -115,25 +120,46 @@ is "codex seat carries effort and tier"   "$(jq -r '.seats.codex | "\(.effort)/\
 is "codex update setting is recorded"     "$(jq -r '.codex_config.check_for_update_on_startup' "$REG")" true
 
 age_registry 6; is "6 days old is still fresh"  "$(state_of)" fresh
-# The boundary itself: at exactly ttl_days the pin is due, not good for one more second.
+# The boundary itself: at exactly seven days the pin is due, not good one more second.
 age_registry 7; is "exactly 7 days has expired" "$(state_of)" expired
 age_registry 8; is "8 days old has expired"     "$(state_of)" expired
 
-# A registry with no timestamp must expire rather than be trusted forever.
+# The shapes a corrupted or tampered registry takes must not buy freshness.
 jq 'del(.checked_at_epoch)' "$REG" > "$T/x" && mv "$T/x" "$REG"
 is "registry without a timestamp expires" "$(state_of)" expired
+write_registry
+jq '.checked_at_epoch="not-a-number"' "$REG" > "$T/x" && mv "$T/x" "$REG"
+is "non-numeric timestamp expires"        "$(state_of)" expired
+write_registry
+age_registry -3                           # three days in the FUTURE
+is "future timestamp expires"             "$(state_of)" expired
+# A registry that inflates its own TTL must not extend the window.
+write_registry
+jq '.ttl_days=3650' "$REG" > "$T/x" && mv "$T/x" "$REG"
+age_registry 8
+is "injected ttl_days cannot extend the window" "$(state_of)" expired
 
 # A failed write must leave the previous pins intact rather than truncate them.
 # This is the whole point of the temp-file indirection: with a bare `>` the
-# registry is already gone by the time jq reports failure.
+# registry is already gone by the time jq reports failure. Assert the failure
+# actually happened — otherwise a shim that silently did not take would leave the
+# registry byte-identical and this case would "pass" having proven nothing.
 write_registry                      # restore a good registry
 before=$(cat "$REG")
 mkdir -p "$T/nojq"
 printf '#!/bin/sh\nexit 1\n' > "$T/nojq/jq"; chmod +x "$T/nojq/jq"
-HOME="$T/home" CODEX_MODEL=gpt-5.6-sol CODEX_EFFORT=xhigh CODEX_TIER=fast \
-  AGY_MODEL=gemini-3.6-flash-high CLAUDE_MODEL=opus \
-  PATH="$T/nojq:$PATH" bash -c "$WRITER" >/dev/null 2>&1
+if HOME="$T/home" PATH="$T/nojq:$PATH" bash -c "$WRITER" >/dev/null 2>&1; then rc=0; else rc=1; fi
+is "writer reports failure when jq fails" "$rc" 1
 is "failed write keeps the old registry"  "$(cat "$REG")" "$before"
+
+# Empty pins must be refused outright rather than written as valid-looking JSON.
+WRITER_EMPTY=$(printf '%s\n' "$WRITER" | awk \
+  '/^CODEX_MODEL=/ {print "CODEX_MODEL=\"\"; CODEX_EFFORT=\"\"; CODEX_TIER=\"\""; next}
+   /^AGY_MODEL=/   {print "AGY_MODEL=\"\"; CLAUDE_MODEL=\"\""; next}
+   {print}')
+if HOME="$T/home" bash -c "$WRITER_EMPTY" >/dev/null 2>&1; then rc=0; else rc=1; fi
+is "empty pins are refused"               "$rc" 1
+is "refused write leaves the registry alone" "$(cat "$REG")" "$before"
 
 echo
 echo "$pass passed, $fail failed"

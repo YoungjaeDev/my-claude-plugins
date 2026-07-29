@@ -44,6 +44,15 @@ extract_bash_block_with() {
   ' "$SKILL"
 }
 
+echo "document structure"
+
+# An unclosed fence swallows the prose that follows it, and the extractor then
+# hands that prose to bash as if it were script. Caught exactly that in review.
+is "code fences are balanced" "$(( $(grep -c '^```' "$SKILL") % 2 ))" 0
+is "no markdown prose inside a bash fence" \
+   "$(awk '/^```bash$/{inb=1;next} inb&&/^```$/{inb=0;next} inb&&/^\*\*[A-Z"]/{n++} END{print n+0}' "$SKILL")" 0
+
+echo
 echo "runner contracts in SKILL.md"
 
 # agy blocks forever without this redirect; --print-timeout does not bound it.
@@ -67,7 +76,27 @@ has "TTL uses epoch arithmetic"  'checked_at_epoch'
 # Nothing set in one bash block survives into the next; the seat blocks must say so.
 has "seat blocks re-hydrate their pins"  'DIR=$(cat ".claude/state/council-run-$RUN_KEY")'
 # Two concurrent councils in one repo must not share a run pointer.
-has "run pointer is keyed by session"    'RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"'
+has "run pointer is keyed by session"    'DIR=$(cat ".claude/state/council-run-$RUN_KEY")'
+# RUN_KEY lands in a filename, so it needs the same gate $SLUG gets — in EVERY
+# fence that interpolates it, not just somewhere in the document. A presence grep
+# would let one site lose its gate while another site's copy kept the test green.
+is "every RUN_KEY fence validates the id" \
+   "$(awk '
+      /^```bash$/ { inb=1; uses=0; gate=0; next }
+      inb && /^```$/ { if (uses && !gate) bad++; inb=0; next }
+      inb {
+        if (index($0, "council-run-$RUN_KEY") || index($0, "council-run-shared")) uses=1
+        if (index($0, "A-Za-z0-9._-")) gate=1
+      }
+      END { print bad+0 }' "$SKILL")" 0
+# With no session id there is no safe way to separate two runs — refuse the second.
+has "no-session-id concurrency is refused" 'another run is already active at'
+# A read failure must not masquerade as a retired model.
+has "unread lists are reported separately" 'LIST_UNREAD=codex reason=cache-unparseable'
+# A user's deliberate `false` must not gain a duplicate key above it.
+has "an existing non-true setting is preserved" 'leaving it untouched'
+# The writer requires service_tier, so freshness must require it too.
+has "service_tier is a required pin"     '(.seats.codex.service_tier // "") != ""'
 # codex reads $CODEX_HOME when set; $HOME/.codex is then a directory it never opens.
 has "codex paths resolve through CODEX_HOME" 'CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"'
 # A probe whose exit status is never inspected is not a check.
@@ -216,10 +245,26 @@ cfg_verdict() {
   fi
 }
 
+# How many times the key ends up in the file — a duplicate TOML key is the damage
+# an append-when-not-true would leave behind in the user's global config.
+cfg_count_key() {
+  local home="$T/codex-count-$RANDOM$$"; mkdir -p "$home"
+  printf '%s\n' "$1" > "$home/config.toml"
+  ( CODEX_HOME="$home" HOME="$T/home" bash -c "$CFGBLOCK" ) >/dev/null 2>&1
+  grep -cE '^[[:space:]]*check_for_update_on_startup[[:space:]]*=' "$home/config.toml"
+}
+
 is "already-true config is accepted as-is" \
    "$(cfg_verdict 'model = "x"
 check_for_update_on_startup = true
 [projects."a"]')" true
+# A user who set it to false made a decision. Inserting a second assignment above
+# it leaves a duplicate key in their global config — invalid TOML that outlives
+# the abort. The block must leave the file exactly as it found it.
+is "an explicit false is left untouched" \
+   "$(cfg_verdict 'check_for_update_on_startup = false')" false
+is "an explicit false gains no duplicate key" \
+   "$(cfg_count_key 'check_for_update_on_startup = false')" 1
 is "inline comment after true is accepted" \
    "$(cfg_verdict 'check_for_update_on_startup = true # keep me')" true
 # The key nested under a table is NOT the effective setting — the block must add

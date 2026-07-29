@@ -63,6 +63,7 @@ TTL=$(( 7 * 86400 ))          # policy constant — not configurable from the fi
 if [ ! -f "$REG" ]; then
   echo "STATE=missing"
 elif ! jq -e '(.seats.codex.model // "") != "" and (.seats.codex.effort // "") != ""
+              and (.seats.codex.service_tier // "") != ""
               and (.seats.agy.model // "") != "" and (.seats.claude.model // "") != ""' \
        "$REG" >/dev/null 2>&1; then
   # covers unparseable JSON (jq exits non-zero) and any absent/empty seat pin
@@ -96,24 +97,40 @@ straight to Step 1 — otherwise the run reaches Round 1 with a dead pin and mer
 seat as absent, which reads as "the seat failed" rather than "your pin is gone". The check is
 local and cheap:
 
+**Read the list first, then test membership against what you read.** Folding both steps into one
+negated command makes a truncated cache or a failed `agy` call indistinguishable from a retired
+model, and the user gets sent to pick a replacement with no trustworthy list in front of them.
+Each list is fetched exactly once, into a variable, and only a *successful* read is allowed to
+accuse a pin:
+
 ```bash
 CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"   # codex honors CODEX_HOME; see project_state.sh
 REG="$HOME/.claude/council-models.json"
 CM=$(jq -r '.seats.codex.model' "$REG"); AM=$(jq -r '.seats.agy.model' "$REG")
 
-if [ -f "$CODEX_DIR/models_cache.json" ] \
-   && ! jq -e --arg m "$CM" 'any(.models[]; .slug == $m)' "$CODEX_DIR/models_cache.json" >/dev/null 2>&1; then
+# codex — one read; a parse failure is a read failure, never a retirement.
+if [ ! -f "$CODEX_DIR/models_cache.json" ]; then
+  echo "LIST_UNREAD=codex reason=cache-absent"
+elif ! codex_slugs=$(jq -r '.models[].slug' "$CODEX_DIR/models_cache.json" 2>/dev/null); then
+  echo "LIST_UNREAD=codex reason=cache-unparseable"
+elif ! printf '%s\n' "$codex_slugs" | grep -qxF "$CM"; then
   echo "STALE_PIN=codex:$CM"
 fi
-if command -v agy >/dev/null 2>&1 && agy models >/dev/null 2>&1 \
-   && ! agy models | grep -qxF "$AM"; then
+
+# agy — one invocation, captured; the earlier version called `agy models` twice
+# and let the second call's failure read as a missing pin.
+if ! command -v agy >/dev/null 2>&1; then
+  echo "LIST_UNREAD=agy reason=binary-absent"
+elif ! agy_slugs=$(agy models 2>/dev/null); then
+  echo "LIST_UNREAD=agy reason=listing-failed"
+elif ! printf '%s\n' "$agy_slugs" | grep -qxF "$AM"; then
   echo "STALE_PIN=agy:$AM"
 fi
 ```
 
-Any `STALE_PIN=` line means: tell the user which pin disappeared and ask for a replacement, even
-though the TTL has not elapsed. A list that could not be read is **not** evidence a pin is gone —
-say nothing in that case rather than inventing a retirement.
+A `STALE_PIN=` line means: tell the user which pin disappeared and ask for a replacement, even
+though the TTL has not elapsed. A `LIST_UNREAD=` line means the opposite — say nothing about that
+seat's pin, because a list you could not read is not evidence of anything.
 
 Gather the real candidate lists first so the question carries evidence rather than guesses:
 
@@ -240,6 +257,12 @@ report "already configured" while the effective setting is still absent — and 
 `= false` as success. The `awk` below only counts a `true` assignment that appears before the
 first table header.
 
+**"Not true" and "not there" are different, and only one of them may be written.** A user who
+deliberately set `check_for_update_on_startup = false` has made a decision; inserting a second
+assignment above it leaves a duplicate key in their global Codex config — invalid TOML that can
+break every later `codex` invocation, and it survives even when the verification aborts. Absent
+means insert; present-but-not-true means report and leave it alone.
+
 ```bash
 CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"   # codex honors CODEX_HOME (project_state.sh)
 CFG="$CODEX_DIR/config.toml"
@@ -264,8 +287,24 @@ top_level_true() {
     END { exit ok ? 0 : 1 }' "$1"
 }
 
+# top_level_present -> exit 0 when the key appears at all above the first [table],
+# whatever its value. Same single-END-exit discipline as top_level_true.
+top_level_present() {
+  awk -v key="$KEY" '
+    done_scan { next }
+    /^[[:space:]]*\[/ { done_scan = 1; next }
+    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" { found = 1; done_scan = 1; next }
+    END { exit found ? 0 : 1 }' "$1"
+}
+
 mkdir -p "$CODEX_DIR"; [ -f "$CFG" ] || : > "$CFG"
-if ! top_level_true "$CFG"; then
+if top_level_true "$CFG"; then
+  :                                        # already what we want
+elif top_level_present "$CFG"; then
+  # Set, but not to true — the user's own choice. Never append a second key.
+  echo "council: $KEY is already set to a non-true value in $CFG; leaving it untouched." >&2
+  echo "council: codex will not auto-check for updates. Change it yourself if that is not intended." >&2
+else
   tmp=$(mktemp "${TMPDIR:-/tmp}/codex-cfg-XXXXXX")
   # Emit the key before the first `[table]` line; if the file has no table at
   # all, every line is already top-level and the key goes at the end.
@@ -273,14 +312,13 @@ if ! top_level_true "$CFG"; then
        !done && /^[[:space:]]*\[/ {print key " = true"; done=1}
        {print}
        END{if(!done) print key " = true"}' "$CFG" > "$tmp" && mv "$tmp" "$CFG"; then
-    :
+    # Verify rather than assume — this is the line that makes "configured" mean something.
+    top_level_true "$CFG" \
+      || { echo "council: $KEY is not a top-level true after the write — treat it as NOT set" >&2; exit 1; }
   else
     rm -f "$tmp"; echo "council: codex config write failed — $KEY NOT set" >&2; exit 1
   fi
 fi
-# Verify rather than assume: this is the line that makes "configured" mean something.
-top_level_true "$CFG" \
-  || { echo "council: $KEY is not a top-level true after the write — treat it as NOT set" >&2; exit 1; }
 ```
 
 Confirm the result parses before relying on it — `codex exec --strict-config` rejects a malformed
@@ -346,8 +384,27 @@ mkdir -p "$DIR"
 # Key it by session: two councils running in the same repo would otherwise share
 # one pointer, and the first session would start writing its prompts and answers
 # into the second's git-tracked decision record, corrupting both.
-RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
-mkdir -p .claude/state && printf '%s\n' "$DIR" > ".claude/state/council-run-$RUN_KEY"
+#
+# The key lands in a filename, so it is validated exactly like $SLUG. A session id
+# carrying `/` or `..` would otherwise place the pointer outside .claude/state/.
+RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-}}"
+case "$RUN_KEY" in
+  *[!A-Za-z0-9._-]*) echo "council: session id has characters outside [A-Za-z0-9._-]" >&2; exit 1 ;;
+esac
+
+mkdir -p .claude/state
+if [ -z "$RUN_KEY" ]; then
+  # No runtime session id: there is no safe way to tell two concurrent councils
+  # apart, so refuse the second one instead of letting it overwrite the first.
+  RUN_KEY=shared
+  PTR=".claude/state/council-run-shared"
+  if [ -f "$PTR" ] && [ -d "$(cat "$PTR")" ]; then
+    echo "council: another run is already active at $(cat "$PTR") and this runtime exposes no" >&2
+    echo "session id to separate them. Finish that council, or remove $PTR to reclaim it." >&2
+    exit 1
+  fi
+fi
+printf '%s\n' "$DIR" > ".claude/state/council-run-$RUN_KEY"
 echo "DIR=$DIR RUN_KEY=$RUN_KEY"
 ```
 
@@ -362,6 +419,7 @@ in scope. Skipping it hands empty model names and an empty output path to the fi
 ```bash
 REG="$HOME/.claude/council-models.json"
 RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
+case "$RUN_KEY" in *[!A-Za-z0-9._-]*) echo "council: invalid session id" >&2; exit 1 ;; esac
 DIR=$(cat ".claude/state/council-run-$RUN_KEY")
 CODEX_MODEL=$(jq -r '.seats.codex.model'        "$REG")
 CODEX_EFFORT=$(jq -r '.seats.codex.effort'      "$REG")
@@ -371,9 +429,9 @@ CLAUDE_MODEL=$(jq -r '.seats.claude.model'      "$REG")
 [ -n "$DIR" ] && [ -d "$DIR" ] || { echo "council: no active run directory" >&2; exit 1; }
 ```
 
-`RUN_KEY` falls back to `shared` when neither session variable is exported, which is exactly
-today's single-pointer behavior — the isolation is a strict improvement where an id exists and a
-no-op where it does not.
+The charset check repeats on every read, not just the write. `RUN_KEY` is interpolated into the
+path being read, so an id containing `..` would pull an arbitrary file's contents into `$DIR` —
+and `$DIR` is where every prompt and answer then gets written.
 
 ### What to pre-collect, and what not to
 
@@ -410,6 +468,7 @@ Run the three seats. They must not see each other's answers in this round.
 # Without it $CODEX_MODEL and $DIR are empty here and the call fails immediately.
 REG="$HOME/.claude/council-models.json"
 RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
+case "$RUN_KEY" in *[!A-Za-z0-9._-]*) echo "council: invalid session id" >&2; exit 1 ;; esac
 DIR=$(cat ".claude/state/council-run-$RUN_KEY")
 CODEX_MODEL=$(jq -r '.seats.codex.model' "$REG")
 CODEX_EFFORT=$(jq -r '.seats.codex.effort' "$REG")
@@ -428,6 +487,7 @@ codex exec -s read-only --skip-git-repo-check \
 # Re-hydrate first (Step 1) — a separate tool call means a separate process.
 REG="$HOME/.claude/council-models.json"
 RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
+case "$RUN_KEY" in *[!A-Za-z0-9._-]*) echo "council: invalid session id" >&2; exit 1 ;; esac
 DIR=$(cat ".claude/state/council-run-$RUN_KEY")
 AGY_MODEL=$(jq -r '.seats.agy.model' "$REG")
 

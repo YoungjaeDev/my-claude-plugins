@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 25개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 23개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-25-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-23-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -104,8 +104,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) |
 | **Memory & Lore** | `mem0-ops` | 플릿 레벨 mem0 진단·정리 — fleet-scan(전 앱 노이즈율·파편화) + doctor(설정 자세 점검) + cleanup(백업→삭제, dry-run 기본). upstream mem0 플러그인(프로젝트 내부 품질)과 역할 분리 |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
-| **Design** | `anti-slop-design` | 웹/SaaS 랜딩, 덱(PPT), 대시보드, 카피 anti-AI-slop 가드. clarify→context→plan→run→audit→revise + 2단계 audit gate; 한국어 카피는 `humanize-korean` 위임. 6개 OSS repo 기반 |
-| | `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약. `ppt-master` 엔진 위 작성 레이어 — 스킬 3종(메인 작성 규약 + `lecture-deck` 강의 덱 운영 + `deck-review` 리뷰 오케스트레이션) + 리뷰 서브에이전트 4종(audience-fit·story-flow·fact-check·design-qa). md 규약·원칙 16종·밀도 리듬·역할 기반 색·앱 UI 실물 강제·전사 회고 루프·스크린샷 슬롯·리넘버링. 진입점 SKILL.md + references/ + 주입 프롬프트 |
 | **Productivity** | `gws-sync` | 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반). 매핑 설정 기억 → Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일 content update로 ID·공유링크 보존). 삭제는 제안만. gws 미설치 시 설치 안내 후 중단. googleworkspace/cli 스킬 95종 카탈로그(llms.txt) 동봉 |
 | **Productivity** | `plaud-note-taking` | PLAUD 음성 녹음 노트(Whisper 전사록 + 별도 LLM 요약) 검토·정정. **요약이 아니라 전사록 기준**으로 STT 오인식(한·영 코드스위칭·고유명사·수치)을 프로젝트 용어 사전에 맞춰 고치고, 애매한 담당자·기한·수치와 "요약이 지어낸 결정"은 `interview:interview-methodology`(grill-me) 위임으로 캐물어 확정, 원본은 손대지 않고 `.llmwiki/raw/transcripts/`에 `*.corrected.md` 생성 |
 
@@ -589,42 +587,7 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 
 </details>
 
-### Design
-
-<details>
-<summary><strong>anti-slop-design</strong> - anti-AI-slop 디자인 가드</summary>
-
-웹/SaaS 랜딩, 발표 덱(PPT), 대시보드/admin UI, 마케팅·UI 카피의 "AI가 만든 티(slop)"를 생성 전 차단하고 생성 후 감사합니다. 핵심 명제: slop = 브리프와 무관한 default-not-choice.
-
-**Flow:** clarify → context → plan → run → audit → revise
-
-**Audit gate (2단계):**
-- Phase A — 생성 전 self-similarity probe + 6축 self-critique (Philosophy/Hierarchy/Specificity/Restraint/Variety/Honesty)
-- Phase B — 납품 전 12항목 binary 체크리스트 + numeric floor sweep
-
-**카피:** 영문 탐지·스코어링은 자체, 한국어 재작성은 `humanize-korean` 위임.
-
-**근거:** 6개 OSS anti-slop repo (impeccable 44-rule / hallmark 58-gate / frontend-design / huashu / stop-slop / frontend-slides) source-grounded 합성.
-
-</details>
-
-<details>
-<summary><strong>ppt-yeong-style</strong> - yeong 스타일 강의·제안 덱 작성 규약 (스킬 3종 + 리뷰 에이전트 4종)</summary>
-
-강의/실습/제안/학술 덱을 yeong 스타일로 만들 때 적용하는 작성 규약. `ppt-master`(빌드 엔진) 위에 얹는 **작성 레이어** — 엔진은 손대지 않고 "무엇을·어떻게 쓸지"를 어느 repo·세션에서든 일관 적용합니다.
-
-**엔진·의존:** `ppt-master`(빌드 엔진, bare name 참조, prerequisite — 미설치 시 빌드 진입 전 중단) 위 레이어. `codex-image`·`interview`·`anti-slop-design`·`humanize-korean`·`design-shotgun`·`codex:rescue` 는 있으면 사용, 없으면 **생략 + 설치 제안 문구 출력**.
-
-**스킬 3종 (0.7.0):**
-- `ppt-yeong-style`(메인) — 작성 규약: md 소스 규약(단일 md, `[ ]` 키 메시지, 담백한 명사구 제목)·작성 원칙 16종(공식 vs 실사용 병기·개념어 AI 냄새 점검 포함)·밀도 리듬(중간 강화 기본 + 본문 바닥 20pt)·역할·면적 기반 색·codex/SVG/drawio 도구 삼분·본문 스토리 개념 일러스트(opt-in)·codex 레터링 경계·앱 UI 실물 강제·스크린샷 shrink-to-hug·CJK 덱 cairosvg 금지(Playwright dsf=2 + img2pdf)
-- `lecture-deck` — 강의 덱 운영: 시간→장수 구성·실습 handouts 생성 규약(자료-지시문 정합 검증)·실습 프롬프트 카드·placeholder→실캡처 스크린샷 슬롯·리넘버링 파이프라인(read-all-then-write-all + 4중 동기화)·표 행 수 재배치·**전사 회고 루프**(강의 후 전사→커버리지 맵→기존 장 보강)·강사 노트 태그([시연 필수]·수치 고정 대본·주차장 멘트). 완성 실례 cc-common 47장 레퍼런스(md + 대표 렌더 PNG 5장) 동봉
-- `deck-review` — 리뷰 오케스트레이션: 관점별 서브에이전트 4종(`audience-fit` 청중 페르소나 — 파라미터 주입 / `story-flow` §8b 9항목 / `fact-check` 공식 docs 대조 / `design-qa` 렌더 QA·anti-slop) 병렬 dispatch + `codex:rescue` 교차 리뷰(설치 시) → 장별 수정 티켓 종합
-
-**구조:** `agents/` 4종 + `skills/ppt-yeong-style/`(SKILL.md + `references/` 6종 + `assets/injection-prompt.md`) + `skills/lecture-deck/`(+cc-common 레퍼런스) + `skills/deck-review/`. 실물 PPTX/PDF 바이너리는 미포함 — cc-lesson-deck repo·Drive 링크 참조.
-
-> 그냥 "PPT 만들어줘"는 `ppt-master` — 이 스킬은 yeong 규약이 필요할 때만 트리거됩니다.
-
-</details>
+### Productivity
 
 <details>
 <summary><strong>gws-sync</strong> - 로컬 → Google Drive 단방향 제안형 동기화</summary>
@@ -704,7 +667,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인은 `codex-image` 와 `council` 둘입니다 (`codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환, `council` 은 codex 를 의석으로 앉히므로 Codex 에서 돌리면 자기 자신을 소환하는 순환이고 Claude 의석이 Agent 도구를 필요로 함). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 23 / 25 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
+Codex 에서 제외되는 플러그인은 `codex-image` 와 `council` 둘입니다 (`codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환, `council` 은 codex 를 의석으로 앉히므로 Codex 에서 돌리면 자기 자신을 소환하는 순환이고 Claude 의석이 Agent 도구를 필요로 함). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 21 / 23 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`docs-forge`, `deepwiki` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -733,7 +696,7 @@ hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
 hermes gateway restart  # 메시징 게이트웨이 사용 시
 ```
 
-어댑터 필드는 marketplace 엔트리에서 파생되고(`plugin.yaml` name/version/description, `__init__.py` 는 SKILL.md 를 `<plugin>:<skill>` 로 등록하는 제네릭 엔트리포인트 — 플러그인별 로직 없음), 대상은 `HERMES_ELIGIBLE` allowlist (이번 라운드 7개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`) 입니다. allowlist 에 이름을 추가하면 커버리지가 확장됩니다. `--check` 가 어댑터 drift + orphan 어댑터를 잡습니다. 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
+어댑터 필드는 marketplace 엔트리에서 파생되고(`plugin.yaml` name/version/description, `__init__.py` 는 SKILL.md 를 `<plugin>:<skill>` 로 등록하는 제네릭 엔트리포인트 — 플러그인별 로직 없음), 대상은 `HERMES_ELIGIBLE` allowlist (이번 라운드 5개: `github-dev`, `interview`, `tcrei-prompt`, `ml-toolkit`, `brightdata-guide`) 입니다. allowlist 에 이름을 추가하면 커버리지가 확장됩니다. `--check` 가 어댑터 drift + orphan 어댑터를 잡습니다. 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
 
 플러그인 스킬은 opt-in 이라 enable 후 `skill_view("<plugin>:<skill>")` 로 명시 로드합니다 (`--enable` 후 새 Hermes 세션 시작).
 
@@ -757,7 +720,7 @@ shared-source 배선은 6개 가드가 매 PR 과 매 커밋(`.githooks/pre-comm
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
 - `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
-- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 25 / Codex-eligible 23 / Hermes 7)가 `manifest-eligibility.mjs` SoT 와 일치.
+- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 23 / Codex-eligible 21 / Hermes 5)가 `manifest-eligibility.mjs` SoT 와 일치.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
 - `check-shell-portability.mjs` — GNU 전용 셸 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우 차단. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하고, 증거는 코드만 인정합니다(대체재를 언급하는 주석은 폴백이 아님). 예외는 `# portability-ok: <사유>`.
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
@@ -823,8 +786,6 @@ node scripts/install-skills.mjs                  # 또는 hermes plugins install
 │   ├── tcrei-prompt/          # TCREI 프롬프트 구조화
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore)
 │   ├── spec-state/            # spec/issue/PR work-pipeline aggregate
-│   ├── anti-slop-design/      # anti-AI-slop 디자인 가드 (web/ppt/dashboard/copy)
-│   ├── ppt-yeong-style/       # yeong 스타일 덱 작성 레이어 — 스킬 3종(메인/lecture-deck/deck-review) + 리뷰 에이전트 4종
 │   ├── tally-form/            # 체크리스트 md -> Tally 설문/문의 폼 빌더
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 │   ├── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)

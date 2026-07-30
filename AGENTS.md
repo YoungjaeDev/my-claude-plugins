@@ -15,7 +15,7 @@
 
 플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.
 
-## Plugins (25)
+## Plugins (23)
 
 ### Core
 | Plugin | Description |
@@ -70,12 +70,6 @@
 |--------|-------------|
 | `docs-forge` | README/CHANGELOG generation with CRO best practices, plus deployment-doc templates (`/docs-forge:deploy-doc`) and MOC index generation (`/docs-forge:moc`) |
 | `rules-forge` | CLAUDE.md + .claude/rules/ generation with auto mode detection (single write-rules skill) |
-
-### Design
-| Plugin | Description |
-|--------|-------------|
-| `anti-slop-design` | Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. clarify→context→plan→run→audit→revise flow + two-phase audit gate (pre-emit self-critique + binary slop checklist); Korean copy handed to `humanize-korean`. Source-grounded in 6 OSS anti-slop repos (impeccable/hallmark/frontend-design/huashu/stop-slop/frontend-slides) |
-| `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약 — `ppt-master` 엔진 위에 얹는 작성 레이어. 덱 유형·md 소스 규약·작성 원칙 16종·밀도 리듬(중간 강화)·역할 기반 색·codex vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 review·공식 로고 fetch·윤문·렌더 QA. 진입점 SKILL.md + references/ 6종 + assets/injection-prompt.md |
 
 ### Productivity
 | Plugin | Description |
@@ -148,7 +142,7 @@
 | Hermes | `clarify` |
 
 - 새 스킬 본문이 `AskUserQuestion` 을 쓰면 파일럿의 "Cross-runtime interactive input" 블록(위 3런타임 매핑)을 같이 넣거나, 이관을 미룰 경우 `scripts/check-skill-tool-portability.mjs` 의 baseline 에 등록한다. `scripts/check-skill-tool-portability.mjs --check` 가 `.githooks/pre-commit` + `.github/workflows/validate-codex.yml` 에서 이를 강제한다 — 파일럿은 표준 매핑을, baseline 은 등록 사실을, 그 외 새 경로는 실패로 잡는다.
-- **Follow-up debt (#123):** 현재 파일럿은 `interview:interview-methodology` 와 `github-dev:decompose-issue` 2개뿐이다. 나머지 19개 스킬(baseline)은 아직 body 에서 `AskUserQuestion` 을 실제로 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다. Hermes 호환표 행이나 frontmatter `allowed-tools:` 에만 `AskUserQuestion` 이 있고 실제 대화 게이트가 없는 스킬은 debt 가 아니라 가드가 제외한다. baseline 에서 파일럿으로 옮기며 점진 이관한다.
+- **Follow-up debt (#123):** 현재 파일럿은 `interview:interview-methodology`, `github-dev:decompose-issue`, `council:convene` 3개뿐이다. 나머지 16개 스킬(baseline)은 아직 body 에서 `AskUserQuestion` 을 실제로 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다. Hermes 호환표 행이나 frontmatter `allowed-tools:` 에만 `AskUserQuestion` 이 있고 실제 대화 게이트가 없는 스킬은 debt 가 아니라 가드가 제외한다. baseline 에서 파일럿으로 옮기며 점진 이관한다.
 
 ## 플러그인 변경 규칙
 
@@ -224,7 +218,7 @@ node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
 - Claude 와 Codex 0.135 가 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 별도 mirror / body transform 없음 (구 `codex-bridge` 플러그인은 1.40.0 에서 제거). Skill 본문은 in-place 로 읽히므로 transform 이 없고, frontmatter 유효성만 남습니다.
-- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 23개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
+- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 21개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
 - 새 플러그인 추가 / 기존 플러그인의 `version` / `description` / `category` 변경 시 반드시 `node scripts/sync-codex-manifests.mjs` 를 실행해 매니페스트를 재생성하세요. `--check` 는 플러그인 제거 후 남은 orphan 매니페스트도 감지합니다.
 - Skill `description` frontmatter 는 1024자 미만으로 유지하세요. Codex 0.135 는 1024자 초과 description 을 가진 skill 을 **silent 하게 skip** 합니다 (Claude Code 는 제한이 없어 위반이 안 보임). `--check` 가 drift 외에 description 길이도 검증하고, 공유 `.githooks/pre-commit` 이 매 커밋마다 실행합니다 — clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화하세요. 전체 trigger 목록 / per-tool rationale 는 description 이 아니라 skill 본문에 두세요.
 - Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
@@ -241,7 +235,7 @@ node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (validate-code
 ```
 
 - Hermes Agent 도 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 어댑터(`plugin.yaml` + `__init__.py`)는 `scripts/sync-hermes-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성합니다 — `plugins/<name>/plugin.yaml` / `__init__.py` 를 손으로 편집하지 마세요.
-- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 7개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`. 커버리지 확장은 allowlist 에 이름 추가.
+- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 5개: `github-dev`, `interview`, `tcrei-prompt`, `ml-toolkit`, `brightdata-guide`. 커버리지 확장은 allowlist 에 이름 추가.
 - Hermes-eligible 플러그인의 `version` / `description` 을 바꾸면 `node scripts/sync-hermes-manifests.mjs` 를 실행해 어댑터를 재생성하세요. `plugin.yaml` 의 `version` 은 marketplace 파생이므로 `--check` 가 drift + orphan 어댑터를 잡습니다 (수동 동기화 불필요 — 생성으로 해소).
 - `__init__.py` 는 `skills/*/SKILL.md` 를 `<plugin>:<skill>` 으로 등록하는 제네릭 엔트리포인트입니다 (플러그인별 로직 없음, `import yaml`=PyYAML 가정).
 - 공유 skill 본문은 3런타임 포터블이어야 합니다. Claude/Codex 는 도구명이 동일하므로, 본문에 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표(`Bash`→`terminal`, `Read`→`read_file`, `Edit`→`patch`, `AskUserQuestion`→`clarify`, `Task`→`delegate_task`, `Skill`→`skill_view`, 이미지 생성→`image_generate`, `NotebookEdit`→Hermes Jupyter Live Kernel / `write_file`·`patch` 등)를 둡니다. 새 skill 추가/도구 사용 변경 시 이 표를 점검하세요. 신규·편집 skill 은 이 표를 본문마다 다시 타이핑하는 대신 번들 `references/<harness>-tools.md` 로 중앙화하고 본문이 그것을 가리키는 형태를 우선합니다 — 점진 이관이므로 이미 그 본문의 도구 사용을 편집 중일 때만 채택하고, 표를 옮기려고 기존 본문을 새로 쓰지는 않습니다 (surgical-diff).
@@ -270,7 +264,7 @@ macOS CI 레그(`validate-codex.yml` 의 `macos` job)는 BSD 폴백이 실제로
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 23 entries
+codex plugin list --marketplace my-claude-plugins   # 21 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 

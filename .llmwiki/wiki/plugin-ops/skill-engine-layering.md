@@ -1,7 +1,7 @@
 ---
 id: skill-engine-layering
 aliases: [skill-on-skill-engine, bare-name-engine-reference, cross-marketplace-dependency, ppt-yeong-style-ppt-master]
-last_verified: 2026-07-02
+last_verified: 2026-07-29
 status: active
 volatility: stable
 sources: 5
@@ -9,11 +9,11 @@ sources: 5
 
 # Skill-on-skill engine layering
 
-A skill can be a thin *writing / convention layer* on top of another skill's *engine* (the implementation owner) instead of reimplementing the build itself. `ppt-yeong-style` is such a layer on the `ppt-master` engine — it owns "what to write and how", `ppt-master` owns "how to build it". The layering contract:
+A skill can be a thin *writing / convention layer* on top of another skill's *engine* (the implementation owner) instead of reimplementing the build itself. Every facet below was dogfooded on `ppt-yeong-style`, a layer over the `ppt-master` engine — the layer owned "what to write and how", the engine owned "how to build it". **That plugin was removed from this marketplace in the 2.9.0 release**, so treat it throughout this page as a past worked example, not as installable functionality; the contract itself is what carries forward to the next layer built here. The layering contract:
 
 - **Reference the engine by bare name — never vendor or copy it.** Details the layer does not specify defer to the engine's own SKILL.md. Duplicating the engine's scripts/templates into the layer plugin forks maintenance and silently drifts from the engine.
 - **"Copy" includes reproducing the engine's internal API in *prose*, not just files.** Hardcoding the engine's exact script names, dev-server ports, Strategist step ordinals, `design_spec` section numbers, or layout enum values into the layer's text drifts the moment the engine version renames them. Reference the lever *concept* + the stable contract keys (spec_lock field names like `page_rhythm` / `page_layouts` / `image_rendering`) and mark the engine's SKILL.md as the source of truth for exact values — the layer carries the *judgment* (what to combine, when), the engine owns the *mechanism*.
-- **Optional dependency skills graceful-degrade** — use if installed, manual fallback if absent (e.g. `codex-image`, `interview`, `anti-slop-design`, `humanize-korean`, `design-shotgun`). The convention still holds when these are missing; only the assisted step degrades to manual.
+- **Optional dependency skills graceful-degrade** — use if installed, manual fallback if absent (e.g. `codex-image`, `interview`, `humanize-korean`, `design-shotgun`). The convention still holds when these are missing; only the assisted step degrades to manual.
 - **A HARD engine dependency is NOT a graceful-degrade target.** When the engine lives in a *separate marketplace* (not shipped by this repo), installing the layer plugin alone does not pull the engine. A fresh install triggers the layer skill, but the build step has no engine and blocks. The layer must **stop before the build step and guide engine installation** (an explicit prerequisite-stop), not silently fail and not try to hand-substitute the whole engine.
 
 Why this is easy to miss: in the *author's* environment the engine is already installed, so the build runs end-to-end and the gap is invisible. It only surfaces on a clean install of just the layer plugin — exactly the scenario marketplace exposure creates. The reflex to make every dependency "graceful-degrade" is wrong here: a degrade path for the core engine would mean hand-building what the engine exists to build.

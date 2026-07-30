@@ -1,6 +1,6 @@
 {
   "name": "github-dev",
-  "version": "2.11.1",
+  "version": "2.11.2",
   "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; --auto-merge + --skip-minor + --cr-source retained), project tracking, release. All workflows are now skills (commit-and-push, create-issue-label, decompose-issue, update-progress, resolve-issue, release, cr-fix, post-merge) — no commands surface, so they run under Codex too. post-merge runs a mandatory built-in wiki-lore ingest step (absorbed llm-wiki:post-merge-wiki) plus an optional Step 4.5 ephemeral-artifact pruning gate (heuristic candidates → AskUserQuestion → git rm). 2.8.0 correctness repairs: CR-state fetch failures map to a real error channel (no longer masked as a clean 'none'), a null-repository GraphQL response fails loudly instead of a silent false-clean convergence, and an active `@coderabbitai rate limit` query resolves ambiguous passive rate-limit sniffs.",
   "skills": [
     "./skills/cr-fix",

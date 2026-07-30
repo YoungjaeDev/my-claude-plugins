@@ -13,9 +13,11 @@
 //   - a malformed or duplicate baseline entry, or one that overlaps a pilot
 //   - a stale baseline entry (file gone, or debt removed — no AskUserQuestion left)
 //
-// FOLLOW-UP DEBT (issue #123): only the 2 pilots below are migrated. The 19 BASELINE
-// paths still hardcode AskUserQuestion; migrating them to the standardized mapping is
-// deferred fleet work. Move a path from BASELINE to PILOTS as it is migrated.
+// FOLLOW-UP DEBT (issue #123): only the PILOTS below are migrated. The BASELINE paths
+// still hardcode AskUserQuestion; migrating them to the standardized mapping is deferred
+// fleet work. Move a path from BASELINE to PILOTS as it is migrated. The counts are
+// deliberately not restated here — the arrays are the SoT and this run prints both live,
+// so a number in this comment only goes stale on every migration and every plugin removal.
 //
 // Zero-dep: Node 18+ builtins only. Run: node scripts/check-skill-tool-portability.mjs --check
 
@@ -39,7 +41,6 @@ const PILOTS = [
 
 // Reviewed baseline debt — skills that still hardcode AskUserQuestion, migration deferred.
 const BASELINE = [
-  'plugins/anti-slop-design/skills/anti-slop-design/SKILL.md',
   'plugins/code-scout/skills/research-orchestrator/SKILL.md',
   'plugins/e2e-harness/skills/e2e-author/SKILL.md',
   'plugins/e2e-harness/skills/e2e-debug/SKILL.md',
@@ -51,7 +52,6 @@ const BASELINE = [
   'plugins/llm-wiki/skills/migrate-wiki/SKILL.md',
   'plugins/mem0-ops/skills/cleanup/SKILL.md',
   'plugins/plaud-note-taking/skills/plaud-note-taking/SKILL.md',
-  'plugins/ppt-yeong-style/skills/ppt-yeong-style/SKILL.md',
   'plugins/project-init/skills/wiring/SKILL.md',
   'plugins/rules-forge/skills/write-rules/SKILL.md',
   'plugins/spec-state/skills/state-tracker/SKILL.md',

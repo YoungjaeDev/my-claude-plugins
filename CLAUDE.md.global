@@ -11,9 +11,11 @@
 - Resolving an ambiguity silently hides the fork from the person who owns it, so narrow it to
   the candidate readings and ask through `AskUserQuestion` instead of picking one.
 - A record and a test-first cycle exist only if the work goes through the pipeline that creates
-  them, so anything touching two or more files, or changing behavior, runs through `github-dev`:
-  issue, implementation, code review. A single-file doc edit, a typo, or a version bump is
-  committed directly.
+  them, so where the repository has a GitHub remote and `gh` is authenticated, anything touching
+  two or more files or changing behavior runs through `github-dev`: issue, implementation, code
+  review. Mechanical changes are exempt whatever their file count — a typo, a version bump across
+  the manifests it requires, a single-file doc edit. Where that pipeline cannot run, commit
+  directly rather than treating the work as blocked.
 - Attribution lines and emoji are noise in text that gets diffed, grepped, and read in a
   terminal — so no AI/Claude attribution in commits, PRs, issues, or docs, and no emoji in code
   or docs.

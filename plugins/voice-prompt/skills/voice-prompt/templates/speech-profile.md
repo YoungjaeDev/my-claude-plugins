@@ -10,7 +10,9 @@ names) is resolved by lookup, not recorded here. What is left is one speaker's r
 mispronunciations and the domain vocabulary no lookup can settle.
 
 The skill **proposes** entries and never writes this file on its own. Add a row only after the
-user confirms it, or a trusted project document verifies it — never because a term "came up a lot".
+user explicitly confirms it — a trusted project document may *support* the proposal, but it does
+not authorize persistence, and a term "coming up a lot" authorizes nothing. An entry here changes
+how future commands are read, so the user is the only gate.
 
 ## Domain terms
 

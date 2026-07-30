@@ -1,6 +1,6 @@
 ---
 name: voice-prompt
-description: "Normalize Korean voice-mode STT input before acting on it: strip speech fillers, fix orthography and Korean-to-English code-switching, resolve garbled identifiers (file, function, branch, skill names) against the actual repo instead of guessing, and never rewrite numbers or dates. Echoes one line of what it understood and proceeds, asking once in a single batched round only where two readings imply different actions. Stays active until released. Use ONLY when the user explicitly invokes /voice-prompt or asks to turn on voice-input normalization — do NOT auto-fire from an incidental mention of voice mode or dictation. Triggers — 보이스 모드 정리, 음성 입력 정규화, STT 정규화, 말버릇 제거, 받아쓰기 교정, 음성으로 말할게, voice input cleanup, normalize dictation."
+description: "Normalize Korean voice-mode STT input before acting on it: strip speech fillers, fix orthography and Korean-to-English code-switching, resolve garbled identifiers (file, function, branch, skill names) against the actual repo instead of guessing, and never rewrite numbers or dates. Echoes one line of what it understood and proceeds, asking once in a single batched round only where two readings imply different actions. Stays active until released. Use ONLY when the user explicitly invokes /voice-prompt or asks to turn on voice-input normalization — do NOT auto-fire from an incidental mention of voice mode or dictation. Triggers — 보이스 모드 정리, 음성 입력 정규화, STT 정규화, 말버릇 제거, 받아쓰기 교정, voice input cleanup, normalize dictation."
 version: 0.1.0
 ---
 
@@ -105,17 +105,36 @@ hedges, which carry confidence information ("~것 같은데" is not noise).
 For every span that looks like a file, directory, function, branch, or skill name, get a
 candidate list before using it.
 
-```bash
-# Files and directories — tracked plus untracked, .gitignore respected.
-git ls-files -co --exclude-standard | grep -iF -- "<stem>"
+**Bind the spoken stem to a variable. Never paste it into the command text.** A transcript can
+contain a quote, a backtick, `$(…)`, or a newline, and interpolating it inline lets that escape
+into shell syntax — `grep -F` only ever sees what the shell has already parsed, so it is no
+defense against injection.
 
-# Branches.
-git branch -a --format='%(refname:short)' | grep -iF -- "<stem>"
+```bash
+STEM='<the spoken stem, single-quoted>'
+
+# Get the list first, so a git failure cannot hide behind grep's "no match".
+files=$(git ls-files -co --exclude-standard) || {
+  echo "voice-prompt: git ls-files failed — a tool error, not zero candidates" >&2; exit 1; }
+candidates=$(printf '%s\n' "$files" | grep -iF -- "$STEM"); rc=$?
+[ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
+
+# Branches — same split.
+brs=$(git branch -a --format='%(refname:short)') || {
+  echo "voice-prompt: git branch failed" >&2; exit 1; }
+brmatch=$(printf '%s\n' "$brs" | grep -iF -- "$STEM"); rc=$?
+[ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
 ```
 
 `grep -iF` matches the stem as a literal string, so a syllable that happens to be a regex
-metacharacter cannot alter the search. An empty result — grep exiting non-zero — means **zero
-candidates**, which is a question, not an error.
+metacharacter cannot alter the *search*. Two exit-status rules matter as much:
+
+- **Only `grep` status 1 means zero candidates.** Status 2 or higher is a grep error, and an
+  error is not an empty result — surface it instead of asking the user about a search that never
+  ran.
+- **Never read the list and the filter through one pipeline status.** If `git` fails, `grep` sees
+  empty input and exits 1, which looks exactly like "no such file" — so a broken index would send
+  the user a question about a filename instead of reporting the failure.
 
 - **Exactly one candidate** → auto-fix, and name it in the echo.
 - **Zero or several** → ask. Offer the near-misses you found as options; a list of real paths is
@@ -162,18 +181,34 @@ irreversibility overlap here, which is exactly the intersection worth one round 
 ### Step 5 — propose profile additions, never write them unasked
 
 When the same misrecognition recurs, reuse the resolution for the rest of the session from memory.
-Persist it only after the user confirms, appended to `.claude/voice-prompt/speech-profile.md`.
+Persist it only after the user confirms.
 
-Seed that file from `templates/speech-profile.md` on first use if it is absent:
+**Order matters: confirmation comes first, then any write.** Seeding is not a separate permission —
+it happens only as the first step of a persist the user has already approved, so nothing is ever
+created just because the skill ran. Never seed eagerly at activation.
+
+The bundled template path must be resolved, not assumed: Codex 0.135 does not export
+`CLAUDE_PLUGIN_ROOT`, so a literal `<skill dir>` or a bare `${CLAUDE_PLUGIN_ROOT}` fails at step
+one outside the source tree.
 
 ```bash
-mkdir -p .claude/voice-prompt
-cp "<skill dir>/templates/speech-profile.md" .claude/voice-prompt/speech-profile.md
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+[ -z "$PLUGIN_ROOT" ] && [ -d plugins/voice-prompt/skills ] && PLUGIN_ROOT=plugins/voice-prompt
+if [ -z "$PLUGIN_ROOT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null | sort | tail -1)
+fi
+TEMPLATE="$PLUGIN_ROOT/skills/voice-prompt/templates/speech-profile.md"
+[ -f "$TEMPLATE" ] || { echo "voice-prompt: bundled template not found" >&2; exit 1; }
+
+# Runs only after the user confirmed the entry being persisted.
+PROFILE=.claude/voice-prompt/speech-profile.md
+[ -f "$PROFILE" ] || { mkdir -p .claude/voice-prompt && cp "$TEMPLATE" "$PROFILE"; }
 ```
 
-It lives under `.claude/` — a stable per-project config path — because a plugin-cache copy is
-wiped on cache refresh and cannot hold a project's terms. Never add a person's name, a client or
-company name, or an amount without separate verification; those default to a question.
+The profile lives under `.claude/` — a stable per-project config path — because a plugin-cache
+copy is wiped on cache refresh and cannot hold a project's terms. Never add a person's name, a
+client or company name, or an amount without separate verification; those default to a question.
 
 ## Prohibitions
 

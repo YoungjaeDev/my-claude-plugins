@@ -169,10 +169,15 @@ plugins/voice-prompt/
     └── templates/speech-profile.md             # 빈 템플릿
 ```
 
-`templates/speech-profile.md` 는 첫 실행 시 `.claude/voice-prompt/speech-profile.md` 로
-복사된다. 플러그인 캐시는 갱신 때 지워지므로 살아있는 사전이 그 안에 있을 수 없다. 개인
-말버릇 사례와 도메인 용어 대응을 한 파일 두 표에 담는다 — 둘 다 이 사용자와 이 프로젝트에만
-참이고 수명이 같아서 나눌 이유가 없다.
+`templates/speech-profile.md` 는 **사용자가 승인한 항목을 처음 기록할 때** 그 쓰기의 첫
+단계로 `.claude/voice-prompt/speech-profile.md` 로 복사된다. 시딩은 별도 권한이 아니라 이미
+승인된 쓰기의 일부이므로, 스킬이 켜졌다는 이유만으로 파일이 생기지는 않는다. 번들 경로는
+가정하지 않고 크로스 런타임 `PLUGIN_ROOT` resolver 로 해소한다 — Codex 0.135 는
+`CLAUDE_PLUGIN_ROOT` 를 export 하지 않아 소스 트리 밖에서 첫 단계부터 실패한다.
+
+플러그인 캐시는 갱신 때 지워지므로 살아있는 사전이 그 안에 있을 수 없다. 개인 말버릇 사례와
+도메인 용어 대응을 한 파일 두 표에 담는다 — 둘 다 이 사용자와 이 프로젝트에만 참이고 수명이
+같아서 나눌 이유가 없다.
 
 `plaud-note-taking` 의 사전과 공유하지 않는다. 그쪽은 회의 참석자와 회사명을 담고 이쪽은
 개인 발음 습관을 담아 내용이 겹치지 않는다.

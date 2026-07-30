@@ -16,7 +16,7 @@ Worked cases:
 
 | Utterance | Verdict |
 |---|---|
-| "어쨌든 뭐 그냥 이 파일 고쳐" | All three are fillers. Removing them changes nothing. |
+| "어쨌든 뭐 그냥 이 파일 고쳐" | `어쨌든`·`뭐` are fillers. `그냥` runs the test and **stays** — here it can also mean "only this file", and an unclear scope is a keep. |
 | "**그냥** 지워" | Keep. Means "delete it and nothing else" — removing it drops a scope constraint. |
 | "**일단** 커밋해" | Keep. Orders a sequence: commit first, then the rest. |
 | "이거 **좀** 고쳐" | Filler (softener). |

@@ -33,8 +33,13 @@ Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 | Grep/Glob | search_files |
 | AskUserQuestion | clarify |
 
-Plugin skills are explicit opt-in loads in Hermes — reach this body with
-`skill_view("voice-prompt:voice-prompt")` rather than expecting the description to surface it.
+Plugin skills are explicit opt-in loads in Hermes — the description never surfaces this body on
+its own. **Load it by its bare name: `skill_view("voice-prompt")`.** The qualified
+`<plugin>:<skill>` form comes from a generated plugin adapter, and `voice-prompt` is outside
+`HERMES_ELIGIBLE`, so no adapter exists for it; the skill-unit install
+(`node scripts/install-skills.mjs`, which wraps `npx skills`) registers the frontmatter `name`
+verbatim. Only if the plugin is added to the allowlist does the qualified form become the
+right one.
 
 ## What this skill actually changes (read before applying it)
 
@@ -130,21 +135,35 @@ set -- loader           # the candidate list — one argv entry per stem
 files=$(git ls-files -co --exclude-standard) || {
   echo "voice-prompt: git ls-files failed — a tool error, not zero candidates" >&2; exit 1; }
 
-# Filter per candidate. rc=1 means this stem is absent; rc>=2 is a real error.
+# Accumulate into a variable; sort AFTER the loop, never `done | sort -u`.
+# That pipeline runs the loop in a subshell and hands the pipeline sort's status,
+# so the exit below is swallowed. `set -o pipefail` does not rescue it either — it
+# flips the error the other way, because the loop's last command is a false test
+# on a plain no-match, and every-stem-missed would then report failure. Keeping
+# the sort out of the loop is the only form where "error" and "zero candidates"
+# stay distinguishable, which is the whole point of this block.
+hits_all=""
 for STEM in "$@"; do
   hits=$(printf '%s\n' "$files" | grep -iF -- "$STEM"); rc=$?
   [ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
-  [ "$rc" -eq 0 ] && printf '%s\n' "$hits"
-done | sort -u
+  if [ "$rc" -eq 0 ]; then
+    hits_all=$(printf '%s\n%s' "$hits_all" "$hits")
+  fi
+done
+candidates=$(printf '%s\n' "$hits_all" | sed '/^$/d' | sort -u)
 
 # Branches — same candidate list, same discipline.
 brs=$(git branch -a --format='%(refname:short)') || {
   echo "voice-prompt: git branch failed" >&2; exit 1; }
+brhits_all=""
 for STEM in "$@"; do
   hits=$(printf '%s\n' "$brs" | grep -iF -- "$STEM"); rc=$?
   [ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
-  [ "$rc" -eq 0 ] && printf '%s\n' "$hits"
-done | sort -u
+  if [ "$rc" -eq 0 ]; then
+    brhits_all=$(printf '%s\n%s' "$brhits_all" "$hits")
+  fi
+done
+brmatch=$(printf '%s\n' "$brhits_all" | sed '/^$/d' | sort -u)
 ```
 
 `grep -iF` matches each stem as a literal string, so a syllable that happens to be a regex
@@ -155,9 +174,11 @@ metacharacter cannot alter the *search*. Three rules matter as much:
 - **Only `grep` status 1 means zero candidates.** Status 2 or higher is a grep error, and an
   error is not an empty result — surface it instead of asking the user about a search that never
   ran.
-- **Never read the list and the filter through one pipeline status.** If `git` fails, `grep` sees
-  empty input and exits 1, which looks exactly like "no such file" — so a broken index would send
-  the user a question about a filename instead of reporting the failure.
+- **Never let a pipeline decide whether the lookup failed.** Two shapes of the same trap: if
+  `git` and `grep` share one pipeline, a `git` failure surfaces as grep's exit 1 and reads as "no
+  such file"; if the candidate loop pipes into `sort`, the loop's failure exit is replaced by
+  sort's success. Both end with a broken tool looking like an answer, so keep each status where
+  you can read it. `set -o pipefail` is not the fix here — see the comment in the block above.
 
 - **Exactly one candidate** → auto-fix, and name it in the echo.
 - **Zero** → first suspect your own transliteration, not the user. Try the other spellings the

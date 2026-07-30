@@ -255,6 +255,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "productivity"
+    },
+    {
+      "name": "voice-prompt",
+      "source": {
+        "source": "local",
+        "path": "./plugins/voice-prompt"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "content"
     }
   ]
 }

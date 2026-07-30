@@ -4,8 +4,8 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 23 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.9.0"
+    "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
+    "version": "2.10.0"
   },
   "plugins": [
     {
@@ -168,6 +168,13 @@
       "description": "Review and correct PLAUD voice-recorder notes (Whisper transcript + separate LLM summary). Fixes STT misrecognition (Korean+English code-switching, proper nouns, numbers) against a project term dictionary, grill-me interviews to resolve ambiguities, and writes a transcript-grounded *.corrected.md back to .llmwiki/raw/transcripts without touching the originals.",
       "version": "0.1.0",
       "category": "productivity"
+    },
+    {
+      "name": "voice-prompt",
+      "source": "./plugins/voice-prompt",
+      "description": "Normalize Korean voice-mode STT input before acting on it. Strips speech fillers, fixes orthography and Korean-to-English code-switching, resolves garbled identifiers (file, function, branch, skill names) against the actual repo instead of guessing, and never rewrites numbers or dates. Echoes one line of what it understood, then proceeds; gates only irreversible actions. Sibling of plaud-note-taking, which corrects archival transcripts instead of live commands.",
+      "version": "0.1.0",
+      "category": "content"
     }
   ]
 }

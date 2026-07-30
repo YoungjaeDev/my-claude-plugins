@@ -15,7 +15,7 @@
 
 플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.
 
-## Plugins (23)
+## Plugins (24)
 
 ### Core
 | Plugin | Description |
@@ -58,6 +58,7 @@
 | `translator` | Web article translation to Korean |
 | `tcrei-prompt` | Rewrite prompts using Google's TCREI structure for next-session reuse |
 | `tally-form` | Checklist markdown to Tally questionnaire/survey form — deterministic urllib builder, theme presets, section dividers, per-question choices (required/checkbox) + short-answer inputs (text/number/email/phone/link), native scheduling (matrix/date/time), form images (logo/cover/IMAGE) + redirect, idempotent publish, humanize routing. Dev-survey + lecture-consultation presets |
+| `voice-prompt` | 한국어 보이스 모드 STT 입력을 실행 전에 정규화. 3단 분류 — 자동 수정(말버릇 부류·맞춤법·코드스위칭·발화 내 자기수정) / 질문(후보 0건·다건, 두 해석이 다른 행동을 유발) / 손대지 않음(숫자·날짜·버전·PR 번호). 식별자는 추측하지 않고 `git ls-files`·브랜치 목록·설치된 스킬 목록에 대조해 단일 후보만 확정. 이해한 내용을 1줄 에코한 뒤 즉시 실행하고, 되돌리기 어려운 작업만 명시 확인. 명시 호출 후 해제까지 유지. 개인 사례는 `.claude/voice-prompt/speech-profile.md`, 일반 한국어 말버릇은 번들 레퍼런스 |
 
 ### Planning
 | Plugin | Description |
@@ -218,7 +219,7 @@ node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
 - Claude 와 Codex 0.135 가 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 별도 mirror / body transform 없음 (구 `codex-bridge` 플러그인은 1.40.0 에서 제거). Skill 본문은 in-place 로 읽히므로 transform 이 없고, frontmatter 유효성만 남습니다.
-- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 21개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
+- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 22개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
 - 새 플러그인 추가 / 기존 플러그인의 `version` / `description` / `category` 변경 시 반드시 `node scripts/sync-codex-manifests.mjs` 를 실행해 매니페스트를 재생성하세요. `--check` 는 플러그인 제거 후 남은 orphan 매니페스트도 감지합니다.
 - Skill `description` frontmatter 는 1024자 미만으로 유지하세요. Codex 0.135 는 1024자 초과 description 을 가진 skill 을 **silent 하게 skip** 합니다 (Claude Code 는 제한이 없어 위반이 안 보임). `--check` 가 drift 외에 description 길이도 검증하고, 공유 `.githooks/pre-commit` 이 매 커밋마다 실행합니다 — clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화하세요. 전체 trigger 목록 / per-tool rationale 는 description 이 아니라 skill 본문에 두세요.
 - Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
@@ -264,7 +265,7 @@ macOS CI 레그(`validate-codex.yml` 의 `macos` job)는 BSD 폴백이 실제로
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 21 entries
+codex plugin list --marketplace my-claude-plugins   # 22 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 

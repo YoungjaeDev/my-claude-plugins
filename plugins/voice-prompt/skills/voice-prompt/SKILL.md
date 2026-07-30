@@ -134,62 +134,46 @@ the actual work — skip it and the whole feature silently no-ops.
 | 이식성 (a translated word, not a transliteration) | `portability` |
 | 커밋 | `commit` |
 
-**Pass the stems as separate arguments. Never paste them into the command text.** A transcript can
-contain a quote, a backtick, `$(…)`, or a newline; interpolating it inline lets that escape into
-shell syntax, and `grep -F` only ever sees what the shell has already parsed, so it is no defense
-against injection. `set --` plus `"$@"` keeps the stems as data instead of code.
+**Hand the stems to `grep` as data, never as shell source.** Writing them into a quoted heredoc
+and reading them with `grep -f` is the only form with a mechanical guarantee: nothing inside
+`<<'STEMS'` is parsed by the shell, so a quote, backtick, `$(…)`, or newline that survived into a
+stem is inert. Substituting a stem into the command text — or into a `set --` line — does **not**
+have that property, because both are parsed as source before `grep` ever runs, and `grep -F` only
+sees what the shell already handed it.
 
 ```bash
-set -- loader           # the candidate list — one argv entry per stem
+stems=$(mktemp) || { echo "voice-prompt: mktemp failed" >&2; exit 1; }
+cat > "$stems" <<'STEMS'
+loader
+STEMS
 
-# Fetch the list once. A git failure must not hide behind grep's "no match".
+# Fetch the list, then filter — separate statuses, so a git failure cannot hide
+# behind grep's "no match". `grep -f` unions every stem in one pass, so there is
+# also no loop piping into `sort` whose exit status would replace the real one.
 files=$(git ls-files -co --exclude-standard) || {
+  rm -f "$stems"
   echo "voice-prompt: git ls-files failed — a tool error, not zero candidates" >&2; exit 1; }
+candidates=$(printf '%s\n' "$files" | grep -iF -f "$stems"); rc=$?
+[ "$rc" -le 1 ] || { rm -f "$stems"; echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
 
-# Accumulate into a variable; sort AFTER the loop, never `done | sort -u`.
-# That pipeline runs the loop in a subshell and hands the pipeline sort's status,
-# so the exit below is swallowed. `set -o pipefail` does not rescue it either — it
-# flips the error the other way, because the loop's last command is a false test
-# on a plain no-match, and every-stem-missed would then report failure. Keeping
-# the sort out of the loop is the only form where "error" and "zero candidates"
-# stay distinguishable, which is the whole point of this block.
-hits_all=""
-for STEM in "$@"; do
-  hits=$(printf '%s\n' "$files" | grep -iF -- "$STEM"); rc=$?
-  [ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
-  if [ "$rc" -eq 0 ]; then
-    hits_all=$(printf '%s\n%s' "$hits_all" "$hits")
-  fi
-done
-candidates=$(printf '%s\n' "$hits_all" | sed '/^$/d' | sort -u)
-
-# Branches — same candidate list, same discipline.
+# Branches — same stem file.
 brs=$(git branch -a --format='%(refname:short)') || {
-  echo "voice-prompt: git branch failed" >&2; exit 1; }
-brhits_all=""
-for STEM in "$@"; do
-  hits=$(printf '%s\n' "$brs" | grep -iF -- "$STEM"); rc=$?
-  [ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
-  if [ "$rc" -eq 0 ]; then
-    brhits_all=$(printf '%s\n%s' "$brhits_all" "$hits")
-  fi
-done
-brmatch=$(printf '%s\n' "$brhits_all" | sed '/^$/d' | sort -u)
+  rm -f "$stems"; echo "voice-prompt: git branch failed" >&2; exit 1; }
+brmatch=$(printf '%s\n' "$brs" | grep -iF -f "$stems"); rc=$?
+[ "$rc" -le 1 ] || { rm -f "$stems"; echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
+rm -f "$stems"
 ```
 
-`grep -iF` matches each stem as a literal string, so a syllable that happens to be a regex
-metacharacter cannot alter the *search*. Three rules matter as much:
+`-F` matches each stem literally, so a syllable that happens to be a regex metacharacter cannot
+alter the *search* either. Two exit-status rules carry the rest:
 
-- **A stem with no hit is not an error.** It just means that guess is not in this repo. Union the
-  hits across stems, then count.
-- **Only `grep` status 1 means zero candidates.** Status 2 or higher is a grep error, and an
-  error is not an empty result — surface it instead of asking the user about a search that never
-  ran.
-- **Never let a pipeline decide whether the lookup failed.** Two shapes of the same trap: if
-  `git` and `grep` share one pipeline, a `git` failure surfaces as grep's exit 1 and reads as "no
-  such file"; if the candidate loop pipes into `sort`, the loop's failure exit is replaced by
-  sort's success. Both end with a broken tool looking like an answer, so keep each status where
-  you can read it. `set -o pipefail` is not the fix here — see the comment in the block above.
+- **Only `grep` status 1 means zero candidates**, and that is a question, not an error. Status 2 or
+  higher is a grep failure — surface it instead of asking the user about a search that never ran.
+- **Never let a pipeline decide whether the lookup failed.** A `git`-into-`grep` pipeline reports a
+  `git` failure as grep's exit 1, which reads as "no such file"; a candidate loop piping into
+  `sort` has its failure exit replaced by sort's success. `grep -f` avoids both by needing neither.
+  (`set -o pipefail` is not the fix: it flips the second case the other way, reporting a plain
+  no-match as failure.)
 
 - **Exactly one candidate** → auto-fix, and name it in the echo.
 - **Zero** → first suspect your own transliteration, not the user. Try the other spellings the
@@ -249,41 +233,51 @@ The bundled template path must be resolved, not assumed: Codex 0.135 does not ex
 `CLAUDE_PLUGIN_ROOT`, so a literal `<skill dir>` or a bare `${CLAUDE_PLUGIN_ROOT}` fails at step
 one outside the source tree.
 
+**Test each candidate for the template, rather than picking a root and then testing.** Choosing
+one root first means a half-extracted cache directory aborts the whole step instead of falling
+through to a good older version.
+
 ```bash
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
-[ -z "$PLUGIN_ROOT" ] && [ -d plugins/voice-prompt/skills ] && PLUGIN_ROOT=plugins/voice-prompt
+cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+hermes_root="${HERMES_HOME:-$HOME/.hermes}"
+cl=$(mktemp) || { echo "voice-prompt: mktemp failed" >&2; exit 1; }
 
-# Codex cache. Sort on the VERSION basename, never the full path: a lexicographic
-# sort of paths ranks zeta/…/0.1.0 above alpha/…/0.2.0, and 0.9.0 above 0.10.0.
-# sort -V orders X.Y.Z properly; BSD/macOS sort has no -V, so degrade to a
-# numeric dotted-field sort.
-if [ -z "$PLUGIN_ROOT" ]; then
-  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+# Candidate roots, most specific first. A wrong guess costs nothing — each entry
+# still has to hold the template to win.
+{
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then printf '%s\n' "$CLAUDE_PLUGIN_ROOT"; fi
+  printf '%s\n' plugins/voice-prompt
+  # Codex cache, newest version FIRST. Sort on the version basename, never the
+  # full path: lexicographic path order ranks zeta/…/0.1.0 above alpha/…/0.2.0,
+  # and 0.9.0 above 0.10.0. sort -V orders X.Y.Z; BSD/macOS sort has no -V, so
+  # degrade to a reverse numeric dotted-field sort.
   if sort -V </dev/null >/dev/null 2>&1; then
-    PLUGIN_ROOT=$(ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null \
-      | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2-)
+    ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null \
+      | awk -F/ '{print $NF "\t" $0}' | sort -Vr | cut -f2-
   else
-    PLUGIN_ROOT=$(ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null \
-      | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2-)
+    ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null \
+      | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1nr -k2,2nr -k3,3nr | cut -f2-
   fi
-fi
+  # Hermes: voice-prompt is outside HERMES_ELIGIBLE, so no plugin adapter is
+  # generated and the skill-unit install is the only Hermes route.
+  printf '%s\n' "$hermes_root/plugins/voice-prompt" "$hermes_root/skills/voice-prompt"
+  # Project-scope skill-unit install. `npx skills` owns this layout, so these are
+  # candidate paths, not a verified contract — harmless, since the -f test decides.
+  printf '%s\n' .agents/skills/voice-prompt .claude/skills/voice-prompt
+} > "$cl"
 
-# Hermes. voice-prompt is not in HERMES_ELIGIBLE, so no plugin adapter is
-# generated for it and the skill-unit install (scripts/install-skills.mjs, which
-# targets $HERMES_HOME/profiles/<profile>) is the only Hermes route. Check the
-# plugin layout first, then the flat skill-unit layout — the flat branch is
-# unverified against a live Hermes and is additive, guarded by -d.
-if [ -z "$PLUGIN_ROOT" ]; then
-  for h in "${HERMES_HOME:-$HOME/.hermes}/plugins/voice-prompt" \
-           "${HERMES_HOME:-$HOME/.hermes}/skills/voice-prompt"; do
-    [ -d "$h" ] && { PLUGIN_ROOT="$h"; break; }
+TEMPLATE=""
+while IFS= read -r root; do
+  [ -n "$root" ] || continue
+  # Two layouts: bundled plugin tree, and the flat skill-unit install.
+  for t in "$root/skills/voice-prompt/templates/speech-profile.md" \
+           "$root/templates/speech-profile.md"; do
+    if [ -f "$t" ]; then TEMPLATE="$t"; break; fi
   done
-fi
-
-# Two layouts: bundled plugin tree, and the flat skill-unit install.
-TEMPLATE="$PLUGIN_ROOT/skills/voice-prompt/templates/speech-profile.md"
-[ -f "$TEMPLATE" ] || TEMPLATE="$PLUGIN_ROOT/templates/speech-profile.md"
-[ -f "$TEMPLATE" ] || { echo "voice-prompt: bundled template not found" >&2; exit 1; }
+  if [ -n "$TEMPLATE" ]; then break; fi
+done < "$cl"
+rm -f "$cl"
+[ -n "$TEMPLATE" ] || { echo "voice-prompt: bundled template not found" >&2; exit 1; }
 
 # Runs only after the user confirmed the entry being persisted.
 PROFILE=.claude/voice-prompt/speech-profile.md

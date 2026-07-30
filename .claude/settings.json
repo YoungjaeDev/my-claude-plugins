@@ -23,7 +23,8 @@
       "./plugins/brightdata-guide",
       "./plugins/gws-sync",
       "./plugins/mem0-ops",
-      "./plugins/plaud-note-taking"
+      "./plugins/plaud-note-taking",
+      "./plugins/voice-prompt"
     ]
   }
 }

@@ -1,6 +1,6 @@
 ---
 name: voice-prompt
-description: "Normalize Korean voice-mode STT input before acting on it: strip speech fillers, fix orthography and Korean-to-English code-switching, resolve garbled identifiers (file, function, branch, skill names) against the actual repo instead of guessing, and never rewrite numbers or dates. Echoes one line of what it understood and proceeds, asking once in a single batched round only where two readings imply different actions. Stays active until released. Use ONLY when the user explicitly invokes /voice-prompt or asks to turn on voice-input normalization — do NOT auto-fire from an incidental mention of voice mode or dictation. Triggers — 보이스 모드 정리, 음성 입력 정규화, STT 정규화, 말버릇 제거, 받아쓰기 교정, voice input cleanup, normalize dictation."
+description: "Normalize Korean voice-mode STT input before acting on it: strip speech fillers, fix orthography and Korean-to-English code-switching, resolve garbled identifiers (file, function, branch, skill names) against the actual repo instead of guessing, and never rewrite numbers or dates. Echoes one line of what it understood and proceeds, asking once in a single batched round only where two readings imply different actions. Stays active until released. Use ONLY when the user explicitly invokes /voice-prompt:voice-prompt or asks to turn on voice-input normalization — do NOT auto-fire from an incidental mention of voice mode or dictation. Triggers — 보이스 모드 정리, 음성 입력 정규화, STT 정규화, 말버릇 제거, 받아쓰기 교정, voice input cleanup, normalize dictation."
 version: 0.1.0
 ---
 
@@ -61,9 +61,20 @@ echo what you understood, and gate irreversible actions.
 
 ## Activation contract
 
+Invoked as **`/voice-prompt:voice-prompt`** under Claude Code — a plugin skill is registered under
+its plugin namespace, so that qualified form is the identifier to document and to type. (Under
+Hermes the skill-unit install registers the bare `voice-prompt` instead; see the compatibility note
+above. Different runtimes, not a contradiction.)
+
 Active from explicit invocation until released. Applies to every subsequent input in the session,
 typed or spoken — no auto-detection, no sniffing for "does this look like STT".
 
+- **Read the live speech profile once, at activation.** `.claude/voice-prompt/speech-profile.md`
+  is an ordinary project file; nothing places it in context automatically, so an entry the user
+  confirmed in an earlier session is invisible until you open it. Read it (with the file-reading
+  tool, not a shell `cat`) if it exists — an absent file is the normal first-run state, not an
+  error. **Skip this and the profile is write-only:** the "an entry in the speech profile" basis in
+  the table below can never fire, and the same misrecognition gets re-asked every session.
 - **Release** on any of: "보이스 모드 끝", "보이스 오프", "정규화 그만", "stop voice-prompt".
   Confirm the release in one line and stop applying the rules.
 - **The echo line is the liveness signal.** It is mandatory on every turn precisely so the user

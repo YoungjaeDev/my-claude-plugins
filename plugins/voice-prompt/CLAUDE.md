@@ -1,7 +1,7 @@
 # voice-prompt
 
 One skill, `voice-prompt`, that normalizes Korean voice-mode STT input before the session acts
-on it. Typed once, it stays active until released.
+on it. Typed once as `/voice-prompt:voice-prompt`, it stays active until released.
 
 ## Why this exists
 
@@ -59,5 +59,10 @@ model's own reasoning and carries the same reliability as any other skill: it ca
 session.
 
 The echo line is the tell. If it stops appearing, the skill has drifted out — re-invoke
-`/voice-prompt`. That self-signal is why the echo is mandatory rather than optional, and why
-this plugin ships no marker file or re-injection hook to enforce stickiness.
+`/voice-prompt:voice-prompt`. That self-signal is why the echo is mandatory rather than optional,
+and why this plugin ships no marker file or re-injection hook to enforce stickiness.
+
+The persisted profile has the same property: `.claude/voice-prompt/speech-profile.md` is an
+ordinary project file, so nothing loads it for you. The activation step reads it explicitly —
+without that read it would be a write-only dictionary, and every session would re-ask the same
+misrecognition.

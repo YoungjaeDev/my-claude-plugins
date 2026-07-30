@@ -9,7 +9,8 @@
   out so the key points land at a glance for a human and a model alike — someone reading only
   the first clause of each line should still come away with the point.
 - Resolving an ambiguity silently hides the fork from the person who owns it, so narrow it to
-  the candidate readings and ask through `AskUserQuestion` instead of picking one.
+  the candidate readings and ask through `AskUserQuestion` instead of picking one. Where that
+  tool is not exposed, ask one short direct question rather than treating the run as blocked.
 - A record and a test-first cycle exist only if the work goes through the flow that creates them,
   so where the repository has a GitHub remote and `gh` is authenticated, anything touching two or
   more files or changing behavior gets an issue, a branch, and a PR under automated review.

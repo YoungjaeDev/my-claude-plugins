@@ -10,12 +10,13 @@
   the first clause of each line should still come away with the point.
 - Resolving an ambiguity silently hides the fork from the person who owns it, so narrow it to
   the candidate readings and ask through `AskUserQuestion` instead of picking one.
-- A record and a test-first cycle exist only if the work goes through the pipeline that creates
-  them, so where the repository has a GitHub remote and `gh` is authenticated, anything touching
-  two or more files or changing behavior runs through `github-dev`: issue, implementation, code
-  review. Mechanical changes are exempt whatever their file count — a typo, a version bump across
-  the manifests it requires, a single-file doc edit. Where that pipeline cannot run, commit
-  directly rather than treating the work as blocked.
+- A record and a test-first cycle exist only if the work goes through the flow that creates them,
+  so where the repository has a GitHub remote and `gh` is authenticated, anything touching two or
+  more files or changing behavior gets an issue, a branch, and a PR under automated review.
+  Opening the issue and the PR directly satisfies this — the `github-dev` skills are one way to
+  drive the flow, not a precondition for it. Mechanical changes are exempt whatever their file
+  count: a typo, a version bump across the manifests it requires, a single-file doc edit. Where
+  the flow cannot run, commit directly rather than treating the work as blocked.
 - Attribution lines and emoji are noise in text that gets diffed, grepped, and read in a
   terminal — so no AI/Claude attribution in commits, PRs, issues, or docs, and no emoji in code
   or docs.

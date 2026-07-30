@@ -1,3 +1,7 @@
+---
+paths: AGENTS.md, CLAUDE.md, .claude/rules/*.md, .claude/settings.json, plugins/*/.claude-plugin/plugin.json, plugins/*/.codex-plugin/*, plugins/*/hooks/*, plugins/*/plugin.yaml, plugins/*/__init__.py, plugins/*/skills/*/SKILL.md, .agents/*, scripts/sync-codex-manifests.mjs, scripts/sync-hermes-manifests.mjs, scripts/manifest-eligibility.mjs
+---
+
 # Multi-Runtime Integration Rules
 
 This marketplace is driven by **Claude Code, Codex CLI, and Hermes Agent**. Instructions, hooks, and lore that live on only one surface are invisible to part of the toolchain. When you edit anything that shapes agent behavior, check the paired surfaces on the other runtimes in the same change.

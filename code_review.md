@@ -11,13 +11,13 @@
 - import 순서, 한 줄 helper 추출 — 결함이 아니면 skip.
 - 단순 typo / 영문 문법 — 의미 오류 아니면 skip.
 - Markdown 줄바꿈 / 줄간격 micro-optimization — 가독성 문제 아니면 skip.
-- 루트 `CLAUDE.md` 부재 — 이 저장소에서 `CLAUDE.md` 는 `@AGENTS.md` 한 줄을 import 하는 포인터 파일이다. "CLAUDE.md 가 AGENTS.md 와 다르다 / 없다 / 내용이 없다" 는 지적은 오탐.
+- 루트 `CLAUDE.md` 부재 — 이 저장소에서 루트 `CLAUDE.md` 는 `@AGENTS.md` 한 줄을 import 하는 포인터 파일이다. "CLAUDE.md 가 AGENTS.md 와 다르다 / 없다 / 내용이 없다" 는 지적은 오탐. **역방향도 오탐이다** — 이 규칙은 루트 한정이라 `plugins/<name>/CLAUDE.md` 가 내용을 갖는 것은 정상이고(대부분의 플러그인이 그렇다), 그것을 `@AGENTS.md` 포인터로 축약하라는 지적은 루트 규칙을 `**/CLAUDE.md` 로 잘못 확장한 것이다. AGENTS.md 자신이 플러그인 `CLAUDE.md` 를 읽어야 할 내용 파일로 취급한다.
 
 ## P0 — Correctness / Security
 - Secret / API key / token 노출 (사용자 GitHub PAT, OpenAI/Anthropic key 등).
 - `gh api` / `gh pr merge` / `gh repo create` 류 destructive 명령이 사용자 확인 없이 실행되는 흐름.
 - Codex 매니페스트 손으로 편집 — `.agents/plugins/marketplace.json` / `plugins/*/.codex-plugin/plugin.json` 는 `scripts/sync-codex-manifests.mjs` 출력. 수동 편집은 다음 `--check` 에서 drift 로 잡혀야 함.
-- Shell injection — 사용자 입력을 quote 없이 shell 명령에 합치는 경우.
+- Shell injection — 사용자 입력이 shell 에 **코드로** 도달하는 경우. quote 유무가 축이 아니다: 값이 명령문 텍스트로 치환되는 형태면 `set -- <값>` 도 `grep -F` 도 방어가 아니다 (둘 다 셸이 그 줄을 파싱한 *뒤에* 동작하므로, 값 안의 작은따옴표·백틱·`$(…)` 는 이미 코드가 되어 있다). 값을 **데이터 채널**로 넘긴다 — 변수에 바인딩해 `"$VAR"` 로 쓰거나, quoted heredoc(`<<'EOF'`, 내부를 셸이 파싱하지 않는다)에 써서 `grep -f` 로 읽는다. 후자만이 기계적 보장이다.
 
 ## P1 — Performance / Maintainability
 - **Plugin versioning 위반** — `plugins/<name>/.claude-plugin/plugin.json` 와 `.claude-plugin/marketplace.json` 의 version 불일치, `metadata.version` 누락.
@@ -28,7 +28,7 @@
 - **이식성 수정은 양방향으로 확인한다** — "이 도구가 macOS 에서 없다" 를 고칠 때, 그 줄이 다른 플랫폼도 서비스하는지 먼저 본다. `python` -> `python3` 는 macOS 12.3+ 에서 맞지만 python.org Windows 설치에는 `python3` 가 없어(`python` + `py` 런처만) 반대 방향으로 깨진다 — 어느 한쪽 이름으로 고정하는 것 자체가 틀렸고, 후보 탐지(`python3` -> `python` -> `py -3`) 또는 플랫폼별 병기가 정답이다. 같은 이유로 **단일 플랫폼 렌즈로 매긴 심각도를 그대로 믿지 말 것** — "macOS 는 CUDA 가 없으니 어차피 exit 1, 그러니 cosmetic" 같은 근거는 그 플랫폼 안에서만 성립하고 Windows 로 이전되지 않는다. 그리고 그 렌즈는 **플랫폼 무관 결함을 구조적으로 놓친다** (전체 경로 정렬로 marketplace 이름이 버전을 이기는 resolver 버그는 GNU/BSD 양쪽에서 똑같이 틀리므로 "BSD 에서 뭐가 깨지나" 질문에 걸리지 않았다).
 - **이식성 검증은 stock 유저랜드에서** — 대화형 셸이 `grep` 을 shim (예: ugrep) 으로 라우팅하면 `grep -P` 가 동작하는 것처럼 보여 BSD 파손이 리뷰를 통과한다. 훅은 자식 프로세스라 shim 을 상속받지 않고 Codex/Hermes 에는 아예 없으므로, 이식성 주장은 `env -i PATH=/usr/bin:/bin` 로 재확인한다.
 - **사용자 입력 substitution safety** — `sed` replacement 에서 `&` 는 매치 전체로 확장되고 `\` / 구분자 (`|` 등) 도 escape 필요. 사용자 입력을 placeholder 로 sed 에 넣기 전 `sed 's/[\\&|]/\\&/g'` 류로 정화. `AskUserQuestion` 라벨 (`"X (Recommended)"`) 을 그대로 변수에 넣어 파일 경로 / CLI 플래그 토큰으로 쓰지 말 것 — case-match 로 도메인 토큰 (`general` / `private` 등) 추출 후 사용.
-- **종료 상태가 사라지는 자리** — `set -e` 는 파이프라인 *마지막* 명령의 상태만 본다. `H=$(cmd | cut -d' ' -f1 | head -c 12)` 는 `cmd` 가 아예 없어도 상태가 `head` 의 0 이라 abort 하지 않고 `H` 만 빈 문자열이 된다. 그 값이 파일명·경로·ID 로 쓰이면 모든 입력이 한 값으로 붕괴한 채 exit 0 으로 성공 보고한다. 추출 파이프라인에는 `set -o pipefail` 또는 직후 빈 값 가드. 같은 이유로 **종료 상태 자체가 검사 신호인 자리에 `|| true` 를 붙이지 말 것** — watchdog 이 SIGTERM 한 것(143)과 setup 이 깨져 즉사한 것(127)이 둘 다 "빈 출력"이 되어 assertion 이 자명하게 통과하는 false-green 이 된다. **가드를 넣었다는 것과 의도한 것만 가드했다는 것은 다르다** — `cmd -v X && X … || true` 에서 `|| true` 는 `&&` 체인 *전체*에 걸리므로 "X 없음"(의도)뿐 아니라 "X 는 있는데 실행이 실패"(숨기면 안 되는 것)까지 rc 0 으로 삼킨다. 흡수 범위를 문법으로 한정하는 `if cmd -v X …; then X …; fi` 를 쓴다 (조건 거짓이면 0, 참이면 분기의 상태가 전파).
+- **종료 상태가 사라지는 자리** — `set -e` 는 파이프라인 *마지막* 명령의 상태만 본다. `H=$(cmd | cut -d' ' -f1 | head -c 12)` 는 `cmd` 가 아예 없어도 상태가 `head` 의 0 이라 abort 하지 않고 `H` 만 빈 문자열이 된다. 그 값이 파일명·경로·ID 로 쓰이면 모든 입력이 한 값으로 붕괴한 채 exit 0 으로 성공 보고한다. 추출 파이프라인에는 `set -o pipefail` 또는 직후 빈 값 가드. 같은 이유로 **종료 상태 자체가 검사 신호인 자리에 `|| true` 를 붙이지 말 것** — watchdog 이 SIGTERM 한 것(143)과 setup 이 깨져 즉사한 것(127)이 둘 다 "빈 출력"이 되어 assertion 이 자명하게 통과하는 false-green 이 된다. **가드를 넣었다는 것과 의도한 것만 가드했다는 것은 다르다** — `cmd -v X && X … || true` 에서 `|| true` 는 `&&` 체인 *전체*에 걸리므로 "X 없음"(의도)뿐 아니라 "X 는 있는데 실행이 실패"(숨기면 안 되는 것)까지 rc 0 으로 삼킨다. 흡수 범위를 문법으로 한정하는 `if cmd -v X …; then X …; fi` 를 쓴다 (조건 거짓이면 0, 참이면 분기의 상태가 전파). **`set -o pipefail` 은 만능이 아니다** — 생산자가 루프인 `for … done | sort` 형태에서는 루프가 서브셸이라 그 안의 `exit` 이 sort 의 성공으로 덮이는데, pipefail 을 붙이면 반대로 틀린다: 루프 본문의 마지막 명령이 평범한 거짓 테스트(`[ "$rc" -eq 0 ] && …` 가 no-match 로 거짓)이면 pipefail 이 그 **정상** 케이스를 실패로 보고한다. 그 형태는 pipefail 이 아니라 정렬을 루프 밖으로 빼서 두 상태를 각각 읽는 것으로 고친다.
 - **API 실패와 빈 결과 구분** — `gh api ... || echo "[]"` 같은 패턴은 네트워크 / rate-limit / 권한 에러를 "결과 없음" 으로 삼켜 사용자가 잘못된 결정을 내리게 함. 실패 시 명시적 `exit 2` 또는 stderr 로그 + 호출자 통보. **write 쪽 쌍(twin)도 같이 본다** — `NEW=$(... sed/awk ...)` 결과를 검사 없이 `gh issue edit --body "$NEW"` / `gh pr edit --body` 로 내보내면 변환 실패가 원격 본문을 공백으로 파괴한다. 원격 write 앞에는 항상 빈 값 가드.
 - Skill / command 의 frontmatter 누락 또는 잘못된 `name:` / `description:` (Codex 가 skill 을 인식 못 함).
 - `Read` / `Edit` 가능한 영역을 `Bash cat` / `Bash sed` 로 우회 (Claude Code 도구 우선 규칙 위반).

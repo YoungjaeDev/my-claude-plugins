@@ -1,10 +1,10 @@
 ---
 id: agents-md-verbatim-no-import
 aliases: [agents-md-pointer-trap, codex-no-at-import, claude-md-imports-agents-md]
-last_verified: 2026-07-13
+last_verified: 2026-07-30
 status: active
 volatility: stable
-sources: 6
+sources: 7
 ---
 
 # AGENTS.md is loaded verbatim — `@import` is Claude-only, and one-directional
@@ -50,6 +50,19 @@ This repo made that call: root `CLAUDE.md` is a one-line `@AGENTS.md` import. `A
 
 A root `CLAUDE.md` **symlink** to `AGENTS.md` reaches the same single-file SSOT and is marginally stronger — one physical inode cannot drift from itself. It was the first form tried (the `agents-md-single-file` branch, revived from a closed earlier attempt). But a git symlink (mode `120000`) checks out **broken on Windows** without `core.symlinks`: git materializes `CLAUDE.md` as a regular text file whose contents are the literal target string `AGENTS.md`, so Claude Code on a Windows clone reads nine bytes of guidance and silently loses everything — the same invisible-failure shape as the `@CLAUDE.md` pointer trap above, just platform-gated instead of runtime-gated. The `@AGENTS.md` import is a plain text file that resolves identically on every platform, so it is preferred over the symlink for a repo cloned on Windows. Drift stays impossible in practice: the one-line pointer has no content to drift from.
 
+## Invisibility does not just lose guidance — it manufactures a wrong answer
+
+The failure above is described as guidance going *missing*. There is a worse shape, and it appears whenever the invisible rule is a **scoping exception to a rule that IS visible**.
+
+A rule reachable only through `.claude/rules/` is unread by Codex and by the CodeRabbit / Codex cloud reviewers. If the visible `AGENTS.md` states the general rule and the invisible file states the exception, the reviewer does not fall silent — it reads the general rule, applies it correctly, and files a confident, well-argued, **wrong** finding. It cites the real repo guideline while doing so, which is exactly what makes the finding survive triage: it looks like the reviewer caught a genuine convention violation.
+
+Worked instance: `AGENTS.md` said "깨지는 변경은 MAJOR" with no scope qualifier, while `.claude/rules/plugin-versioning.md` scoped that rule to per-plugin `version` and declared `metadata.version` a release counter where even a consumer-breaking plugin removal bumps MINOR. CodeRabbit raised "removal is breaking, so `2.9.0` must be `3.0.0`" as a Major finding, quoting the visible line, twice across two review rounds. The rule file had *predicted this exact false positive* in prose — and predicting it there was useless, because the reviewer that needed the warning is the one that cannot read the file it is written in.
+
+Two consequences that do not follow from the plain "guidance goes missing" framing:
+
+- **A `.claude/rules/` note saying "reviewers may flag this" is not a mitigation.** It is written on the surface the reviewer cannot see. The mitigation is the `AGENTS.md` mirror; until that exists, the warning only tells a human why the noise keeps arriving.
+- **The scoping half is the half that must be mirrored.** Mirroring effort naturally goes to whole rules that feel important. But an unqualified general rule plus an invisible exception is *worse* than no rule at all on the visible surface — it actively arms the reviewer with a citation. When splitting a rule across surfaces, the qualifier travels with the claim.
+
 ## Why the older phrasing under-stated it
 
 The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a *reach* limitation into a Claude-only directory. The real constraint is categorical: Codex has no `@import` at all. The weaker phrasing is what makes the pointer cleanup look plausible.
@@ -62,6 +75,7 @@ The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a
 > Evidence: plugins/project-init/references/codex-review-discovery.md
 > Evidence: code_review.md
 > See-also: [[detector-cannot-look-vs-nothing-wrong]]
+> See-also: [[deleted-subject-not-stale]]
 
 ## Sources
 1. **`codex-rs/core/src/agents_md.rs`** (github.com/openai/codex, main) — the verbatim reader: byte read → `from_utf8_lossy` → concat with `--- project-doc ---`. No directive expansion anywhere in the path.
@@ -71,3 +85,4 @@ The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a
 
 5. **OpenAI Codex best-practices doc** (`developers.openai.com/codex/learn/best-practices`, served at `learn.chatgpt.com/guides/best-practices`, verified 2026-07-13) — "If you and your team have a `code_review.md` file and reference it from `AGENTS.md`, Codex can follow that guidance during review as well." The "can follow" wording is what makes this a soft guarantee. The companion GitHub review page (`developers.openai.com/codex/code-review`) confirms the cloud reviewer surfaces only P0/P1 comments.
 6. **`codex --help` / `codex doctor` on codex-cli 0.144.1** — `$CODEX_HOME` is the documented config root. The shipped binary also carries the literal `.codex/config.toml` plus `"Error parsing project config file"` / `"Failed to read project config file"`, so a project-level config surface exists; whether `project_doc_max_bytes` is honored there, and under what trust gating (`trust_level` appears in the binary), is **unverified** — `codex doctor` reports only the user-level path.
+7. **PR #191 CodeRabbit review (Major, raised in two consecutive rounds)** — "플러그인 제거에 맞춰 marketplace 버전을 MAJOR로 올려야 합니다", citing the unqualified `AGENTS.md` semver line, against `.claude/rules/plugin-versioning.md`'s "Plugin Removal" scoping which the reviewer cannot read. Resolved by mirroring the scoping into `AGENTS.md`, not by changing the version.

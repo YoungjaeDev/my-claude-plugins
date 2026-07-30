@@ -15,84 +15,36 @@
 
 플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.
 
-## Plugins (25)
+## Plugins (24)
 
-### Core
-| Plugin | Description |
-|--------|-------------|
-| `core-config` | Python auto-format + cross-platform notifications + per-prompt behavioral block (`prompt_inject.sh`, shared Claude + Codex). Two conditional pointers: `.llmwiki/insight/` when a knowledge root resolves in cwd, and a one-line `[council]` delegation reminder when `codex` / `agy` is on PATH (Claude-only — Codex is itself a council member). Work guidelines live in `~/.claude/CLAUDE.md` |
+각 플러그인이 무엇을 하는지는 `jq -r '.plugins[] | "\(.name): \(.description)"' .claude-plugin/marketplace.json` 으로 읽는다 — 설명을 여기에 다시 적으면 매니페스트와 표 두 곳을 손으로 맞춰야 하고, `check-doc-consistency.mjs` 는 이름 집합만 검사하므로 설명 drift 는 조용히 남는다. 아래 표는 이름·분류만 유지한다 (가드가 이 이름 집합을 marketplace.json 과 대조한다).
 
-### GitHub
-| Plugin | Description |
-|--------|-------------|
-| `github-dev` | GitHub workflow (commit, PR, issue, unified cr-fix CodeRabbit + Codex skill with PR-bot → CLI → codex-only auto-fallback on rate-limit) |
-
-### Testing
-| Plugin | Description |
-|--------|-------------|
-| `e2e-harness` | Playwright E2E test-harness engineering — wraps Playwright's official planner/generator/healer AI agents (`npx playwright init-agents --loop=claude`). 3 skills: `e2e-setup` (full harness onboarding — agents, auth via storageState, route mocking, CI with trace artifacts + PR comment + path/label gating), `e2e-author` (planner→generator orchestration, semantic `getByRole` locators, `--repeat-each` burn-in flake gate), `e2e-debug` (headless trace analysis + healer self-healing loop, skip-after-3). Loose coupling — degrades gracefully when Playwright is absent. |
-
-### Research & Search
-| Plugin | Description |
-|--------|-------------|
-| `code-scout` | Multi-axis research harness — 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + brightdata tier-3 + insane-search tier-4 for WAF/blocked URLs. paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics. |
-| `deepwiki` | AI-powered GitHub repo documentation |
-| `paper-search-tools` | Academic paper search (arXiv, PubMed, Semantic Scholar, etc.) |
-| `brightdata-guide` | Bright Data web data access via MCP tools + CLI — scraping (Web Unlocker), SERP, structured web_data_* extractors, browser automation. Operator sets BRIGHTDATA_API_KEY; delegate subagents fall back to the bdata CLI |
-
-### AI Models
-| Plugin | Description |
-|--------|-------------|
-| `codex-image` | Claude->Codex image generation bridge (delegates to Codex CLI image gen via ChatGPT OAuth, no OpenAI API key). Claude-only — excluded from Codex sync |
-| `council` | Cross-vendor deliberation (`/council:convene`). Three seats — codex (`gpt-5.6-sol`), agy (`gemini-3.6-flash-high`), Claude (`opus`) — answer independently, hand their follow-up questions to the user through a re-question gate, then rebut each other; the chair (main session, not a seat) synthesizes. Seat models pinned in a weekly-TTL registry at `~/.claude/council-models.json`; expiry always asks rather than auto-upgrading. Same-family consensus discount offsets the chair and Claude seat sharing weights. Output to git-tracked `.council/<date>-<slug>/`. Claude-only — excluded from Codex sync (seating codex under Codex is circular, and the Claude seat needs the Agent tool) |
-
-### Development Tools
-| Plugin | Description |
-|--------|-------------|
-| `notebook` | Safe Jupyter notebook editing |
-| `ml-toolkit` | ML/multimodal dev principles, GPU parallel processing, Gradio CV apps, CV notebooks, dataset exploration |
-
-### Content & Translation
-| Plugin | Description |
-|--------|-------------|
-| `translator` | Web article translation to Korean |
-| `tcrei-prompt` | Rewrite prompts using Google's TCREI structure for next-session reuse |
-| `tally-form` | Checklist markdown to Tally questionnaire/survey form — deterministic urllib builder, theme presets, section dividers, per-question choices (required/checkbox) + short-answer inputs (text/number/email/phone/link), native scheduling (matrix/date/time), form images (logo/cover/IMAGE) + redirect, idempotent publish, humanize routing. Dev-survey + lecture-consultation presets |
-
-### Planning
-| Plugin | Description |
-|--------|-------------|
-| `interview` | Structured requirements gathering |
-| `project-init` | Agent-harness project lifecycle. `new` — first-day bootstrap (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + README/CHANGELOG + gh repo create), preflight-guarded to empty dirs. `wiring` — read-only 14-axis setup diagnostic for existing repos, verdicts `FAIL/WARN/ASK/INFO/SKIP/OK`. Four axes ask whether config takes *effect*, not just exists: `core.hooksPath`, an `@import` that defeats `.claude/rules` `paths:` scoping, MCP servers registered twice (one copy silently discarded), Codex `AGENTS.md` byte budget. `ASK` = a decision nobody made yet — asked once, persisted to `.claude/state/wiring.json`. Shared detector `scripts/project_state.sh` |
-
-### Documentation
-| Plugin | Description |
-|--------|-------------|
-| `docs-forge` | README/CHANGELOG generation with CRO best practices, plus deployment-doc templates (`/docs-forge:deploy-doc`) and MOC index generation (`/docs-forge:moc`) |
-| `rules-forge` | CLAUDE.md + .claude/rules/ generation with auto mode detection (single write-rules skill) |
-
-### Design
-| Plugin | Description |
-|--------|-------------|
-| `anti-slop-design` | Anti-AI-slop design guard for web/SaaS landing, decks (PPT), dashboards, and copy. clarify→context→plan→run→audit→revise flow + two-phase audit gate (pre-emit self-critique + binary slop checklist); Korean copy handed to `humanize-korean`. Source-grounded in 6 OSS anti-slop repos (impeccable/hallmark/frontend-design/huashu/stop-slop/frontend-slides) |
-| `ppt-yeong-style` | yeong 스타일 강의·제안 덱 작성 규약 — `ppt-master` 엔진 위에 얹는 작성 레이어. 덱 유형·md 소스 규약·작성 원칙 16종·밀도 리듬(중간 강화)·역할 기반 색·codex vs SVG 경계·앱 UI 실물 강제·ppt-master 레버 조합 차별화·빌드 후 스토리 review·공식 로고 fetch·윤문·렌더 QA. 진입점 SKILL.md + references/ 6종 + assets/injection-prompt.md |
-
-### Productivity
-| Plugin | Description |
-|--------|-------------|
-| `gws-sync` | 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반). 매핑 설정(`.gws-sync.json`) → Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일 content update로 ID·공유링크 보존). 삭제는 제안만. gws 미설치 시 설치 안내 후 중단. googleworkspace/cli 스킬 95종 카탈로그 동봉 |
-| `plaud-note-taking` | PLAUD 음성 녹음 노트 검토·정정. PLAUD는 녹음당 **Whisper 전사록 + 별도 LLM 요약** 두 산출물을 내며, 이 스킬은 **요약이 아니라 전사록을 기준**으로 STT 오인식(한·영 코드스위칭·고유명사·수치)을 프로젝트 용어 사전(`terminology.md`)에 맞춰 정정한다. 애매한 담당자·기한·수치·화자 귀속과 "요약이 지어낸 결정"은 `interview:interview-methodology` relentless(grill-me) 위임으로 캐물어 확정하고, 원본은 손대지 않고 `.llmwiki/raw/transcripts/`에 `*.corrected.md`를 쓴다. 입력은 손으로 올린 `*.transcript.txt`(+`*.note.txt`) |
-
-### Memory & Lore
-| Plugin | Description |
-|--------|-------------|
-| `mem0-ops` | 플릿 레벨 mem0 진단·정리 — upstream mem0 플러그인(프로젝트 내부 품질)과 역할 분리. fleet-scan(전 앱 노이즈율·쓰레기 app_id 후보·app/user_id 파편화 리포트) + doctor(rerank env·auto_save 파일 우선순위 함정·decay·훅 timeout·정체성 파편화 점검, 제안만) + cleanup(백업→타입/앱 단위 삭제, dry-run 기본 + 스킬 레이어 앱별 확인 게이트). stdlib REST 스크립트라 결정론 구간 LLM 비용 0 |
-| `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral `.llmwiki/`): 5 skills + 5 hooks (incl. Stop-capture + SessionStart-drain auto-ingest) + bootstrap templates. Post-merge wiki ingest is a mandatory step inside `github-dev:post-merge` (post-merge-wiki absorbed). Promoted cross-agent rules graduate to `.llmwiki/insight/` (surfaced via core-config prompt-inject hook), not `.claude/rules/` |
-
-### Workflow State
-| Plugin | Description |
-|--------|-------------|
-| `spec-state` | Spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
+| Plugin | Category |
+|--------|----------|
+| `core-config` | Core |
+| `github-dev` | GitHub |
+| `e2e-harness` | Testing |
+| `code-scout` | Research & Search |
+| `deepwiki` | Research & Search |
+| `paper-search-tools` | Research & Search |
+| `brightdata-guide` | Research & Search |
+| `codex-image` | AI Models |
+| `council` | AI Models |
+| `notebook` | Development Tools |
+| `ml-toolkit` | Development Tools |
+| `translator` | Content & Translation |
+| `tcrei-prompt` | Content & Translation |
+| `tally-form` | Content & Translation |
+| `voice-prompt` | Content & Translation |
+| `interview` | Planning |
+| `project-init` | Planning |
+| `docs-forge` | Documentation |
+| `rules-forge` | Documentation |
+| `gws-sync` | Productivity |
+| `plaud-note-taking` | Productivity |
+| `mem0-ops` | Memory & Lore |
+| `llm-wiki` | Memory & Lore |
+| `spec-state` | Workflow State |
 
 플러그인은 `.claude/settings.json` 에서 auto-load 됩니다. 사용법 상세는 `README.md`.
 
@@ -102,6 +54,7 @@
 
 - `AGENTS.md`: 이 문서. 세 런타임 공통 최상위 지침 + 플러그인 목록 + 구조 요약.
 - `CLAUDE.md`: `@AGENTS.md` 를 import 하는 한 줄 파일. Claude Code 진입점일 뿐, 별도 내용이 없습니다.
+- `CLAUDE.md.global` / `CLAUDE.md.global.ko`: 사용자 전역 지침(`~/.claude/CLAUDE.md`)의 정본과 손으로 유지하는 한국어 번역. 영어 파일이 SoT — 영어를 먼저 고치고 `.ko` 를 미러한 뒤 `cp CLAUDE.md.global ~/.claude/CLAUDE.md` 로 사본을 갱신한다. `.ko` 는 어떤 에이전트도 로드하지 않는다. 사본을 이 워킹트리로의 심볼릭 링크로 걸지 않는다 — 그러면 브랜치 전환과 커밋 안 된 편집이 그 순간 전역 지침으로 발효된다. 이 지침이 전역 파일 헤더가 아니라 여기 있는 이유는, 전역 파일은 모든 프로젝트에서 로드되는데 이 파일 쌍은 이 저장소에만 있어서다. 전역 파일 자체는 sync 안내조차 싣지 않는다. 모든 세션에 로드되는 파일에서 규칙이 아닌 줄은 전부 비용이기 때문이다.
 - `README.md`: 사용자용 설치 및 플러그인 문서.
 - `.claude/settings.json`: 로컬 플러그인 로드 설정.
 - `.claude-plugin/marketplace.json`: marketplace 레지스트리와 플러그인 버전 목록.
@@ -148,7 +101,7 @@
 | Hermes | `clarify` |
 
 - 새 스킬 본문이 `AskUserQuestion` 을 쓰면 파일럿의 "Cross-runtime interactive input" 블록(위 3런타임 매핑)을 같이 넣거나, 이관을 미룰 경우 `scripts/check-skill-tool-portability.mjs` 의 baseline 에 등록한다. `scripts/check-skill-tool-portability.mjs --check` 가 `.githooks/pre-commit` + `.github/workflows/validate-codex.yml` 에서 이를 강제한다 — 파일럿은 표준 매핑을, baseline 은 등록 사실을, 그 외 새 경로는 실패로 잡는다.
-- **Follow-up debt (#123):** 현재 파일럿은 `interview:interview-methodology` 와 `github-dev:decompose-issue` 2개뿐이다. 나머지 19개 스킬(baseline)은 아직 body 에서 `AskUserQuestion` 을 실제로 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다. Hermes 호환표 행이나 frontmatter `allowed-tools:` 에만 `AskUserQuestion` 이 있고 실제 대화 게이트가 없는 스킬은 debt 가 아니라 가드가 제외한다. baseline 에서 파일럿으로 옮기며 점진 이관한다.
+- **Follow-up debt (#123):** 현재 파일럿은 `interview:interview-methodology`, `github-dev:decompose-issue`, `council:convene` 3개뿐이다. 나머지 16개 스킬(baseline)은 아직 body 에서 `AskUserQuestion` 을 실제로 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다. Hermes 호환표 행이나 frontmatter `allowed-tools:` 에만 `AskUserQuestion` 이 있고 실제 대화 게이트가 없는 스킬은 debt 가 아니라 가드가 제외한다. baseline 에서 파일럿으로 옮기며 점진 이관한다.
 
 ## 플러그인 변경 규칙
 
@@ -156,8 +109,8 @@
 - `plugins/<name>/` 아래 **어떤 파일이든** 바뀌면 버전 범프 대상입니다 — 코드/스킬뿐 아니라 번들 `references/`·`docs`·asset 편집도 포함. 캐시로 게이트된 사용자는 버전 범프가 있어야 새 내용을 받으므로, 문서만 고쳐도 해당 플러그인 PATCH + `metadata.version`을 올립니다 (Codex-eligible 이면 매니페스트 재생성). 반면 루트 문서(`AGENTS.md`, `README.md`, `code_review.md`, `.claude/rules/*`)는 플러그인 콘텐츠가 아니라 어떤 플러그인도 범프하지 않습니다.
 - Hermes-eligible 플러그인: `plugins/<name>/plugin.yaml`(Hermes 어댑터)의 `version`은 `sync-hermes-manifests.mjs` 가 marketplace 에서 파생해 생성하므로, 버전 범프 후 `node scripts/sync-hermes-manifests.mjs` 재실행으로 갱신하세요. `sync-hermes-manifests.mjs --check` 가 drift 를 가드하므로 수동 동기화는 불필요합니다 (단 Codex `--check` 는 Codex 매니페스트만 봅니다).
 - 어떤 플러그인 버전이든 변경하면 `.claude-plugin/marketplace.json`의 `metadata.version`도 marketplace release 버전으로 올리세요.
-- 플러그인을 추가하거나 제거하면 이 문서의 `## Plugins (N)` 수와 목록, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 문서의 미러 카운트(Hermes allowlist `현재 N개`, Codex 검증 주석 `# N entries`)와 `README.md` 의 "CI 가드가 지키는 것" 절에 산문으로 적힌 총계(`총 N / Codex-eligible N / Hermes N`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다. 마지막 것은 `check-doc-consistency` 가 README 총계를 `(\d+) / (\d+) 플러그인` 형태로만 매칭하는데 그 문장은 숫자 뒤에 `플러그인` 이 없어서입니다. 가드가 자기 자신을 설명하는 문장이 stale 해도 가드는 통과합니다.
-- 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다.
+- 플러그인을 추가하거나 제거하면 이 문서의 `## Plugins (N)` 수와 목록, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 문서의 미러 카운트(Hermes allowlist `현재 N개`, Codex 검증 주석 `# N entries`)와 `README.md` 의 "CI 가드가 지키는 것" 절에 산문으로 적힌 총계(`총 N / Codex-eligible N / Hermes N`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다. 마지막 것은 `check-doc-consistency` 가 README 총계를 `(\d+) / (\d+) 플러그인` 형태로만 매칭하는데 그 문장은 숫자 뒤에 `플러그인` 이 없어서입니다. 가드가 자기 자신을 설명하는 문장이 stale 해도 가드는 통과합니다. 반대 방향도 규칙입니다 — 카운트가 자기 SoT 바로 옆에 있고(배열 바로 위 주석처럼) 어떤 가드도 검사하지 않는다면, 위 동기화 목록에 항목을 늘리지 말고 그 재진술 자체를 지우세요. SoT 를 읽으면 나오는 숫자를 손으로 유지하는 비용만 남고, 그 숫자를 검사하는 가드가 있다면 대개 실행할 때마다 라이브 값을 이미 출력합니다.
+- 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다. 단 이 semver 규칙이 적용되는 대상은 per-plugin `version` 뿐입니다 — `.claude-plugin/marketplace.json` 의 `metadata.version` 은 semver 가 아니라 릴리스 카운터라, 소비자에게 하위 호환이 깨지는 변경(플러그인 제거 등)이어도 MINOR 로 올립니다. 어느 쪽 규칙이 걸리는지는 변경의 성격이 아니라 **어느 버전 필드를 만지는가**로 갈립니다. 리뷰어가 `metadata.version` 을 "깨지는 변경 → MAJOR" 로 지적하면 오탐이며, 근거는 `.claude/rules/plugin-versioning.md` 의 "Plugin Removal" 절입니다.
 - Claude Code 플러그인 캐시 이슈 때문에 사용자 문서나 릴리스 안내에는 필요 시 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 후 marketplace update 및 Claude Code 재시작 절차를 유지하세요.
 
 ## Modular Rules
@@ -166,7 +119,7 @@
 
 - `.claude/rules/plugin-versioning.md` — plugin version bump contract and cache-refresh workflow. Scoped via `paths:` to the manifest files, so it loads only when you touch them.
 - `.claude/rules/state-envelope.md` — the state-envelope v0 run-record convention (`.claude/state/<pipeline>-<key>.json` + archive rotation + per-skill jq, no shared library). Scoped via `paths:` to `.claude/state/*.json`. Its concept mirror for Codex/Hermes is the "State-envelope 실행 기록" section below.
-- See @.claude/rules/dual-integration.md for keeping the Claude Code, Codex, and Hermes surfaces in sync when editing guidance, hooks, or derived artifacts (unscoped, always loaded; its cross-runtime content is mirrored in the "멀티런타임 통합" section above, which is what Codex and Hermes actually read).
+- `.claude/rules/dual-integration.md` — keeping the Claude Code, Codex, and Hermes surfaces in sync when editing guidance, hooks, or derived artifacts. Scoped via `paths:` to the paired surfaces themselves (`AGENTS.md`, `.claude/rules/`, plugin manifests / hooks / skill bodies, the generators). The always-loaded summary is the "멀티런타임 통합" section above — which is also the only copy Codex and Hermes read — so the full rule loads lazily when you actually touch a paired surface. Pointer is deliberately plain (backticks, not `@`): an `@import` would expand it at launch and kill the scoping.
 
 ## State-envelope 실행 기록 (run records, v0)
 
@@ -224,7 +177,7 @@ node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
 - Claude 와 Codex 0.135 가 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 별도 mirror / body transform 없음 (구 `codex-bridge` 플러그인은 1.40.0 에서 제거). Skill 본문은 in-place 로 읽히므로 transform 이 없고, frontmatter 유효성만 남습니다.
-- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 23개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
+- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 22개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
 - 새 플러그인 추가 / 기존 플러그인의 `version` / `description` / `category` 변경 시 반드시 `node scripts/sync-codex-manifests.mjs` 를 실행해 매니페스트를 재생성하세요. `--check` 는 플러그인 제거 후 남은 orphan 매니페스트도 감지합니다.
 - Skill `description` frontmatter 는 1024자 미만으로 유지하세요. Codex 0.135 는 1024자 초과 description 을 가진 skill 을 **silent 하게 skip** 합니다 (Claude Code 는 제한이 없어 위반이 안 보임). `--check` 가 drift 외에 description 길이도 검증하고, 공유 `.githooks/pre-commit` 이 매 커밋마다 실행합니다 — clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화하세요. 전체 trigger 목록 / per-tool rationale 는 description 이 아니라 skill 본문에 두세요.
 - Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
@@ -241,7 +194,7 @@ node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (validate-code
 ```
 
 - Hermes Agent 도 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 어댑터(`plugin.yaml` + `__init__.py`)는 `scripts/sync-hermes-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성합니다 — `plugins/<name>/plugin.yaml` / `__init__.py` 를 손으로 편집하지 마세요.
-- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 7개: `github-dev`, `interview`, `anti-slop-design`, `tcrei-prompt`, `ppt-yeong-style`, `ml-toolkit`, `brightdata-guide`. 커버리지 확장은 allowlist 에 이름 추가.
+- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 5개: `github-dev`, `interview`, `tcrei-prompt`, `ml-toolkit`, `brightdata-guide`. 커버리지 확장은 allowlist 에 이름 추가.
 - Hermes-eligible 플러그인의 `version` / `description` 을 바꾸면 `node scripts/sync-hermes-manifests.mjs` 를 실행해 어댑터를 재생성하세요. `plugin.yaml` 의 `version` 은 marketplace 파생이므로 `--check` 가 drift + orphan 어댑터를 잡습니다 (수동 동기화 불필요 — 생성으로 해소).
 - `__init__.py` 는 `skills/*/SKILL.md` 를 `<plugin>:<skill>` 으로 등록하는 제네릭 엔트리포인트입니다 (플러그인별 로직 없음, `import yaml`=PyYAML 가정).
 - 공유 skill 본문은 3런타임 포터블이어야 합니다. Claude/Codex 는 도구명이 동일하므로, 본문에 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표(`Bash`→`terminal`, `Read`→`read_file`, `Edit`→`patch`, `AskUserQuestion`→`clarify`, `Task`→`delegate_task`, `Skill`→`skill_view`, 이미지 생성→`image_generate`, `NotebookEdit`→Hermes Jupyter Live Kernel / `write_file`·`patch` 등)를 둡니다. 새 skill 추가/도구 사용 변경 시 이 표를 점검하세요. 신규·편집 skill 은 이 표를 본문마다 다시 타이핑하는 대신 번들 `references/<harness>-tools.md` 로 중앙화하고 본문이 그것을 가리키는 형태를 우선합니다 — 점진 이관이므로 이미 그 본문의 도구 사용을 편집 중일 때만 채택하고, 표를 옮기려고 기존 본문을 새로 쓰지는 않습니다 (surgical-diff).
@@ -270,7 +223,7 @@ macOS CI 레그(`validate-codex.yml` 의 `macos` job)는 BSD 폴백이 실제로
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 23 entries
+codex plugin list --marketplace my-claude-plugins   # 22 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 
@@ -291,7 +244,7 @@ codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ### 핵심 최소본 (전문은 `code_review.md`)
 - **P0 (must-block)** — secret/token 노출, 사용자 확인 없는 destructive `gh` 명령 (`gh pr merge` / `gh repo create` / `gh api`), Codex 매니페스트 (`.agents/**`, `plugins/*/.codex-plugin/**`) 손편집, shell injection (사용자 입력 unquoted).
 - **P1 (should-block)** — 모든 should-block 규칙은 하드 유지한다 (soft-follow 미검증이므로 code_review.md 로 demote 하지 않는다): plugin version/count drift (`plugin.json` ↔ `marketplace.json` ↔ AGENTS 플러그인 목록·README 트리·배지·`metadata.version`), idempotency 회귀 (재실행 시 사용자 파일 덮어쓰기·`nothing to commit` abort·`origin` 충돌), cross-platform shell 가정 (`sed -i`·`realpath -m`·`md5sum`·`date -d`·`stat -c`·`timeout` GNU-only / `${VAR,,}` Bash 4+ / 이식성 수정은 양방향 — `python`→`python3` 는 macOS 를 고치고 Windows 를 깬다, 인터프리터는 이름 고정이 아니라 탐지), `gh api --paginate`+`--jq` 에 `--slurp` 누락, sed 치환 안전성 (`&`·구분자·`\` escape, 사용자 입력 정화), API 실패를 빈 결과로 삼키는 패턴 (`gh api ... || echo "[]"`) 과 그 write 쪽 쌍 (변환 실패 결과를 검사 없이 `gh issue/pr edit --body` 로 내보내 원격 본문을 공백으로 파괴), 종료 상태가 사라지는 자리 (파이프라인 중간 명령은 `set -e` 를 발동시키지 못한다 / 상태 자체가 검사 신호인 자리의 `|| true` / `cmd -v X && X … || true` 는 "X 없음"만이 아니라 "X 실행 실패"까지 삼키므로 `if …; then …; fi` 로 흡수 범위를 한정), skill/command frontmatter `name`/`description` 누락·오류, `Read`/`Edit` 영역을 `Bash cat`/`sed` 로 우회, 새 dependency·GitHub Actions·CI/CD 권한 변경 (최소 권한·lockfile·supply-chain).
-- **Do not flag** — 포매터 영역 (들여쓰기·따옴표·trailing whitespace), import 순서, 단순 typo, 루트 `CLAUDE.md` 가 `@AGENTS.md` 한 줄 포인터인 것 ("CLAUDE.md 가 없다/내용 없다" 지적은 오탐).
+- **Do not flag** — 포매터 영역 (들여쓰기·따옴표·trailing whitespace), import 순서, 단순 typo, 루트 `CLAUDE.md` 가 `@AGENTS.md` 한 줄 포인터인 것 ("CLAUDE.md 가 없다/내용 없다" 지적은 오탐 — 역방향도 오탐으로, 이 규칙은 루트 한정이라 `plugins/<name>/CLAUDE.md` 가 내용을 갖는 것은 정상이다).
 - 위 P0/P1/Do-not-flag 은 하드 최소본이다. **elaboration 만 soft** — 발견사항 제시 순서, Domain-specific 플러그인 추가/제거·skill 추가 문서 동기화 상세 체크리스트, 도입-버전 마커 오탐 예외, plugin-cache refresh 등 **전문은 [`code_review.md`](code_review.md)**.
 
 ## CodeRabbit / Codex 조율

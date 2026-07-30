@@ -251,4 +251,4 @@ does NOT need to retain removed plugins — orphan detection covers that case.
 > See-also: [[skill-engine-layering]]
 > Evidence: scripts/sync-codex-manifests.mjs
 > Evidence: AGENTS.md
-> Evidence: plugins/ppt-yeong-style/skills/deck-review/SKILL.md
+> Evidence: plugins/ppt-yeong-style/skills/deck-review/SKILL.md (path dead — plugin removed in the 2.9.0 release; read it at merge `7b5a721`)

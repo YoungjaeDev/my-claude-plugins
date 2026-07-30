@@ -17,9 +17,7 @@ export const CODEX_EXCLUDED = new Set(['codex-image', 'council']);
 export const HERMES_ELIGIBLE = new Set([
   'github-dev',
   'interview',
-  'anti-slop-design',
   'tcrei-prompt',
-  'ppt-yeong-style',
   'ml-toolkit',
   'brightdata-guide',
 ]);

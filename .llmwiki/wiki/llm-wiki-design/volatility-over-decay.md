@@ -1,7 +1,7 @@
 ---
 id: volatility-over-decay
 aliases: [volatility, staleness-window, old-is-not-stale, anti-ebbinghaus]
-last_verified: 2026-06-23
+last_verified: 2026-07-30
 status: active
 volatility: stable
 sources: 3
@@ -59,6 +59,8 @@ scanned dirs whenever the resolved root is `.llmwiki/wiki` (hint label
 `wiki/insight page(s)`), and `lint-wiki` applies the same windows across both
 layers. The rule generalizes: any derived layer that reuses a freshness contract
 must sit inside the same enforcement sweep, or the contract is decorative there.
+
+> See-also: [[deleted-subject-not-stale]]
 
 ## Sources
 

@@ -37,6 +37,7 @@ const PILOTS = [
   'plugins/interview/skills/interview-methodology/SKILL.md',
   'plugins/github-dev/skills/decompose-issue/SKILL.md',
   'plugins/council/skills/convene/SKILL.md',
+  'plugins/voice-prompt/skills/voice-prompt/SKILL.md',
 ];
 
 // Reviewed baseline debt — skills that still hardcode AskUserQuestion, migration deferred.

@@ -1,10 +1,10 @@
 ---
 id: worktree-squash-merge-gotchas
-aliases: [enterworktree-basefef-fresh, gh-pr-merge-delete-branch-worktree, exitworktree-ancestry-false-positive, dot-git-is-a-file-in-worktree, stacked-pr-base-delete-close]
-last_verified: 2026-07-12
+aliases: [enterworktree-basefef-fresh, gh-pr-merge-delete-branch-worktree, exitworktree-ancestry-false-positive, dot-git-is-a-file-in-worktree, stacked-pr-base-delete-close, gitignored-state-is-per-worktree]
+last_verified: 2026-07-30
 status: active
 volatility: volatile
-sources: 3
+sources: 4
 ---
 
 # Worktree lifecycle gotchas
@@ -54,8 +54,25 @@ Recorded as an observation, not a universal mechanism — GitHub's retarget-vs-c
 
 > See-also: [[skill-engine-layering]] (a different squash-merge-adjacent gotcha: reproducing an engine's internal API in prose drifts across squash boundaries too, though that is a documentation-staleness issue, not a git-ancestry one)
 
+## 5. A gitignored state directory is per-worktree, so a guard that forces the main repo cannot read it
+
+`.claude/state/` and `.llmwiki/.staging/` are gitignored, which makes them **per-working-directory**: a file one skill writes in a worktree does not exist in the main repo, and nothing about the git history reveals that.
+
+Two rules in `github-dev` then contradict each other. Step 1 of `post-merge` **P0-aborts** when run inside a worktree (its Step 3 checks out the base branch and would collide with the main repo's checkout). Step 1.5 resolves cr-fix's run record at `.claude/state/cr-fix-<PR>.json` **relative to cwd**. So the normal flow — implement in a worktree, run cr-fix there, then post-merge from the main repo, exactly as the guard demands — leaves Step 1.5 looking in the wrong filesystem. It finds no file, takes the `else` branch (`DEFER_N=0`), and prints:
+
+```text
+leftover-reviews: none
+```
+
+over a real deferred finding. The failure has the shape this repo keeps re-learning: a step that **could not look** reports that **nothing is there** (see [[detector-cannot-look-vs-nothing-wrong]]). It is worse than a plain miss, because the checkpoint line exists precisely so a skip cannot pass unnoticed — and here the skip prints the reassuring answer.
+
+Measured 2026-07-30 (PR #193): cr-fix wrote `final_state=iteration_cap` + one deferred finding into the worktree's `.claude/state/`; running Step 1.5's own snippet from the main repo resolved nothing. Passing the worktree path explicitly produced the correct `leftover-reviews: 1 deferred (final_state=iteration_cap)`.
+
+The general rule: **when a guard pins *where* a skill may run, every path that skill reads must be anchored to something the guard cannot move.** A cwd-relative path under a gitignored directory is not that. Candidate anchors are the common git dir (`git rev-parse --git-common-dir`, identical from every worktree), an explicit argument, or a scan of sibling worktrees (`git worktree list`).
+
 ## Sources
 
 1. **PR #89** (`ppt-yeong-style` completion-gate + document-structure round) — gotchas 1 and 2 hit back-to-back during worktree setup and post-merge cleanup; resolved via the content-diff-then-reset/discard pattern described above.
 2. **PR #104** (`project-init` wiring skill) — gotcha 3, surfaced by a CodeRabbit CLI finding and confirmed by running the detector inside a real `git worktree add`: `initialized=false`, `commits=0`, and all four `git check-ignore` probes false. Fixed with `git rev-parse --is-inside-work-tree`.
+3. **PR #193** (`voice-prompt` plugin) — gotcha 5, hit while running `post-merge` for that merge: cr-fix's state file sat in the `skipjack` worktree while the P0 guard required the main repo, and Step 1.5's own snippet printed `leftover-reviews: none` against a live deferred finding. Confirmed by running the snippet from both directories.
 3. **Session 88102e17 (2026-07-10)** — gotcha 4: stacked PR #108 (base = #106's branch) auto-closed by GitHub when #106 squash-merged with `--delete-branch`; confirmed by `gh pr list` showing #108 CLOSED with its head branch intact.

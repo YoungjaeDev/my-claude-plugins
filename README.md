@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 23개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 24개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
 
-[![Plugins](https://img.shields.io/badge/plugins-23-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-24-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -97,6 +97,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Content** | `translator` | 웹 아티클 한국어 번역 |
 | | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
 | | `tally-form` | 체크리스트 md → Tally 설문/상담 폼 빌드·게시 (테마 프리셋, 구분선, 문항별 보기·필수·복수선택·단답, matrix/date/time 일정 조율, 이미지·redirect, idempotent) |
+| | `voice-prompt` | 한국어 보이스 모드 STT 입력 정규화 — 말버릇·맞춤법·코드스위칭 자동 수정, 식별자는 `git ls-files`·스킬 목록 대조로 해소, 숫자·PR 번호는 손대지 않음. 1줄 에코 후 즉시 실행, 되돌리기 어려운 작업만 확인 |
 | **Planning** | `interview` | 구조화된 요구사항 수집 |
 | | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
 | **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) + 배포 문서 템플릿 + MOC 인덱스 |
@@ -624,6 +625,28 @@ PLAUD 음성 녹음기가 만든 노트를 검토·정정합니다. PLAUD는 녹
 
 </details>
 
+<details>
+<summary><strong>voice-prompt</strong> - 보이스 모드 STT 입력 정규화</summary>
+
+한국어 보이스 모드가 넘겨준 음성 인식 결과를 실행 **전에** 명령으로 되돌립니다. `/voice-prompt:voice-prompt` 를 한 번 타이핑하면 해제할 때까지 모든 입력에 적용됩니다 (자동 감지 없음). 활성화 시 `.claude/voice-prompt/speech-profile.md` 를 읽어 이전 세션에서 확정한 항목을 되살립니다.
+
+**이건 텍스트 청소기가 아닙니다.** 말버릇 제거는 모델이 이미 잘 하는 일이라 값이 낮습니다. 실제 값은 **모델이 추측으로 넘어가던 자리에 확인 절차를 끼워넣는 것**입니다 — "로더 파일"을 들으면 모델은 파일명을 지어내는데, `loader.py` 가 실재하는지 찾아보지 않으면 알 수 없습니다. 독해 실패가 아니라 행동 누락입니다.
+
+**3단 분류:**
+- **자동 수정** — 말버릇 부류, 맞춤법, 저장소 단일 후보, 스킬 목록 단일 후보, 발화 내 자기수정
+- **질문** — 후보 0건 또는 다건, 두 해석이 서로 다른 행동을 유발, 되돌리기 어려운 작업 대상 (한 라운드로 묶어서)
+- **손대지 않음** — 숫자·날짜·버전·PR/이슈 번호·금액·경로 리터럴. `PR 189` 가 `PR 180` 으로 들리면 조용히 잘못된 PR 을 건드리므로, 문맥이 아무리 그럴듯해도 추측 금지
+
+**말버릇은 목록이 아니라 기능 검사로 지웁니다.** "그냥 지워"의 "그냥"은 "다른 건 하지 말고"이고 "일단 커밋해"의 "일단"은 순서 지시입니다. 그 단어를 지웠을 때 행동이 달라지면 말버릇이 아니고, 애매하면 보존합니다. 자기수정 표지("아 아니")는 삭제 대상이 아니라 정정 근거로, 그 뒤의 발화가 이깁니다.
+
+**에코 → 실행:** `→ src/loader.py 초기화 부분 고쳐 (로더 파일→loader.py, 필러 3어 삭제)` 처럼 한 줄 보고 후 즉시 진행. 푸시·머지·삭제 등 되돌리기 어려운 작업만 대상을 명시해 확인받습니다.
+
+**개인화:** 일반 한국어 말버릇은 번들 레퍼런스에, 개인 발음 습관과 도메인 용어는 `.claude/voice-prompt/speech-profile.md` 에 분리합니다. 사용자 확인 없이 프로필에 쓰지 않습니다.
+
+**한계:** 스킬은 입력을 가로채지 않습니다 — 지침 준수 기반이라 긴 세션에서 흐려질 수 있고, 에코가 사라지면 재호출하라는 신호입니다.
+
+</details>
+
 ## Configuration
 
 ### settings.json
@@ -667,7 +690,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인은 `codex-image` 와 `council` 둘입니다 (`codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환, `council` 은 codex 를 의석으로 앉히므로 Codex 에서 돌리면 자기 자신을 소환하는 순환이고 Claude 의석이 Agent 도구를 필요로 함). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 21 / 23 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
+Codex 에서 제외되는 플러그인은 `codex-image` 와 `council` 둘입니다 (`codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환, `council` 은 codex 를 의석으로 앉히므로 Codex 에서 돌리면 자기 자신을 소환하는 순환이고 Claude 의석이 Agent 도구를 필요로 함). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 22 / 24 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
 
 Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`docs-forge`, `deepwiki` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
 
@@ -720,7 +743,7 @@ shared-source 배선은 6개 가드가 매 PR 과 매 커밋(`.githooks/pre-comm
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
 - `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
-- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 23 / Codex-eligible 21 / Hermes 5)가 `manifest-eligibility.mjs` SoT 와 일치.
+- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 24 / Codex-eligible 22 / Hermes 5)가 `manifest-eligibility.mjs` SoT 와 일치.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
 - `check-shell-portability.mjs` — GNU 전용 셸 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우 차단. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하고, 증거는 코드만 인정합니다(대체재를 언급하는 주석은 폴백이 아님). 예외는 `# portability-ok: <사유>`.
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
@@ -790,6 +813,7 @@ node scripts/install-skills.mjs                  # 또는 hermes plugins install
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 │   ├── gws-sync/              # 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반)
 │   ├── plaud-note-taking/     # PLAUD 노트(Whisper 전사록+LLM 요약) STT·용어 정정
+│   ├── voice-prompt/          # 보이스 모드 STT 입력 정규화 (3단 분류 + 저장소 대조)
 │   └── mem0-ops/              # 플릿 레벨 mem0 진단·정리 (fleet-scan/doctor/cleanup)
 ├── AGENTS.md                 # 세 런타임 공통 최상위 지침 (정본)
 ├── CLAUDE.md                 # @AGENTS.md import

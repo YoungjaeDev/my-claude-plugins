@@ -1,10 +1,10 @@
 ---
 id: hermes-plugin-adapter
-aliases: [hermes-adapter, plugin-yaml, hermes-native-plugin, skill-view-optin, hermes-third-runtime, hermes-plugins-update]
-last_verified: 2026-07-29
+aliases: [hermes-adapter, plugin-yaml, hermes-native-plugin, skill-view-optin, hermes-third-runtime, hermes-plugins-update, qualified-name-is-adapter-scoped]
+last_verified: 2026-07-30
 status: active
 volatility: stable
-sources: 5
+sources: 6
 ---
 
 # Hermes native plugin adapter (third runtime)
@@ -95,6 +95,32 @@ Consequences:
 - Start a **fresh Hermes session** after `--enable` so the plugin skill registry
   is rebuilt.
 
+### The qualification is adapter-scoped, not universal
+
+The `<plugin>:` prefix is created by the **generated adapter** — `__init__.py`
+registers each `skills/*/SKILL.md` as `<plugin>:<skill>`. It therefore exists only
+for the plugins on the generator's `HERMES_ELIGIBLE` allowlist.
+
+For every other plugin the only Hermes route is the **skill-unit install**
+(`scripts/install-skills.mjs`, wrapping `npx skills` — see
+[[skills-install-wrapper]]), and that path registers the skill under its **bare
+frontmatter `name`**: the installer builds each entry as `id: fm.name` and asserts
+those names are globally unique precisely so `-s <name>` can target them. No
+adapter runs, so no namespace is minted.
+
+So a shared body must match its own eligibility. A non-eligible plugin whose
+Hermes note tells the reader to `skill_view("<plugin>:<skill>")` is naming an
+identifier that does not exist on the only install it supports — the load fails
+and the compatibility note is the thing that misled. Load it bare:
+
+```text
+skill_view("voice-prompt")          # skill-unit install, no adapter
+skill_view("github-dev:cr-fix")     # HERMES_ELIGIBLE, adapter minted the namespace
+```
+
+The fix for a body caught this way is either the bare form or adding the plugin to
+the allowlist — but not both, and the body should say which one it assumes.
+
 ## Runtime-portable bodies (extends the shared-source rule)
 
 The same skill bodies run under all three runtimes, so they carry a Hermes
@@ -138,3 +164,4 @@ fallback. Do not reintroduce `HERMES_SKILL_DIR`.)
 - DeepWiki (NousResearch/hermes-agent) — `register(ctx)` + `ctx.register_skill(name, path, description)` contract; plugin skills opt-in via `skill_view("plugin:skill")`.
 - Session 88102e17 (2026-07-10) — real-machine `hermes plugins update` output (git-pull-only update model); upstream docs re-check (subpath install undocumented, `author:` undocumented, `kind` enum); HERMES_ELIGIBLE count 6 → 7 correction.
 - Fleet-recon research read of upstream source (2026-07-12) — `hermes_cli/plugins.py` L1196 `register_skill(self, name, path, description="")`: settles the signature, retires the 2026-07-10 "2-arg documented" caveat (docs lag source).
+- PR #193 (`voice-prompt`, merged `81e67e8`) — the qualified-name scope wrinkle. A Codex P2 caught a non-eligible plugin's body advertising `skill_view("voice-prompt:voice-prompt")`; confirmed against `scripts/install-skills.mjs` (`id: fm.name` at the skill-entry build, plus the globally-unique-name assert in `--selftest`) that a skill-unit install registers the bare name and mints no namespace.

@@ -1,23 +1,63 @@
 # Claude Code User Guidance
 
-> Source: `CLAUDE.md.global` in the `my-claude-plugins` repo. `~/.claude/CLAUDE.md` is a synced
-> copy — edit the source and re-sync, because an edit made to the copy is silently overwritten.
+> Editing this file directly gets overwritten by the next sync. The source is `CLAUDE.md.global` in the `my-claude-plugins` repo.
 
-- A guess reads exactly like knowledge, so state only what this session actually verified.
-  Anything else gets checked first, or is reported as `unknown` / `unverified`.
-- A document nobody can skim is a document nobody reads, so write it free of AI slop and laid
-  out so the key points land at a glance for a human and a model alike — someone reading only
-  the first clause of each line should still come away with the point.
-- Resolving an ambiguity silently hides the fork from the person who owns it, so narrow it to
-  the candidate readings and ask through `AskUserQuestion` instead of picking one. Where that
-  tool is not exposed, ask one short direct question rather than treating the run as blocked.
-- A record and a test-first cycle exist only if the work goes through the flow that creates them,
-  so where the repository has a GitHub remote and `gh` is authenticated, anything touching two or
-  more files or changing behavior gets an issue, a branch, and a PR under automated review.
-  Opening the issue and the PR directly satisfies this — the `github-dev` skills are one way to
-  drive the flow, not a precondition for it. Mechanical changes are exempt whatever their file
-  count: a typo, a version bump across the manifests it requires, a single-file doc edit. Where
-  the flow cannot run, commit directly rather than treating the work as blocked.
-- Attribution lines and emoji are noise in text that gets diffed, grepped, and read in a
-  terminal — so no AI/Claude attribution in commits, PRs, issues, or docs, and no emoji in code
-  or docs.
+## Working principles
+
+### 1. Separate what was verified from what was guessed
+
+- A guess spreads as fact the moment it is written down, so state only what the codebase, an execution result, a test result, or this session directly confirmed.
+- Check first when the evidence is missing, and report `unknown` or `unverified` when it cannot be checked.
+- Present the verified evidence and the inferred conclusion separately when an inference has to be offered.
+- Do not fill in an unverified detail just because it is likely.
+
+### 2. Write so the point lands first
+
+- A document is only used if skimming it still leaves the point behind, so put the conclusion, the decision, and the required action first.
+- Carry one point per bullet, and finish it in one sentence where possible.
+- Split a sentence into a sub-bullet or the next paragraph when it carries an explanation, an exception, and a follow-up action at once.
+- Use a heading or a list only when it exposes the structure of the content, not to decorate a short paragraph.
+- Preserve the meaning, tone, and confidence level of the source when translating or editing, and invent no new claim or example.
+- Leave a sentence that is already clear and distinctive alone, and fix only what obscures the meaning.
+- Prefer verifiable information such as names, numbers, dates, behavior, and outcomes over abstract importance.
+- Do not mechanically ban a particular word or sentence shape; fix it when it delays the point, hides the evidence, or inflates the meaning.
+
+#### Sentence patterns to avoid
+
+| Pattern | Avoid | Prefer |
+|---|---|---|
+| Throat-clearing | "먼저 중요한 점을 짚고 넘어가겠습니다." | Delete the preamble and start with the point. |
+| Manufactured contrast | "문제는 모델이 아니다. 평가다." | "평가가 모델보다 더 큰 병목이다." |
+| Fake insight teaser | "대부분이 놓치는 핵심은 배포다." | "가장 큰 병목은 배포다." |
+| Unsupported importance | "이번 변경은 중요한 전환점이다." | State what is a first, or what changed. |
+| Unsourced authority | "연구에 따르면 효과가 크다." | Name the source, or drop the claim. |
+| Surface-level reading | "기능을 추가해 혁신 의지를 보여준다." | State what the feature changed for users or the system. |
+| Synonym cycling | Alternating `agent`, `assistant`, `tool` for the same thing | Use the one most accurate term consistently. |
+| Ceremonial ending | Restating what came before, or closing on a lesson | End on the last result, the decision, or the next action. |
+
+### 3. Surface consequential ambiguity to whoever owns the decision
+
+- Ambiguity that affects the outcome, scope, cost, compatibility, or reversibility belongs to the decision owner, so do not silently pick one reading.
+- Look in the codebase and the current conversation first, and eliminate the readings that are impossible.
+- Ask through `AskUserQuestion` when the remaining options change the outcome, explaining the difference and the impact briefly.
+- Ask one short direct question where `AskUserQuestion` is not exposed, rather than treating the missing tool as a blocker.
+- A reasonable assumption is fine for a detail that does not affect the outcome and is easily reversed, but state the assumption.
+
+### 4. Use a traceable development flow for changes that qualify
+
+- A change record and a test-first cycle can only be reviewed if the work produces them along the way, so start qualifying work on the issue and PR flow.
+- In a repository with a GitHub remote where `gh auth status` succeeds, work that changes behavior or edits two or more files gets an issue, a working branch, and a PR.
+- Work that changes behavior gets a failing test or a reproduction first, and confirms it passes after the fix.
+- Record in the PR why a runnable test does not apply and what verification was used instead.
+- Request automated review on the PR where the repository has it, and do not stop the work because it is unavailable.
+- Opening the issue and the PR directly satisfies the flow, and a skill such as `github-dev` is not a precondition.
+- Treat a typo fix, a version bump with the manifest updates it requires, and a single-file doc edit as mechanical regardless of file count.
+- Verify the work and commit directly where the flow cannot run for reasons such as remote, authentication, or permissions, and report which condition blocked it.
+
+### 5. Leave no unnecessary marker in the repository
+
+- A marker announcing the authoring tool leaves lasting noise in the change history and in search results, so add no AI-authorship notice to code, docs, commits, issues, or PRs.
+- Add no authorship line such as `Generated by AI`, `Generated by Claude`, or `Co-Authored-By: Claude`.
+- This does not ban the terms themselves where AI or Claude is the subject of the document.
+- Use no decorative emoji in code, docs, commits, issues, or PRs.
+- Use no em dash in prose you write or rewrite, and split with a period, comma, colon, or parentheses to match the sentence structure.

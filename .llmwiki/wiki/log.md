@@ -6,6 +6,15 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-07-30 — post-merge #191: a page whose subject was deleted + a rule the reviewer cannot see (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `4f95949` — two plugins (`anti-slop-design`, `ppt-yeong-style`) removed from the marketplace, plus a new "generalize the rule, not the instance" principle in `github-dev:post-merge`'s `core-principle.md`. Config integration (Step 6) took two learnings into `AGENTS.md` — the `metadata.version`-is-a-release-counter scoping and the "delete an unguarded count restatement instead of adding it to the sync checklist" rule — so neither is duplicated here (knowledge routing). The generalization principle itself is plugin content whose SoT is the skill body; not copied here either.
+
+- llm-wiki-design/deleted-subject-not-stale.md: new page (id `deleted-subject-not-stale`, status active, volatility stable, sources 2). Removing a subsystem leaves active lore asserting it as current; `## Sources` evidence is correctly historical and stays, present-tense body prose is false current-state, and `status: stale` is the WRONG remedy (reserved for superseded, one-sided without a `> Superseded-by:` pair). `> Refines: [[volatility-over-decay]]`.
+- llm-wiki-design/volatility-over-decay.md: back-reference `> See-also: [[deleted-subject-not-stale]]` (staleness by subject-death is a second axis alongside staleness by age); last_verified bumped.
+- plugin-ops/agents-md-verbatim-no-import.md: added `## Invisibility does not just lose guidance — it manufactures a wrong answer`. A rule reachable only through `.claude/rules/` does not merely go unread by the Codex/CodeRabbit reviewers; they read the *unscoped* version that IS visible and produce a confident, correctly-argued, wrong finding. sources 6 -> 7; last_verified 2026-07-30.
+- index.md: added the `deleted-subject-not-stale` hook under `llm-wiki-design`.
+
 ## 2026-07-29 — post-merge #189: testing shell that lives in a document + cross-vendor council design (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `af75c84` — the `council` plugin (25th), driven through 5 cr-fix iterations (39 findings, 35 applied). Config integration (Step 6): the README guard-section count-home went to `.claude/rules/plugin-versioning.md` + its `AGENTS.md` mirror, so it is deliberately NOT duplicated here. TOCTOU itself is textbook and is not recorded; the environment fact that `CLAUDE_SESSION_ID` is not exported (only `CODEX_COMPANION_SESSION_ID`) is, inside the council page.

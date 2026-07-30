@@ -105,30 +105,53 @@ hedges, which carry confidence information ("~것 같은데" is not noise).
 For every span that looks like a file, directory, function, branch, or skill name, get a
 candidate list before using it.
 
-**Bind the spoken stem to a variable. Never paste it into the command text.** A transcript can
-contain a quote, a backtick, `$(…)`, or a newline, and interpolating it inline lets that escape
-into shell syntax — `grep -F` only ever sees what the shell has already parsed, so it is no
-defense against injection.
+**Transliterate first, then search.** The spoken form is Korean and the repo is English, so
+searching for the transcript verbatim finds nothing: "로더" appears in no path, and grepping it
+returns zero candidates even when `loader.py` is sitting right there. Write down the English stems
+the Korean pronunciation could be, *then* look each one up. This conversion is the step that does
+the actual work — skip it and the whole feature silently no-ops.
+
+| Spoken | English stem candidates |
+|---|---|
+| 로더 | `loader` |
+| 씨알픽스 | `cr-fix`, `crfix` |
+| 이식성 (a translated word, not a transliteration) | `portability` |
+| 커밋 | `commit` |
+
+**Pass the stems as separate arguments. Never paste them into the command text.** A transcript can
+contain a quote, a backtick, `$(…)`, or a newline; interpolating it inline lets that escape into
+shell syntax, and `grep -F` only ever sees what the shell has already parsed, so it is no defense
+against injection. `set --` plus `"$@"` keeps the stems as data instead of code.
 
 ```bash
-STEM='<the spoken stem, single-quoted>'
+set -- loader           # the candidate list — one argv entry per stem
 
-# Get the list first, so a git failure cannot hide behind grep's "no match".
+# Fetch the list once. A git failure must not hide behind grep's "no match".
 files=$(git ls-files -co --exclude-standard) || {
   echo "voice-prompt: git ls-files failed — a tool error, not zero candidates" >&2; exit 1; }
-candidates=$(printf '%s\n' "$files" | grep -iF -- "$STEM"); rc=$?
-[ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
 
-# Branches — same split.
+# Filter per candidate. rc=1 means this stem is absent; rc>=2 is a real error.
+for STEM in "$@"; do
+  hits=$(printf '%s\n' "$files" | grep -iF -- "$STEM"); rc=$?
+  [ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
+  [ "$rc" -eq 0 ] && printf '%s\n' "$hits"
+done | sort -u
+
+# Branches — same candidate list, same discipline.
 brs=$(git branch -a --format='%(refname:short)') || {
   echo "voice-prompt: git branch failed" >&2; exit 1; }
-brmatch=$(printf '%s\n' "$brs" | grep -iF -- "$STEM"); rc=$?
-[ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
+for STEM in "$@"; do
+  hits=$(printf '%s\n' "$brs" | grep -iF -- "$STEM"); rc=$?
+  [ "$rc" -le 1 ] || { echo "voice-prompt: grep failed (status $rc)" >&2; exit 1; }
+  [ "$rc" -eq 0 ] && printf '%s\n' "$hits"
+done | sort -u
 ```
 
-`grep -iF` matches the stem as a literal string, so a syllable that happens to be a regex
-metacharacter cannot alter the *search*. Two exit-status rules matter as much:
+`grep -iF` matches each stem as a literal string, so a syllable that happens to be a regex
+metacharacter cannot alter the *search*. Three rules matter as much:
 
+- **A stem with no hit is not an error.** It just means that guess is not in this repo. Union the
+  hits across stems, then count.
 - **Only `grep` status 1 means zero candidates.** Status 2 or higher is a grep error, and an
   error is not an empty result — surface it instead of asking the user about a search that never
   ran.
@@ -137,8 +160,11 @@ metacharacter cannot alter the *search*. Two exit-status rules matter as much:
   the user a question about a filename instead of reporting the failure.
 
 - **Exactly one candidate** → auto-fix, and name it in the echo.
-- **Zero or several** → ask. Offer the near-misses you found as options; a list of real paths is
-  easier to answer than an open question.
+- **Zero** → first suspect your own transliteration, not the user. Try the other spellings the
+  pronunciation allows (hyphenated / concatenated, transliteration vs. translation) before asking.
+  Only when every stem comes back empty is it a question.
+- **Several** → ask. Offer the near-misses you found as options; a list of real paths is easier to
+  answer than an open question.
 - **Function and symbol names** → prefer the session's symbol tooling (LSP or Serena) over a text
   search, then fall back to `grep`.
 - **Skill and command names** → resolve against the installed-skill listing already in your
@@ -157,7 +183,7 @@ alone" — pass the span through untouched and say so in the echo.
 
 ### Step 4 — echo one line, then act
 
-```
+```text
 → <normalized request>  (<changed item>, <changed item>)
 ```
 
@@ -171,7 +197,7 @@ Then proceed immediately. No approval round trip — **with one exception**:
 force-push, reset, branch or file deletion, publishing, sending, anything that leaves the machine.
 Name the action and its resolved target together, then wait:
 
-```
+```text
 push → origin/feat/192-voice-prompt-plugin, 맞습니까?
 ```
 
@@ -194,11 +220,37 @@ one outside the source tree.
 ```bash
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
 [ -z "$PLUGIN_ROOT" ] && [ -d plugins/voice-prompt/skills ] && PLUGIN_ROOT=plugins/voice-prompt
+
+# Codex cache. Sort on the VERSION basename, never the full path: a lexicographic
+# sort of paths ranks zeta/…/0.1.0 above alpha/…/0.2.0, and 0.9.0 above 0.10.0.
+# sort -V orders X.Y.Z properly; BSD/macOS sort has no -V, so degrade to a
+# numeric dotted-field sort.
 if [ -z "$PLUGIN_ROOT" ]; then
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null | sort | tail -1)
+  if sort -V </dev/null >/dev/null 2>&1; then
+    PLUGIN_ROOT=$(ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null \
+      | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2-)
+  else
+    PLUGIN_ROOT=$(ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null \
+      | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2-)
+  fi
 fi
+
+# Hermes. voice-prompt is not in HERMES_ELIGIBLE, so no plugin adapter is
+# generated for it and the skill-unit install (scripts/install-skills.mjs, which
+# targets $HERMES_HOME/profiles/<profile>) is the only Hermes route. Check the
+# plugin layout first, then the flat skill-unit layout — the flat branch is
+# unverified against a live Hermes and is additive, guarded by -d.
+if [ -z "$PLUGIN_ROOT" ]; then
+  for h in "${HERMES_HOME:-$HOME/.hermes}/plugins/voice-prompt" \
+           "${HERMES_HOME:-$HOME/.hermes}/skills/voice-prompt"; do
+    [ -d "$h" ] && { PLUGIN_ROOT="$h"; break; }
+  done
+fi
+
+# Two layouts: bundled plugin tree, and the flat skill-unit install.
 TEMPLATE="$PLUGIN_ROOT/skills/voice-prompt/templates/speech-profile.md"
+[ -f "$TEMPLATE" ] || TEMPLATE="$PLUGIN_ROOT/templates/speech-profile.md"
 [ -f "$TEMPLATE" ] || { echo "voice-prompt: bundled template not found" >&2; exit 1; }
 
 # Runs only after the user confirmed the entry being persisted.

@@ -37,7 +37,7 @@ Claude Code 보이스 모드를 한국어로 쓰면 음성 인식 결과가 세 
 
 ## 관계도
 
-```
+```text
 [타이핑] /voice-prompt
     └─ 스킬 본문이 컨텍스트에 적재됨 (입력을 가로채지 않음)
 
@@ -158,7 +158,7 @@ Claude Code 보이스 모드를 한국어로 쓰면 음성 인식 결과가 세 
 
 ### 신규 (6개)
 
-```
+```text
 plugins/voice-prompt/
 ├── .claude-plugin/plugin.json                  # 이름·버전 0.1.0·설명
 ├── CLAUDE.md                                   # 존재 이유 + plaud 와의 경계
@@ -241,7 +241,7 @@ node scripts/check-skill-tool-portability.mjs --check     # PILOTS 표준 대응
 2. **끝에서 끝까지 걸어보기** — 발화 하나를 절차대로 통과시켜 보고 줄이 형식대로 나오는지
    본다. 산출물이 산문이므로 이것이 정직한 통합 검증이다.
 
-```
+```text
 입력: "어쨌든 뭐 그냥 저 로더 파일에서 초기화 부분 좀 고쳐야 될 것 같은데"
 기대: → src/skipjack/loader.py 초기화 부분 고쳐야 할 것 같은데
       (로더 파일 → loader.py: 저장소 단일 후보 · 말버릇 3어 삭제)

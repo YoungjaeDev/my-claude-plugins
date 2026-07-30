@@ -27,7 +27,7 @@ contributes is a decision rather than a transform:
 
 ## Shape
 
-```
+```text
 plugins/voice-prompt/
 ├── CLAUDE.md
 ├── .claude-plugin/plugin.json

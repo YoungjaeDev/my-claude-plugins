@@ -23,6 +23,22 @@ The step-6 approval gate is the one place where no safe default exists: an unapp
 file must never be distilled or ingested. Where no interactive tool is exposed, stop and report
 the corrected file instead of continuing past it.
 
+## Hermes Agent compatibility
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| Bash | terminal |
+| Read | read_file |
+| Write | write_file |
+| Edit | patch |
+| Grep/Glob | search_files |
+| AskUserQuestion | clarify |
+| Skill | skill_view |
+
+Plugin skills are explicit opt-in loads in Hermes — the description never surfaces this body on
+its own. Load it by name with `skill_view("plaud-note-taking")`; `plaud-note-taking` is outside
+`HERMES_ELIGIBLE`, so no generated adapter exists for the qualified `<plugin>:<skill>` form.
+
 ## When to use
 
 - A PLAUD note (transcript, or transcript + summary) has been placed in
@@ -137,7 +153,10 @@ grill-me posture (step 4).
    corrected file. Do not edit the project dictionary yourself — if recurring unknown terms look
    worth adding, list them as candidates at the bottom of the corrected file for the user to
    confirm later. Do not dump raw personal data (phone numbers, emails, credentials) into the
-   corrected file.
+   corrected file — **mask it in place** with `[삭제됨: 유형]` (e.g. `[삭제됨: 전화번호]`) rather
+   than deleting the span. This file is the full transcript with tagging, so a silent deletion is
+   an untagged edit: the marker keeps speaker attribution, utterance order, and the positions the
+   `[정정]` citations point at.
 
 6. **Gate on the user before distilling.** The corrected file is the last point where every claim
    still carries its basis. The digest drops those tags when it compresses, and step 8 spreads
@@ -173,8 +192,16 @@ grill-me posture (step 4).
    stay in the digest. Do **not** hand over the meeting record wholesale. `ingest-finding` treats
    verbatim copying as an anti-pattern, and one meeting is one source, so under its page-creation
    threshold most of this lands in an existing page's body or a `> See-also:`, not a new page.
-   Invoke `llm-wiki:ingest-finding` with the selected items, citing the digest step 7 actually
-   wrote as the source.
+
+   **The tag discipline survives the digest.** The digest drops the tags when it compresses, but
+   the claims keep their standing: hand over only what the transcript confirmed, and never a claim
+   that sat under "논의만 됨" or "미해결" (those were `[해석]` / `[확인 필요]`). Compression removed
+   the label, not the uncertainty.
+
+   Invoke `llm-wiki:ingest-finding` with the selected items. Cite **two** sources: the digest step 7
+   actually wrote, and the frozen `.transcript.txt` the whole chain derives from. The digest is a
+   mutable convenience layer, so a citation that names only it leaves the claim resting on
+   something a later hand edit can change.
 
 ## Prohibitions
 

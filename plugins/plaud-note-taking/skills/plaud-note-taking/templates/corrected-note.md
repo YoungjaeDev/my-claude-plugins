@@ -1,8 +1,12 @@
 # Corrected-note template
 
 Write `derived/<slug>.corrected.md` in the `derived/` subfolder beside the frozen originals. Drop
-any section that has no content. Keep it readable: one fact per line, no tables of raw transcript,
-no sensitive data.
+any section that has no content. Keep it readable: one fact per line, no tables of raw transcript.
+
+Personal data (phone numbers, emails, credentials) is **masked in place** as `[삭제됨: 유형]`, not
+deleted. This file is the full transcript with tagging, so a silent deletion is an untagged edit;
+the marker preserves speaker attribution, utterance order, and the positions the `[정정]` citations
+point at.
 
 This is the fidelity artifact, not the readable record. The readable record is
 `derived/<slug>.digest.md` (`templates/digest.md`), distilled from this file after the user

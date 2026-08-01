@@ -36,16 +36,17 @@ ingested: YYYY-MM-DD
 
 | Digest section | Source in the corrected file |
 |---|---|
-| 결정된 것 | `[확인됨]`, and any `[정정]` span whose basis is cited |
-| 액션 | `[확인됨]` / basis-cited `[정정]` owner/deadline; unresolved ones stay `미정`, never guessed |
+| 결정된 것 | a claim the transcript confirms (`[확인됨]`); it may contain `[정정]` spans |
+| 액션 | a confirmed owner/deadline, `[정정]` spans allowed; unresolved ones stay `미정`, never guessed |
 | 논의만 됨 (미확정) | `[해석]`, and any proposal that never reached agreement |
 | 미해결 | `[확인 필요]` left open after the grill-me pass |
 
-`[정정]` belongs in the confirmed sections because a correction **is** confirmed content: it earned
-a dictionary entry, an in-transcript self-correction, or a cited source before it was written down.
-Excluding it would drop the corrected term from the very line it corrects ("React 랜딩 페이지 개편"
-is a decision whose product name came from a `[정정]`). What stays blocked is `[해석]` and
-`[확인 필요]` — the two tags that mean *not established*.
+**`[정정]` is a span, not a claim.** It marks a corrected stretch of wording, so it never carries a
+decision on its own and never earns a "결정된 것" line by itself. What admits a line into a confirmed
+section is the transcript confirming the *claim*; a basis-cited `[정정]` inside that line is fine
+and must not be stripped ("React 랜딩 페이지 개편" is confirmed as a decision, and its product name
+happens to come from a `[정정]`). `[해석]` and `[확인 필요]` stay out of confirmed sections entirely,
+span or claim — those two tags mean *not established*.
 
 ## Writing rules
 

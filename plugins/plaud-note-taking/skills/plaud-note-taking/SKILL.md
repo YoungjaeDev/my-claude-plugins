@@ -1,10 +1,27 @@
 ---
 name: plaud-note-taking
-description: "Use to review and correct a PLAUD voice-recorder note that was dropped into .llmwiki/raw/transcripts/. PLAUD emits two separate artifacts per recording — a raw Whisper STT transcript and a separate LLM summary — and this skill corrects the transcript (never the summary) for STT misrecognition and project terminology, relentlessly interviews the user (grill-me) to resolve anything ambiguous, and writes a *.corrected.md next to the originals without modifying them. Triggers: PLAUD transcript, 플라우드 노트, 전사록 정정, STT 수정, 회의록 교정, plaud note review, correct meeting transcript."
-version: 0.1.0
+description: "Use to review and correct a PLAUD voice-recorder note that was dropped into .llmwiki/raw/transcripts/. PLAUD emits two separate artifacts per recording — a raw Whisper STT transcript and a separate LLM summary — and this skill corrects the transcript (never the summary) for STT misrecognition and project terminology, relentlessly interviews the user (grill-me) to resolve anything ambiguous, writes derived/<slug>.corrected.md, waits for the user to approve it, then distils derived/<slug>.digest.md (the readable meeting record) and hands reusable lore to llm-wiki:ingest-finding — all without modifying the originals. Triggers: PLAUD transcript, 플라우드 노트, 전사록 정정, STT 수정, 회의록 교정, 회의 정리본, plaud note review, correct meeting transcript, meeting digest."
+version: 0.2.0
 ---
 
 # PLAUD Note Review & Correction
+
+## Cross-runtime interactive input
+
+Every question below runs through a **capability-aware** interactive-input gate rather than one
+hardcoded tool:
+
+- **Claude Code** — use `AskUserQuestion`.
+- **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE
+  concise blocking question only where a wrong assumption would be costly; otherwise proceed on
+  a documented safe default and state the assumption.
+- **Hermes** — use `clarify`.
+
+Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+
+The step-6 approval gate is the one place where no safe default exists: an unapproved corrected
+file must never be distilled or ingested. Where no interactive tool is exposed, stop and report
+the corrected file instead of continuing past it.
 
 ## When to use
 
@@ -26,8 +43,8 @@ Read `references/plaud-note-format.md` before touching content. Two facts drive 
 
 ## Role and scope
 
-This skill corrects a transcript conservatively and writes a **new** corrected file. It never
-edits the uploaded originals. It sorts every span into four states (see
+This skill corrects a transcript conservatively and writes **new** files beside the frozen
+originals. It never edits the uploaded originals. It sorts every span into four states (see
 `references/correction-policy.md`), tagged inline in the corrected file:
 
 - `[확인됨]` — present in the transcript and not in conflict with a trusted source.
@@ -37,11 +54,29 @@ edits the uploaded originals. It sorts every span into four states (see
   decision, action item, or commitment.
 - `[확인 필요]` — ambiguous / conflicting / STT-suspect. Becomes an open question.
 
+## Output layout — originals frozen, derivatives in their own folder
+
+```
+.llmwiki/raw/transcripts/
+├── <YYYY-MM-DD-slug>.transcript.txt   original, frozen
+├── <YYYY-MM-DD-slug>.note.txt         original, frozen
+└── derived/
+    ├── <YYYY-MM-DD-slug>.corrected.md   fidelity artifact (full transcript + the four tags)
+    └── <YYYY-MM-DD-slug>.digest.md      the readable meeting record
+```
+
+Both derived files carry `derived_from:` and `ingested:` frontmatter and **no `sha256:` field**.
+That absence is deliberate and load-bearing: `llm-wiki:lint-wiki` hashes only files whose
+frontmatter declares `sha256:`, so a hand-edited derivative never reports as `DRIFT` (an original
+that does declare it still reports). One frontmatter field is the editable / immutable switch.
+Do not add `sha256:` to a derived file.
+
 ## Process
 
-Two ways to ask: for a **single direct question** (which recording to process, confirming
-scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
-`interview:interview-methodology` in grill-me posture (step 4).
+Two ways to ask: for a **single direct question** (which recording to process, confirming scope,
+the step-6 approval gate) use the interactive-input gate above (`AskUserQuestion` under Claude
+Code). For **resolving a list of open questions**, borrow `interview:interview-methodology` in
+grill-me posture (step 4).
 
 1. **Locate input.** Find `<YYYY-MM-DD-slug>.transcript.txt` (and optional `.note.txt`) in
    `.llmwiki/raw/transcripts/`. If more than one recording is present, or the files are
@@ -86,13 +121,41 @@ scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
    same relentless posture. Fold confirmed answers back in as `[확인됨]` / `[정정]`; leave
    anything the user defers as `[확인 필요]`.
 
-5. **Write the corrected file.** Produce `<slug>.corrected.md` in the same folder using
-   `templates/corrected-note.md`. **Never silently overwrite an existing corrected file** — the
-   user may have hand-edited it; if `<slug>.corrected.md` already exists, write the next free
-   `<slug>.corrected-vN.md` (or ask before overwriting). Do not edit the project dictionary
-   yourself — if recurring unknown terms look worth adding, list them as candidates at the
-   bottom of the corrected file for the user to confirm later. Do not dump raw personal data
-   (phone numbers, emails, credentials) into the corrected file.
+5. **Write the corrected file.** Produce `derived/<slug>.corrected.md` (creating the `derived/`
+   subfolder if it is missing) using `templates/corrected-note.md`. **Never silently overwrite an
+   existing corrected file** — the user may have hand-edited it; if `derived/<slug>.corrected.md`
+   already exists, write the next free `derived/<slug>.corrected-vN.md` (or ask before
+   overwriting). Do not edit the project dictionary yourself — if recurring unknown terms look
+   worth adding, list them as candidates at the bottom of the corrected file for the user to
+   confirm later. Do not dump raw personal data (phone numbers, emails, credentials) into the
+   corrected file.
+
+6. **Gate on the user before distilling.** The corrected file is the last point where every claim
+   still carries its basis. The digest drops those tags when it compresses, and step 8 spreads
+   whatever survives across several wiki pages. So an error corrected here costs one edit; the same
+   error two steps later costs a wiki cleanup. In one message present: the corrected file's path,
+   a 2-3 sentence gist, the full `[정정]` list with each basis, and every `[확인 필요]` still open.
+   Then **stop and wait for approval** through the interactive-input gate. Write nothing further
+   until the user approves. If the user corrects something, fold it back into the corrected file
+   and present again.
+
+7. **Write the digest.** Produce `derived/<slug>.digest.md` using `templates/digest.md`, the
+   readable record a person opens instead of the transcript. It **compresses the corrected file and
+   adds nothing**: every line traces back to a span already in it. Promotion is one-way and blocked
+   upward: a `[해석]` span belongs under "논의만 됨", a `[확인 필요]` under "미해결", and neither may
+   appear under "결정된 것". Same no-overwrite rule as step 5. Keep personal data out of it, same as
+   the corrected file.
+
+8. **Hand reusable lore to the wiki.** Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/`).
+   If none resolves, or `llm-wiki:ingest-finding` is not installed, print one line naming the reason
+   (`wiki-ingest: skipped (no wiki root)`) and finish — this step never fails the skill. Otherwise
+   pick out **only what will be reused**: the rationale behind a decision, a constraint, a domain
+   fact, a judgment rule that will recur. One-off action items, schedules, and small talk stay in
+   the digest. Do **not** hand over the meeting record wholesale. `ingest-finding` treats verbatim
+   copying as an anti-pattern, and one meeting is one source, so under its page-creation threshold
+   most of this lands in an existing page's body or a `> See-also:`, not a new page. Invoke
+   `llm-wiki:ingest-finding` with the selected items, citing `derived/<slug>.digest.md` as the
+   source.
 
 ## Prohibitions
 
@@ -101,6 +164,11 @@ scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
 - Never correct a name / company / product / number from memory — only from `terminology.md`
   or a cited trusted source.
 - Never promote a `[해석]` or a mere request/proposal into a confirmed decision or action item.
+- Never carry a `[해석]` or `[확인 필요]` span into the digest's "결정된 것". The digest compresses
+  the corrected file, it does not upgrade its confidence.
+- Never state anything in the digest that the corrected file does not already carry.
+- Never write the digest or touch the wiki before the user approves the corrected file (step 6).
+- Never add a `sha256:` field to a derived file; that would make hand edits report as wiki `DRIFT`.
 
 ## Verification before writing
 
@@ -110,7 +178,11 @@ scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
 - [ ] Speaker labels left as estimates unless independently confirmed?
 - [ ] Open questions grilled to resolution or explicitly deferred?
 - [ ] Summary claims the transcript does not support are flagged, not adopted?
-- [ ] Originals untouched; output is a new `*.corrected.md`?
+- [ ] Originals byte-for-byte untouched; both outputs written under `derived/`?
+- [ ] Derived files carry `derived_from:` / `ingested:` and no `sha256:`?
+- [ ] Digest written only after the user approved the corrected file?
+- [ ] Nothing under the digest's "결정된 것" traces back to a `[해석]` / `[확인 필요]`?
+- [ ] Wiki handoff limited to reusable lore, or skipped with the reason printed?
 
 ## Example (Korean domain)
 
@@ -136,4 +208,5 @@ scope) use `AskUserQuestion`. For **resolving a list of open questions**, borrow
 - `references/plaud-note-format.md` — what a PLAUD note is; STT error classes; transcript-over-summary rule.
 - `references/correction-policy.md` — the four states and when each applies; open-question rules.
 - `references/terminology.md` — empty template for the project term dictionary (seeded into `.claude/plaud-note-taking/terminology.md`; the only basis for a terminology `[정정]`).
-- `templates/corrected-note.md` — the `*.corrected.md` output format.
+- `templates/corrected-note.md` — the `derived/*.corrected.md` output format.
+- `templates/digest.md` — the `derived/*.digest.md` output format and its promotion rules.

@@ -59,9 +59,10 @@ span or claim — those two tags mean *not established*.
   from context is the same failure the correction policy forbids for numbers and names.
 - **No frontmatter `sha256:`.** `llm-wiki:lint-wiki` hashes only files that declare it, so a
   derived file without it can be hand-edited without reporting as `DRIFT`.
-- **Provenance names the real file.** If step 5 avoided a collision by writing
-  `<slug>.corrected-v2.md`, then `derived_from:` and the 근거 line name *that* file and the digest
-  is written as `<slug>.digest-v2.md`. Defaulting to the base name points a fresh digest at the
+- **Provenance names the real file.** Step 5 reserves one suffix for the corrected/digest **pair**
+  (the lowest `N` where both names are free). If it landed on `-v2`, this file is
+  `<slug>.digest-v2.md` and `derived_from:` plus the 근거 line name `<slug>.corrected-v2.md`. Never
+  pick a digest suffix independently: defaulting to the base name points a fresh digest at the
   previous run's corrected file, and step 8 then hands that wrong provenance to the wiki.
 - **No sensitive data.** Phone numbers, emails, credentials, and personal details stay out,
   same as the corrected file.

@@ -615,7 +615,7 @@ PLAUD 음성 녹음기가 만든 노트를 검토·정정합니다. PLAUD는 녹
 
 **입력/출력:** 손으로 `.llmwiki/raw/transcripts/`에 올린 `<YYYY-MM-DD-slug>.transcript.txt`(+선택 `.note.txt`)를 읽어, 하위 `derived/` 폴더에 산출물 두 개를 씁니다. **원본은 절대 수정하지 않습니다.**
 
-```
+```text
 .llmwiki/raw/transcripts/
 ├── <YYYY-MM-DD-slug>.transcript.txt   원본 (동결)
 ├── <YYYY-MM-DD-slug>.note.txt         원본 (동결)

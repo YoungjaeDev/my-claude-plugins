@@ -144,12 +144,15 @@ grill-me posture (step 4).
 
 5. **Write the corrected file.** Produce `derived/<slug>.corrected.md` (creating the `derived/`
    subfolder if it is missing) using `templates/corrected-note.md`. **Never silently overwrite an
-   existing corrected file** — the user may have hand-edited it; if `derived/<slug>.corrected.md`
-   already exists, move to a suffix (or ask before overwriting). **Allocate the suffix for the pair,
-   not for one file**: take the lowest `N` where *both* `derived/<slug>.corrected-vN.md` and
-   `derived/<slug>.digest-vN.md` are free, and reserve that `N` for this run. Picking a corrected
-   name on its own lets step 7 hit an occupied digest name and bump only its own suffix, which
-   desynchronizes the pair the `derived_from:` chain depends on. **Whatever pair this step
+   existing derived file** — the user may have hand-edited it. **Allocate the names as a pair, and
+   let *either* name being taken move the whole pair**: use the unsuffixed
+   `derived/<slug>.corrected.md` + `derived/<slug>.digest.md` only when both are free, otherwise
+   take the lowest `N` where *both* `derived/<slug>.corrected-vN.md` and
+   `derived/<slug>.digest-vN.md` are free (or ask before overwriting). Reserve that pair for this
+   run. Testing only the corrected name overwrites a leftover digest whose corrected half is gone,
+   and picking a corrected name on its own lets step 7 hit an occupied digest name and bump only
+   its own suffix — both desynchronize the pair the `derived_from:` chain depends on.
+   **Whatever pair this step
    reserves is the one steps 6-8 carry** — the approval message, the digest's `derived_from:`,
    and the wiki citation all name those files, never the base name by default, so a rerun cannot
    cite the previous run's corrected file. Do not edit the project dictionary yourself — if recurring unknown terms look

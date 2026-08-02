@@ -106,7 +106,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | **Memory & Lore** | `mem0-ops` | 플릿 레벨 mem0 진단·정리 — fleet-scan(전 앱 노이즈율·파편화) + doctor(설정 자세 점검) + cleanup(백업→삭제, dry-run 기본). upstream mem0 플러그인(프로젝트 내부 품질)과 역할 분리 |
 | **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
 | **Productivity** | `gws-sync` | 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반). 매핑 설정 기억 → Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일 content update로 ID·공유링크 보존). 삭제는 제안만. gws 미설치 시 설치 안내 후 중단. googleworkspace/cli 스킬 95종 카탈로그(llms.txt) 동봉 |
-| **Productivity** | `plaud-note-taking` | PLAUD 음성 녹음 노트(Whisper 전사록 + 별도 LLM 요약) 검토·정정. **요약이 아니라 전사록 기준**으로 STT 오인식(한·영 코드스위칭·고유명사·수치)을 프로젝트 용어 사전에 맞춰 고치고, 애매한 담당자·기한·수치와 "요약이 지어낸 결정"은 `interview:interview-methodology`(grill-me) 위임으로 캐물어 확정, 원본은 손대지 않고 `.llmwiki/raw/transcripts/`에 `*.corrected.md` 생성 |
+| **Productivity** | `plaud-note-taking` | PLAUD 음성 녹음 노트(Whisper 전사록 + 별도 LLM 요약) 검토·정정. **요약이 아니라 전사록 기준**으로 STT 오인식(한·영 코드스위칭·고유명사·수치)을 프로젝트 용어 사전에 맞춰 고치고, 애매한 담당자·기한·수치와 "요약이 지어낸 결정"은 `interview:interview-methodology`(grill-me) 위임으로 캐물어 확정. 원본은 동결한 채 `.llmwiki/raw/transcripts/derived/` 에 `*.corrected.md` 생성 → 사용자 확인 게이트 → 읽기용 `*.digest.md` → 재사용될 lore 만 `llm-wiki:ingest-finding` 로 |
 
 ## 설치 옵션
 
@@ -613,7 +613,18 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
 
 PLAUD 음성 녹음기가 만든 노트를 검토·정정합니다. PLAUD는 녹음 하나당 **두 산출물**을 냅니다 — Whisper STT **전사록**과, 그 전사록을 다시 LLM이 요약한 **별도 요약**. 이 스킬의 철칙은 **요약이 아니라 전사록을 기준으로 정정**하는 것입니다 (요약은 없던 결정을 매끄럽게 지어낼 수 있음).
 
-**입력/출력:** 손으로 `.llmwiki/raw/transcripts/`에 올린 `<YYYY-MM-DD-slug>.transcript.txt`(+선택 `.note.txt`)를 읽어, 같은 폴더에 `<slug>.corrected.md`를 씁니다. **원본은 절대 수정하지 않습니다.**
+**입력/출력:** 손으로 `.llmwiki/raw/transcripts/`에 올린 `<YYYY-MM-DD-slug>.transcript.txt`(+선택 `.note.txt`)를 읽어, 하위 `derived/` 폴더에 산출물 두 개를 씁니다. **원본은 절대 수정하지 않습니다.**
+
+```text
+.llmwiki/raw/transcripts/
+├── <YYYY-MM-DD-slug>.transcript.txt   원본 (동결)
+├── <YYYY-MM-DD-slug>.note.txt         원본 (동결)
+└── derived/
+    ├── <YYYY-MM-DD-slug>.corrected.md   충실성 산출물 (전사 전문 + 4단 태깅)
+    └── <YYYY-MM-DD-slug>.digest.md      회의 정리본 (읽기용)
+```
+
+파생본은 `derived_from:` / `ingested:` 프론트매터만 달고 `sha256:` 은 달지 않습니다. `llm-wiki:lint-wiki` 는 `sha256:` 이 선언된 파일만 해시 대조하므로, 정리본을 손으로 고쳐도 `DRIFT` 로 뜨지 않습니다 (`sha256:` 을 선언한 원본을 고치면 여전히 뜹니다). 프론트매터 필드 하나가 "고쳐도 되는 파일 / 안 되는 파일" 스위치입니다.
 
 **정정 규율(보수적):**
 - STT 최대 오류원인 **한국어+영어 코드스위칭**(기술용어·고유명사)을 `terminology.md` 프로젝트 용어 사전 근거로 정정
@@ -622,6 +633,12 @@ PLAUD 음성 녹음기가 만든 노트를 검토·정정합니다. PLAUD는 녹
 - 태깅: `[확인됨]` / `[정정]` / `[해석]` / `[확인 필요]`
 
 **Open question → grill me:** 애매한 담당자·기한·수치·화자 귀속과 "요약이 지어낸 결정"은 `interview:interview-methodology` relentless 위임으로 하나씩 집요하게 캐물어 확정하고, 남으면 `[확인 필요]`로 둡니다.
+
+**corrected 이후 3단계 (0.2.0):**
+
+1. **확인 게이트** — corrected 요지·`[정정]` 목록과 근거·잔여 open question 을 제시하고 승인을 기다립니다. 승인 전에는 digest 도 wiki 도 건드리지 않습니다. corrected 는 모든 주장이 아직 근거 태그를 달고 있는 마지막 지점이라, 여기서 고치면 편집 한 번이고 두 단계 뒤에 고치면 wiki 정리가 됩니다.
+2. **digest 생성** — `derived/<slug>.digest.md` 에 한 줄 요약 / 결정된 것 / 액션 / 논의만 됨 / 미해결 로 정리합니다. **승격은 한 방향으로 막혀 있습니다**: corrected 의 `[해석]` 은 "논의만 됨" 으로, `[확인 필요]` 는 "미해결" 로 가고 어느 쪽도 "결정된 것" 에 오르지 못합니다. digest 는 압축만 할 뿐 새 사실을 만들지 않습니다.
+3. **wiki ingest** — 재사용될 lore(결정의 근거, 제약조건, 도메인 사실, 반복될 판단 기준)만 추려 `llm-wiki:ingest-finding` 에 넘깁니다. 회의록 통째로는 넘기지 않습니다. 단발 액션아이템·일정은 digest 에만 남습니다. digest 가 태그를 떼어냈어도 태그 규율은 그대로라, "논의만 됨"·"미해결" 에 있던 주장은 넘어가지 않습니다. 인용은 digest 와 동결된 `.transcript.txt` 를 **둘 다** 답니다 (digest 는 나중에 손으로 고칠 수 있는 계층이므로 단독 인용은 근거가 흔들립니다). wiki 루트나 `ingest-finding` 이 없으면 사유 한 줄을 남기고 skip 하며, 스킬을 실패시키지 않습니다.
 
 </details>
 

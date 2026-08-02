@@ -38,6 +38,7 @@ const PILOTS = [
   'plugins/github-dev/skills/decompose-issue/SKILL.md',
   'plugins/council/skills/convene/SKILL.md',
   'plugins/voice-prompt/skills/voice-prompt/SKILL.md',
+  'plugins/plaud-note-taking/skills/plaud-note-taking/SKILL.md',
 ];
 
 // Reviewed baseline debt — skills that still hardcode AskUserQuestion, migration deferred.
@@ -52,7 +53,6 @@ const BASELINE = [
   'plugins/llm-wiki/skills/bootstrap-wiki/SKILL.md',
   'plugins/llm-wiki/skills/migrate-wiki/SKILL.md',
   'plugins/mem0-ops/skills/cleanup/SKILL.md',
-  'plugins/plaud-note-taking/skills/plaud-note-taking/SKILL.md',
   'plugins/project-init/skills/wiring/SKILL.md',
   'plugins/rules-forge/skills/write-rules/SKILL.md',
   'plugins/spec-state/skills/state-tracker/SKILL.md',

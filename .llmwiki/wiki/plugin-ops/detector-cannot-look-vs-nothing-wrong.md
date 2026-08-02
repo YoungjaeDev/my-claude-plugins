@@ -1,10 +1,10 @@
 ---
 id: detector-cannot-look-vs-nothing-wrong
-aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean, guard-exemption-too-wide, comment-as-evidence]
-last_verified: 2026-07-29
+aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean, guard-exemption-too-wide, comment-as-evidence, hand-rolled-parser-guard]
+last_verified: 2026-08-02
 status: active
 volatility: stable
-sources: 11
+sources: 12
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -125,6 +125,28 @@ The generalization: **state the exemption as narrowly as the thing it must admit
 
 **Scope is the second way the wrong evidence gets in.** The same leak reappears when a check searches a wider scope than the property lives in. A `convene` assertion for "the session id is charset-validated" grepped the whole document, so deleting the real `case "$RUN_KEY" in` guard from one of four blocks left the suite green — a sibling block's copy satisfied the search. Narrowing it to per-block coverage was not enough either: the replacement matched the charset string *anywhere in the block*, and a comment explaining the charset counted as the gate. It took a third version — track the guard statement itself, and require it to appear **before** the first use in that block — to fail on either removal. Both earlier versions were written as the fix for the version before them, which is the tell: when an assertion is satisfied by something other than the thing it names, tightening the *pattern* is usually the wrong axis. Tighten the *scope*, then assert the construct, then assert its position.
 
+## Mode 11: the guard hand-rolls a parser of a real grammar
+
+Modes 1-10 are defects in a check. Mode 11 is a defect in the *approach*: the check answers a
+question about a language by pattern-matching that language with regexes, and the language wins.
+
+`check-shell-portability.mjs` went through four review rounds and 16+ findings. Every round fixed a
+real defect, and every fix modelled one more shell construct — then the next reviewer supplied one
+that had not been modelled. Mode 10's two leaks are both instances of it. The tell is not the count
+of findings but their shape: they never converged on a smaller and smaller residue, because the
+input space is a grammar, not a list. A hand-written matcher covers the constructs its author
+thought of, and reports clean on the rest — which is this page's thesis reached by a different road.
+
+The generalization is a decision rule, not another patch: **when a guard's misses keep being new
+syntax rather than new edge cases, the guard is parsing and should delegate the parse.** Use the
+real parser (`bash -n`, a shell AST library, the tool's own `--check`) and apply the policy to what
+it produces. Where no parser is available, the honest fallback is to narrow the guard's claim until
+the regex is sufficient for it, and to say in the guard's own header what it does not cover — a
+stated blind spot is a diagnostic; an unstated one is an all-clear.
+
+The cost of not deciding this is paid per review round, and it is paid by the reviewer, which is
+why it is easy to miss: each individual fix looks cheap and correct.
+
 ## Why this recurs
 
 Each instance arrives disguised as an edge case ("who has a corrupt config?", "who greps a dot-dir?"), and each one is discovered only by running the check against the input it silently skips rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis — whether because it aborted, degraded, could not run, or never looked there — says so, keeps going, and never converts ignorance into an all-clear.**
@@ -152,3 +174,4 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?", "w
 9. **PR #186** (`fix: 이식성 잔여`) — the audit-lens instance (Mode 9): a macOS-scoped portability audit missed a resolver bug that breaks identically on GNU (whole-path sort lets the marketplace name outrank the version, `sort -V` included), and missed both reverse regressions its own fixes introduced on Windows (`python3` is absent from a python.org install) — the reviewer caught both. Also showed a severity rating inheriting the lens's scope: a call site rated cosmetic on "macOS has no CUDA anyway" is a real functional break on Windows, where CUDA exists. Fixed with a `python3`/`python`/`py -3` probe in an indexed array and a basename sort key.
 10. **PR #187** (`feat(ci): 셸 이식성 가드 + macOS 레그`) — the exemption-leak instance (Mode 10), found while building `scripts/check-shell-portability.mjs`, the guard that finally gives `code_review.md` P1's cross-platform rule enforcement. Its false-positive suppression counted a nearby comment as evidence of a fallback, and a `cksum`-mentioning comment above a fixed `md5sum` line made the guard pass the very defect from PR #172 that motivated it; the `sed -i` exclusion, written as "followed by a quote" to admit BSD's `sed -i ''`, admitted GNU `sed -i "s/a/b/"` too. Both closed, then verified in both directions — 245 files with 0 findings, and exactly 6 findings on a worktree with this PR series' six real defects reinjected.
 11. **PR #189** (`feat(council): 이종 벤더 3인 심의 플러그인`) — the scope variant of Mode 10, and the first instance where the leak survived two repairs. A `convene` assertion for the `RUN_KEY` charset gate first searched the whole document (a sibling block's copy kept it green when one of four gates was deleted), then searched per-block but matched the charset string anywhere in the block (a comment explaining the charset counted as the gate). Only the third version — track the `case "$RUN_KEY" in` statement and require it before the first use — failed on either removal, verified by deleting each gate in turn. The same PR's suite showed the inverse of the whole family: a check that *looked perfectly, at a copy* (a hand-mirrored TTL implementation in the test file) — see [[testing-shell-embedded-in-docs]].
+12. **Session b3022a01 (2026-07-29), `check-shell-portability.mjs` review series** — four review rounds, 16+ findings, each fix modelling one more shell construct; the session's own conclusion was that the root cause is a hand-written shell parser and that a real parser should do the parse. Modes 10 and 11 come from the same series (Mode 10's instances via PR #187).

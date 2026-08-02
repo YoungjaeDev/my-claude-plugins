@@ -1,9 +1,23 @@
 # Corrected-note template
 
-Write `<slug>.corrected.md` in the same folder as the originals. Drop any section that has no
-content. Keep it readable — one fact per line, no tables of raw transcript, no sensitive data.
+Write `derived/<slug>.corrected.md` in the `derived/` subfolder beside the frozen originals. Drop
+any section that has no content. Keep it readable: one fact per line, no tables of raw transcript.
+
+Personal data (phone numbers, emails, credentials) is **masked in place** as `[삭제됨: 유형]`, not
+deleted. This file is the full transcript with tagging, so a silent deletion is an untagged edit;
+the marker preserves speaker attribution, utterance order, and the positions the `[정정]` citations
+point at.
+
+This is the fidelity artifact, not the readable record. The readable record is
+`derived/<slug>.digest.md` (`templates/digest.md`), distilled from this file after the user
+approves it.
 
 ```md
+---
+derived_from: {slug}.transcript.txt
+ingested: {YYYY-MM-DD}
+---
+
 # {회의/녹음 제목} (corrected)
 자료: {slug}.transcript.txt · PLAUD (Whisper STT)  {요약 .note.txt 가 있을 때만 " (+ {slug}.note.txt) · LLM 요약" 을 덧붙인다}
 정정 기준: 전사록 근거, terminology.md · 정정일 {YYYY-MM-DD}
@@ -31,6 +45,8 @@ content. Keep it readable — one fact per line, no tables of raw transcript, no
 
 ## Ordering
 
+0. `derived_from:` / `ingested:` frontmatter, with **no `sha256:` field** (that absence is what
+   lets `llm-wiki:lint-wiki` leave a hand-edited derivative alone instead of reporting `DRIFT`)
 1. 회의 식별 + 정정 기준
 2. 확인된 요약
 3. 정정한 전사 (인라인 태깅)

@@ -1,10 +1,10 @@
 ---
 id: cr-cli-fallback-contract-drift
 aliases: [coderabbit-cli-0-6-schema, cr-fix-two-dot-diff, cr-cli-parser-crash, suggestions-are-strings-not-objects, cr-check-run-surface]
-last_verified: 2026-07-12
+last_verified: 2026-08-02
 status: active
 volatility: volatile
-sources: 5
+sources: 6
 ---
 
 # cr-fix's rate-limit fallback drifted away from the tools it falls back to
@@ -60,6 +60,29 @@ Three-dot matches GitHub exactly. The bug is silent unless the PR sits near the 
 
 Step 7c's `AskUserQuestion` fallback then offers the hard-coded "Wait ~15 min" default. The number is in the payload; the extractor does not look for that phrasing.
 
+## 4. The wrapper's completion signal can be read before it exists
+
+Step 7d decides the CLI path's health from `cr-cli-spawn.sh`'s marker line: `exit != 0` **or**
+`emitted_complete=false` means `cli_failed`, break the loop. That reads the marker as if its absence
+were a verdict. It is also just a race.
+
+Measured on PR #197: the background-task notification reported the spawn "completed (exit code 0)"
+while its output file was **0 bytes** and the JSONL sat at 5 lines ending on
+`{"type":"status","phase":"analyzing","status":"summarizing"}`. The `coderabbit` child had outlived
+the wrapper process the notification was tracking and was still emitting heartbeats. Minutes later
+the same output file held `{"exit":0,"emitted_complete":true}` and the JSONL had grown to 22 lines
+including `complete` — the run had been healthy the whole time.
+
+Read at the moment the notification arrives, `emitted_complete=false` is a false negative, and the
+documented response to it is to stop a converging loop. The distinguishing evidence is not the
+marker but the JSONL: a run that truly died stops mid-phase and stays there, while a live one keeps
+appending `heartbeat` lines. Check the transcript for a terminal `complete` before declaring
+`cli_failed`, and re-read the marker rather than trusting the first read.
+
+This is not a drift in cr-fix's code — the wrapper's contract is correct — but it lands on the same
+fallback path as the three above, and it fails the same way: the health signal is checked, it
+answers, and the answer is wrong in the direction of "give up".
+
 ## Why this class of bug hides
 
 Every one of these lives on a path taken only when the primary path fails. The rate-limit fallback has no test that runs it against a current CLI, and the small-diff heuristic only misfires when the base moved *and* the diff is near a threshold. The signal that caught all three was running the fallback for real, once, and reading its output instead of its exit code.
@@ -88,3 +111,4 @@ All of the above is fixed as of cr-fix 2.7.1 (merged `75f7c9d`); this page stays
 3. **`git diff` two-dot vs three-dot semantics** — verified against `gh pr view 104 --json changedFiles,additions,deletions`, which agrees with three-dot and disagrees with two-dot once the base advanced.
 4. **CodeRabbit CLI 0.6.5 run on PR #107** (`/tmp/cr-cli-review-107-iter3.jsonl`, 12 lines, 3 findings) — `bash parse-cr-cli-jsonl.sh` exits 5 with `jq: error (at <stdin>:3): Cannot index string with string "line"`; the two findings carrying `suggestions: []` project fine, the third carries a patch string. `finding` key union confirmed as five keys, `comment` present in zero of three. `cr-cli-spawn.sh` still reports `{"exit":0,"emitted_complete":true}` — the CLI succeeded; only the parser died.
 5. **PR #109 (merged `75f7c9d`, cr-fix 2.7.1)** — the resolution: parser/diff/sniffer fixes, dual-surface `cr-commit-state.sh`, 21-test offline suite (incl. the two merge-review blocker fixes: refill phrasing in the hit gate, queued-run sort).
+6. **PR #197 dogfood run (CodeRabbit CLI 0.7.0)** — PR-bot rate-limited (`Review rate limited`, ~47 min refill), `--cr-source auto` flipped to CLI and the CLI path worked. Section 4's race measured directly: task notification "completed (exit 0)" against a 0-byte marker file and a 5-line JSONL still on `analyzing/summarizing`; the same files later held `emitted_complete: true` and a terminal `complete` at 22 lines.

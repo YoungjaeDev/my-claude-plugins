@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.10.0"
+    "version": "2.11.0"
   },
   "plugins": [
     {
@@ -165,8 +165,8 @@
     {
       "name": "plaud-note-taking",
       "source": "./plugins/plaud-note-taking",
-      "description": "Review and correct PLAUD voice-recorder notes (Whisper transcript + separate LLM summary). Fixes STT misrecognition (Korean+English code-switching, proper nouns, numbers) against a project term dictionary, grill-me interviews to resolve ambiguities, and writes a transcript-grounded *.corrected.md back to .llmwiki/raw/transcripts without touching the originals.",
-      "version": "0.1.0",
+      "description": "Review and correct PLAUD voice-recorder notes (Whisper transcript + separate LLM summary). Fixes STT misrecognition (Korean+English code-switching, proper nouns, numbers) against a project term dictionary, grill-me interviews to resolve ambiguities, and writes both derivatives under .llmwiki/raw/transcripts/derived/ without touching the frozen originals: a transcript-grounded *.corrected.md, then, once the user approves it, a readable *.digest.md whose reusable lore is handed to llm-wiki:ingest-finding.",
+      "version": "0.2.0",
       "category": "productivity"
     },
     {

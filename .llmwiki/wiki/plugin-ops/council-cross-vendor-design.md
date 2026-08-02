@@ -1,10 +1,10 @@
 ---
 id: council-cross-vendor-design
-aliases: [same-family-consensus-discount, cross-vendor-seats, council-model-registry]
-last_verified: 2026-07-29
+aliases: [same-family-consensus-discount, cross-vendor-seats, council-model-registry, council-calls-binaries-not-plugins]
+last_verified: 2026-08-02
 status: active
 volatility: stable
-sources: 2
+sources: 3
 ---
 
 # A council of one vendor's models is not a council
@@ -75,12 +75,25 @@ Claude-only (`CODEX_EXCLUDED`). Running it under Codex would seat `codex` as its
 member, and Codex has no `Agent` tool for the Claude seat — the same circularity that excludes
 `codex-image`.
 
+**The seats call the binaries, not the plugins.** `convene` invokes `codex exec` and
+`agy --print` from its own shell blocks; it never routes through the `codex` or `antigravity`
+plugins that wrap the same two CLIs (the Claude seat is the one exception — it is an `Agent` call,
+which has no CLI). Verified by `rg 'codex:rescue|agy-rescue|antigravity|Skill\('` over
+`plugins/council/`: one hit, and it is an `agy` log path, not a plugin call. Two consequences
+follow. Council works with neither wrapper plugin installed, so "is the codex plugin set up?" is
+the wrong question when a seat fails — check the binary on `PATH`. And nothing those plugins
+configure reaches a seat, so a model or flag pinned there does not apply here; council's own
+registry is the only thing that governs seat behavior.
+
 ## Sources
 
 - PR #189 (`af75c84`) — the plugin, driven through 5 cr-fix iterations (39 findings, 35 applied);
   the TTL-as-constant, list-read-vs-retirement, and pins-as-data rules each came from a reviewer.
 - `.claude/spec/2026-07-29-council.md` — the design record, including the deliberately deferred
   autonomous agent-team mode (teammates cannot question the user, which breaks the re-question gate).
+- Session 98f375db (2026-07-29) — the invocation-surface question, answered by grepping
+  `plugins/council/` for plugin references: `codex exec` at `SKILL.md:516`, `agy --print` at
+  `SKILL.md:538`, and the single `antigravity` hit at `SKILL.md:624` being a log path.
 
 > See-also: [[testing-shell-embedded-in-docs]]
 > See-also: [[codex-image-bridge-design]]

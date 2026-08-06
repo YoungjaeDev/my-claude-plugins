@@ -12,6 +12,7 @@ Hermes tools:
 
 | Claude/Codex term | Hermes tool |
 |---|---|
+| `Bash` | `terminal` |
 | `Read` | `read_file` |
 | `Write` | `write_file` |
 | `AskUserQuestion` | `clarify` |

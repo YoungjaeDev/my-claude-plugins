@@ -27,7 +27,7 @@ Translate web articles to Korean markdown with intelligent image captioning.
 ### Usage
 
 ```
-/translate-web-article https://example.com/blog-post
+/publish:translate-web-article https://example.com/blog-post
 ```
 
 ### Workflow

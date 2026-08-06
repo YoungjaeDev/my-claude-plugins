@@ -76,15 +76,15 @@ Map the JSON to verdicts. Suppress an `ASK` only when its key in `.answers` hold
 |---|---|---|---|---|---|
 | git | `.git` | `initialized: false` | `commits: 0` | **ASK** `remote_origin: false` — "push할 원격을 만들까요?" (`git_remote`) | `git init` / `gh repo create` |
 | hooksPath | `.git.hooks_path`, `.hooks_dir_present` | — | `hooks_dir_present: true` but `hooks_path: null` | — | `git config core.hooksPath .githooks` |
-| guidance | `.seeded.claude_md`, `.guidance` | `claude_md: false`; `cross_runtime_gap: true` | — | — | `/rules-forge:write-rules` |
+| guidance | `.seeded.claude_md`, `.guidance` | `claude_md: false`; `cross_runtime_gap: true` | — | — | `/docs-forge:write-rules` |
 | rules scoping | `.rules_scoping` | — | `paths_defeated_by_import` non-empty | — | drop the `@` (mechanical, Step 4) |
 | llm-wiki | `.llmwiki` | `staging_pending > 0` | `state: absent`; `state: legacy`; `state: current` but `insight_layer: false` or `raw_source_buckets: false` | — | pending → `/llm-wiki:ingest-finding`; absent → `/llm-wiki:bootstrap-wiki`; legacy → `/llm-wiki:migrate-wiki` |
 | serena | `.serena` | — | `state: not-registered` / `registered`; `name_drift: true` | — | onboard via Serena MCP `onboarding`; drift → edit `.serena/project.yml` |
 | memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md`; `mem0_settings: true` but `federate_labels: false`; `mem0_project_mapped: false` | — | see "Memory posture" below |
 | mcp config | `.mcp` | `duplicates_drifted` non-empty | `duplicates` non-empty (identical copies); `unreadable` non-empty | — | collapse to one file (see below) |
 | codex | `.codex` | `agents_md_bytes + global_agents_md_bytes` > `project_doc_max_bytes` | same sum ≥ 80% of `project_doc_max_bytes` | **INFO** otherwise when `config: true` | over cap → trim `AGENTS.md` or raise `project_doc_max_bytes`; else visibility only |
-| spec | `.spec` | — | `missing_frontmatter > 0` | **INFO** `claude_spec > 0` **and** `superpowers_spec > 0` | `/spec-state:state-tracker init` |
-| gws-sync | `.gws_sync`, `.answers.gws_sync` | — | `config: true` but `cli: false` | **ASK** / **OK** / **SKIP** / **INFO** per the table in "gws-sync is a two-step ASK" | `/gws-sync:gws-sync` |
+| spec | `.spec` | — | `missing_frontmatter > 0` | **INFO** `claude_spec > 0` **and** `superpowers_spec > 0` | `/github-dev:state-tracker init` |
+| gws-sync | `.gws_sync`, `.answers.gws_sync` | — | `config: true` but `cli: false` | **ASK** / **OK** / **SKIP** / **INFO** per the table in "gws-sync is a two-step ASK" | `/publish:gws-sync` |
 | .tmp | `.tmp` | — | `dir: true` and `gitignored: false`; `stale_files > 0` | — | mechanical fix (Step 4) |
 | gitignore | `.gitignore` | `env: false` | any of `claude_state` / `serena` / `llmwiki_staging` false | — | mechanical fix (Step 4) |
 | code_signal | `.code_signal` | — | — | **INFO** | — |
@@ -121,7 +121,7 @@ Never a defect — it is a question about what this project produces. The verdic
 | `false` | *(none)* | `true` | `ASK` step 2 | yes |
 
 1. **Step 1** ASK: "이 프로젝트 산출물을 Google Drive 에 올리나요?" If yes, guide the `gws` install and stop; record `gws_sync: "pending-install"`. If no, record `gws_sync: "not-for-this-repo"`.
-2. **Step 2** ASK which local folders are the deliverables and which Drive folder receives them, then hand off to `/gws-sync:gws-sync` to write `.gws-sync.json`. Record `gws_sync: "configured"`.
+2. **Step 2** ASK which local folders are the deliverables and which Drive folder receives them, then hand off to `/publish:gws-sync` to write `.gws-sync.json`. Record `gws_sync: "configured"`.
 
 Two ways this axis silently misbehaves, both closed by the table above. Treating `pending-install` as a decision means the user installs `gws`, re-runs `wiring`, and is never asked step 2 — the answer file swallows its own follow-up. Treating it as *unanswered* means asking the same question on every run before the install has happened. And a repo that already has `.gws-sync.json` must never be asked whether it wants Drive at all: a `not-for-this-repo` recorded on top of a live config puts the two in direct conflict.
 

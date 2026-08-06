@@ -6,7 +6,7 @@ Shared procedure body for `/project-init:new` (command) and the `new` skill. Bot
 
 ## Core principles
 
-- **Minimal seeding, explicit follow-ups**: seed only what Day 1 truly needs (the empty `.claude/` structure, a CLAUDE.md stub, AGENTS.md review guidelines, README/CHANGELOG, the gh repo). Tech-stack-based rule generation (`/rules-forge:write-rules`) and the wiki-domain interview (`/llm-wiki:bootstrap-wiki`) are **not invoked — only pointed to in Phase 7**. Generating generic content in an empty project imposes an overwrite cost on the user.
+- **Minimal seeding, explicit follow-ups**: seed only what Day 1 truly needs (the empty `.claude/` structure, a CLAUDE.md stub, AGENTS.md review guidelines, README/CHANGELOG, the gh repo). Tech-stack-based rule generation (`/docs-forge:write-rules`) and the wiki-domain interview (`/llm-wiki:bootstrap-wiki`) are **not invoked — only pointed to in Phase 7**. Generating generic content in an empty project imposes an overwrite cost on the user.
 - **Owner gate is mandatory**: since the user has a side-project context (personal + org repos), owner selection must not be automated — always ask in the Phase 1 interview.
 - **Codex GitHub reviewer surface**: the `## Review guidelines` section of `AGENTS.md` is what the Codex GitHub cloud reviewer reads automatically. It must be seeded at repo-creation time to take effect from the first PR.
 
@@ -189,7 +189,7 @@ If an existing `CLAUDE.md` is present, skip with a notice. Otherwise write it in
 
 이 파일은 `/project-init:new` 가 만든 minimal stub 이다. 코드가 어느 정도 쌓이면 다음을 호출해라:
 
-- `/rules-forge:write-rules` — tech-stack 기반 CLAUDE.md + `.claude/rules/*.md` 재생성
+- `/docs-forge:write-rules` — tech-stack 기반 CLAUDE.md + `.claude/rules/*.md` 재생성
 - `/llm-wiki:bootstrap-wiki` — 첫 wiki 도메인 인터뷰 + 템플릿 시드
 
 > 사용자의 global `~/.claude/CLAUDE.md` 가 항상 우선한다. 이 파일은 프로젝트 한정 규칙만 보관한다.
@@ -374,7 +374,7 @@ Files seeded:
 GitHub repo: https://github.com/<owner>/<name>
 
 Next actions (call when ready):
-  1. 코드가 쌓이면        → /rules-forge:write-rules
+  1. 코드가 쌓이면        → /docs-forge:write-rules
      (tech-stack 기반 CLAUDE.md + .claude/rules/*.md 재생성)
 
   2. 첫 도메인 lore 쌓이면 → /llm-wiki:bootstrap-wiki
@@ -398,7 +398,7 @@ jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 
 | Step | Behavior on failure |
 |------|--------------|
-| Preflight hard guard | abort + notice (use `/rules-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for non-empty dirs) |
+| Preflight hard guard | abort + notice (use `/docs-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for non-empty dirs) |
 | Phase 0 — gh auth | abort + notice (`gh auth login`) |
 | Phase 0 — idempotency guard user abort | stop immediately, preserve the partial seed |
 | Phase 6 — `gh repo create` | local changes/commits stay intact, only push fails. Advise the user of a manual retry command |

@@ -6,25 +6,15 @@
       "./plugins/e2e-harness",
       "./plugins/code-scout",
       "./plugins/deepwiki",
-      "./plugins/notebook",
       "./plugins/ml-toolkit",
-      "./plugins/translator",
-      "./plugins/interview",
-      "./plugins/rules-forge",
-      "./plugins/tcrei-prompt",
-      "./plugins/llm-wiki",
-      "./plugins/spec-state",
-      "./plugins/project-init",
       "./plugins/paper-search-tools",
       "./plugins/docs-forge",
-      "./plugins/tally-form",
+      "./plugins/llm-wiki",
+      "./plugins/project-init",
       "./plugins/codex-image",
+      "./plugins/publish",
       "./plugins/council",
-      "./plugins/brightdata-guide",
-      "./plugins/gws-sync",
-      "./plugins/mem0-ops",
-      "./plugins/plaud-note-taking",
-      "./plugins/voice-prompt"
+      "./plugins/mem0-ops"
     ]
   }
 }

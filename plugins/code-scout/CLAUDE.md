@@ -47,6 +47,7 @@ All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical
 | `research-orchestrator` | Entry point. Mode detection, fan-out routing, synthesis dispatch. |
 | `exa-web-search` | Exa MCP usage guide for `web-scout` (and anyone calling `mcp__exa__web_search_exa`). |
 | `resource-finder` | Shared GitHub / HF search hygiene cheat-sheet for `github-scout` + `hf-scout`. |
+| `brightdata-guide` | Bright Data web-data access (Web Unlocker scraping, SERP, `web_data_*` extractors) via MCP tools + the `bdata` CLI. Backs `web-scout`'s tier-3 fetch fallback. (absorbed from `brightdata-guide`) |
 
 ## Migration
 

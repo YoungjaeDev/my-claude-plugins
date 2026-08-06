@@ -11,6 +11,7 @@ Machine Learning and AI development skills.
 | `cv-notebook` | Generate production-quality Computer Vision Jupyter notebooks |
 | `cv-explorer` | Generate interactive CV data exploration notebooks with ipywidgets |
 | `ml-dev-principles` | General ML/multimodal/CV working discipline (how to work, not which library) |
+| `edit-notebook` | Safe Jupyter notebook editing (absorbed from `notebook`) |
 
 ## gpu-parallel-pipeline
 
@@ -118,3 +119,40 @@ Notes:
 - Skill bodies carry a Hermes compatibility table mapping Claude/Codex tool terms (`Bash`, `Write`, `NotebookEdit`, ...) to Hermes tools (`terminal`, `write_file`, ...).
 - Notebook-authoring skills (`cv-explorer`, `cv-notebook`): Hermes has no `NotebookEdit` tool — use the Hermes "Jupyter Live Kernel" skill or write/patch the `.ipynb` JSON directly.
 - `gpu-parallel-pipeline` resolves its bundled-script directory across runtimes (repo path under Claude/Codex; `$HERMES_HOME/plugins/...` then `~/.hermes/plugins/...` under Hermes, matching the github-dev pilot's 3-branch fallback).
+
+## edit-notebook (흡수: notebook)
+
+Safe Jupyter Notebook (.ipynb) editing.
+
+### Skill
+
+| Skill | Description |
+|-------|-------------|
+| `edit-notebook` | Guidelines for .ipynb file manipulation |
+
+### Key Rules
+
+1. **NotebookEdit tool only** - Never use text editing tools on .ipynb
+2. **Preserve outputs** - Don't accidentally clear cell outputs
+3. **Cell order matters** - Verify order after modifications
+4. **User executes** - Add/edit cells, user runs in Jupyter
+
+### Usage
+
+The skill auto-activates when working with .ipynb files.
+
+### Common Operations
+
+| Operation | Approach |
+|-----------|----------|
+| Add cell | `NotebookEdit` with `edit_mode=insert` |
+| Modify cell | `NotebookEdit` with `edit_mode=replace` |
+| Delete cell | `NotebookEdit` with `edit_mode=delete` |
+| Read notebook | `Read` tool (renders all cells) |
+
+### Best Practices
+
+- Read notebook first to understand structure
+- Use `cell_id` for precise targeting
+- Specify `cell_type` (code/markdown) when inserting
+- Verify cell order after complex edits

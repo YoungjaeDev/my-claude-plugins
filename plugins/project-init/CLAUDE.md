@@ -91,7 +91,7 @@ fi
 
 - **Rejection rule**: anything in cwd that is not `.git/`, `.DS_Store`, `Thumbs.db`, or `desktop.ini` causes abort. `Dockerfile`, `Makefile`, `.env`, `docs/`, `src/app/main.py` — all of those trigger.
 - **Search depth**: 5 levels (`find -maxdepth 5`). Deep-nested source files do not slip past the guard.
-- **Abort message**: surfaces cwd + the first offending entry + a redirect to `/rules-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for the "scaffold an existing project" case.
+- **Abort message**: surfaces cwd + the first offending entry + a redirect to `/docs-forge:write-rules` or `/llm-wiki:bootstrap-wiki` for the "scaffold an existing project" case.
 - **Non-POSIX hosts**: PowerShell-default environments must invoke via `bash -c '<guard>'` (Git Bash / WSL / Cygwin). The intent of the check, not the literal shell, is what matters — equivalent PowerShell rewrites are acceptable as long as they refuse the same conditions.
 
 When modifying it, update both files at once. Changing only one makes the surfaces diverge in behavior.
@@ -160,4 +160,4 @@ The variant difference is the `### Domain-specific` section plus 1-2 domain-spec
 
 - Plugin versioning rules: `.claude/rules/plugin-versioning.md`
 - Codex GitHub integration: <https://developers.openai.com/codex/integrations/github>
-- Related follow-ups: `/rules-forge:write-rules`, `/llm-wiki:bootstrap-wiki`
+- Related follow-ups: `/docs-forge:write-rules`, `/llm-wiki:bootstrap-wiki`

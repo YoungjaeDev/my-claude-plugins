@@ -58,5 +58,5 @@ A fourth lane sits outside that triage, for when none of the three fit: **diverg
 
 - PR #63 (`feat/anti-slop-design`, merge `1ea9f41`) — anti-slop-design v0.1.0 build + ultracode coverage audit. Spec + 6-repo synthesis under `docs/`.
 - PR #71 (`feat/70-anti-slop-ppt-lane`, merge `c20b26b`) — anti-slop-design v0.2.0 PPT-lane reinforcement; §3 dogfood-harvest + interview-gate discipline, distilled from a real 27-slide KCI deck build.
-- PRs #154/#156/#158 — mattpocock/skills adoption batch. §4 adopt-triage + posture-diff, from comparing `grill-me`/`grilling` against `interview:interview-methodology` (landed as the relentless mode in #156).
+- PRs #154/#156/#158 — mattpocock/skills adoption batch. §4 adopt-triage + posture-diff, from comparing `grill-me`/`grilling` against `docs-forge:interview-methodology` (landed as the relentless mode in #156).
 - `.claude/spec/2026-07-23-adopt-gptaku-team-skill-builder.md` — §4's diverge-fork lane, from the relentless interview that decided to fork `kkirikkiri` / `skillers-suda` into self-governed plugins, plus the Agent-Teams doc PR filed into upstream `fivetaku/kkirikkiri` the day before, which is where the external-repo review-loop limit was observed.

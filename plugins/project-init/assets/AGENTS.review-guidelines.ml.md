@@ -9,7 +9,7 @@
 Owner: {{OWNER}}
 Domain: ML / data — 모델 학습, 평가, 추론, 데이터 처리 파이프라인 중심.
 
-> 코드 일정 수준 쌓이면 `/rules-forge:write-rules` 로 tech-stack 기반 CLAUDE.md + `.claude/rules/*.md` 를 재생성하고, 이 파일도 그 결과에 맞춰 업데이트한다.
+> 코드 일정 수준 쌓이면 `/docs-forge:write-rules` 로 tech-stack 기반 CLAUDE.md + `.claude/rules/*.md` 를 재생성하고, 이 파일도 그 결과에 맞춰 업데이트한다.
 
 ## Build / Test / Lint
 

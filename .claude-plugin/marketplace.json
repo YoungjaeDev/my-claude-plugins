@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 24 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.11.0"
+    "version": "2.12.0"
   },
   "plugins": [
     {
@@ -18,8 +18,8 @@
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
-      "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; --auto-merge + --skip-minor + --cr-source retained), project tracking, release. All workflows are now skills (commit-and-push, create-issue-label, decompose-issue, update-progress, resolve-issue, release, cr-fix, post-merge) — no commands surface, so they run under Codex too. post-merge runs a mandatory built-in wiki-lore ingest step (absorbed llm-wiki:post-merge-wiki) plus an optional Step 4.5 ephemeral-artifact pruning gate (heuristic candidates → AskUserQuestion → git rm). 2.8.0 correctness repairs: CR-state fetch failures map to a real error channel (no longer masked as a clean 'none'), a null-repository GraphQL response fails loudly instead of a silent false-clean convergence, and an active `@coderabbitai rate limit` query resolves ambiguous passive rate-limit sniffs.",
-      "version": "2.11.2",
+      "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; --auto-merge + --skip-minor + --cr-source retained), project tracking, release. All workflows are now skills (commit-and-push, create-issue-label, decompose-issue, update-progress, resolve-issue, release, cr-fix, post-merge) — no commands surface, so they run under Codex too. post-merge runs a mandatory built-in wiki-lore ingest step (absorbed llm-wiki:post-merge-wiki) plus an optional Step 4.5 ephemeral-artifact pruning gate (heuristic candidates → AskUserQuestion → git rm). 2.8.0 correctness repairs: CR-state fetch failures map to a real error channel (no longer masked as a clean 'none'), a null-repository GraphQL response fails loudly instead of a silent false-clean convergence, and an active `@coderabbitai rate limit` query resolves ambiguous passive rate-limit sniffs. Also ships state-tracker, the spec/issue/PR work-pipeline aggregate over .claude/state/spec.json.",
+      "version": "2.12.0",
       "category": "github"
     },
     {
@@ -32,15 +32,8 @@
     {
       "name": "code-scout",
       "source": "./plugins/code-scout",
-      "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate).",
-      "version": "2.3.0",
-      "category": "research"
-    },
-    {
-      "name": "brightdata-guide",
-      "source": "./plugins/brightdata-guide",
-      "description": "Bright Data web data access via MCP tools + CLI — scraping (Web Unlocker), SERP, 40+ structured web_data_* extractors, browser automation. Guide skill; operator sets BRIGHTDATA_API_KEY, delegate subagents fall back to the bdata CLI.",
-      "version": "1.1.0",
+      "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate). Also ships brightdata-guide for Bright Data web data access (Web Unlocker scraping, SERP, structured web_data_* extractors) via MCP tools and the bdata CLI.",
+      "version": "2.4.0",
       "category": "research"
     },
     {
@@ -51,32 +44,11 @@
       "category": "documentation"
     },
     {
-      "name": "notebook",
-      "source": "./plugins/notebook",
-      "description": "Safe Jupyter notebook editing",
-      "version": "1.0.2",
-      "category": "development"
-    },
-    {
       "name": "ml-toolkit",
       "source": "./plugins/ml-toolkit",
-      "description": "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration",
-      "version": "1.4.4",
+      "description": "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration Also ships edit-notebook for safe Jupyter notebook editing.",
+      "version": "1.5.0",
       "category": "development"
-    },
-    {
-      "name": "translator",
-      "source": "./plugins/translator",
-      "description": "Web article translation to Korean",
-      "version": "1.1.1",
-      "category": "content"
-    },
-    {
-      "name": "interview",
-      "source": "./plugins/interview",
-      "description": "Structured requirements gathering",
-      "version": "1.3.0",
-      "category": "planning"
     },
     {
       "name": "paper-search-tools",
@@ -88,37 +60,16 @@
     {
       "name": "docs-forge",
       "source": "./plugins/docs-forge",
-      "description": "README/CHANGELOG generation with CRO best practices, plus deployment-doc templates and MOC index generation",
-      "version": "0.3.1",
+      "description": "README/CHANGELOG generation with CRO best practices, plus deployment-doc templates and MOC index generation Also absorbs agent-facing authoring: write-rules (CLAUDE.md + .claude/rules generation), interview-methodology (requirements interview / grill-me stress test), tcrei-prompt (TCREI prompt rewriting), and voice-prompt (Korean voice-mode STT input normalization).",
+      "version": "0.4.0",
       "category": "documentation"
-    },
-    {
-      "name": "rules-forge",
-      "source": "./plugins/rules-forge",
-      "description": "CLAUDE.md generation and .claude/rules/ modular structure with auto mode detection (NEW/TIGHTEN/SPLIT/REORGANIZE), single write-rules skill entrypoint",
-      "version": "2.1.1",
-      "category": "documentation"
-    },
-    {
-      "name": "tcrei-prompt",
-      "source": "./plugins/tcrei-prompt",
-      "description": "Rewrite prompts using Google's TCREI structure for next-session reuse",
-      "version": "1.1.2",
-      "category": "content"
     },
     {
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
-      "description": "Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral .llmwiki/): 5 skills (query/ingest/lint/bootstrap/migrate) + 5 hooks + bootstrap templates. Three soft hints plus an auto-capture/ingest path: a Stop hook mechanically captures ingest candidates to <root>/.staging/ and the next session's SessionStart drain hook surfaces them for ingest-finding curation (capture and curation split). Post-merge wiki ingest is a mandatory, force-logged step inside github-dev:post-merge (the standalone post-merge-wiki skill was removed — breaking, hence the 2.0.0 major bump). Promoted cross-agent rules graduate to .llmwiki/insight/ (via core-config prompt-inject hook), not .claude/rules/. Resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. Agent-facing wiki conventions deduped into references/wiki-conventions.md.",
-      "version": "2.6.2",
+      "description": "Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral .llmwiki/): 5 skills (query/ingest/lint/bootstrap/migrate) + 5 hooks + bootstrap templates. Three soft hints plus an auto-capture/ingest path: a Stop hook mechanically captures ingest candidates to <root>/.staging/ and the next session's SessionStart drain hook surfaces them for ingest-finding curation (capture and curation split). Post-merge wiki ingest is a mandatory, force-logged step inside github-dev:post-merge (the standalone post-merge-wiki skill was removed — breaking, hence the 2.0.0 major bump). Promoted cross-agent rules graduate to .llmwiki/insight/ (via core-config prompt-inject hook), not .claude/rules/. Resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. Agent-facing wiki conventions deduped into references/wiki-conventions.md. Also ships plaud-note-taking, which corrects PLAUD voice-recorder Whisper transcripts against a project terminology dictionary and writes the result under .llmwiki/raw/transcripts/.",
+      "version": "2.7.0",
       "category": "memory"
-    },
-    {
-      "name": "spec-state",
-      "source": "./plugins/spec-state",
-      "description": "Spec/issue/PR work-pipeline aggregate. state-tracker skill manages .claude/state/spec.json (read/init/start/complete). Called by github-dev:post-merge.",
-      "version": "1.0.3",
-      "category": "workflow"
     },
     {
       "name": "project-init",
@@ -135,6 +86,13 @@
       "category": "ai-models"
     },
     {
+      "name": "publish",
+      "source": "./plugins/publish",
+      "description": "Publish a deliverable to another surface — Korean web-article translation, checklist markdown to a Tally questionnaire, and one-way local to Google Drive proposal sync",
+      "version": "1.0.0",
+      "category": "content"
+    },
+    {
       "name": "council",
       "source": "./plugins/council",
       "description": "Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync.",
@@ -142,39 +100,11 @@
       "category": "ai-models"
     },
     {
-      "name": "tally-form",
-      "source": "./plugins/tally-form",
-      "description": "Build Tally questionnaire/survey forms from checklist markdown — deterministic stdlib urllib builder with theme presets (neutral/hermes), section dividers, paragraph-split intros, per-question choices with required + checkbox (multi-select), short-answer inputs (text/number/email/phone/link), native scheduling (matrix grid / date / time), form images (logo/cover/inline IMAGE via hosted URLs incl. GitHub raw shorthand), redirect-on-completion, idempotent publish, and humanize-korean copy routing. Includes dev-survey and lecture-consultation presets plus bundled example fixtures.",
-      "version": "1.2.2",
-      "category": "content"
-    },
-    {
-      "name": "gws-sync",
-      "source": "./plugins/gws-sync",
-      "description": "로컬 폴더 → Google Drive 단방향 제안형 동기화 (gws CLI 기반, MCP 아님). 매핑 설정 파일(.gws-sync.json)로 로컬↔Drive 폴더 대응을 기억하고, 실행 시 Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일은 content update로 ID·공유링크 보존). 삭제는 제안만(자동 삭제 금지), Drive→로컬 다운로드 범위 밖. gws 미설치 시 공식 docs 기반 설치 안내 출력 후 중단(자동 설치 안 함). googleworkspace/cli 공식 스킬/레시피 95종 카탈로그(llms.txt)를 references에 동봉 — 상황에 유용한 미설치 스킬을 npx skills add로 제안.",
-      "version": "0.1.3",
-      "category": "productivity"
-    },
-    {
       "name": "mem0-ops",
       "source": "./plugins/mem0-ops",
       "description": "Fleet-level mem0 diagnostics and cleanup — complements the upstream mem0 plugin (which owns per-project quality). fleet-scan reports per-app noise ratio, junk app_id candidates, and app/user_id fragmentation across all apps; doctor checks config posture (MEM0_RERANK env, ~/.mem0/settings.json auto_save precedence trap, project decay flag, hook timeout budget, identity fragmentation); cleanup does backup-then-delete by metadata.type or whole junk app behind a dry-run default plus a skill-layer per-app confirmation gate (the script alone gates on --execute only). stdlib-only REST scripts, zero LLM cost for the deterministic parts.",
       "version": "0.1.2",
       "category": "productivity"
-    },
-    {
-      "name": "plaud-note-taking",
-      "source": "./plugins/plaud-note-taking",
-      "description": "Review and correct PLAUD voice-recorder notes (Whisper transcript + separate LLM summary). Fixes STT misrecognition (Korean+English code-switching, proper nouns, numbers) against a project term dictionary, grill-me interviews to resolve ambiguities, and writes both derivatives under .llmwiki/raw/transcripts/derived/ without touching the frozen originals: a transcript-grounded *.corrected.md, then, once the user approves it, a readable *.digest.md whose reusable lore is handed to llm-wiki:ingest-finding.",
-      "version": "0.2.0",
-      "category": "productivity"
-    },
-    {
-      "name": "voice-prompt",
-      "source": "./plugins/voice-prompt",
-      "description": "Normalize Korean voice-mode STT input before acting on it. Strips speech fillers, fixes orthography and Korean-to-English code-switching, resolves garbled identifiers (file, function, branch, skill names) against the actual repo instead of guessing, and never rewrites numbers or dates. Echoes one line of what it understood, then proceeds; gates only irreversible actions. Sibling of plaud-note-taking, which corrects archival transcripts instead of live commands.",
-      "version": "0.1.0",
-      "category": "content"
     }
   ]
 }

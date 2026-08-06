@@ -14,6 +14,7 @@ GitHub workflow automation skills for Claude Code. All workflows are skills (no 
 | `/github-dev:update-progress` | Sync project progress to GitHub milestones/issues with diagrams |
 | `/github-dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex pipeline (multi-file skill at `skills/cr-fix/`): wait + fetch + apply + push loop until clean, with optional auto-merge (default OFF; pass `--auto-merge` to enroll). Gates merge on branch-protection presence and on actual CR engagement. Step 9 v2 judges each finding autonomously: the LLM validates it against local code, reassesses severity and fix size, then applies/defers/skips per the decision matrix — no per-finding AskUserQuestion gate. CR Nitpicks and Codex P3 are silently skipped. Codex is auto-detected per PR (engaged at least once → ON; never engaged → OFF). `--skip-minor` opt-in demotes CR Minor severity (excluding Bug/Security) + Codex P2 to skip. `--cr-source <auto\|pr-bot\|cli\|codex-only>` controls review source; `auto` falls back to the local `coderabbit` CLI or Codex-only when the PR-bot is rate-limited (early-escape ~30s, no more 1800s spin). Minor soft-stop (default ON, `--no-minor-stop` off): from iter 2 a cycle that applied only low-severity fixes with nothing deferred stops at `final_state=minor_floor` (not auto-merge eligible) instead of looping the low-value tail. Bounded same-file generalization (default ON, `--no-generalize` off): a real + high-confidence + grep-able finding also patches sibling occurrences of the same pattern within the same file (audit-logged, never cross-file). 2.8.0 correctness repairs: `cr-commit-state.sh` fetch failures (auth/network/rate-limit) now map to a distinct `state:"error"` channel instead of a clean `none`; `fetch-cr-threads.sh` fails loudly on a null-repository GraphQL response rather than converging false-clean on `[]`; an active `query-cr-rate-limit.sh` (`@coderabbitai rate limit`, id-anchored to its own post) resolves ambiguous passive rate-limit sniffs; check-run `created_at` prefers `completed_at`; `auto-merge-gate.sh` reads CR state through the same dual-surface reader as the rest of the loop, so `--auto-merge` works on check-run-only repos (not just commit-status repos). Fixture suite (`tests/run-tests.sh`) runs in `.githooks/pre-commit` + `validate-codex.yml`. |
 | `/github-dev:release` | Create versioned GitHub release with auto-generated changelog |
+| `/github-dev:state-tracker` | spec/issue/PR work-pipeline aggregate over `.claude/state/spec.json` (absorbed from `spec-state`) |
 
 ## resolve-issue Flags
 
@@ -139,3 +140,68 @@ Task(
 | Complex refactoring | `claude` | `opus` |
 | Test writing | `claude` | `sonnet` |
 | Validation | `claude` | `haiku` |
+
+## state-tracker (흡수: spec-state)
+
+Single-file aggregate cache for a repo's spec → issue → PR work pipeline. One `Read` on `.claude/state/spec.json` answers "what's currently in flight, and against which spec?" — no `find` over `.claude/spec/` plus per-file frontmatter parse.
+
+### What it ships
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| **state-tracker skill** | `skills/state-tracker/` | 4 ops on `.claude/state/spec.json`: read / init / start / complete |
+
+No hooks. Pure on-demand skill. Safe to install globally — operations only run when invoked.
+
+### SSOT relationship
+
+| Source | Authority | When it wins |
+|--------|-----------|--------------|
+| `.claude/spec/*.md` frontmatter (`status:`) | **SSOT** | Always — the spec file is the truth |
+| `.claude/state/spec.json` | **aggregate cache** | Faster lookup; if it conflicts with frontmatter, regenerate via `init` |
+
+Cache is regeneratable any time. Direct JSON edits are allowed but rare — prefer the 4 ops.
+
+### Schema (versioned JSON)
+
+```json
+{
+  "schema": 1,
+  "updated_at": "<ISO 8601>",
+  "in_progress": [
+    {
+      "spec": ".claude/spec/<YYYY-MM-DD>-<slug>.md",
+      "section": "<spec internal anchor, optional>",
+      "linked": { "issue": <number or null>, "pr": <number or null> },
+      "description": "<spec 'Goal' first line, or user-provided one-liner>"
+    }
+  ],
+  "completed": [
+    {
+      "spec": ".claude/spec/<YYYY-MM-DD>-<slug>.md",
+      "linked": { "issue": <number or null>, "pr": <number or null> },
+      "description": "<same as above>",
+      "completed_at": "<YYYY-MM-DD>",
+      "merge_sha": "<short SHA, 7 chars>"
+    }
+  ]
+}
+```
+
+### Relation to other plugins
+
+- `github-dev:post-merge` auto-calls `complete <spec-path>` after a merge to update the cache.
+- `llm-wiki` is independent — wiki lore (`.llmwiki/wiki/log.md`) tracks knowledge events; spec-state tracks the work pipeline.
+
+### Wiring status
+
+The write-side wiring is intentionally asymmetric:
+
+- **`complete` is auto-wired** — `github-dev:post-merge` Step 5.7 fires `complete <spec-path>` after a merge.
+- **`start` / `init` are NOT auto-wired** into `resolve-issue` / `decompose-issue`. They run manually, or as part of the `superpowers:writing-plans` chain.
+
+Consequence: `.claude/state/spec.json` stays absent until the first `start` / `init` in a repo. This dormancy is **by design**, not a bug — the cache materializes only once a tracked spec begins, and `github-dev:post-merge` Step 5.7 only fires `complete` when `.claude/state/` already exists, so the auto-call never hits a missing file. There is no overlap with `llm-wiki`: that plugin tracks durable knowledge lore, spec-state tracks transient work-pipeline state.
+
+### Conditional behavior
+
+Safe to install in any repo. Skill operations no-op gracefully when `.claude/state/spec.json` (and `.claude/spec/`) are absent — `read` prints empty state, `init` requires user confirmation.

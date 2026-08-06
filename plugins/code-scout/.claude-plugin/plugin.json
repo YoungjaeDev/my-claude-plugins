@@ -5,7 +5,8 @@
   "skills": [
     "./skills/research-orchestrator",
     "./skills/exa-web-search",
-    "./skills/resource-finder"
+    "./skills/resource-finder",
+    "./skills/brightdata-guide"
   ],
   "agents": [
     "./agents/github-scout.md",

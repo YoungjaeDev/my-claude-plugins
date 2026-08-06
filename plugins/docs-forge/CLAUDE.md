@@ -268,7 +268,7 @@ Google's Prompting Essentials (Coursera) 5-step structure:
 Install this plugin from the monorepo subdirectory:
 
 ```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/tcrei-prompt --enable
+hermes plugins install YoungjaeDev/my-claude-plugins/plugins/docs-forge --enable
 hermes gateway restart  # if using Hermes through a messaging gateway
 ```
 
@@ -346,7 +346,7 @@ Full spec at `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`:
 Install this plugin from the monorepo subdirectory:
 
 ```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/interview --enable
+hermes plugins install YoungjaeDev/my-claude-plugins/plugins/docs-forge --enable
 hermes gateway restart  # if using Hermes through a messaging gateway
 ```
 

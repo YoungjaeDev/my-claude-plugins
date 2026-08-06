@@ -84,29 +84,19 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | 카테고리 | 플러그인 | 설명 |
 |---------|---------|------|
 | **Core** | `core-config` | Python 포매팅, 알림 + 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh`, Claude+Codex 공유). 조건부 포인터 2종: cwd 에 knowledge root 가 있으면 `.llmwiki/insight/`, PATH 에 `codex` / `agy` 가 있으면 한 줄짜리 `[council]` 위임 리마인더 (Claude 전용) (work guidelines 는 `~/.claude/CLAUDE.md`) |
-| **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 |
+| **GitHub** | `github-dev` | 커밋, PR, 이슈 해결, 코드 리뷰 자동화 + `state-tracker` (spec/issue/PR 파이프라인 집계) |
 | **Testing** | `e2e-harness` | Playwright E2E 테스트 하네스 엔지니어링 — 공식 planner/generator/healer AI 에이전트 래핑 (`npx playwright init-agents --loop=claude`). e2e-setup(하네스 온보딩 + 인증 분리 + route 모킹 + CI 트레이스 아티팩트/PR 코멘트/게이팅), e2e-author(planner→generator + `--repeat-each` 번인 플래키 게이트), e2e-debug(헤드리스 trace 분석 + healer 자가수리 루프). Playwright 부재 시 graceful degrade |
-| **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + brightdata(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음) |
+| **Research** | `code-scout` | 다축 리서치 하네스 — 5-axis scout 팀 (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP + WebSearch + brightdata(tier-3) + insane-search(tier-4, WAF/blocked). paper-scout 가 paper-search-tools 8-source 래핑. 비-code/ML 토픽은 sibling `/deep-research` 직접 호출 (orchestrator 가 위임하지 않음). `brightdata-guide` 스킬 동봉 (Web Unlocker·SERP·web_data_* — web-scout tier-3 fallback) |
 | | `deepwiki` | GitHub 레포 AI 문서화 |
 | | `paper-search-tools` | arXiv, PubMed 등 8개 플랫폼 논문 검색 |
-| | `brightdata-guide` | Bright Data 웹 데이터 (MCP 툴 + CLI) — 스크래핑(Web Unlocker), SERP, 구조화 web_data_* 추출, 브라우저 자동화. operator 가 BRIGHTDATA_API_KEY 설정 |
 | **AI Models** | `codex-image` | Claude->Codex 이미지 생성 브리지 (ChatGPT OAuth, OpenAI API key 불필요) |
 | | `council` | 이종 벤더 심의 (`/council:convene`) — codex(GPT) + agy(Gemini) + Claude(Opus) 3인이 독립 의견 → 사용자 재질문 관문 → 상호 반박 → 의장 합성. 좌석 모델은 `~/.claude/council-models.json` 에 주간 TTL 로 고정 |
-| **Dev Tools** | `notebook` | Jupyter 노트북 안전 편집 |
-| | `ml-toolkit` | ML/멀티모달 개발 원칙, GPU 병렬 처리, Gradio CV 앱 |
-| **Content** | `translator` | 웹 아티클 한국어 번역 |
-| | `tcrei-prompt` | Google TCREI 구조로 프롬프트 재작성 |
-| | `tally-form` | 체크리스트 md → Tally 설문/상담 폼 빌드·게시 (테마 프리셋, 구분선, 문항별 보기·필수·복수선택·단답, matrix/date/time 일정 조율, 이미지·redirect, idempotent) |
-| | `voice-prompt` | 한국어 보이스 모드 STT 입력 정규화 — 말버릇·맞춤법·코드스위칭 자동 수정, 식별자는 `git ls-files`·스킬 목록 대조로 해소, 숫자·PR 번호는 손대지 않음. 1줄 에코 후 즉시 실행, 되돌리기 어려운 작업만 확인 |
-| **Planning** | `interview` | 구조화된 요구사항 수집 |
-| | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
-| **Docs** | `docs-forge` | README/CHANGELOG 생성 (CRO 최적화) + 배포 문서 템플릿 + MOC 인덱스 |
-| | `rules-forge` | CLAUDE.md + .claude/rules/ 자동 모드 감지 생성 (write-rules 스킬) |
-| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) |
+| **Dev Tools** | `ml-toolkit` | ML/멀티모달 개발 원칙, GPU 병렬 처리, Gradio CV 앱 + Jupyter 노트북 안전 편집 |
+| **Planning** | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
+| **Docs** | `docs-forge` | 에이전트가 읽는 문서 저작 — README/CHANGELOG (CRO 최적화) + 배포 문서 + MOC 인덱스 + `write-rules` (CLAUDE.md/.claude/rules) + `interview-methodology` (요구사항 수집·grill-me) + `tcrei-prompt` (TCREI 재작성) + `voice-prompt` (한국어 STT 입력 정규화) |
+| **Content** | `publish` | 산출물을 다른 표면으로 내보내기 — 웹 아티클 한국어 번역, 체크리스트 md → Tally 설문/상담 폼 빌드·게시 (테마 프리셋·구분선·matrix/date/time 일정 조율·idempotent), 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI, 승인 게이트 필수) |
+| **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) + `plaud-note-taking` (PLAUD Whisper 전사록 용어 정정 → `.llmwiki/raw/transcripts/`) |
 | **Memory & Lore** | `mem0-ops` | 플릿 레벨 mem0 진단·정리 — fleet-scan(전 앱 노이즈율·파편화) + doctor(설정 자세 점검) + cleanup(백업→삭제, dry-run 기본). upstream mem0 플러그인(프로젝트 내부 품질)과 역할 분리 |
-| **Workflow State** | `spec-state` | spec / issue / PR work-pipeline aggregate (`state-tracker` skill, `.claude/state/spec.json`) |
-| **Productivity** | `gws-sync` | 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI 기반). 매핑 설정 기억 → Drive 트리 탐색 → 신규·변경 diff 리포트 → 업로드 위치 AskUserQuestion 승인 → 업로드(기존 파일 content update로 ID·공유링크 보존). 삭제는 제안만. gws 미설치 시 설치 안내 후 중단. googleworkspace/cli 스킬 95종 카탈로그(llms.txt) 동봉 |
-| **Productivity** | `plaud-note-taking` | PLAUD 음성 녹음 노트(Whisper 전사록 + 별도 LLM 요약) 검토·정정. **요약이 아니라 전사록 기준**으로 STT 오인식(한·영 코드스위칭·고유명사·수치)을 프로젝트 용어 사전에 맞춰 고치고, 애매한 담당자·기한·수치와 "요약이 지어낸 결정"은 `docs-forge:interview-methodology`(grill-me) 위임으로 캐물어 확정. 원본은 동결한 채 `.llmwiki/raw/transcripts/derived/` 에 `*.corrected.md` 생성 → 사용자 확인 게이트 → 읽기용 `*.digest.md` → 재사용될 lore 만 `llm-wiki:ingest-finding` 로 |
 
 ## 설치 옵션
 
@@ -674,18 +664,18 @@ PLAUD 음성 녹음기가 만든 노트를 검토·정정합니다. PLAUD는 녹
     "local": [
       "./plugins/core-config",
       "./plugins/github-dev",
+      "./plugins/e2e-harness",
       "./plugins/code-scout",
       "./plugins/deepwiki",
-      "./plugins/paper-search-tools",
-      "./plugins/notebook",
       "./plugins/ml-toolkit",
-      "./plugins/translator",
-      "./plugins/interview",
+      "./plugins/paper-search-tools",
       "./plugins/docs-forge",
-      "./plugins/rules-forge",
-      "./plugins/tcrei-prompt",
       "./plugins/llm-wiki",
-      "./plugins/spec-state"
+      "./plugins/project-init",
+      "./plugins/codex-image",
+      "./plugins/publish",
+      "./plugins/council",
+      "./plugins/mem0-ops"
     ]
   }
 }

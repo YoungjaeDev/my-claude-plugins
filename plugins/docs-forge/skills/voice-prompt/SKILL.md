@@ -34,12 +34,11 @@ Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 | AskUserQuestion | clarify |
 
 Plugin skills are explicit opt-in loads in Hermes — the description never surfaces this body on
-its own. **Load it by its bare name: `skill_view("voice-prompt")`.** The qualified
-`<plugin>:<skill>` form comes from a generated plugin adapter, and `voice-prompt` is outside
-`HERMES_ELIGIBLE`, so no adapter exists for it; the skill-unit install
-(`node scripts/install-skills.mjs`, which wraps `npx skills`) registers the frontmatter `name`
-verbatim. Only if the plugin is added to the allowlist does the qualified form become the
-right one.
+its own. **Load it as `skill_view("docs-forge:voice-prompt")`.** `docs-forge` is in
+`HERMES_ELIGIBLE`, so its generated adapter registers every skill under the qualified
+`<plugin>:<skill>` form. The bare name resolves only through the skill-unit install
+(`node scripts/install-skills.mjs`, which wraps `npx skills`), which registers the frontmatter
+`name` verbatim — a separate path from the plugin adapter.
 
 ## What this skill actually changes (read before applying it)
 

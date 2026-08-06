@@ -4,8 +4,8 @@ options:
   - 더 알아보고 싶어요
   - 아직 모르겠어요
 theme: neutral
-logo: YoungjaeDev/my-claude-plugins@main:plugins/tally-form/skills/tally-form/assets/tally-logo.png
-cover: YoungjaeDev/my-claude-plugins@main:plugins/tally-form/skills/tally-form/assets/tally-banner.png
+logo: YoungjaeDev/my-claude-plugins@main:plugins/publish/skills/tally-form/assets/tally-logo.png
+cover: YoungjaeDev/my-claude-plugins@main:plugins/publish/skills/tally-form/assets/tally-banner.png
 redirect: https://example.com/thanks
 ---
 # 브랜드 상담 신청
@@ -19,6 +19,6 @@ redirect: https://example.com/thanks
 - 한마디: ___
 
 ## 참고 자료
-%%image url: YoungjaeDev/my-claude-plugins@main:plugins/tally-form/skills/tally-form/assets/tally-banner.png
+%%image url: YoungjaeDev/my-claude-plugins@main:plugins/publish/skills/tally-form/assets/tally-banner.png
 caption: 참고 배너 (raw 링크 호스팅 예시)
 %%

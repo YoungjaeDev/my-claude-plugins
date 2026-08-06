@@ -6,7 +6,7 @@
 # ~/.agents/skills/tally-form path was fictional (review #3).
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
-PLUGIN_DIR=$(cd "$HERE/.." && pwd)                 # plugins/tally-form
+PLUGIN_DIR=$(cd "$HERE/.." && pwd)                 # plugins/publish
 SKILL="$PLUGIN_DIR/skills/tally-form/SKILL.md"
 fail=0; pass(){ echo "  PASS: $1"; }; die(){ echo "  FAIL: $1"; fail=1; }
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
@@ -20,14 +20,14 @@ grep -q 'TALLY_SCRIPT=' "$SKILL" && pass "Codex plugin-cache resolver present" |
 RUN="$TMP/run.sh"
 awk '/^S="skills\/tally-form/{f=1} f{print} /build script not resolved/{exit}' "$SKILL" > "$RUN"
 printf 'printf "%%s" "$TALLY_SCRIPT"\n' >> "$RUN"
-mkdir -p "$TMP/cache/mkt/tally-form" "$TMP/foreign"; ln -s "$PLUGIN_DIR" "$TMP/cache/mkt/tally-form/1.2.1"
+mkdir -p "$TMP/cache/mkt/publish" "$TMP/foreign"; ln -s "$PLUGIN_DIR" "$TMP/cache/mkt/publish/1.0.0"
 OUT=$(cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT -u HERMES_HOME CODEX_PLUGIN_CACHE="$TMP/cache" bash "$RUN")
 { [ -n "$OUT" ] && [ -f "$OUT" ]; } && pass "Codex cache resolves real script -> $OUT" || die "Codex cache resolution ($OUT)"
 
 # review #2 — incomplete higher version skipped for complete lower one.
-mkdir -p "$TMP/cache2/mkt/tally-form/9.9.9"; ln -s "$PLUGIN_DIR" "$TMP/cache2/mkt/tally-form/1.2.1"
+mkdir -p "$TMP/cache2/mkt/publish/9.9.9"; ln -s "$PLUGIN_DIR" "$TMP/cache2/mkt/publish/1.0.0"
 OUT=$(cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT -u HERMES_HOME CODEX_PLUGIN_CACHE="$TMP/cache2" bash "$RUN")
-case "$OUT" in */1.2.1/*) pass "incomplete 9.9.9 skipped, picked complete 1.2.1";; *) die "incomplete-version skip ($OUT)";; esac
+case "$OUT" in */1.0.0/*) pass "incomplete 9.9.9 skipped, picked complete 1.0.0";; *) die "incomplete-version skip ($OUT)";; esac
 
 if ! command -v uv >/dev/null 2>&1; then echo "  SKIP: uv not installed — runtime assertion skipped"; else
   export CLAUDE_PLUGIN_ROOT="$PLUGIN_DIR"

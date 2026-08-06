@@ -132,10 +132,16 @@ Safe Jupyter Notebook (.ipynb) editing.
 
 ### Key Rules
 
-1. **NotebookEdit tool only** - Never use text editing tools on .ipynb
+1. **Structure-aware tool only** - `NotebookEdit` on Claude Code and Codex; never text-edit `.ipynb` there
 2. **Preserve outputs** - Don't accidentally clear cell outputs
 3. **Cell order matters** - Verify order after modifications
 4. **User executes** - Add/edit cells, user runs in Jupyter
+
+Hermes has no `NotebookEdit`, so the rule above is scoped to Claude Code and Codex. Under Hermes use
+the Jupyter Live Kernel skill when available, otherwise `write_file` / `patch` on the `.ipynb` JSON —
+the only case where editing the JSON directly is correct. That fallback carries the same obligations:
+preserve cell order, each cell's `id`, existing `outputs`, and `nbformat` / `nbformat_minor`. Full
+branch: `skills/edit-notebook/SKILL.md`.
 
 ### Usage
 

@@ -5,6 +5,23 @@ description: Safely edit Jupyter Notebook (.ipynb) files. Use when (1) adding/mo
 
 # Notebook Editing
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `ml-toolkit:edit-notebook`, map Claude/Codex tool names to
+Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| `Bash` | `terminal` |
+| `Read` | `read_file` |
+| `Write` | `write_file` |
+| `Edit` | `patch` |
+| `NotebookEdit` | Jupyter Live Kernel skill, else `write_file` / `patch` on the `.ipynb` JSON |
+
+Plugin skills are explicit opt-in loads in Hermes — call `skill_view("ml-toolkit:edit-notebook")` after
+`--enable` in a fresh session; the description never surfaces this body on its own.
+
+
 Edit Jupyter Notebook files through a structure-aware path, never as raw text.
 
 ## Runtime paths

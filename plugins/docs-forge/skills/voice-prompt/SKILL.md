@@ -245,21 +245,21 @@ cl=$(mktemp) || { echo "voice-prompt: mktemp failed" >&2; exit 1; }
 # still has to hold the template to win.
 {
   if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then printf '%s\n' "$CLAUDE_PLUGIN_ROOT"; fi
-  printf '%s\n' plugins/voice-prompt
+  printf '%s\n' plugins/docs-forge
   # Codex cache, newest version FIRST. Sort on the version basename, never the
   # full path: lexicographic path order ranks zeta/…/0.1.0 above alpha/…/0.2.0,
   # and 0.9.0 above 0.10.0. sort -V orders X.Y.Z; BSD/macOS sort has no -V, so
   # degrade to a reverse numeric dotted-field sort.
   if sort -V </dev/null >/dev/null 2>&1; then
-    ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null \
+    ls -1d "$cache_root"/*/docs-forge/* 2>/dev/null \
       | awk -F/ '{print $NF "\t" $0}' | sort -Vr | cut -f2-
   else
-    ls -1d "$cache_root"/*/voice-prompt/* 2>/dev/null \
+    ls -1d "$cache_root"/*/docs-forge/* 2>/dev/null \
       | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1nr -k2,2nr -k3,3nr | cut -f2-
   fi
-  # Hermes: voice-prompt is outside HERMES_ELIGIBLE, so no plugin adapter is
-  # generated and the skill-unit install is the only Hermes route.
-  printf '%s\n' "$hermes_root/plugins/voice-prompt" "$hermes_root/skills/voice-prompt"
+  # Hermes: docs-forge is in HERMES_ELIGIBLE, so a plugin adapter exists; the
+  # flat path stays as the separate skill-unit install route.
+  printf '%s\n' "$hermes_root/plugins/docs-forge" "$hermes_root/skills/voice-prompt"
   # Project-scope skill-unit install. `npx skills` owns this layout, so these are
   # candidate paths, not a verified contract — harmless, since the -f test decides.
   printf '%s\n' .agents/skills/voice-prompt .claude/skills/voice-prompt

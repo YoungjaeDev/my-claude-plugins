@@ -39,7 +39,7 @@ If the guard passes, proceed to the run record, then the full procedure.
 
 ## Step 0.5 — Run record (state-envelope v0)
 
-The run record (state-envelope v0) is opened by the shared procedure, not here: its open + per-phase `record_step` mechanism lives **once** in `references/new-procedure.md` (Phase 0.5), so this skill and the `/project-init:new` **command** record identically. Follow that Phase 0.5 block — do not re-inline the `jq` here. Convention + schema: `.claude/rules/state-envelope.md` (concept mirror in this repo's `AGENTS.md`). The record lives under gitignored `.claude/state/`, is kept out of the Phase 6 commit by the Phase 6 `.gitignore` seed, and is orthogonal to `.claude/state/spec.json` (owned by `spec-state`) — different file, different concern.
+The run record (state-envelope v0) is opened by the shared procedure, not here: its open + per-phase `record_step` mechanism lives **once** in `references/new-procedure.md` (Phase 0.5), so this skill and the `/project-init:new` **command** record identically. Follow that Phase 0.5 block — do not re-inline the `jq` here. Convention + schema: `.claude/rules/state-envelope.md` (concept mirror in this repo's `AGENTS.md`). The record lives under gitignored `.claude/state/`, is kept out of the Phase 6 commit by the Phase 6 `.gitignore` seed, and is orthogonal to `.claude/state/spec.json` (owned by `github-dev:state-tracker`) — different file, different concern.
 
 ## Step 1 — Procedure
 

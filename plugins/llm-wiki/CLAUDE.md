@@ -91,9 +91,9 @@ Per page, the staleness window is driven by `volatility:`: `volatile` → 30 day
 
 All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in the resolved root's `log.md` (`.llmwiki/wiki/log.md`, or a legacy `.claude/wiki/log.md`) with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`. `grep '## ' wiki/log.md` recovers the time-series. At year-turnover the prior year's entries migrate to a sibling `log-YYYY.md` (`grep '## ' log*.md` still recovers the full series); `lint-wiki` Step 13 flags when a rotation is due.
 
-## Related: spec-state
+## Related: github-dev:state-tracker
 
-Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned by the separate `spec-state` plugin (`state-tracker` skill). llm-wiki tracks knowledge lore; spec-state tracks the work pipeline. The two are independent — install whichever you need.
+Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned by `github-dev:state-tracker`. llm-wiki tracks knowledge lore; state-tracker tracks the work pipeline. The two are independent concerns in separate plugins.
 
 ## Codex hooks (bundled)
 

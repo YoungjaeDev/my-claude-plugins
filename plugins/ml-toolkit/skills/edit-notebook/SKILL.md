@@ -5,13 +5,24 @@ description: Safely edit Jupyter Notebook (.ipynb) files. Use when (1) adding/mo
 
 # Notebook Editing
 
-Edit Jupyter Notebook files using NotebookEdit tool only.
+Edit Jupyter Notebook files through a structure-aware path, never as raw text.
+
+## Runtime paths
+
+`ml-toolkit` is in `HERMES_ELIGIBLE`, so this skill loads on all three runtimes — but `NotebookEdit` exists only on Claude Code and Codex. Pick the path by what the runtime actually exposes:
+
+| Runtime | Path |
+|---|---|
+| Claude Code / Codex | `NotebookEdit` — the rules below apply as written |
+| Hermes | Jupyter Live Kernel skill when available; otherwise `write_file` / `patch` on the `.ipynb` JSON, preserving the `cells` array shape, each cell's `id`, and existing `outputs` |
+
+The Hermes fallback is the one case where editing the JSON directly is correct — there is no structure-aware tool to defer to. It still carries the same obligations: do not reorder cells, do not drop `outputs`, and keep `nbformat` / `nbformat_minor` untouched.
 
 ## Rules
 
 ### Tool Selection
-- .ipynb = NotebookEdit only
-- Never use `Edit`, `Write`, or `Bash(sed/cat)` on `.ipynb`
+- .ipynb = `NotebookEdit` wherever it exists
+- Never use `Edit`, `Write`, or `Bash(sed/cat)` on `.ipynb` on Claude Code or Codex — on Hermes, use the JSON fallback above rather than these
 
 ### Cell Insertion: cell_id Tracking (Required)
 

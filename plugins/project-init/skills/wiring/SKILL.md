@@ -127,7 +127,7 @@ Two ways this axis silently misbehaves, both closed by the table above. Treating
 
 ### spec is a preference, not a migration
 
-Two spec homes is `INFO`, not `WARN`: state which one this project prefers (`.claude/spec/` unless the project says otherwise) and leave the files where they are. Only `missing_frontmatter > 0` is a `WARN`, because a spec without `status:` frontmatter is invisible to `spec-state` regardless of which directory it sits in. Never move spec files as part of "apply all".
+Two spec homes is `INFO`, not `WARN`: state which one this project prefers (`.claude/spec/` unless the project says otherwise) and leave the files where they are. Only `missing_frontmatter > 0` is a `WARN`, because a spec without `status:` frontmatter is invisible to `github-dev:state-tracker` regardless of which directory it sits in. Never move spec files as part of "apply all".
 
 Some verdicts need an explanation the JSON cannot carry:
 

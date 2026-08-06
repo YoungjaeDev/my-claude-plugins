@@ -147,7 +147,7 @@ fi
 - **Leftover present** — after the `leftover-reviews: <N> deferred (final_state=<X>)` line, render the `$DEFERS` items as a table (`Path:Line · Severity · Reason`), and append the open-thread count when `OPEN_THREADS > 0`. Tell the user these were **not** auto-applied — review them on the PR page (`gh pr view <PR_NUMBER> --comments`) or in a follow-up; do not silently drop them.
 - **None** — print `leftover-reviews: none` when no cr-fix state file resolves, or it shows `defer == 0` with a non-trigger `final_state`.
 
-**Codex**: runs identically under Claude and Codex — `gh` / `jq` / `Read` only (no Serena / rules-forge).
+**Codex**: runs identically under Claude and Codex — `gh` / `jq` / `Read` only (no Serena / docs-forge:write-rules).
 
 ### 2. Check local changes
 
@@ -204,7 +204,7 @@ user selects skip-all.
    deletion; `git rm` already staged it).
 
 **Codex**: runs identically under Claude and Codex (gh/git/AskUserQuestion only —
-no Serena/rules-forge).
+no Serena/docs-forge:write-rules).
 
 Full heuristics, confidence tiers, hard exclusions, and the Step 10 staging
 interaction: `references/ephemeral-heuristics.md`.

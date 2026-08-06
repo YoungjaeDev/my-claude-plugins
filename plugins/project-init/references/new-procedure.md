@@ -127,7 +127,7 @@ record_step() {
 record_step 0 done
 ```
 
-**Recording contract.** The `step` integer is the phase number. As each Phase 1-7 closes, append its outcome — `record_step <n> done`, or `record_step <n> skipped "<reason>"` when a phase legitimately skips (Phase 3/4 when the target file already exists, Phase 6 when an `origin` remote already exists). **Shell state does not persist across separate tool calls** — `REC` is the deterministic path `.claude/state/project-init-<slug>.json`, so in each later phase's bash block re-derive `SLUG`/`REC` (the two lines above) and re-declare `record_step` before calling it. After Phase 7 closes, finalize the envelope (Phase 7 below). Under Hermes run these blocks via `terminal`. This record is orthogonal to `.claude/state/spec.json` (owned by `spec-state`) — different file, different concern.
+**Recording contract.** The `step` integer is the phase number. As each Phase 1-7 closes, append its outcome — `record_step <n> done`, or `record_step <n> skipped "<reason>"` when a phase legitimately skips (Phase 3/4 when the target file already exists, Phase 6 when an `origin` remote already exists). **Shell state does not persist across separate tool calls** — `REC` is the deterministic path `.claude/state/project-init-<slug>.json`, so in each later phase's bash block re-derive `SLUG`/`REC` (the two lines above) and re-declare `record_step` before calling it. After Phase 7 closes, finalize the envelope (Phase 7 below). Under Hermes run these blocks via `terminal`. This record is orthogonal to `.claude/state/spec.json` (owned by `github-dev:state-tracker`) — different file, different concern.
 
 ## Phase 1 — Project Identity Interview
 

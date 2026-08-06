@@ -7,7 +7,7 @@ description: Use to read or update `.claude/state/spec.json` — the aggregate c
 
 `.claude/state/spec.json` is a one-file aggregate of the project's spec/issue/PR work pipeline. It exists so an LLM (or human) can answer "what's currently in flight, and against which spec?" with a single `Read` — no `find` over `.claude/spec/` plus per-file frontmatter parse.
 
-> Ships with `spec-state` plugin; install via marketplace. Operates on the current repo's `.claude/state/spec.json`.
+> Ships with the `github-dev` plugin; install via marketplace. Operates on the current repo's `.claude/state/spec.json`.
 
 ## SSOT relationship
 

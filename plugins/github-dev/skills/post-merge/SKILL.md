@@ -260,7 +260,7 @@ For each related issue with a milestone, recompute module progress and regenerat
 ### 5.7. Update `.claude/state/spec.json` (if present)
 
 - If `.claude/state/spec.json` exists, move the `in_progress` entry whose `linked.pr` matches the merged PR (or `linked.issue`) to `completed` with `merge_sha` (first 7 chars) + `completed_at` (today, UTC `YYYY-MM-DD`), and set the spec file's frontmatter `status: merged`.
-- Mechanics are owned by `github-dev:state-tracker` — invoke `/github-dev:state-tracker complete <spec-path>` if installed; otherwise apply the direct JSON edit per `plugins/spec-state/skills/state-tracker/SKILL.md`.
+- Mechanics are owned by `github-dev:state-tracker` — invoke `/github-dev:state-tracker complete <spec-path>` if installed; otherwise apply the direct JSON edit per `plugins/github-dev/skills/state-tracker/SKILL.md`.
 - Skip silently if no matching entry, or if `.claude/state/` does not exist.
 
 **Record.** `record_step 5.7 done`, or `record_step 5.7 skipped "no spec.json entry"` when no matching entry exists or `.claude/state/` is absent.
@@ -351,7 +351,7 @@ jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 - **Mandatory wiki ingest** (absorbed post-merge-wiki — candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
 - **Ephemeral artifact pruning** (Step 4.5 — heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
 - Milestone / Type M-2 diagram mechanics: `skills/update-progress/SKILL.md`
-- spec.json schema + ops: `plugins/spec-state/skills/state-tracker/SKILL.md`
+- spec.json schema + ops: `plugins/github-dev/skills/state-tracker/SKILL.md`
 - CHANGELOG patterns (Step 9.5): `docs-forge:changelog-guide` skill + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md`
 
 > Follow ~/.claude/CLAUDE.md and the project CLAUDE.md.

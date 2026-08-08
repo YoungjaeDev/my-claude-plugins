@@ -228,9 +228,15 @@ This skill dispatches through whatever delegation and file tools the host runtim
 | `WebSearch` | `web_search` | web axis keyword coverage (deep mode parallel search, quick mode exa fallback) |
 | `mcp__exa__web_search_exa` | `web_search` | web axis tier-1 semantic search — Hermes has no exa MCP, so tier-1 and the `WebSearch` fallback collapse into one call |
 | `mcp__exa__web_fetch_exa` | `web_extract` | web axis tier-1 fetch |
-| `mcp__brightdata__scrape_as_markdown` | `browser_*` | tier-2 fetch for JS-heavy / anti-bot pages, when no Bright Data MCP is attached |
+| `mcp__brightdata__scrape_as_markdown` | same MCP if attached, else `terminal` + `bdata scrape <url> -f markdown` | tier-2 fetch for JS-heavy / anti-bot pages |
 
-**Web axis under Hermes.** `axis-contracts.md` names Claude/Codex web tools directly, so a Hermes subagent needs this table to run the axis at all. Two consequences worth stating rather than discovering: exa's semantic and keyword tiers are the same call here, so deep mode loses the dual-coverage split and records `exa: unavailable` in `errors` instead of pretending both ran; and tier-4 `insane-search` stays a `skill_view` invocation, unchanged. An axis that cannot reach any web tool writes `findings:[] + error` like any other failure — it never silently emits an empty artifact.
+**Web axis under Hermes.** `axis-contracts.md` names Claude/Codex web tools directly, so a Hermes subagent needs this table to run the axis at all.
+
+- **Search**: Hermes has no exa MCP, so tier-1 and the `WebSearch` fallback are the same `web_search` call. Call it **once**, record `exa: unavailable` in `errors`, and do not run a second tier or report exa coverage as successful — deep mode's dual-coverage split is genuinely unavailable here, not silently satisfied.
+- **Fetch tier 2**: use the Bright Data MCP when it is attached (the tool name is identical). When it is not, run `bdata scrape <url> -f markdown` through `terminal`, following the `brightdata-guide` conventions. If neither is reachable, record the failing gate in `errors` and escalate to tier 4 — never downgrade to a plain fetch, which the anti-bot pages this tier exists for will block.
+- **Fetch tier 4**: `insane-search` stays a `skill_view` invocation, unchanged.
+
+An axis that cannot reach any web tool writes `findings:[] + error` like any other failure — it never silently emits an empty artifact.
 
 ## Examples
 

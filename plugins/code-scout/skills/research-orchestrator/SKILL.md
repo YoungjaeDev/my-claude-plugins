@@ -107,7 +107,7 @@ Before dispatch, pick the execution path **once**. This decides *how* the chosen
 | **B — generic parallel subagents** | Named `code-scout:*-scout` are NOT registerable, but a generic subagent-delegation tool is available (Codex `Task`, Hermes `delegate_task`). | Phase 4B — one generic subagent per axis, each carrying its `axis-contracts.md` contract inline. |
 | **C — sequential in-agent** | Neither named agents nor generic delegation is available (delegation unsupported / disabled, or concurrency exhausted / repeated dispatch failure). | Phase 4C — run the axes one at a time in the current agent, following each `axis-contracts.md` contract. |
 
-Detection is a runtime fact: Claude Code registers `agents/*.md` as plugin subagents (Path A); Codex 0.135 exposes this skill but cannot register those agent files, so it lands on Path B (generic `Task` delegation), degrading to Path C only when delegation is unavailable. Hermes support is **forward-compatible, not active** — `code-scout` is not in the Hermes adapter allowlist (`HERMES_ELIGIBLE` in `scripts/sync-hermes-manifests.mjs`), so it does not load on Hermes today; the Path B `delegate_task` mapping is ready for when it is added. **Never silently drop an axis because its named agent is missing — switch paths instead.** Tell the user which path you took in one sentence.
+Detection is a runtime fact: Claude Code registers `agents/*.md` as plugin subagents (Path A); Codex 0.135 exposes this skill but cannot register those agent files, so it lands on Path B (generic `Task` delegation), degrading to Path C only when delegation is unavailable. Hermes runs Path B: `code-scout` is in the Hermes adapter allowlist (`HERMES_ELIGIBLE` in `scripts/manifest-eligibility.mjs`), so the generated adapter registers these skills and delegation goes through `delegate_task`. **Never silently drop an axis because its named agent is missing — switch paths instead.** Tell the user which path you took in one sentence.
 
 ### 4. Fan-out dispatch
 
@@ -225,6 +225,18 @@ This skill dispatches through whatever delegation and file tools the host runtim
 | `Read` | `read_file` | reading axis artifacts during in-skill synthesis (5B) |
 | `Write` | `write_file` | writing axis artifacts / `$REPORT` |
 | `AskUserQuestion` | `clarify` | confirming a `BLOCKED`-state retry |
+| `WebSearch` | `web_search` | web axis keyword coverage (deep mode parallel search, quick mode exa fallback) |
+| `mcp__exa__web_search_exa` | `web_search` | web axis tier-1 semantic search — Hermes has no exa MCP, so tier-1 and the `WebSearch` fallback collapse into one call |
+| `mcp__exa__web_fetch_exa` | `web_extract` | web axis tier-1 fetch |
+| `mcp__brightdata__scrape_as_markdown` | same MCP if attached, else `terminal` + `bdata scrape <url> -f markdown` | tier-2 fetch for JS-heavy / anti-bot pages |
+
+**Web axis under Hermes.** `axis-contracts.md` names Claude/Codex web tools directly, so a Hermes subagent needs this table to run the axis at all.
+
+- **Search**: Hermes has no exa MCP, so tier-1 and the `WebSearch` fallback are the same `web_search` call. Call it **once**, record `exa: unavailable` in `errors`, and do not run a second tier or report exa coverage as successful — deep mode's dual-coverage split is genuinely unavailable here, not silently satisfied.
+- **Fetch tier 2**: use the Bright Data MCP when it is attached (the tool name is identical). When it is not, run `bdata scrape <url> -f markdown` through `terminal`, following the `brightdata-guide` conventions. If neither is reachable, record the failing gate in `errors` and escalate to tier 4 — never downgrade to a plain fetch, which the anti-bot pages this tier exists for will block.
+- **Fetch tier 4**: `insane-search` stays a `skill_view` invocation, unchanged.
+
+An axis that cannot reach any web tool writes `findings:[] + error` like any other failure — it never silently emits an empty artifact.
 
 ## Examples
 

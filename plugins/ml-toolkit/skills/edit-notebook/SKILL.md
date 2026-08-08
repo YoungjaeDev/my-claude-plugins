@@ -1,0 +1,75 @@
+---
+name: edit-notebook
+description: Safely edit Jupyter Notebook (.ipynb) files. Use when (1) adding/modifying/deleting cells in .ipynb files, (2) working with notebook structure, (3) any .ipynb file modification. Triggered by notebook editing requests.
+---
+
+# Notebook Editing
+
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `ml-toolkit:edit-notebook`, map Claude/Codex tool names to
+Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| `Bash` | `terminal` |
+| `Read` | `read_file` |
+| `Write` | `write_file` |
+| `Edit` | `patch` |
+| `NotebookEdit` | Jupyter Live Kernel skill, else `write_file` / `patch` on the `.ipynb` JSON |
+
+Plugin skills are explicit opt-in loads in Hermes — call `skill_view("ml-toolkit:edit-notebook")` after
+`--enable` in a fresh session; the description never surfaces this body on its own.
+
+
+Edit Jupyter Notebook files through a structure-aware path, never as raw text.
+
+## Runtime paths
+
+`ml-toolkit` is in `HERMES_ELIGIBLE`, so this skill loads on all three runtimes — but `NotebookEdit` exists only on Claude Code and Codex. Pick the path by what the runtime actually exposes:
+
+| Runtime | Path |
+|---|---|
+| Claude Code / Codex | `NotebookEdit` — the rules below apply as written |
+| Hermes | Jupyter Live Kernel skill when available; otherwise `write_file` / `patch` on the `.ipynb` JSON, preserving the `cells` array shape, each cell's `id`, and existing `outputs` |
+
+The Hermes fallback is the one case where editing the JSON directly is correct — there is no structure-aware tool to defer to. It still carries the same obligations: do not reorder cells, do not drop `outputs`, and keep `nbformat` / `nbformat_minor` untouched.
+
+## Rules
+
+### Tool Selection
+- .ipynb = `NotebookEdit` wherever it exists
+- Never use `Edit`, `Write`, or `Bash(sed/cat)` on `.ipynb` on Claude Code or Codex — on Hermes, use the JSON fallback above rather than these
+
+### Cell Insertion: cell_id Tracking (Required)
+
+NotebookEdit returns inserted cell's id. Track it for sequential insertion:
+
+```
+NotebookEdit(edit_mode="insert", cell_type="code", new_source="...")
+-> Returns cell_id='abc123'
+
+NotebookEdit(edit_mode="insert", cell_id="abc123", cell_type="code", new_source="...")
+-> Returns cell_id='def456'
+
+NotebookEdit(edit_mode="insert", cell_id="def456", ...)
+```
+
+**cell_id omitted**: Cell inserted at BEGINNING -> reverse order bug
+
+### Execution Policy
+- NotebookEdit = edit only, no execution
+- After adding cells: "Please run the cells in Jupyter"
+- Do NOT use mcp__ide__executeCode (causes notebook state corruption)
+
+### Post-Edit Verification
+- Read first 30 lines to verify cell order
+- Confirm existing outputs preserved
+
+## edit_mode Options
+
+| Mode | Purpose | cell_id |
+|------|---------|---------|
+| replace | Update existing cell | Required |
+| insert | Add new cell | Recommended (omit = top insertion) |
+| delete | Remove cell | Required |

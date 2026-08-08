@@ -57,7 +57,7 @@ a later change.
 ## Orthogonality to spec-state
 
 A state-envelope run record is **not** `.claude/state/spec.json`. `spec.json` (owned by
-`spec-state:state-tracker`) is the cross-run aggregate of spec → issue → PR pipeline work.
+`github-dev:state-tracker`) is the cross-run aggregate of spec → issue → PR pipeline work.
 A run record is a **single skill run's own step log**. They are separate files with
 separate owners: a state-envelope record never reads or writes `spec.json`, and the
 spec aggregate never carries per-run step logs.

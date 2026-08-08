@@ -1,5 +1,0 @@
-{
-  "name": "spec-state",
-  "version": "1.0.3",
-  "description": "Spec/issue/PR work-pipeline aggregate. state-tracker skill manages .claude/state/spec.json (read/init/start/complete). Called by github-dev:post-merge."
-}

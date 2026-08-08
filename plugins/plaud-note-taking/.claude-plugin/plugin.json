@@ -1,5 +1,0 @@
-{
-  "name": "plaud-note-taking",
-  "version": "0.2.0",
-  "description": "Review and correct PLAUD voice-recorder notes (Whisper transcript + separate LLM summary). Fixes STT misrecognition (Korean+English code-switching, proper nouns, numbers) against a project term dictionary, grill-me interviews to resolve ambiguities, and writes both derivatives under .llmwiki/raw/transcripts/derived/ without touching the frozen originals: a transcript-grounded *.corrected.md, then, once the user approves it, a readable *.digest.md whose reusable lore is handed to llm-wiki:ingest-finding."
-}

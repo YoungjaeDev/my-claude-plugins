@@ -16,8 +16,7 @@ export const CODEX_EXCLUDED = new Set(['codex-image', 'council']);
 // Plugins that get generated Hermes adapters (plugin.yaml + __init__.py).
 export const HERMES_ELIGIBLE = new Set([
   'github-dev',
-  'interview',
-  'tcrei-prompt',
+  'docs-forge',
+  'code-scout',
   'ml-toolkit',
-  'brightdata-guide',
 ]);

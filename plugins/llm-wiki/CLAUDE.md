@@ -6,8 +6,9 @@ Karpathy LLM-Wiki 3-layer system packaged as a plugin. Universal — works in an
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| **5 skills** | `skills/{query,ingest,lint,bootstrap,migrate}-wiki/` | wiki query, finding ingest, health audit, repo bootstrap, v1→v2 migration. (Post-merge ingest moved into `github-dev:post-merge` as a mandatory step.) |
+| **6 skills** | `skills/{query,ingest,lint,bootstrap,migrate}-wiki/` + `skills/plaud-note-taking/` | wiki query, finding ingest, health audit, repo bootstrap, v1→v2 migration. (Post-merge ingest moved into `github-dev:post-merge` as a mandatory step.) |
 | **5 hooks** | `hooks/wiki_{stale_check,post_commit_hint,session_start_lint_hint,session_capture,session_start_drain}.sh` | UserPromptSubmit + PostToolUse(Bash) + SessionStart soft hints, plus Stop/SubagentStop-capture + SessionStart-drain auto-ingest (capture/curation split; `session_capture` wired to both Stop and SubagentStop — the latter scans the subagent's own `agent_transcript_path`, keyed by `agent_id` so it never collides with the parent capture) |
+| **plaud-note-taking** | `skills/plaud-note-taking/` | Corrects PLAUD voice-recorder Whisper transcripts against a project terminology dictionary and writes `*.corrected.md` under `.llmwiki/raw/transcripts/` (absorbed from `plaud-note-taking`) |
 | **bootstrap templates** | `skills/bootstrap-wiki/assets/templates/` | wiki-skeleton (index, log, spec) + insight-skeleton (index, _insight-template) |
 
 ## Layer model
@@ -90,9 +91,9 @@ Per page, the staleness window is driven by `volatility:`: `volatile` → 30 day
 
 All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate in the resolved root's `log.md` (`.llmwiki/wiki/log.md`, or a legacy `.claude/wiki/log.md`) with schema header `## YYYY-MM-DD — <event-type> (<source-skill>)`. `grep '## ' wiki/log.md` recovers the time-series. At year-turnover the prior year's entries migrate to a sibling `log-YYYY.md` (`grep '## ' log*.md` still recovers the full series); `lint-wiki` Step 13 flags when a rotation is due.
 
-## Related: spec-state
+## Related: github-dev:state-tracker
 
-Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned by the separate `spec-state` plugin (`state-tracker` skill). llm-wiki tracks knowledge lore; spec-state tracks the work pipeline. The two are independent — install whichever you need.
+Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned by `github-dev:state-tracker`. llm-wiki tracks knowledge lore; state-tracker tracks the work pipeline. The two are independent concerns in separate plugins.
 
 ## Codex hooks (bundled)
 

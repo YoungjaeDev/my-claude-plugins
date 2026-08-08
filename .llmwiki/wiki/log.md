@@ -6,6 +6,17 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-08-08 — post-merge #200: absorption re-homes the body, and the cleanup sweep can corrupt the wiki (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `c56bd25` — 11 single-skill plugins absorbed into existing bundles (24 → 14), driven through 8 cr-fix rounds (28 applied, 3 deferred to #201, 1 refuted). Config integration (Step 6) put two learnings in their existing homes, so they are not duplicated here (knowledge routing): the absorbed-body audit and the eligibility blast radius both extended `.claude/rules/plugin-versioning.md`'s Plugin Removal section (renamed "Plugin Removal or Absorption") with a concise mirror in `AGENTS.md`'s plugin-change rules for Codex/Hermes.
+
+- plugin-ops/absorption-rehomes-the-body.md: new page, status: active, volatility: stable, sources: 2 — the absorbed skill's body still believing it lives in the old plugin (5 breakage classes), plus eligibility as a bundle-wide property
+- llm-wiki-design/deleted-subject-not-stale.md: adds the inverse failure — the wiki grep that page recommends, run as a blind repo-wide replace, rewrote two pages' historical PR evidence into self-contradiction; sources 2 → 3
+- plugin-ops/hermes-plugin-adapter.md: cross-ref to the new page (eligibility scope is adapter-scoped, same as qualified names)
+- index.md: added the plugin-ops hook
+
+---
+
 ## 2026-07-30 — post-merge #193: gitignored state is per-worktree, and `skill_view` qualification is adapter-scoped (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `81e67e8` — the `voice-prompt` plugin (24th), driven through 5 cr-fix iterations (25 applied, 1 deferred, 1 refuted). Config integration (Step 6) took three learnings to their existing homes, so none is duplicated here (knowledge routing): the shell-injection axis (quote-vs-data-channel) and the `set -o pipefail` non-universality both sharpened existing bullets in `code_review.md` P0/P1, and the plugin-level-`CLAUDE.md` false-positive sharpened the Do-not-flag entry in both `code_review.md` and its `AGENTS.md` hard minimum.

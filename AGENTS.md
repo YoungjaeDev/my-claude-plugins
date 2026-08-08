@@ -15,7 +15,7 @@
 
 플러그인 트리 하나를 Claude Code, Codex 0.135(`scripts/sync-codex-manifests.mjs`), Hermes Agent(`scripts/sync-hermes-manifests.mjs`)가 함께 읽습니다 — one source, three runtimes.
 
-## Plugins (24)
+## Plugins (14)
 
 각 플러그인이 무엇을 하는지는 `jq -r '.plugins[] | "\(.name): \(.description)"' .claude-plugin/marketplace.json` 으로 읽는다 — 설명을 여기에 다시 적으면 매니페스트와 표 두 곳을 손으로 맞춰야 하고, `check-doc-consistency.mjs` 는 이름 집합만 검사하므로 설명 drift 는 조용히 남는다. 아래 표는 이름·분류만 유지한다 (가드가 이 이름 집합을 marketplace.json 과 대조한다).
 
@@ -27,24 +27,14 @@
 | `code-scout` | Research & Search |
 | `deepwiki` | Research & Search |
 | `paper-search-tools` | Research & Search |
-| `brightdata-guide` | Research & Search |
 | `codex-image` | AI Models |
 | `council` | AI Models |
-| `notebook` | Development Tools |
 | `ml-toolkit` | Development Tools |
-| `translator` | Content & Translation |
-| `tcrei-prompt` | Content & Translation |
-| `tally-form` | Content & Translation |
-| `voice-prompt` | Content & Translation |
-| `interview` | Planning |
+| `publish` | Content & Translation |
 | `project-init` | Planning |
 | `docs-forge` | Documentation |
-| `rules-forge` | Documentation |
-| `gws-sync` | Productivity |
-| `plaud-note-taking` | Productivity |
 | `mem0-ops` | Memory & Lore |
 | `llm-wiki` | Memory & Lore |
-| `spec-state` | Workflow State |
 
 플러그인은 `.claude/settings.json` 에서 auto-load 됩니다. 사용법 상세는 `README.md`.
 
@@ -101,7 +91,7 @@
 | Hermes | `clarify` |
 
 - 새 스킬 본문이 `AskUserQuestion` 을 쓰면 파일럿의 "Cross-runtime interactive input" 블록(위 3런타임 매핑)을 같이 넣거나, 이관을 미룰 경우 `scripts/check-skill-tool-portability.mjs` 의 baseline 에 등록한다. `scripts/check-skill-tool-portability.mjs --check` 가 `.githooks/pre-commit` + `.github/workflows/validate-codex.yml` 에서 이를 강제한다 — 파일럿은 표준 매핑을, baseline 은 등록 사실을, 그 외 새 경로는 실패로 잡는다.
-- **Follow-up debt (#123):** 현재 파일럿은 `interview:interview-methodology`, `github-dev:decompose-issue`, `council:convene`, `voice-prompt:voice-prompt`, `plaud-note-taking:plaud-note-taking` 5개뿐이다. 나머지 15개 스킬(baseline)은 아직 body 에서 `AskUserQuestion` 을 실제로 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다. Hermes 호환표 행이나 frontmatter `allowed-tools:` 에만 `AskUserQuestion` 이 있고 실제 대화 게이트가 없는 스킬은 debt 가 아니라 가드가 제외한다. baseline 에서 파일럿으로 옮기며 점진 이관한다.
+- **Follow-up debt (#123):** 현재 파일럿은 `docs-forge:interview-methodology`, `github-dev:decompose-issue`, `council:convene`, `docs-forge:voice-prompt`, `llm-wiki:plaud-note-taking` 5개뿐이다. 나머지 15개 스킬(baseline)은 아직 body 에서 `AskUserQuestion` 을 실제로 하드코딩하고 있으며, 표준 매핑으로의 이관은 후속 플릿 작업으로 의도적으로 미룬다. Hermes 호환표 행이나 frontmatter `allowed-tools:` 에만 `AskUserQuestion` 이 있고 실제 대화 게이트가 없는 스킬은 debt 가 아니라 가드가 제외한다. baseline 에서 파일럿으로 옮기며 점진 이관한다.
 
 ## 플러그인 변경 규칙
 
@@ -109,6 +99,8 @@
 - `plugins/<name>/` 아래 **어떤 파일이든** 바뀌면 버전 범프 대상입니다 — 코드/스킬뿐 아니라 번들 `references/`·`docs`·asset 편집도 포함. 캐시로 게이트된 사용자는 버전 범프가 있어야 새 내용을 받으므로, 문서만 고쳐도 해당 플러그인 PATCH + `metadata.version`을 올립니다 (Codex-eligible 이면 매니페스트 재생성). 반면 루트 문서(`AGENTS.md`, `README.md`, `code_review.md`, `.claude/rules/*`)는 플러그인 콘텐츠가 아니라 어떤 플러그인도 범프하지 않습니다.
 - Hermes-eligible 플러그인: `plugins/<name>/plugin.yaml`(Hermes 어댑터)의 `version`은 `sync-hermes-manifests.mjs` 가 marketplace 에서 파생해 생성하므로, 버전 범프 후 `node scripts/sync-hermes-manifests.mjs` 재실행으로 갱신하세요. `sync-hermes-manifests.mjs --check` 가 drift 를 가드하므로 수동 동기화는 불필요합니다 (단 Codex `--check` 는 Codex 매니페스트만 봅니다).
 - 어떤 플러그인 버전이든 변경하면 `.claude-plugin/marketplace.json`의 `metadata.version`도 marketplace release 버전으로 올리세요.
+- 플러그인의 스킬을 다른 번들로 **흡수**할 때는 흡수처 배선이 아니라 **흡수된 스킬 본문을 먼저 감사**하세요. 배선은 쉬운 쪽이고, 깨지는 건 스킬이 여전히 자기를 옛 플러그인 소속으로 아는 부분입니다: Codex 캐시를 `*/<옛-플러그인>/*` 로 훑는 `PLUGIN_ROOT` resolver (`CLAUDE_PLUGIN_ROOT` 가 없는 순간 "script not resolved" 로 죽음), `hermes plugins install .../plugins/<옛-플러그인>` 안내, 이동으로 뒤집힌 Hermes eligibility 서술, 네임스페이스 없는 `/skill-name` 예제, 그리고 흡수처 버전 미범프(캐시로 게이트된 사용자에게 이동 자체가 안 내려감). 옮긴 트리에서 옛 플러그인명을 grep 해 확인하세요.
+- **eligibility 는 그 플러그인의 스킬 전체에 걸립니다.** `HERMES_ELIGIBLE` 에 이름을 추가하면 생성된 어댑터가 그 `skills/` 전부를 등록하므로, Hermes 매핑이 필요 없던 스킬까지 노출됩니다 — 매핑 없는 본문은 로드된 뒤 첫 도구 호출에서 멈춥니다. `CODEX_EXCLUDED` 는 반대 방향으로 같은 논리입니다: 제외 대상을 번들에 넣으면 **번들 전체가** Codex 에서 빠지므로 `codex-image` 와 `council` 은 단독으로 둡니다.
 - 플러그인을 추가하거나 제거하면 이 문서의 `## Plugins (N)` 수와 목록, `README.md`의 플러그인 수와 목록도 갱신하세요. 이 문서의 미러 카운트(Hermes allowlist `현재 N개`, Codex 검증 주석 `# N entries`)와 `README.md` 의 "CI 가드가 지키는 것" 절에 산문으로 적힌 총계(`총 N / Codex-eligible N / Hermes N`)도 같은 변경에서 함께 갱신하세요 — `--check` 가 못 잡습니다. 마지막 것은 `check-doc-consistency` 가 README 총계를 `(\d+) / (\d+) 플러그인` 형태로만 매칭하는데 그 문장은 숫자 뒤에 `플러그인` 이 없어서입니다. 가드가 자기 자신을 설명하는 문장이 stale 해도 가드는 통과합니다. 반대 방향도 규칙입니다 — 카운트가 자기 SoT 바로 옆에 있고(배열 바로 위 주석처럼) 어떤 가드도 검사하지 않는다면, 위 동기화 목록에 항목을 늘리지 말고 그 재진술 자체를 지우세요. SoT 를 읽으면 나오는 숫자를 손으로 유지하는 비용만 남고, 그 숫자를 검사하는 가드가 있다면 대개 실행할 때마다 라이브 값을 이미 출력합니다.
 - 버전은 semver를 따릅니다. 버그 수정은 PATCH, 하위 호환 기능은 MINOR, 깨지는 변경은 MAJOR입니다. 단 이 semver 규칙이 적용되는 대상은 per-plugin `version` 뿐입니다 — `.claude-plugin/marketplace.json` 의 `metadata.version` 은 semver 가 아니라 릴리스 카운터라, 소비자에게 하위 호환이 깨지는 변경(플러그인 제거 등)이어도 MINOR 로 올립니다. 어느 쪽 규칙이 걸리는지는 변경의 성격이 아니라 **어느 버전 필드를 만지는가**로 갈립니다. 리뷰어가 `metadata.version` 을 "깨지는 변경 → MAJOR" 로 지적하면 오탐이며, 근거는 `.claude/rules/plugin-versioning.md` 의 "Plugin Removal" 절입니다.
 - Claude Code 플러그인 캐시 이슈 때문에 사용자 문서나 릴리스 안내에는 필요 시 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 후 marketplace update 및 Claude Code 재시작 절차를 유지하세요.
@@ -129,7 +121,7 @@
 
 - **위치·회전**: live 파일은 `.claude/state/<pipeline>-<key>.json` (예: `post-merge-114.json`, 기존 `cr-fix-<PR>.json` 명명 미러). 같은 key 로 재실행하면 새로 쓰기 전에 이전 live 파일을 `.claude/state/archive/<pipeline>-<key>-<timestamp>-$$.json` 로 회전한다 (cr-fix Step 2 미러). `.claude/state/` 는 gitignore + 머신 로컬 — run record 는 절대 커밋하지 않고 스킬의 `RUN_TOUCHED` 스테이징 집합에도 넣지 않는다.
 - **스키마**: `{schema:"state-envelope/v0", run_id, status(queued|in_progress|completed), conclusion, started_at, updated_at, anchor_sha, attempt, session_id, steps[]}`. `steps[]` 는 top-level 단계가 닫힐 때마다 `{step, status: done|skipped, reason?}` 한 항목 (`reason` 은 skipped 에만).
-- **spec-state 와 직교(orthogonal)**: run record 는 `.claude/state/spec.json` 이 **아니다**. `spec.json` (owner: `spec-state:state-tracker`) 은 spec→issue→PR 파이프라인의 크로스런 집계이고, run record 는 스킬 단일 실행의 단계 로그다. 서로 다른 파일·다른 소유자이며 서로 읽거나 쓰지 않는다.
+- **spec-state 와 직교(orthogonal)**: run record 는 `.claude/state/spec.json` 이 **아니다**. `spec.json` (owner: `github-dev:state-tracker`) 은 spec→issue→PR 파이프라인의 크로스런 집계이고, run record 는 스킬 단일 실행의 단계 로그다. 서로 다른 파일·다른 소유자이며 서로 읽거나 쓰지 않는다.
 - **v0 채택자**: `github-dev:post-merge` (Step 1-10 per-step 기록) 와 `project-init:new` (Phase 0.5 run record — resume 지원 + fail-loud 쓰기). 다른 스킬 상태 파일의 retrofit 은 후속 변경으로 의도적으로 미룬다.
 
 **실행 jq (Codex/Hermes 자립용 — Claude 도 동일 패턴).** 채택 스킬이 본문에 인라인한다 (공유 라이브러리 없음). Init 은 archive 회전 실패 시 이전 기록을 덮어쓰지 않도록 abort 한다:
@@ -177,7 +169,7 @@ node scripts/sync-codex-manifests.mjs --check   # CI drift guard
 ```
 
 - Claude 와 Codex 0.135 가 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 별도 mirror / body transform 없음 (구 `codex-bridge` 플러그인은 1.40.0 에서 제거). Skill 본문은 in-place 로 읽히므로 transform 이 없고, frontmatter 유효성만 남습니다.
-- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 22개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
+- 생성물은 `.agents/plugins/marketplace.json` + 플러그인별 `.codex-plugin/plugin.json`, eligible 12개 대상. `.agents/` 와 `plugins/<name>/.codex-plugin/` 하위 파일은 손으로 편집하지 마세요 — `scripts/sync-codex-manifests.mjs` 가 진실의 원천입니다.
 - 새 플러그인 추가 / 기존 플러그인의 `version` / `description` / `category` 변경 시 반드시 `node scripts/sync-codex-manifests.mjs` 를 실행해 매니페스트를 재생성하세요. `--check` 는 플러그인 제거 후 남은 orphan 매니페스트도 감지합니다.
 - Skill `description` frontmatter 는 1024자 미만으로 유지하세요. Codex 0.135 는 1024자 초과 description 을 가진 skill 을 **silent 하게 skip** 합니다 (Claude Code 는 제한이 없어 위반이 안 보임). `--check` 가 drift 외에 description 길이도 검증하고, 공유 `.githooks/pre-commit` 이 매 커밋마다 실행합니다 — clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화하세요. 전체 trigger 목록 / per-tool rationale 는 description 이 아니라 skill 본문에 두세요.
 - Skill `description` frontmatter 에 콜론+공백(`: `) 이 들어가면 반드시 따옴표로 감싸세요 (또는 `>-` block scalar). 안 하면 YAML frontmatter 가 nested mapping 으로 파싱돼 `mapping values are not allowed here` 로 실패하고 skill 이 양쪽 런타임에서 silent 하게 로드 안 됩니다. `plugin.json` / `marketplace.json` 은 JSON 이라 무관; lenient 매니페스트 생성기와 `--check` 는 못 잡습니다.
@@ -194,7 +186,7 @@ node scripts/sync-hermes-manifests.mjs --check   # CI drift guard (validate-code
 ```
 
 - Hermes Agent 도 **동일한** `plugins/<name>/` 트리를 직접 읽습니다. 어댑터(`plugin.yaml` + `__init__.py`)는 `scripts/sync-hermes-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성합니다 — `plugins/<name>/plugin.yaml` / `__init__.py` 를 손으로 편집하지 마세요.
-- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 5개: `github-dev`, `interview`, `tcrei-prompt`, `ml-toolkit`, `brightdata-guide`. 커버리지 확장은 allowlist 에 이름 추가.
+- 대상은 생성기의 `HERMES_ELIGIBLE` allowlist (Codex `EXCLUDED` denylist 의 대칭). 현재 4개: `github-dev`, `docs-forge`, `code-scout`, `ml-toolkit`. 커버리지 확장은 allowlist 에 이름 추가.
 - Hermes-eligible 플러그인의 `version` / `description` 을 바꾸면 `node scripts/sync-hermes-manifests.mjs` 를 실행해 어댑터를 재생성하세요. `plugin.yaml` 의 `version` 은 marketplace 파생이므로 `--check` 가 drift + orphan 어댑터를 잡습니다 (수동 동기화 불필요 — 생성으로 해소).
 - `__init__.py` 는 `skills/*/SKILL.md` 를 `<plugin>:<skill>` 으로 등록하는 제네릭 엔트리포인트입니다 (플러그인별 로직 없음, `import yaml`=PyYAML 가정).
 - 공유 skill 본문은 3런타임 포터블이어야 합니다. Claude/Codex 는 도구명이 동일하므로, 본문에 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표(`Bash`→`terminal`, `Read`→`read_file`, `Edit`→`patch`, `AskUserQuestion`→`clarify`, `Task`→`delegate_task`, `Skill`→`skill_view`, 이미지 생성→`image_generate`, `NotebookEdit`→Hermes Jupyter Live Kernel / `write_file`·`patch` 등)를 둡니다. 새 skill 추가/도구 사용 변경 시 이 표를 점검하세요. 신규·편집 skill 은 이 표를 본문마다 다시 타이핑하는 대신 번들 `references/<harness>-tools.md` 로 중앙화하고 본문이 그것을 가리키는 형태를 우선합니다 — 점진 이관이므로 이미 그 본문의 도구 사용을 편집 중일 때만 채택하고, 표를 옮기려고 기존 본문을 새로 쓰지는 않습니다 (surgical-diff).
@@ -223,7 +215,7 @@ macOS CI 레그(`validate-codex.yml` 의 `macos` job)는 BSD 폴백이 실제로
 
 ```bash
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin list --marketplace my-claude-plugins   # 22 entries
+codex plugin list --marketplace my-claude-plugins   # 12 entries
 codex plugin marketplace remove my-claude-plugins   # 검증 후 정리
 ```
 

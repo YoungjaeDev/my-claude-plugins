@@ -35,7 +35,7 @@ For worktree removal, use `/exit` with its cleanup option.
 - **No stamps, current-state only.** Normative docs hold current rules; provenance lives in git/PR/blame. No `(#N)` / `PR #N` / `이슈 #N` citations, no `## Post-Merge` headers. Full rules + the `<!-- history-allowed [max=N] -->` opt-out + language consistency + SSOT cross-file dedup + content-first: see `references/core-principle.md`.
 - **Knowledge routing (no double-recording).** Mechanical / tool-operation rules → `CLAUDE.md` / `AGENTS.md` / `.claude/rules/` / Serena memory (Steps 6-7). Cross-agent *lore* (provider quirks, design rationale, debugging stories) → `.llmwiki/` via the wiki step (Step 8). Each fact is recorded in exactly one home; the wiki step (run *after* config integration) dedups against what Steps 6-7 already absorbed. Cross-agent rules that graduate do so to `.llmwiki/insight/` via the wiki step, never to `.claude/rules/` (Codex can't read it).
 - **Leftover-review surface (Step 1.5) is informational.** The run reads cr-fix's state file (`.claude/state/cr-fix-<PR>.json`, else the latest `.claude/state/archive/` copy) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line (mirroring the Step 8 wiki checkpoint) so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
-- **Codex partial-execution.** Under Codex 0.135 the Serena (Step 7), `rules-forge:split` / `claude-md-management:claude-md-improver` (Step 6.5), and `humanize-korean` / `docs-forge:readme` (Step 9) sub-steps are Claude-only — gracefully skip them and note the skip rather than failing.
+- **Codex partial-execution.** Under Codex 0.135 the Serena (Step 7), `docs-forge:write-rules` / `claude-md-management:claude-md-improver` (Step 6.5), and `humanize-korean` / `docs-forge:readme` (Step 9) sub-steps are Claude-only — gracefully skip them and note the skip rather than failing.
 
 ## Arguments
 
@@ -147,7 +147,7 @@ fi
 - **Leftover present** — after the `leftover-reviews: <N> deferred (final_state=<X>)` line, render the `$DEFERS` items as a table (`Path:Line · Severity · Reason`), and append the open-thread count when `OPEN_THREADS > 0`. Tell the user these were **not** auto-applied — review them on the PR page (`gh pr view <PR_NUMBER> --comments`) or in a follow-up; do not silently drop them.
 - **None** — print `leftover-reviews: none` when no cr-fix state file resolves, or it shows `defer == 0` with a non-trigger `final_state`.
 
-**Codex**: runs identically under Claude and Codex — `gh` / `jq` / `Read` only (no Serena / rules-forge).
+**Codex**: runs identically under Claude and Codex — `gh` / `jq` / `Read` only (no Serena / docs-forge:write-rules).
 
 ### 2. Check local changes
 
@@ -204,7 +204,7 @@ user selects skip-all.
    deletion; `git rm` already staged it).
 
 **Codex**: runs identically under Claude and Codex (gh/git/AskUserQuestion only —
-no Serena/rules-forge).
+no Serena/docs-forge:write-rules).
 
 Full heuristics, confidence tiers, hard exclusions, and the Step 10 staging
 interaction: `references/ephemeral-heuristics.md`.
@@ -260,7 +260,7 @@ For each related issue with a milestone, recompute module progress and regenerat
 ### 5.7. Update `.claude/state/spec.json` (if present)
 
 - If `.claude/state/spec.json` exists, move the `in_progress` entry whose `linked.pr` matches the merged PR (or `linked.issue`) to `completed` with `merge_sha` (first 7 chars) + `completed_at` (today, UTC `YYYY-MM-DD`), and set the spec file's frontmatter `status: merged`.
-- Mechanics are owned by `spec-state:state-tracker` — invoke `/spec-state:state-tracker complete <spec-path>` if installed; otherwise apply the direct JSON edit per `plugins/spec-state/skills/state-tracker/SKILL.md`.
+- Mechanics are owned by `github-dev:state-tracker` — invoke `/github-dev:state-tracker complete <spec-path>` if installed; otherwise apply the direct JSON edit per `plugins/github-dev/skills/state-tracker/SKILL.md`.
 - Skip silently if no matching entry, or if `.claude/state/` does not exist.
 
 **Record.** `record_step 5.7 done`, or `record_step 5.7 skipped "no spec.json entry"` when no matching entry exists or `.claude/state/` is absent.
@@ -271,7 +271,7 @@ Read `gh pr diff <PR_NUMBER>` + the PR body, then weave each learning into the *
 
 **6.1 Cross-file dedup gate (run before writing any learning).** For each fact, first grep the SSOT set (`CLAUDE.md`, `AGENTS.md`, the relevant `.claude/rules/*.md`) for an existing home. If one exists, **update that line in place** — do not add a parallel statement in a second file. A rule that must bind both runtimes lives once in `.claude/rules/<x>.md` (Claude) with a concise mirror block in `AGENTS.md` (Codex), tied by a one-line pointer in `CLAUDE.md` `## Modular Rules` — that pairing is the SSOT pattern, not duplication. When the same fact already appears in two files, collapse to one authoritative home + pointer rather than editing both copies. This is the config-side twin of the Step 8 wiki dedup gate; together they keep each fact in exactly one home.
 
-Full procedure — Pre-Audit (scrub existing stamps first), the classification/placement table, the integration process, modular-rule-file structure, the pre-presentation stamp self-check, History Rotation (6.4), and the Normative Doc Size Audit (6.5, with `rules-forge:split` / `claude-md-improver` routing) — lives in **`references/learning-integration.md`**. Apply its Core Principle (`references/core-principle.md`) to every added/modified line; present a diff-style proposal before applying.
+Full procedure — Pre-Audit (scrub existing stamps first), the classification/placement table, the integration process, modular-rule-file structure, the pre-presentation stamp self-check, History Rotation (6.4), and the Normative Doc Size Audit (6.5, with `docs-forge:write-rules` / `claude-md-improver` routing) — lives in **`references/learning-integration.md`**. Apply its Core Principle (`references/core-principle.md`) to every added/modified line; present a diff-style proposal before applying.
 
 **Record.** `record_step 6 done` — folds in the 6.5 normative-doc size audit.
 
@@ -351,7 +351,7 @@ jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 - **Mandatory wiki ingest** (absorbed post-merge-wiki — candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
 - **Ephemeral artifact pruning** (Step 4.5 — heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
 - Milestone / Type M-2 diagram mechanics: `skills/update-progress/SKILL.md`
-- spec.json schema + ops: `plugins/spec-state/skills/state-tracker/SKILL.md`
+- spec.json schema + ops: `plugins/github-dev/skills/state-tracker/SKILL.md`
 - CHANGELOG patterns (Step 9.5): `docs-forge:changelog-guide` skill + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md`
 
 > Follow ~/.claude/CLAUDE.md and the project CLAUDE.md.

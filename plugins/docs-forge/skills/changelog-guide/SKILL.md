@@ -5,6 +5,13 @@ description: CHANGELOG format and automation reference — writing patterns base
 
 # CHANGELOG Guide
 
+## Hermes Agent Compatibility
+
+`docs-forge` is Hermes-eligible, so this skill loads as `docs-forge:changelog-guide` via the generated
+adapter. Claude/Codex tool names used below map to different Hermes tools — see
+[`../../references/hermes-tools.md`](../../references/hermes-tools.md) before running any step.
+
+
 This skill provides CHANGELOG writing patterns based on Keep a Changelog and Conventional Commits.
 
 ## Triggers

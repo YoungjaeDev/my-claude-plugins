@@ -15,7 +15,7 @@ Multi-axis code & ML research harness. v2.1 grows the v2.0 4-axis team to a 5-ax
 | Already have artifacts, just need merge | `Agent(subagent_type="code-scout:synthesis-scout")` |
 | General non-code/ML topic (politics / market / history / biographies) | `/deep-research` directly — code-scout doesn't delegate, boundary is intentional |
 
-**Runtime note:** the single-axis `Agent(subagent_type="code-scout:*-scout")` rows above are **Claude-only** — Codex 0.135 exposes the skills but cannot register the `agents/*.md` definitions. Under Codex, enter through `Skill("code-scout:research-orchestrator")`; it detects that the named agents are unregisterable and runs the same axes via generic parallel subagents (or sequential in-agent when delegation is unavailable), synthesizing in-skill. (Hermes is forward-compat: `code-scout` is not yet in `HERMES_ELIGIBLE`, so the skill does not load on Hermes today; the same generic-delegation path is ready via `delegate_task` once it is added.) See `skills/research-orchestrator/references/axis-contracts.md` for the shared contract all three execution paths consume.
+**Runtime note:** the single-axis `Agent(subagent_type="code-scout:*-scout")` rows above are **Claude-only** — Codex 0.135 exposes the skills but cannot register the `agents/*.md` definitions. Under Codex, enter through `Skill("code-scout:research-orchestrator")`; it detects that the named agents are unregisterable and runs the same axes via generic parallel subagents (or sequential in-agent when delegation is unavailable), synthesizing in-skill. (Hermes: `code-scout` is in `HERMES_ELIGIBLE`, so the generated adapter registers these skills and the same generic-delegation path runs via `delegate_task`.) See `skills/research-orchestrator/references/axis-contracts.md` for the shared contract all three execution paths consume.
 
 For the full routing matrix (should / should-NOT, near-miss disambiguation vs `paper-search-tools`, `deepwiki:ask`, `github-dev:*`, `/deep-research`), see `skills/research-orchestrator/references/agent-routing.md`.
 
@@ -47,6 +47,7 @@ All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical
 | `research-orchestrator` | Entry point. Mode detection, fan-out routing, synthesis dispatch. |
 | `exa-web-search` | Exa MCP usage guide for `web-scout` (and anyone calling `mcp__exa__web_search_exa`). |
 | `resource-finder` | Shared GitHub / HF search hygiene cheat-sheet for `github-scout` + `hf-scout`. |
+| `brightdata-guide` | Bright Data web-data access (Web Unlocker scraping, SERP, `web_data_*` extractors) via MCP tools + the `bdata` CLI. Backs `web-scout`'s tier-3 fetch fallback. (absorbed from `brightdata-guide`) |
 
 ## Migration
 

@@ -30,7 +30,7 @@ if [ -d .git ] || [ -n "$FIRST_EXISTING" ]; then
   echo "        cwd: $(pwd)"
   echo "        Existing entry detected: ${FIRST_EXISTING:-.git/}"
   echo "        If you really want to add Claude/Codex scaffolding to an existing"
-  echo "        project, use /rules-forge:write-rules or /llm-wiki:bootstrap-wiki"
+  echo "        project, use /docs-forge:write-rules or /llm-wiki:bootstrap-wiki"
   echo "        instead."
   exit 1
 fi
@@ -50,4 +50,4 @@ What the reference covers:
 - Phase 4 — AGENTS.md seed (variant: `general` / `ml` / `web`).
 - Phase 5 — README + CHANGELOG seed.
 - Phase 6 — `git init` + `gh repo create`.
-- Phase 7 — Summary + next actions (`/rules-forge:write-rules`, `/llm-wiki:bootstrap-wiki`, `/github-dev:post-merge`).
+- Phase 7 — Summary + next actions (`/docs-forge:write-rules`, `/llm-wiki:bootstrap-wiki`, `/github-dev:post-merge`).

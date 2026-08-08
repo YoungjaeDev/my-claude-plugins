@@ -10,6 +10,20 @@ description: |
 
 # Resource Finder
 
+## Hermes Agent Compatibility
+
+When this skill is loaded through Hermes as `code-scout:resource-finder`, map Claude/Codex tool names to
+Hermes tools:
+
+| Claude/Codex term | Hermes tool |
+|---|---|
+| `Bash` | `terminal` |
+| `Write` | `write_file` |
+
+Plugin skills are explicit opt-in loads in Hermes — call `skill_view("code-scout:resource-finder")` after
+`--enable` in a fresh session; the description never surfaces this body on its own.
+
+
 Shared hygiene reference for `github-scout` and `hf-scout`. Tool-specific call patterns and reliability rubrics live in each scout's agent file — this skill is the cross-axis cheat-sheet.
 
 ## Tool priority

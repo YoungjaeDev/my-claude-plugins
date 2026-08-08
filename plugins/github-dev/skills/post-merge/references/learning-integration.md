@@ -109,16 +109,16 @@ After Step 6 integration, measure normative docs and offer split/improve when ov
 2. Measure char count per file with `wc -m` (chars, not bytes — Korean/multibyte safe).
 3. If no file exceeds 32000 chars: emit `All normative docs within 32k; size audit clean.` and proceed.
 4. If at least one file exceeds 32000 chars, show a per-file size table marking offenders, then `AskUserQuestion` (header `Size audit`):
-   - **Split with rules-forge:split** (Recommended) — `/rules-forge:split --threshold 20` per oversized file. Best when the file is bulky.
+   - **Split with docs-forge:write-rules** (Recommended) — `/docs-forge:write-rules` in split mode per oversized file. Best when the file is bulky.
    - **Improve with claude-md-improver** — the `claude-md-management:claude-md-improver` skill (dedup, stale content, rubric scoring). Best when already modular but verbose.
    - **Both: split first, then improve** — split, re-measure, run improver on the trimmed root if still > 32000.
-   - **Defer** — print `Run /rules-forge:split or /claude-md-management:claude-md-improver later on: <files>` and continue.
+   - **Defer** — print `Run /docs-forge:write-rules or /claude-md-management:claude-md-improver later on: <files>` and continue.
    - **Skip** — continue silently.
 5. Each path runs inline; the invoked skill prompts before applying. If the user declines mid-skill, return control to Step 7 (do not block the rest of post-merge).
 
-**Why split-first is recommended**: at 32k+ chars the dominant problem is bulk, not phrasing. `rules-forge:split` is the dedicated extraction engine (auto-classifies sections, generates `@import`, supports `--dry-run`); `claude-md-improver` is rubric-based quality audit with no size-reduction logic.
+**Why split-first is recommended**: at 32k+ chars the dominant problem is bulk, not phrasing. `docs-forge:write-rules` is the dedicated extraction engine (auto-classifies sections, generates `@import`, supports `--dry-run`); `claude-md-improver` is rubric-based quality audit with no size-reduction logic.
 
-> **Codex note**: `rules-forge:split` and `claude-md-improver` are Claude-only. Under Codex, report the oversized files and defer rather than invoking the skills.
+> **Codex note**: `docs-forge:write-rules` and `claude-md-improver` are Claude-only. Under Codex, report the oversized files and defer rather than invoking the skills.
 
 ## Step 7: Update Serena memory (Claude-only — Codex skips)
 

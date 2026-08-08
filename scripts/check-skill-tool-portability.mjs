@@ -34,11 +34,11 @@ const CODEX_TOOL = 'request_user_input';
 
 // Migrated skills — must carry the standardized mapping.
 const PILOTS = [
-  'plugins/interview/skills/interview-methodology/SKILL.md',
+  'plugins/docs-forge/skills/interview-methodology/SKILL.md',
   'plugins/github-dev/skills/decompose-issue/SKILL.md',
   'plugins/council/skills/convene/SKILL.md',
-  'plugins/voice-prompt/skills/voice-prompt/SKILL.md',
-  'plugins/plaud-note-taking/skills/plaud-note-taking/SKILL.md',
+  'plugins/docs-forge/skills/voice-prompt/SKILL.md',
+  'plugins/llm-wiki/skills/plaud-note-taking/SKILL.md',
 ];
 
 // Reviewed baseline debt — skills that still hardcode AskUserQuestion, migration deferred.
@@ -49,15 +49,15 @@ const BASELINE = [
   'plugins/github-dev/skills/cr-fix/SKILL.md',
   'plugins/github-dev/skills/post-merge/SKILL.md',
   'plugins/github-dev/skills/resolve-issue/SKILL.md',
-  'plugins/gws-sync/skills/gws-sync/SKILL.md',
+  'plugins/publish/skills/gws-sync/SKILL.md',
   'plugins/llm-wiki/skills/bootstrap-wiki/SKILL.md',
   'plugins/llm-wiki/skills/migrate-wiki/SKILL.md',
   'plugins/mem0-ops/skills/cleanup/SKILL.md',
   'plugins/project-init/skills/wiring/SKILL.md',
-  'plugins/rules-forge/skills/write-rules/SKILL.md',
-  'plugins/spec-state/skills/state-tracker/SKILL.md',
-  'plugins/tcrei-prompt/skills/tcrei-prompt/SKILL.md',
-  'plugins/translator/skills/translate-web-article/SKILL.md',
+  'plugins/docs-forge/skills/write-rules/SKILL.md',
+  'plugins/github-dev/skills/state-tracker/SKILL.md',
+  'plugins/docs-forge/skills/tcrei-prompt/SKILL.md',
+  'plugins/publish/skills/translate-web-article/SKILL.md',
 ];
 
 function walkSkillFiles(dir) {

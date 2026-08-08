@@ -53,18 +53,6 @@
       "category": "research"
     },
     {
-      "name": "brightdata-guide",
-      "source": {
-        "source": "local",
-        "path": "./plugins/brightdata-guide"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "research"
-    },
-    {
       "name": "deepwiki",
       "source": {
         "source": "local",
@@ -77,18 +65,6 @@
       "category": "documentation"
     },
     {
-      "name": "notebook",
-      "source": {
-        "source": "local",
-        "path": "./plugins/notebook"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "development"
-    },
-    {
       "name": "ml-toolkit",
       "source": {
         "source": "local",
@@ -99,30 +75,6 @@
         "authentication": "ON_INSTALL"
       },
       "category": "development"
-    },
-    {
-      "name": "translator",
-      "source": {
-        "source": "local",
-        "path": "./plugins/translator"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "content"
-    },
-    {
-      "name": "interview",
-      "source": {
-        "source": "local",
-        "path": "./plugins/interview"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "planning"
     },
     {
       "name": "paper-search-tools",
@@ -149,30 +101,6 @@
       "category": "documentation"
     },
     {
-      "name": "rules-forge",
-      "source": {
-        "source": "local",
-        "path": "./plugins/rules-forge"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "documentation"
-    },
-    {
-      "name": "tcrei-prompt",
-      "source": {
-        "source": "local",
-        "path": "./plugins/tcrei-prompt"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "content"
-    },
-    {
       "name": "llm-wiki",
       "source": {
         "source": "local",
@@ -183,18 +111,6 @@
         "authentication": "ON_INSTALL"
       },
       "category": "memory"
-    },
-    {
-      "name": "spec-state",
-      "source": {
-        "source": "local",
-        "path": "./plugins/spec-state"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "workflow"
     },
     {
       "name": "project-init",
@@ -209,28 +125,16 @@
       "category": "planning"
     },
     {
-      "name": "tally-form",
+      "name": "publish",
       "source": {
         "source": "local",
-        "path": "./plugins/tally-form"
+        "path": "./plugins/publish"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "content"
-    },
-    {
-      "name": "gws-sync",
-      "source": {
-        "source": "local",
-        "path": "./plugins/gws-sync"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "productivity"
     },
     {
       "name": "mem0-ops",
@@ -243,30 +147,6 @@
         "authentication": "ON_INSTALL"
       },
       "category": "productivity"
-    },
-    {
-      "name": "plaud-note-taking",
-      "source": {
-        "source": "local",
-        "path": "./plugins/plaud-note-taking"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "productivity"
-    },
-    {
-      "name": "voice-prompt",
-      "source": {
-        "source": "local",
-        "path": "./plugins/voice-prompt"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "content"
     }
   ]
 }

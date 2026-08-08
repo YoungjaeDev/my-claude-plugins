@@ -1,7 +1,7 @@
 ---
 id: hermes-plugin-adapter
 aliases: [hermes-adapter, plugin-yaml, hermes-native-plugin, skill-view-optin, hermes-third-runtime, hermes-plugins-update, qualified-name-is-adapter-scoped]
-last_verified: 2026-07-30
+last_verified: 2026-08-08
 status: active
 volatility: stable
 sources: 6
@@ -155,6 +155,8 @@ branch. Fallback chains should cover both layouts until one is verified live.
 gpu-parallel-pipeline; Codex review caught that the var is undocumented and unset
 on a Hermes install → empty path, so it was reverted to this proven 3-branch
 fallback. Do not reintroduce `HERMES_SKILL_DIR`.)
+
+> See-also: [[absorption-rehomes-the-body]]
 
 ## Sources
 

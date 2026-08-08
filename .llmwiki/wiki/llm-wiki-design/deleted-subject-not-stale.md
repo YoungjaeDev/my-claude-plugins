@@ -1,10 +1,10 @@
 ---
 id: deleted-subject-not-stale
 aliases: [subject-deleted-lore, removed-plugin-lore, lore-outlives-its-subject, dangling-evidence-path]
-last_verified: 2026-07-30
+last_verified: 2026-08-08
 status: active
 volatility: stable
-sources: 2
+sources: 3
 ---
 
 # A page whose subject was deleted is not a stale page
@@ -43,6 +43,20 @@ The removal itself is well guarded — manifest drift, doc counts, orphan adapte
 
 Practical consequence: a plugin-removal change should grep the wiki root for the removed name as an explicit step, and triage the hits with the table above — the same way it greps scripts and settings.
 
+## Triage the hits; never sweep them
+
+That grep has an inverse failure, and it is the one that actually happened next. Run as a repo-wide find-and-replace — the same sweep that correctly repoints live `plugin:skill` references — it rewrites the wiki's historical evidence into self-contradiction.
+
+A page recording "a review caught a **non-eligible** plugin's body advertising `skill_view("voice-prompt:voice-prompt")`" came out of the sweep saying `skill_view("docs-forge:voice-prompt")`. The new identifier is one the adapter now correctly mints, so the sentence contradicts the finding it exists to support, and the evidence for a settled rule reads as a mistake.
+
+The asymmetry is the whole point. A live reference must be updated or it routes users at something gone; a historical one must be preserved or the record stops being a record. The table above already sorts these — the sweep is what skips the sorting.
+
+Two habits keep them apart:
+
+- **Exclude the record from mechanical rewrites.** `.llmwiki/wiki/`, `.llmwiki/raw/`, past specs, and test fixtures hold statements about the past. A sweep that reaches them is editing history, not references. (Excluding `docs/superpowers/` and `raw/audits/` while forgetting `.llmwiki/wiki/` is how this one landed.)
+- **Append the move, don't rewrite the claim.** When a historical page's subject has since moved, keep the original identifier and add a dated follow-on sentence naming the new location. Both facts survive; neither is asserted in the other's tense.
+
+> See-also: [[absorption-rehomes-the-body]]
 > See-also: [[insight-layer-via-hook]]
 > See-also: [[skill-engine-layering]]
 > Evidence: .llmwiki/wiki/plugin-ops/skill-engine-layering.md
@@ -52,3 +66,4 @@ Practical consequence: a plugin-removal change should grep the wiki root for the
 
 1. **PR #191 (merged `4f95949`)** — removal of `anti-slop-design` + `ppt-yeong-style`. Two active `plugin-ops/` pages kept present-tense assertions that the removed plugins were current: `skill-engine-layering.md` opened with "`ppt-yeong-style` **is** such a layer" and listed `anti-slop-design` in a live optional-dependency roster; `shared-source-codex-manifests.md` carried a `> Evidence:` at a path inside the deleted tree. Every manifest, count, and eligibility guard in the repo passed on that PR.
 2. **Codex review on PR #191 (P2)** — flagged the surviving lore as "false operational guidance and dangling evidence paths" and proposed archiving the pages. The claim was correct; the proposed remedy was rejected against this repo's wiki lifecycle (`status: stale` requires a `> Superseded-by:` pair, and nothing supersedes the lesson), which is what produced the tense-not-lifecycle rule above.
+3. **PR #200 (merged `c56bd25`)** — the inverse failure. A repo-wide rename sweep for the absorption reached `.llmwiki/wiki/`, rewriting the PR #193 evidence on `plugin-ops/hermes-plugin-adapter.md` and the PR #154/#156/#158 note on `plugin-ops/skill-authoring-source-grounded-then-audit.md` into claims that contradicted their own surrounding sentences. `docs/superpowers/` and `.llmwiki/raw/audits/` had been excluded from the sweep for exactly this reason; `.llmwiki/wiki/` was missed. Caught by Codex review (P2), restored to the original wording with the move recorded as a dated follow-on sentence.

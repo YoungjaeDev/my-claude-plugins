@@ -388,9 +388,7 @@ contributes is a decision rather than a transform:
 ### Shape
 
 ```text
-plugins/voice-prompt/
-├── CLAUDE.md
-├── .claude-plugin/plugin.json
+plugins/docs-forge/
 └── skills/voice-prompt/
     ├── SKILL.md                             # the body
     ├── references/stt-error-classes.md      # error taxonomy, live-command stance

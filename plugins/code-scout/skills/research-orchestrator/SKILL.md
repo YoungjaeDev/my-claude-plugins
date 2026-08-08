@@ -225,6 +225,12 @@ This skill dispatches through whatever delegation and file tools the host runtim
 | `Read` | `read_file` | reading axis artifacts during in-skill synthesis (5B) |
 | `Write` | `write_file` | writing axis artifacts / `$REPORT` |
 | `AskUserQuestion` | `clarify` | confirming a `BLOCKED`-state retry |
+| `WebSearch` | `web_search` | web axis keyword coverage (deep mode parallel search, quick mode exa fallback) |
+| `mcp__exa__web_search_exa` | `web_search` | web axis tier-1 semantic search — Hermes has no exa MCP, so tier-1 and the `WebSearch` fallback collapse into one call |
+| `mcp__exa__web_fetch_exa` | `web_extract` | web axis tier-1 fetch |
+| `mcp__brightdata__scrape_as_markdown` | `browser_*` | tier-2 fetch for JS-heavy / anti-bot pages, when no Bright Data MCP is attached |
+
+**Web axis under Hermes.** `axis-contracts.md` names Claude/Codex web tools directly, so a Hermes subagent needs this table to run the axis at all. Two consequences worth stating rather than discovering: exa's semantic and keyword tiers are the same call here, so deep mode loses the dual-coverage split and records `exa: unavailable` in `errors` instead of pretending both ran; and tier-4 `insane-search` stays a `skill_view` invocation, unchanged. An axis that cannot reach any web tool writes `findings:[] + error` like any other failure — it never silently emits an empty artifact.
 
 ## Examples
 

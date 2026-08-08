@@ -78,9 +78,7 @@ Authentication (`gws auth login`) is a prerequisite.
 ### Structure
 
 ```text
-gws-sync/
-├── .claude-plugin/plugin.json
-├── CLAUDE.md                    # this file
+plugins/publish/
 └── skills/gws-sync/
     ├── SKILL.md                 # 0. prerequisite check → 1. mapping config → 2. location approval → 3. diff → approval → upload
     └── references/gws-skills-llms.txt

@@ -2,10 +2,10 @@
 
 ## 골 검토 요약 (Step 8 자동 생성)
 
-- 이슈: #199 (이 골) / 선행 조건 #198 (플러그인 정리, 수동)
+- 이슈: #199 (이 골) / 선행 조건 #198 (플러그인 흡수, 수동), PR #200 `c56bd25` 로 해소됨
 - 목표: 자립 스킬 `skill-forge` 를 `docs-forge` 안에 만들고 3런타임 silent failure 5종을 차단하는 가드를 붙인다
 - 마일스톤: 선행 확인 / skill-forge / 자기검수 / 가드
-- 필수 검증: `sync-codex-manifests --check`, `sync-hermes-manifests --check`, `check-skill-tool-portability --check`, `check-doc-consistency`, `check-skill-contract`, `measure-skills`
+- 필수 검증: `sync-codex-manifests --check`, `sync-hermes-manifests --check`, `check-skill-tool-portability --check`, `check-doc-consistency`, `check-shell-portability`, `check-skill-contract`, `measure-skills`
 - scope 잠금: 플러그인 흡수·rename 실행 금지(#198), `docs/audit/` 기존 파일 수정 금지, 전수 검토 착수 금지, 외부 마켓플레이스 스킬 참조 금지
 
 ---
@@ -45,7 +45,7 @@ PLAN.md의 마일스톤 1(선행 확인)부터 시작
 
 - `skill-forge` 를 다른 저장소에도 설치 가능한 범용 스킬로 낼지, 이 저장소 전용으로 둘지 미정. `runtime-contract.md` 가 이 저장소 계약을 담고 있어 범용화하려면 분기 처리가 필요하다. 마일스톤 2 착수 시 결정.
 - `skill-fleet-review` 의 팬아웃 축 7개를 한 번에 다 구현할지, 축 정의만 두고 실행은 후속 이슈로 미룰지 미정.
-- 마일스톤 3 은 #198(흡수)의 완료를 전제한다. #198 이 안 끝났으면 마일스톤 3 에서 정지하고 사람의 결정을 기다린다.
+- 마일스톤 3 의 "소멸 플러그인 참조 0건"은 live 참조에만 걸린다. `.llmwiki/`, `tests/fixtures/`, 제거 안내 문구는 과거를 서술하므로 0건 대상이 아니다. 이걸 지워 0건을 만드는 것이 이 골의 가장 그럴듯한 오작동이다.
 
 ## 인수인계 메모
 

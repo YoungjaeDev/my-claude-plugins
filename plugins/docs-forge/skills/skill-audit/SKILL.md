@@ -35,7 +35,13 @@ repository (`docs-forge:skill-fleet-review`).
 
 ### 1. Measure
 
-Resolve the plugin root, then measure the tree containing the target:
+Resolve the plugin root, then measure **the tree that contains the target**. Pass that tree
+explicitly: with no argument the script defaults to `plugins/` when it exists, so auditing a
+skill under `.claude/skills/` in a repository that also has `plugins/` silently measures a
+different tree and the target never appears in the output.
+
+Set `TARGET_ROOT` to the directory holding the target and its siblings — `plugins/<plugin>/skills`,
+`.claude/skills`, or whatever contains it. Siblings matter: the pointer axis is judged against them.
 
 ```bash
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
@@ -52,11 +58,13 @@ for h in "${HERMES_HOME:-$HOME/.hermes}/plugins/docs-forge" .hermes/plugins/docs
   [ -d "$h/skills" ] && PLUGIN_ROOT="$h"
 done
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs-forge plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
-node "$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs"
+TARGET_ROOT="${TARGET_ROOT:?set TARGET_ROOT to the directory containing the target skill}"
+node "$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs" "$TARGET_ROOT"; rc=$?
+[ "$rc" -eq 0 ] || { echo "measure-skills exited $rc — part of $TARGET_ROOT was unreadable, so this audit's scope is incomplete" >&2; exit 1; }
 ```
 
-Keep the target's row and the rows of its sibling skills in the same plugin — siblings are what the
-pointer axis is judged against.
+Confirm the target appears in the output before going further. A missing row means `TARGET_ROOT`
+is wrong, not that the skill is fine.
 
 ### 2. Read the target
 

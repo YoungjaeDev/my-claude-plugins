@@ -1,5 +1,5 @@
 name: docs-forge
-version: "0.5.5"
+version: "0.5.6"
 description: "README/CHANGELOG generation with CRO best practices, plus deployment-doc templates and MOC index generation Also absorbs agent-facing authoring: write-rules (CLAUDE.md + .claude/rules generation), interview-methodology (requirements interview / grill-me stress test), tcrei-prompt (TCREI prompt rewriting), voice-prompt (Korean voice-mode STT input normalization), and the skill-forge family (skill-forge authoring, skill-audit single-skill diagnosis, skill-fleet-review repository-wide sweep)."
 author: "YoungjaeDev"
 kind: standalone

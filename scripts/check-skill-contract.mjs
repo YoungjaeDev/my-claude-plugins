@@ -37,6 +37,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DESCRIPTION_MAX = 1024; // Codex 0.135 silent-skip threshold
 const NAME_MAX = 64;
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+// YAML 1.1 plain scalars that decode to something other than a string.
+const YAML_NON_STRING = /^(y|n|yes|no|true|false|on|off|null|~|[-+]?(\d+|\d*\.\d+))$/i;
 
 // --- frontmatter parsing (line-based; a YAML dependency is not worth it for six checks)
 
@@ -171,6 +173,12 @@ export function checkSkillContent(rel, content) {
   } else {
     if (name.value.length > NAME_MAX) add(name.line, `\`name\` is ${name.value.length} chars (max ${NAME_MAX})`);
     if (!KEBAB.test(name.value)) add(name.line, `\`name\` "${name.value}" is not lowercase-kebab`);
+    // A plain scalar that YAML reads as a boolean, null, or number is not a string, and
+    // the runtime validators require one. `name: on` passes the kebab and directory
+    // checks here as the text "on" while decoding to `true` — CI green, skill unloadable.
+    if (name.style === 'plain' && YAML_NON_STRING.test(name.value)) {
+      add(name.line, `\`name\` "${name.value}" decodes as a YAML ${/^[-+]?(\d+|\d*\.\d+)$/.test(name.value) ? 'number' : 'boolean/null'}, not a string — quote it`);
+    }
     // 6. name must equal the directory. Claude Code and Codex take the command's last
     // segment from the frontmatter name while the generated Hermes adapter registers by
     // directory name, so a mismatch splits one skill into two identities across runtimes.
@@ -303,6 +311,18 @@ const RED = [
     check: '4 non-kebab name',
     expect: /not lowercase-kebab/,
     content: '---\nname: Bad_Name\ndescription: A skill.\n---\n\nbody\n',
+  },
+  {
+    check: '4b plain `name` that YAML decodes as a boolean',
+    expect: /decodes as a YAML boolean\/null/,
+    rel: 'plugins/demo/skills/on/SKILL.md',
+    content: '---\nname: on\ndescription: A skill.\n---\n\nbody\n',
+  },
+  {
+    check: '4c plain `name` that YAML decodes as a number',
+    expect: /decodes as a YAML number/,
+    rel: 'plugins/demo/skills/123/SKILL.md',
+    content: '---\nname: 123\ndescription: A skill.\n---\n\nbody\n',
   },
   {
     check: '5 frontmatter not at byte 0',

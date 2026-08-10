@@ -113,8 +113,8 @@ plugins/docs-forge/skills/
 ### M3 — 가드
 
 - [ ] `scripts/check-skill-contract.mjs` 생성 — Node 18+ built-in 만
-- [ ] C3 의 5종 검사 구현, 위반 시 exit 1 + 위반 파일·사유 출력
-- [ ] fixture 기반 자체 테스트 — 5종 각각 RED(위반 감지) / GREEN(정상 통과)
+- [ ] C3 의 6종 검사 구현, 위반 시 exit 1 + 위반 파일·사유 출력
+- [ ] fixture 기반 자체 테스트 — 6종 각각 RED(위반 감지) / GREEN(정상 통과). `name`↔디렉터리 불일치와 여러 줄 scalar 길이 fixture 포함
 - [ ] `.githooks/pre-commit` 에 배선
 - [ ] `.github/workflows/validate-codex.yml` 에 배선
 - [ ] 현재 저장소 전 스킬에 대해 실행, 통과하거나 위반 목록을 보고

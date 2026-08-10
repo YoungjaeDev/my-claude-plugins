@@ -78,7 +78,7 @@ function readField(fm, key) {
   if (i === -1) return null;
   const head = fm.lines[i].replace(new RegExp(`^${key}\\s*:\\s*`), '');
   const line = i + fm.offset;
-  if (/^[>|][-+]?\d*\s*$/.test(head)) {
+  if (/^[>|](\d+[-+]?|[-+]\d*)?\s*(#.*)?$/.test(head)) {
     return { raw: head, value: continuationLines(fm.lines, i).join(' ').trim(), style: 'block', line };
   }
   const raw = [head.trim(), ...continuationLines(fm.lines, i)].join(' ').trim();
@@ -215,6 +215,16 @@ const RED = [
     check: '1b multi-line plain scalar counts every line',
     expect: /max 1024/,
     content: `---\nname: folded-desc\ndescription: short\n  ${'y'.repeat(1100)}\n---\n\nbody\n`,
+  },
+  {
+    check: '1c indicator order `|2-` is a block scalar header',
+    expect: /max 1024/,
+    content: `---\nname: block-order\ndescription: |2-\n  ${'z'.repeat(1100)}\n---\n\nbody\n`,
+  },
+  {
+    check: '1d 1025 chars is over, 1024 is not (boundary)',
+    expect: /is 1025 chars/,
+    content: `---\nname: boundary\ndescription: ${'z'.repeat(1025)}\n---\n\nbody\n`,
   },
   {
     check: '2 unquoted colon-space in description',

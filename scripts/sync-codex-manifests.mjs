@@ -233,7 +233,10 @@ function extractFrontmatterDescription(md) {
     if (!m) continue;
     const keyIndent = m[1].length;
     const rest = m[2];
-    const block = rest.match(/^([|>])[+-]?\d*\s*$/);
+    // YAML allows the chomping and indentation indicators in either order (`|2-` and
+    // `|-2`) and a trailing comment on the header line. Matching only one order made a
+    // valid block scalar read as a plain one, which mis-measures the 1024-char limit.
+    const block = rest.match(/^([|>])(\d+[-+]?|[-+]\d*)?\s*(#.*)?$/);
     if (block) {
       const literal = block[1] === '|';
       const collected = [];

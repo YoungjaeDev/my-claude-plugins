@@ -1,5 +1,5 @@
 ---
-name: paper-search-usage
+name: paper-search
 description: Use when user wants to search academic papers, find research articles, literature review, download PDFs, or extract paper content across arXiv, PubMed, bioRxiv, medRxiv, Google Scholar, IACR, Semantic Scholar, and CrossRef.
 ---
 

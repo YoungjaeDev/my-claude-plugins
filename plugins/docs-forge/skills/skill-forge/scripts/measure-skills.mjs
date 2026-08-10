@@ -74,7 +74,8 @@ export function frontmatterDescription(frontmatter) {
     continuation.push(line.trim());
   }
   const head = lines[i].replace(/^description\s*:\s*/, '');
-  if (/^[>|][-+]?\d*\s*$/.test(head)) return continuation.join(' ').trim();
+  // Both indicator orders (`|2-`, `|-2`) plus a trailing comment on the header.
+  if (/^[>|](\d+[-+]?|[-+]\d*)?\s*(#.*)?$/.test(head)) return continuation.join(' ').trim();
   let value = [head.trim(), ...continuation].join(' ').trim();
   if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))) {
     value = value.slice(1, -1);
@@ -231,7 +232,17 @@ function selftest() {
   const folded = measureContent('---\nname: a\ndescription: one\n  two\n---\nbody\n');
   assert(folded.descriptionChars === 7, `multi-line plain scalar folds to "one two", got ${folded.descriptionChars}`);
 
-  if (!process.exitCode) console.log('measure-skills selftest OK (7 cases)');
+  for (const header of ['|2-', '>2-', '|-2', '>- # trailing comment']) {
+    const h = measureContent(`---\nname: a\ndescription: ${header}\n  abcd\n---\nbody\n`);
+    assert(h.descriptionChars === 4, `block header "${header}" folds to the body, got ${h.descriptionChars}`);
+  }
+
+  const at = measureContent(`---\nname: a\ndescription: ${'z'.repeat(1024)}\n---\nbody\n`);
+  assert(at.descriptionChars === 1024, `1024-char boundary, got ${at.descriptionChars}`);
+  const over = measureContent(`---\nname: a\ndescription: ${'z'.repeat(1025)}\n---\nbody\n`);
+  assert(over.descriptionChars === 1025, `1025-char boundary, got ${over.descriptionChars}`);
+
+  if (!process.exitCode) console.log('measure-skills selftest OK (13 cases)');
 }
 
 // ---------------------------------------------------------------- main

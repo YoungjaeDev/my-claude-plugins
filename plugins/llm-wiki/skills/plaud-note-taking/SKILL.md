@@ -36,8 +36,10 @@ the corrected file instead of continuing past it.
 | Skill | skill_view |
 
 Plugin skills are explicit opt-in loads in Hermes — the description never surfaces this body on
-its own. Load it by name with `skill_view("plaud-note-taking")`; `plaud-note-taking` is outside
-`HERMES_ELIGIBLE`, so no generated adapter exists for the qualified `<plugin>:<skill>` form.
+its own. Load it by name with `skill_view("plaud-note-taking")`; `llm-wiki` — the plugin that owns
+this skill — is outside `HERMES_ELIGIBLE`, so no generated adapter exists and the qualified
+`<plugin>:<skill>` form is unavailable. If `llm-wiki` is ever added to that allowlist, the correct
+load becomes `skill_view("llm-wiki:plaud-note-taking")`.
 
 ## When to use
 

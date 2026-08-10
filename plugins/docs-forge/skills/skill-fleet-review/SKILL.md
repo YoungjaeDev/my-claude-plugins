@@ -78,8 +78,11 @@ node "$MEASURE" $SWEEP_ROOTS; rc=$?
 # enough — two sweeps started in the same second, or in parallel, both pass the test and
 # the second `>` wins. Reserve the CSV atomically instead: under `noclobber` the shell
 # opens with O_EXCL, so exactly one racing run gets each candidate.
+# Both artifacts share one base, so the base is what gets reserved — not just the CSV.
+# Checking only `.csv` re-picked a base whose `.md` still existed (the failure cleanup
+# below removes the CSV but never the report), and Step 6 then overwrote that report.
 base="docs/audit/$(date +%Y-%m-%d)-fleet"; OUT="$base"; n=0
-until (set -o noclobber; : > "$OUT.csv") 2>/dev/null; do
+until [ ! -e "$OUT.md" ] && (set -o noclobber; : > "$OUT.csv") 2>/dev/null; do
   n=$((n + 1)); OUT="$base-$n"
   [ "$n" -gt 50 ] && { echo "measure: cannot reserve an audit path under $base" >&2; exit 1; }
 done

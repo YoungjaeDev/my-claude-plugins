@@ -159,7 +159,13 @@ function decodeBlockScalar(header, rawLines) {
  * skill — the exact silent failure this guard exists to stop.
  */
 function readField(fm, key) {
-  const i = fm.lines.findIndex((l) => new RegExp(`^${key}\\s*:`).test(l));
+  const re = new RegExp(`^${key}\\s*:`);
+  const hits = fm.lines.reduce((acc, l, idx) => (re.test(l) ? [...acc, idx] : acc), []);
+  // A duplicated key is not a style question: YAML either rejects the document or keeps
+  // the last value, and reading only the first let `description: short` shadow a 1,100
+  // character second declaration straight past the length check.
+  if (hits.length > 1) return { duplicate: hits.length, line: hits[0] + fm.offset };
+  const i = hits.length ? hits[0] : -1;
   if (i === -1) return null;
   const head = fm.lines[i].replace(new RegExp(`^${key}\\s*:\\s*`), '');
   const line = i + fm.offset;
@@ -213,7 +219,9 @@ export function checkSkillContent(rel, content) {
 
   // 4. name.
   const name = readField(fm, 'name');
-  if (!name || name.value === '') {
+  if (name?.duplicate) {
+    add(name.line, `\`name\` is declared ${name.duplicate} times — YAML rejects the document or keeps the last value; leave exactly one`);
+  } else if (!name || name.value === '') {
     add(fm.offset, 'frontmatter has no non-empty `name`');
   } else {
     if (name.value.length > NAME_MAX) add(name.line, `\`name\` is ${name.value.length} chars (max ${NAME_MAX})`);
@@ -236,7 +244,9 @@ export function checkSkillContent(rel, content) {
 
   // 1 + 2. description.
   const desc = readField(fm, 'description');
-  if (!desc || desc.value === '') {
+  if (desc?.duplicate) {
+    add(desc.line, `\`description\` is declared ${desc.duplicate} times — YAML rejects the document or keeps the last value; leave exactly one`);
+  } else if (!desc || desc.value === '') {
     add(fm.offset, 'frontmatter has no non-empty `description` — the skill has no trigger mechanism');
   } else if (desc.nested || (desc.style === 'plain' && (yamlPlainType(desc.value) !== 'string' || /^[[{]/.test(desc.value)))) {
     // Same trap as `name`: this line parser sees text where YAML sees a boolean, a
@@ -379,6 +389,16 @@ const RED = [
     check: '2h an escaped quote does not end the string early',
     expect: /max 1024/,
     content: `---\nname: esc-desc\ndescription: "prefix \\" # ${'z'.repeat(1100)}"\n---\n\nbody\n`,
+  },
+  {
+    check: '2i a duplicated description key is refused',
+    expect: /`description` is declared 2 times/,
+    content: `---\nname: dup-desc\ndescription: short\ndescription: ${'z'.repeat(1100)}\n---\n\nbody\n`,
+  },
+  {
+    check: '4d a duplicated name key is refused',
+    expect: /`name` is declared 2 times/,
+    content: '---\nname: one\nname: two\ndescription: A skill.\n---\n\nbody\n',
   },
   {
     check: '3 bare CLAUDE_PLUGIN_ROOT in a code block',

@@ -220,6 +220,10 @@ function measureSkillFile(abs, root) {
 
 export function measureTree(roots, cwd) {
   const rows = [];
+  // One `seen` set across every root. A per-root set let overlapping inputs — say
+  // `plugins/x/skills` together with `plugins/x/skills/y` — count the same SKILL.md
+  // twice, skewing the key inventory, the top-decile cohort, and the CSV row count.
+  const seen = new Set();
   for (const root of roots) {
     const abs = resolve(cwd, root);
     if (!existsSync(abs)) {
@@ -230,7 +234,7 @@ export function measureTree(roots, cwd) {
       continue;
     }
     const base = statSync(abs).isDirectory() ? abs : cwd;
-    for (const file of walk(abs, (n) => n === 'SKILL.md')) rows.push(measureSkillFile(file, base));
+    for (const file of walk(abs, (n) => n === 'SKILL.md', seen)) rows.push(measureSkillFile(file, base));
   }
   return rows.sort((a, b) => a.path.localeCompare(b.path));
 }

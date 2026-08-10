@@ -10,7 +10,7 @@ in `docs-forge`. Measurements from `plugins/docs-forge/skills/skill-forge/script
 
 ## At a glance
 
-- **Live references to a defunct plugin: 0.** One grep hit, judged historical, evidence below.
+- **Live references to a defunct plugin: 0.** Three grep hits, each judged historical, evidence below.
 - **1 P1 finding in skill bodies** — `llm-wiki/plaud-note-taking` states its Hermes eligibility in
   terms of a plugin that no longer exists.
 - **1 P1 finding outside skill bodies** — `README.md`'s plugin catalog still carries a `<details>`
@@ -26,32 +26,39 @@ in `docs-forge`. Measurements from `plugins/docs-forge/skills/skill-forge/script
 The scan covers the 14 plugin names that no longer exist: `slidev`, `ppt-yeong-style`,
 `anti-slop-design` (deleted in PR #164 / #191) plus the 11 absorbed in PR #200.
 
+The exclusions are the **historical archives**, not `docs/` wholesale. `docs/prd/` is active
+and is scanned — excluding all of `docs/` would hide a future live reference that lands in a
+working document.
+
 ```bash
 GONE='slidev|ppt-yeong-style|anti-slop-design|brightdata-guide|gws-sync|interview|notebook|plaud-note-taking|rules-forge|spec-state|tally-form|tcrei-prompt|translator|voice-prompt'
 rg --hidden -n "\b($GONE):[a-z0-9-]+" \
-  --glob '!.git/**' --glob '!docs/**' --glob '!.claude/spec/**' \
-  --glob '!.llmwiki/**' --glob '!**/tests/fixtures/**'
+  --glob '!.git/**' --glob '!docs/audit/**' --glob '!docs/superpowers/**' \
+  --glob '!.claude/spec/**' --glob '!.llmwiki/**' --glob '!**/tests/fixtures/**'
 ```
 
-One hit:
+Three hits, all historical:
 
 | Hit | Verdict | Evidence |
 |---|---|---|
 | `plugins/docs-forge/CLAUDE.md:243` — ``- Migration: `/rules-forge:generate` and `/rules-forge:split` removed.`` | **historical** | The line sits inside the `write-rules` "Version History" list, under the `2.0.0 (2026-05-12) — BREAKING` entry. It records that two commands were removed in that release and names their then-current namespace. Rewriting it to `docs-forge:` would assert those commands once existed under `docs-forge`, which is false. |
+| `docs/prd/skill-forge/PROGRESS.md:75` | **historical** | This audit's own progress log, quoting the `CLAUDE.md:243` string while stating that it was judged historical. |
+| `docs/prd/skill-forge/PROGRESS.md:80` | **historical** | Same log, citing `tcrei-prompt:292` as a file-and-line coordinate for a P2 finding, not as a skill invocation. |
 
-`.llmwiki/`, `.claude/spec/`, `docs/`, and `**/tests/fixtures/**` are excluded from the scan by
-design: they describe the past, and a deleted subject does not make a dated record stale (see
+`docs/superpowers/` joins the excluded set on the same grounds as `.claude/spec/`: dated design
+specs and plans that describe the tree as it stood when they were written. Six matches live
+there (`spec-state:state-tracker`, `ppt-yeong-style:ppt-yeong-style`, `rules-forge:write-rules`,
+…), every one of them a record.
+
+The excluded archives are skipped by design: they describe the past, and a deleted subject does not make a dated record stale (see
 `.llmwiki/wiki/llm-wiki-design/deleted-subject-not-stale.md`). Forcing them to zero would destroy
 the record. That is the most plausible malfunction of this check and it was not performed.
 
-On narrowing `!docs/**` to just `!docs/audit/**` so active PRD documents are scanned: the concern is
-real — a future live reference under `docs/prd/` would not be seen. It is left as is here because
-the literal narrowing produces only false positives today. `docs/prd/skill-forge/PROGRESS.md` quotes
-the historical `/rules-forge:generate` string while *explaining* that it is historical, so scanning
-it reports the very line this audit already judged. And no runtime dispatches a `plugin:skill`
-reference out of `docs/` — the live surfaces are `plugins/`, `.claude/`, `.github/`, `.githooks/`,
-and the root documents, all of which are scanned. Tightening this needs a live-versus-quoted rule
-the current grep cannot express; recorded as a follow-up alongside section 5.
+The narrowing above was applied after review: the first version of this check excluded `docs/**`
+wholesale, which also hid `docs/prd/`. Scanning it costs three historical hits that have to be
+classified by hand, and buys the guarantee that a live reference landing in a working document is
+seen. The classification step already existed — the criterion is zero *live* references, not an
+empty grep — so the extra hits fit the procedure rather than fighting it.
 
 **Live `plugin:skill` references to a defunct plugin: 0.**
 

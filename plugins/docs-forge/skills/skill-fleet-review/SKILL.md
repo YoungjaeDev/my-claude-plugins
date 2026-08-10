@@ -59,15 +59,29 @@ done
 MEASURE="$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs"
 mkdir -p docs/audit
 node "$MEASURE"
-node "$MEASURE" --csv > "docs/audit/$(date +%Y-%m-%d)-fleet.csv"
+
+# Never overwrite an earlier run's artifacts: two sweeps on the same day would land on
+# the same dated path, and the first one's numbers are the baseline the second is
+# compared against. Fall back to a time-stamped base when the dated one is taken.
+OUT="docs/audit/$(date +%Y-%m-%d)-fleet"
+if [ -e "$OUT.csv" ] || [ -e "$OUT.md" ]; then OUT="docs/audit/$(date +%Y-%m-%d-%H%M%S)-fleet"; fi
+node "$MEASURE" --csv > "$OUT.csv"
+echo "report base: $OUT"
 ```
 
-Then run the mechanical guards, whose output feeds the P0 tier directly:
+Then run the mechanical guards, whose output feeds the P0 tier directly. They are
+repository scripts, not bundled with this plugin — in a repo that does not carry them,
+report the gap instead of dying on it:
 
 ```bash
-node scripts/check-skill-contract.mjs
-node scripts/check-skill-tool-portability.mjs --check
-node scripts/check-skill-prose.mjs
+for g in "check-skill-contract.mjs" "check-skill-tool-portability.mjs --check" "check-skill-prose.mjs"; do
+  s=${g%% *}; rest=${g#"$s"}
+  if [ -f "scripts/$s" ]; then
+    node "scripts/$s" $rest; echo "[$s exit $?]"
+  else
+    echo "[$s not present in this repository — P0 tier loses its mechanical input]"
+  fi
+done
 ```
 
 ### 2. Select the cohort
@@ -116,7 +130,7 @@ relocated logic would silently vanish for them.
 
 ### 6. Emit the report
 
-Write `docs/audit/<date>-fleet.md` beside the CSV from step 1, containing:
+Write `$OUT.md` — the base path step 1 printed, beside the CSV it wrote — containing:
 
 1. Scope — how many skills measured, how many in the cohort, how many read for the pointer axis
    only, and the selection rule used.

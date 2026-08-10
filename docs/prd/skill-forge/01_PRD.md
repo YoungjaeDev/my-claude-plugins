@@ -62,13 +62,14 @@ plugins/docs-forge/skills/
 
 3개로 나누는 이유는 호출 시점이 다르고 각각 독립 트리거를 갖기 때문이다. 하나로 합치면 전수 검토의 긴 절차가 단건 작성 경로에 항상 실려 sprawl 이 된다.
 
-### C3. 가드가 잡을 위반 5종
+### C3. 가드가 잡을 위반 6종
 
 1. `description` > 1024자 (Codex silent skip)
 2. `description` 에 인용되지 않은 `: ` (YAML 파싱 붕괴)
 3. resolver 블록 없는 bare `${CLAUDE_PLUGIN_ROOT}` (Codex 미export)
 4. `name` 비-kebab 또는 > 64자
 5. frontmatter 가 byte 0 에서 `---` 로 시작하지 않음
+6. `name` 이 스킬 디렉터리명과 불일치 (Claude/Codex 는 frontmatter 이름을, 생성된 Hermes 어댑터는 디렉터리명을 등록 → 런타임별 스킬 정체성 분열). 초판은 5종이었고, PR #202 리뷰에서 CodeRabbit·Codex 가 각각 지적해 추가했다 — 실제로 기존 위반 1건(`paper-search-tools`)을 잡았다.
 
 기존 가드 4종(`check-skill-prose` 비차단 측정, `check-skill-tool-portability` 툴 이식성, `check-doc-consistency` 문서 동기화, `check-shell-portability` GNU 전용 구문)과 역할이 겹치지 않아야 한다.
 

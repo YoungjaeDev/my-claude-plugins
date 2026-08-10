@@ -149,12 +149,20 @@ Skipping the bump means users on a cached copy never receive the skill. Full con
 
 ### 8. Verify
 
+These are repository scripts, not bundled with this plugin. In a repository that does not
+carry them, say which check went unrun rather than treating silence as a pass:
+
 ```bash
-node scripts/check-skill-contract.mjs
-node scripts/check-skill-tool-portability.mjs --check
-node scripts/sync-codex-manifests.mjs --check
-node scripts/sync-hermes-manifests.mjs --check
-node scripts/check-doc-consistency.mjs
+for g in "check-skill-contract.mjs" "check-skill-tool-portability.mjs --check" \
+         "sync-codex-manifests.mjs --check" "sync-hermes-manifests.mjs --check" \
+         "check-doc-consistency.mjs"; do
+  s=${g%% *}; rest=${g#"$s"}
+  if [ -f "scripts/$s" ]; then
+    node "scripts/$s" $rest; echo "[$s exit $?]"
+  else
+    echo "[$s not present in this repository — unchecked]"
+  fi
+done
 ```
 
 Then read the new description next to its sibling skills' descriptions and confirm no two claim the

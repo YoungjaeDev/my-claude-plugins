@@ -43,15 +43,20 @@ wc -l plugins/docs-forge/skills/skill-*/SKILL.md                       # 각 300
 # M2 — 자기검수
 # 소멸한 플러그인 14종 = PR #164/#191 이 지운 3종 + PR #200 이 흡수한 11종.
 # --hidden 없이는 rg 가 .claude/ · .github/ · .githooks/ · .llmwiki/ 를 통째로 건너뛴다.
-# 이력 표면(.llmwiki, docs, .claude/spec, tests/fixtures)은 보존 대상이라 스캔에서 뺀다.
+# 제외 대상은 "docs 전체"가 아니라 **이력 아카이브**다: .llmwiki, .claude/spec,
+# docs/audit(과거 감사), docs/superpowers(날짜 박힌 spec·plan), tests/fixtures.
 # 여기에 섞어 넣고 0건을 강요하면 과거 기록을 지우게 된다.
+# docs/prd 는 활성 문서이므로 스캔한다 — docs/** 를 통째로 빼면 활성 문서에 들어온
+# 향후 live 참조가 "0건" 결과에서 조용히 빠진다.
 GONE='slidev|ppt-yeong-style|anti-slop-design|brightdata-guide|gws-sync|interview|notebook|plaud-note-taking|rules-forge|spec-state|tally-form|tcrei-prompt|translator|voice-prompt'
 rg --hidden -n "\b($GONE):[a-z0-9-]+" \
-  --glob '!.git/**' --glob '!docs/**' --glob '!.claude/spec/**' \
-  --glob '!.llmwiki/**' --glob '!**/tests/fixtures/**'
+  --glob '!.git/**' --glob '!docs/audit/**' --glob '!docs/superpowers/**' \
+  --glob '!.claude/spec/**' --glob '!.llmwiki/**' --glob '!**/tests/fixtures/**'
 # 위 출력의 각 hit 를 live / 이력 으로 판정한다. live 는 0건이어야 하고,
 # 이력으로 판정한 hit 는 근거와 함께 감사 문서에 남긴다.
-# 2026-08-09 기준 알려진 이력 hit: plugins/docs-forge/CLAUDE.md 의 rules-forge 제거 안내 2건.
+# 2026-08-10 기준 알려진 이력 hit 3건: plugins/docs-forge/CLAUDE.md:243 의 rules-forge
+# 제거 안내(한 줄에 2회), 그리고 PROGRESS.md:75,80 — 이 감사가 그 판정을 서술하며
+# 같은 문자열을 인용한 것이다.
 # 이 PR 의 산출물을 검사하므로 경로를 고정한다. $(date +%Y-%m-%d) 를 쓰면 작성일 다음 날부터,
 # 그리고 CI 와 로컬의 타임존이 다르면 파일이 있어도 실패한다.
 test -f docs/audit/2026-08-10-absorption-check.md

@@ -10,6 +10,8 @@
 //      own                                     → Codex does not export it; the call dies at step one
 //   4. `name` non-kebab or over 64 characters  → the command name stops being derivable
 //   5. frontmatter not starting at byte 0      → no runtime finds it; the skill never triggers
+//   6. `name` != skill directory name          → Claude/Codex use one identity, the
+//                                                generated Hermes adapter another
 //
 // Not covered here, on purpose — each already has an owner:
 //   check-skill-prose.mjs            informational only: 500-line ceiling, references depth
@@ -51,27 +53,37 @@ function splitFrontmatter(content) {
   return { lines: lines.slice(1, end), offset: 2 };
 }
 
+/** Indented continuation lines belonging to the scalar that starts at index `i`. */
+function continuationLines(lines, i) {
+  const out = [];
+  for (const l of lines.slice(i + 1)) {
+    if (l.trim() !== '' && !/^\s/.test(l)) break; // a new top-level key ends the scalar
+    out.push(l.trim());
+  }
+  return out;
+}
+
 /**
  * The `key:` entry as { raw, value, style, line }. `style` is 'block' for a `|`/`>`
- * scalar, 'quoted' for a fully quoted scalar, 'plain' otherwise. For a block scalar the
- * value is the folded body, which is what the length limit applies to.
+ * scalar, 'quoted' for a fully quoted scalar, 'plain' otherwise.
+ *
+ * Every style folds its indented continuation lines into `value`. A plain or quoted
+ * scalar may legally span lines, and reading only the first one under-counts the
+ * length: `description: short` followed by 1,100 indented characters decodes to 1,106
+ * for YAML, so a first-line-only read passes the 1024 check and Codex still skips the
+ * skill — the exact silent failure this guard exists to stop.
  */
 function readField(fm, key) {
   const i = fm.lines.findIndex((l) => new RegExp(`^${key}\\s*:`).test(l));
   if (i === -1) return null;
-  const raw = fm.lines[i].replace(new RegExp(`^${key}\\s*:\\s*`), '');
+  const head = fm.lines[i].replace(new RegExp(`^${key}\\s*:\\s*`), '');
   const line = i + fm.offset;
-  if (/^[>|][-+]?\d*\s*$/.test(raw)) {
-    const body = [];
-    for (const l of fm.lines.slice(i + 1)) {
-      if (l.trim() !== '' && !/^\s/.test(l)) break; // next top-level key
-      body.push(l.trim());
-    }
-    return { raw, value: body.join(' ').trim(), style: 'block', line };
+  if (/^[>|][-+]?\d*\s*$/.test(head)) {
+    return { raw: head, value: continuationLines(fm.lines, i).join(' ').trim(), style: 'block', line };
   }
-  const t = raw.trim();
-  const quoted = t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")));
-  return { raw, value: quoted ? t.slice(1, -1) : t, style: quoted ? 'quoted' : 'plain', line };
+  const raw = [head.trim(), ...continuationLines(fm.lines, i)].join(' ').trim();
+  const quoted = raw.length >= 2 && ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'")));
+  return { raw, value: quoted ? raw.slice(1, -1) : raw, style: quoted ? 'quoted' : 'plain', line };
 }
 
 /**
@@ -116,6 +128,13 @@ export function checkSkillContent(rel, content) {
   } else {
     if (name.value.length > NAME_MAX) add(name.line, `\`name\` is ${name.value.length} chars (max ${NAME_MAX})`);
     if (!KEBAB.test(name.value)) add(name.line, `\`name\` "${name.value}" is not lowercase-kebab`);
+    // 6. name must equal the directory. Claude Code and Codex take the command's last
+    // segment from the frontmatter name while the generated Hermes adapter registers by
+    // directory name, so a mismatch splits one skill into two identities across runtimes.
+    const dir = rel.match(/([^/]+)\/SKILL\.md$/);
+    if (dir && name.value !== dir[1]) {
+      add(name.line, `\`name\` "${name.value}" does not match the skill directory "${dir[1]}" — Claude/Codex would use the frontmatter name and the Hermes adapter the directory name`);
+    }
   }
 
   // 1 + 2. description.
@@ -193,6 +212,11 @@ const RED = [
     content: `---\nname: long-desc\ndescription: ${'x'.repeat(1100)}\n---\n\nbody\n`,
   },
   {
+    check: '1b multi-line plain scalar counts every line',
+    expect: /max 1024/,
+    content: `---\nname: folded-desc\ndescription: short\n  ${'y'.repeat(1100)}\n---\n\nbody\n`,
+  },
+  {
     check: '2 unquoted colon-space in description',
     expect: /unquoted/,
     content: '---\nname: colon-desc\ndescription: Do a thing: then another thing\n---\n\nbody\n',
@@ -232,17 +256,25 @@ const RED = [
     expect: /byte 0/,
     content: '---\nname: unclosed\ndescription: A skill.\n----\n\nbody\n',
   },
+  {
+    check: '6 name does not match the skill directory',
+    expect: /does not match the skill directory/,
+    rel: 'plugins/demo/skills/foo/SKILL.md',
+    content: '---\nname: bar\ndescription: A skill.\n---\n\nbody\n',
+  },
 ];
 
 export function runFixtures() {
   const failures = [];
-  for (const { check, expect, content } of RED) {
-    const errs = checkSkillContent('fixture', content);
+  for (const { check, expect, content, rel } of RED) {
+    const errs = checkSkillContent(rel ?? 'fixture', content);
     if (!errs.some((e) => expect.test(e))) {
       failures.push(`RED "${check}" was not detected (got: ${errs.length ? errs.join(' | ') : 'no errors'})`);
     }
   }
-  const greenErrs = checkSkillContent('fixture-green', GREEN);
+  // The GREEN path is checked at a real skill path so the name-vs-directory rule is
+  // exercised in its passing direction too, not only when it fires.
+  const greenErrs = checkSkillContent('plugins/demo/skills/good-skill/SKILL.md', GREEN);
   if (greenErrs.length) failures.push(`GREEN fixture was flagged: ${greenErrs.join(' | ')}`);
   return failures;
 }
@@ -268,6 +300,6 @@ if (isMain) {
       console.error('\nsee plugins/docs-forge/skills/skill-forge/references/runtime-contract.md for each failure mode.');
       process.exit(1);
     }
-    console.log(`skill-contract OK — ${scanned} skills scanned, 5 silent-failure checks, selftest ${RED.length} RED + 1 GREEN.`);
+    console.log(`skill-contract OK — ${scanned} skills scanned, 6 silent-failure checks, selftest ${RED.length} RED + 1 GREEN.`);
   }
 }

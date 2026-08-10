@@ -65,16 +65,17 @@ export function frontmatterDescription(frontmatter) {
   const lines = frontmatter.split('\n');
   const i = lines.findIndex((l) => /^description\s*:/.test(l));
   if (i === -1) return null;
-  let value = lines[i].replace(/^description\s*:\s*/, '');
-  if (/^[>|][-+]?\d*\s*$/.test(value)) {
-    const folded = [];
-    for (const line of lines.slice(i + 1)) {
-      if (line.trim() !== '' && !/^\s/.test(line)) break; // next top-level key
-      folded.push(line.trim());
-    }
-    return folded.join(' ').trim();
+  // Indented continuation lines belong to the scalar whatever its style. A plain or
+  // quoted scalar may legally span lines, so reading only the first one under-reports
+  // the length that the 1024-character Codex threshold applies to.
+  const continuation = [];
+  for (const line of lines.slice(i + 1)) {
+    if (line.trim() !== '' && !/^\s/.test(line)) break; // next top-level key
+    continuation.push(line.trim());
   }
-  value = value.trim();
+  const head = lines[i].replace(/^description\s*:\s*/, '');
+  if (/^[>|][-+]?\d*\s*$/.test(head)) return continuation.join(' ').trim();
+  let value = [head.trim(), ...continuation].join(' ').trim();
   if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))) {
     value = value.slice(1, -1);
   }
@@ -227,7 +228,10 @@ function selftest() {
   const overlong = measureContent('---\nname: a\ndescription: x\n----\nbody\n');
   assert(!overlong.hasFrontmatter, '`----` is not a closing delimiter');
 
-  if (!process.exitCode) console.log('measure-skills selftest OK (6 cases)');
+  const folded = measureContent('---\nname: a\ndescription: one\n  two\n---\nbody\n');
+  assert(folded.descriptionChars === 7, `multi-line plain scalar folds to "one two", got ${folded.descriptionChars}`);
+
+  if (!process.exitCode) console.log('measure-skills selftest OK (7 cases)');
 }
 
 // ---------------------------------------------------------------- main

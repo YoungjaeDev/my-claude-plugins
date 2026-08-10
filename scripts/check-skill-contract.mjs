@@ -81,6 +81,28 @@ function continuationLines(lines, i) {
 const BLOCK_HEADER = /^[>|]([1-9][-+]?|[-+][1-9]?)?\s*(#.*)?$/;
 
 /**
+ * Drop a YAML inline comment — a `#` that starts the line or follows whitespace, outside
+ * any quotes. Without this, `name: foo # rationale` was read as the value
+ * "foo # rationale" and failed the kebab check, and a quoted description followed by a
+ * comment stopped looking quoted and tripped the colon-space check. Both are valid YAML,
+ * and this guard blocks commits, so a false positive here is worse than a miss.
+ */
+function stripInlineComment(s) {
+  let quote = null;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (quote) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (c === '#' && (i === 0 || /\s/.test(s[i - 1]))) {
+      return s.slice(0, i);
+    }
+  }
+  return s;
+}
+
+/**
  * Decode a block scalar to the string YAML would produce. The 1024 threshold is a hard
  * cliff, so an off-by-one at the boundary defeats the check: `description: |` over a
  * 1024-character body decodes to 1025 because clipping keeps one trailing newline, and
@@ -140,7 +162,7 @@ function readField(fm, key) {
     return { raw: head, value: decodeBlockScalar(head, continuationLines(fm.lines, i)), style: 'block', line };
   }
   const cont = continuationLines(fm.lines, i);
-  const raw = [head.trim(), ...cont.map((l) => l.trim())].join(' ').trim();
+  const raw = stripInlineComment([head.trim(), ...cont.map((l) => l.trim())].join(' ')).trim();
   const quoted = raw.length >= 2 && ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'")));
   // An empty head with indented lines under it is a nested node — a block sequence or a
   // mapping — not a scalar at all. Joining them produced text like "- first" that read
@@ -342,6 +364,11 @@ const RED = [
     check: '2f block sequence is a nested node, not a scalar',
     expect: /is not a YAML string \(nested node\)/,
     content: '---\nname: seq-desc\ndescription:\n  - first\n  - second\n---\n\nbody\n',
+  },
+  {
+    check: '2g a `#` inside a quoted description is not a comment',
+    expect: /is 1029 chars/,
+    content: `---\nname: hash-desc\ndescription: "# ${'z'.repeat(1027)}" # trailing note\n---\n\nbody\n`,
   },
   {
     check: '3 bare CLAUDE_PLUGIN_ROOT in a code block',

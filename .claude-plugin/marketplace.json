@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 14 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.23.0"
+    "version": "2.24.0"
   },
   "plugins": [
     {
@@ -61,7 +61,7 @@
       "name": "docs-forge",
       "source": "./plugins/docs-forge",
       "description": "README/CHANGELOG generation with CRO best practices, plus deployment-doc templates and MOC index generation Also absorbs agent-facing authoring: write-rules (CLAUDE.md + .claude/rules generation), interview-methodology (requirements interview / grill-me stress test), tcrei-prompt (TCREI prompt rewriting), voice-prompt (Korean voice-mode STT input normalization), and the skill-forge family (skill-forge authoring, skill-audit single-skill diagnosis, skill-fleet-review repository-wide sweep).",
-      "version": "0.5.9",
+      "version": "0.6.0",
       "category": "documentation"
     },
     {

@@ -60,7 +60,14 @@ done
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs-forge plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
 MEASURE="$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs"
 mkdir -p docs/audit
-node "$MEASURE"; rc=$?
+# Name the roots to sweep. With no argument the measurer defaults to `plugins/` when it
+# exists, so a repository that also keeps skills under `.claude/skills/` gets a partial
+# scan reported as repository-wide. List every root that holds skills here.
+SWEEP_ROOTS="${SWEEP_ROOTS:?set SWEEP_ROOTS to every skill root to sweep, e.g. \"plugins .claude/skills\"}"
+# zsh does not word-split an unquoted parameter, so a multi-root value would arrive as one
+# path and measure nothing. Ask for POSIX splitting; the probe is a no-op under bash/sh.
+set -o shwordsplit 2>/dev/null || true
+node "$MEASURE" $SWEEP_ROOTS; rc=$?
 # Exit 2 means part of the tree could not be read. Continuing would build a cohort and a
 # report from a baseline that silently omits those skills — the false-clean sweep this
 # skill's Pitfalls section forbids. Stop and report the unverified scope instead.
@@ -76,7 +83,7 @@ until (set -o noclobber; : > "$OUT.csv") 2>/dev/null; do
   n=$((n + 1)); OUT="$base-$n"
   [ "$n" -gt 50 ] && { echo "measure: cannot reserve an audit path under $base" >&2; exit 1; }
 done
-node "$MEASURE" --csv > "$OUT.csv"; rc=$?
+node "$MEASURE" --csv $SWEEP_ROOTS > "$OUT.csv"; rc=$?
 # Remove the reservation on failure. Leaving the truncated file behind hands the next
 # reader a zero-row CSV that looks exactly like a fleet with nothing to report.
 [ "$rc" -eq 0 ] || { rm -f "$OUT.csv"; echo "measure-skills --csv exited $rc — reservation $OUT.csv removed, no baseline written" >&2; exit 1; }

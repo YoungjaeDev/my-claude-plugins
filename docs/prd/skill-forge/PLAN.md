@@ -26,7 +26,7 @@
 ## 마일스톤 3: 자기검수
 
 - 범위(Scope): #198 이 수행하고 PR #200 (`c56bd25`) 으로 머지된 흡수 결과를 `skill-audit` 으로 진단한다. 참조 정합성, 트리거 충돌, 경로 서술, rename 판정. 판정만 하고 흡수 자체는 건드리지 않는다.
-- 완료 조건: PRD 의 M2 acceptance 6건 통과. `docs/audit/<date>-absorption-check.md` 에 진단 결과와 rename 적용분·보류분이 근거와 함께 남는다.
+- 완료 조건: PRD 의 M2 acceptance 6건 통과. `docs/audit/<date>-absorption-check.md` 에 진단 결과와 rename 판정이 근거와 함께 남는다. rename 실행은 이 골의 범위가 아니므로 판정은 전부 보류다 (PRD M2 와 동일 계약).
 - 검증: 소멸한 플러그인을 가리키는 **live** 참조 0건 (grep hit 를 live / 이력 으로 판정) + 수동 검토 절차 3.
 
 ## 마일스톤 4: 가드

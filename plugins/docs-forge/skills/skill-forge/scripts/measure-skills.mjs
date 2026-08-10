@@ -30,17 +30,18 @@ const CHARS_PER_TOKEN = 4; // rough English-prose ratio; comparative only, never
 
 // ---------------------------------------------------------------- pure core
 
+// Both delimiters must be a line that is exactly `---`. A prefix match would accept
+// `---invalid` as an opener and `----` as a closer, counting a file whose frontmatter
+// never parses as having one — and folding the closer's extra characters into the body.
+const isDelimiter = (line) => line.replace(/\r$/, '') === '---';
+
 /** Split a SKILL.md into its frontmatter block and body. */
 export function splitFrontmatter(content) {
-  if (!content.startsWith('---')) return { frontmatter: null, body: content };
-  const rest = content.slice(3);
-  const nl = rest.indexOf('\n');
-  if (nl === -1) return { frontmatter: null, body: content };
-  const end = rest.indexOf('\n---', nl);
+  const lines = content.split('\n');
+  if (lines.length < 2 || !isDelimiter(lines[0])) return { frontmatter: null, body: content };
+  const end = lines.findIndex((l, i) => i > 0 && isDelimiter(l));
   if (end === -1) return { frontmatter: null, body: content };
-  const frontmatter = rest.slice(nl + 1, end);
-  const after = rest.slice(end + 4);
-  return { frontmatter, body: after.startsWith('\n') ? after.slice(1) : after };
+  return { frontmatter: lines.slice(1, end).join('\n'), body: lines.slice(end + 1).join('\n') };
 }
 
 /** Top-level `key:` names, in file order, from a frontmatter block. */
@@ -220,7 +221,13 @@ function selftest() {
   assert(!none.hasFrontmatter, 'missing frontmatter reported');
   assert(none.descriptionChars === 0, 'missing frontmatter has no description');
 
-  if (!process.exitCode) console.log('measure-skills selftest OK (4 cases)');
+  const prefixed = measureContent('---invalid\nname: a\ndescription: x\n---\nbody\n');
+  assert(!prefixed.hasFrontmatter, '`---invalid` is not an opening delimiter');
+
+  const overlong = measureContent('---\nname: a\ndescription: x\n----\nbody\n');
+  assert(!overlong.hasFrontmatter, '`----` is not a closing delimiter');
+
+  if (!process.exitCode) console.log('measure-skills selftest OK (6 cases)');
 }
 
 // ---------------------------------------------------------------- main

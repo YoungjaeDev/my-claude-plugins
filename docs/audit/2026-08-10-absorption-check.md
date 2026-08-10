@@ -44,6 +44,15 @@ design: they describe the past, and a deleted subject does not make a dated reco
 `.llmwiki/wiki/llm-wiki-design/deleted-subject-not-stale.md`). Forcing them to zero would destroy
 the record. That is the most plausible malfunction of this check and it was not performed.
 
+On narrowing `!docs/**` to just `!docs/audit/**` so active PRD documents are scanned: the concern is
+real — a future live reference under `docs/prd/` would not be seen. It is left as is here because
+the literal narrowing produces only false positives today. `docs/prd/skill-forge/PROGRESS.md` quotes
+the historical `/rules-forge:generate` string while *explaining* that it is historical, so scanning
+it reports the very line this audit already judged. And no runtime dispatches a `plugin:skill`
+reference out of `docs/` — the live surfaces are `plugins/`, `.claude/`, `.github/`, `.githooks/`,
+and the root documents, all of which are scanned. Tightening this needs a live-versus-quoted rule
+the current grep cannot express; recorded as a follow-up alongside section 5.
+
 **Live `plugin:skill` references to a defunct plugin: 0.**
 
 ## 2. Findings in absorbed skill bodies
@@ -65,6 +74,9 @@ the claim, and the day `llm-wiki` is added to the allowlist the sentence stays l
 while the correct load form silently changes to `skill_view("llm-wiki:plaud-note-taking")`.
 
 Fix: name the plugin, not the skill — "`llm-wiki` is outside `HERMES_ELIGIBLE`".
+
+**Applied** in this change (`llm-wiki` PATCH bump + regenerated Codex manifest), with the sentence
+extended to state the load form that becomes correct if `llm-wiki` is ever added to the allowlist.
 
 ### P2-1 — `plugins/docs-forge/skills/tcrei-prompt/SKILL.md:292`
 

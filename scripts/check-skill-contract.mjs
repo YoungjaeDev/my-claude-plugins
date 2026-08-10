@@ -6,8 +6,8 @@
 //
 //   1. `description` over 1024 characters      → Codex 0.135 skips the skill entirely
 //   2. unquoted `: ` inside `description`      → YAML reads a nested mapping; frontmatter dies
-//   3. bare ${CLAUDE_PLUGIN_ROOT} in a shell block, with no guarded form anywhere in the
-//      file                                    → Codex does not export it; the call dies at step one
+//   3. bare ${CLAUDE_PLUGIN_ROOT} in a fenced block that carries no guarded form of its
+//      own                                     → Codex does not export it; the call dies at step one
 //   4. `name` non-kebab or over 64 characters  → the command name stops being derivable
 //   5. frontmatter not starting at byte 0      → no runtime finds it; the skill never triggers
 //
@@ -38,14 +38,17 @@ const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 // --- frontmatter parsing (line-based; a YAML dependency is not worth it for five checks)
 
+// Both delimiters must be a line that is exactly `---`. Matching a bare prefix would
+// accept `---invalid` as an opener and `----` as a closer, so a skill whose frontmatter
+// never parses would pass this guard — the opposite of what check 5 exists for.
+const isDelimiter = (line) => line.replace(/\r$/, '') === '---';
+
 function splitFrontmatter(content) {
-  if (!content.startsWith('---')) return null; // check 5 owns this case
-  const rest = content.slice(3);
-  const nl = rest.indexOf('\n');
-  if (nl === -1) return null;
-  const end = rest.indexOf('\n---', nl);
+  const lines = content.split('\n');
+  if (lines.length < 2 || !isDelimiter(lines[0])) return null; // check 5 owns this case
+  const end = lines.findIndex((l, i) => i > 0 && isDelimiter(l));
   if (end === -1) return null;
-  return { lines: rest.slice(nl + 1, end).split('\n'), offset: 2 };
+  return { lines: lines.slice(1, end), offset: 2 };
 }
 
 /**
@@ -71,14 +74,25 @@ function readField(fm, key) {
   return { raw, value: quoted ? t.slice(1, -1) : t, style: quoted ? 'quoted' : 'plain', line };
 }
 
-/** Lines inside fenced code blocks, as [lineNumber, text]. */
-function fencedLines(content) {
+/**
+ * Fenced code blocks, each as an array of [lineNumber, text]. Both CommonMark fence
+ * characters are recognized, and a fence only closes on its own character at the same
+ * or greater length — otherwise a ``` inside a ~~~ block silently ends it and every
+ * later line reads as prose.
+ */
+function fencedBlocks(content) {
   const out = [];
-  let inFence = false;
+  let cur = null;
   content.split('\n').forEach((line, idx) => {
-    if (/^\s*```/.test(line)) { inFence = !inFence; return; }
-    if (inFence) out.push([idx + 1, line]);
+    const m = line.match(/^\s*(`{3,}|~{3,})/);
+    if (m) {
+      if (!cur) cur = { char: m[1][0], len: m[1].length, lines: [] };
+      else if (m[1][0] === cur.char && m[1].length >= cur.len) { out.push(cur.lines); cur = null; }
+      return;
+    }
+    if (cur) cur.lines.push([idx + 1, line]);
   });
+  if (cur) out.push(cur.lines); // unterminated fence — still worth inspecting
   return out;
 }
 
@@ -117,14 +131,16 @@ export function checkSkillContent(rel, content) {
     }
   }
 
-  // 3. bare ${CLAUDE_PLUGIN_ROOT} inside a shell block with no guarded form anywhere.
-  const hasGuard = /\$\{CLAUDE_PLUGIN_ROOT:-/.test(content);
-  if (!hasGuard) {
-    for (const [line, text] of fencedLines(content)) {
-      if (/\$\{?CLAUDE_PLUGIN_ROOT\b/.test(text)) {
-        add(line, 'bare ${CLAUDE_PLUGIN_ROOT} in a code block with no cross-runtime resolver in this file — Codex 0.135 does not export it, so the call resolves to an empty prefix and dies at step one');
-        break; // one report per file is enough to act on
-      }
+  // 3. bare ${CLAUDE_PLUGIN_ROOT}, judged PER BLOCK. A file-wide exemption let one
+  // correct resolver block vouch for every other block, so a later block running
+  // ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh directly still passed and still died on Codex.
+  // The unit is the fenced block a reader would copy and run.
+  for (const block of fencedBlocks(content)) {
+    const guarded = block.some(([, t]) => /\$\{CLAUDE_PLUGIN_ROOT:-/.test(t));
+    if (guarded) continue;
+    const hit = block.find(([, t]) => /\$\{?CLAUDE_PLUGIN_ROOT\b/.test(t) && !/#\s*portability-ok:/.test(t));
+    if (hit) {
+      add(hit[0], 'bare ${CLAUDE_PLUGIN_ROOT} in a fenced block that carries no cross-runtime resolver — Codex 0.135 does not export it, so the path resolves to an empty prefix and the block dies at step one. Add the resolver to this block, or mark the line `# portability-ok: <reason>`');
     }
   }
 
@@ -187,6 +203,16 @@ const RED = [
     content: '---\nname: bare-root\ndescription: Runs a bundled script.\n---\n\n```bash\nnode "${CLAUDE_PLUGIN_ROOT}/scripts/thing.mjs"\n```\n',
   },
   {
+    check: '3b guarded block does not vouch for a later unguarded block',
+    expect: /bare \$\{CLAUDE_PLUGIN_ROOT\}/,
+    content: '---\nname: two-blocks\ndescription: A skill.\n---\n\n```bash\nPLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"\n```\n\n```bash\nbash "${CLAUDE_PLUGIN_ROOT}/scripts/run.sh"\n```\n',
+  },
+  {
+    check: '3c tilde fence is a code block too',
+    expect: /bare \$\{CLAUDE_PLUGIN_ROOT\}/,
+    content: '---\nname: tilde-fence\ndescription: A skill.\n---\n\n~~~bash\nbash "${CLAUDE_PLUGIN_ROOT}/scripts/run.sh"\n~~~\n',
+  },
+  {
     check: '4 non-kebab name',
     expect: /not lowercase-kebab/,
     content: '---\nname: Bad_Name\ndescription: A skill.\n---\n\nbody\n',
@@ -195,6 +221,16 @@ const RED = [
     check: '5 frontmatter not at byte 0',
     expect: /byte 0/,
     content: '\n---\nname: shifted\ndescription: A skill.\n---\n\nbody\n',
+  },
+  {
+    check: '5b opener must be exactly `---`, not a prefix',
+    expect: /byte 0/,
+    content: '---invalid\nname: prefixed\ndescription: A skill.\n---\n\nbody\n',
+  },
+  {
+    check: '5c closer must be exactly `---`, not `----`',
+    expect: /byte 0/,
+    content: '---\nname: unclosed\ndescription: A skill.\n----\n\nbody\n',
   },
 ];
 

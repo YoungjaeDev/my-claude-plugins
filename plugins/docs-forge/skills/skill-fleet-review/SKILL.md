@@ -45,9 +45,16 @@ external CLI, and no other skill is required at any step.
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
 [ -z "$PLUGIN_ROOT" ] && [ -d plugins/docs-forge/skills ] && PLUGIN_ROOT=plugins/docs-forge
 if [ -z "$PLUGIN_ROOT" ]; then
+  # Rank Codex cache candidates on the version basename, not the whole path: a plain
+  # sort puts 0.9.0 above 0.10.0 and lets the marketplace directory outrank the version.
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/docs-forge/* 2>/dev/null | sort | tail -1)
+  if sort -V </dev/null >/dev/null 2>&1; then vsort="sort -V"; else vsort="sort -t. -k1,1n -k2,2n -k3,3n"; fi
+  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/docs-forge/* 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | $vsort | tail -1 | cut -f2-)
 fi
+for h in "${HERMES_HOME:-$HOME/.hermes}/plugins/docs-forge" .hermes/plugins/docs-forge; do
+  [ -n "$PLUGIN_ROOT" ] && break
+  [ -d "$h/skills" ] && PLUGIN_ROOT="$h"
+done
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs-forge plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
 MEASURE="$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs"
 mkdir -p docs/audit

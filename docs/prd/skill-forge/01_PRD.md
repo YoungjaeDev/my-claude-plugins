@@ -19,7 +19,7 @@
 | 마일스톤 | 산출물 |
 |---|---|
 | M1 skill-forge | `docs-forge` 안에 스킬 3종 + references 4종 + scripts 1종 |
-| M2 자기검수 | 흡수된 스킬 전체를 skill-forge 로 진단, rename 반영 |
+| M2 자기검수 | 흡수된 스킬 전체를 skill-forge 로 진단, rename 판정 기록 (실행 없음) |
 | M3 가드 | `scripts/check-skill-contract.mjs` + pre-commit / CI 배선 |
 
 ### 선행 조건 (#198 — 해소됨)
@@ -106,7 +106,7 @@ plugins/docs-forge/skills/
 - [ ] 소멸한 플러그인을 가리키는 **live `plugin:skill` 참조 0건**. 이력·fixture 는 보존 대상이므로 0건 대상이 아니다. grep 이 surfacing 한 hit 전부를 live / 이력 으로 판정하고 그 근거를 감사 문서에 남긴다 (근거: `.llmwiki/wiki/llm-wiki-design/deleted-subject-not-stale.md`)
 - [ ] `docs-forge` 전 스킬(M1 이후 11개)의 `description` 트리거 충돌 검토 완료. 겹치는 브랜치가 있으면 문구 조정
 - [ ] 스킬 본문의 "이 플러그인" / 번들 경로 서술이 새 위치와 일치
-- [ ] rename 판정을 skill-forge 의 포인터 원칙으로 수행, 적용분과 보류분을 근거와 함께 기록
+- [ ] rename 판정을 skill-forge 의 포인터 원칙으로 수행하고 근거와 함께 기록한다. **rename 실행은 이 골의 범위가 아니므로 전부 보류로 남긴다** (PLAN 마일스톤 3 과 동일 계약)
 - [ ] `docs-forge` 의 `{readme,changelog,moc,deploy-doc}-guide` 는 동명 커맨드와의 충돌 회피 명명이므로 rename 하지 않는다
 
 ### M3 — 가드

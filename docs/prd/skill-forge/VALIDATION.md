@@ -14,7 +14,9 @@ node scripts/check-skill-contract.mjs
 node plugins/docs-forge/skills/skill-forge/scripts/measure-skills.mjs
 ```
 
-엄격도 `엄격` — 위 7개는 모든 마일스톤 종료 시점과 최종 완료 판정 시점에 전부 재실행한다. 하나라도 실패하면 다음 마일스톤에 진입하지 않는다.
+엄격도 `엄격` — 위 7개는 모든 마일스톤 종료 시점과 최종 완료 판정 시점에 전부 재실행한다. **이미 존재하는** 검증이 하나라도 실패하면 다음 마일스톤에 진입하지 않는다.
+
+목록의 마지막 2개(`check-skill-contract.mjs`, `measure-skills.mjs`)는 이 골 자신의 산출물이라 각각 마일스톤 4·2 이전에는 존재할 수 없다. 그 시점에는 실패가 아니라 `미생성` 으로 기록하고 진행한다 — 그렇지 않으면 마일스톤 1 에서 교착한다. **최종 완료 판정 시점에는 7개 전부 통과를 요구한다.** blocking set 은 "그 시점에 파일이 존재하는 명령 전부" 다.
 
 앞의 5개는 `.githooks/pre-commit` 이 매 커밋마다 도는 것과 같은 집합이다 (`check-skill-prose` 는 비차단 측정이라 제외). 이 목록에서 하나를 빼면 골이 통과시킨 변경이 커밋 시점에 막힌다.
 
@@ -50,7 +52,9 @@ rg --hidden -n "\b($GONE):[a-z0-9-]+" \
 # 위 출력의 각 hit 를 live / 이력 으로 판정한다. live 는 0건이어야 하고,
 # 이력으로 판정한 hit 는 근거와 함께 감사 문서에 남긴다.
 # 2026-08-09 기준 알려진 이력 hit: plugins/docs-forge/CLAUDE.md 의 rules-forge 제거 안내 2건.
-test -f docs/audit/$(date +%Y-%m-%d)-absorption-check.md
+# 이 PR 의 산출물을 검사하므로 경로를 고정한다. $(date +%Y-%m-%d) 를 쓰면 작성일 다음 날부터,
+# 그리고 CI 와 로컬의 타임존이 다르면 파일이 있어도 실패한다.
+test -f docs/audit/2026-08-10-absorption-check.md
 
 # M3 — 가드
 node --check scripts/check-skill-contract.mjs

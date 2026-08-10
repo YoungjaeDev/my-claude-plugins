@@ -19,12 +19,14 @@
 | 마일스톤 | 산출물 |
 |---|---|
 | M1 skill-forge | `docs-forge` 안에 스킬 3종 + references 4종 + scripts 1종 |
-| M2 자기검수 | 흡수된 스킬 전체를 skill-forge 로 진단, rename 반영 |
+| M2 자기검수 | 흡수된 스킬 전체를 skill-forge 로 진단, rename 판정 기록 (실행 없음) |
 | M3 가드 | `scripts/check-skill-contract.mjs` + pre-commit / CI 배선 |
 
-### 선행 조건 (#198 — 수동, 이 골 범위 밖)
+### 선행 조건 (#198 — 해소됨)
 
-단일스킬 플러그인 11개 흡수(플러그인 24 → 14)는 #198 에서 사람이 처리한다. 되돌리기 어렵고 미해결 결정이 걸려 있기 때문이다. M2 는 그 결과를 검수하므로 #198 완료가 전제다.
+단일스킬 플러그인 11개 흡수(플러그인 24 → 14)는 #198 에서 사람이 처리했고, PR #200 (`c56bd25`) 으로 머지됐다. M2 는 그 결과를 검수하므로 이 골은 선행 조건 없이 착수할 수 있다.
+
+흡수된 11개는 `brightdata-guide`, `gws-sync`, `interview`, `notebook`, `plaud-note-taking`, `rules-forge`, `spec-state`, `tally-form`, `tcrei-prompt`, `translator`, `voice-prompt` 다.
 
 (미사용 플러그인 3종 삭제는 PR #164 / #191 에서 이미 끝났다. 이 PRD 초판은 낡은 로컬 `main` 을 근거로 삼아 그것이 남은 작업이라고 적었다.)
 
@@ -34,7 +36,7 @@
 - 스킬 50개 전수 검토와 그에 따른 리팩토링 (skill-forge 완성 후 별도 이슈)
 - `docs/audit/` 기존 감사 산출물 삭제·이동 — 과거 기록으로 그대로 둔다
 - eval 벤치마크 / description 트리거 최적화 루프 이식
-- 이미 번들인 플러그인 10개의 재편
+- 이미 번들인 플러그인 11개의 재편
 
 ## 설계 제약
 
@@ -60,15 +62,16 @@ plugins/docs-forge/skills/
 
 3개로 나누는 이유는 호출 시점이 다르고 각각 독립 트리거를 갖기 때문이다. 하나로 합치면 전수 검토의 긴 절차가 단건 작성 경로에 항상 실려 sprawl 이 된다.
 
-### C3. 가드가 잡을 위반 5종
+### C3. 가드가 잡을 위반 6종
 
 1. `description` > 1024자 (Codex silent skip)
 2. `description` 에 인용되지 않은 `: ` (YAML 파싱 붕괴)
 3. resolver 블록 없는 bare `${CLAUDE_PLUGIN_ROOT}` (Codex 미export)
 4. `name` 비-kebab 또는 > 64자
 5. frontmatter 가 byte 0 에서 `---` 로 시작하지 않음
+6. `name` 이 스킬 디렉터리명과 불일치 (Claude/Codex 는 frontmatter 이름을, 생성된 Hermes 어댑터는 디렉터리명을 등록 → 런타임별 스킬 정체성 분열). 초판은 5종이었고, PR #202 리뷰에서 CodeRabbit·Codex 가 각각 지적해 추가했다 — 실제로 기존 위반 1건(`paper-search-tools`)을 잡았다.
 
-기존 가드 3종(`check-skill-prose` 비차단 측정, `check-skill-tool-portability` 툴 이식성, `check-doc-consistency` 문서 동기화)과 역할이 겹치지 않아야 한다.
+기존 가드 4종(`check-skill-prose` 비차단 측정, `check-skill-tool-portability` 툴 이식성, `check-doc-consistency` 문서 동기화, `check-shell-portability` GNU 전용 구문)과 역할이 겹치지 않아야 한다.
 
 ## Acceptance Criteria
 
@@ -95,26 +98,27 @@ plugins/docs-forge/skills/
 - [ ] `node scripts/sync-hermes-manifests.mjs --check` 통과 (M0 결과가 어댑터 유효일 때)
 - [ ] `node scripts/check-skill-tool-portability.mjs --check` 통과
 - [ ] `node scripts/check-doc-consistency.mjs` 통과
+- [ ] `node scripts/check-shell-portability.mjs` 통과
 - [ ] `AGENTS.md` 와 `README.md` 의 `docs-forge` 설명이 새 스킬을 반영
 
 ### M2 — 자기검수
 
 - [ ] 흡수된 스킬 전체에 `skill-audit` 실행, 결과를 `docs/audit/<date>-absorption-check.md` 로 기록
-- [ ] `plugin:skill` 참조가 소멸한 플러그인을 가리키지 않는다 (grep 0건)
-- [ ] `docs-forge` 8스킬의 `description` 트리거 충돌 검토 완료 — 겹치는 브랜치가 있으면 문구 조정
+- [ ] 소멸한 플러그인을 가리키는 **live `plugin:skill` 참조 0건**. 이력·fixture 는 보존 대상이므로 0건 대상이 아니다. grep 이 surfacing 한 hit 전부를 live / 이력 으로 판정하고 그 근거를 감사 문서에 남긴다 (근거: `.llmwiki/wiki/llm-wiki-design/deleted-subject-not-stale.md`)
+- [ ] `docs-forge` 전 스킬(M1 이후 11개)의 `description` 트리거 충돌 검토 완료. 겹치는 브랜치가 있으면 문구 조정
 - [ ] 스킬 본문의 "이 플러그인" / 번들 경로 서술이 새 위치와 일치
-- [ ] rename 판정을 skill-forge 의 포인터 원칙으로 수행, 적용분과 보류분을 근거와 함께 기록
+- [ ] rename 판정을 skill-forge 의 포인터 원칙으로 수행하고 근거와 함께 기록한다. **rename 실행은 이 골의 범위가 아니므로 전부 보류로 남긴다** (PLAN 마일스톤 3 과 동일 계약)
 - [ ] `docs-forge` 의 `{readme,changelog,moc,deploy-doc}-guide` 는 동명 커맨드와의 충돌 회피 명명이므로 rename 하지 않는다
 
 ### M3 — 가드
 
 - [ ] `scripts/check-skill-contract.mjs` 생성 — Node 18+ built-in 만
-- [ ] C3 의 5종 검사 구현, 위반 시 exit 1 + 위반 파일·사유 출력
-- [ ] fixture 기반 자체 테스트 — 5종 각각 RED(위반 감지) / GREEN(정상 통과)
+- [ ] C3 의 6종 검사 구현, 위반 시 exit 1 + 위반 파일·사유 출력
+- [ ] fixture 기반 자체 테스트 — 6종 각각 RED(위반 감지) / GREEN(정상 통과). `name`↔디렉터리 불일치와 여러 줄 scalar 길이 fixture 포함
 - [ ] `.githooks/pre-commit` 에 배선
 - [ ] `.github/workflows/validate-codex.yml` 에 배선
 - [ ] 현재 저장소 전 스킬에 대해 실행, 통과하거나 위반 목록을 보고
-- [ ] 기존 가드 3종과 검사 항목이 중복되지 않음을 문서화
+- [ ] 기존 가드 4종과 검사 항목이 중복되지 않음을 문서화
 
 ## 완료로 보지 않는 조건
 

@@ -1,10 +1,10 @@
 ---
 id: detector-cannot-look-vs-nothing-wrong
-aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean, guard-exemption-too-wide, comment-as-evidence, hand-rolled-parser-guard]
-last_verified: 2026-08-02
+aliases: [pipefail-kills-detector, jq-failure-in-command-substitution, argjson-strict-json, read-only-detector-silent-failure, fetcher-false-clean, guard-exemption-too-wide, comment-as-evidence, hand-rolled-parser-guard, blocking-guard-false-positive]
+last_verified: 2026-08-10
 status: active
 volatility: stable
-sources: 12
+sources: 13
 ---
 
 # A detector must never report "nothing wrong" when it means "could not look"
@@ -147,6 +147,24 @@ stated blind spot is a diagnostic; an unstated one is an all-clear.
 The cost of not deciding this is paid per review round, and it is paid by the reviewer, which is
 why it is easy to miss: each individual fix looks cheap and correct.
 
+`check-skill-contract.mjs` reproduced the mode on a second grammar — YAML frontmatter — across
+three review rounds and ~15 findings, each supplying one more construct the matcher had not
+modelled: multi-line plain and quoted scalars, block-scalar chomping (`|` clips to one trailing
+newline, so a 1024-character body decodes to 1025 and slipped under a cap the guard exists to
+enforce), both orders of the indentation indicator (`|2-` and `|-2`), a trailing comment on the
+header line, hex / exponent / `.inf` numbers, a block sequence written under an empty head, and a
+duplicated key that shadowed a second declaration. The shape matched: no convergence, just more
+syntax. Enumerating "bad" spellings one regex at a time was the losing move; adopting the YAML
+resolver's own closed pattern set was the first change that ended a class rather than an instance.
+
+It also supplied the half the shell instance never showed. **A hand-rolled parser in a *blocking*
+guard leaks in both directions, and the false-positive direction is the worse one.** `name: foo #
+rationale` and `description: "Does: a thing" # note` are valid YAML that the matcher read as a
+non-kebab name and an unquoted colon-space, so a correct skill could not be committed at all —
+pre-commit and CI both refused it. A miss lets one defect through; a false positive stops valid
+work and trains people to bypass the guard. When the parse is hand-rolled, budget review effort for
+the false-positive direction first: it is the one users hit.
+
 ## Why this recurs
 
 Each instance arrives disguised as an edge case ("who has a corrupt config?", "who greps a dot-dir?"), and each one is discovered only by running the check against the input it silently skips rather than reading it. The invariant is cheap to state and hard to remember: **a diagnostic that cannot evaluate an axis — whether because it aborted, degraded, could not run, or never looked there — says so, keeps going, and never converts ignorance into an all-clear.**
@@ -175,3 +193,4 @@ Each instance arrives disguised as an edge case ("who has a corrupt config?", "w
 10. **PR #187** (`feat(ci): 셸 이식성 가드 + macOS 레그`) — the exemption-leak instance (Mode 10), found while building `scripts/check-shell-portability.mjs`, the guard that finally gives `code_review.md` P1's cross-platform rule enforcement. Its false-positive suppression counted a nearby comment as evidence of a fallback, and a `cksum`-mentioning comment above a fixed `md5sum` line made the guard pass the very defect from PR #172 that motivated it; the `sed -i` exclusion, written as "followed by a quote" to admit BSD's `sed -i ''`, admitted GNU `sed -i "s/a/b/"` too. Both closed, then verified in both directions — 245 files with 0 findings, and exactly 6 findings on a worktree with this PR series' six real defects reinjected.
 11. **PR #189** (`feat(council): 이종 벤더 3인 심의 플러그인`) — the scope variant of Mode 10, and the first instance where the leak survived two repairs. A `convene` assertion for the `RUN_KEY` charset gate first searched the whole document (a sibling block's copy kept it green when one of four gates was deleted), then searched per-block but matched the charset string anywhere in the block (a comment explaining the charset counted as the gate). Only the third version — track the `case "$RUN_KEY" in` statement and require it before the first use — failed on either removal, verified by deleting each gate in turn. The same PR's suite showed the inverse of the whole family: a check that *looked perfectly, at a copy* (a hand-mirrored TTL implementation in the test file) — see [[testing-shell-embedded-in-docs]].
 12. **Session b3022a01 (2026-07-29), `check-shell-portability.mjs` review series** — four review rounds, 16+ findings, each fix modelling one more shell construct; the session's own conclusion was that the root cause is a hand-written shell parser and that a real parser should do the parse. Modes 10 and 11 come from the same series (Mode 10's instances via PR #187).
+13. **PR #202** (`feat(docs-forge): skill-forge 스킬 3종 + 스킬 계약 가드`) — Mode 11's second grammar, and its false-positive half. `check-skill-contract.mjs` hand-parsed YAML frontmatter and leaked one construct per round across three review rounds: multi-line plain/quoted scalars, block-scalar chomping (a 1024-char `|` body decodes to 1025), both indentation-indicator orders, a header trailing comment, `0x10` / `1e3` / `.inf`, a block sequence under an empty head, and a duplicated key shadowing its second declaration. Switching from an ad-hoc non-string list to the YAML resolver's own closed pattern set was the first fix that ended a class. The blocking direction bit too: `name: foo # rationale` and `description: "Does: a thing" # note` are valid YAML the matcher rejected, so a correct skill could not be committed through pre-commit or CI.

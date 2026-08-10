@@ -1,6 +1,6 @@
 {
   "name": "paper-search-tools",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
   "license": "Apache-2.0"
 }

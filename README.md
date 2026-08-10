@@ -93,7 +93,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 | | `council` | 이종 벤더 심의 (`/council:convene`) — codex(GPT) + agy(Gemini) + Claude(Opus) 3인이 독립 의견 → 사용자 재질문 관문 → 상호 반박 → 의장 합성. 좌석 모델은 `~/.claude/council-models.json` 에 주간 TTL 로 고정 |
 | **Dev Tools** | `ml-toolkit` | ML/멀티모달 개발 원칙, GPU 병렬 처리, Gradio CV 앱 + Jupyter 노트북 안전 편집 |
 | **Planning** | `project-init` | Day-1 프로젝트 부트스트랩 (.claude/ + CLAUDE.md + AGENTS.md w/ Codex review guidelines + gh repo create) |
-| **Docs** | `docs-forge` | 에이전트가 읽는 문서 저작 — README/CHANGELOG (CRO 최적화) + 배포 문서 + MOC 인덱스 + `write-rules` (CLAUDE.md/.claude/rules) + `interview-methodology` (요구사항 수집·grill-me) + `tcrei-prompt` (TCREI 재작성) + `voice-prompt` (한국어 STT 입력 정규화) |
+| **Docs** | `docs-forge` | 에이전트가 읽는 문서 저작 — README/CHANGELOG (CRO 최적화) + 배포 문서 + MOC 인덱스 + `write-rules` (CLAUDE.md/.claude/rules) + `interview-methodology` (요구사항 수집·grill-me) + `tcrei-prompt` (TCREI 재작성) + `voice-prompt` (한국어 STT 입력 정규화) + `skill-forge`/`skill-audit`/`skill-fleet-review` (스킬 저작·진단·전수 검토) |
 | **Content** | `publish` | 산출물을 다른 표면으로 내보내기 — 웹 아티클 한국어 번역, 체크리스트 md → Tally 설문/상담 폼 빌드·게시 (테마 프리셋·구분선·matrix/date/time 일정 조율·idempotent), 로컬 → Google Drive 단방향 제안형 동기화 (gws CLI, 승인 게이트 필수) |
 | **Memory & Lore** | `llm-wiki` | Karpathy LLM-Wiki 3-layer (insight + wiki + raw; query/ingest/lint/bootstrap/migrate + 5 hooks; post-merge ingest built into `github-dev:post-merge`) + `plaud-note-taking` (PLAUD Whisper 전사록 용어 정정 → `.llmwiki/raw/transcripts/`) |
 | **Memory & Lore** | `mem0-ops` | 플릿 레벨 mem0 진단·정리 — fleet-scan(전 앱 노이즈율·파편화) + doctor(설정 자세 점검) + cleanup(백업→삭제, dry-run 기본). upstream mem0 플러그인(프로젝트 내부 품질)과 역할 분리 |
@@ -550,6 +550,15 @@ CRO 분석 기반 README/CHANGELOG 생성, 배포 / 절차 문서 템플릿, 임
 
 9개 awesome-readme 프로젝트 분석 기반.
 
+**스킬 저작 (skill-forge 계열):**
+| Skill | Description |
+|-------|-------------|
+| `/docs-forge:skill-forge` | 스킬 작성·개정 — 프론트매터 스키마, 작성 레버, 구조, 3런타임 패키징 계약 |
+| `/docs-forge:skill-audit` | 단일 스킬 진단 — 7축 판정 + P0/P1/P2 수정안 |
+| `/docs-forge:skill-fleet-review` | 전수 검토 — 측정 우선 코호트 선정 후 `docs/audit/<date>-fleet.md` + CSV |
+
+자립형입니다. 외부 마켓플레이스 스킬을 읽지 않고, 측정 스크립트(`skills/skill-forge/scripts/measure-skills.mjs`)를 번들 내부에 자체 보유합니다.
+
 </details>
 
 <details>
@@ -746,13 +755,14 @@ node scripts/install-skills.mjs
 
 ### CI 가드가 지키는 것 (curation / security)
 
-shared-source 배선은 6개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 다른 도구체인에 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
+shared-source 배선은 7개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 다른 도구체인에 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
 - `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
 - `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 14 / Codex-eligible 12 / Hermes 4)가 `manifest-eligibility.mjs` SoT와 일치.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
 - `check-shell-portability.mjs` — GNU 전용 셸 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우 차단. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하고, 증거는 코드만 인정합니다(대체재를 언급하는 주석은 폴백이 아님). 예외는 `# portability-ok: <사유>`.
+- `check-skill-contract.mjs` — 한 런타임에서만 **조용히** 깨지는 스킬 위반 6종 차단: `description` 1024자 초과(Codex silent skip, 여러 줄 scalar 는 접어서 계산), 인용 없는 `: `(YAML frontmatter 붕괴), 펜스 블록별 bare `${CLAUDE_PLUGIN_ROOT}`(그 블록에 resolver 가 없으면 Codex 에서 첫 단계 실패), 비-kebab 또는 64자 초과 `name`, byte 0 에서 시작하지 않는 frontmatter, `name` 과 스킬 디렉터리명 불일치(Claude/Codex 는 frontmatter 이름을, 생성된 Hermes 어댑터는 디렉터리명을 써서 스킬 정체성이 갈림). 스캔 전에 RED/GREEN 픽스처를 먼저 돌려 탐지기 자체의 회귀도 막습니다. 위 가드들과 검사 항목이 겹치지 않습니다 — prose 는 비차단 측정, tool-portability 는 `AskUserQuestion` 이관, doc-consistency 는 문서 동기화, shell-portability 는 GNU 전용 구문입니다.
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
 
 가드와 별개로 두 개의 픽스처 스위트가 같은 자리에서 돕니다 — `plugins/github-dev/skills/cr-fix/tests/run-tests.sh` (1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로)와 `plugins/council/skills/convene/tests/run-tests.sh` (스킬 본문에만 존재해 아무도 실행하지 않는 codex/agy 호출 계약 + 레지스트리 TTL 산술). 후자가 지키는 것은 이식성 가드가 볼 수 없는 종류입니다 — agy 호출에서 `< /dev/null` 이 빠지면 그 의석이 영원히 멈추는데, 그건 GNU 전용 구문이 아니라서 `check-shell-portability` 의 관심사가 아닙니다.
@@ -807,7 +817,7 @@ node scripts/install-skills.mjs                  # 또는 hermes plugins install
 │   ├── ml-toolkit/            # ML 개발 + Jupyter 편집
 │   ├── codex-image/           # Claude->Codex 이미지 생성 브리지
 │   ├── council/               # 이종 벤더 3인 심의 (codex + agy + Opus)
-│   ├── docs-forge/            # 에이전트가 읽는 문서 저작 (README/CHANGELOG/MOC + 규칙 + 인터뷰 + 프롬프트)
+│   ├── docs-forge/            # 에이전트가 읽는 문서 저작 (README/CHANGELOG/MOC + 규칙 + 인터뷰 + 프롬프트 + 스킬 저작)
 │   ├── llm-wiki/              # LLM-Wiki 3-layer (wiki lore) + PLAUD 전사록 정정
 │   ├── publish/               # 산출물 내보내기 (번역 / Tally 폼 / Google Drive 동기화)
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)

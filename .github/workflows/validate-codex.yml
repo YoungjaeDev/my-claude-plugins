@@ -51,6 +51,13 @@ jobs:
       # downloaded image to one filename on macOS (issue #172). Flags a construct
       # only when no fallback, capability probe, or `# portability-ok:` sits near it.
       - run: node scripts/check-shell-portability.mjs
+      # Five silent-failure checks on skill frontmatter/bodies: description over the
+      # Codex 0.135 1024-char skip threshold, unquoted `: ` collapsing the YAML, bare
+      # ${CLAUDE_PLUGIN_ROOT} in a shell block with no resolver, non-kebab name,
+      # frontmatter not at byte 0. Every one of them loads fine under Claude Code, so
+      # review never sees them. The step runs its own RED/GREEN fixtures before the
+      # scan — a guard that silently stopped detecting fails instead of passing.
+      - run: node scripts/check-skill-contract.mjs
 
   # The BSD fallbacks the suite is full of can only be proven on a BSD userland.
   # Without this leg every `stat -c || stat -f` and `date -d || date -j` branch is

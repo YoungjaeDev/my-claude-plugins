@@ -14,6 +14,9 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 | `interview-methodology` | Requirements interview: breadth-first / depth-first / relentless grill-me modes (absorbed from `interview`) |
 | `tcrei-prompt` | Rewrite a prompt into Google's TCREI structure for next-session reuse (absorbed from `tcrei-prompt`) |
 | `voice-prompt` | Normalize Korean voice-mode STT input before acting on it (absorbed from `voice-prompt`) |
+| `skill-forge` | Write or revise a skill — frontmatter schema, writing levers, structure, three-runtime packaging contract |
+| `skill-audit` | Diagnose one skill across seven axes, returning P0/P1/P2 findings with concrete edits |
+| `skill-fleet-review` | Repository-wide skill sweep — measure first, review a selected cohort, emit a dated audit report + CSV |
 
 ## Commands
 
@@ -93,6 +96,21 @@ Based on awesome-readme curated list:
 /docs-forge:moc docs/ --strict
 /docs-forge:moc docs/ --out docs/CONTENTS.md
 ```
+
+## skill-forge / skill-audit / skill-fleet-review
+
+Three skills that write, diagnose, and sweep skills. Split because they are called at different
+moments; merging them would put the fleet-sweep procedure on the single-skill authoring path.
+
+`skill-forge` owns the rules — `skills/skill-forge/references/{frontmatter,writing-levers,structure,runtime-contract}.md` —
+and the other two apply them. The bundled `skills/skill-forge/scripts/measure-skills.mjs` produces
+the per-skill numbers (lines, body tokens, description length, sections, references depth, bundled
+scripts, frontmatter keys) plus a fleet-wide frontmatter key inventory.
+
+**Self-contained by design.** No body, reference, or script here may instruct the reader to open an
+external marketplace skill, and the measurement script is bundled rather than pointing at
+`docs/audit/measure-skills.mjs`. External sources are cited as provenance only. A pointer added to
+one of them fails silently for any user who does not have that skill installed.
 
 ## write-rules (흡수: rules-forge)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Skill-contract guard: the five frontmatter/body violations that make a skill fail
+// Skill-contract guard: the six frontmatter/body violations that make a skill fail
 // SILENTLY on at least one of the three runtimes this repo ships to. Every one of them
 // is invisible from the Claude Code side, which is why none of them was ever caught by
 // review.
@@ -38,7 +38,7 @@ const DESCRIPTION_MAX = 1024; // Codex 0.135 silent-skip threshold
 const NAME_MAX = 64;
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-// --- frontmatter parsing (line-based; a YAML dependency is not worth it for five checks)
+// --- frontmatter parsing (line-based; a YAML dependency is not worth it for six checks)
 
 // Both delimiters must be a line that is exactly `---`. Matching a bare prefix would
 // accept `---invalid` as an opener and `----` as a closer, so a skill whose frontmatter
@@ -53,14 +53,54 @@ function splitFrontmatter(content) {
   return { lines: lines.slice(1, end), offset: 2 };
 }
 
-/** Indented continuation lines belonging to the scalar that starts at index `i`. */
+/** Continuation lines belonging to the scalar that starts at index `i`, untrimmed. */
 function continuationLines(lines, i) {
   const out = [];
   for (const l of lines.slice(i + 1)) {
     if (l.trim() !== '' && !/^\s/.test(l)) break; // a new top-level key ends the scalar
-    out.push(l.trim());
+    out.push(l);
   }
   return out;
+}
+
+const BLOCK_HEADER = /^[>|](\d+[-+]?|[-+]\d*)?\s*(#.*)?$/;
+
+/**
+ * Decode a block scalar to the string YAML would produce. The 1024 threshold is a hard
+ * cliff, so an off-by-one at the boundary defeats the check: `description: |` over a
+ * 1024-character body decodes to 1025 because clipping keeps one trailing newline, and
+ * a naive join reports 1024 and lets Codex skip the skill anyway.
+ *
+ * `|`/`>` clip to exactly one trailing newline, `|-`/`>-` strip it, `|+`/`>+` keep every
+ * trailing blank line. Folded scalars join lines within a paragraph using a space and
+ * separate paragraphs with a newline.
+ */
+function decodeBlockScalar(header, rawLines) {
+  const folded = header[0] === '>';
+  // Strip a trailing comment before reading the indicator, or a `-` inside the
+  // comment would be mistaken for strip chomping.
+  const chomp = (header.replace(/\s*#.*$/, '').match(/[-+]/) || [])[0] || 'clip';
+  const first = rawLines.find((l) => l.trim() !== '');
+  const indent = first ? first.match(/^\s*/)[0].length : 0;
+  const body = rawLines.map((l) => (l.length >= indent ? l.slice(indent) : l.trim()));
+  let trailing = 0;
+  while (body.length && body[body.length - 1].trim() === '') { body.pop(); trailing++; }
+  let text;
+  if (folded) {
+    const paras = [];
+    let cur = [];
+    for (const l of body) {
+      if (l.trim() === '') { paras.push(cur.join(' ')); cur = []; } else cur.push(l);
+    }
+    paras.push(cur.join(' '));
+    text = paras.join('\n');
+  } else {
+    text = body.join('\n');
+  }
+  if (text === '') return '';
+  if (chomp === '-') return text;
+  if (chomp === '+') return text + '\n'.repeat(trailing + 1);
+  return text + '\n';
 }
 
 /**
@@ -78,10 +118,10 @@ function readField(fm, key) {
   if (i === -1) return null;
   const head = fm.lines[i].replace(new RegExp(`^${key}\\s*:\\s*`), '');
   const line = i + fm.offset;
-  if (/^[>|](\d+[-+]?|[-+]\d*)?\s*(#.*)?$/.test(head)) {
-    return { raw: head, value: continuationLines(fm.lines, i).join(' ').trim(), style: 'block', line };
+  if (BLOCK_HEADER.test(head)) {
+    return { raw: head, value: decodeBlockScalar(head, continuationLines(fm.lines, i)), style: 'block', line };
   }
-  const raw = [head.trim(), ...continuationLines(fm.lines, i)].join(' ').trim();
+  const raw = [head.trim(), ...continuationLines(fm.lines, i).map((l) => l.trim())].join(' ').trim();
   const quoted = raw.length >= 2 && ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'")));
   return { raw, value: quoted ? raw.slice(1, -1) : raw, style: quoted ? 'quoted' : 'plain', line };
 }
@@ -108,7 +148,7 @@ function fencedBlocks(content) {
   return out;
 }
 
-// --- the five checks, over one file's content
+// --- the six checks, over one file's content
 
 export function checkSkillContent(rel, content) {
   const errors = [];
@@ -220,6 +260,11 @@ const RED = [
     check: '1c indicator order `|2-` is a block scalar header',
     expect: /max 1024/,
     content: `---\nname: block-order\ndescription: |2-\n  ${'z'.repeat(1100)}\n---\n\nbody\n`,
+  },
+  {
+    check: '1e clip chomping pushes a 1024-char block body to 1025',
+    expect: /is 1025 chars/,
+    content: `---\nname: clip-chomp\ndescription: |\n  ${'z'.repeat(1024)}\n---\n\nbody\n`,
   },
   {
     check: '1d 1025 chars is over, 1024 is not (boundary)',

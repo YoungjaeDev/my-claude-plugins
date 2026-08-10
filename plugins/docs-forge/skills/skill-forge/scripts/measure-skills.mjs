@@ -56,6 +56,41 @@ export function frontmatterKeys(frontmatter) {
 }
 
 /**
+ * Decode a block scalar the way YAML would. Chomping changes the length, and the 1024
+ * threshold is a hard cliff: `description: |` over a 1024-character body decodes to
+ * 1025 because clipping keeps one trailing newline. `|`/`>` clip to one trailing
+ * newline, `|-`/`>-` strip it, `|+`/`>+` keep every trailing blank line. Folded scalars
+ * join lines within a paragraph using a space and separate paragraphs with a newline.
+ */
+function decodeBlockScalar(header, rawLines) {
+  const folded = header[0] === '>';
+  // Strip a trailing comment before reading the indicator, or a `-` inside the
+  // comment would be mistaken for strip chomping.
+  const chomp = (header.replace(/\s*#.*$/, '').match(/[-+]/) || [])[0] || 'clip';
+  const first = rawLines.find((l) => l.trim() !== '');
+  const indent = first ? first.match(/^\s*/)[0].length : 0;
+  const body = rawLines.map((l) => (l.length >= indent ? l.slice(indent) : l.trim()));
+  let trailing = 0;
+  while (body.length && body[body.length - 1].trim() === '') { body.pop(); trailing++; }
+  let text;
+  if (folded) {
+    const paras = [];
+    let cur = [];
+    for (const l of body) {
+      if (l.trim() === '') { paras.push(cur.join(' ')); cur = []; } else cur.push(l);
+    }
+    paras.push(cur.join(' '));
+    text = paras.join('\n');
+  } else {
+    text = body.join('\n');
+  }
+  if (text === '') return '';
+  if (chomp === '-') return text;
+  if (chomp === '+') return text + '\n'.repeat(trailing + 1);
+  return text + '\n';
+}
+
+/**
  * The decoded `description` value, or null when absent. Handles a plain scalar, a
  * quoted scalar, and a `>`/`|` block scalar — the three forms in use here. The length
  * of this string is what the 1024-character Codex limit applies to.
@@ -71,12 +106,12 @@ export function frontmatterDescription(frontmatter) {
   const continuation = [];
   for (const line of lines.slice(i + 1)) {
     if (line.trim() !== '' && !/^\s/.test(line)) break; // next top-level key
-    continuation.push(line.trim());
+    continuation.push(line);
   }
   const head = lines[i].replace(/^description\s*:\s*/, '');
   // Both indicator orders (`|2-`, `|-2`) plus a trailing comment on the header.
-  if (/^[>|](\d+[-+]?|[-+]\d*)?\s*(#.*)?$/.test(head)) return continuation.join(' ').trim();
-  let value = [head.trim(), ...continuation].join(' ').trim();
+  if (/^[>|](\d+[-+]?|[-+]\d*)?\s*(#.*)?$/.test(head)) return decodeBlockScalar(head, continuation);
+  let value = [head.trim(), ...continuation.map((l) => l.trim())].join(' ').trim();
   if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))) {
     value = value.slice(1, -1);
   }
@@ -99,14 +134,21 @@ export function measureContent(content) {
 
 // ---------------------------------------------------------------- filesystem
 
+// Paths this run could not read. A sweep that quietly drops an unreadable subtree
+// reports a repository-wide result it does not have, and the gap looks identical to
+// "there was nothing there" — so every failure is collected and printed as unverified
+// scope rather than swallowed.
+export const unreadable = [];
+
 function walk(dir, keep) {
   if (!existsSync(dir)) return [];
   const out = [];
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return out; // unreadable directory — measurement continues without it
+  } catch (err) {
+    unreadable.push(`${dir} (${err?.code ?? err?.message ?? 'unreadable'})`);
+    return out;
   }
   for (const ent of entries) {
     const p = join(dir, ent.name);
@@ -123,7 +165,8 @@ function maxDepth(dir, depth = 1) {
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
-  } catch {
+  } catch (err) {
+    unreadable.push(`${dir} (${err?.code ?? err?.message ?? 'unreadable'})`);
     return 0;
   }
   for (const ent of entries) {
@@ -237,12 +280,17 @@ function selftest() {
     assert(h.descriptionChars === 4, `block header "${header}" folds to the body, got ${h.descriptionChars}`);
   }
 
+  const clip = measureContent('---\nname: a\ndescription: |\n  abcd\n---\nbody\n');
+  assert(clip.descriptionChars === 5, `clip chomping keeps one newline, got ${clip.descriptionChars}`);
+  const keep = measureContent('---\nname: a\ndescription: |+\n  abcd\n  \n---\nbody\n');
+  assert(keep.descriptionChars === 6, `keep chomping preserves trailing blanks, got ${keep.descriptionChars}`);
+
   const at = measureContent(`---\nname: a\ndescription: ${'z'.repeat(1024)}\n---\nbody\n`);
   assert(at.descriptionChars === 1024, `1024-char boundary, got ${at.descriptionChars}`);
   const over = measureContent(`---\nname: a\ndescription: ${'z'.repeat(1025)}\n---\nbody\n`);
   assert(over.descriptionChars === 1025, `1025-char boundary, got ${over.descriptionChars}`);
 
-  if (!process.exitCode) console.log('measure-skills selftest OK (13 cases)');
+  if (!process.exitCode) console.log('measure-skills selftest OK (15 cases)');
 }
 
 // ---------------------------------------------------------------- main
@@ -261,7 +309,7 @@ if (argv.includes('--selftest')) {
     console.error(`measure-skills: no SKILL.md found under ${(roots.length ? roots : defaults).join(', ')}`);
     process.exit(1);
   }
-  if (flags.has('--json')) console.log(JSON.stringify(rows, null, 2));
+  if (flags.has('--json')) console.log(JSON.stringify({ rows, unreadable }, null, 2));
   else if (flags.has('--csv')) console.log(renderCsv(rows));
   else {
     console.log(renderTable(rows));
@@ -269,5 +317,11 @@ if (argv.includes('--selftest')) {
     console.log(renderInventory(rows));
     console.log('');
     console.log('tokens~ is body chars / 4 — comparative only. desc is the decoded description length (Codex skips over 1024).');
+  }
+  if (unreadable.length) {
+    console.error(`measure-skills: ${unreadable.length} path(s) could not be read — this run does NOT cover them:`);
+    for (const u of unreadable) console.error(`  ${u}`);
+    console.error('Report these as unverified scope; do not call the sweep repository-wide.');
+    process.exitCode = 2;
   }
 }

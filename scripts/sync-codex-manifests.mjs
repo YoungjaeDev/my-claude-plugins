@@ -249,8 +249,17 @@ function extractFrontmatterDescription(md) {
         if (blockIndent === null) blockIndent = indent;
         collected.push(line.slice(blockIndent));
       }
-      while (collected.length && collected[collected.length - 1] === '') collected.pop();
-      return literal ? collected.join('\n') : collected.join(' ').replace(/\s+/g, ' ').trim();
+      // Chomping changes the decoded length, and this value is measured against a hard
+      // 1024 cliff: `|` clips to one trailing newline, `|-` strips, `|+` keeps every
+      // trailing blank line. Dropping them all under-counted a clipped scalar by one.
+      const chomp = (rest.replace(/\s*#.*$/, '').match(/[-+]/) || [])[0] || 'clip';
+      let trailing = 0;
+      while (collected.length && collected[collected.length - 1] === '') { collected.pop(); trailing++; }
+      const text = literal ? collected.join('\n') : collected.join(' ').replace(/\s+/g, ' ').trim();
+      if (text === '') return '';
+      if (chomp === '-') return text;
+      if (chomp === '+') return text + '\n'.repeat(trailing + 1);
+      return text + '\n';
     }
     let val = rest.trim();
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {

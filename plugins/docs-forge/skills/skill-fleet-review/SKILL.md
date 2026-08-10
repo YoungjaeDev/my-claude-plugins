@@ -60,11 +60,16 @@ MEASURE="$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs"
 mkdir -p docs/audit
 node "$MEASURE"
 
-# Never overwrite an earlier run's artifacts: two sweeps on the same day would land on
-# the same dated path, and the first one's numbers are the baseline the second is
-# compared against. Fall back to a time-stamped base when the dated one is taken.
-OUT="docs/audit/$(date +%Y-%m-%d)-fleet"
-if [ -e "$OUT.csv" ] || [ -e "$OUT.md" ]; then OUT="docs/audit/$(date +%Y-%m-%d-%H%M%S)-fleet"; fi
+# Never overwrite an earlier run's artifacts: the first run's numbers are the baseline
+# the next one is compared against. Testing for the file and then redirecting is not
+# enough — two sweeps started in the same second, or in parallel, both pass the test and
+# the second `>` wins. Reserve the CSV atomically instead: under `noclobber` the shell
+# opens with O_EXCL, so exactly one racing run gets each candidate.
+base="docs/audit/$(date +%Y-%m-%d)-fleet"; OUT="$base"; n=0
+until (set -o noclobber; : > "$OUT.csv") 2>/dev/null; do
+  n=$((n + 1)); OUT="$base-$n"
+  [ "$n" -gt 50 ] && { echo "measure: cannot reserve an audit path under $base" >&2; exit 1; }
+done
 node "$MEASURE" --csv > "$OUT.csv"
 echo "report base: $OUT"
 ```

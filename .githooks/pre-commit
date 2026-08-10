@@ -20,6 +20,12 @@ if command -v node >/dev/null 2>&1; then
   # has forbidden these for a while with nothing enforcing it, which is how
   # md5sum reached translator and broke image downloads on macOS (issue #172).
   node "$repo_root/scripts/check-shell-portability.mjs"
+  # The five frontmatter/body violations that make a skill fail SILENTLY on at least
+  # one runtime — description over the Codex 1024 cap, unquoted `: ` collapsing the
+  # YAML, bare ${CLAUDE_PLUGIN_ROOT} in a shell block, non-kebab name, frontmatter not
+  # at byte 0. All are invisible from the Claude Code side. Runs its own RED/GREEN
+  # fixtures first, so a detector that stopped detecting fails here too.
+  node "$repo_root/scripts/check-skill-contract.mjs"
   # Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
   # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
   node "$repo_root/scripts/check-skill-prose.mjs" || true

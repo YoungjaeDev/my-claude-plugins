@@ -156,6 +156,9 @@ Python 자동 포매팅 + 크로스 플랫폼 알림 + 매 프롬프트 behavior
 | `/github-dev:create-issue-label` | 표준화된 이슈 라벨 생성 |
 | `/github-dev:update-progress` | 마일스톤/이슈 진행 상황 동기화 |
 | `/github-dev:release` | 버전 릴리스 + 자동 CHANGELOG 생성 |
+| `/github-dev:state-tracker` | `.claude/state/spec.json` 4 ops — `read` / `init` (frontmatter 에서 재생성) / `start <spec>` / `complete <spec>` |
+
+**`state-tracker`** — `.claude/state/spec.json` 한 파일로 "지금 무엇이 in-flight 이고 어떤 spec / issue / PR 에 묶여있나" 를 한 번의 `Read` 로 답하는 aggregate cache. spec frontmatter `status:` 가 SSOT 이고 JSON 은 재생성 가능한 캐시입니다. `post-merge` Step 5.7 이 merge 직후 `complete <spec-path>` 를 자동 호출합니다. hooks 없음 — 순수 on-demand skill.
 
 **Flags:** `--skip-review`, `--strict`
 
@@ -195,6 +198,12 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 | `research-orchestrator` | 메인 진입점. 쿼리 → mode 감지 (quick/deep) → fan-out → synthesis-scout 합성. |
 | `exa-web-search` | web-scout 의 exa MCP + 4-tier fetch (exa → brightdata → insane-search) 사용 가이드. |
 | `resource-finder` | github/hf-scout 의 검색 hygiene cheat-sheet. |
+| `brightdata-guide` | Bright Data 플랫폼 가이드 — web-scout 의 tier-3 fetch fallback 이 쓰는 경로. |
+
+**`brightdata-guide` 상세:** MCP 툴과 CLI 두 경로가 같은 플랫폼 + 무료 5,000 req/월 을 공유합니다.
+- **MCP 툴**: `search_engine` (SERP), `scrape_as_markdown`/`scrape_batch` (Web Unlocker — JS/CAPTCHA/봇 탐지 우회), `extract` (AI 구조화 JSON), 40+ `web_data_*` 구조화 추출기 (Amazon/LinkedIn/Instagram/TikTok/YouTube/X/Reddit 등), `scraping_browser_*` 브라우저 자동화
+- **CLI (`bdata`/`brightdata`)**: MCP 툴을 못 받는 `delegate_task` 서브에이전트용 fallback (터미널은 상속하지만 부모의 MCP 툴셋은 상속 안 함)
+- Claude / Codex / Hermes 공용 (MCP 툴명 동일; `terminal` ↔ Bash / execute_command). guide 스킬이라 설치·키를 하드코딩하지 않습니다 — operator 가 `BRIGHTDATA_API_KEY` 또는 `bdata login` 으로 out-of-band 연결.
 
 **Agent team (6, all `opus`):**
 | Agent | Axis |
@@ -269,20 +278,6 @@ WORKSPACE=$(mktemp -d "$PARENT/run.XXXXXX")
 
 </details>
 
-<details>
-<summary><strong>brightdata-guide</strong> - Bright Data 웹 데이터 접근 (MCP + CLI)</summary>
-
-Bright Data 플랫폼으로 웹 데이터 작업을 수행하는 가이드 스킬. 두 경로가 같은 플랫폼 + 무료 5,000 req/월 을 공유합니다.
-
-- **MCP 툴**: `search_engine` (SERP), `scrape_as_markdown`/`scrape_batch` (Web Unlocker — JS/CAPTCHA/봇 탐지 우회), `extract` (AI 구조화 JSON), 40+ `web_data_*` 구조화 추출기 (Amazon/LinkedIn/Instagram/TikTok/YouTube/X/Reddit 등), `scraping_browser_*` 브라우저 자동화
-- **CLI (`bdata`/`brightdata`)**: MCP 툴을 못 받는 `delegate_task` 서브에이전트용 fallback (터미널은 상속하지만 부모의 MCP 툴셋은 상속 안 함)
-
-**Runtime:** Claude / Codex / Hermes 공용 (MCP 툴명 동일; `terminal` ↔ Bash / execute_command)
-
-**Requirements:** Bright Data 계정 + `BRIGHTDATA_API_KEY` (또는 `bdata login`). 스킬은 guide 라 설치/키 하드코딩 안 함 — operator 가 out-of-band 로 연결.
-
-</details>
-
 ### AI Models
 
 <details>
@@ -330,76 +325,51 @@ Bright Data 플랫폼으로 웹 데이터 작업을 수행하는 가이드 스�
 ### Development Tools
 
 <details>
-<summary><strong>notebook</strong> - Jupyter 노트북 편집</summary>
-
-안전한 .ipynb 파일 조작.
-
-**Rules:**
-- NotebookEdit 도구만 사용
-- 출력 보존
-- 셀 순서 검증
-
-</details>
-
-<details>
 <summary><strong>ml-toolkit</strong> - ML/AI 개발</summary>
 
 **Skills:**
 | Skill | Description |
 |-------|-------------|
-| `gpu-parallel-pipeline` | PyTorch 멀티 GPU 처리 |
-| `gradio-cv-app` | 컴퓨터 비전 Gradio 앱 |
+| `/ml-toolkit:ml-dev-principles` | ML/멀티모달 개발 원칙 |
+| `/ml-toolkit:gpu-parallel-pipeline` | PyTorch 멀티 GPU 처리 |
+| `/ml-toolkit:gradio-cv-app` | 컴퓨터 비전 Gradio 앱 |
+| `/ml-toolkit:cv-explorer` | CV 데이터셋·모델 탐색 |
+| `/ml-toolkit:cv-notebook` | CV 실험 노트북 저작 |
+| `/ml-toolkit:edit-notebook` | 안전한 `.ipynb` 조작 — NotebookEdit 도구만 사용, 출력 보존, 셀 순서 검증 |
 
 </details>
 
 ### Content & Translation
 
 <details>
-<summary><strong>translator</strong> - 웹 아티클 번역</summary>
+<summary><strong>publish</strong> - 산출물을 다른 표면으로 내보내기</summary>
 
-웹 페이지를 한국어 마크다운으로 번역.
+만든 것을 이 저장소 밖으로 내보내는 세 경로를 한 번들에 모았습니다. 셋 다 외부 서비스에 쓰기를 하므로 승인 게이트나 키 부재 시 degrade 규칙을 각자 갖습니다.
 
-**Features:**
-- Bright Data MCP(`scrape_as_markdown`)로 페칭, `bdata` CLI 는 터미널 폴백
-- VLM 이미지 분석
-- 코드/테이블 보존
+| Skill | Description |
+|-------|-------------|
+| `/publish:translate-web-article` | 웹 페이지를 한국어 마크다운으로 번역 |
+| `/publish:tally-form` | 체크리스트 md → Tally 설문/상담 폼 빌드·게시 |
+| `/publish:gws-sync` | 로컬 → Google Drive 단방향 제안형 동기화 |
 
-</details>
+**`translate-web-article`** — Bright Data MCP(`scrape_as_markdown`)로 페칭하고 `bdata` CLI 를 터미널 폴백으로 씁니다. VLM 이미지 분석, 코드/테이블 보존.
 
-<details>
-<summary><strong>tcrei-prompt</strong> - TCREI 프롬프트 구조화</summary>
-
-Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프트 재작성.
-
-**Workflow:**
-1. 원본 프롬프트에서 T/C/R/E/I 요소 진단
-2. 빠진 요소를 인터뷰로 수집
-3. 구조화된 프롬프트 생성
-4. OMC verifier로 자체 검증
-5. `.claude/prompts/{date}-{name}.md`에 저장
-
-**Triggers:** "TCREI", "structure this prompt", "prompt enhance"
-
-**5개 도메인 패턴:** 개발, 마케팅, 문서, 교육, 번역
-
-</details>
-
-<details>
-<summary><strong>tally-form</strong> - 체크리스트 md → Tally 폼</summary>
-
-체크리스트 markdown 을 Tally 설문/상담 폼으로 빌드해 생성·게시. 결정적·무의존성(stdlib urllib) idempotent 빌더.
-
-**Features:**
+**`tally-form`** — 결정적·무의존성(stdlib urllib) idempotent 빌더.
 - 테마 프리셋 (neutral 기본 / hermes) + 섹션 구분선 + 문단 분리 인트로
 - 문항별 보기 객관식 (필수 / 복수선택 체크박스) + 단답 입력 (text/number/email/phone/link)
 - 네이티브 일정 조율 (matrix 그리드 / date / time)
 - 폼 이미지 (logo/cover/본문 IMAGE, URL 호스팅 + GitHub raw 숏핸드) + 제출 후 redirect
-- humanize-korean 카피 윤문 라우팅 (미설치 시 graceful degrade)
 - dev-survey / lecture-consultation 프리셋 + 빌드 가능한 예시 fixture 번들
+- **Requirements:** `TALLY_API_KEY` (없으면 payload-only)
 
-**Triggers:** "설문 폼 만들어", "Tally 폼 만들어", "상담 신청 폼", "일정 조율 설문"
+**`gws-sync`** — gws CLI(공식 googleworkspace/cli) 기반. MCP 가 아니라 CLI 를 부르고, 인증(`gws auth login`)은 전제입니다.
+1. 전제 확인 — `gws` 미설치 시 설치 안내(`npm install -g @googleworkspace/cli`) 출력 후 중단(자동 설치 안 함)
+2. 매핑 설정(`.gws-sync.json`)으로 로컬↔Drive 폴더 대응 + 파일 ID 캐시 기억
+3. Drive 트리 탐색 → 신규·변경 diff 리포트
+4. **업로드 위치는 AskUserQuestion 으로 승인 필수** — 승인 없이 업로드 안 함
+5. 업로드 — 기존 파일은 `files update --upload` 로 content 만 갱신(파일 ID·공유 링크·버전 히스토리 보존)
 
-**Requirements:** `TALLY_API_KEY` (없으면 payload-only)
+하드 룰: 단방향(로컬→Drive)만 · 모든 쓰기는 diff+승인 뒤에만 · 삭제는 제안만(자동 삭제 금지) · Drive→로컬 다운로드는 범위 밖. 번들 `references/gws-skills-llms.txt` 는 googleworkspace/cli 공식 스킬 54종 + 레시피 41종 카탈로그로, 상황에 맞는 미설치 스킬을 `npx skills add` 로 제안하는 인덱스입니다.
 
 </details>
 
@@ -418,6 +388,7 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 | `/llm-wiki:lint-wiki` | 4 wiki-rot 모드 감사 (identity/level/relationship/staleness) + 6주 retro 리마인더 |
 | `/llm-wiki:bootstrap-wiki` | 새 repo 에 3-layer scaffold (templates 번들) |
 | `/llm-wiki:migrate-wiki` | 기존 `.claude/wiki`/`.codex/wiki` 를 중립 `.llmwiki/` 로 마이그레이트 + v2 frontmatter(status/volatility/sources) 추가 (idempotent, diff-log) |
+| `/llm-wiki:plaud-note-taking` | PLAUD 음성 녹음기 전사록 STT·용어 정정 → `derived/` corrected + digest → wiki ingest |
 
 **Hooks (auto-installed):**
 
@@ -436,7 +407,13 @@ Google TCREI 구조(Task, Context, References, Evaluate, Iterate)로 프롬프�
 - `> See-also: [[page-id]]` — 측면 연관
 - `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — v2 typed relations
 
-**Related:** spec / issue / PR work-pipeline state 는 `spec-state` plugin 으로 분리.
+**`plaud-note-taking` 상세:** PLAUD 는 녹음 하나당 **두 산출물**을 냅니다 — Whisper STT **전사록**과, 그 전사록을 다시 LLM 이 요약한 **별도 요약**. 이 스킬의 철칙은 **요약이 아니라 전사록을 기준으로 정정**하는 것입니다 (요약은 없던 결정을 매끄럽게 지어낼 수 있음). 손으로 `.llmwiki/raw/transcripts/` 에 올린 `<YYYY-MM-DD-slug>.transcript.txt`(+선택 `.note.txt`)를 읽어 하위 `derived/` 에 `corrected.md`(전사 전문 + 4단 태깅)와 `digest.md`(회의 정리본)를 씁니다. **원본은 절대 수정하지 않습니다.**
+
+- **정정 규율(보수적)**: STT 최대 오류원인 한국어+영어 코드스위칭을 `terminology.md` 근거로 정정 / 숫자·날짜·금액·계약 조건은 추측 금지 → `[확인 필요]` / 화자 `Speaker N` 은 추정값 / 태깅 `[확인됨]` `[정정]` `[해석]` `[확인 필요]`
+- **corrected 이후 3단계**: 확인 게이트(승인 전 digest·wiki 무접촉) → digest 생성(`[해석]`→"논의만 됨", `[확인 필요]`→"미해결", 어느 쪽도 "결정된 것"에 오르지 못함) → wiki ingest(재사용될 lore 만, 인용은 digest 와 동결된 `.transcript.txt` 를 둘 다)
+- 파생본은 `derived_from:`/`ingested:` 프론트매터만 달고 `sha256:` 은 달지 않습니다. `lint-wiki` 는 `sha256:` 선언 파일만 해시 대조하므로 정리본을 손으로 고쳐도 `DRIFT` 로 뜨지 않습니다 — 프론트매터 필드 하나가 "고쳐도 되는 파일 / 안 되는 파일" 스위치입니다.
+
+**Related:** spec / issue / PR work-pipeline state 는 `github-dev:state-tracker` 가 담당합니다.
 
 **Conditional:** wiki 없는 repo 에서는 hook silent skip.
 
@@ -460,41 +437,7 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 
 </details>
 
-### Workflow State
-
-<details>
-<summary><strong>spec-state</strong> - spec / issue / PR work-pipeline aggregate</summary>
-
-`.claude/state/spec.json` 한 파일로 "지금 무엇이 in-flight 이고 어떤 spec / issue / PR 에 묶여있나" 를 한 번의 `Read` 로 답하기 위한 aggregate cache. spec frontmatter `status:` 가 SSOT, JSON 은 regeneratable cache.
-
-**Skill:**
-| Skill | Description |
-|-------|-------------|
-| `/github-dev:state-tracker` | `.claude/state/spec.json` 4 ops — `read` / `init` (regenerate from frontmatter) / `start <spec>` / `complete <spec>` |
-
-`github-dev:post-merge` Step 5.7 이 merge 직후 `complete <spec-path>` 를 자동 호출. hooks 없음 — 순수 on-demand skill.
-
-</details>
-
-### Planning & Methodology
-
-<details>
-<summary><strong>interview</strong> - 요구사항 수집</summary>
-
-스펙 기반 개발을 위한 구조화된 인터뷰.
-
-**Modes:** breadth-first (5-phase 전수) + depth-first / Socratic (가장 큰 불확실성 1개씩 focused) + relentless / stress-test (기존 계획을 집요하게 압박 — "grill me"). 코드베이스로 답할 수 있는 건 묻지 않고, 이미 구체적인 요청엔 인터뷰 생략(단 stress-test 모드는 예외 — 명시 요청 시 압박).
-
-**Phases (breadth-first):**
-1. Context Gathering
-2. Deep Dive
-3. Edge Case Exploration
-4. Prioritization
-5. Validation
-
-**Output:** 작은 인터뷰는 lightweight 요약 (결정 + 열린 질문), 큰 건은 full spec `.claude/spec/{date}-{feature}.md`
-
-</details>
+### Planning
 
 <details>
 <summary><strong>project-init</strong> - Day-1 부트스트랩 + 기존 repo 셋업 진단</summary>
@@ -530,14 +473,14 @@ mem0 Platform store를 app_id **간** 레벨에서 진단·정리합니다. upst
 
 </details>
 
-### Documentation & Rules
+### Documentation
 
 <details>
-<summary><strong>docs-forge</strong> - README & CHANGELOG & 배포 문서 & MOC 생성</summary>
+<summary><strong>docs-forge</strong> - 에이전트가 읽는 문서 저작</summary>
 
-CRO 분석 기반 README/CHANGELOG 생성, 배포 / 절차 문서 템플릿, 임의 폴더 MOC 인덱스 생성.
+사람과 에이전트가 읽는 문서를 만드는 11개 스킬. 크게 네 갈래입니다 — 프로젝트 문서(README/CHANGELOG/배포문서/MOC), 지침 저작(`write-rules`), 프롬프트·입력 정규화(`tcrei-prompt`/`voice-prompt`/`interview-methodology`), 스킬 저작(`skill-forge` 3종).
 
-**Commands:**
+**프로젝트 문서 — Commands:**
 | Command | Description |
 |---------|-------------|
 | `/docs-forge:readme generate` | 템플릿에서 README 생성 |
@@ -546,9 +489,34 @@ CRO 분석 기반 README/CHANGELOG 생성, 배포 / 절차 문서 템플릿, 임
 | `/docs-forge:deploy-doc generate` | 배포 / 절차 문서 생성 (요약 + 전제조건 + 번호 단계) |
 | `/docs-forge:moc docs/` | 문서 폴더 MOC 인덱스 생성 (경량 / `--strict`) |
 
-**Templates:** CLI, Library, React Component, MCP Plugin, SaaS, Desktop
+**Templates:** CLI, Library, React Component, MCP Plugin, SaaS, Desktop. 9개 awesome-readme 프로젝트 분석 기반.
 
-9개 awesome-readme 프로젝트 분석 기반.
+**지침 저작 — `/docs-forge:write-rules`**
+
+CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴(200줄 root cap, `paths:` glob scoping, `.claude/rules/` auto-load)에 맞게 생성·재구조화. 단일 진입점이 프로젝트 상태를 스캔해 4개 모드 중 하나를 추천하고 1회 확인을 받습니다.
+
+| Mode | Trigger | 동작 |
+|------|---------|------|
+| `NEW` | CLAUDE.md 부재 | 인터뷰 → 초기 root + rules/ 생성 |
+| `TIGHTEN` | CLAUDE.md ≤200줄, rules/ 비어있음 | root Do/Don't 로 재구조화 |
+| `SPLIT` | CLAUDE.md >200줄, rules/ 비어있음 | 섹션 추출 → 모듈화 |
+| `REORGANIZE` | root + rules/ 둘 다 존재 | 중복·누락·드리프트 audit |
+
+**프롬프트·입력 정규화:**
+| Skill | Description |
+|-------|-------------|
+| `/docs-forge:interview-methodology` | 스펙 기반 개발을 위한 구조화된 인터뷰 |
+| `/docs-forge:tcrei-prompt` | Google TCREI 구조(Task/Context/References/Evaluate/Iterate)로 프롬프트 재작성 |
+| `/docs-forge:voice-prompt` | 한국어 보이스 모드 STT 입력을 실행 전에 명령으로 되돌림 |
+
+**`interview-methodology`** — 모드는 breadth-first(5-phase 전수: Context Gathering → Deep Dive → Edge Case Exploration → Prioritization → Validation), depth-first/Socratic(가장 큰 불확실성 1개씩), relentless/stress-test(기존 계획을 집요하게 압박 — "grill me"). 코드베이스로 답할 수 있는 건 묻지 않고, 이미 구체적인 요청엔 인터뷰를 생략합니다(stress-test 는 예외 — 명시 요청 시 압박). 작은 인터뷰는 lightweight 요약, 큰 건은 `.claude/spec/{date}-{feature}.md`.
+
+**`tcrei-prompt`** — 원본에서 T/C/R/E/I 요소를 진단하고, 빠진 요소를 인터뷰로 수집해 구조화된 프롬프트를 만든 뒤, OMC verifier 로 자체 검증하고 `.claude/prompts/{date}-{name}.md` 에 저장합니다. 5개 도메인 패턴(개발·마케팅·문서·교육·번역).
+
+**`voice-prompt`** — 한 번 타이핑하면 해제할 때까지 모든 입력에 적용됩니다(자동 감지 없음). **텍스트 청소기가 아닙니다** — 말버릇 제거는 모델이 이미 잘 하는 일이라 값이 낮고, 실제 값은 모델이 추측으로 넘어가던 자리에 확인 절차를 끼워넣는 것입니다. "로더 파일"을 들으면 모델은 파일명을 지어내는데, `loader.py` 가 실재하는지 찾아보지 않으면 알 수 없습니다. 독해 실패가 아니라 행동 누락입니다.
+- **3단 분류** — 자동 수정(말버릇 부류, 맞춤법, 저장소 단일 후보, 발화 내 자기수정) / 질문(후보 0건 또는 다건, 두 해석이 서로 다른 행동을 유발, 되돌리기 어려운 대상) / **손대지 않음**(숫자·날짜·버전·PR/이슈 번호·금액·경로 리터럴 — `PR 189` 가 `PR 180` 으로 들리면 조용히 잘못된 PR 을 건드림)
+- 말버릇은 목록이 아니라 기능 검사로 지웁니다. "그냥 지워"의 "그냥"은 "다른 건 하지 말고"이고, 그 단어를 지웠을 때 행동이 달라지면 말버릇이 아닙니다.
+- 개인 발음 습관과 도메인 용어는 `.claude/voice-prompt/speech-profile.md` 에 분리하며, 사용자 확인 없이 쓰지 않습니다.
 
 **스킬 저작 (skill-forge 계열):**
 | Skill | Description |
@@ -558,108 +526,6 @@ CRO 분석 기반 README/CHANGELOG 생성, 배포 / 절차 문서 템플릿, 임
 | `/docs-forge:skill-fleet-review` | 전수 검토 — 측정 우선 코호트 선정 후 `docs/audit/<date>-fleet.md` + CSV |
 
 자립형입니다. 외부 마켓플레이스 스킬을 읽지 않고, 측정 스크립트(`skills/skill-forge/scripts/measure-skills.mjs`)를 번들 내부에 자체 보유합니다.
-
-</details>
-
-<details>
-<summary><strong>rules-forge</strong> - CLAUDE.md 생성 및 모듈화 (자동 모드 감지)</summary>
-
-CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴
-(200줄 root cap, `paths:` glob scoping, `.claude/rules/` auto-load)
-에 맞게 생성·재구조화. 단일 스킬 `write-rules` 이 프로젝트 상태를
-스캔해 4개 모드 중 하나를 추천:
-
-| Mode | Trigger | 동작 |
-|------|---------|------|
-| `NEW` | CLAUDE.md 부재 | 인터뷰 → 초기 root + rules/ 생성 |
-| `TIGHTEN` | CLAUDE.md ≤200줄, rules/ 비어있음 | root Do/Don't 로 재구조화 |
-| `SPLIT` | CLAUDE.md >200줄, rules/ 비어있음 | 섹션 추출 → 모듈화 |
-| `REORGANIZE` | root + rules/ 둘 다 존재 | 중복·누락·드리프트 audit |
-
-**Skill:**
-| Skill | Description |
-|-------|-------------|
-| `/docs-forge:write-rules` | 단일 진입점, 자동 모드 감지 + 1회 확인 |
-
-**Auto-triggers:** "rules 작성", "write rules", "generate claude.md",
-"restructure claude.md", "split claude.md", "modularize instructions",
-"organize project rules", "rules 분리"
-
-</details>
-
-### Productivity
-
-<details>
-<summary><strong>gws-sync</strong> - 로컬 → Google Drive 단방향 제안형 동기화</summary>
-
-로컬 폴더의 산출물을 Google Drive에 **제안형으로** 올립니다. gws CLI(공식 googleworkspace/cli) 기반 — MCP가 아니라 CLI를 부르고, 인증(`gws auth login`)은 전제입니다.
-
-**동작:**
-1. 전제 확인 — `gws` 미설치 시 설치 안내(`npm install -g @googleworkspace/cli`) 출력 후 중단(자동 설치 안 함)
-2. 매핑 설정(`.gws-sync.json`)으로 로컬↔Drive 폴더 대응 + 파일 ID 캐시 기억
-3. Drive 트리 탐색 → 신규·변경 diff 리포트
-4. **업로드 위치는 AskUserQuestion으로 승인 필수** — 승인 없이 업로드 안 함
-5. 업로드 — 기존 파일은 `files update --upload`로 content만 갱신(파일 ID·공유 링크·버전 히스토리 보존)
-
-**하드 룰:** 단방향(로컬→Drive)만 · 모든 쓰기는 diff+승인 뒤에만 · 삭제는 제안만(자동 삭제 금지) · Drive→로컬 다운로드는 범위 밖.
-
-**동봉:** `references/gws-skills-llms.txt` — googleworkspace/cli 공식 스킬 54종 + 레시피 41종 카탈로그. 상황에 맞는 미설치 스킬을 `npx skills add`로 제안하는 인덱스.
-
-</details>
-
-<details>
-<summary><strong>plaud-note-taking</strong> - PLAUD 노트(전사록+요약) STT·용어 정정</summary>
-
-PLAUD 음성 녹음기가 만든 노트를 검토·정정합니다. PLAUD는 녹음 하나당 **두 산출물**을 냅니다 — Whisper STT **전사록**과, 그 전사록을 다시 LLM이 요약한 **별도 요약**. 이 스킬의 철칙은 **요약이 아니라 전사록을 기준으로 정정**하는 것입니다 (요약은 없던 결정을 매끄럽게 지어낼 수 있음).
-
-**입력/출력:** 손으로 `.llmwiki/raw/transcripts/`에 올린 `<YYYY-MM-DD-slug>.transcript.txt`(+선택 `.note.txt`)를 읽어, 하위 `derived/` 폴더에 산출물 두 개를 씁니다. **원본은 절대 수정하지 않습니다.**
-
-```text
-.llmwiki/raw/transcripts/
-├── <YYYY-MM-DD-slug>.transcript.txt   원본 (동결)
-├── <YYYY-MM-DD-slug>.note.txt         원본 (동결)
-└── derived/
-    ├── <YYYY-MM-DD-slug>.corrected.md   충실성 산출물 (전사 전문 + 4단 태깅)
-    └── <YYYY-MM-DD-slug>.digest.md      회의 정리본 (읽기용)
-```
-
-파생본은 `derived_from:` / `ingested:` 프론트매터만 달고 `sha256:` 은 달지 않습니다. `llm-wiki:lint-wiki` 는 `sha256:` 이 선언된 파일만 해시 대조하므로, 정리본을 손으로 고쳐도 `DRIFT` 로 뜨지 않습니다 (`sha256:` 을 선언한 원본을 고치면 여전히 뜹니다). 프론트매터 필드 하나가 "고쳐도 되는 파일 / 안 되는 파일" 스위치입니다.
-
-**정정 규율(보수적):**
-- STT 최대 오류원인 **한국어+영어 코드스위칭**(기술용어·고유명사)을 `terminology.md` 프로젝트 용어 사전 근거로 정정
-- 숫자·날짜·금액·계약 조건은 추측 금지 → `[확인 필요]`
-- 화자 `Speaker N`은 추정값 — 실명·담당자로 확정하지 않음
-- 태깅: `[확인됨]` / `[정정]` / `[해석]` / `[확인 필요]`
-
-**Open question → grill me:** 애매한 담당자·기한·수치·화자 귀속과 "요약이 지어낸 결정"은 `docs-forge:interview-methodology` relentless 위임으로 하나씩 집요하게 캐물어 확정하고, 남으면 `[확인 필요]`로 둡니다.
-
-**corrected 이후 3단계 (0.2.0):**
-
-1. **확인 게이트** — corrected 요지·`[정정]` 목록과 근거·잔여 open question 을 제시하고 승인을 기다립니다. 승인 전에는 digest 도 wiki 도 건드리지 않습니다. corrected 는 모든 주장이 아직 근거 태그를 달고 있는 마지막 지점이라, 여기서 고치면 편집 한 번이고 두 단계 뒤에 고치면 wiki 정리가 됩니다.
-2. **digest 생성** — `derived/<slug>.digest.md` 에 한 줄 요약 / 결정된 것 / 액션 / 논의만 됨 / 미해결 로 정리합니다. **승격은 한 방향으로 막혀 있습니다**: corrected 의 `[해석]` 은 "논의만 됨" 으로, `[확인 필요]` 는 "미해결" 로 가고 어느 쪽도 "결정된 것" 에 오르지 못합니다. digest 는 압축만 할 뿐 새 사실을 만들지 않습니다.
-3. **wiki ingest** — 재사용될 lore(결정의 근거, 제약조건, 도메인 사실, 반복될 판단 기준)만 추려 `llm-wiki:ingest-finding` 에 넘깁니다. 회의록 통째로는 넘기지 않습니다. 단발 액션아이템·일정은 digest 에만 남습니다. digest 가 태그를 떼어냈어도 태그 규율은 그대로라, "논의만 됨"·"미해결" 에 있던 주장은 넘어가지 않습니다. 인용은 digest 와 동결된 `.transcript.txt` 를 **둘 다** 답니다 (digest 는 나중에 손으로 고칠 수 있는 계층이므로 단독 인용은 근거가 흔들립니다). wiki 루트나 `ingest-finding` 이 없으면 사유 한 줄을 남기고 skip 하며, 스킬을 실패시키지 않습니다.
-
-</details>
-
-<details>
-<summary><strong>voice-prompt</strong> - 보이스 모드 STT 입력 정규화</summary>
-
-한국어 보이스 모드가 넘겨준 음성 인식 결과를 실행 **전에** 명령으로 되돌립니다. `/docs-forge:voice-prompt` 를 한 번 타이핑하면 해제할 때까지 모든 입력에 적용됩니다 (자동 감지 없음). 활성화 시 `.claude/voice-prompt/speech-profile.md` 를 읽어 이전 세션에서 확정한 항목을 되살립니다.
-
-**이건 텍스트 청소기가 아닙니다.** 말버릇 제거는 모델이 이미 잘 하는 일이라 값이 낮습니다. 실제 값은 **모델이 추측으로 넘어가던 자리에 확인 절차를 끼워넣는 것**입니다 — "로더 파일"을 들으면 모델은 파일명을 지어내는데, `loader.py` 가 실재하는지 찾아보지 않으면 알 수 없습니다. 독해 실패가 아니라 행동 누락입니다.
-
-**3단 분류:**
-- **자동 수정** — 말버릇 부류, 맞춤법, 저장소 단일 후보, 스킬 목록 단일 후보, 발화 내 자기수정
-- **질문** — 후보 0건 또는 다건, 두 해석이 서로 다른 행동을 유발, 되돌리기 어려운 작업 대상 (한 라운드로 묶어서)
-- **손대지 않음** — 숫자·날짜·버전·PR/이슈 번호·금액·경로 리터럴. `PR 189` 가 `PR 180` 으로 들리면 조용히 잘못된 PR 을 건드리므로, 문맥이 아무리 그럴듯해도 추측 금지
-
-**말버릇은 목록이 아니라 기능 검사로 지웁니다.** "그냥 지워"의 "그냥"은 "다른 건 하지 말고"이고 "일단 커밋해"의 "일단"은 순서 지시입니다. 그 단어를 지웠을 때 행동이 달라지면 말버릇이 아니고, 애매하면 보존합니다. 자기수정 표지("아 아니")는 삭제 대상이 아니라 정정 근거로, 그 뒤의 발화가 이깁니다.
-
-**에코 → 실행:** `→ src/loader.py 초기화 부분 고쳐 (로더 파일→loader.py, 필러 3어 삭제)` 처럼 한 줄 보고 후 즉시 진행. 푸시·머지·삭제 등 되돌리기 어려운 작업만 대상을 명시해 확인받습니다.
-
-**개인화:** 일반 한국어 말버릇은 번들 레퍼런스에, 개인 발음 습관과 도메인 용어는 `.claude/voice-prompt/speech-profile.md` 에 분리합니다. 사용자 확인 없이 프로필에 쓰지 않습니다.
-
-**한계:** 스킬은 입력을 가로채지 않습니다 — 지침 준수 기반이라 긴 세션에서 흐려질 수 있고, 에코가 사라지면 재호출하라는 신호입니다.
 
 </details>
 

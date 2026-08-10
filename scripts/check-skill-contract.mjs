@@ -92,6 +92,11 @@ function stripInlineComment(s) {
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
     if (quote) {
+      // A double-quoted scalar escapes with backslashes; a single-quoted one doubles the
+      // quote. Missing either closes the string early, and everything after the next `#`
+      // is dropped from the value — including the characters that push it over 1024.
+      if (quote === '"' && c === '\\') { i++; continue; }
+      if (quote === "'" && c === "'" && s[i + 1] === "'") { i++; continue; }
       if (c === quote) quote = null;
     } else if (c === '"' || c === "'") {
       quote = c;
@@ -369,6 +374,11 @@ const RED = [
     check: '2g a `#` inside a quoted description is not a comment',
     expect: /is 1029 chars/,
     content: `---\nname: hash-desc\ndescription: "# ${'z'.repeat(1027)}" # trailing note\n---\n\nbody\n`,
+  },
+  {
+    check: '2h an escaped quote does not end the string early',
+    expect: /max 1024/,
+    content: `---\nname: esc-desc\ndescription: "prefix \\" # ${'z'.repeat(1100)}"\n---\n\nbody\n`,
   },
   {
     check: '3 bare CLAUDE_PLUGIN_ROOT in a code block',

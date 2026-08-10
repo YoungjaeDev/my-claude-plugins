@@ -42,7 +42,9 @@ external CLI, and no other skill is required at any step.
 ### 1. Measure the fleet
 
 ```bash
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+# Honor a caller-supplied PLUGIN_ROOT first — the abort message below tells the user to
+# export it, and starting from CLAUDE_PLUGIN_ROOT would overwrite that escape hatch.
+PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 [ -z "$PLUGIN_ROOT" ] && [ -d plugins/docs-forge/skills ] && PLUGIN_ROOT=plugins/docs-forge
 if [ -z "$PLUGIN_ROOT" ]; then
   # Rank Codex cache candidates on the version basename, not the whole path: a plain
@@ -83,16 +85,26 @@ Then run the mechanical guards, whose output feeds the P0 tier directly. They ar
 repository scripts, not bundled with this plugin — in a repo that does not carry them,
 report the gap instead of dying on it:
 
+Unlike `skill-forge`'s verification gate, a nonzero guard here is **data, not an error** —
+a guard exits nonzero precisely because it found the violations that become the P0 tier, so
+aborting on it would kill the sweep for doing its job. The statuses are still recorded per
+guard and carried into the report; what must never happen is a status disappearing.
+
 ```bash
 for g in "check-skill-contract.mjs" "check-skill-tool-portability.mjs --check" "check-skill-prose.mjs"; do
   s=${g%% *}; rest=${g#"$s"}
   if [ -f "scripts/$s" ]; then
-    node "scripts/$s" $rest; echo "[$s exit $?]"
+    node "scripts/$s" $rest; rc=$?
+    echo "[$s exit $rc]"   # nonzero here means findings — record it, do not abort
   else
     echo "[$s not present in this repository — P0 tier loses its mechanical input]"
   fi
 done
 ```
+
+Carry every `[... exit N]` line into the report's guard section verbatim. A guard that exited
+nonzero and produced no findings in the report means the guard itself broke, not that the
+fleet is clean.
 
 ### 2. Select the cohort
 

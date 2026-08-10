@@ -26,7 +26,9 @@ variable, then the source tree, then the Codex plugin cache, and fails loudly ra
 against an empty path:
 
 ```bash
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+# Honor a caller-supplied PLUGIN_ROOT first — the abort message below tells the user to
+# export it, and starting from CLAUDE_PLUGIN_ROOT would overwrite that escape hatch.
+PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 [ -z "$PLUGIN_ROOT" ] && [ -d plugins/docs-forge/skills ] && PLUGIN_ROOT=plugins/docs-forge
 if [ -z "$PLUGIN_ROOT" ]; then
   # Rank Codex cache candidates on the version basename, not the whole path: a plain

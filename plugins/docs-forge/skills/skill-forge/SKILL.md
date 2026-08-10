@@ -114,7 +114,9 @@ target behavior over forbidding its opposite; a prohibition puts the forbidden t
 Run the bundled measurement script. Resolve the plugin root first:
 
 ```bash
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+# Honor a caller-supplied PLUGIN_ROOT first — the abort message below tells the user to
+# export it, and starting from CLAUDE_PLUGIN_ROOT would overwrite that escape hatch.
+PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 [ -z "$PLUGIN_ROOT" ] && [ -d plugins/docs-forge/skills ] && PLUGIN_ROOT=plugins/docs-forge
 if [ -z "$PLUGIN_ROOT" ]; then
   # Rank Codex cache candidates on the version basename, not the whole path: a plain
@@ -152,17 +154,23 @@ Skipping the bump means users on a cached copy never receive the skill. Full con
 These are repository scripts, not bundled with this plugin. In a repository that does not
 carry them, say which check went unrun rather than treating silence as a pass:
 
+This is a gate, so the block ends nonzero when any guard failed. Printing the status and
+returning 0 would let a run that keys on the exit code treat a failed check as a pass.
+
 ```bash
+failed=0
 for g in "check-skill-contract.mjs" "check-skill-tool-portability.mjs --check" \
          "sync-codex-manifests.mjs --check" "sync-hermes-manifests.mjs --check" \
          "check-doc-consistency.mjs"; do
   s=${g%% *}; rest=${g#"$s"}
   if [ -f "scripts/$s" ]; then
-    node "scripts/$s" $rest; echo "[$s exit $?]"
+    node "scripts/$s" $rest; rc=$?
+    [ "$rc" -eq 0 ] || { echo "[$s exit $rc]"; failed=1; }
   else
     echo "[$s not present in this repository — unchecked]"
   fi
 done
+exit "$failed"
 ```
 
 Then read the new description next to its sibling skills' descriptions and confirm no two claim the

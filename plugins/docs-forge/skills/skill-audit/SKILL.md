@@ -44,7 +44,9 @@ Set `TARGET_ROOT` to the directory holding the target and its siblings — `plug
 `.claude/skills`, or whatever contains it. Siblings matter: the pointer axis is judged against them.
 
 ```bash
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+# Honor a caller-supplied PLUGIN_ROOT first — the abort message below tells the user to
+# export it, and starting from CLAUDE_PLUGIN_ROOT would overwrite that escape hatch.
+PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 [ -z "$PLUGIN_ROOT" ] && [ -d plugins/docs-forge/skills ] && PLUGIN_ROOT=plugins/docs-forge
 if [ -z "$PLUGIN_ROOT" ]; then
   # Rank Codex cache candidates on the version basename, not the whole path: a plain
@@ -59,12 +61,18 @@ for h in "${HERMES_HOME:-$HOME/.hermes}/plugins/docs-forge" .hermes/plugins/docs
 done
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs-forge plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
 TARGET_ROOT="${TARGET_ROOT:?set TARGET_ROOT to the directory containing the target skill}"
-node "$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs" "$TARGET_ROOT"; rc=$?
+TARGET_SKILL="${TARGET_SKILL:?set TARGET_SKILL to the skill directory name being audited}"
+out=$(node "$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs" "$TARGET_ROOT"); rc=$?
+printf '%s\n' "$out"
 [ "$rc" -eq 0 ] || { echo "measure-skills exited $rc — part of $TARGET_ROOT was unreadable, so this audit's scope is incomplete" >&2; exit 1; }
+# Fail closed: a target that is not in the measurement means TARGET_ROOT points elsewhere.
+# Continuing would judge the seven axes against rows belonging to other skills.
+printf '%s\n' "$out" | grep -qE "(^|[[:space:]])${TARGET_SKILL}([[:space:]]|$)" \
+  || { echo "no row for '$TARGET_SKILL' under $TARGET_ROOT — the root is wrong, not the skill" >&2; exit 1; }
 ```
 
-Confirm the target appears in the output before going further. A missing row means `TARGET_ROOT`
-is wrong, not that the skill is fine.
+The audit proceeds only past that check. Keep the target's row and its siblings' rows: siblings are
+what the pointer axis is judged against.
 
 ### 2. Read the target
 

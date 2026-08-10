@@ -199,7 +199,13 @@ export function measureTree(roots, cwd) {
   const rows = [];
   for (const root of roots) {
     const abs = resolve(cwd, root);
-    if (!existsSync(abs)) continue;
+    if (!existsSync(abs)) {
+      // A typo'd or since-deleted root used to vanish here. With any other root holding
+      // skills the run still exited 0, so the caller took a CSV missing an entire
+      // requested tree for a complete one.
+      unreadable.push(`${root} (ENOENT — requested root does not exist)`);
+      continue;
+    }
     const base = statSync(abs).isDirectory() ? abs : cwd;
     for (const file of walk(abs, (n) => n === 'SKILL.md')) rows.push(measureSkillFile(file, base));
   }

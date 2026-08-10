@@ -58,7 +58,11 @@ done
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs-forge plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
 MEASURE="$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs"
 mkdir -p docs/audit
-node "$MEASURE"
+node "$MEASURE"; rc=$?
+# Exit 2 means part of the tree could not be read. Continuing would build a cohort and a
+# report from a baseline that silently omits those skills — the false-clean sweep this
+# skill's Pitfalls section forbids. Stop and report the unverified scope instead.
+[ "$rc" -eq 0 ] || { echo "measure-skills exited $rc — scope incomplete, sweep stopped" >&2; exit 1; }
 
 # Never overwrite an earlier run's artifacts: the first run's numbers are the baseline
 # the next one is compared against. Testing for the file and then redirecting is not
@@ -70,7 +74,8 @@ until (set -o noclobber; : > "$OUT.csv") 2>/dev/null; do
   n=$((n + 1)); OUT="$base-$n"
   [ "$n" -gt 50 ] && { echo "measure: cannot reserve an audit path under $base" >&2; exit 1; }
 done
-node "$MEASURE" --csv > "$OUT.csv"
+node "$MEASURE" --csv > "$OUT.csv"; rc=$?
+[ "$rc" -eq 0 ] || { echo "measure-skills --csv exited $rc — $OUT.csv is not a usable baseline" >&2; exit 1; }
 echo "report base: $OUT"
 ```
 

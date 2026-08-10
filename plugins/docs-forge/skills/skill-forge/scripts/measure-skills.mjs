@@ -25,6 +25,7 @@
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const CHARS_PER_TOKEN = 4; // rough English-prose ratio; comparative only, never a budget
 
@@ -63,12 +64,15 @@ export function frontmatterKeys(frontmatter) {
  * join lines within a paragraph using a space and separate paragraphs with a newline.
  */
 function decodeBlockScalar(header, rawLines) {
-  const folded = header[0] === '>';
-  // Strip a trailing comment before reading the indicator, or a `-` inside the
-  // comment would be mistaken for strip chomping.
-  const chomp = (header.replace(/\s*#.*$/, '').match(/[-+]/) || [])[0] || 'clip';
+  // Strip a trailing comment first, or a `-` inside it reads as strip chomping.
+  const h = header.replace(/\s*#.*$/, '');
+  const folded = h[0] === '>';
+  const chomp = (h.match(/[-+]/) || [])[0] || 'clip';
+  // An explicit indentation indicator (`|2`, `|-2`, `|2-`) fixes the block indent, so
+  // auto-detecting it from the first line strips content YAML would keep.
+  const explicit = (h.match(/[1-9]/) || [])[0];
   const first = rawLines.find((l) => l.trim() !== '');
-  const indent = first ? first.match(/^\s*/)[0].length : 0;
+  const indent = explicit ? Number(explicit) : (first ? first.match(/^\s*/)[0].length : 0);
   const body = rawLines.map((l) => (l.length >= indent ? l.slice(indent) : l.trim()));
   let trailing = 0;
   while (body.length && body[body.length - 1].trim() === '') { body.pop(); trailing++; }
@@ -110,7 +114,7 @@ export function frontmatterDescription(frontmatter) {
   }
   const head = lines[i].replace(/^description\s*:\s*/, '');
   // Both indicator orders (`|2-`, `|-2`) plus a trailing comment on the header.
-  if (/^[>|](\d+[-+]?|[-+]\d*)?\s*(#.*)?$/.test(head)) return decodeBlockScalar(head, continuation);
+  if (/^[>|]([1-9][-+]?|[-+][1-9]?)?\s*(#.*)?$/.test(head)) return decodeBlockScalar(head, continuation);
   let value = [head.trim(), ...continuation.map((l) => l.trim())].join(' ').trim();
   if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))) {
     value = value.slice(1, -1);
@@ -295,8 +299,13 @@ function selftest() {
 
 // ---------------------------------------------------------------- main
 
+// Guard the CLI behind an is-main check: the pure core above is exported, and without
+// this an `import` of this module runs a full filesystem scan as a side effect.
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 const argv = process.argv.slice(2);
-if (argv.includes('--selftest')) {
+if (!isMain) {
+  // imported as a library — expose the parsers, run nothing
+} else if (argv.includes('--selftest')) {
   selftest();
 } else {
   const flags = new Set(argv.filter((a) => a.startsWith('--')));

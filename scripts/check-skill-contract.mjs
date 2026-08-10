@@ -63,7 +63,7 @@ function continuationLines(lines, i) {
   return out;
 }
 
-const BLOCK_HEADER = /^[>|](\d+[-+]?|[-+]\d*)?\s*(#.*)?$/;
+const BLOCK_HEADER = /^[>|]([1-9][-+]?|[-+][1-9]?)?\s*(#.*)?$/;
 
 /**
  * Decode a block scalar to the string YAML would produce. The 1024 threshold is a hard
@@ -76,12 +76,15 @@ const BLOCK_HEADER = /^[>|](\d+[-+]?|[-+]\d*)?\s*(#.*)?$/;
  * separate paragraphs with a newline.
  */
 function decodeBlockScalar(header, rawLines) {
-  const folded = header[0] === '>';
-  // Strip a trailing comment before reading the indicator, or a `-` inside the
-  // comment would be mistaken for strip chomping.
-  const chomp = (header.replace(/\s*#.*$/, '').match(/[-+]/) || [])[0] || 'clip';
+  // Strip a trailing comment first, or a `-` inside it reads as strip chomping.
+  const h = header.replace(/\s*#.*$/, '');
+  const folded = h[0] === '>';
+  const chomp = (h.match(/[-+]/) || [])[0] || 'clip';
+  // An explicit indentation indicator (`|2`, `|-2`, `|2-`) fixes the block indent, so
+  // auto-detecting it from the first line strips content YAML would keep.
+  const explicit = (h.match(/[1-9]/) || [])[0];
   const first = rawLines.find((l) => l.trim() !== '');
-  const indent = first ? first.match(/^\s*/)[0].length : 0;
+  const indent = explicit ? Number(explicit) : (first ? first.match(/^\s*/)[0].length : 0);
   const body = rawLines.map((l) => (l.length >= indent ? l.slice(indent) : l.trim()));
   let trailing = 0;
   while (body.length && body[body.length - 1].trim() === '') { body.pop(); trailing++; }
@@ -265,6 +268,11 @@ const RED = [
     check: '1e clip chomping pushes a 1024-char block body to 1025',
     expect: /is 1025 chars/,
     content: `---\nname: clip-chomp\ndescription: |\n  ${'z'.repeat(1024)}\n---\n\nbody\n`,
+  },
+  {
+    check: '1f explicit indent `|-2` keeps the content YAML keeps',
+    expect: /is 1026 chars/,
+    content: `---\nname: explicit-indent\ndescription: |-2\n    ${'z'.repeat(1024)}\n---\n\nbody\n`,
   },
   {
     check: '1d 1025 chars is over, 1024 is not (boundary)',

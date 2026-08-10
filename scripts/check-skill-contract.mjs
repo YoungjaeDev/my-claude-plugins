@@ -37,8 +37,21 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DESCRIPTION_MAX = 1024; // Codex 0.135 silent-skip threshold
 const NAME_MAX = 64;
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-// YAML 1.1 plain scalars that decode to something other than a string.
-const YAML_NON_STRING = /^(y|n|yes|no|true|false|on|off|null|~|[-+]?(\d+|\d*\.\d+))$/i;
+/**
+ * The YAML type a PLAIN scalar resolves to. Enumerating "bad" spellings one regex at a
+ * time loses: `0x10`, `1e3`, and `.inf` all slipped past an ad-hoc list. This instead
+ * implements the resolver's own closed pattern set (core schema plus the YAML 1.1
+ * booleans PyYAML still applies), so anything it calls `string` really is one.
+ */
+function yamlPlainType(v) {
+  if (v === '' || /^(~|null)$/i.test(v)) return 'null';
+  if (/^(y|n|yes|no|true|false|on|off)$/i.test(v)) return 'bool';
+  if (/^[-+]?(0|[1-9][0-9_]*)$/.test(v)) return 'int';
+  if (/^[-+]?0o?[0-7_]+$/.test(v) || /^[-+]?0x[0-9a-f_]+$/i.test(v)) return 'int';
+  if (/^[-+]?(\.[0-9]+|[0-9][0-9_]*(\.[0-9_]*)?)([eE][-+]?[0-9]+)?$/.test(v)) return 'float';
+  if (/^[-+]?\.(inf|nan)$/i.test(v)) return 'float';
+  return 'string';
+}
 
 // --- frontmatter parsing (line-based; a YAML dependency is not worth it for six checks)
 
@@ -126,9 +139,14 @@ function readField(fm, key) {
   if (BLOCK_HEADER.test(head)) {
     return { raw: head, value: decodeBlockScalar(head, continuationLines(fm.lines, i)), style: 'block', line };
   }
-  const raw = [head.trim(), ...continuationLines(fm.lines, i).map((l) => l.trim())].join(' ').trim();
+  const cont = continuationLines(fm.lines, i);
+  const raw = [head.trim(), ...cont.map((l) => l.trim())].join(' ').trim();
   const quoted = raw.length >= 2 && ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'")));
-  return { raw, value: quoted ? raw.slice(1, -1) : raw, style: quoted ? 'quoted' : 'plain', line };
+  // An empty head with indented lines under it is a nested node — a block sequence or a
+  // mapping — not a scalar at all. Joining them produced text like "- first" that read
+  // as a perfectly ordinary string.
+  const nested = head.trim() === '' && cont.some((l) => l.trim() !== '');
+  return { raw, value: quoted ? raw.slice(1, -1) : raw, style: quoted ? 'quoted' : 'plain', line, nested };
 }
 
 /**
@@ -176,8 +194,9 @@ export function checkSkillContent(rel, content) {
     // A plain scalar that YAML reads as a boolean, null, or number is not a string, and
     // the runtime validators require one. `name: on` passes the kebab and directory
     // checks here as the text "on" while decoding to `true` — CI green, skill unloadable.
-    if (name.style === 'plain' && YAML_NON_STRING.test(name.value)) {
-      add(name.line, `\`name\` "${name.value}" decodes as a YAML ${/^[-+]?(\d+|\d*\.\d+)$/.test(name.value) ? 'number' : 'boolean/null'}, not a string — quote it`);
+    const nameType = name.style === 'plain' ? yamlPlainType(name.value) : 'string';
+    if (name.nested || nameType !== 'string' || (name.style === 'plain' && /^[[{]/.test(name.value))) {
+      add(name.line, `\`name\` "${name.value}" is not a YAML string (${name.nested ? 'nested node' : /^[[{]/.test(name.value) ? 'flow collection' : nameType}) — quote it`);
     }
     // 6. name must equal the directory. Claude Code and Codex take the command's last
     // segment from the frontmatter name while the generated Hermes adapter registers by
@@ -192,12 +211,13 @@ export function checkSkillContent(rel, content) {
   const desc = readField(fm, 'description');
   if (!desc || desc.value === '') {
     add(fm.offset, 'frontmatter has no non-empty `description` — the skill has no trigger mechanism');
-  } else if (desc.style === 'plain' && (YAML_NON_STRING.test(desc.value) || /^[[{]/.test(desc.value))) {
+  } else if (desc.nested || (desc.style === 'plain' && (yamlPlainType(desc.value) !== 'string' || /^[[{]/.test(desc.value)))) {
     // Same trap as `name`: this line parser sees text where YAML sees a boolean, a
-    // number, or a flow collection. `description: true` reads as "true" here and passes
-    // the emptiness and length checks, while the Codex skill validator requires a
-    // non-empty string and rejects the plugin.
-    add(desc.line, `\`description\` "${desc.value}" is not a YAML string (${/^[[{]/.test(desc.value) ? 'flow collection' : 'boolean/null/number'}) — the Codex skill validator requires a string; quote it`);
+    // number, a flow collection, or a nested node. `description: true` reads as "true"
+    // here and passes the emptiness and length checks, while the Codex skill validator
+    // requires a non-empty string and rejects the plugin.
+    const kind = desc.nested ? 'nested node' : /^[[{]/.test(desc.value) ? 'flow collection' : yamlPlainType(desc.value);
+    add(desc.line, `\`description\` "${desc.value}" is not a YAML string (${kind}) — the Codex skill validator requires a string; quote it`);
   } else {
     if (desc.value.length > DESCRIPTION_MAX) {
       add(desc.line, `\`description\` is ${desc.value.length} chars (max ${DESCRIPTION_MAX}) — Codex 0.135 silently skips the skill`);
@@ -300,13 +320,28 @@ const RED = [
   },
   {
     check: '2b plain `description` that YAML decodes as a boolean',
-    expect: /is not a YAML string \(boolean\/null\/number\)/,
+    expect: /is not a YAML string \(bool\)/,
     content: '---\nname: bool-desc\ndescription: true\n---\n\nbody\n',
   },
   {
     check: '2c plain `description` that YAML decodes as a flow collection',
     expect: /is not a YAML string \(flow collection\)/,
     content: '---\nname: flow-desc\ndescription: []\n---\n\nbody\n',
+  },
+  {
+    check: '2d hex int slips past an ad-hoc numeric regex',
+    expect: /is not a YAML string \(int\)/,
+    content: '---\nname: hex-desc\ndescription: 0x10\n---\n\nbody\n',
+  },
+  {
+    check: '2e exponent float',
+    expect: /is not a YAML string \(float\)/,
+    content: '---\nname: exp-desc\ndescription: 1e3\n---\n\nbody\n',
+  },
+  {
+    check: '2f block sequence is a nested node, not a scalar',
+    expect: /is not a YAML string \(nested node\)/,
+    content: '---\nname: seq-desc\ndescription:\n  - first\n  - second\n---\n\nbody\n',
   },
   {
     check: '3 bare CLAUDE_PLUGIN_ROOT in a code block',
@@ -330,13 +365,13 @@ const RED = [
   },
   {
     check: '4b plain `name` that YAML decodes as a boolean',
-    expect: /decodes as a YAML boolean\/null/,
+    expect: /`name` "on" is not a YAML string \(bool\)/,
     rel: 'plugins/demo/skills/on/SKILL.md',
     content: '---\nname: on\ndescription: A skill.\n---\n\nbody\n',
   },
   {
     check: '4c plain `name` that YAML decodes as a number',
-    expect: /decodes as a YAML number/,
+    expect: /`name` "123" is not a YAML string \(int\)/,
     rel: 'plugins/demo/skills/123/SKILL.md',
     content: '---\nname: 123\ndescription: A skill.\n---\n\nbody\n',
   },

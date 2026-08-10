@@ -23,7 +23,7 @@
 //   node measure-skills.mjs --json          # JSON to stdout
 //   node measure-skills.mjs --selftest      # parser self-check, no filesystem scan
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -144,8 +144,19 @@ export function measureContent(content) {
 // scope rather than swallowed.
 export const unreadable = [];
 
-function walk(dir, keep) {
+function walk(dir, keep, seen = new Set()) {
   if (!existsSync(dir)) return [];
+  // Key every directory on its real path, links and plain directories alike. Tracking
+  // only link targets still let a link pointing at an ancestor re-walk the subtree and
+  // emit each skill twice.
+  try {
+    const real = realpathSync(dir);
+    if (seen.has(real)) return [];
+    seen.add(real);
+  } catch (err) {
+    unreadable.push(`${dir} (${err?.code ?? err?.message ?? 'unresolvable'})`);
+    return [];
+  }
   const out = [];
   let entries;
   try {
@@ -156,7 +167,19 @@ function walk(dir, keep) {
   }
   for (const ent of entries) {
     const p = join(dir, ent.name);
-    if (ent.isDirectory()) out.push(...walk(p, keep));
+    // Dirent.isDirectory() is false for a symlink, so a skill installed as a directory
+    // link used to vanish from the sweep with no warning while the run still exited 0.
+    // Follow links, keyed on the real path so a cycle cannot spin.
+    let isDir = ent.isDirectory();
+    if (!isDir && ent.isSymbolicLink()) {
+      try {
+        if (statSync(realpathSync(p)).isDirectory()) isDir = true;
+      } catch (err) {
+        unreadable.push(`${p} (broken symlink: ${err?.code ?? err?.message ?? 'unresolvable'})`);
+        continue;
+      }
+    }
+    if (isDir) out.push(...walk(p, keep, seen));
     else if (keep(ent.name)) out.push(p);
   }
   return out;

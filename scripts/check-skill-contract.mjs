@@ -192,6 +192,12 @@ export function checkSkillContent(rel, content) {
   const desc = readField(fm, 'description');
   if (!desc || desc.value === '') {
     add(fm.offset, 'frontmatter has no non-empty `description` — the skill has no trigger mechanism');
+  } else if (desc.style === 'plain' && (YAML_NON_STRING.test(desc.value) || /^[[{]/.test(desc.value))) {
+    // Same trap as `name`: this line parser sees text where YAML sees a boolean, a
+    // number, or a flow collection. `description: true` reads as "true" here and passes
+    // the emptiness and length checks, while the Codex skill validator requires a
+    // non-empty string and rejects the plugin.
+    add(desc.line, `\`description\` "${desc.value}" is not a YAML string (${/^[[{]/.test(desc.value) ? 'flow collection' : 'boolean/null/number'}) — the Codex skill validator requires a string; quote it`);
   } else {
     if (desc.value.length > DESCRIPTION_MAX) {
       add(desc.line, `\`description\` is ${desc.value.length} chars (max ${DESCRIPTION_MAX}) — Codex 0.135 silently skips the skill`);
@@ -291,6 +297,16 @@ const RED = [
     check: '2 unquoted colon-space in description',
     expect: /unquoted/,
     content: '---\nname: colon-desc\ndescription: Do a thing: then another thing\n---\n\nbody\n',
+  },
+  {
+    check: '2b plain `description` that YAML decodes as a boolean',
+    expect: /is not a YAML string \(boolean\/null\/number\)/,
+    content: '---\nname: bool-desc\ndescription: true\n---\n\nbody\n',
+  },
+  {
+    check: '2c plain `description` that YAML decodes as a flow collection',
+    expect: /is not a YAML string \(flow collection\)/,
+    content: '---\nname: flow-desc\ndescription: []\n---\n\nbody\n',
   },
   {
     check: '3 bare CLAUDE_PLUGIN_ROOT in a code block',

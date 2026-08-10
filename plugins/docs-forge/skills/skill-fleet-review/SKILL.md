@@ -77,7 +77,9 @@ until (set -o noclobber; : > "$OUT.csv") 2>/dev/null; do
   [ "$n" -gt 50 ] && { echo "measure: cannot reserve an audit path under $base" >&2; exit 1; }
 done
 node "$MEASURE" --csv > "$OUT.csv"; rc=$?
-[ "$rc" -eq 0 ] || { echo "measure-skills --csv exited $rc — $OUT.csv is not a usable baseline" >&2; exit 1; }
+# Remove the reservation on failure. Leaving the truncated file behind hands the next
+# reader a zero-row CSV that looks exactly like a fleet with nothing to report.
+[ "$rc" -eq 0 ] || { rm -f "$OUT.csv"; echo "measure-skills --csv exited $rc — reservation $OUT.csv removed, no baseline written" >&2; exit 1; }
 echo "report base: $OUT"
 ```
 

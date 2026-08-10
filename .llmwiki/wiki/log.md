@@ -6,6 +6,17 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-08-10 — post-merge #202: a blocking guard that hand-parses YAML leaks in both directions (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `096136e` — `skill-forge` / `skill-audit` / `skill-fleet-review` added to `docs-forge`, plus `scripts/check-skill-contract.mjs` (6 silent-failure checks) wired into pre-commit + CI. Driven through 11 cr-fix iterations across three rounds (40 applied, 14 deferred, 19 skipped; `final_state=iteration_cap`).
+
+Two page edits:
+
+1. `plugin-ops/detector-cannot-look-vs-nothing-wrong.md` — Mode 11 gains its second instance. The mode was recorded from `check-shell-portability.mjs`; `check-skill-contract.mjs` reproduced it on a different grammar (YAML frontmatter) and added the symmetric half the first instance never showed — a hand-rolled parser in a *blocking* guard leaks false positives too, and those are worse than misses because they stop valid work from being committed.
+2. `plugin-ops/skill-frontmatter-runtime-matrix.md` — new page. Three verified facts about how the three runtimes treat skill frontmatter, none of which had a wiki home: `disable-model-invocation` works in Claude Code but the Codex plugin validator rejects any non-`false` value; `argument-hint` is a real skill field in Claude Code and ignored by the other two, but fatal on the Agent Skills packaging path; the frontmatter `name` sets a plugin skill's command segment, so renaming it breaks existing callers.
+
+Config integration (Step 6) put two learnings in their existing homes, so they are not repeated here (knowledge routing): zsh's lack of unquoted word-splitting extended `code_review.md` P1's cross-platform bullet with a concise mirror in `AGENTS.md`'s P1 minimal set, and `check-shell-portability.mjs`'s git-tracked-only scope was appended to that guard's paragraph in `AGENTS.md`'s 검증 section.
+
 ## 2026-08-08 — post-merge #200: absorption re-homes the body, and the cleanup sweep can corrupt the wiki (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `c56bd25` — 11 single-skill plugins absorbed into existing bundles (24 → 14), driven through 8 cr-fix rounds (28 applied, 3 deferred to #201, 1 refuted). Config integration (Step 6) put two learnings in their existing homes, so they are not duplicated here (knowledge routing): the absorbed-body audit and the eligibility blast radius both extended `.claude/rules/plugin-versioning.md`'s Plugin Removal section (renamed "Plugin Removal or Absorption") with a concise mirror in `AGENTS.md`'s plugin-change rules for Codex/Hermes.

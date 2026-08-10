@@ -1,10 +1,10 @@
 ---
 id: agents-md-verbatim-no-import
 aliases: [agents-md-pointer-trap, codex-no-at-import, claude-md-imports-agents-md]
-last_verified: 2026-07-30
+last_verified: 2026-08-11
 status: active
 volatility: stable
-sources: 7
+sources: 8
 ---
 
 # AGENTS.md is loaded verbatim — `@import` is Claude-only, and one-directional
@@ -63,6 +63,12 @@ Two consequences that do not follow from the plain "guidance goes missing" frami
 - **A `.claude/rules/` note saying "reviewers may flag this" is not a mitigation.** It is written on the surface the reviewer cannot see. The mitigation is the `AGENTS.md` mirror; until that exists, the warning only tells a human why the noise keeps arriving.
 - **The scoping half is the half that must be mirrored.** Mirroring effort naturally goes to whole rules that feel important. But an unqualified general rule plus an invisible exception is *worse* than no rule at all on the visible surface — it actively arms the reviewer with a citation. When splitting a rule across surfaces, the qualifier travels with the claim.
 
+## CodeRabbit is a fourth reader, and it reads both ends
+
+The three runtimes are not the whole audience. CodeRabbit auto-detects agent instruction files as review criteria with no configuration, and its default pattern list carries **both** `**/AGENTS.md` and `**/CLAUDE.md`. So this repo's pointer direction is safe from its side too: the content lives in `AGENTS.md`, which it matches directly, and whether it expands the `@AGENTS.md` line in `CLAUDE.md` (`unverified`) does not matter for coverage.
+
+What it does not read is the same thing Codex does not read. The defaults include `**/.cursor/rules/*` and `**/.rules/*`; neither matches `.claude/rules/`. The scoping-exception failure described above therefore has two reviewers in it, not one. The consequence of that channel being *writable* by post-merge is its own page.
+
 ## Why the older phrasing under-stated it
 
 The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a *reach* limitation into a Claude-only directory. The real constraint is categorical: Codex has no `@import` at all. The weaker phrasing is what makes the pointer cleanup look plausible.
@@ -76,6 +82,7 @@ The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a
 > Evidence: code_review.md
 > See-also: [[detector-cannot-look-vs-nothing-wrong]]
 > See-also: [[deleted-subject-not-stale]]
+> See-also: [[reviewer-norms-written-unreviewed]]
 
 ## Sources
 1. **`codex-rs/core/src/agents_md.rs`** (github.com/openai/codex, main) — the verbatim reader: byte read → `from_utf8_lossy` → concat with `--- project-doc ---`. No directive expansion anywhere in the path.
@@ -86,3 +93,4 @@ The rule used to read "Codex cannot `@import` `.claude/rules/`", which implies a
 5. **OpenAI Codex best-practices doc** (`developers.openai.com/codex/learn/best-practices`, served at `learn.chatgpt.com/guides/best-practices`, verified 2026-07-13) — "If you and your team have a `code_review.md` file and reference it from `AGENTS.md`, Codex can follow that guidance during review as well." The "can follow" wording is what makes this a soft guarantee. The companion GitHub review page (`developers.openai.com/codex/code-review`) confirms the cloud reviewer surfaces only P0/P1 comments.
 6. **`codex --help` / `codex doctor` on codex-cli 0.144.1** — `$CODEX_HOME` is the documented config root. The shipped binary also carries the literal `.codex/config.toml` plus `"Error parsing project config file"` / `"Failed to read project config file"`, so a project-level config surface exists; whether `project_doc_max_bytes` is honored there, and under what trust gating (`trust_level` appears in the binary), is **unverified** — `codex doctor` reports only the user-level path.
 7. **PR #191 CodeRabbit review (Major, raised in two consecutive rounds)** — "플러그인 제거에 맞춰 marketplace 버전을 MAJOR로 올려야 합니다", citing the unqualified `AGENTS.md` semver line, against `.claude/rules/plugin-versioning.md`'s "Plugin Removal" scoping which the reviewer cannot read. Resolved by mirroring the scoping into `AGENTS.md`, not by changing the version.
+8. **CodeRabbit docs — Code Guidelines** (`docs.coderabbit.ai/knowledge-base/code-guidelines`, fetched 2026-08-11) — the default detected-file table (`**/AGENTS.md`, `**/CLAUDE.md`, `**/GEMINI.md`, `**/.cursor/rules/*`, `**/.rules/*`, …) and its directory-based scoping. Auto-detection is on by default with no configuration.

@@ -6,6 +6,48 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-08-11 — post-absorption pointer repair + two mechanical lint fixes (ingest-finding)
+
+Applied after the baseline lint below, deliberately in that order: fixing first would have let the repository's first-ever lint entry claim a staleness health the wiki never had, and with no prior entry to contradict it that reading would stand permanently. Five one-line edits, no page body rewritten. Scoped to the pointer itself — PR #200 absorbed 11 plugins into 6 bundles, and `deleted-subject-not-stale` establishes that a mechanical name sweep over this wiki corrupts historical findings, so domain directories (`tally-form-ops/` among them) and all `## Sources` provenance stay exactly as they are.
+
+- research-harness/brightdata-cli-preflight-quirks.md: `> Evidence:` path `plugins/brightdata-guide/…` -> `plugins/code-scout/skills/brightdata-guide/SKILL.md`.
+- llm-wiki-design/optin-drift-check-permission-switch.md: `> Evidence:` path `plugins/plaud-note-taking/…` -> `plugins/llm-wiki/skills/plaud-note-taking/SKILL.md`.
+- tally-form-ops/tally-api-schema-vs-live.md: body pointer to the operational reference `plugins/tally-form/…` -> `plugins/publish/skills/tally-form/references/tally-blocks.md`.
+- cr-fix-ops/codex-review-threads-never-resolve.md: `> See-also: [[state-file-self-describing]]` resolved to nothing — the target page's `id` is `cr-fix-state-file-self-describing`. Corrected (the lint baseline's one real broken reference).
+- plugin-ops/hermes-plugin-adapter.md: `sources: 6` -> `7`, matching the `## Sources` entry count (the baseline's one real sources mismatch).
+
+Two baseline findings deliberately NOT fixed: `insight/index.md`'s unbumped `last_verified` (bumping a date without re-reading the page is the anti-pattern), and the 4 volatile pages past their window (each needs a real re-verification against current code, not a date edit).
+
+## 2026-08-11 — v2 0-week baseline (lint-wiki)
+
+First lint sweep this repository has recorded, so there is no prior entry to compare against — this block IS the baseline. Scope: 44 wiki pages across 6 domains + 7 insight entries, run immediately after the 9-marker drain below and **before** any remediation, so the numbers describe the wiki as it actually stood. Report-only; nothing was auto-fixed.
+
+- Identity: clean — 0 duplicate `id:`, 0 duplicate aliases, so no merge/supersede/alias cluster to score.
+- Level: 24 of 44 pages over 5KB, but the threshold is miscalibrated for this wiki's prose density — 21 of them sit between 5.2KB and 9KB, and `index.md` (36KB) and `log.md` (137KB) are structurally exempt yet trip the same cut. One genuine split candidate: `plugin-ops/detector-cannot-look-vs-nothing-wrong.md` at 33.9KB, 6.8x the cut, now carrying Mode 11. Its promoted `insight/detector-cannot-look.md` has grown to 5.6KB (2.8x the 2KB insight cap) in step with it — the same accretion showing on both layers.
+- Relationship: 1 hit, false positive — `plugin-ops/hermes-plugin-adapter.md:106` is a wrapped sentence whose continuation happens to begin with `[[`.
+- Staleness: 4 pages past a 30d volatile window, all 33-35 days, all mem0/hook-related — `subagentstop-hook-payload`, `mem0-hook-latency-budget`, `codex-imagegen-output-behavior`, `mem0-rest-list-contract`.
+- Status: clean — 0 `status: stale` pages. Supersession: clean, no one-sided pairs.
+- Sources: 1 real mismatch — `plugin-ops/hermes-plugin-adapter.md` declares `sources: 6` over 7 `## Sources` entries.
+- Insight: 7 entries, all carrying `tier:` + `promoted_from:`. 2 over the 2KB conciseness cap (`detector-cannot-look.md` 5.6KB, `codex-skill-desc-1024.md` 3.1KB). `insight/index.md` carries `last_verified: 2026-06-01` while its last commit is 2026-07-29 — edited without a bump; not corrected here, because bumping a date without re-reading the page is the anti-pattern this skill exists to prevent.
+- Source drift: clean — no raw file carries a `sha256:` field yet (frontmatter is prospective-only, existing raw is never backfilled).
+- Link poverty: clean. Log rotation: clean, `log.md` is current-year only.
+- Orphans: 1 hit, false positive — the `\([^)]+\.md` scan matches prose inside `index.md`.
+- Broken refs: 1 real — `cr-fix-ops/codex-review-threads-never-resolve.md:49` points `> See-also: [[state-file-self-describing]]` at a page whose actual `id` is `cr-fix-state-file-self-describing`. 1 soft — `plugin-ops/worktree-squash-merge-gotchas.md:87` references `[[enterworktree-basefef-fresh]]`, which resolves as an *alias* rather than an `id`, and the check is id-only. 5 further hits are template placeholders (`[[page-id]]`, `[[wiki-id]]`, `[[insight-id]]`, `[[wikilink]]`, `[[ref]]`) plus one shell fragment.
+- Open contradictions: none.
+
+**Calibration input for the 6-week retro.** Two thresholds and four scans need re-tuning against this data: the 5KB level cap fires on 55% of pages and would need to sit near 10KB to isolate the one real outlier; and the orphan scan, the `^\[\[` relationship scan, the MOC reference scan, and the insight `promoted_from` check each produce false positives here by matching prose, wrapped lines, template placeholders, or embedded shell.
+
+## 2026-08-11 — the reviewer's own norms are written by an unreviewed commit + 9-marker staging drain (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Batch drain of 9 `.staging/` markers (captured 2026-07-22 .. 2026-08-10). One marker carried lore nobody had recorded; the other eight are the two triage classes the 2026-08-02 drain named.
+
+- **8 markers dropped.** 4 are subagent captures from session `1c9dff55` — read-only Explore/Plan agents fanned out for the in-flight skill-fleet review; their synthesis is the audit documents that review produces, so ingesting the slices is the naive-accumulation rot mode by construction. `5f30d8cf` + `9d1bb31d` are PR #202 review-round sessions, already curated by the post-merge #202 entry below. `65ef4dfc` is the post-#200 session, curated by the post-merge #200 entry. `f9cba8ce` is the 2026-07-22 macOS/BSD `ultracode` portability audit whose conclusions landed as PR #153/#160/#161 and were curated by the two 2026-07-22 post-merge entries (including the ugrep-shim finding that became `stock-userland-verification.md`) — it predates the 2026-08-02 drain's 2026-07-27 window floor, which is how it survived.
+- **1 marker carried real lore.** Session `9fbcf0a9` (captured 2026-08-04) explored CodeRabbit knowledge-base configuration and ended on an explicit, unanswered offer to record the finding it surfaced. No post-merge covered it — it produced no PR. Re-verified today against the CodeRabbit docs and the current `post-merge` body before ingesting.
+
+- cr-fix-ops/reviewer-norms-written-unreviewed.md: new page, status: active, volatility: stable, sources: 4 — `**/AGENTS.md` and `**/CLAUDE.md` are auto-detected CodeRabbit code guidelines with zero configuration, and `github-dev:post-merge` edits exactly those files and commits them straight to the base branch, so the criteria the next PR is reviewed against change without ever being reviewed. Includes the decision not to add `code_review.md` to `filePatterns`, and the two adjacent doc-confirmed traps (`.claude/rules/` matches no default pattern; naming a guideline file in `path_instructions` makes it reviewed *as code* rather than used as a guideline).
+- plugin-ops/agents-md-verbatim-no-import.md: adds CodeRabbit as a fourth reader of the instruction surface, with the doc-confirmed default pattern list — it reads `AGENTS.md` and `CLAUDE.md` directly, which means this repo's pointer direction is safe for it, and it does not read `.claude/rules/`. sources 7 -> 8; last_verified 2026-07-30 -> 2026-08-11.
+- index.md: added the cr-fix-ops hook.
+
 ## 2026-08-10 — post-merge #202: a blocking guard that hand-parses YAML leaks in both directions (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `096136e` — `skill-forge` / `skill-audit` / `skill-fleet-review` added to `docs-forge`, plus `scripts/check-skill-contract.mjs` (6 silent-failure checks) wired into pre-commit + CI. Driven through 11 cr-fix iterations across three rounds (40 applied, 14 deferred, 19 skipped; `final_state=iteration_cap`).

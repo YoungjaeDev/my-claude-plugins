@@ -34,7 +34,7 @@ Prices move: this page first recorded Pro at $29/mo and knew of no Business tier
 
 ## Scope note
 
-Field-level build mechanics (exact block payloads, count formula, theme presets) live in the plugin reference `plugins/tally-form/skills/tally-form/references/tally-blocks.md` — the operational home; this page is the distilled cross-cutting rule, not a duplicate.
+Field-level build mechanics (exact block payloads, count formula, theme presets) live in the plugin reference `plugins/publish/skills/tally-form/references/tally-blocks.md` — the operational home; this page is the distilled cross-cutting rule, not a duplicate.
 
 > See-also: [[shared-source-codex-manifests]]
 > Evidence: live `POST /forms` of `assets/example-matrix-schedule.md` + `example-dev-survey.md` + an image/redirect form (`logo`/`cover`-gif/`IMAGE`/`redirect`) + a `%%choice`/short-answer probe + `assets/example-intake.md` (46 blocks) — all `status: PUBLISHED`, `hasDraftBlocks: false`, session 2026-06-17.

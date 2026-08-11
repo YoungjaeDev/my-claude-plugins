@@ -4,7 +4,7 @@ aliases: [hermes-adapter, plugin-yaml, hermes-native-plugin, skill-view-optin, h
 last_verified: 2026-08-08
 status: active
 volatility: stable
-sources: 6
+sources: 7
 ---
 
 # Hermes native plugin adapter (third runtime)

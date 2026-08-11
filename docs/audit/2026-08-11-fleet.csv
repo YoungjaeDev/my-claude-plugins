@@ -1,0 +1,54 @@
+path,plugin,skill,lines,body_tokens,description_chars,sections,references_depth,has_scripts,frontmatter_keys
+code-scout/skills/brightdata-guide/SKILL.md,code-scout,brightdata-guide,343,5577,718,30,1,no,name description license
+code-scout/skills/exa-web-search/SKILL.md,code-scout,exa-web-search,147,2100,305,12,0,no,name description
+code-scout/skills/research-orchestrator/SKILL.md,code-scout,research-orchestrator,285,4883,897,27,1,no,name description
+code-scout/skills/resource-finder/SKILL.md,code-scout,resource-finder,191,1618,335,15,1,yes,name description
+codex-image/skills/codex-image/SKILL.md,codex-image,codex-image,175,3246,468,8,0,no,name description argument-hint allowed-tools
+council/skills/convene/SKILL.md,council,convene,639,7521,644,13,0,no,name description
+deepwiki/skills/ask/SKILL.md,deepwiki,ask,20,361,473,1,0,no,name description
+deepwiki/skills/generate-llmstxt/SKILL.md,deepwiki,generate-llmstxt,22,396,338,1,0,no,name description
+docs-forge/skills/changelog-guide/SKILL.md,docs-forge,changelog-guide,88,432,157,14,0,no,name description
+docs-forge/skills/deploy-doc-guide/SKILL.md,docs-forge,deploy-doc-guide,33,481,242,3,0,no,name description
+docs-forge/skills/interview-methodology/SKILL.md,docs-forge,interview-methodology,342,3741,378,43,0,no,name description version
+docs-forge/skills/moc-guide/SKILL.md,docs-forge,moc-guide,52,513,225,7,0,no,name description
+docs-forge/skills/readme-guide/SKILL.md,docs-forge,readme-guide,67,367,144,7,0,no,name description
+docs-forge/skills/skill-audit/SKILL.md,docs-forge,skill-audit,136,1880,782,11,0,no,name description
+docs-forge/skills/skill-fleet-review/SKILL.md,docs-forge,skill-fleet-review,198,2678,755,13,0,no,name description
+docs-forge/skills/skill-forge/SKILL.md,docs-forge,skill-forge,196,2335,793,15,1,yes,name description
+docs-forge/skills/tcrei-prompt/SKILL.md,docs-forge,tcrei-prompt,363,3123,335,31,1,no,name description allowed-tools
+docs-forge/skills/voice-prompt/SKILL.md,docs-forge,voice-prompt,314,4070,736,14,1,no,name description version
+docs-forge/skills/write-rules/SKILL.md,docs-forge,write-rules,411,4371,518,17,0,no,name description allowed-tools
+e2e-harness/skills/e2e-author/SKILL.md,e2e-harness,e2e-author,84,2156,665,4,0,no,name description allowed-tools
+e2e-harness/skills/e2e-debug/SKILL.md,e2e-harness,e2e-debug,97,1964,693,4,0,no,name description allowed-tools
+e2e-harness/skills/e2e-setup/SKILL.md,e2e-harness,e2e-setup,174,3692,683,3,0,no,name description allowed-tools
+github-dev/skills/commit-and-push/SKILL.md,github-dev,commit-and-push,113,1074,466,10,0,no,name description allowed-tools
+github-dev/skills/cr-fix/SKILL.md,github-dev,cr-fix,649,9333,662,33,1,yes,name description allowed-tools
+github-dev/skills/create-issue-label/SKILL.md,github-dev,create-issue-label,55,448,401,8,0,no,name description allowed-tools
+github-dev/skills/decompose-issue/SKILL.md,github-dev,decompose-issue,340,3815,581,15,0,no,name description allowed-tools
+github-dev/skills/post-merge/SKILL.md,github-dev,post-merge,358,7226,1014,21,1,no,name description allowed-tools
+github-dev/skills/release/SKILL.md,github-dev,release,211,1767,562,7,0,no,name description allowed-tools
+github-dev/skills/resolve-issue/SKILL.md,github-dev,resolve-issue,419,5319,630,23,0,no,name description allowed-tools
+github-dev/skills/state-tracker/SKILL.md,github-dev,state-tracker,124,1235,300,11,0,no,name description
+github-dev/skills/update-progress/SKILL.md,github-dev,update-progress,353,3304,543,9,0,no,name description allowed-tools
+llm-wiki/skills/bootstrap-wiki/SKILL.md,llm-wiki,bootstrap-wiki,94,1820,256,4,0,no,name description
+llm-wiki/skills/ingest-finding/SKILL.md,llm-wiki,ingest-finding,253,4728,302,19,0,no,name description
+llm-wiki/skills/lint-wiki/SKILL.md,llm-wiki,lint-wiki,309,5064,278,11,0,no,name description
+llm-wiki/skills/migrate-wiki/SKILL.md,llm-wiki,migrate-wiki,153,2207,379,14,0,no,name description
+llm-wiki/skills/plaud-note-taking/SKILL.md,llm-wiki,plaud-note-taking,271,4066,753,14,1,no,name description version
+llm-wiki/skills/query-wiki/SKILL.md,llm-wiki,query-wiki,75,1519,350,7,0,no,name description
+mem0-ops/skills/cleanup/SKILL.md,mem0-ops,cleanup,50,526,441,2,0,no,name description
+mem0-ops/skills/doctor/SKILL.md,mem0-ops,doctor,39,391,465,2,0,no,name description
+mem0-ops/skills/fleet-scan/SKILL.md,mem0-ops,fleet-scan,39,349,447,2,0,no,name description
+ml-toolkit/skills/cv-explorer/SKILL.md,ml-toolkit,cv-explorer,260,3168,372,28,2,no,name description
+ml-toolkit/skills/cv-notebook/SKILL.md,ml-toolkit,cv-notebook,197,2230,407,21,2,no,name description
+ml-toolkit/skills/edit-notebook/SKILL.md,ml-toolkit,edit-notebook,76,666,217,8,0,no,name description
+ml-toolkit/skills/gpu-parallel-pipeline/SKILL.md,ml-toolkit,gpu-parallel-pipeline,146,1525,480,8,1,yes,name description
+ml-toolkit/skills/gradio-cv-app/SKILL.md,ml-toolkit,gradio-cv-app,183,1587,338,17,1,no,name description
+ml-toolkit/skills/ml-dev-principles/SKILL.md,ml-toolkit,ml-dev-principles,66,844,633,8,0,no,name description
+paper-search-tools/skills/paper-search/SKILL.md,paper-search-tools,paper-search,90,996,223,8,0,no,name description
+paper-search-tools/skills/setup/SKILL.md,paper-search-tools,setup,173,1935,237,10,0,no,name description
+project-init/skills/new/SKILL.md,project-init,new,71,1244,723,4,0,no,name description
+project-init/skills/wiring/SKILL.md,project-init,wiring,223,5178,925,16,0,no,name description
+publish/skills/gws-sync/SKILL.md,publish,gws-sync,90,2787,380,6,1,no,name description
+publish/skills/tally-form/SKILL.md,publish,tally-form,197,3279,727,17,1,yes,name description argument-hint allowed-tools
+publish/skills/translate-web-article/SKILL.md,publish,translate-web-article,231,1868,312,22,1,yes,name description

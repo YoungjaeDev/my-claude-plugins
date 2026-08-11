@@ -46,6 +46,23 @@ function treePluginNames(md) {
   return names;
 }
 
+// README `## 플러그인 상세`: one collapsible per plugin, named in its <summary>.
+// The structure tree and the count strings both passed while this section still
+// documented 11 plugins removed in PR #200 and omitted a live one — a tree entry
+// and a details block are different surfaces, so guarding one does not guard the
+// other. Scoped to the section: a <summary> elsewhere in the README is not a
+// plugin claim.
+function readmeDetailPlugins(md) {
+  const start = md.indexOf('## 플러그인 상세');
+  if (start < 0) { errors.push('README.md 플러그인 상세: section heading not found'); return null; }
+  const rest = md.slice(start + 1);
+  const nextTop = rest.indexOf('\n## ');
+  const section = nextTop >= 0 ? rest.slice(0, nextTop) : rest;
+  const names = new Set();
+  for (const m of section.matchAll(/<summary><strong>([a-z0-9][a-z0-9-]*)<\/strong>/g)) names.add(m[1]);
+  return names;
+}
+
 // AGENTS.md `## Plugins (N)` table: first-column backticked plugin name per row.
 function agentsTablePlugins(md) {
   const start = md.indexOf('## Plugins');
@@ -83,6 +100,8 @@ const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
 const agents = readFileSync(join(ROOT, 'AGENTS.md'), 'utf8');
 
 compareSet('README.md tree', treePluginNames(readme));
+const detailNames = readmeDetailPlugins(readme);
+if (detailNames) compareSet('README.md 플러그인 상세', detailNames);
 // AGENTS.md carries no structure tree (the directory layout is derivable from
 // `ls plugins/`). Its plugin name-set is guarded by the ## Plugins table below,
 // which asserts the same canonical set in both directions.

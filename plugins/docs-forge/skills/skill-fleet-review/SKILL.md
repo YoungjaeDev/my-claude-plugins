@@ -139,14 +139,8 @@ conditions, and synonym runs that spend permanent context to say one thing sever
 
 ### 4. Review the cohort across the remaining six axes
 
-| Axis | What decides it |
-|---|---|
-| Frontmatter | required fields; description length and quoting; `name` kebab and equal to the directory; fields with no statable runtime effect |
-| Structure | section order; length against 100/200/300; `references` depth exactly 1; deterministic logic left as prose |
-| Completion criteria | per step: done distinguishable from not-done (clarity); demand sufficient to pull real work |
-| Information hierarchy | branch test for inline versus pointer; co-location; duplication versus scattering |
-| Pruning | no-op prose, sediment, prose caching what a file already shows, prohibitions where a positive instruction steers better |
-| Runtime contract | every silent failure in `../skill-forge/references/runtime-contract.md` — bare `${CLAUDE_PLUGIN_ROOT}`, an interaction gate hardcoded to one runtime's tool — plus Claude-only logic with no inline cross-runtime path, and a body describing a plugin or path it no longer lives in |
+`Read` the axis table in `../skill-forge/references/axes.md` and apply every row except Pointer,
+which step 3 already covered fleet-wide.
 
 The inline sequential path is the primary one: take the axes in order, and for each, read the cohort
 and record findings. It completes on all three runtimes and must stay complete on its own.
@@ -158,9 +152,8 @@ relocated logic would silently vanish for them.
 
 ### 5. Tier
 
-- **P0** — silent failure on some runtime: does not load, does not trigger, dies at step one.
-- **P1** — structure, completion criteria, or a pointer collision between siblings.
-- **P2** — pruning and phrasing.
+Per the tiers in `../skill-forge/references/axes.md`: **P0** silent failure on a runtime (name it),
+**P1** structure / completion criteria / sibling pointer collision, **P2** pruning and phrasing.
 
 ### 6. Emit the report
 

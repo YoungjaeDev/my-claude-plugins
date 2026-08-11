@@ -1,10 +1,10 @@
 ---
 id: shared-source-codex-manifests
 aliases: [codex-shared-source, sync-codex-manifests, codex-manifest-generator, retired-codex-bridge]
-last_verified: 2026-07-14
+last_verified: 2026-08-11
 status: active
 volatility: stable
-sources: 10
+sources: 11
 ---
 
 # Shared-source Codex manifests
@@ -193,6 +193,22 @@ the input/output contract identical. The rule: a shared skill body that dispatch
 subagents must name its no-dispatch fallback, or it is Claude-only in effect while
 appearing cross-runtime.
 
+That rule was written for runtimes that *lack* the mechanism, and it has a second
+reason nobody argued for it: the fallback is also what survives the mechanism
+*failing* on the runtime that has it. `skill-fleet-review` declares the inline
+sequential pass primary and the per-axis `Task` fan-out "an accelerator, not a
+requirement". Its first real sweep dispatched four read-only axis agents on Claude
+Code; all four died with `API Error: Connection closed mid-response`, twice each,
+and returned nothing — two of them went idle reporting "available" without ever
+delivering a result, which reads identically to success from the caller's side.
+The run completed only because the inline path was still executable, and it
+covered every mechanically-decidable axis plus the fleet-wide pointer pass; what
+it could not cover became a **declared cap** in the report rather than a silent
+gap. Two consequences worth separating from the portability argument: a skill that
+lets the accelerator become primary has no degraded mode on *any* runtime, and an
+accelerator that fails silently needs the caller to treat "no result" as a failure
+rather than an empty one — the same shape as [[detector-cannot-look-vs-nothing-wrong]].
+
 ## Orphan manifest detection
 
 `--check`'s drift guard also catches the inverse failure: a manifest file left
@@ -252,3 +268,4 @@ does NOT need to retain removed plugins — orphan detection covers that case.
 > Evidence: scripts/sync-codex-manifests.mjs
 > Evidence: AGENTS.md
 > Evidence: plugins/ppt-yeong-style/skills/deck-review/SKILL.md (path dead — plugin removed in the 2.9.0 release; read it at merge `7b5a721`)
+11. **`skill-fleet-review`'s first sweep (2026-08-11, PR #206)** — the accelerator half of the subagent rule. Four read-only per-axis `Task` agents on Claude Code all failed with `API Error: Connection closed mid-response` across two attempts each and delivered no findings; two then signalled idle/"available", which is indistinguishable from a completed run at the call site. The inline path carried the sweep and the uncovered axes became a declared cap in `docs/audit/2026-08-11-fleet.md` §1.

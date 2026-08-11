@@ -6,6 +6,33 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-08-11 — post-baseline sweep: two baseline findings closed, the split candidate grew 11% (lint-wiki)
+
+Second lint of the day and the first one with something to compare against — the baseline block below was written this morning, before the drain remediation and the two ingests above. Same 44 pages, 6 domains, 7 insight entries. Report-only; nothing auto-fixed.
+
+**Closed since baseline (2 of 2 mechanical findings):**
+- Sources: **clean**. `plugin-ops/hermes-plugin-adapter.md`'s `sources: 6` over 7 entries was corrected.
+- Broken refs: the one real hit is gone. `cr-fix-ops/codex-review-threads-never-resolve.md`'s `> See-also: [[state-file-self-describing]]` now names the target's actual `id`.
+
+**Unchanged from baseline:**
+- Identity clean · Status/Supersession clean (0 `status: stale`) · Source drift clean (still 0 `sha256:`-bearing raw) · Link poverty clean · Log rotation clean · Contradictions none.
+- Staleness: the same 4 volatile pages, now 33-35 days — `subagentstop-hook-payload`, `mem0-hook-latency-budget`, `codex-imagegen-output-behavior`, `mem0-rest-list-contract`. Deliberately not touched twice now; each needs a real re-verification against current code, not a date edit.
+- `insight/index.md` still carries `last_verified: 2026-06-01` against a 2026-07-29 commit. Same reasoning.
+- The three known scan false positives persist and are not defects: the orphan regex matching `index.md` prose, the `^\[\[` scan hitting a wrapped sentence at `hermes-plugin-adapter.md:106`, and `[[enterworktree-basefef-fresh]]` resolving as an *alias* where the check is id-only.
+
+**Moved the wrong way:**
+- Level: still 24 pages over 5KB, but the one genuine outlier grew. `plugin-ops/detector-cannot-look-vs-nothing-wrong.md` went 33.9KB -> **37.8KB** (+11%) on today's two ingests, and its promoted `insight/detector-cannot-look.md` sits at 5.6KB against a 2KB cap. The page is now 7.6x the level threshold and second only to `log.md`. It absorbs cleanly *because* its shape — numbered failure modes — accepts any new instance, which is exactly what makes it the page that never says no. **The split is no longer a nice-to-have**; the natural seam is local-detector modes (1-3, 5) against consumer/scope modes (6-9) against guard-self modes (10-11), and the insight entry should be re-condensed to the rule rather than tracking the page.
+
+**Retro:** not due. The baseline is today, so the 6-week recalibration of the 5KB cap and the volatility windows lands 2026-09-22 at the earliest.
+
+## 2026-08-11 — the Claude-only accelerator failed, and the portable path was the reason the run finished (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Drain of 5 `.staging/` markers, all from session `1c9dff55` (4 axis subagents + the parent). The subagent markers are pre-synthesis slices whose synthesis is `docs/audit/2026-08-11-fleet.md`, already merged, and the parent's lore was ingested by the post-merge #206 entry below — so the batch would normally be a pure skip. It is not, because **how the subagents ended** is itself the finding: all four died on `API Error: Connection closed mid-response`, twice each, and never returned a line. No new pages — both items refine claims the wiki already holds.
+
+- plugin-ops/shared-source-codex-manifests.md: the "a subagent-dispatching body must name its no-dispatch fallback" rule gains its second, non-portability reason. It was written for runtimes that *lack* the mechanism; this run was on Claude Code, which has it, and the accelerator still returned nothing four times over. The inline path is not only the portable path — on the one runtime that can fan out, it is also the path that survives the fan-out failing. sources 10 -> 11; last_verified 2026-07-14 -> 2026-08-11.
+- plugin-ops/detector-cannot-look-vs-nothing-wrong.md: a capture-side instance of the same family. `check-skill-prose.mjs` writes **every** line through `console.error`, so a report contract demanding the guard's output verbatim, implemented as plain stdout capture, produced an empty block that still looked like a rendered section. Verified: `node scripts/check-skill-prose.mjs | wc -l` is 0, `2>&1 | wc -l` is 24. sources 14 -> 15; last_verified stays 2026-08-11.
+- 5 staging markers consumed and deleted.
+
 ## 2026-08-11 — post-merge #206: a blind spot that authorizes a deletion, and an audit that measured the wrong consumer (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `c714ff1` — the skill fleet sweep, the README detail-section rebuild, and eight dead design documents pruned. Config integration (Step 6) took one learning to its existing home, so it is not duplicated here (knowledge routing): the tree-vs-`<details>` surface distinction extended `check-doc-consistency.mjs`'s description in both `AGENTS.md` and `README.md`. No new pages — both findings are fresh instances of modes the wiki already names, so they land as instances rather than pages.

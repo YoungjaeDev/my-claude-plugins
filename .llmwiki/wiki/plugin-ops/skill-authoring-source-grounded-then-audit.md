@@ -51,8 +51,8 @@ The non-obvious trap: **a rule-by-rule diff undersells a famous skill.** `grill-
 A fourth lane sits outside that triage, for when none of the three fit: **diverge-fork** — take ownership of the source and steer it where upstream would never go. The tell is that the wanted changes are *structural* rather than additive: a rename, cutting the author's funnel (star-prompts, update-check hooks, usage markers), collapsing a 1,400-line SKILL.md, re-designing against your own runtime contract. Two things have to be said out loud before choosing it. A fork does not make upstream updates *faster*, it makes them *zero*, so the real question is whether the skill is a core routine often enough to justify paying the ownership cost forever — "upstream is slow" is a symptom that a fork answers by deleting the dependency, not by speeding it up. And try upstream first: a doc-consistency PR into that same repo the day before showed the other half of the ledger — an external repo cannot run your review loop (its bot configuration belongs to its maintainer) and the merge runs on their clock, which is the evidence for "upstream would never take this", not an assumption about it. The rename is a free side effect rather than mere taste: it dissolves the name collision with the original, so both can stay installed side by side until the fork clears its acceptance bar.
 
 > See-also: [[shared-source-codex-manifests]]
-> Evidence: docs/superpowers/specs/2026-06-16-anti-slop-design-skill-design.md
-> Evidence: docs/references/anti-slop-design-oss-synthesis.md
+> Evidence: docs/superpowers/specs/2026-06-16-anti-slop-design-skill-design.md (path dead — the `anti-slop-design` plugin was removed in PR #191 and its design docs were pruned in PR #206; read it at merge `1ea9f41`)
+> Evidence: docs/references/anti-slop-design-oss-synthesis.md (path dead — same pruning; read it at merge `1ea9f41`)
 
 ## Sources
 

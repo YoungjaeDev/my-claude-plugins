@@ -46,7 +46,7 @@ A convergence loop that stops when "unresolved threads == 0" will never stop on 
 Because Codex re-reviews every push and never closes its own threads, the loop's terminating signal has to come from *new findings per round*, not from thread state. `cr-fix`'s default `--max-iter 5` is doing real work here: PR #106 converged 2 → 3 → 6 → 1 → 2 applied fixes across five rounds and would have kept producing small findings indefinitely.
 
 > See-also: [[cr-fix-yagni-over-engineering-axis]]
-> See-also: [[state-file-self-describing]]
+> See-also: [[cr-fix-state-file-self-describing]]
 > Evidence: plugins/github-dev/skills/post-merge/SKILL.md
 
 ## Sources

@@ -38,7 +38,7 @@ The global search stack (in `CLAUDE.md.global`) is: brightdata `search_engine` d
 
 > See-also: [[code-scout-vs-deep-research-boundary]]
 > See-also: [[detector-cannot-look-vs-nothing-wrong]]
-> Evidence: plugins/brightdata-guide/skills/brightdata-guide/SKILL.md
+> Evidence: plugins/code-scout/skills/brightdata-guide/SKILL.md
 > Evidence: plugins/deepwiki/references/generate-llmstxt-procedure.md
 > Evidence: CLAUDE.md.global
 

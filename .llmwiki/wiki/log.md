@@ -6,6 +6,90 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-08-11 — post-baseline sweep: two baseline findings closed, the split candidate grew 11% (lint-wiki)
+
+Second lint of the day and the first one with something to compare against — the baseline block below was written this morning, before the drain remediation and the two ingests above. Same 44 pages, 6 domains, 7 insight entries. Report-only; nothing auto-fixed.
+
+**Closed since baseline (2 of 2 mechanical findings):**
+- Sources: **clean**. `plugin-ops/hermes-plugin-adapter.md`'s `sources: 6` over 7 entries was corrected.
+- Broken refs: the one real hit is gone. `cr-fix-ops/codex-review-threads-never-resolve.md`'s `> See-also: [[state-file-self-describing]]` now names the target's actual `id`.
+
+**Unchanged from baseline:**
+- Identity clean · Status/Supersession clean (0 `status: stale`) · Source drift clean (still 0 `sha256:`-bearing raw) · Link poverty clean · Log rotation clean · Contradictions none.
+- Staleness: the same 4 volatile pages, now 33-35 days — `subagentstop-hook-payload`, `mem0-hook-latency-budget`, `codex-imagegen-output-behavior`, `mem0-rest-list-contract`. Deliberately not touched twice now; each needs a real re-verification against current code, not a date edit.
+- `insight/index.md` still carries `last_verified: 2026-06-01` against a 2026-07-29 commit. Same reasoning.
+- The three known scan false positives persist and are not defects: the orphan regex matching `index.md` prose, the `^\[\[` scan hitting a wrapped sentence at `hermes-plugin-adapter.md:106`, and `[[enterworktree-basefef-fresh]]` resolving as an *alias* where the check is id-only.
+
+**Moved the wrong way:**
+- Level: still 24 pages over 5KB, but the one genuine outlier grew. `plugin-ops/detector-cannot-look-vs-nothing-wrong.md` went 33.9KB -> **37.8KB** (+11%) on today's two ingests, and its promoted `insight/detector-cannot-look.md` sits at 5.6KB against a 2KB cap. The page is now 7.6x the level threshold and second only to `log.md`. It absorbs cleanly *because* its shape — numbered failure modes — accepts any new instance, which is exactly what makes it the page that never says no. **The split is no longer a nice-to-have**; the natural seam is local-detector modes (1-3, 5) against consumer/scope modes (6-9) against guard-self modes (10-11), and the insight entry should be re-condensed to the rule rather than tracking the page.
+
+**Retro:** not due. The baseline is today, so the 6-week recalibration of the 5KB cap and the volatility windows lands 2026-09-22 at the earliest.
+
+## 2026-08-11 — the Claude-only accelerator failed, and the portable path was the reason the run finished (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Drain of 5 `.staging/` markers, all from session `1c9dff55` (4 axis subagents + the parent). The subagent markers are pre-synthesis slices whose synthesis is `docs/audit/2026-08-11-fleet.md`, already merged, and the parent's lore was ingested by the post-merge #206 entry below — so the batch would normally be a pure skip. It is not, because **how the subagents ended** is itself the finding: all four died on `API Error: Connection closed mid-response`, twice each, and never returned a line. No new pages — both items refine claims the wiki already holds.
+
+- plugin-ops/shared-source-codex-manifests.md: the "a subagent-dispatching body must name its no-dispatch fallback" rule gains its second, non-portability reason. It was written for runtimes that *lack* the mechanism; this run was on Claude Code, which has it, and the accelerator still returned nothing four times over. The inline path is not only the portable path — on the one runtime that can fan out, it is also the path that survives the fan-out failing. sources 10 -> 11; last_verified 2026-07-14 -> 2026-08-11.
+- plugin-ops/detector-cannot-look-vs-nothing-wrong.md: a capture-side instance of the same family. `check-skill-prose.mjs` writes **every** line through `console.error`, so a report contract demanding the guard's output verbatim, implemented as plain stdout capture, produced an empty block that still looked like a rendered section. Verified: `node scripts/check-skill-prose.mjs | wc -l` is 0, `2>&1 | wc -l` is 24. sources 14 -> 15; last_verified stays 2026-08-11.
+- 5 staging markers consumed and deleted.
+
+## 2026-08-11 — post-merge #206: a blind spot that authorizes a deletion, and an audit that measured the wrong consumer (post-merge)
+
+Diff log written before applying the page edits (git-revertible). Merge SHA `c714ff1` — the skill fleet sweep, the README detail-section rebuild, and eight dead design documents pruned. Config integration (Step 6) took one learning to its existing home, so it is not duplicated here (knowledge routing): the tree-vs-`<details>` surface distinction extended `check-doc-consistency.mjs`'s description in both `AGENTS.md` and `README.md`. No new pages — both findings are fresh instances of modes the wiki already names, so they land as instances rather than pages.
+
+- plugin-ops/detector-cannot-look-vs-nothing-wrong.md: **Mode 6 gains its damage-direction half.** The recorded instance was a parity gate whose 0-hit reading let a stale string *survive*. This run inverted it — the same dot-dir blind spot returned a clean inbound-reference check that *authorized a deletion*, and the deleted files were cited by an `status: active` wiki page. A blind spot that silently keeps something is annoying; the same blind spot pointed at a removal decision destroys a live reference. **Mode 9 gains an instance**: an over-engineering audit measured whether other *scripts* read `parse-args.sh`'s exported variables, concluded 7 were dead, and was wrong on all of them — cr-fix's dispatcher is the LLM reading `SKILL.md`, so the question "does another script read this" was never the question. sources 13 -> 14; last_verified 2026-08-10 -> 2026-08-11.
+- llm-wiki-design/deleted-subject-not-stale.md: adds the deletion-side rule the page implied but never stated — when pruning documents whose subject was removed, the test is **"the subject no longer exists", never "nothing links to it"**. The link-absence heuristic eats a freshly written audit report (orphan by construction the moment it is created) and a live plugin's design record, while missing exactly the dangling-citation case this page exists for. sources 3 -> 4; last_verified 2026-08-08 -> 2026-08-11.
+
+## 2026-08-11 — a removal grep that could not see the wiki it was about to break (ingest-finding)
+
+Diff log written before applying the page edit (git-revertible). PR #206 deleted eight design documents whose subject plugins no longer exist. The inbound-reference check that authorized the deletion ran `rg -l --fixed-strings "$f" .` and reported zero hits for every file — but recursive `rg` skips dot-directories by default, so `.llmwiki/` was never scanned, and an `status: active` page was citing two of the deleted files as `> Evidence:`. The Codex reviewer caught it on the PR. Re-running with `--hidden` surfaces both hits immediately. This is `detector-cannot-look-vs-nothing-wrong` Mode 6 firing on the exact repository that recorded it.
+
+Remedy follows `deleted-subject-not-stale`: the subject is dead, so the page is not `status: stale` (that means *superseded* and needs a `> Superseded-by:` pair a deletion has nothing to fill) and the provenance is not rewritten. The dangling path is annotated with the commit where it is still readable, matching the precedent at `shared-source-codex-manifests.md:254`.
+
+- plugin-ops/skill-authoring-source-grounded-then-audit.md: both `> Evidence:` lines annotated `(path dead — … read it at merge 1ea9f41)`. No body prose touched, no `## Sources` entry changed, `status` left `active`.
+
+## 2026-08-11 — post-absorption pointer repair + two mechanical lint fixes (ingest-finding)
+
+Applied after the baseline lint below, deliberately in that order: fixing first would have let the repository's first-ever lint entry claim a staleness health the wiki never had, and with no prior entry to contradict it that reading would stand permanently. Five one-line edits, no page body rewritten. Scoped to the pointer itself — PR #200 absorbed 11 plugins into 6 bundles, and `deleted-subject-not-stale` establishes that a mechanical name sweep over this wiki corrupts historical findings, so domain directories (`tally-form-ops/` among them) and all `## Sources` provenance stay exactly as they are.
+
+- research-harness/brightdata-cli-preflight-quirks.md: `> Evidence:` path `plugins/brightdata-guide/…` -> `plugins/code-scout/skills/brightdata-guide/SKILL.md`.
+- llm-wiki-design/optin-drift-check-permission-switch.md: `> Evidence:` path `plugins/plaud-note-taking/…` -> `plugins/llm-wiki/skills/plaud-note-taking/SKILL.md`.
+- tally-form-ops/tally-api-schema-vs-live.md: body pointer to the operational reference `plugins/tally-form/…` -> `plugins/publish/skills/tally-form/references/tally-blocks.md`.
+- cr-fix-ops/codex-review-threads-never-resolve.md: `> See-also: [[state-file-self-describing]]` resolved to nothing — the target page's `id` is `cr-fix-state-file-self-describing`. Corrected (the lint baseline's one real broken reference).
+- plugin-ops/hermes-plugin-adapter.md: `sources: 6` -> `7`, matching the `## Sources` entry count (the baseline's one real sources mismatch).
+
+Two baseline findings deliberately NOT fixed: `insight/index.md`'s unbumped `last_verified` (bumping a date without re-reading the page is the anti-pattern), and the 4 volatile pages past their window (each needs a real re-verification against current code, not a date edit).
+
+## 2026-08-11 — v2 0-week baseline (lint-wiki)
+
+First lint sweep this repository has recorded, so there is no prior entry to compare against — this block IS the baseline. Scope: 44 wiki pages across 6 domains + 7 insight entries, run immediately after the 9-marker drain below and **before** any remediation, so the numbers describe the wiki as it actually stood. Report-only; nothing was auto-fixed.
+
+- Identity: clean — 0 duplicate `id:`, 0 duplicate aliases, so no merge/supersede/alias cluster to score.
+- Level: 24 of 44 pages over 5KB, but the threshold is miscalibrated for this wiki's prose density — 21 of them sit between 5.2KB and 9KB, and `index.md` (36KB) and `log.md` (137KB) are structurally exempt yet trip the same cut. One genuine split candidate: `plugin-ops/detector-cannot-look-vs-nothing-wrong.md` at 33.9KB, 6.8x the cut, now carrying Mode 11. Its promoted `insight/detector-cannot-look.md` has grown to 5.6KB (2.8x the 2KB insight cap) in step with it — the same accretion showing on both layers.
+- Relationship: 1 hit, false positive — `plugin-ops/hermes-plugin-adapter.md:106` is a wrapped sentence whose continuation happens to begin with `[[`.
+- Staleness: 4 pages past a 30d volatile window, all 33-35 days, all mem0/hook-related — `subagentstop-hook-payload`, `mem0-hook-latency-budget`, `codex-imagegen-output-behavior`, `mem0-rest-list-contract`.
+- Status: clean — 0 `status: stale` pages. Supersession: clean, no one-sided pairs.
+- Sources: 1 real mismatch — `plugin-ops/hermes-plugin-adapter.md` declares `sources: 6` over 7 `## Sources` entries.
+- Insight: 7 entries, all carrying `tier:` + `promoted_from:`. 2 over the 2KB conciseness cap (`detector-cannot-look.md` 5.6KB, `codex-skill-desc-1024.md` 3.1KB). `insight/index.md` carries `last_verified: 2026-06-01` while its last commit is 2026-07-29 — edited without a bump; not corrected here, because bumping a date without re-reading the page is the anti-pattern this skill exists to prevent.
+- Source drift: clean — no raw file carries a `sha256:` field yet (frontmatter is prospective-only, existing raw is never backfilled).
+- Link poverty: clean. Log rotation: clean, `log.md` is current-year only.
+- Orphans: 1 hit, false positive — the `\([^)]+\.md` scan matches prose inside `index.md`.
+- Broken refs: 1 real — `cr-fix-ops/codex-review-threads-never-resolve.md:49` points `> See-also: [[state-file-self-describing]]` at a page whose actual `id` is `cr-fix-state-file-self-describing`. 1 soft — `plugin-ops/worktree-squash-merge-gotchas.md:87` references `[[enterworktree-basefef-fresh]]`, which resolves as an *alias* rather than an `id`, and the check is id-only. 5 further hits are template placeholders (`[[page-id]]`, `[[wiki-id]]`, `[[insight-id]]`, `[[wikilink]]`, `[[ref]]`) plus one shell fragment.
+- Open contradictions: none.
+
+**Calibration input for the 6-week retro.** Two thresholds and four scans need re-tuning against this data: the 5KB level cap fires on 55% of pages and would need to sit near 10KB to isolate the one real outlier; and the orphan scan, the `^\[\[` relationship scan, the MOC reference scan, and the insight `promoted_from` check each produce false positives here by matching prose, wrapped lines, template placeholders, or embedded shell.
+
+## 2026-08-11 — the reviewer's own norms are written by an unreviewed commit + 9-marker staging drain (ingest-finding)
+
+Diff log written before applying the page edits (git-revertible). Batch drain of 9 `.staging/` markers (captured 2026-07-22 .. 2026-08-10). One marker carried lore nobody had recorded; the other eight are the two triage classes the 2026-08-02 drain named.
+
+- **8 markers dropped.** 4 are subagent captures from session `1c9dff55` — read-only Explore/Plan agents fanned out for the in-flight skill-fleet review; their synthesis is the audit documents that review produces, so ingesting the slices is the naive-accumulation rot mode by construction. `5f30d8cf` + `9d1bb31d` are PR #202 review-round sessions, already curated by the post-merge #202 entry below. `65ef4dfc` is the post-#200 session, curated by the post-merge #200 entry. `f9cba8ce` is the 2026-07-22 macOS/BSD `ultracode` portability audit whose conclusions landed as PR #153/#160/#161 and were curated by the two 2026-07-22 post-merge entries (including the ugrep-shim finding that became `stock-userland-verification.md`) — it predates the 2026-08-02 drain's 2026-07-27 window floor, which is how it survived.
+- **1 marker carried real lore.** Session `9fbcf0a9` (captured 2026-08-04) explored CodeRabbit knowledge-base configuration and ended on an explicit, unanswered offer to record the finding it surfaced. No post-merge covered it — it produced no PR. Re-verified today against the CodeRabbit docs and the current `post-merge` body before ingesting.
+
+- cr-fix-ops/reviewer-norms-written-unreviewed.md: new page, status: active, volatility: stable, sources: 4 — `**/AGENTS.md` and `**/CLAUDE.md` are auto-detected CodeRabbit code guidelines with zero configuration, and `github-dev:post-merge` edits exactly those files and commits them straight to the base branch, so the criteria the next PR is reviewed against change without ever being reviewed. Includes the decision not to add `code_review.md` to `filePatterns`, and the two adjacent doc-confirmed traps (`.claude/rules/` matches no default pattern; naming a guideline file in `path_instructions` makes it reviewed *as code* rather than used as a guideline).
+- plugin-ops/agents-md-verbatim-no-import.md: adds CodeRabbit as a fourth reader of the instruction surface, with the doc-confirmed default pattern list — it reads `AGENTS.md` and `CLAUDE.md` directly, which means this repo's pointer direction is safe for it, and it does not read `.claude/rules/`. sources 7 -> 8; last_verified 2026-07-30 -> 2026-08-11.
+- index.md: added the cr-fix-ops hook.
+
 ## 2026-08-10 — post-merge #202: a blocking guard that hand-parses YAML leaks in both directions (post-merge)
 
 Diff log written before applying the page edits (git-revertible). Merge SHA `096136e` — `skill-forge` / `skill-audit` / `skill-fleet-review` added to `docs-forge`, plus `scripts/check-skill-contract.mjs` (6 silent-failure checks) wired into pre-commit + CI. Driven through 11 cr-fix iterations across three rounds (40 applied, 14 deferred, 19 skipped; `final_state=iteration_cap`).

@@ -84,4 +84,4 @@ edit from "helpfully" adding `sha256:` and silently freezing the layer.
 > Refines: [[curated-conservative]]
 > See-also: [[provenance-over-confidence]]
 > Evidence: plugins/llm-wiki/skills/lint-wiki/SKILL.md
-> Evidence: plugins/plaud-note-taking/skills/plaud-note-taking/SKILL.md
+> Evidence: plugins/llm-wiki/skills/plaud-note-taking/SKILL.md

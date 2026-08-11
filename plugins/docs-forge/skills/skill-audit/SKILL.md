@@ -82,26 +82,13 @@ missing pointer.
 
 ### 3. Judge the seven axes
 
-Work through all seven. Record a finding only where the body gives evidence — an axis with nothing
-to say is passed, not padded.
-
-| Axis | What decides it |
-|---|---|
-| Frontmatter | required fields present; description under 1024 and quoted if it holds `: `; `name` kebab and equal to the directory; no field whose runtime effect nobody can state |
-| Pointer | does the description encode reaching conditions, or summarize the subject? how many distinct branches; synonym padding; does any branch collide with a sibling skill |
-| Structure | section order and completeness; length against the 100/200/300 targets; `references` depth exactly 1; deterministic logic left as prose instead of a script |
-| Completion criteria | per step: can done be told from not-done (clarity); does the demand pull real work, or accept a glance |
-| Information hierarchy | branch test — inlined content only some branches reach, or a pointer to content every run needs; co-location, and whether a split concept is duplication or scattering |
-| Pruning | no-op prose, sediment, prose caching what a file or command already shows, prohibition where a positive instruction would steer better |
-| Runtime contract | every silent failure in `../skill-forge/references/runtime-contract.md` — bare `${CLAUDE_PLUGIN_ROOT}`, an interaction gate hardcoded to one runtime's tool, a Hermes-eligible skill with no tool mapping — plus logic that exists only on the Claude surface, and a body describing a plugin or path it no longer lives in |
+`Read` the axis table and tier definitions in `../skill-forge/references/axes.md`, then work through
+all seven against this skill. Record a finding only where the body gives evidence.
 
 ### 4. Tier the findings
 
-- **P0** — causes a silent failure: the skill does not load, does not trigger, or dies at its first
-  step on one of the three runtimes.
-- **P1** — structure, completion criteria, or a pointer collision with a sibling. The skill runs and
-  produces the wrong shape of work.
-- **P2** — pruning and phrasing. Real, but nothing breaks.
+Per the tiers in `../skill-forge/references/axes.md`: **P0** silent failure on a runtime, **P1**
+structure / completion criteria / sibling pointer collision, **P2** pruning and phrasing.
 
 ### 5. Report
 

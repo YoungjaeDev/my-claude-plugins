@@ -206,7 +206,7 @@ node scripts/check-shell-portability.mjs
 node scripts/check-skill-contract.mjs
 ```
 
-`check-doc-consistency.mjs` 는 README 구조 트리·`## Plugins` 표·문서에 박힌 카운트 문자열을 marketplace.json 과 대조하고 `.githooks/pre-commit` 에서 차단한다. 문서 블록이 관례가 아니라 기계적으로 강제된다는 뜻이므로, 어떤 문서 내용을 "코드에서 재생성 가능하니 지워도 된다" 고 판단하기 전에 훅이 그 블록을 요구하는지 먼저 확인한다. 가드 7종 전체 설명은 `README.md` 의 "CI 가드가 지키는 것".
+`check-doc-consistency.mjs` 는 README 구조 트리·README `## 플러그인 상세` 의 `<summary>` 이름 집합·`## Plugins` 표·문서에 박힌 카운트 문자열을 marketplace.json 과 대조하고 `.githooks/pre-commit` 에서 차단한다. 상세 절이 뒤늦게 추가된 이유가 이 가드의 성질을 말해준다 — 트리 엔트리와 `<details>` 블록은 같은 문서의 **서로 다른 표면**이라, 한쪽을 대조해도 다른 쪽은 안 대조된다. 플러그인 제거 후 상세 절에 죽은 항목 11개가 남고 살아있는 항목 1개가 빠진 채로 이 가드가 통과한 적이 있다. 문서 한 종류를 지킨다고 그 문서 전체가 지켜지는 게 아니므로, 새 문서 블록을 만들 때 어느 표면이 실제로 검사되는지 확인한다. 문서 블록이 관례가 아니라 기계적으로 강제된다는 뜻이므로, 어떤 문서 내용을 "코드에서 재생성 가능하니 지워도 된다" 고 판단하기 전에 훅이 그 블록을 요구하는지 먼저 확인한다. 가드 7종 전체 설명은 `README.md` 의 "CI 가드가 지키는 것".
 
 `check-shell-portability.mjs` 는 `code_review.md` P1 의 크로스플랫폼 규칙을 기계적으로 강제한다 — GNU 전용 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우만 잡는다. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하며, 증거는 **코드여야 하고 주석은 인정하지 않는다** (대체재를 언급하는 주석이 실제 폴백으로 계수되면 이 가드가 존재하는 이유인 `md5sum` 자체가 새어나간다). 정말 예외인 줄은 `# portability-ok: <사유>` 로 표시한다. `.llmwiki/`·`.claude/spec/`·`code_review.md`·`AGENTS.md` 는 그 구문을 *설명*할 뿐이라 스캔에서 제외된다.
 

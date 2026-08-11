@@ -10,3 +10,9 @@
 # Extensionless shell hooks — a CRLF checkout makes bash die at `set -euo
 # pipefail\r` on the first line, breaking the Windows commit path.
 .githooks/* text eol=lf
+# Markdown must stay LF too. `ml-toolkit:cv-explorer` was the only skill stored
+# with CRLF (SKILL.md + 5 references), so nothing normalized it and no guard saw
+# it: every runtime parsed the frontmatter, but any shell lifted out of those
+# fences carried a trailing \r. Scoped to *.md rather than widened to `* text=auto`
+# for the same reason as above — a blanket rule would corrupt binary assets.
+*.md   text eol=lf

@@ -1,10 +1,10 @@
 ---
 id: deleted-subject-not-stale
 aliases: [subject-deleted-lore, removed-plugin-lore, lore-outlives-its-subject, dangling-evidence-path]
-last_verified: 2026-08-08
+last_verified: 2026-08-11
 status: active
 volatility: stable
-sources: 3
+sources: 4
 ---
 
 # A page whose subject was deleted is not a stale page
@@ -56,7 +56,14 @@ Two habits keep them apart:
 - **Exclude the record from mechanical rewrites.** `.llmwiki/wiki/`, `.llmwiki/raw/`, past specs, and test fixtures hold statements about the past. A sweep that reaches them is editing history, not references. (Excluding `docs/superpowers/` and `raw/audits/` while forgetting `.llmwiki/wiki/` is how this one landed.)
 - **Append the move, don't rewrite the claim.** When a historical page's subject has since moved, keep the original identifier and add a dated follow-on sentence naming the new location. Both facts survive; neither is asserted in the other's tense.
 
+## The deletion side: the test is subject-death, never link-absence
+
+The page above is about lore that outlives its subject. The mirror case is the document you are about to *delete* because its subject is gone — and there the tempting test is the wrong one. "Nothing links to it" fails in both directions at once. It **over-deletes**: a freshly written audit report is an orphan by construction the second it is created, so a cleanup pass run right after a sweep eats the sweep's own evidence; and a design record for a plugin that shipped and is still installed has no reason to be linked from anywhere, yet deleting it turns a settled decision back into a debate. It also **under-protects**, missing exactly the case this page exists for: a document nothing *links* to may still be *cited* as `> Evidence:` by an active wiki page, which is a reference the link heuristic was never looking at.
+
+Use the subject: **does the plugin, skill, or subsystem this document is about still exist?** That question has one answer, it is checkable against `marketplace.json` and `plugins/`, and it is indifferent to how many things happen to point at the file. Then, separately, run the inbound check against the surviving citations — with `--hidden`, because the wiki lives in a dot-directory (see [[detector-cannot-look-vs-nothing-wrong]] Mode 6). Anything still cited gets the annotation treatment from the section above, not a rescue from deletion.
+
 > See-also: [[absorption-rehomes-the-body]]
+> See-also: [[detector-cannot-look-vs-nothing-wrong]]
 > See-also: [[insight-layer-via-hook]]
 > See-also: [[skill-engine-layering]]
 > Evidence: .llmwiki/wiki/plugin-ops/skill-engine-layering.md
@@ -67,3 +74,4 @@ Two habits keep them apart:
 1. **PR #191 (merged `4f95949`)** — removal of `anti-slop-design` + `ppt-yeong-style`. Two active `plugin-ops/` pages kept present-tense assertions that the removed plugins were current: `skill-engine-layering.md` opened with "`ppt-yeong-style` **is** such a layer" and listed `anti-slop-design` in a live optional-dependency roster; `shared-source-codex-manifests.md` carried a `> Evidence:` at a path inside the deleted tree. Every manifest, count, and eligibility guard in the repo passed on that PR.
 2. **Codex review on PR #191 (P2)** — flagged the surviving lore as "false operational guidance and dangling evidence paths" and proposed archiving the pages. The claim was correct; the proposed remedy was rejected against this repo's wiki lifecycle (`status: stale` requires a `> Superseded-by:` pair, and nothing supersedes the lesson), which is what produced the tense-not-lifecycle rule above.
 3. **PR #200 (merged `c56bd25`)** — the inverse failure. A repo-wide rename sweep for the absorption reached `.llmwiki/wiki/`, rewriting the PR #193 evidence on `plugin-ops/hermes-plugin-adapter.md` and the PR #154/#156/#158 note on `plugin-ops/skill-authoring-source-grounded-then-audit.md` into claims that contradicted their own surrounding sentences. `docs/superpowers/` and `.llmwiki/raw/audits/` had been excluded from the sweep for exactly this reason; `.llmwiki/wiki/` was missed. Caught by Codex review (P2), restored to the original wording with the move recorded as a dated follow-on sentence.
+4. **PR #206** (`chore: 스킬 전수 검토 + README 상세 절 재구성 + 죽은 문서 정리`) — the deletion-side rule, learned by getting it half right. The pruning pass correctly used subject-death to decide *what* to delete (and correctly spared `2026-07-07-mem0-ops-plugin.md`, a link-orphan whose plugin still ships), but its inbound-reference check used a dot-dir-blind `rg`, so two of the deleted files were still cited as `> Evidence:` by an `status: active` page. Both halves are needed: subject-death picks the candidates, a `--hidden` citation scan decides which dangling pointers need annotating.

@@ -625,7 +625,7 @@ shared-source 배선은 7개 가드가 매 PR 과 매 커밋(`.githooks/pre-comm
 
 - `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
 - `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
-- `check-doc-consistency.mjs` — 플러그인 트리·표·카운트(총 14 / Codex-eligible 12 / Hermes 4)가 `manifest-eligibility.mjs` SoT와 일치.
+- `check-doc-consistency.mjs` — 플러그인 트리·`## 플러그인 상세` 의 `<summary>` 이름 집합·`## Plugins` 표·카운트(총 14 / Codex-eligible 12 / Hermes 4)가 `manifest-eligibility.mjs` SoT와 일치. 상세 절 검사는 나중에 붙었습니다 — 트리와 `<details>` 는 같은 문서의 다른 표면이라, 플러그인 제거 후 상세 절에 죽은 항목 11개가 남고 살아있는 항목 1개가 빠진 채 이 가드가 통과한 적이 있습니다.
 - `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
 - `check-shell-portability.mjs` — GNU 전용 셸 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우 차단. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하고, 증거는 코드만 인정합니다(대체재를 언급하는 주석은 폴백이 아님). 예외는 `# portability-ok: <사유>`.
 - `check-skill-contract.mjs` — 한 런타임에서만 **조용히** 깨지는 스킬 위반 6종 차단: `description` 1024자 초과(Codex silent skip, 여러 줄 scalar 는 접어서 계산), 인용 없는 `: `(YAML frontmatter 붕괴), 펜스 블록별 bare `${CLAUDE_PLUGIN_ROOT}`(그 블록에 resolver 가 없으면 Codex 에서 첫 단계 실패), 비-kebab 또는 64자 초과 `name`, byte 0 에서 시작하지 않는 frontmatter, `name` 과 스킬 디렉터리명 불일치(Claude/Codex 는 frontmatter 이름을, 생성된 Hermes 어댑터는 디렉터리명을 써서 스킬 정체성이 갈림). 스캔 전에 RED/GREEN 픽스처를 먼저 돌려 탐지기 자체의 회귀도 막습니다. 위 가드들과 검사 항목이 겹치지 않습니다 — prose 는 비차단 측정, tool-portability 는 `AskUserQuestion` 이관, doc-consistency 는 문서 동기화, shell-portability 는 GNU 전용 구문입니다.

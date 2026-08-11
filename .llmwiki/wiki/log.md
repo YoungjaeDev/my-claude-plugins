@@ -6,6 +6,14 @@ Every `/ingest-finding` run and every `/github-dev:post-merge` run that executes
 
 ---
 
+## 2026-08-11 — a removal grep that could not see the wiki it was about to break (ingest-finding)
+
+Diff log written before applying the page edit (git-revertible). PR #206 deleted eight design documents whose subject plugins no longer exist. The inbound-reference check that authorized the deletion ran `rg -l --fixed-strings "$f" .` and reported zero hits for every file — but recursive `rg` skips dot-directories by default, so `.llmwiki/` was never scanned, and an `status: active` page was citing two of the deleted files as `> Evidence:`. The Codex reviewer caught it on the PR. Re-running with `--hidden` surfaces both hits immediately. This is `detector-cannot-look-vs-nothing-wrong` Mode 6 firing on the exact repository that recorded it.
+
+Remedy follows `deleted-subject-not-stale`: the subject is dead, so the page is not `status: stale` (that means *superseded* and needs a `> Superseded-by:` pair a deletion has nothing to fill) and the provenance is not rewritten. The dangling path is annotated with the commit where it is still readable, matching the precedent at `shared-source-codex-manifests.md:254`.
+
+- plugin-ops/skill-authoring-source-grounded-then-audit.md: both `> Evidence:` lines annotated `(path dead — … read it at merge 1ea9f41)`. No body prose touched, no `## Sources` entry changed, `status` left `active`.
+
 ## 2026-08-11 — post-absorption pointer repair + two mechanical lint fixes (ingest-finding)
 
 Applied after the baseline lint below, deliberately in that order: fixing first would have let the repository's first-ever lint entry claim a staleness health the wiki never had, and with no prior entry to contradict it that reading would stand permanently. Five one-line edits, no page body rewritten. Scoped to the pointer itself — PR #200 absorbed 11 plugins into 6 bundles, and `deleted-subject-not-stale` establishes that a mechanical name sweep over this wiki corrupts historical findings, so domain directories (`tally-form-ops/` among them) and all `## Sources` provenance stay exactly as they are.

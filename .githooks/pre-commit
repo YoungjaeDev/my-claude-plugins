@@ -26,6 +26,10 @@ if command -v node >/dev/null 2>&1; then
   # at byte 0. All are invisible from the Claude Code side. Runs its own RED/GREEN
   # fixtures first, so a detector that stopped detecting fails here too.
   node "$repo_root/scripts/check-skill-contract.mjs"
+  # On Windows this runs every llm-wiki commandWindows entry through the real
+  # PowerShell -> Git Bash boundary. Other platforms report a deliberate skip;
+  # the Windows CI leg always exercises it.
+  node "$repo_root/scripts/windows-codex-hooks.test.mjs"
   # Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
   # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
   node "$repo_root/scripts/check-skill-prose.mjs" || true

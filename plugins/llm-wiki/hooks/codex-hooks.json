@@ -6,6 +6,7 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_stale_check.sh\" codex",
+            "commandWindows": "& 'C:\\Program Files\\Git\\bin\\bash.exe' \"$env:PLUGIN_ROOT/hooks/wiki_stale_check.sh\" codex",
             "timeout": 5
           }
         ]
@@ -17,11 +18,13 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_start_drain.sh\"",
+            "commandWindows": "& 'C:\\Program Files\\Git\\bin\\bash.exe' \"$env:PLUGIN_ROOT/hooks/wiki_session_start_drain.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_start_lint_hint.sh\"",
+            "commandWindows": "& 'C:\\Program Files\\Git\\bin\\bash.exe' \"$env:PLUGIN_ROOT/hooks/wiki_session_start_lint_hint.sh\"",
             "timeout": 5
           }
         ]
@@ -33,6 +36,7 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_capture.sh\"",
+            "commandWindows": "& 'C:\\Program Files\\Git\\bin\\bash.exe' \"$env:PLUGIN_ROOT/hooks/wiki_session_capture.sh\"",
             "timeout": 5
           }
         ]
@@ -44,6 +48,7 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_capture.sh\"",
+            "commandWindows": "& 'C:\\Program Files\\Git\\bin\\bash.exe' \"$env:PLUGIN_ROOT/hooks/wiki_session_capture.sh\"",
             "timeout": 5
           }
         ]
@@ -56,6 +61,7 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_post_commit_hint.sh\" codex",
+            "commandWindows": "& 'C:\\Program Files\\Git\\bin\\bash.exe' \"$env:PLUGIN_ROOT/hooks/wiki_post_commit_hint.sh\" codex",
             "timeout": 5
           }
         ]

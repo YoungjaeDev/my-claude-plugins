@@ -19,8 +19,15 @@ const probeRoot = mkdtempSync(join(tmpdir(), 'llm-wiki-codex-hooks-'));
 const probeScript = '#!/usr/bin/env bash\nprintf \'CODEX_HOOK_PROBE:%s\\n\' "$*"\n';
 const gitLookup = spawnSync('where.exe', ['git.exe'], { encoding: 'utf8' });
 assert.equal(gitLookup.status, 0, `git.exe must be on PATH: ${gitLookup.stderr || gitLookup.error || ''}`);
-const gitRoot = dirname(dirname(gitLookup.stdout.trim().split(/\r?\n/)[0]));
-const probePath = [join(gitRoot, 'mingw64', 'bin'), join(gitRoot, 'cmd'), process.env.PATH].join(';');
+const gitExecutable = gitLookup.stdout.trim().split(/\r?\n/)[0];
+const shimDir = join(probeRoot, 'git-shim');
+mkdirSync(shimDir, { recursive: true });
+writeFileSync(join(shimDir, 'git.cmd'), `@echo off\r\n"${gitExecutable}" %*\r\n`);
+const probePath = [
+  shimDir,
+  join(process.env.SystemRoot, 'System32'),
+  join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0'),
+].join(';');
 
 try {
   let checked = 0;
@@ -43,6 +50,7 @@ try {
           /Get-Command git(?:\.exe)?/,
           `${label} must derive Git Bash from the Git executable on PATH`,
         );
+        assert.match(hook.commandWindows, /--exec-path/, `${label} must resolve Git installations behind PATH shims`);
 
         const scriptMatch = hook.command.match(/\$\{PLUGIN_ROOT\}\/([^"']+\.sh)/);
         assert.ok(scriptMatch, `${label} must reference a PLUGIN_ROOT-relative shell script`);

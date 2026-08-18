@@ -17,6 +17,10 @@ const descriptorPath = join(root, 'plugins', 'llm-wiki', 'hooks', 'codex-hooks.j
 const descriptor = JSON.parse(readFileSync(descriptorPath, 'utf8'));
 const probeRoot = mkdtempSync(join(tmpdir(), 'llm-wiki-codex-hooks-'));
 const probeScript = '#!/usr/bin/env bash\nprintf \'CODEX_HOOK_PROBE:%s\\n\' "$*"\n';
+const gitLookup = spawnSync('where.exe', ['git.exe'], { encoding: 'utf8' });
+assert.equal(gitLookup.status, 0, `git.exe must be on PATH: ${gitLookup.stderr || gitLookup.error || ''}`);
+const gitRoot = dirname(dirname(gitLookup.stdout.trim().split(/\r?\n/)[0]));
+const probePath = [join(gitRoot, 'cmd'), join(gitRoot, 'mingw64', 'bin'), process.env.PATH].join(';');
 
 try {
   let checked = 0;
@@ -42,16 +46,16 @@ try {
 
         const scriptMatch = hook.command.match(/\$\{PLUGIN_ROOT\}\/([^"']+\.sh)/);
         assert.ok(scriptMatch, `${label} must reference a PLUGIN_ROOT-relative shell script`);
-        const probePath = join(probeRoot, ...scriptMatch[1].split('/'));
-        mkdirSync(dirname(probePath), { recursive: true });
-        writeFileSync(probePath, probeScript);
+        const probeScriptPath = join(probeRoot, ...scriptMatch[1].split('/'));
+        mkdirSync(dirname(probeScriptPath), { recursive: true });
+        writeFileSync(probeScriptPath, probeScript);
 
         const result = spawnSync(
           'powershell.exe',
           ['-NoProfile', '-NonInteractive', '-Command', hook.commandWindows],
           {
             cwd: probeRoot,
-            env: { ...process.env, PLUGIN_ROOT: probeRoot },
+            env: { ...process.env, PATH: probePath, PLUGIN_ROOT: probeRoot },
             encoding: 'utf8',
             input: '{}\n',
           },

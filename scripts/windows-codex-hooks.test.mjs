@@ -20,7 +20,7 @@ const probeScript = '#!/usr/bin/env bash\nprintf \'CODEX_HOOK_PROBE:%s\\n\' "$*"
 const gitLookup = spawnSync('where.exe', ['git.exe'], { encoding: 'utf8' });
 assert.equal(gitLookup.status, 0, `git.exe must be on PATH: ${gitLookup.stderr || gitLookup.error || ''}`);
 const gitRoot = dirname(dirname(gitLookup.stdout.trim().split(/\r?\n/)[0]));
-const probePath = [join(gitRoot, 'cmd'), join(gitRoot, 'mingw64', 'bin'), process.env.PATH].join(';');
+const probePath = [join(gitRoot, 'mingw64', 'bin'), join(gitRoot, 'cmd'), process.env.PATH].join(';');
 
 try {
   let checked = 0;

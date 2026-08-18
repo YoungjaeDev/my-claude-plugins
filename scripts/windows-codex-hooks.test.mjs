@@ -29,6 +29,16 @@ try {
           'string',
           `${label} must provide a PowerShell-compatible commandWindows override`,
         );
+        assert.doesNotMatch(
+          hook.commandWindows,
+          /Program Files\\Git/i,
+          `${label} must not assume Git Bash is installed in the machine-wide default directory`,
+        );
+        assert.match(
+          hook.commandWindows,
+          /Get-Command git(?:\.exe)?/,
+          `${label} must derive Git Bash from the Git executable on PATH`,
+        );
 
         const scriptMatch = hook.command.match(/\$\{PLUGIN_ROOT\}\/([^"']+\.sh)/);
         assert.ok(scriptMatch, `${label} must reference a PLUGIN_ROOT-relative shell script`);

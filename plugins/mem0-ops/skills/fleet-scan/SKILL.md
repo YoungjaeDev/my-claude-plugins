@@ -22,8 +22,12 @@ Script is plain `python3` on all runtimes. Codex 0.135 does NOT export
      PLUGIN_ROOT=$(ls -1d "$cache_root"/*/mem0-ops/* 2>/dev/null | sort | tail -1)
    fi
    [ -d "$PLUGIN_ROOT/scripts" ] || { echo "mem0-ops scripts not found"; exit 1; }
-   # Interpreter detection — python3 alone breaks python.org Windows installs (python + py launcher only)
-   if command -v python3 >/dev/null 2>&1; then PY=python3; elif command -v python >/dev/null 2>&1; then PY=python; else PY="py -3"; fi
+   # Interpreter detection — python3 alone breaks python.org Windows installs; validate
+   # the candidate really is Python 3 (a python->python2 alias would die on f-strings)
+   PY=""; for c in python3 python "py -3"; do
+     if $c -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1; then PY=$c; break; fi
+   done
+   [ -n "$PY" ] || { echo "no Python 3 interpreter found (tried python3, python, py -3)"; exit 1; }
    $PY "$PLUGIN_ROOT/scripts/fleet_scan.py"
    ```
 
@@ -50,7 +54,10 @@ if [ -z "$PLUGIN_ROOT" ]; then
   PLUGIN_ROOT=$(ls -1d "$cache_root"/*/mem0-ops/* 2>/dev/null | sort | tail -1)
 fi
 [ -d "$PLUGIN_ROOT/scripts" ] || { echo "mem0-ops scripts not found"; exit 1; }
-if command -v python3 >/dev/null 2>&1; then PY=python3; elif command -v python >/dev/null 2>&1; then PY=python; else PY="py -3"; fi
+PY=""; for c in python3 python "py -3"; do
+  if $c -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1; then PY=$c; break; fi
+done
+[ -n "$PY" ] || { echo "no Python 3 interpreter found (tried python3, python, py -3)"; exit 1; }
 $PY "$PLUGIN_ROOT/scripts/doctor.py"
 ```
 

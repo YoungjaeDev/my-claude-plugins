@@ -27,11 +27,15 @@ but CUDA context init requires process isolation for reliable multi-GPU usage �
 why ProcessPool (not ThreadPool) and `spawn` (not `fork`) are required.
 
 One pool per GPU, each with the initializer wired in — a single shared pool cannot give
-each worker a distinct `gpu_id`:
+each worker a distinct device. Device tokens come from the *inherited*
+`CUDA_VISIBLE_DEVICES` mask when one is set (a scheduler that allocated `2,3` means the
+workers must get `2` and `3`, not `0` and `1`), and the whole setup runs under
+`if __name__ == "__main__":` — `spawn` re-imports the script in every child, and
+module-scope pool creation would recurse:
 
 ```python
-def _worker_init_with_gpu(gpu_id: int) -> None:
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+def _worker_init_with_gpu(device_token: str) -> None:
+    os.environ["CUDA_VISIBLE_DEVICES"] = device_token
     # Import/build the model AFTER setting CUDA_VISIBLE_DEVICES
     global _model
     _model = load_model()  # now on device:0 — the isolated GPU
@@ -40,19 +44,29 @@ def _predict_chunk(chunk: list[dict]) -> list[dict]:
     # runs inside the worker; _model was set by the initializer above
     return _model.predict_batch(chunk)
 
-ctx = mp.get_context("spawn")  # fork silently corrupts CUDA state
-chunk_size = (n_total + n_gpus - 1) // n_gpus  # ceiling division
-chunks = [records[i*chunk_size:(i+1)*chunk_size] for i in range(n_gpus)]
+def run_multi_gpu(records: list[dict]) -> list[list[dict]]:
+    visible = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+    device_tokens = visible.split(",") if visible else [str(i) for i in range(torch.cuda.device_count())]
+    n_gpus = len(device_tokens)
 
-pools = [
-    ProcessPoolExecutor(max_workers=1, mp_context=ctx,
-                        initializer=_worker_init_with_gpu, initargs=(gpu_id,))
-    for gpu_id in range(n_gpus)
-]
-futures = [pool.submit(_predict_chunk, chunk) for pool, chunk in zip(pools, chunks)]
-results = [f.result() for f in futures]  # index i = GPU i's chunk, order preserved
-for pool in pools:
-    pool.shutdown()
+    ctx = mp.get_context("spawn")  # fork silently corrupts CUDA state
+    chunk_size = (len(records) + n_gpus - 1) // n_gpus  # ceiling division
+    chunks = [records[i*chunk_size:(i+1)*chunk_size] for i in range(n_gpus)]
+
+    pools = [
+        ProcessPoolExecutor(max_workers=1, mp_context=ctx,
+                            initializer=_worker_init_with_gpu, initargs=(tok,))
+        for tok in device_tokens
+    ]
+    try:
+        futures = [pool.submit(_predict_chunk, chunk) for pool, chunk in zip(pools, chunks)]
+        return [f.result() for f in futures]  # index i = GPU i's chunk, order preserved
+    finally:
+        for pool in pools:
+            pool.shutdown()
+
+if __name__ == "__main__":
+    results = run_multi_gpu(records)
 ```
 
 ## CUDA Streams (single GPU, multiple concurrent ops)
@@ -89,7 +103,9 @@ def process_batch_hybrid(batch: list[dict]) -> list[dict]:
     paths = [r["path"] for r in batch]
     images = _load_images_parallel(paths)          # 1. ThreadPool I/O (unordered)
     ordered = [images[p] for p in paths]           # 2. restore batch order by path
-    preds = _model.predict_batch(ordered)          # 3. worker-initialized model
+    preds = list(_model.predict_batch(ordered))    # 3. worker-initialized model
+    if len(preds) != len(paths):                   # zip would silently drop the mismatch
+        raise ValueError(f"prediction count {len(preds)} != input count {len(paths)}")
     return [{"path": p, "pred": pr} for p, pr in zip(paths, preds)]
 ```
 

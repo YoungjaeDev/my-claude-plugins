@@ -108,7 +108,7 @@ Safe Jupyter Notebook (.ipynb) editing.
 
 ### Key Rules
 
-1. **Structure-aware tool only** - `NotebookEdit` on Claude Code and Codex; never text-edit `.ipynb` there
+1. **Structure-aware tool only** - `NotebookEdit` on Claude Code; on Codex (no `NotebookEdit`) an `nbformat` Python snippet; never text-edit `.ipynb`
 2. **Preserve outputs** - Don't accidentally clear cell outputs
 3. **Cell order matters** - Verify order after modifications
 4. **User executes** - Add/edit cells, user runs in Jupyter

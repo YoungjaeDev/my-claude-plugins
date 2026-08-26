@@ -54,14 +54,18 @@ else
     | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
 fi
 
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then
+# Validate the script the next line executes, not just the directory — a bare -d
+# check selects an incomplete cache version (or a foreign repo's empty path) and
+# dies later with a confusing "No such file" from eval. Unresolved = fail loud.
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "$CLAUDE_PLUGIN_ROOT/skills/cr-fix/scripts/parse-args.sh" ]; then
   SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
-elif [ -d "plugins/github-dev/skills/cr-fix" ]; then
+elif [ -f "plugins/github-dev/skills/cr-fix/scripts/parse-args.sh" ]; then
   SKILL_DIR="plugins/github-dev/skills/cr-fix"
-elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then
+elif [ -n "$CODEX_CAND" ] && [ -f "$CODEX_CAND/skills/cr-fix/scripts/parse-args.sh" ]; then
   SKILL_DIR="$CODEX_CAND/skills/cr-fix"
 else
-  SKILL_DIR="plugins/github-dev/skills/cr-fix"
+  echo "cr-fix: SKILL_DIR unresolved — no parse-args.sh under CLAUDE_PLUGIN_ROOT, the source tree, or the Codex plugin cache. Install github-dev or run from the plugin source tree." >&2
+  exit 1
 fi
 
 eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
@@ -69,7 +73,7 @@ eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
 
 Sets: `SKILL_DIR, MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, MINOR_STOP, GENERALIZE, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
 
-`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`). All `scripts/` and `references/` paths below resolve relative to this.
+`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`) — each branch validated by the presence of `scripts/parse-args.sh`, and an unresolved path aborts loudly instead of guessing. All `scripts/` and `references/` paths below resolve relative to this.
 
 ## Step 2: Resolve repo / PR / START_SHA + pre-flight setup
 

@@ -21,7 +21,7 @@ Primary tools are **portable CLIs on `$PATH`**, not skill-internal scripts. Pref
 | GitHub | `gh search repos` / `gh search code` / `gh repo view` | `uv run <abs>/scripts/search_github.py` |
 | Hugging Face | `curl https://huggingface.co/api/...` (+ `uvx hf {models\|spaces\|datasets} ls/search/info`) | `uv run <abs>/scripts/search_huggingface.py` |
 
-`<abs>` resolves to `plugins/code-scout/skills/resource-finder` in Claude Code (repo-rooted); Codex reads the same tree in place. Use absolute paths to avoid cwd surprises.
+`<abs>` resolves in order: `$CLAUDE_PLUGIN_ROOT/skills/resource-finder` when that env var is set (Claude Code), the source tree `plugins/code-scout/skills/resource-finder` when running inside this repo, else the newest Codex plugin cache entry (`ls -1d "${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"/*/code-scout/*/skills/resource-finder`, pick the highest version whose `scripts/` exists). Use absolute paths to avoid cwd surprises; if none of the three resolves, stay on the primary portable CLIs above — the wrappers are an optional fallback.
 
 ## Search hygiene
 

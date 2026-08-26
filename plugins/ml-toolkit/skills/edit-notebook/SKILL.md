@@ -10,7 +10,9 @@ Edit Jupyter Notebook files through a structure-aware path, never as raw text.
 ## Rules
 
 ### Tool Selection
-- .ipynb = `NotebookEdit`
+- .ipynb = `NotebookEdit` (Claude Code)
+- Codex has no `NotebookEdit` tool — edit through a structure-aware path instead: a short
+  `nbformat` Python snippet (read → mutate cells → write), never raw text edits
 - Never use `Edit`, `Write`, or `Bash(sed/cat)` on `.ipynb`
 
 ### Cell Insertion: cell_id Tracking (Required)

@@ -319,7 +319,7 @@ Conduct thorough interviews to uncover hidden needs, constraints, and edge cases
 
 ### Key Principles
 
-- Use AskUserQuestion for all questions
+- Use the interactive-input gate for all questions (Claude: AskUserQuestion; Codex: request_user_input when exposed)
 - Verify against the codebase first - don't ask what the repo already answers
 - Ask non-obvious questions (not what user already said)
 - Per-question scaffold: current understanding / stuck decision / recommended default / question

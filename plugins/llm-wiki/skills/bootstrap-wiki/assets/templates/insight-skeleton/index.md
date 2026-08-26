@@ -15,7 +15,7 @@ The **insight layer** is the promoted, cross-agent-visible top of the knowledge 
 | Layer | Path | Loaded? | Purpose |
 |-------|------|---------|---------|
 | **Insight (promoted)** | `.llmwiki/insight/**` | via the `prompt_inject.sh` hook (Claude + Codex), every prompt | cross-agent promoted rules: recurring, generalizable, costly-to-violate, stabilized |
-| **Wiki (lore)** | `.llmwiki/wiki/**` | on-demand via `/query-wiki` or direct read | LLM-maintained domain knowledge: provider quirks, debugging stories, design rationale, module maps |
+| **Wiki (lore)** | `.llmwiki/wiki/**` | on-demand direct read (start at `index.md`) | LLM-maintained domain knowledge: provider quirks, debugging stories, design rationale, module maps |
 | **Raw evidence** | `.llmwiki/raw/**` (+ external docs) | direct read | append-only immutable evidence — wiki cites, never copies |
 
 All three live under the neutral `.llmwiki/` root so `codex-bridge`'s `.claude/`→`.codex/` body transform can never fork them per-agent — one copy, both agents. `.claude/rules/` is **not** part of this system: it is reserved for mechanical tool-operation rules (Codex can't read it), so wiki lore is never promoted there. Cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes through the prompt-injection hook.
@@ -73,7 +73,7 @@ Do NOT promote: one-offs, undecided/contested points, prior-knowledge, or reusab
 
 | Op | Skill | When |
 |----|-------|------|
-| Find | `query-wiki` | "Where is the promoted/lore rule on X?" — checks insight first, then wiki |
+| Find | read `index.md` | "Where is the promoted/lore rule on X?" — check insight first, then wiki |
 | Add / graduate | `ingest-finding` | new finding; its graduation step decides wiki vs insight |
 | Health check | `lint-wiki` | identity / level / relationship / staleness + insight promotion integrity |
 

@@ -7,8 +7,7 @@ operations. Do not duplicate upstream functionality.
 
 | Skill | Role |
 |---|---|
-| `fleet-scan` | Fleet-wide noise-rate, junk-candidate, and fragmentation report (read-only) |
-| `doctor` | Configuration-posture checks — rerank env, the auto_save file-precedence trap, decay, hook timeout, identity fragmentation (suggestions only) |
+| `fleet-scan` | Fleet-wide noise-rate, junk-candidate, and fragmentation report + local configuration-posture checks (rerank env, auto_save precedence trap, decay, hook timeout — absorbed from the retired doctor skill). Read-only |
 | `cleanup` | Backup, then delete by type or app. Dry-run by default; `--execute` plus a skill-layer user confirmation gates it (running the script standalone is gated by `--execute` alone) |
 
 The scripts are stdlib-only and talk to the REST API directly

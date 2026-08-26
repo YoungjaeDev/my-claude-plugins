@@ -12,6 +12,7 @@
 - 파일 탐색과 검색은 우선 `rg`, `rg --files`를 사용하세요.
 - 플러그인 개발 중 라이브러리·런타임·플랫폼 사실을 확인할 때는 `docs/llm-doc-sources.md` 에 정리된 LLM 문서 소스(mcpdocs 등록 + deepwiki 타깃)를 먼저 사용하세요.
 - 문서와 매니페스트가 함께 움직이는 저장소이므로 코드 변경뿐 아니라 `README.md`, 이 문서, marketplace manifest의 동기화 필요성을 항상 확인하세요.
+- 저장소에 `.llmwiki/wiki/index.md` 가 있으면 lore 성 질문에 답하기 전에 그 MOC 를 먼저 읽으세요 (구 query-wiki 스킬의 규약을 흡수한 한 줄).
 
 플러그인 트리 하나를 Claude Code 와 Codex CLI 가 함께 읽습니다 — one source, two runtimes. Codex 는 `.claude-plugin/marketplace.json` 과 `plugins/*/.claude-plugin/plugin.json` 을 네이티브 매니페스트 폴백으로 직접 읽으므로 생성 계층이 없습니다.
 

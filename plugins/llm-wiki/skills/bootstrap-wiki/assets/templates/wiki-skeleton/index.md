@@ -46,7 +46,7 @@ Pages link to each other using **typed** references only — never raw `[[wikili
 
 | Op | Skill | When |
 |----|-------|------|
-| Find | `query-wiki` | "Where is the lore on X?" |
+| Find | read `index.md` | "Where is the lore on X?" |
 | Add | `ingest-finding` | New audit md / PR result / debugging finding |
 | Health check | `lint-wiki` | Identity / level / relationship / staleness audit |
 

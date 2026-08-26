@@ -1,5 +1,5 @@
 {
   "name": "ml-toolkit",
-  "version": "2.0.0",
-  "description": "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration Also ships edit-notebook for safe Jupyter notebook editing."
+  "version": "3.0.0",
+  "description": "ML/multimodal development principles (incl. GPU parallel patterns, absorbed from gpu-parallel-pipeline), Gradio CV apps, CV notebook generation with an interactive exploration mode (absorbed from cv-explorer). Also ships edit-notebook for safe Jupyter notebook editing."
 }

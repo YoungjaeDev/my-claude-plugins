@@ -1,5 +1,5 @@
 {
   "name": "publish",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Publish a deliverable to another surface — Korean web-article translation, checklist markdown to a Tally questionnaire, and one-way local to Google Drive proposal sync"
 }

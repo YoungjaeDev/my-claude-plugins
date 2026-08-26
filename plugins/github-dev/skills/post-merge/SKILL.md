@@ -236,7 +236,7 @@ Serena/rules-forge).
 
 ### 5.5. Sync milestone progress (if issues have milestones)
 
-For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `skills/update-progress/SKILL.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
+For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `references/update-progress.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
 
 **Record.** `record_step 5.5 done`, or `record_step 5.5 skipped "no milestone"` when no related issue carries one.
 
@@ -333,7 +333,7 @@ jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 - **Run-record envelope** (Step 1 + Step 10 — per-step `.claude/state/post-merge-<PR>.json`, schema + archive rotation + per-skill jq): `.claude/rules/state-envelope.md` (concept mirror in `AGENTS.md`).
 - **Mandatory wiki ingest** (absorbed post-merge-wiki — candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
 - **Ephemeral artifact pruning** (Step 4.5 — heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
-- Milestone / Type M-2 diagram mechanics: `skills/update-progress/SKILL.md`
+- Milestone / Type M-2 diagram mechanics: `references/update-progress.md`
 - spec.json schema + ops: `plugins/github-dev/skills/state-tracker/SKILL.md`
 - CHANGELOG patterns (Step 9.5): `docs-forge:changelog-guide` skill + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md`
 

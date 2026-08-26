@@ -6,14 +6,9 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 
 | Skill | Description |
 |-------|-------------|
-| `readme-guide` | README patterns and templates reference |
-| `changelog-guide` | CHANGELOG format and automation guide |
-| `deploy-doc-guide` | Deployment / procedure doc skeleton (summary + prerequisites + numbered steps) |
-| `moc-guide` | MOC index generation spec (hook precedence, lightweight vs strict) |
+| `doc-guides` | README/CHANGELOG/deploy-doc/MOC authoring reference cards, one per `/docs-forge:*` document command (absorbed `readme-guide`, `changelog-guide`, `deploy-doc-guide`, `moc-guide`) |
 | `write-rules` | CLAUDE.md + `.claude/rules/` generation with auto mode detection (absorbed from `rules-forge`) |
-| `interview-methodology` | Requirements interview: breadth-first / depth-first / relentless grill-me modes (absorbed from `interview`) |
-| `tcrei-prompt` | Rewrite a prompt into Google's TCREI structure for next-session reuse (absorbed from `tcrei-prompt`) |
-| `voice-prompt` | Normalize Korean voice-mode STT input before acting on it (absorbed from `voice-prompt`) |
+| `interview-methodology` | Requirements interview: breadth-first / depth-first / relentless grill-me modes (absorbed from `interview`); also carries the TCREI reusable-prompt template (absorbed from `tcrei-prompt`) |
 | `skill-forge` | Write or revise a skill — frontmatter schema, writing levers, structure, three-runtime packaging contract |
 | `skill-audit` | Diagnose one skill across seven axes, returning P0/P1/P2 findings with concrete edits |
 | `skill-fleet-review` | Repository-wide skill sweep — measure first, review a selected cohort, emit a dated audit report + CSV |
@@ -244,44 +239,7 @@ Recommended workflow:
     Use `/docs-forge:write-rules` (or natural-language triggers).
 - **1.0.0** (2026-02-14) — Initial release
 
-## tcrei-prompt (흡수: tcrei-prompt)
-
-Rewrite prompts using Google's TCREI structure for next-session reuse.
-
-### Skill
-
-| Skill | Description |
-|-------|-------------|
-| `tcrei-prompt` | Diagnose missing TCREI elements, interview to fill gaps, generate copy-paste-ready prompt |
-
-### TCREI Framework
-
-Google's Prompting Essentials (Coursera) 5-step structure:
-
-| Step | Purpose | Sub-elements |
-|------|---------|-------------|
-| Task | Define the action | verb + output + constraints |
-| Context | Provide background | audience + purpose + source material |
-| References | Show desired form | samples, schemas, tone examples |
-| Evaluate | Set quality gates | must-have + must-not + verification |
-| Iterate | Plan refinements | specific numbers, rules, actions |
-
-### Workflow
-
-1. Diagnose which T/C/R/E/I elements exist in the original prompt
-2. Interview for missing elements using AskUserQuestion
-3. Generate structured TCREI prompt
-4. Self-verify with OMC verifier agent
-5. Save to `.claude/prompts/{YYYY-MM-DD}-{name}.md`
-
-### Triggers
-
-- "TCREI"
-- "structure this prompt"
-- "prompt enhance"
-- "make a prompt for next session"
-
-## interview-methodology (흡수: interview)
+## interview-methodology (흡수: interview, tcrei-prompt)
 
 Structured requirements gathering before implementation.
 
@@ -342,69 +300,11 @@ Full spec at `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`:
 ## Out of Scope
 ```
 
-## voice-prompt (흡수: voice-prompt)
+### Reusable prompt output (absorbed: tcrei-prompt)
 
-One skill, `voice-prompt`, that normalizes Korean voice-mode STT input before the session acts
-on it. Typed once as `/docs-forge:voice-prompt`, it stays active until released.
+When the interview's goal is a copy-paste-ready prompt for next-session reuse instead of a spec
+file, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/
+Iterate) — the diagnosis table, output template, and domain-specific gap patterns live in
+`skills/interview-methodology/references/tcrei-template.md`.
 
-### Why this exists
-
-Korean voice mode breaks in three ways: orthography misrecognition, failed Korean-to-English
-code-switching (an English identifier spoken with Korean pronunciation comes back as Korean
-syllables — "로더 파일"), and speech habits landing inside the command ("어쨌든", "그냥", "뭐").
-
-Two of the three barely need a plugin. A model already ignores fillers and reads through
-misspellings, so making that explicit buys consistency, not new capability. The third one is
-different in kind: hearing "로더 파일", a model **guesses** a filename. It cannot know whether
-`loader.py` exists without looking. That is not a comprehension failure, it is a missing action —
-and a missing action is exactly what instructions can add.
-
-So this plugin is not a text cleaner. It is a threshold changer. Everything it really
-contributes is a decision rather than a transform:
-
-| What it adds | Kind |
-|---|---|
-| Resolve identifiers against the repo instead of guessing | action added |
-| Never rewrite numbers, dates, versions, PR/issue numbers | action forbidden |
-| Echo one line of what was understood before acting | observability |
-| Confirm before an irreversible action | gate |
-
-### Shape
-
-```text
-plugins/docs-forge/
-└── skills/voice-prompt/
-    ├── SKILL.md                             # the body
-    ├── references/stt-error-classes.md      # error taxonomy, live-command stance
-    ├── references/korean-filler.md          # filler classes + function-residue test
-    └── templates/speech-profile.md          # seeded to .claude/voice-prompt/speech-profile.md
-```
-
-### Boundary with plaud-note-taking
-
-Both correct STT output, and the error distribution is the same, so the taxonomy is shared in
-spirit. The discipline is not. `plaud-note-taking` treats its transcript as immutable evidence
-and preserves every filler because the filler is part of the record; this skill treats its input
-as a disposable command and deletes the filler because the filler is noise. Their term
-dictionaries do not overlap either — one holds meeting attendees and company names, the other
-holds one speaker's pronunciation habits.
-
-Two plugins, not one skill with a mode flag: a body carrying both stances would need a
-conditional on every rule.
-
-### Known limit
-
-This is instruction-following, not interception. Nothing sits between STT and the model — a
-skill cannot rewrite the incoming message, and `UserPromptSubmit` hook output arrives as
-appended `additionalContext` rather than a replacement. So the normalization happens in the
-model's own reasoning and carries the same reliability as any other skill: it can fade in a long
-session.
-
-The echo line is the tell. If it stops appearing, the skill has drifted out — re-invoke
-`/docs-forge:voice-prompt`. That self-signal is why the echo is mandatory rather than optional,
-and why this plugin ships no marker file or re-injection hook to enforce stickiness.
-
-The persisted profile has the same property: `.claude/voice-prompt/speech-profile.md` is an
-ordinary project file, so nothing loads it for you. The activation step reads it explicitly —
-without that read it would be a write-only dictionary, and every session would re-ask the same
-misrecognition.
+Triggers: "TCREI", "structure this prompt", "prompt enhance", "make a prompt for next session".

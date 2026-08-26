@@ -12,7 +12,7 @@ allowed-tools:
 
 # MOC Command
 
-Generate a Map of Content (MOC) index for a docs folder: a one-line hook per file plus per-domain tables. Lightweight generic mode by default; `--strict` switches to the llm-wiki-style index. The hook-sourcing and conflict rules live in the `moc-guide` skill (cross-runtime SSOT); this command orchestrates the scan and write.
+Generate a Map of Content (MOC) index for a docs folder: a one-line hook per file plus per-domain tables. Lightweight generic mode by default; `--strict` switches to the llm-wiki-style index. The hook-sourcing and conflict rules live in the `doc-guides` skill's `## MOC` section (cross-runtime SSOT); this command orchestrates the scan and write.
 
 ## Arguments
 
@@ -27,7 +27,7 @@ Generate a Map of Content (MOC) index for a docs folder: a one-line hook per fil
 
 ## Instructions
 
-1. Load the `moc-guide` Skill — its `## Quick Reference` is the binding output spec (hook precedence, lightweight vs strict, conflict rules).
+1. Load the `doc-guides` Skill — its `## MOC` section's `### Quick Reference` is the binding output spec (hook precedence, lightweight vs strict, conflict rules).
 2. `Glob folder/**/*.md`. **Exclude** the output file itself and any existing `index.md` / `README.md` in scope (conflict guard — never overwrite those). The same guard applies to the output target: if `--out`'s basename case-insensitively matches `readme.md` / `index.md`, refuse or confirm-then-route to `MOC.md` rather than writing over it.
 3. Detect domains: each first-level subdirectory of `folder` is a domain (`##` group); root-level files go under `## (root)`. Respect `--depth`. Only when the folder is flat (no subdirectories) AND `--strict` is set, ask the user how to group.
 4. Compute a one-line hook per file using the precedence ladder (first hit wins):
@@ -63,6 +63,6 @@ Write to `--out` (default `<folder>/MOC.md`), subject to the protected-name guar
 
 ### Strict mode
 
-Replaces Output 1 AND Output 2 (not added alongside them): an MOC intro paragraph, a typed-cross-ref legend, and per-domain llm-wiki bullets (`- [title](domain/slug.md) — hook`). See `moc-guide` and `references/MOC_PATTERNS.md`.
+Replaces Output 1 AND Output 2 (not added alongside them): an MOC intro paragraph, a typed-cross-ref legend, and per-domain llm-wiki bullets (`- [title](domain/slug.md) — hook`). See `doc-guides` (`## MOC`) and `references/MOC_PATTERNS.md`.
 
 Report what was written: output path, file count, domains detected, and how many files fell back to `(요약 없음)`.

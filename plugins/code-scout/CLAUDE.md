@@ -45,9 +45,8 @@ All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical
 | Skill | Purpose |
 |---|---|
 | `research-orchestrator` | Entry point. Mode detection, fan-out routing, synthesis dispatch. |
-| `exa-web-search` | Exa MCP usage guide for `web-scout` (and anyone calling `mcp__exa__web_search_exa`). |
-| `resource-finder` | Shared GitHub / HF search hygiene cheat-sheet for `github-scout` + `hf-scout`. |
-| `brightdata-guide` | Bright Data web-data access (Web Unlocker scraping, SERP, `web_data_*` extractors) via MCP tools + the `bdata` CLI. Backs `web-scout`'s tier-3 fetch fallback. (absorbed from `brightdata-guide`) |
+
+`exa-web-search`, `resource-finder`, and `brightdata-guide` were demoted from standalone skills to `research-orchestrator/references/*.md` — their only real consumers are the scout agents and the orchestrator itself, not a session-level skill surface, so agents `Read` them by path instead of triggering a separate skill description.
 
 ## Migration
 
@@ -69,9 +68,9 @@ The legacy `scout` agent remains as a **doc-only deprecation pointer**: it retur
 ## Requirements
 
 - `gh` CLI authenticated (github-scout)
-- `uv`, `jq` (hf-scout, resource-finder wrappers)
+- `uv`, `jq` (hf-scout, `research-orchestrator/references/resource-finder.md` wrappers)
 - exa MCP enabled in `~/.claude/settings.json` (web-scout primary; falls back to built-in `WebSearch`)
-- brightdata MCP enabled (web-scout tier-3 fetch fallback; `bdata` CLI is the delegate-subagent path — see the `brightdata-guide` preflight)
+- brightdata MCP enabled (web-scout tier-3 fetch fallback; `bdata` CLI is the delegate-subagent path — see the `research-orchestrator/references/brightdata-guide.md` preflight)
 - `insane-search` plugin installed (web-scout tier-4 fetch fallback for WAF / blocked pages; optional but recommended)
 - Context7 + DeepWiki MCPs enabled (docs-scout)
 - `paper-search-tools` plugin installed and its MCP running (paper-scout)

@@ -55,7 +55,7 @@ OUT=$(cd "$TMP/foreign" && env -u CLAUDE_PLUGIN_ROOT CODEX_PLUGIN_CACHE="$TMP/sp
 
 # review #4 — PLUGIN_ROOT is DEFINED in all 5 llm-wiki skills AND resolves to a
 # root that actually contains the target file the skill references.
-for sk in bootstrap-wiki query-wiki ingest-finding lint-wiki migrate-wiki; do
+for sk in bootstrap-wiki ingest-finding lint-wiki; do
   SKILL="$PLUGIN_DIR/skills/$sk/SKILL.md"
   grep -q 'PLUGIN_ROOT=' "$SKILL" || { die "$sk: no PLUGIN_ROOT definition"; continue; }
   case "$sk" in bootstrap-wiki) TGT="skills/bootstrap-wiki/assets/templates";; *) TGT="references/wiki-conventions.md";; esac

@@ -60,15 +60,15 @@ EOF
 # nonexistent `index.md` into every prompt.
 PTR=""
 if [ -d .llmwiki/insight ] && [ -f .llmwiki/wiki/index.md ]; then
-  PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules), then check the wiki MOC `.llmwiki/wiki/index.md` (query-wiki gate). For lore, prefer the dated/sourced page over memory.'
+  PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules), then check the wiki MOC `.llmwiki/wiki/index.md`. For lore, prefer the dated/sourced page over memory.'
 elif [ -d .llmwiki/insight ]; then
   PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules). For lore, prefer the dated/sourced page over memory.'
 elif [ -f .llmwiki/wiki/index.md ]; then
-  PTR='Before reasoning (do not guess): check the wiki MOC `.llmwiki/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
+  PTR='Before reasoning (do not guess): check the wiki MOC `.llmwiki/wiki/index.md` first. For lore, prefer the dated/sourced page over memory.'
 elif [ -f .claude/wiki/index.md ]; then
-  PTR='Before reasoning (do not guess): check the wiki MOC `.claude/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
+  PTR='Before reasoning (do not guess): check the wiki MOC `.claude/wiki/index.md` first. For lore, prefer the dated/sourced page over memory.'
 elif [ -f .codex/wiki/index.md ]; then
-  PTR='Before reasoning (do not guess): check the wiki MOC `.codex/wiki/index.md` (query-wiki gate) first. For lore, prefer the dated/sourced page over memory.'
+  PTR='Before reasoning (do not guess): check the wiki MOC `.codex/wiki/index.md` first. For lore, prefer the dated/sourced page over memory.'
 fi
 # Federation labels: prefix the resolved pointer as [AUTHORITATIVE] and stage a
 # [RECALL] note for mem0. RECALL is Claude-only — Codex never sees mem0, so a

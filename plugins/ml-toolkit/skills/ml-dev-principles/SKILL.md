@@ -28,7 +28,7 @@ hard-block(컴플라이언스·안전·산출물 누설)과 process-caution(보�
 
 - 모델링 전 EDA는 비협상. 라벨 있는 멀티모달/CV는 분포 통계로 끝내지 말고 사람(또는 Claude vision)이 raw 이미지(detection/seg면 overlay)를 실제로 본다.
 - 왜: 집계 통계는 "다 봤다"는 거짓 인상을 준다. 멀티모달은 이미지가 판별 근거를 들고 있어 라벨-이미지 정합은 통계로 알 수 없다.
-- 적용: interactive viewer(예: `ml-toolkit:cv-explorer`)로 strata별 샘플을 눈으로 — 숫자 신뢰 전에.
+- 적용: interactive viewer(예: `ml-toolkit:cv-notebook`의 exploration mode)로 strata별 샘플을 눈으로 — 숫자 신뢰 전에.
 
 ## 4. 오류 분석 — 지표가 아니라 실제 FP/FN 이미지를 본다
 
@@ -44,6 +44,7 @@ hard-block(컴플라이언스·안전·산출물 누설)과 process-caution(보�
 - 모델 여러 개를 병렬 추론할 땐 손수 짠 멀티GPU 런처보다 CUDA_VISIBLE_DEVICES 격리 + per-process가 단순·충분 — 배칭은 엔진(예: vLLM)에 맡긴다.
 - 왜: "GPU 기계장치 더 동원" != 빠름. 핵심은 모델에 맞는 전략 + eff-batch 고정으로 정확도 회귀 없는 공짜 속도.
 - 적용: util 프로파일 → 90% 미만이면 exotic 병렬 꺼내기 전에 deepspeed/ZeRO 오버헤드나 과소 batch부터 의심.
+- 데이터셋 전체를 여러 GPU로 나눠 처리해야 하는 경우(위 "여러 모델 병렬 추론"과는 다른 케이스 — 단일 모델로 대량 이미지를 처리하는 배치 작업)의 ProcessPool/CUDA_VISIBLE_DEVICES 격리, CUDA Streams, I/O+compute 파이프라인 구현 패턴은 [references/gpu-parallel.md](references/gpu-parallel.md) 참고.
 
 ## 6. 이중 판단 도구는 정액 구독 — 아끼지 말고 적극 쓴다
 

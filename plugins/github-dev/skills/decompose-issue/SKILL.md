@@ -156,9 +156,9 @@ Break down large work items into manageable, independent issues. Follow project 
 10. **Ask about GitHub creation**: Use the interactive-input gate to let user decide on milestone and issue creation
     - Create milestone with **Markdown Table** in description.
 
-      > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `update-progress.md` "Type M-2"), never in the milestone description.
+      > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `../post-merge/references/update-progress.md` "Type M-2"), never in the milestone description.
 
-      Build `$MILESTONE_TABLE` with the required table block below (canonical spec at `update-progress.md:160`).
+      Build `$MILESTONE_TABLE` with the required table block below (canonical spec at `../post-merge/references/update-progress.md`, "Milestone Format").
       You may prepend objective/scope and dependency-order summary sections required by this file's milestone guidelines.
 
       ```markdown
@@ -264,6 +264,8 @@ Milestone description must include:
 
 ### Labels (Use actual repository labels)
 **Note**: Before assigning labels, verify repository labels with `gh label list`.
+
+If the repository has no usable taxonomy yet, create one first (absorbed from the retired create-issue-label skill): inspect `package.json`/`README`/code layout to pick areas, then create type/area/complexity labels with `gh label create`, e.g. `gh label create "type: feature" --color "0e8a16" --description "New feature addition"`.
 
 Examples (vary by project, for reference only):
 - **Type**: `type: feature`, `type: documentation`, `type: enhancement`, `type: bug`

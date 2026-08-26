@@ -12,7 +12,7 @@ allowed-tools:
 
 # Deploy Doc Command
 
-Produce a consistent client-facing deployment / procedure document (`.md`): a top-of-file summary, a prerequisites checklist, and numbered procedure steps. The enforceable skeleton lives in the `deploy-doc-guide` skill (the cross-runtime SSOT); this command orchestrates Read/Write around it.
+Produce a consistent client-facing deployment / procedure document (`.md`): a top-of-file summary, a prerequisites checklist, and numbered procedure steps. The enforceable skeleton lives in the `doc-guides` skill's `## Deploy-doc` section (the cross-runtime SSOT); this command orchestrates Read/Write around it.
 
 ## Arguments
 
@@ -29,7 +29,7 @@ Produce a consistent client-facing deployment / procedure document (`.md`): a to
 
 ### For `generate`
 
-1. Load the `deploy-doc-guide` Skill — its `## Quick Reference` is the binding skeleton + self-verify checklist.
+1. Load the `doc-guides` Skill — its `## Deploy-doc` section's `### Quick Reference` is the binding skeleton + self-verify checklist.
 2. Collect: title, a 2-3 line core summary, prerequisite items, and the ordered procedure steps.
 3. Emit the skeleton in this order:
    - `# H1` document title from `--title` (first line). Omit only when no title is given/inferable.

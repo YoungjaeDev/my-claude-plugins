@@ -6,23 +6,10 @@ Machine Learning and AI development skills.
 
 | Skill | Description |
 |-------|-------------|
-| `gpu-parallel-pipeline` | Design PyTorch GPU parallel processing pipelines |
 | `gradio-cv-app` | Create professional Gradio computer vision apps |
-| `cv-notebook` | Generate production-quality Computer Vision Jupyter notebooks |
-| `cv-explorer` | Generate interactive CV data exploration notebooks with ipywidgets |
+| `cv-notebook` | Generate production-quality Computer Vision Jupyter notebooks (incl. interactive ipywidgets exploration mode) |
 | `ml-dev-principles` | General ML/multimodal/CV working discipline (how to work, not which library) |
 | `edit-notebook` | Safe Jupyter notebook editing (absorbed from `notebook`) |
-
-## gpu-parallel-pipeline
-
-Design and implement PyTorch GPU parallel processing for maximum throughput.
-
-**Triggers**: "multi-GPU", "GPU parallel", "batch inference", "CUDA isolation", "ProcessPool GPU"
-
-**Capabilities**:
-- Multi-GPU scaling (ProcessPool, CUDA_VISIBLE_DEVICES isolation)
-- Single GPU optimization (CUDA Streams, async inference, model batching)
-- I/O + compute pipelines (ThreadPool for loading, batch inference)
 
 ## gradio-cv-app
 
@@ -47,18 +34,15 @@ Generate production-quality Computer Vision Jupyter notebooks.
 - Level-based Korean insights (beginner/intermediate/expert)
 - Environment-specific setup (Colab/Kaggle/Local)
 
-## cv-explorer
+Also generates interactive ipywidgets-based CV data exploration notebooks (absorbed from the former `cv-explorer` skill — see the "Exploration mode" section in `skills/cv-notebook/SKILL.md`).
 
-Generate interactive CV data exploration notebooks with ipywidgets.
+**Exploration-mode triggers**: "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "image viewer", "browse dataset", "browse annotations"
 
-**Triggers**: "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "image viewer", "browse dataset", "browse annotations"
-
-**Capabilities**:
+**Exploration-mode capabilities**:
 - ipywidgets-based interactive viewers (detection, segmentation, tracking, classification)
 - Multi-format support (COCO JSON, YOLO TXT, NPZ, CSV, ImageFolder)
 - Side-by-side comparison, confidence threshold tuning, dataset statistics
 - Optional supervision library integration for annotation rendering
-- Level-based Korean insights (beginner/intermediate/expert)
 
 ## ml-dev-principles
 
@@ -69,7 +53,7 @@ General working discipline for ML / multimodal / CV development — how to work,
 **Capabilities**:
 - Rule-type classification (hard-block vs process-caution) before reflexive strict reading
 - License/eligibility from actual rule text; eval-set isolation (hard rule vs flag-gated dev diagnostic)
-- Mandatory EDA + human FP/FN image review; GPU eff-batch parallel strategy
+- Mandatory EDA + human FP/FN image review; GPU eff-batch parallel strategy (§5), with multi-GPU ProcessPool/CUDA_VISIBLE_DEVICES isolation, CUDA Streams, and I/O+compute pipeline patterns for dataset-processing workloads absorbed from the former `gpu-parallel-pipeline` skill into `references/gpu-parallel.md`
 - Liberal use of flat-rate Codex + Claude vision dual judgment
 
 ## Usage
@@ -77,9 +61,6 @@ General working discipline for ML / multimodal / CV development — how to work,
 Skills auto-activate based on trigger keywords.
 
 ```bash
-# GPU parallel pipeline
-"Design a multi-GPU inference pipeline for YOLOv8"
-
 # Gradio CV app
 "Create a Gradio app for document OCR"
 
@@ -87,9 +68,12 @@ Skills auto-activate based on trigger keywords.
 "Create a YOLO detection notebook for Colab with beginner explanations"
 "Generate a segmentation notebook with SAM and Roboflow dataset"
 
-# CV explorer
+# CV notebook, exploration mode (absorbed cv-explorer)
 "Create a COCO dataset exploration notebook"
 "Create an interactive detection dataset viewer with comparison"
+
+# ml-dev-principles (multi-GPU dataset processing, absorbed gpu-parallel-pipeline)
+"Design a multi-GPU inference pipeline for YOLOv8 over a large image dataset"
 ```
 
 ## Related

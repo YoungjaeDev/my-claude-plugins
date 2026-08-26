@@ -313,6 +313,10 @@ After interview completion, write a spec file with:
 - [Any unresolved items for future discussion]
 ```
 
+## Reusable Prompt Output
+
+When the interview's goal is a copy-paste-ready prompt for next-session reuse rather than a spec file, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/Iterate) — see `references/tcrei-template.md` for the diagnosis table, output template, and domain-specific gap patterns.
+
 ## Interviewing Anti-Patterns to Avoid
 
 1. **Assuming you know best** - Always verify assumptions

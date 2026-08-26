@@ -6,7 +6,7 @@ dist/
 .serena/
 .sisyphus/
 
-# Secrets — e.g. tally-form reads TALLY_API_KEY from a .env (never commit keys)
+# Secrets — skills read API keys from a .env (never commit keys)
 .env
 .env.local
 

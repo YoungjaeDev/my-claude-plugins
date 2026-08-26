@@ -79,7 +79,7 @@ paths — claude.ai skill upload, the Skills API, `package_skill.py` — accept 
 with a hard error. The official docs use `argument-hint` as their example of that error.
 
 So: harmless here, fatal if a skill is ever packaged for the standard paths. The two existing uses
-(`codex-image:codex-image`, `publish:tally-form`) are not on those paths and are not defects.
+(`codex-image:codex-image`, `council:convene`) are not on those paths and are not defects.
 
 ### `version` and `license`
 

@@ -180,7 +180,7 @@ If an existing `CLAUDE.md` is present, skip with a notice. Otherwise write it in
 
 - **진입점**: `.llmwiki/wiki/index.md` (Map of Content). 페이지 직접 grep 금지.
 - **사용 순서**:
-  1. lore 가 필요할 때 → `/llm-wiki:query-wiki` 먼저
+  1. lore 가 필요할 때 → `.llmwiki/wiki/index.md` 를 먼저 읽는다
   2. 새 발견 → `/llm-wiki:ingest-finding`
   3. PR merge 후 → `/github-dev:post-merge` 가 wiki 적재까지 내장 (별도 skill 불필요)
 - **현재 상태**: wiki 비어있음. 적극 채워라. 첫 도메인 lore 가 쌓이기 시작하면 `/llm-wiki:bootstrap-wiki` 호출로 도메인 구조 인터뷰를 받는다.

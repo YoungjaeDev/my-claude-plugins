@@ -15,13 +15,13 @@ LLM-Wiki 3-layer = `.llmwiki/insight/` (promoted cross-agent rules) + `.llmwiki/
 - Existing repo where `.claude/` is just `settings.local.json` (or missing) and you want to start LLM-Wiki discipline
 - Asking "how do I add the wiki system here?"
 
-Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) already exists — the wiki is already initialized; read `index.md` directly or use `/llm-wiki:ingest-finding`. If only a legacy `.claude/wiki/` (or `.codex/wiki/`) exists and you want the v2 `.llmwiki/` layout, migrate manually: `mkdir -p .llmwiki && mv <legacy-root> .llmwiki/wiki` where `<legacy-root>` is whichever of `.claude/wiki` / `.codex/wiki` actually exists, add the v2 frontmatter fields (`status`/`volatility`/`sources`) opportunistically as pages get touched, then run `/llm-wiki:lint-wiki` to surface gaps — the dedicated migrate-wiki skill was retired once the legacy-fork era ended.
+Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md` / `.codex/wiki/index.md` — check `log.md` too) already exists — the wiki is already initialized; read `index.md` directly or use `/llm-wiki:ingest-finding`. If only a legacy `.claude/wiki/` (or `.codex/wiki/`) exists and you want the v2 `.llmwiki/` layout, migrate manually: `mkdir -p .llmwiki && mv <legacy-root> .llmwiki/wiki` where `<legacy-root>` is whichever of `.claude/wiki` / `.codex/wiki` actually exists, add the v2 frontmatter fields (`status`/`volatility`/`sources`) opportunistically as pages get touched, then run `/llm-wiki:lint-wiki` to surface gaps — the dedicated migrate-wiki skill was retired once the legacy-fork era ended.
 
 ## Steps
 
 1. **Confirm context**:
    - Run `pwd` and `git rev-parse --show-toplevel` to confirm the target repo root.
-   - If `.llmwiki/wiki/` (or a legacy `.claude/wiki/`) already has content, abort and report to user — overwriting is destructive.
+   - If any of `.llmwiki/wiki/`, `.claude/wiki/`, `.codex/wiki/` already has content, abort and report to user — bootstrapping beside a populated legacy root masks its pages and splits future writes across roots.
 
 2. **Gather project info via AskUserQuestion**:
    - One-line project pitch (will go into `CLAUDE.md`)

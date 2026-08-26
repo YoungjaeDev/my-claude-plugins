@@ -32,7 +32,7 @@
     {
       "name": "code-scout",
       "source": "./plugins/code-scout",
-      "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate). brightdata-guide, exa-web-search, and resource-finder were demoted to research-orchestrator references/ (agents read them by path, no skill surface).",
+      "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill. exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate). Web-data access, exa search, and GitHub/HF search-hygiene guides live under research-orchestrator references/ (agents read them by path — their former standalone skills were retired 2026-08).",
       "version": "4.0.0",
       "category": "research"
     },

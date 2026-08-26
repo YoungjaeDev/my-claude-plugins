@@ -47,6 +47,8 @@ def _predict_chunk(chunk: list[dict]) -> list[dict]:
 def run_multi_gpu(records: list[dict]) -> list[list[dict]]:
     visible = os.environ.get("CUDA_VISIBLE_DEVICES", "")
     device_tokens = visible.split(",") if visible else [str(i) for i in range(torch.cuda.device_count())]
+    if not device_tokens or device_tokens == [""]:
+        raise RuntimeError("no CUDA devices visible - check drivers / CUDA_VISIBLE_DEVICES")
     n_gpus = len(device_tokens)
 
     ctx = mp.get_context("spawn")  # fork silently corrupts CUDA state

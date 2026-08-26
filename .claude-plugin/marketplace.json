@@ -83,7 +83,10 @@
       "source": "./plugins/codex-image",
       "description": "Claude-only (do not install into Codex). Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
       "version": "1.3.3",
-      "category": "ai-models"
+      "category": "ai-models",
+      "policy": {
+        "installation": "NOT_AVAILABLE"
+      }
     },
     {
       "name": "publish",
@@ -97,7 +100,10 @@
       "source": "./plugins/council",
       "description": "Claude-only (do not install into Codex). Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync.",
       "version": "0.1.1",
-      "category": "ai-models"
+      "category": "ai-models",
+      "policy": {
+        "installation": "NOT_AVAILABLE"
+      }
     },
     {
       "name": "mem0-ops",

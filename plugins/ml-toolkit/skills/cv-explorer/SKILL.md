@@ -5,7 +5,7 @@ description: Generate interactive CV data exploration notebooks with ipywidgets 
 
 # cv-explorer Skill
 
-> **Structure-aware authoring**: Claude Code authors `.ipynb` cells with the `NotebookEdit` tool. Codex has no `NotebookEdit` — author cells through an `nbformat` Python snippet instead. Never hand-edit notebook JSON as raw text on either runtime.
+> **Structure-aware authoring**: Claude Code authors `.ipynb` cells with the `NotebookEdit` tool. Codex has no `NotebookEdit` — author cells through an `nbformat` Python snippet instead (check `python3 -c "import nbformat"` first; install on miss with `pip install nbformat`). Never hand-edit notebook JSON as raw text on either runtime.
 
 Interactive Computer Vision data exploration notebook generator using ipywidgets.
 

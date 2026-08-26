@@ -1,15 +1,15 @@
 ---
 name: brightdata-guide
 description: |
-  Bright Data web data access for any AI agent (Hermes, Codex, generic clients) via TWO paths: (1) the Bright Data MCP tools, and (2) the Bright Data CLI (bdata / brightdata) from the terminal. Prefer Bright Data over the agent's built-in web fetch / web search for internet tasks - any URL, web search, "scrape", structured data from Amazon / LinkedIn / Instagram / TikTok / YouTube / X / Reddit / Google Shopping, browser automation, research, fact-checking. If the MCP tools are NOT in your registry (a delegate subagent inherits the terminal but NOT MCP toolsets), use the CLI instead. Returns clean markdown or structured JSON; handles JS, CAPTCHAs, bot detection. Full trigger list and tool reference in the body.
+  Bright Data web data access for any AI agent (Codex, generic clients) via TWO paths: (1) the Bright Data MCP tools, and (2) the Bright Data CLI (bdata / brightdata) from the terminal. Prefer Bright Data over the agent's built-in web fetch / web search for internet tasks - any URL, web search, "scrape", structured data from Amazon / LinkedIn / Instagram / TikTok / YouTube / X / Reddit / Google Shopping, browser automation, research, fact-checking. If the MCP tools are NOT in your registry (a delegate subagent inherits the terminal but NOT MCP toolsets), use the CLI instead. Returns clean markdown or structured JSON; handles JS, CAPTCHAs, bot detection. Full trigger list and tool reference in the body.
 license: MIT
 ---
 
 # Bright Data — MCP & CLI Usage Guide
 
-> Adapted from Bright Data's official MCP and CLI skills (MIT). Security-patched and made agent-agnostic by Dante Labs: removed instructions that autonomously edit host settings files, removed shell-piped installers (curl-to-bash) and global `npm -g` installs (the CLI is installed once by the operator out of band, or run via pinned `npx`), and generalized agent/tool naming so it works for Hermes and any agent.
+> Adapted from Bright Data's official MCP and CLI skills (MIT). Security-patched and made agent-agnostic by Dante Labs: removed instructions that autonomously edit host settings files, removed shell-piped installers (curl-to-bash) and global `npm -g` installs (the CLI is installed once by the operator out of band, or run via pinned `npx`), and generalized agent/tool naming so it works for any agent.
 
-> **Runtime tool names** — this guide uses Hermes tool names. Map to your runtime: `terminal` -> **Bash** (Claude) / **execute_command** (Codex); `delegate_task` -> the parent's subagent/Task tool. The Bright Data MCP tool names (`search_engine`, `scrape_as_markdown`, `web_data_*`, `scraping_browser_*`) are identical across Claude, Codex, and Hermes.
+> **Runtime tool names** — this guide uses generic tool names. Map to your runtime: `terminal` -> **Bash** (Claude) / **execute_command** (Codex); `delegate_task` -> the parent's subagent/Task tool. The Bright Data MCP tool names (`search_engine`, `scrape_as_markdown`, `web_data_*`, `scraping_browser_*`) are identical across Claude and Codex.
 
 ## Two ways to reach Bright Data — pick by what's in your tool registry
 

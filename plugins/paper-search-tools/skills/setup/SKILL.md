@@ -133,22 +133,10 @@ registration and the connect/disable surface differ per runtime:
   connected. Tool names then carry the plugin prefix
   `mcp__plugin_paper-search-tools_paper-search__<tool>` (see the `paper-search` usage skill for the
   full tool catalog and the standalone-registration prefix variant).
-- **Codex** — installed as a plugin, Codex reads the generated `.codex-plugin/plugin.json`, which
-  already points `mcpServers` at the same `.mcp.json`, so the server is registered automatically —
+- **Codex** — installed as a plugin, Codex reads the plugin's `.claude-plugin/plugin.json` natively,
+  which already points `mcpServers` at the same `.mcp.json`, so the server is registered automatically —
   do **not** add a second manual entry. Just run the step 5 handshake to verify. Only a standalone
   (non-plugin) Codex needs a manual MCP entry with the step-4 `docker run` args.
-- **Hermes** — load the skill explicitly (`skill_view("paper-search-tools:setup")`), register the
-  server per Hermes' MCP configuration with the step-4 `docker run` args, and verify with step 5.
-
-### Hermes tool-name compatibility
-
-When this skill runs under Hermes, map the tool terms used above:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Bash | terminal |
-| Read | read_file |
-| AskUserQuestion | clarify |
 
 ## Troubleshooting — distinguish failure classes
 
@@ -169,4 +157,4 @@ A valid but empty result is not an error. Read the response before concluding se
 ## Don't need Paper Search?
 
 Disable the server to stop connection errors without uninstalling: on Claude Code via the `/mcp`
-command; on Codex/Hermes via that runtime's plugin or MCP-server management.
+command; on Codex via that runtime's plugin or MCP-server management.

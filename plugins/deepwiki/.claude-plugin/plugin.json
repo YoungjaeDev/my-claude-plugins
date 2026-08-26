@@ -1,6 +1,6 @@
 {
   "name": "deepwiki",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "AI-powered GitHub repo documentation. Dual-surface: `/deepwiki:ask` + `/deepwiki:generate-llmstxt` commands and matching skills for fuzzy-trigger discovery.",
   "commands": [
     "./commands/ask.md",

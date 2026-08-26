@@ -7,12 +7,6 @@ description: "Diagnose one existing skill against seven axes — frontmatter, po
 
 Diagnose one skill. Report what is wrong, at what severity, with the edit that fixes it.
 
-## Hermes Agent compatibility
-
-`docs-forge` is Hermes-eligible, so this loads as `docs-forge:skill-audit` through the generated
-adapter. The Claude/Codex tool names below map to different Hermes tools — see
-[`../../references/hermes-tools.md`](../../references/hermes-tools.md) before running any step.
-
 ## Overview
 
 Measurement first, judgment second. Numbers settle the mechanical axes for free, which keeps the
@@ -55,10 +49,6 @@ if [ -z "$PLUGIN_ROOT" ]; then
   if sort -V </dev/null >/dev/null 2>&1; then vsort="sort -V"; else vsort="sort -t. -k1,1n -k2,2n -k3,3n"; fi
   PLUGIN_ROOT=$(ls -1d "$cache_root"/*/docs-forge/* 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | $vsort | tail -1 | cut -f2-)
 fi
-for h in "${HERMES_HOME:-$HOME/.hermes}/plugins/docs-forge" .hermes/plugins/docs-forge; do
-  [ -n "$PLUGIN_ROOT" ] && break
-  [ -d "$h/skills" ] && PLUGIN_ROOT="$h"
-done
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs-forge plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
 TARGET_ROOT="${TARGET_ROOT:?set TARGET_ROOT to the directory containing the target skill}"
 TARGET_SKILL="${TARGET_SKILL:?set TARGET_SKILL to the skill directory name being audited}"

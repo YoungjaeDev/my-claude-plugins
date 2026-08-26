@@ -7,12 +7,6 @@ description: "Sweep every skill in a plugin tree at once — measure the whole f
 
 Review every skill in the tree without reading every skill with a model.
 
-## Hermes Agent compatibility
-
-`docs-forge` is Hermes-eligible, so this loads as `docs-forge:skill-fleet-review` through the
-generated adapter. The Claude/Codex tool names below map to different Hermes tools — see
-[`../../references/hermes-tools.md`](../../references/hermes-tools.md) before running any step.
-
 ## Overview
 
 A fleet review that reads 50 bodies with a model costs more than it returns, and most of what it
@@ -53,10 +47,6 @@ if [ -z "$PLUGIN_ROOT" ]; then
   if sort -V </dev/null >/dev/null 2>&1; then vsort="sort -V"; else vsort="sort -t. -k1,1n -k2,2n -k3,3n"; fi
   PLUGIN_ROOT=$(ls -1d "$cache_root"/*/docs-forge/* 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | $vsort | tail -1 | cut -f2-)
 fi
-for h in "${HERMES_HOME:-$HOME/.hermes}/plugins/docs-forge" .hermes/plugins/docs-forge; do
-  [ -n "$PLUGIN_ROOT" ] && break
-  [ -d "$h/skills" ] && PLUGIN_ROOT="$h"
-done
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs-forge plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
 MEASURE="$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs"
 mkdir -p docs/audit
@@ -103,7 +93,7 @@ aborting on it would kill the sweep for doing its job. The statuses are still re
 guard and carried into the report; what must never happen is a status disappearing.
 
 ```bash
-for g in "check-skill-contract.mjs" "check-skill-tool-portability.mjs --check" "check-skill-prose.mjs"; do
+for g in "check-skill-contract.mjs" "check-skill-prose.mjs"; do
   s=${g%% *}; rest=${g#"$s"}
   if [ -f "scripts/$s" ]; then
     node "scripts/$s" $rest; rc=$?
@@ -147,8 +137,8 @@ and record findings. It completes on all three runtimes and must stay complete o
 
 Under Claude Code only, the same work can be accelerated by dispatching one read-only `Task` agent
 per axis over the cohort and merging the results. That is an accelerator, not a requirement — never
-move an axis's rules into an agent definition, because Codex and Hermes have no agents surface and
-relocated logic would silently vanish for them.
+move an axis's rules into an agent definition, because Codex has no agents surface and relocated
+logic would silently vanish for it.
 
 ### 5. Tier
 

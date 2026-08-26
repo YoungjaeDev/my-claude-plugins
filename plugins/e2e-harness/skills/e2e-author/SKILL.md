@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Task AskUserQuestion
 
 Turn a critical user flow into a reliable Playwright spec by driving the planner and generator **roles**. This skill orchestrates; the roles do the exploration and code generation. A spec read is a behavior contract; a spec run is a sensor.
 
-Two runtime families, three execution paths, same gates: on **Claude Code** the roles are the named agents `e2e-setup` generated via `init-agents --loop=claude` (**Path A**); on **Codex 0.135** those agent files are not registerable as named subagents, so each role runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**). Hermes is forward-compatible only — `e2e-harness` is not yet in `HERMES_ELIGIBLE`, so it does not load on Hermes today; the generic dispatch maps to Hermes `delegate_task` for when it is added.
+Two runtime families, three execution paths, same gates: on **Claude Code** the roles are the named agents `e2e-setup` generated via `init-agents --loop=claude` (**Path A**); on **Codex 0.135** those agent files are not registerable as named subagents, so each role runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
 
 ## Precondition check
 
@@ -32,12 +32,11 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
        [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
      done < <(ls -1d "$cache_root"/*/e2e-harness/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
    fi
-   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/e2e-harness"   # unverified
    { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "e2e-author: role contracts not resolved (need $CHK)" >&2; exit 1; }
    echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```
    - **Path A** — the named agents `playwright-test-planner` / `-generator` are registered (Claude Code): dispatch them by name (Steps 2-3, unchanged).
-   - **Path B** — named agents are not registerable but a generic subagent tool is available (Codex `Task`; Hermes `delegate_task`): dispatch one generic subagent per role, carrying the matching contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
+   - **Path B** — named agents are not registerable but a generic subagent tool is available (Codex `Task`): dispatch one generic subagent per role, carrying the matching contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
    - **Path C** — no delegation available: run each role yourself, in order, following the same contract with your own tools (`Bash` for `npx playwright`, the `playwright-test` MCP server for browser drive).
 
 1. **Select the critical user flow(s)**:
@@ -46,7 +45,7 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
 
 2. **Plan (planner role) + review gate** — dispatch via the Step 0 path:
    - **Path A**: `Task(subagent_type="playwright-test-planner", prompt="<the CUF + any PRD/notes>. Run seed.spec.ts to set up the environment, explore the app, and write a Markdown test plan under specs/.")`.
-   - **Path B** (Codex generic subagent): `Task(prompt="You are the Playwright planner role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'planner'): run seed.spec.ts first, explore the app via the playwright-test MCP server, write specs/<flow>.md (plan only, no code). CUF: <the CUF + any PRD/notes>.")` — paste the `planner` contract inline. (Hermes maps `Task` → `delegate_task`.)
+   - **Path B** (Codex generic subagent): `Task(prompt="You are the Playwright planner role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'planner'): run seed.spec.ts first, explore the app via the playwright-test MCP server, write specs/<flow>.md (plan only, no code). CUF: <the CUF + any PRD/notes>.")` — paste the `planner` contract inline.
    - **Path C**: run the planner role yourself per the contract — run `seed.spec.ts`, explore via the `playwright-test` MCP server, write `specs/<flow>.md`.
    - The planner writes `specs/<flow>.md` (a plan, no code) on every path.
    - **MANDATORY user review gate** (all paths): present the plan and get explicit approval (AskUserQuestion) before generating any code. The plan is cheap to fix; generated specs are not. Incorporate edits into `specs/<flow>.md` before proceeding.
@@ -77,7 +76,3 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
 - **Test independence — set state via API, don't replay shared prefixes.** When flows share a long common prefix (e.g. consent -> phone auth) before branching, do NOT make each test re-run that prefix through the UI. Have the generator put the user at the branch's start state via a test API, then assert only that branch. This avoids cascade failures (a prefix change failing every test) and cumulative runtime, and keeps tests independent. This is distinct from `storageState` (auth only) — it sets mid-flow app state. Capture the available state-setup endpoints in the E2E SSOT doc.
 - The planner/generator roles drive the browser through the `playwright-test` MCP server; if their tool calls fail, verify `.mcp.json` is approved (`/mcp`).
 - This skill does not set up the harness (`e2e-setup`) or repair CI failures (`e2e-debug`).
-
-## Runtime tool names
-
-Dispatch and file tools differ by runtime. Claude and Codex share names; Hermes (forward-compat only — not loaded today) maps as: `Task` → `delegate_task` (planner/generator dispatch), `Bash` → `terminal` (`npx playwright`, resolver), `Read` → `read_file` (the role contract, specs), `Write`/`Edit` → `write_file`/`patch`, `AskUserQuestion` → `clarify` (CUF selection + review gate). Full contract + table: `${PLUGIN_ROOT}/references/role-contracts.md`.

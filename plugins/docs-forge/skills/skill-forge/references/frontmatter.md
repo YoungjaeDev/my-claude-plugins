@@ -1,9 +1,9 @@
 # Skill frontmatter schema
 
 Field-by-field rules for `SKILL.md` frontmatter in this repository. Verified against Claude Code
-2.1.226 documentation, the Codex 0.135 plugin validator, and the generated Hermes adapter on
-2026-08-10. A field whose behavior could not be established is marked `unverified` and carries no
-prohibition — an unfounded ban is worse than a missing rule.
+2.1.226 documentation and the Codex 0.135 plugin validator on 2026-08-10. A field whose behavior
+could not be established is marked `unverified` and carries no prohibition — an unfounded ban is
+worse than a missing rule.
 
 ## The two fields every skill has
 
@@ -14,8 +14,8 @@ prohibition — an unfounded ban is worse than a missing rule.
   `plugins/docs-forge/skills/skill-forge/` with `name: skill-forge` is `/docs-forge:skill-forge`.
   A `name` that disagrees with the directory produces a command nobody can predict from the tree.
 - Claude Code treats `name` as optional (it defaults to the directory name). This repo requires it
-  anyway: the Codex validator errors on a missing or empty `name`, and the Hermes adapter registers
-  by directory name, so a divergence shows up as three different identities for one skill.
+  anyway: the Codex validator errors on a missing or empty `name`, so a divergence shows up as two
+  different identities for one skill.
 
 ### `description` — required here
 
@@ -35,23 +35,22 @@ skill that always costs context. Rules:
 
 ## Optional fields, and what each runtime does with them
 
-| Field | Claude Code | Codex 0.135 | Hermes adapter | Use here |
-|---|---|---|---|---|
-| `allowed-tools` | pre-approves those tools for the invoking turn | ignored | ignored | allowed; see the portability note below |
-| `disable-model-invocation` | supported | **validation error unless `false`** | ignored | not in a Codex-eligible plugin |
-| `argument-hint` | shown in autocomplete | ignored | ignored | allowed, low value |
-| `version` | not a documented field | ignored | ignored | no-op — do not add |
-| `license` | accepted, no behavior | ignored | ignored | no-op here |
-| everything else in the Claude table | supported | mostly ignored | ignored | decide per field, record the evidence |
+| Field | Claude Code | Codex 0.135 | Use here |
+|---|---|---|---|
+| `allowed-tools` | pre-approves those tools for the invoking turn | ignored | allowed; see the portability note below |
+| `disable-model-invocation` | supported | **validation error unless `false`** | not in a Codex-eligible plugin |
+| `argument-hint` | shown in autocomplete | ignored | allowed, low value |
+| `version` | not a documented field | ignored | no-op — do not add |
+| `license` | accepted, no behavior | ignored | no-op here |
+| everything else in the Claude table | supported | mostly ignored | decide per field, record the evidence |
 
 ### `allowed-tools`
 
 Optional. Adding it turns the list into a portability contract: whatever you name has to exist on
-every runtime that loads the skill. `AskUserQuestion` in particular has no Hermes equivalent, so a
-skill that lists it needs the cross-runtime interaction gate in its body — see
-`runtime-contract.md`. A skill with no interactive gate should not list the tool merely to document
-the mapping; `scripts/check-skill-tool-portability.mjs` strips `allowed-tools` lines precisely so
-that documentation is not mistaken for a real gate.
+every runtime that loads the skill. `AskUserQuestion` in particular has no Codex equivalent (Codex
+uses `request_user_input`), so a skill that lists it needs the cross-runtime interaction gate in its
+body — see `runtime-contract.md`. A skill with no interactive gate should not list the tool merely
+to document the mapping.
 
 ### `disable-model-invocation`
 
@@ -72,9 +71,9 @@ validator does. The validator's verdict is enough to keep the field out; do not 
 
 It is a real skill field, not a command-only field — Claude Code documents it in the SKILL.md
 frontmatter reference and shows it during autocomplete. Codex ignores it (its skill validator has
-no allowed-key whitelist) and the Hermes adapter reads only `description`.
+no allowed-key whitelist).
 
-The one place it breaks is outside these three runtimes. The Agent Skills standard distribution
+The one place it breaks is outside these two runtimes. The Agent Skills standard distribution
 paths — claude.ai skill upload, the Skills API, `package_skill.py` — accept only `name`,
 `description`, `license`, `compatibility`, `metadata`, `allowed-tools`, and reject anything else
 with a hard error. The official docs use `argument-hint` as their example of that error.

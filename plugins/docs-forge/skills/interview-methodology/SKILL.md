@@ -6,30 +6,12 @@ version: 0.4.0
 
 # Interview Methodology
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `docs-forge:interview-methodology`, map Claude/Codex tool names to Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| AskUserQuestion | clarify |
-| Read | read_file |
-| Write | write_file |
-| Task (sub-agent) | delegate_task |
-| Bash | terminal |
-| Grep/Glob | search_files |
-
-The last three cover the relentless mode's read-only fact-dispatch (dispatch a sub-agent, run a lookup, search) so a Hermes `grill me` session can follow rule 4 instead of stalling.
-
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("docs-forge:interview-methodology")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
-
 ## Cross-runtime interactive input
 
 Every question below runs through a **capability-aware** interactive-input gate, not one hardcoded tool. Read each `AskUserQuestion` mention as this gate:
 
 - **Claude Code** — use `AskUserQuestion`.
 - **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE concise blocking question only where a wrong assumption would be costly; otherwise proceed on a documented safe default and state the assumption.
-- **Hermes** — use `clarify` (per the compatibility table above).
 
 Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 

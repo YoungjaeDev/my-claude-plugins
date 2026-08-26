@@ -36,29 +36,25 @@ bash prompt_inject.sh        # Claude: plain stdout → additionalContext
 bash prompt_inject.sh codex  # Codex:  {"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"..."}}
 ```
 
-Codex now supports **bundled plugin hooks**, so this ships natively — no hand-copied script and no manual `~/.codex/hooks.json`. The plugin carries a source-controlled descriptor at `hooks/codex-hooks.json`:
+The bundled descriptor `hooks/codex-hooks.json` is still shipped as source:
 
 ```json
 { "hooks": { "UserPromptSubmit": [ { "hooks": [ { "type": "command", "command": "bash \"$PLUGIN_ROOT/hooks/prompt_inject.sh\" codex" } ] } ] } }
 ```
 
-`scripts/sync-codex-manifests.mjs` wires that descriptor into the generated `.codex-plugin/plugin.json` top-level `hooks` (`"hooks": "./hooks/codex-hooks.json"`). `PLUGIN_ROOT` is the Codex-provided plugin-root env-var (`CLAUDE_PLUGIN_ROOT` is a compatibility alias); the path is quoted so a `PLUGIN_ROOT` containing spaces still resolves. Only the `UserPromptSubmit` prompt-inject hook is bundled for Codex — the Python auto-formatter (`auto-format-python.py`) and notification (`notify_osc.py`) hooks stay **Claude-only** (they assume Claude Write/Edit tool payloads and Stop/Notification events, which do not map onto Codex the same way).
+**Auto-wiring status**: with the generated Codex manifest layer removed (2026-08 restructure), nothing wires this descriptor automatically — `plugins/core-config/.claude-plugin/plugin.json`'s `hooks` field is the Claude-format inline object, which Codex does not consume. A Codex machine that wants the per-prompt injection registers the hook manually via the legacy `~/.codex/hooks.json` path, pointing at the installed plugin's `prompt_inject.sh` with the `codex` argument (JSON envelope output). This is a deliberate trade-off, not an oversight; native re-wiring is deferred to the restructure's audit phase. The Python auto-formatter (`auto-format-python.py`) and notification (`notify_osc.py`) hooks stay **Claude-only** (they assume Claude Write/Edit tool payloads and Stop/Notification events, which do not map onto Codex the same way).
 
-Install / trust / verify:
+Manual registration / verify:
 
 ```bash
-# install (Codex marketplace)
-codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin add core-config@my-claude-plugins
+# verify the script emits the Codex envelope
+bash <plugin-root>/hooks/prompt_inject.sh codex   # -> {"hookSpecificOutput":{...}}
 
-# trust — Codex requires approving a plugin's hooks before they run:
-#   run /hooks in a Codex session and approve the core-config UserPromptSubmit entry
-
-# verify — the bundled descriptor emits the Codex envelope on every prompt
-bash "$PLUGIN_ROOT/hooks/prompt_inject.sh" codex   # -> {"hookSpecificOutput":{...}}
+# then add a ~/.codex/hooks.json UserPromptSubmit entry running that command,
+# and approve it via /hooks in a Codex session (Codex requires hook trust)
 ```
 
-The bundled descriptor auto-updates with the plugin (no stale hand-copied script). The legacy manual `~/.codex/hooks.json` path still works if you prefer it, but the bundled descriptor is now the primary integration.
+The descriptor and script update with the plugin, but on Codex they run only through the manual `~/.codex/hooks.json` registration above — there is no automatic wiring.
 
 ## Guidelines
 

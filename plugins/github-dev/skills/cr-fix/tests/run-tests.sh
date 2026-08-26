@@ -585,15 +585,13 @@ fi
 if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
 elif [ -d "plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="plugins/github-dev/skills/cr-fix"
 elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then SKILL_DIR="$CODEX_CAND/skills/cr-fix"
-elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
-elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then SKILL_DIR="$HERMES_HOME/skills/cr-fix"
-else SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"; fi
+else SKILL_DIR="plugins/github-dev/skills/cr-fix"; fi
 printf '%s' "$SKILL_DIR"
 SH
 # From a non-source-tree cwd so the source-tree branch cannot win.
-got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="$RS/pluginroot" CODEX_PLUGIN_CACHE="$RS/cache" HERMES_HOME="" bash resolver.sh)
+got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="$RS/pluginroot" CODEX_PLUGIN_CACHE="$RS/cache" bash resolver.sh)
 is "resolver: CLAUDE_PLUGIN_ROOT wins" "$got" "$RS/pluginroot/skills/cr-fix"
-got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache" HERMES_HOME="" bash resolver.sh)
+got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache" bash resolver.sh)
 is "resolver: Codex cache fallback"    "$got" "$RS/cache/marketplace/github-dev/2.8.0/skills/cr-fix"
 
 # Multi-marketplace cache: the VERSION must win, not the marketplace dir name.
@@ -601,12 +599,12 @@ is "resolver: Codex cache fallback"    "$got" "$RS/cache/marketplace/github-dev/
 # alpha/github-dev/3.0.0. (CR Major, SKILL.md:66)
 mkdir -p "$RS/cache2/zeta/github-dev/2.10.0/skills/cr-fix" \
          "$RS/cache2/alpha/github-dev/3.0.0/skills/cr-fix"
-got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache2" HERMES_HOME="" bash resolver.sh)
+got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache2" bash resolver.sh)
 is "resolver: version outranks marketplace name" "$got" "$RS/cache2/alpha/github-dev/3.0.0/skills/cr-fix"
 
 # Fresh env (no cache at all) must not kill an errexit caller — the unguarded
 # CODEX_CAND ls substitution died rc=2 under set -euo pipefail. (counsel P1)
-rrc=0; (cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/no-such-cache" HERMES_HOME="" \
+rrc=0; (cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/no-such-cache" \
   bash -euo pipefail resolver.sh >/dev/null) || rrc=$?
 is "resolver: empty cache survives errexit" "$rrc" 0
 

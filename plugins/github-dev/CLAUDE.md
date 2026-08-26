@@ -32,28 +32,6 @@ GitHub workflow automation skills for Claude Code. All workflows are skills (no 
 | `--no-generalize` | Pass through to cr-fix; disable bounded same-file generalization (default ON — patch same-file siblings of a real + high-confidence + grep-able finding) |
 | `--cr-source <mode>` | Pass through to cr-fix; review source: `auto` (default, fall back to CLI/codex-only on PR-bot rate-limit), `pr-bot`, `cli`, `codex-only` |
 
-## Hermes Agent
-
-Hermes can install only this plugin from the monorepo subdirectory:
-
-```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
-hermes gateway restart  # if using Hermes through a messaging gateway
-```
-
-Hermes exposes the existing workflows as namespaced plugin skills. Load them explicitly with `skill_view` or ask Hermes to load the qualified skill:
-
-```text
-skill_view("github-dev:commit-and-push")
-skill_view("github-dev:resolve-issue")  # then provide the issue number in the same request
-skill_view("github-dev:cr-fix")         # then provide flags such as --cr-source auto
-```
-
-Notes:
-- Hermes uses `github-dev:<skill>` qualified skill names rather than Claude slash commands, and plugin-provided skills are explicit opt-in loads.
-- Start a fresh Hermes session after enabling the plugin so the plugin skill registry is rebuilt.
-- The skill bodies include a Hermes compatibility table mapping Claude/Codex tool terms (`Bash`, `Read`, `Edit`, `AskUserQuestion`, `Task`, `Monitor`) to Hermes tools (`terminal`, `read_file`, `patch`, `clarify`, `delegate_task`, `process`).
-
 ## Worktree Workflow (PR-based)
 
 Use Claude Code's built-in worktree (`claude --worktree <name>`) for isolated PR work:

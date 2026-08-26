@@ -131,7 +131,7 @@ Two spec homes is `INFO`, not `WARN`: state which one this project prefers (`.cl
 
 Some verdicts need an explanation the JSON cannot carry:
 
-- **`cross_runtime_gap: true` is FAIL, not WARN.** `.claude/rules/*.md` exist but `AGENTS.md` does not, so every Codex/Hermes session runs with zero project guidance — silently, with no error on their side. One runtime losing its entire instruction surface is guidance loss, not degradation.
+- **`cross_runtime_gap: true` is FAIL, not WARN.** `.claude/rules/*.md` exist but `AGENTS.md` does not, so every Codex session runs with zero project guidance — silently, with no error on its side. One runtime losing its entire instruction surface is guidance loss, not degradation.
 - **`staging_pending > 0` is FAIL, not WARN.** The llm-wiki Stop-hook captured session lore into `.llmwiki/.staging/`, and the SessionStart drain never curated it. That directory is gitignored, so the lore is one `rm` from being lost permanently.
 - **The memory FAIL keys on `native_auto_memory_enabled`, never on `native_memory_md`.** File presence is a proxy for a feature being on, and the two diverge the moment auto-memory is disabled: `MEMORY.md` survives the setting change. Keying the verdict on the file would keep reporting a conflict this skill already helped resolve. A leftover `MEMORY.md` with auto-memory off is a WARN (dead files), not a FAIL.
 - **`gitignore.env: false` is FAIL.** An untracked-but-uncovered `.env` is one `git add -A` from committing credentials. The other gitignore entries only leak local state.

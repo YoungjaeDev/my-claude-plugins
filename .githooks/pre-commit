@@ -1,26 +1,23 @@
 #!/usr/bin/env bash
 # Shared, version-controlled pre-commit hook (lives in the repo, not .git/hooks/).
-# Enforce the Codex manifest-drift guard AND the skill-description length guard
-# (both run inside sync-codex-manifests.mjs --check) before every commit.
+# Runs the doc-consistency, shell-portability, and skill-contract guards before
+# every commit.
 #
 # Activate once per clone:  git config core.hooksPath .githooks
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
 
-# node drives the drift/consistency guards. Skip (not fail) when it is absent
-# locally — same posture as the python3 guard below — so a machine without node
-# can still commit; CI installs node and enforces all of these on the PR.
+# node drives the consistency guards. Skip (not fail) when it is absent locally
+# so a machine without node can still commit; CI installs node and enforces all
+# of these on the PR.
 if command -v node >/dev/null 2>&1; then
-  node "$repo_root/scripts/sync-codex-manifests.mjs" --check
-  node "$repo_root/scripts/sync-hermes-manifests.mjs" --check
   node "$repo_root/scripts/check-doc-consistency.mjs"
-  node "$repo_root/scripts/check-skill-tool-portability.mjs" --check
   # GNU-only shell constructs shipped without a BSD fallback. code_review.md P1
   # has forbidden these for a while with nothing enforcing it, which is how
   # md5sum reached translator and broke image downloads on macOS (issue #172).
   node "$repo_root/scripts/check-shell-portability.mjs"
-  # The five frontmatter/body violations that make a skill fail SILENTLY on at least
+  # The frontmatter/body violations that make a skill fail SILENTLY on at least
   # one runtime — description over the Codex 1024 cap, unquoted `: ` collapsing the
   # YAML, bare ${CLAUDE_PLUGIN_ROOT} in a shell block, non-kebab name, frontmatter not
   # at byte 0. All are invisible from the Claude Code side. Runs its own RED/GREEN
@@ -34,17 +31,7 @@ if command -v node >/dev/null 2>&1; then
   # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
   node "$repo_root/scripts/check-skill-prose.mjs" || true
 else
-  echo "pre-commit: node not found — skipping Codex/Hermes/doc guards (CI still enforces them)" >&2
-fi
-# Hermes adapter mock-load — same guard CI runs, so import/registration regressions
-# in generated __init__.py fail at commit time, not only in CI. The adapters
-# `import yaml`, so the guard checks both python3 AND PyYAML; skip (not fail) when
-# either is absent locally so a bare interpreter can still commit. CI installs both
-# and enforces it on the PR.
-if command -v python3 >/dev/null 2>&1 && python3 -c 'import yaml' >/dev/null 2>&1; then
-  python3 "$repo_root/scripts/mock-load-hermes.py"
-else
-  echo "pre-commit: python3+PyYAML not both present — skipping Hermes mock-load (CI still enforces it)" >&2
+  echo "pre-commit: node not found — skipping doc/skill guards (CI still enforces them)" >&2
 fi
 
 # cr-fix's CLI-fallback and CR-state paths only execute after the primary path

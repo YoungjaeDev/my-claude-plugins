@@ -10,7 +10,7 @@ What decides each axis when judging a skill. `docs-forge:skill-audit` applies al
 | Completion criteria | per step: can done be told from not-done (clarity); does the demand pull real work, or accept a glance |
 | Information hierarchy | branch test — inlined content only some branches reach, or a pointer to content every run needs; co-location, and whether a split concept is duplication or scattering |
 | Pruning | no-op prose, sediment, prose caching what a file or command already shows, prohibition where a positive instruction would steer better |
-| Runtime contract | every silent failure in `runtime-contract.md` — bare `${CLAUDE_PLUGIN_ROOT}`, an interaction gate hardcoded to one runtime's tool, a Hermes-eligible skill with no tool mapping — plus logic that exists only on the Claude surface, and a body describing a plugin or path it no longer lives in |
+| Runtime contract | every silent failure in `runtime-contract.md` — bare `${CLAUDE_PLUGIN_ROOT}`, an interaction gate hardcoded to one runtime's tool — plus logic that exists only on the Claude surface, and a body describing a plugin or path it no longer lives in |
 
 An axis with nothing to say is passed, not padded.
 

@@ -10,20 +10,6 @@ description: |
 
 # Resource Finder
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `code-scout:resource-finder`, map Claude/Codex tool names to
-Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| `Bash` | `terminal` |
-| `Write` | `write_file` |
-
-Plugin skills are explicit opt-in loads in Hermes — call `skill_view("code-scout:resource-finder")` after
-`--enable` in a fresh session; the description never surfaces this body on its own.
-
-
 Shared hygiene reference for `github-scout` and `hf-scout`. Tool-specific call patterns and reliability rubrics live in each scout's agent file — this skill is the cross-axis cheat-sheet.
 
 ## Tool priority
@@ -35,7 +21,7 @@ Primary tools are **portable CLIs on `$PATH`**, not skill-internal scripts. Pref
 | GitHub | `gh search repos` / `gh search code` / `gh repo view` | `uv run <abs>/scripts/search_github.py` |
 | Hugging Face | `curl https://huggingface.co/api/...` (+ `uvx hf {models\|spaces\|datasets} ls/search/info`) | `uv run <abs>/scripts/search_huggingface.py` |
 
-`<abs>` resolves to `plugins/code-scout/skills/resource-finder` in Claude Code (repo-rooted) or `~/.agents/skills/resource-finder` in Codex (after sync). Use absolute paths to avoid cwd surprises.
+`<abs>` resolves in order: `$CLAUDE_PLUGIN_ROOT/skills/resource-finder` when that env var is set (Claude Code), the source tree `plugins/code-scout/skills/resource-finder` when running inside this repo, else the newest Codex plugin cache entry (`ls -1d "${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"/*/code-scout/*/skills/resource-finder`, pick the highest version whose `scripts/` exists). Use absolute paths to avoid cwd surprises; if none of the three resolves, stay on the primary portable CLIs above — the wrappers are an optional fallback.
 
 ## Search hygiene
 
@@ -163,10 +149,6 @@ uv run plugins/code-scout/skills/resource-finder/scripts/search_github.py \
     "fastapi boilerplate" --limit 10 --detailed
 
 uv run plugins/code-scout/skills/resource-finder/scripts/search_huggingface.py \
-    "object detection" --type models --limit 10
-
-# Codex (after codex-bridge sync)
-uv run ~/.agents/skills/resource-finder/scripts/search_huggingface.py \
     "object detection" --type models --limit 10
 ```
 

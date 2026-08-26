@@ -6,23 +6,6 @@ allowed-tools: Read Edit Bash Glob Grep AskUserQuestion
 
 # Update Progress
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Codex tool names to Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Bash | terminal |
-| Read | read_file |
-| Write | write_file |
-| Edit | patch |
-| Glob/Grep | search_files |
-| AskUserQuestion | clarify |
-| Task | delegate_task |
-| Monitor | process |
-
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("github-dev:<skill>")` (or ask Hermes to load that qualified skill) rather than relying on bare text like `github-dev:<skill> ...`.
-
 Manually sync project progress to GitHub milestones and issues. Regenerates architecture diagrams and updates tracking sections. Follow project guidelines in `@CLAUDE.md`.
 
 ## Arguments

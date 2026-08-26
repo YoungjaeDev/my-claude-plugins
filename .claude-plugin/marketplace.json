@@ -4,106 +4,112 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 14 specialized plugins. Codex 0.135 + Hermes Agent native — generated `.agents/plugins/marketplace.json` + per-plugin `.codex-plugin/plugin.json` (`scripts/sync-codex-manifests.mjs`) and Hermes `plugin.yaml` + `__init__.py` adapters (`scripts/sync-hermes-manifests.mjs`).",
-    "version": "2.27.0"
+    "description": "Personal Claude Code plugin collection with 14 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
+    "version": "2.28.0"
   },
   "plugins": [
     {
       "name": "core-config",
       "source": "./plugins/core-config",
       "description": "Python auto-format + cross-platform notifications + per-prompt behavioral block (`prompt_inject.sh`, shared Claude + Codex). The block is fixed; two pointers are conditional — `.llmwiki/insight/` when a knowledge root resolves in cwd, and a one-line `[council]` delegation reminder when a second-model CLI (codex / agy) is on PATH. The council line is Claude-only (Codex is itself a council member) and names the CLI roster, never a model. Work guidelines live in `~/.claude/CLAUDE.md` (English source of truth; `.ko` companion is not loaded).",
-      "version": "1.12.3",
+      "version": "1.12.4",
       "category": "core"
     },
     {
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; --auto-merge + --skip-minor + --cr-source retained), project tracking, release. All workflows are now skills (commit-and-push, create-issue-label, decompose-issue, update-progress, resolve-issue, release, cr-fix, post-merge) — no commands surface, so they run under Codex too. post-merge runs a mandatory built-in wiki-lore ingest step (absorbed llm-wiki:post-merge-wiki) plus an optional Step 4.5 ephemeral-artifact pruning gate (heuristic candidates → AskUserQuestion → git rm). 2.8.0 correctness repairs: CR-state fetch failures map to a real error channel (no longer masked as a clean 'none'), a null-repository GraphQL response fails loudly instead of a silent false-clean convergence, and an active `@coderabbitai rate limit` query resolves ambiguous passive rate-limit sniffs. Also ships state-tracker, the spec/issue/PR work-pipeline aggregate over .claude/state/spec.json.",
-      "version": "2.12.0",
+      "version": "3.0.0",
       "category": "github"
     },
     {
       "name": "e2e-harness",
       "source": "./plugins/e2e-harness",
       "description": "Playwright E2E test-harness engineering — wraps Playwright's official AI test agents (npx playwright init-agents --loop=claude generates planner/generator/healer). Three skills close the planner -> generator -> healer self-improving loop: e2e-setup onboards the full harness (agents, auth separation via storageState + setup-project dependency, page.route mocking with Next.js BFF/SSR guidance, E2E operating SSOT doc, GitHub Actions CI with trace/report artifact upload + PR-failure comment + path/label gating); e2e-author selects critical user flows and runs planner -> review-gate -> generator with semantic getByRole locators and a --repeat-each burn-in flake gate; e2e-debug downloads the CI trace, inspects it headlessly, and runs the healer with bounded retries (skip-after-3 + reason comment). Never overwrites an existing playwright.config (merge + backup); degrades gracefully when Playwright is not installed.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "category": "testing"
     },
     {
       "name": "code-scout",
       "source": "./plugins/code-scout",
       "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate). Also ships brightdata-guide for Bright Data web data access (Web Unlocker scraping, SERP, structured web_data_* extractors) via MCP tools and the bdata CLI.",
-      "version": "2.4.0",
+      "version": "3.0.0",
       "category": "research"
     },
     {
       "name": "deepwiki",
       "source": "./plugins/deepwiki",
       "description": "AI-powered GitHub repo documentation. Dual-surface: `/deepwiki:ask` + `/deepwiki:generate-llmstxt` commands and matching skills for fuzzy-trigger discovery.",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "category": "documentation"
     },
     {
       "name": "ml-toolkit",
       "source": "./plugins/ml-toolkit",
       "description": "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration Also ships edit-notebook for safe Jupyter notebook editing.",
-      "version": "1.5.1",
+      "version": "2.0.0",
       "category": "development"
     },
     {
       "name": "paper-search-tools",
       "source": "./plugins/paper-search-tools",
       "description": "Academic paper search (arXiv, PubMed, Semantic Scholar, etc.)",
-      "version": "1.1.2",
+      "version": "1.1.3",
       "category": "research"
     },
     {
       "name": "docs-forge",
       "source": "./plugins/docs-forge",
       "description": "README/CHANGELOG generation with CRO best practices, plus deployment-doc templates and MOC index generation Also absorbs agent-facing authoring: write-rules (CLAUDE.md + .claude/rules generation), interview-methodology (requirements interview / grill-me stress test), tcrei-prompt (TCREI prompt rewriting), voice-prompt (Korean voice-mode STT input normalization), and the skill-forge family (skill-forge authoring, skill-audit single-skill diagnosis, skill-fleet-review repository-wide sweep).",
-      "version": "0.6.2",
+      "version": "0.7.0",
       "category": "documentation"
     },
     {
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
       "description": "Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral .llmwiki/): 5 skills (query/ingest/lint/bootstrap/migrate) + 5 hooks + bootstrap templates. Three soft hints plus an auto-capture/ingest path: a Stop hook mechanically captures ingest candidates to <root>/.staging/ and the next session's SessionStart drain hook surfaces them for ingest-finding curation (capture and curation split). Post-merge wiki ingest is a mandatory, force-logged step inside github-dev:post-merge (the standalone post-merge-wiki skill was removed — breaking, hence the 2.0.0 major bump). Promoted cross-agent rules graduate to .llmwiki/insight/ (via core-config prompt-inject hook), not .claude/rules/. Resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. Agent-facing wiki conventions deduped into references/wiki-conventions.md. Also ships plaud-note-taking, which corrects PLAUD voice-recorder Whisper transcripts against a project terminology dictionary and writes the result under .llmwiki/raw/transcripts/.",
-      "version": "2.7.2",
+      "version": "2.7.3",
       "category": "memory"
     },
     {
       "name": "project-init",
       "source": "./plugins/project-init",
       "description": "Agent-harness project lifecycle. `new` — one-shot first-day bootstrap (interview, .claude/ scaffold, minimal CLAUDE.md, AGENTS.md with Codex GitHub cloud reviewer guidelines in general/ml/web variants, README/CHANGELOG seed, gh repo create + initial push) behind a hardened preflight guard that refuses a non-empty cwd. `wiring` — its inverse for existing repos: a read-only 14-axis setup diagnostic (FAIL / WARN / ASK / INFO / SKIP / OK) covering guidance files, .claude/rules paths: scoping defeated by @import, llm-wiki layout + staging backlog, Serena onboarding, memory posture, MCP duplicate registration, Codex CLI posture + AGENTS.md byte budget, spec homes, gws-sync, .tmp, core.hooksPath, .gitignore coverage. ASK answers persist to .claude/state/wiring.json. Shared read-only detector: scripts/project_state.sh.",
-      "version": "0.6.4",
+      "version": "0.6.5",
       "category": "planning"
     },
     {
       "name": "codex-image",
       "source": "./plugins/codex-image",
-      "description": "Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
-      "version": "1.3.2",
-      "category": "ai-models"
+      "description": "Claude-only (do not install into Codex). Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
+      "version": "1.3.3",
+      "category": "ai-models",
+      "policy": {
+        "installation": "NOT_AVAILABLE"
+      }
     },
     {
       "name": "publish",
       "source": "./plugins/publish",
       "description": "Publish a deliverable to another surface — Korean web-article translation, checklist markdown to a Tally questionnaire, and one-way local to Google Drive proposal sync",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "content"
     },
     {
       "name": "council",
       "source": "./plugins/council",
-      "description": "Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync.",
-      "version": "0.1.0",
-      "category": "ai-models"
+      "description": "Claude-only (do not install into Codex). Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync.",
+      "version": "0.1.1",
+      "category": "ai-models",
+      "policy": {
+        "installation": "NOT_AVAILABLE"
+      }
     },
     {
       "name": "mem0-ops",
       "source": "./plugins/mem0-ops",
       "description": "Fleet-level mem0 diagnostics and cleanup — complements the upstream mem0 plugin (which owns per-project quality). fleet-scan reports per-app noise ratio, junk app_id candidates, and app/user_id fragmentation across all apps; doctor checks config posture (MEM0_RERANK env, ~/.mem0/settings.json auto_save precedence trap, project decay flag, hook timeout budget, identity fragmentation); cleanup does backup-then-delete by metadata.type or whole junk app behind a dry-run default plus a skill-layer per-app confirmation gate (the script alone gates on --execute only). stdlib-only REST scripts, zero LLM cost for the deterministic parts.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "productivity"
     }
   ]

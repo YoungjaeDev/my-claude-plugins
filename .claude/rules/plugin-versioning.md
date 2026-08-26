@@ -1,5 +1,5 @@
 ---
-paths: .claude-plugin/marketplace.json, plugins/*/.claude-plugin/plugin.json, plugins/*/CLAUDE.md, plugins/*/plugin.yaml
+paths: .claude-plugin/marketplace.json, plugins/*/.claude-plugin/plugin.json, plugins/*/CLAUDE.md
 ---
 
 # Plugin Versioning Rules
@@ -12,9 +12,8 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 
 ## Key Components
 
-- `plugins/<name>/.claude-plugin/plugin.json` — per-plugin manifest. Bumping `version` triggers Claude Code's plugin cache refresh.
-- `.claude-plugin/marketplace.json` — marketplace registry. Contains per-plugin `version` (must match `plugin.json`) and top-level `metadata.version` (bumped once per marketplace release).
-- `plugins/<name>/plugin.yaml` + `plugins/<name>/__init__.py` — Hermes adapters for HERMES_ELIGIBLE plugins, **generated** by `scripts/sync-hermes-manifests.mjs` from `marketplace.json` (`plugin.yaml` `version` / `description` are marketplace-derived; `__init__.py` is a generic skill-registration entrypoint). Do not hand-edit — bump the marketplace entry and re-run the generator. `sync-hermes-manifests.mjs --check` guards adapter drift + orphans, so this is no longer a manual three-way sync. (`sync-codex-manifests.mjs --check` validates Codex manifests only.)
+- `plugins/<name>/.claude-plugin/plugin.json` — per-plugin manifest. Bumping `version` triggers Claude Code's plugin cache refresh. Codex reads the same manifest natively (manifest fallback), so there is no generated layer to regenerate.
+- `.claude-plugin/marketplace.json` — marketplace registry. Contains per-plugin `version` (must match `plugin.json`) and top-level `metadata.version` (bumped once per marketplace release). Codex also reads this catalog natively.
 - `AGENTS.md` (root) — plugin count summary (keep in sync when adding/removing plugins). Root `CLAUDE.md` is a one-line `@AGENTS.md` import; edit `AGENTS.md`.
 - `README.md` — user-facing plugin count + badge.
 - `.claude/settings.json` — tracked local-load list (`plugins.local`). A plugin absent here is registered in the marketplace but does NOT auto-load in local dev.
@@ -22,27 +21,22 @@ Keep plugin versions synchronized across the two source-of-truth files and docum
 ## Do's
 
 - **Sync both version files on every bump**: update `plugins/<name>/.claude-plugin/plugin.json` AND the matching entry in `.claude-plugin/marketplace.json` in the same commit.
-- **A change to any file under `plugins/<name>/` is bump-worthy — including bundled `references/` / `docs/` / asset edits, not just code or skills.** Cache-gated users only receive the new content on a version bump, so a docs-only plugin edit still bumps that plugin's PATCH + `metadata.version` (+ Codex/Hermes manifest regen where applicable). Root-level docs (`AGENTS.md`, `README.md`, `code_review.md`, `.claude/rules/*`) are NOT plugin content and bump no plugin.
+- **A change to any file under `plugins/<name>/` is bump-worthy — including bundled `references/` / `docs/` / asset edits, not just code or skills.** Cache-gated users only receive the new content on a version bump, so a docs-only plugin edit still bumps that plugin's PATCH + `metadata.version`. Root-level docs (`AGENTS.md`, `README.md`, `code_review.md`, `.claude/rules/*`) are NOT plugin content and bump no plugin.
 - **Bump `metadata.version` in marketplace.json** whenever any plugin version changes. This signals a marketplace release to users.
-- **Update plugin count** in root `AGENTS.md` (`## Plugins (N)` + structure tree) AND `README.md` (description sentence + badge + detail section) when adding or removing a plugin.
-- **Adding a skill to an existing plugin syncs docs too** (distinct from the plugin-count update above — a skill add does NOT change the plugin count): update that plugin's `plugins/<name>/CLAUDE.md` skill listing, and — when the version bump also changed the plugin `description` — the matching one-line description in root `AGENTS.md` and `README.md`. Manifest regen + `metadata.version` bump still apply.
-- **Update the Codex-eligible count too** — distinct from the total and easy to miss. Adding/removing a plugin changes the Codex-eligible number (total − 1 EXCLUDED: `codex-image`; `core-config` is now Codex-eligible as a hooks-only manifest). Fix it in `AGENTS.md`'s Codex-integration section (`eligible 23개`) and `README.md`'s Codex section (`N / M plugins`). Neither the version files nor `sync-codex-manifests.mjs --check` catches a stale eligible count.
-- **Sync the `AGENTS.md` count-homes too** — beyond `## Plugins (N)`, `AGENTS.md` carries two counts that no `--check` guards: the Hermes-allowlist count (`현재 N개: …`) and the Codex verification comment (`# N entries`). A Hermes-eligible plugin add left both stale until a reviewer caught it. Update them in the same change as the plugin-count and Codex-eligible bumps.
-- **`README.md`'s guard section carries a third unguarded count.** The "CI 가드가 지키는 것" bullet for `check-doc-consistency.mjs` states the totals in prose (`총 N / Codex-eligible N / Hermes N`). `check-doc-consistency` matches the README total only through `(\d+) \/ (\d+) 플러그인`, and this phrasing has no `플러그인` after the numbers — so the guard's own description of itself can go stale while the guard passes. Verified by editing the number and watching the run stay green. Update it with the other counts; the irony is not a reason to skip it.
-- **Re-run both generators after any version / description change** — `node scripts/sync-codex-manifests.mjs` (regenerates `.codex-plugin/` + catalog) and `node scripts/sync-hermes-manifests.mjs` (regenerates `plugin.yaml` + `__init__.py` for HERMES_ELIGIBLE plugins). Both `--check` guards run in `.githooks/pre-commit` + `.github/workflows/validate-codex.yml`, so unregenerated output fails CI.
-- **Register new plugins in `.claude/settings.json`** (`plugins.local` array, `./plugins/<name>`) when adding a plugin — this tracked file is what auto-loads plugins locally; marketplace registration alone does not. Neither the version files nor `sync-codex-manifests.mjs --check` catch this omission.
+- **Update plugin count** in root `AGENTS.md` (`## Plugins (N)`) AND `README.md` (description sentence + badge + tree + detail section) when adding or removing a plugin.
+- **Adding a skill to an existing plugin syncs docs too** (distinct from the plugin-count update above — a skill add does NOT change the plugin count): update that plugin's `plugins/<name>/CLAUDE.md` skill listing, and — when the version bump also changed the plugin `description` — the matching one-line description in root `AGENTS.md` and `README.md`. `metadata.version` bump still applies.
+- **Register new plugins in `.claude/settings.json`** (`plugins.local` array, `./plugins/<name>`) when adding a plugin — this tracked file is what auto-loads plugins locally; marketplace registration alone does not. Neither the version files nor any guard catch this omission.
 - **Adhere to semver** at the plugin level: `MAJOR.MINOR.PATCH`. PATCH for fixes, MINOR for backward-compatible features, MAJOR for breaking changes.
 - **Document cache workaround** in release notes and user docs — the manual `rm -rf` is the only reliable refresh path until the Claude Code plugin cache bugs are fixed upstream.
 
 ## Plugin Removal or Absorption
 
-Absorbing a plugin's skills into another bundle is a removal plus a re-home, so every rule below applies — plus three the pure-removal case never hits.
+Absorbing a plugin's skills into another bundle is a removal plus a re-home, so every rule below applies — plus ones the pure-removal case never hits.
 
-- **Audit the absorbed skill's own body, not just the references pointing at it.** The destination wiring is the easy half; what breaks is the skill still believing it lives in the old plugin. Every class below was found by a reviewer, one per round, after the absorption itself looked complete: a `PLUGIN_ROOT` resolver globbing `*/<old-plugin>/*` in the Codex cache (the skill dies at "script not resolved" the moment `CLAUDE_PLUGIN_ROOT` is unset), a `hermes plugins install .../plugins/<old-plugin>` line, a Hermes-eligibility claim that the move inverted, an un-namespaced `/skill-name` example, and the destination's version left unbumped so cache-gated users never receive the move at all. Grep the moved tree for the old plugin name before declaring the absorption done.
-- **A destination's eligibility now covers every skill it holds.** Adding a plugin to `HERMES_ELIGIBLE` publishes its whole `skills/` directory through the generated adapter, including skills that never needed a Hermes mapping. Audit the destination's full skill set for tool-name compat — an unmapped body loads and then stalls on its first tool call. The same reasoning runs in reverse for `CODEX_EXCLUDED`: absorbing an excluded plugin drops the entire destination bundle from Codex, which is why `codex-image` and `council` stay standalone.
+- **Audit the absorbed skill's own body, not just the references pointing at it.** The destination wiring is the easy half; what breaks is the skill still believing it lives in the old plugin. Found classes: a `PLUGIN_ROOT` resolver globbing `*/<old-plugin>/*` in the Codex cache (the skill dies at "script not resolved" the moment `CLAUDE_PLUGIN_ROOT` is unset), an un-namespaced `/skill-name` example, and the destination's version left unbumped so cache-gated users never receive the move at all. Grep the moved tree for the old plugin name before declaring the absorption done.
 - **Bump the destination even when only references changed.** A plugin whose files were touched solely by a rename sweep is still a plugin whose files changed; skipping the bump strands cache-gated users on instructions pointing at deleted commands.
-- **Grep the whole repo for live references, not just the count files.** Beyond `CLAUDE.md` / `README.md` / `marketplace.json` / `settings.json`, a removed plugin is often still referenced in other plugins' skill bodies (e.g. `code-scout`'s `agent-routing.md` routing table) or under `docs/`. Run `git grep -niE '<name>'` across the repo (exclude historical `.claude/spec/*`) before finalizing — a surviving reference ships users a route to a non-existent plugin.
-- **Delete orphaned generated artifacts.** A plugin that generates tracked output (e.g. `workflow-viz` → `docs/architecture/*`, tagged `<!-- workflow-viz: … -->`) leaves that output unmaintained once the generator is gone; remove the generated tree in the same change.
+- **Grep the whole repo for live references, not just the count files.** Beyond `CLAUDE.md` / `README.md` / `marketplace.json` / `settings.json`, a removed plugin is often still referenced in other plugins' skill bodies (e.g. `code-scout`'s `agent-routing.md` routing table) or under `docs/`. Run `git grep -niE '<name>'` across the repo before finalizing — a surviving reference ships users a route to a non-existent plugin.
+- **Delete orphaned generated artifacts.** A plugin that generates tracked output leaves that output unmaintained once the generator is gone; remove the generated tree in the same change.
 - **A plugin removal is a MINOR `metadata.version` bump, not MAJOR.** `metadata.version` is a per-release counter, not strict semver — the MAJOR-for-breaking rule above is scoped to per-plugin versions. Precedent: dropping the `midjourney` plugin was a MINOR bump. A reviewer may flag a removal as "breaking → MAJOR"; that contradicts this convention.
 
 ## Don'ts
@@ -59,8 +53,7 @@ Absorbing a plugin's skills into another bundle is a removal plus a re-home, so 
 2. Update the matching `version` in `.claude-plugin/marketplace.json`.
 3. Bump `metadata.version` in `.claude-plugin/marketplace.json`.
 4. (If adding/removing a plugin) update plugin counts in `AGENTS.md` and `README.md`, and add/remove its `./plugins/<name>` entry in `.claude/settings.json` (`plugins.local`).
-5. Re-run `node scripts/sync-codex-manifests.mjs` and `node scripts/sync-hermes-manifests.mjs` to regenerate derived manifests/adapters.
-6. Commit all changes together.
+5. Commit all changes together.
 
 ## User Update Workflow
 

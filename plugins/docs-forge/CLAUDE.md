@@ -281,23 +281,6 @@ Google's Prompting Essentials (Coursera) 5-step structure:
 - "prompt enhance"
 - "make a prompt for next session"
 
-### Hermes Agent
-
-Install this plugin from the monorepo subdirectory:
-
-```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/docs-forge --enable
-hermes gateway restart  # if using Hermes through a messaging gateway
-```
-
-Load the skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes session after `--enable`):
-
-```text
-skill_view("docs-forge:tcrei-prompt")
-```
-
-The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (`Write`, `AskUserQuestion`, `Read`) to Hermes tools (`write_file`, `clarify`, `read_file`). Phase 3 self-verification runs inline (no `Task`/subagent) so it is portable across all three runtimes.
-
 ## interview-methodology (흡수: interview)
 
 Structured requirements gathering before implementation.
@@ -336,7 +319,7 @@ Conduct thorough interviews to uncover hidden needs, constraints, and edge cases
 
 ### Key Principles
 
-- Use AskUserQuestion for all questions
+- Use the interactive-input gate for all questions (Claude: AskUserQuestion; Codex: request_user_input when exposed)
 - Verify against the codebase first - don't ask what the repo already answers
 - Ask non-obvious questions (not what user already said)
 - Per-question scaffold: current understanding / stuck decision / recommended default / question
@@ -358,23 +341,6 @@ Full spec at `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`:
 ## Edge Cases
 ## Out of Scope
 ```
-
-### Hermes Agent
-
-Install this plugin from the monorepo subdirectory:
-
-```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/docs-forge --enable
-hermes gateway restart  # if using Hermes through a messaging gateway
-```
-
-Load the skill explicitly (Hermes plugin skills are opt-in; start a fresh Hermes session after `--enable`):
-
-```text
-skill_view("docs-forge:interview-methodology")
-```
-
-The skill body carries a Hermes compatibility table mapping Claude/Codex tool terms (e.g. `AskUserQuestion`, `Read`, `Write`) to Hermes tools (`clarify`, `read_file`, `write_file`).
 
 ## voice-prompt (흡수: voice-prompt)
 

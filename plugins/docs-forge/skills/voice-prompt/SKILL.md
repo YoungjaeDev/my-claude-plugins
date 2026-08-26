@@ -19,26 +19,8 @@ hardcoded tool:
 - **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE
   concise blocking question only where a wrong assumption would be costly; otherwise proceed on
   a documented safe default and state the assumption.
-- **Hermes** — use `clarify`.
 
 Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
-
-## Hermes Agent compatibility
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Bash | terminal |
-| Read | read_file |
-| Write | write_file |
-| Grep/Glob | search_files |
-| AskUserQuestion | clarify |
-
-Plugin skills are explicit opt-in loads in Hermes — the description never surfaces this body on
-its own. **Load it as `skill_view("docs-forge:voice-prompt")`.** `docs-forge` is in
-`HERMES_ELIGIBLE`, so its generated adapter registers every skill under the qualified
-`<plugin>:<skill>` form. The bare name resolves only through the skill-unit install
-(`node scripts/install-skills.mjs`, which wraps `npx skills`), which registers the frontmatter
-`name` verbatim — a separate path from the plugin adapter.
 
 ## What this skill actually changes (read before applying it)
 
@@ -61,9 +43,7 @@ echo what you understood, and gate irreversible actions.
 ## Activation contract
 
 Invoked as **`/docs-forge:voice-prompt`** under Claude Code — a plugin skill is registered under
-its plugin namespace, so that qualified form is the identifier to document and to type. (Under
-Hermes the skill-unit install registers the bare `voice-prompt` instead; see the compatibility note
-above. Different runtimes, not a contradiction.)
+its plugin namespace, so that qualified form is the identifier to document and to type.
 
 Active from explicit invocation until released. Applies to every subsequent input in the session,
 typed or spoken — no auto-detection, no sniffing for "does this look like STT".
@@ -238,7 +218,6 @@ through to a good older version.
 
 ```bash
 cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-hermes_root="${HERMES_HOME:-$HOME/.hermes}"
 cl=$(mktemp) || { echo "voice-prompt: mktemp failed" >&2; exit 1; }
 
 # Candidate roots, most specific first. A wrong guess costs nothing — each entry
@@ -257,9 +236,6 @@ cl=$(mktemp) || { echo "voice-prompt: mktemp failed" >&2; exit 1; }
     ls -1d "$cache_root"/*/docs-forge/* 2>/dev/null \
       | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1nr -k2,2nr -k3,3nr | cut -f2-
   fi
-  # Hermes: docs-forge is in HERMES_ELIGIBLE, so a plugin adapter exists; the
-  # flat path stays as the separate skill-unit install route.
-  printf '%s\n' "$hermes_root/plugins/docs-forge" "$hermes_root/skills/voice-prompt"
   # Project-scope skill-unit install. `npx skills` owns this layout, so these are
   # candidate paths, not a verified contract — harmless, since the -f test decides.
   printf '%s\n' .agents/skills/voice-prompt .claude/skills/voice-prompt

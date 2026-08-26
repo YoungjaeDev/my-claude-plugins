@@ -5,41 +5,19 @@ description: Safely edit Jupyter Notebook (.ipynb) files. Use when (1) adding/mo
 
 # Notebook Editing
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `ml-toolkit:edit-notebook`, map Claude/Codex tool names to
-Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| `Bash` | `terminal` |
-| `Read` | `read_file` |
-| `Write` | `write_file` |
-| `Edit` | `patch` |
-| `NotebookEdit` | Jupyter Live Kernel skill, else `write_file` / `patch` on the `.ipynb` JSON |
-
-Plugin skills are explicit opt-in loads in Hermes — call `skill_view("ml-toolkit:edit-notebook")` after
-`--enable` in a fresh session; the description never surfaces this body on its own.
-
-
 Edit Jupyter Notebook files through a structure-aware path, never as raw text.
-
-## Runtime paths
-
-`ml-toolkit` is in `HERMES_ELIGIBLE`, so this skill loads on all three runtimes — but `NotebookEdit` exists only on Claude Code and Codex. Pick the path by what the runtime actually exposes:
-
-| Runtime | Path |
-|---|---|
-| Claude Code / Codex | `NotebookEdit` — the rules below apply as written |
-| Hermes | Jupyter Live Kernel skill when available; otherwise `write_file` / `patch` on the `.ipynb` JSON, preserving the `cells` array shape, each cell's `id`, and existing `outputs` |
-
-The Hermes fallback is the one case where editing the JSON directly is correct — there is no structure-aware tool to defer to. It still carries the same obligations: do not reorder cells, do not drop `outputs`, and keep `nbformat` / `nbformat_minor` untouched.
 
 ## Rules
 
 ### Tool Selection
-- .ipynb = `NotebookEdit` wherever it exists
-- Never use `Edit`, `Write`, or `Bash(sed/cat)` on `.ipynb` on Claude Code or Codex — on Hermes, use the JSON fallback above rather than these
+- .ipynb = `NotebookEdit` (Claude Code)
+- Codex has no `NotebookEdit` tool — edit through a structure-aware path instead: a short
+  `nbformat` Python snippet (read → mutate cells → write), never raw text edits.
+  Detect the interpreter first (`python3` → `python` → `py -3` — name-pinning breaks
+  either macOS or Windows), check with `<py> -c "import nbformat"`, and install on
+  miss with the same interpreter: `<py> -m pip install nbformat` — a bare `pip` can
+  target a different environment than the one checked; nbformat is not in the stdlib
+- Never use `Edit`, `Write`, or `Bash(sed/cat)` on `.ipynb`
 
 ### Cell Insertion: cell_id Tracking (Required)
 

@@ -379,9 +379,17 @@ elif probe-cr-cli.sh exits 0:
   CR_SOURCE=cli; log "cr-source: auto → cli (rate-limit via ${channel}, CLI authed${reset:+, reset in ~${reset} min})"
 elif codex_active == "active":
   CR_SOURCE=codex-only; log "cr-source: auto → codex-only (rate-limit via ${channel}, no CLI)"
+  # CLI가 없어서 codex-only로 내려온 것이므로 설치를 제안한다 — probe JSON의 `hint`
+  # 필드(플랫폼별 공식 설치 커맨드 + auth login)를 로그와 최종 리포트에 그대로 싣는다.
+  # 이번 런은 중단 없이 계속하고, 설치는 사용자가 런 밖에서 한 번 하면 다음 런부터
+  # rate-limit 시 cli로 폴백된다.
+  cli_hint=$(bash $SKILL_DIR/scripts/probe-cr-cli.sh 2>/dev/null | jq -r '.hint // empty') || cli_hint=""
+  [ -n "$cli_hint" ] && log "suggest: CodeRabbit CLI 미설치 — 설치하면 rate-limit 시에도 CR 커버리지 유지. $cli_hint"
 else:
-  AskUserQuestion: [Wait ${reset:-15} min] / [Abort] / [Force codex-only]
+  AskUserQuestion: [Wait ${reset:-15} min] / [Abort] / [Install CLI (${cli_hint}) then retry] / [Force codex-only]
 ```
+
+최종 리포트(Step 16 요약)에는 `cli_hint` 가 비어있지 않으면 "CLI 설치 제안" 한 줄을 포함한다.
 
 `jq '.cr_source = $src' "$STATE_FILE"` persists the flip. Flip is sticky for remaining iters of this run.
 

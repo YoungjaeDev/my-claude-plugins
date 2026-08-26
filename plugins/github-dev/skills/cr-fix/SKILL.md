@@ -6,23 +6,6 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 # CodeRabbit + Codex Fix Pipeline (v2)
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Codex tool names to Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Bash | terminal |
-| Read | read_file |
-| Write | write_file |
-| Edit | patch |
-| Glob/Grep | search_files |
-| AskUserQuestion | clarify |
-| Task | delegate_task |
-| Monitor | process |
-
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("github-dev:<skill>")` (or ask Hermes to load that qualified skill) rather than relying on bare text like `github-dev:<skill> ...`.
-
 Self-contained skill that owns the full review-resolution loop. One Claude turn drives the entire pipeline; wait phases use `Bash(run_in_background=true)` + `Monitor` so token cost is ~0 during reviews.
 
 v2 changes:
@@ -71,20 +54,18 @@ else
     | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
 fi
 
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then
+# Validate the script the next line executes, not just the directory — a bare -d
+# check selects an incomplete cache version (or a foreign repo's empty path) and
+# dies later with a confusing "No such file" from eval. Unresolved = fail loud.
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "$CLAUDE_PLUGIN_ROOT/skills/cr-fix/scripts/parse-args.sh" ]; then
   SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
-elif [ -d "plugins/github-dev/skills/cr-fix" ]; then
+elif [ -f "plugins/github-dev/skills/cr-fix/scripts/parse-args.sh" ]; then
   SKILL_DIR="plugins/github-dev/skills/cr-fix"
-elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then
+elif [ -n "$CODEX_CAND" ] && [ -f "$CODEX_CAND/skills/cr-fix/scripts/parse-args.sh" ]; then
   SKILL_DIR="$CODEX_CAND/skills/cr-fix"
-elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then
-  SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
-elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then
-  # unverified flat Hermes layout (no live-Hermes confirmation yet) — additive
-  # branch guarded by -d, never rewrites the plugin-layout branch above
-  SKILL_DIR="$HERMES_HOME/skills/cr-fix"
 else
-  SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"
+  echo "cr-fix: SKILL_DIR unresolved — no parse-args.sh under CLAUDE_PLUGIN_ROOT, the source tree, or the Codex plugin cache. Install github-dev or run from the plugin source tree." >&2
+  exit 1
 fi
 
 eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
@@ -92,7 +73,7 @@ eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
 
 Sets: `SKILL_DIR, MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, MINOR_STOP, GENERALIZE, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
 
-`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex 0.135 cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`), the active Hermes profile install (`$HERMES_HOME/plugins/github-dev/...` then the flat `$HERMES_HOME/skills/cr-fix` layout), then the default `~/.hermes/plugins/github-dev/...` install. Without the `${CLAUDE_PLUGIN_ROOT}` and Codex-cache branches, an invocation outside the source tree resolved to a non-existent Hermes path and `parse-args.sh` was unreachable. All `scripts/` and `references/` paths below resolve relative to this.
+`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`) — each branch validated by the presence of `scripts/parse-args.sh`, and an unresolved path aborts loudly instead of guessing. All `scripts/` and `references/` paths below resolve relative to this.
 
 ## Step 2: Resolve repo / PR / START_SHA + pre-flight setup
 
@@ -398,9 +379,17 @@ elif probe-cr-cli.sh exits 0:
   CR_SOURCE=cli; log "cr-source: auto → cli (rate-limit via ${channel}, CLI authed${reset:+, reset in ~${reset} min})"
 elif codex_active == "active":
   CR_SOURCE=codex-only; log "cr-source: auto → codex-only (rate-limit via ${channel}, no CLI)"
+  # CLI가 없어서 codex-only로 내려온 것이므로 설치를 제안한다 — probe JSON의 `hint`
+  # 필드(플랫폼별 공식 설치 커맨드 + auth login)를 로그와 최종 리포트에 그대로 싣는다.
+  # 이번 런은 중단 없이 계속하고, 설치는 사용자가 런 밖에서 한 번 하면 다음 런부터
+  # rate-limit 시 cli로 폴백된다.
+  cli_hint=$(bash $SKILL_DIR/scripts/probe-cr-cli.sh 2>/dev/null | jq -r '.hint // empty') || cli_hint=""
+  [ -n "$cli_hint" ] && log "suggest: CodeRabbit CLI 미설치 — 설치하면 rate-limit 시에도 CR 커버리지 유지. $cli_hint"
 else:
-  AskUserQuestion: [Wait ${reset:-15} min] / [Abort] / [Force codex-only]
+  AskUserQuestion: [Wait ${reset:-15} min] / [Abort] / [Install CLI (${cli_hint}) then retry] / [Force codex-only]
 ```
+
+최종 리포트(Step 16 요약)에는 `cli_hint` 가 비어있지 않으면 "CLI 설치 제안" 한 줄을 포함한다.
 
 `jq '.cr_source = $src' "$STATE_FILE"` persists the flip. Flip is sticky for remaining iters of this run.
 

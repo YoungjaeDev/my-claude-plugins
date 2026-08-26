@@ -4,15 +4,14 @@
 // table lists a different plugin name-set than .claude-plugin/marketplace.json,
 // or when a documented plugin-count string drifts from the real numbers.
 //
-// The version files and sync-*-manifests.mjs --check do NOT catch this class of
-// drift (a plugin dropped from a doc tree, or a stale "N plugins" count).
+// The version files alone do NOT catch this class of drift (a plugin dropped
+// from a doc tree, or a stale "N plugins" count).
 //
 // Zero-dep: Node 18+ builtins only. Run: node scripts/check-doc-consistency.mjs
 
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CODEX_EXCLUDED, HERMES_ELIGIBLE } from './manifest-eligibility.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const marketplace = JSON.parse(readFileSync(join(ROOT, '.claude-plugin', 'marketplace.json'), 'utf8'));
@@ -20,11 +19,6 @@ const marketplace = JSON.parse(readFileSync(join(ROOT, '.claude-plugin', 'market
 const canonical = marketplace.plugins.map((p) => p.name);
 const canonicalSet = new Set(canonical);
 const TOTAL = canonical.length;
-
-// Eligibility comes from the shared SoT the generators also import, so this guard's
-// counts cannot drift from sync-{codex,hermes}-manifests.mjs.
-const CODEX_ELIGIBLE = canonical.filter((n) => !CODEX_EXCLUDED.has(n)).length;
-const HERMES_ELIGIBLE_COUNT = HERMES_ELIGIBLE.size;
 
 const errors = [];
 
@@ -109,12 +103,7 @@ compareSet('AGENTS.md ## Plugins table', agentsTablePlugins(agents));
 
 checkCount('README.md badge', readme, /plugins-(\d+)-blue/g, [TOTAL]);
 checkCount('README.md 플러그인 모음', readme, /(\d+)개 플러그인 모음/g, [TOTAL]);
-checkCount('README.md Codex share', readme, /(\d+) \/ (\d+) 플러그인/g, [CODEX_ELIGIBLE, TOTAL]);
 checkCount('AGENTS.md ## Plugins (N)', agents, /## Plugins \((\d+)\)/g, [TOTAL]);
-checkCount('AGENTS.md eligible N개', agents, /eligible (\d+)개/g, [CODEX_ELIGIBLE]);
-checkCount('AGENTS.md # N entries', agents, /# (\d+) entries/g, [CODEX_ELIGIBLE]);
-checkCount('AGENTS.md 현재 N개', agents, /현재 (\d+)개/g, [HERMES_ELIGIBLE_COUNT]);
-checkCount('README.md Hermes 이번 라운드', readme, /이번 라운드 (\d+)개/g, [HERMES_ELIGIBLE_COUNT]);
 
 if (errors.length) {
   console.error('doc-consistency drift detected:');
@@ -122,4 +111,4 @@ if (errors.length) {
   console.error('\nfix README.md / AGENTS.md to match .claude-plugin/marketplace.json.');
   process.exit(1);
 }
-console.log(`doc-consistency OK — ${TOTAL} plugins, Codex-eligible ${CODEX_ELIGIBLE}, Hermes ${HERMES_ELIGIBLE_COUNT}; trees + table + counts consistent.`);
+console.log(`doc-consistency OK — ${TOTAL} plugins; trees + table + counts consistent.`);

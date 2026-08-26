@@ -8,11 +8,11 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 Stand up Playwright's official AI test harness (planner -> generator -> healer) plus the surrounding engineering (auth separation, deterministic mocking, an E2E SSOT doc, gated CI). The harness is the point: a test run is a sensor, a test file is a spec, and the three roles form a self-improving loop. This skill only does **setup + orchestration + CI + integration** — it does not re-implement the roles.
 
-> **Two runtime paths (Step 2).** Under **Claude Code**, `init-agents --loop=claude` generates the planner/generator/healer as registerable `.claude/agents/*.md`, and `e2e-author` / `e2e-debug` dispatch them by name (**Path A**). Under **Codex 0.135**, those generated agent files are not registerable as named subagents, so setup skips them, ensures the `.mcp.json` `playwright-test` entry, and the author/debug skills run the same roles as **generic subagents** carrying the bundled `references/role-contracts.md` (**Path B**), or sequentially when no delegation is available (**Path C**). The engineering below (Steps 3-7) and every gate are identical on both paths. (Hermes is forward-compatible only — `e2e-harness` is not yet in `HERMES_ELIGIBLE`, so it does not load on Hermes today; the generic path maps to Hermes `delegate_task` for when it is added.)
+> **Two runtime paths (Step 2).** Under **Claude Code**, `init-agents --loop=claude` generates the planner/generator/healer as registerable `.claude/agents/*.md`, and `e2e-author` / `e2e-debug` dispatch them by name (**Path A**). Under **Codex 0.135**, those generated agent files are not registerable as named subagents, so setup skips them, ensures the `.mcp.json` `playwright-test` entry, and the author/debug skills run the same roles as **generic subagents** carrying the bundled `references/role-contracts.md` (**Path B**), or sequentially when no delegation is available (**Path C**). The engineering below (Steps 3-7) and every gate are identical on both paths.
 
 > **Why this skill exists (the harness-engineering point).** Installing the official agents is NOT enough — out of the box they skip auth setup, can't resolve project-known API errors, and don't know test-account usage, because they lack codebase context. Steps 3-7 below *onboard them like a new hire*: the config, auth scaffold, route-mock guidance, and especially the E2E SSOT doc are the context an agent needs to work autonomously. Skipping them is the usual reason "the official agents didn't just work."
 
-> Bundled templates live at `<plugin-root>/assets/`. Resolve `<plugin-root>` with the cross-runtime block in Step 0 (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache, Hermes) — Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so a bare `${CLAUDE_PLUGIN_ROOT}/assets/...` copy fails there. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
+> Bundled templates live at `<plugin-root>/assets/`. Resolve `<plugin-root>` with the cross-runtime block in Step 0 (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache) — Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so a bare `${CLAUDE_PLUGIN_ROOT}/assets/...` copy fails there. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
 >
 > **Verified against Playwright 1.61.0** (init-agents introduced in 1.56; trace CLI in 1.59). Filenames/output below are current-version facts — Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.
 
@@ -29,8 +29,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Every branch verifies
    # its target (CHK) exists before committing, so a stale env or an incomplete
    # cache version falls through instead of winning. The cache branch walks
-   # versions high-to-low and takes the first COMPLETE one. HERMES_HOME probes
-   # cover both Hermes layouts; unverified until live Hermes.
+   # versions high-to-low and takes the first COMPLETE one.
    CHK="assets"
    PLUGIN_ROOT=""
    [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
@@ -41,12 +40,9 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
        [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
      done < <(ls -1d "$cache_root"/*/e2e-harness/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
    fi
-   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/e2e-harness"   # unverified
-   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                          # unverified (skill-level install)
    { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "e2e-setup: plugin root not resolved (need $CHK)" >&2; exit 1; }
    echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```
-   > Skill-level install (`$HERMES_HOME/skills/e2e-setup/`) does not carry the plugin-root `assets/` dir, so the resolver aborts there rather than resolving to a path without the templates — install the full plugin for e2e-setup.
 
 1. **Detect / install Playwright**:
    - Check for `@playwright/test` in `package.json` and a `playwright.config.*`. If absent, propose `npm init playwright@latest` (interactive) or `npm i -D @playwright/test && npx playwright install --with-deps`.

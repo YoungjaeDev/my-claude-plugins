@@ -1,6 +1,6 @@
 {
   "name": "code-scout",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate). Also ships brightdata-guide for Bright Data web data access (Web Unlocker scraping, SERP, structured web_data_* extractors) via MCP tools and the bdata CLI.",
   "skills": [
     "./skills/research-orchestrator",

@@ -6,8 +6,6 @@ Shared planner / generator / healer role contracts consumed by **all three execu
 - **Path B — generic subagents (Codex 0.135).** Codex exposes these skills but cannot register `.claude/agents/*.md` as named subagents, so it dispatches one **generic** subagent per role, carrying that role's contract from this file inline (`Task(prompt=...)`). This file is the portable condensation of the generated agents' behavior.
 - **Path C — sequential in-agent.** When no delegation channel is available, the skill executes each role itself, one at a time, following the contract below.
 
-> Hermes is **forward-compatible, not active**: `e2e-harness` is not in `HERMES_ELIGIBLE` (`scripts/sync-hermes-manifests.mjs`), so this plugin does not load on Hermes today. The Path B dispatch maps to Hermes `delegate_task` (see the tool-name table at the end) for when/if `e2e-harness` is added to the allowlist; on the live non-Claude runtime (Codex) the tool is `Task`.
-
 Keep these contracts in sync with the behavior of the init-agents-generated agents (verified on Playwright 1.61 — see `.llmwiki/wiki/e2e-harness-ops/playwright-ai-harness.md`) when either changes.
 
 ## Gates that hold on every path
@@ -85,18 +83,6 @@ Each role drives the app through the approved `playwright-test` MCP server. A ge
 - **Output**: a patched `e2e/<flow>.spec.ts`, or a `test.skip`/`test.fixme` quarantine with a reason comment.
 - **Gate**: bounded to 3 attempts; skip-after-3 with a stated reason and tracking link. Never auto-patch a suspected real regression to pass — surface it instead.
 
-## Runtime tool names
-
-These skills dispatch and read through whatever tools the host runtime exposes. Claude and Codex share tool names; Hermes (forward-compat only — not loaded today) maps as:
-
-| Claude / Codex | Hermes | Used here for |
-|---|---|---|
-| `Task(subagent_type=...)` (Path A) / `Task(prompt=...)` (Path B) | `delegate_task` | dispatching planner / generator / healer |
-| `Bash` | `terminal` | `npx playwright ...`, `jq`, `gh`, `find`, the `PLUGIN_ROOT` resolver |
-| `Read` | `read_file` | reading this contract, `specs/<flow>.md`, existing specs |
-| `Write` / `Edit` | `write_file` / `patch` | writing specs, `.mcp.json`, config |
-| `AskUserQuestion` | `clarify` | CUF selection + the plan review gate |
-
 ## PLUGIN_ROOT
 
-`e2e-author` / `e2e-debug` reach this file via the cross-runtime `PLUGIN_ROOT` resolver in their Step 0 (Claude `CLAUDE_PLUGIN_ROOT` → source-tree `plugins/e2e-harness` → Codex plugin cache → Hermes probes). Do not reference `${CLAUDE_PLUGIN_ROOT}` bare — Codex 0.135 does not export it, so the read fails at step one.
+`e2e-author` / `e2e-debug` reach this file via the cross-runtime `PLUGIN_ROOT` resolver in their Step 0 (Claude `CLAUDE_PLUGIN_ROOT` → source-tree `plugins/e2e-harness` → Codex plugin cache). Do not reference `${CLAUDE_PLUGIN_ROOT}` bare — Codex 0.135 does not export it, so the read fails at step one.

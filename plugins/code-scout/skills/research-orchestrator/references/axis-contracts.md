@@ -1,6 +1,6 @@
 # Axis Contracts
 
-Shared per-axis input/output contract consumed by **all three orchestrator execution paths** — named plugin agents, generic parallel subagents, sequential in-agent. Path A (named agents) uses the full agent definitions in `../../../agents/{axis}-scout.md` as the canonical detail; this file is the portable condensation that the generic-agent and sequential paths embed inline, because `agents/*.md` are Claude-only and are **not registerable** under Codex 0.135 / Hermes. Keep the two in sync when an axis contract changes.
+Shared per-axis input/output contract consumed by **all three orchestrator execution paths** — named plugin agents, generic parallel subagents, sequential in-agent. Path A (named agents) uses the full agent definitions in `../../../agents/{axis}-scout.md` as the canonical detail; this file is the portable condensation that the generic-agent and sequential paths embed inline, because `agents/*.md` are Claude-only and are **not registerable** under Codex 0.135. Keep the two in sync when an axis contract changes.
 
 ## Shared query shape (input to every axis)
 

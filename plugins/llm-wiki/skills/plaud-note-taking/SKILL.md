@@ -15,31 +15,12 @@ hardcoded tool. Read each `AskUserQuestion` mention as this gate:
 - **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE
   concise blocking question only where a wrong assumption would be costly; otherwise proceed on
   a documented safe default and state the assumption.
-- **Hermes** — use `clarify`.
 
 Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 
 The step-6 approval gate is the one place where no safe default exists: an unapproved corrected
 file must never be distilled or ingested. Where no interactive tool is exposed, stop and report
 the corrected file instead of continuing past it.
-
-## Hermes Agent compatibility
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Bash | terminal |
-| Read | read_file |
-| Write | write_file |
-| Edit | patch |
-| Grep/Glob | search_files |
-| AskUserQuestion | clarify |
-| Skill | skill_view |
-
-Plugin skills are explicit opt-in loads in Hermes — the description never surfaces this body on
-its own. Load it by name with `skill_view("plaud-note-taking")`; `llm-wiki` — the plugin that owns
-this skill — is outside `HERMES_ELIGIBLE`, so no generated adapter exists and the qualified
-`<plugin>:<skill>` form is unavailable. If `llm-wiki` is ever added to that allowlist, the correct
-load becomes `skill_view("llm-wiki:plaud-note-taking")`.
 
 ## When to use
 

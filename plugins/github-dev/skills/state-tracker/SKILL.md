@@ -5,22 +5,6 @@ description: Use to read or update `.claude/state/spec.json` — the aggregate c
 
 # state-tracker
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `github-dev:state-tracker`, map Claude/Codex tool names to
-Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| `Bash` | `terminal` |
-| `Read` | `read_file` |
-| `Write` | `write_file` |
-| `AskUserQuestion` | `clarify` |
-
-Plugin skills are explicit opt-in loads in Hermes — call `skill_view("github-dev:state-tracker")` after
-`--enable` in a fresh session; the description never surfaces this body on its own.
-
-
 `.claude/state/spec.json` is a one-file aggregate of the project's spec/issue/PR work pipeline. It exists so an LLM (or human) can answer "what's currently in flight, and against which spec?" with a single `Read` — no `find` over `.claude/spec/` plus per-file frontmatter parse.
 
 > Ships with the `github-dev` plugin; install via marketplace. Operates on the current repo's `.claude/state/spec.json`.

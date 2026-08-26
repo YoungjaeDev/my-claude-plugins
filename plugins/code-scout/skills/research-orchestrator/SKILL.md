@@ -104,10 +104,10 @@ Before dispatch, pick the execution path **once**. This decides *how* the chosen
 | Path | Condition | How the axes run |
 |---|---|---|
 | **A — named plugin agents** | The qualified `code-scout:{axis}-scout` subagents are registered (Claude Code with code-scout installed). | Current named-agent fan-out — Phase 4A / 5A, **unchanged**. Default on Claude Code. |
-| **B — generic parallel subagents** | Named `code-scout:*-scout` are NOT registerable, but a generic subagent-delegation tool is available (Codex `Task`, Hermes `delegate_task`). | Phase 4B — one generic subagent per axis, each carrying its `axis-contracts.md` contract inline. |
+| **B — generic parallel subagents** | Named `code-scout:*-scout` are NOT registerable, but a generic subagent-delegation tool is available (Codex `Task`). | Phase 4B — one generic subagent per axis, each carrying its `axis-contracts.md` contract inline. |
 | **C — sequential in-agent** | Neither named agents nor generic delegation is available (delegation unsupported / disabled, or concurrency exhausted / repeated dispatch failure). | Phase 4C — run the axes one at a time in the current agent, following each `axis-contracts.md` contract. |
 
-Detection is a runtime fact: Claude Code registers `agents/*.md` as plugin subagents (Path A); Codex 0.135 exposes this skill but cannot register those agent files, so it lands on Path B (generic `Task` delegation), degrading to Path C only when delegation is unavailable. Hermes runs Path B: `code-scout` is in the Hermes adapter allowlist (`HERMES_ELIGIBLE` in `scripts/manifest-eligibility.mjs`), so the generated adapter registers these skills and delegation goes through `delegate_task`. **Never silently drop an axis because its named agent is missing — switch paths instead.** Tell the user which path you took in one sentence.
+Detection is a runtime fact: Claude Code registers `agents/*.md` as plugin subagents (Path A); Codex 0.135 exposes this skill but cannot register those agent files, so it lands on Path B (generic `Task` delegation), degrading to Path C only when delegation is unavailable. **Never silently drop an axis because its named agent is missing — switch paths instead.** Tell the user which path you took in one sentence.
 
 ### 4. Fan-out dispatch
 
@@ -134,12 +134,12 @@ Agent(subagent_type="code-scout:paper-scout",
 
 For long-running runs (more than ~2 minutes expected per scout), prefer `Agent({...}, {run_in_background: true})` + `Monitor` so the orchestrator can stream progress.
 
-#### 4B. Generic parallel subagents (Path B — Codex / Hermes)
+#### 4B. Generic parallel subagents (Path B — Codex)
 
 The named `code-scout:*-scout` agents do not exist here. Dispatch one **generic** subagent per chosen axis in a single message so they run concurrently. Each task must carry that axis's contract from `references/axis-contracts.md` inline — role, tool order (with documented MCP fallback), the shared query shape, the result-envelope schema, and the reliability rubric — because the generic worker lacks the agent-definition context Path A relies on:
 
 ```text
-Task(prompt="""   # Codex tool; Hermes maps this to delegate_task (see the compat table below)
+Task(prompt="""   # Codex tool
   You are the GitHub research axis of code-scout. Contract (from axis-contracts.md):
   - role: repos / code / awesome-lists / issues-PRs
   - tools: date anchor -> gh search repos|code (2-3 variants) -> gh repo view --json ...
@@ -172,7 +172,7 @@ Agent(subagent_type="code-scout:synthesis-scout",
 
 #### 5B. In-skill synthesis (Paths B and C)
 
-`synthesis-scout` is not registerable under Codex / Hermes. Synthesize in the orchestrator instead: read every `${WORKSPACE}/*.json` in lexical order and apply `references/synthesis-rules.md` (dedup keys, trust rubric, conflict order, coverage / gap detection, recommended-picks) plus the report template in the `synthesis-scout` agent definition, writing `$REPORT`. Under Path B you may hand this to one generic subagent carrying `synthesis-rules.md` inline; the default is to do it directly. Same output either way.
+`synthesis-scout` is not registerable under Codex. Synthesize in the orchestrator instead: read every `${WORKSPACE}/*.json` in lexical order and apply `references/synthesis-rules.md` (dedup keys, trust rubric, conflict order, coverage / gap detection, recommended-picks) plus the report template in the `synthesis-scout` agent definition, writing `$REPORT`. Under Path B you may hand this to one generic subagent carrying `synthesis-rules.md` inline; the default is to do it directly. Same output either way.
 
 ### 6. Return
 
@@ -187,7 +187,7 @@ For a single-axis query, still allocate the per-run `$WORKSPACE` (so the axis co
 # Path A (Claude Code):
 Agent(subagent_type="code-scout:<single>-scout",
       prompt="query=<...>\nworkspace_dir=$WORKSPACE\nartifact_id=01_<axis>")
-# Path B (Codex / Hermes): a generic subagent carrying the axis's axis-contracts.md
+# Path B (Codex): a generic subagent carrying the axis's axis-contracts.md
 #   contract inline, writing the same 01_<axis>.json.
 # Path C: run the single axis in-agent.
 
@@ -204,39 +204,14 @@ Do **not** ask the axis to "write findings to stdout" — every axis contract is
 - Workspace empty after fan-out → synthesis (named or in-skill) emits an "all axes failed" report; orchestrator surfaces it with `BLOCKED` status and asks the user whether to retry with different axes.
 - exa MCP unavailable → the web axis falls back to WebSearch per its `axis-contracts.md` contract; the orchestrator does not need to know. Any axis whose MCP is missing follows its own documented fallback rather than aborting the run.
 - One axis errors out → synthesis proceeds with what it has and lists the missing axis in `## Gaps`. A partial axis failure never discards the axes that returned usable evidence.
-- Named `code-scout:*-scout` agents unavailable (Codex / Hermes) → switch to Path B / C (Phase 3.5); never drop an axis for a missing named agent.
-- `synthesis-scout` agent unavailable (Codex / Hermes) → in-skill synthesis (5B); never skip synthesis.
+- Named `code-scout:*-scout` agents unavailable (Codex) → switch to Path B / C (Phase 3.5); never drop an axis for a missing named agent.
+- `synthesis-scout` agent unavailable (Codex) → in-skill synthesis (5B); never skip synthesis.
 
 ## Reference files
 
 - `references/agent-routing.md` — full routing matrix (should / should-NOT per axis, near-miss disambiguation vs `paper-search-tools`, `deepwiki:ask`, `github-dev:*`)
 - `references/axis-contracts.md` — shared per-axis query shape + result envelope + tool order / fallback / reliability rubric; the SoT the named-agent, generic-agent, and sequential paths all consume
 - `references/synthesis-rules.md` — synthesis dedup keys, trust rubric, and conflict resolution order
-
-## Runtime tool names
-
-This skill dispatches through whatever delegation and file tools the host runtime exposes. Claude and Codex share tool names; Hermes maps as:
-
-| Claude / Codex | Hermes | Used here for |
-|---|---|---|
-| `Agent(subagent_type=...)` / `Task` | `delegate_task` | axis dispatch (4A / 4B) + named synthesis (5A) |
-| `Skill("...")` | `skill_view` | invoking `insane-search` (web axis tier-4 fetch) |
-| `Bash` | `terminal` | `date`, `mktemp`, `gh`, `curl`, `jq`, `find` |
-| `Read` | `read_file` | reading axis artifacts during in-skill synthesis (5B) |
-| `Write` | `write_file` | writing axis artifacts / `$REPORT` |
-| `AskUserQuestion` | `clarify` | confirming a `BLOCKED`-state retry |
-| `WebSearch` | `web_search` | web axis keyword coverage (deep mode parallel search, quick mode exa fallback) |
-| `mcp__exa__web_search_exa` | `web_search` | web axis tier-1 semantic search — Hermes has no exa MCP, so tier-1 and the `WebSearch` fallback collapse into one call |
-| `mcp__exa__web_fetch_exa` | `web_extract` | web axis tier-1 fetch |
-| `mcp__brightdata__scrape_as_markdown` | same MCP if attached, else `terminal` + `bdata scrape <url> -f markdown` | tier-2 fetch for JS-heavy / anti-bot pages |
-
-**Web axis under Hermes.** `axis-contracts.md` names Claude/Codex web tools directly, so a Hermes subagent needs this table to run the axis at all.
-
-- **Search**: Hermes has no exa MCP, so tier-1 and the `WebSearch` fallback are the same `web_search` call. Call it **once**, record `exa: unavailable` in `errors`, and do not run a second tier or report exa coverage as successful — deep mode's dual-coverage split is genuinely unavailable here, not silently satisfied.
-- **Fetch tier 2**: use the Bright Data MCP when it is attached (the tool name is identical). When it is not, run `bdata scrape <url> -f markdown` through `terminal`, following the `brightdata-guide` conventions. If neither is reachable, record the failing gate in `errors` and escalate to tier 4 — never downgrade to a plain fetch, which the anti-bot pages this tier exists for will block.
-- **Fetch tier 4**: `insane-search` stays a `skill_view` invocation, unchanged.
-
-An axis that cannot reach any web tool writes `findings:[] + error` like any other failure — it never silently emits an empty artifact.
 
 ## Examples
 

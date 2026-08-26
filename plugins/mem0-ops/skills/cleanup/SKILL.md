@@ -5,11 +5,11 @@ description: "Backup-then-delete mem0 noise for one app (default: current projec
 
 # cleanup
 
-## Hermes/Codex note
+## Codex note
 
 Script is plain `python3` on all runtimes. The confirmation gate uses
-`AskUserQuestion` on Claude; on Codex/Hermes ask in plain text and wait
-(Hermes: `clarify`). Codex 0.135 does NOT export `CLAUDE_PLUGIN_ROOT` —
+`AskUserQuestion` on Claude; on Codex ask in plain text and wait.
+Codex 0.135 does NOT export `CLAUDE_PLUGIN_ROOT` —
 always resolve `PLUGIN_ROOT` first (block below).
 
 ## Steps

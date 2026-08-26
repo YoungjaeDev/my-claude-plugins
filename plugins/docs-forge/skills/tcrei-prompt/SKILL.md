@@ -16,18 +16,6 @@ allowed-tools:
 
 # TCREI Prompt Transformer
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `docs-forge:tcrei-prompt`, map Claude/Codex tool names to Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Read | read_file |
-| Write | write_file |
-| AskUserQuestion | clarify |
-
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("docs-forge:tcrei-prompt")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
-
 Rewrites rough prompts into Google's TCREI 5-step structure and outputs
 copy-paste-ready prompts for the next session. Based on Google's Prompting
 Essentials (Coursera): Task, Context, References, Evaluate, Iterate.
@@ -290,10 +278,10 @@ Use these refinement prompts if the output needs improvement:
 Verify the generated prompt **inline** — the same model runs the OMC checklist directly, in this session. Do NOT dispatch this to a subagent. Three reasons the previous `Task(subagent_type="claude", model="haiku")` form was invalid and is removed:
 
 1. **No dispatch target** — this plugin ships no `agents/` directory, so there is no verifier agent named `claude` (or otherwise) to receive the Task.
-2. **Not portable** — of the three runtimes this skill runs on, only Claude Code has a subagent surface; Codex 0.135 and Hermes have none (`.claude/rules/dual-integration.md` surface map: "not supported by Codex 0.135 — Claude-only / not supported by Hermes — skills only"). A Task dispatch there **silently no-ops**, so Phase 3 would never run on 2 of 3 runtimes.
+2. **Not portable** — of the two runtimes this skill runs on, only Claude Code has a subagent surface; Codex 0.135 has none (`.claude/rules/dual-integration.md` surface map: "not supported by Codex 0.135 — Claude-only"). A Task dispatch there **silently no-ops**, so Phase 3 would never run on Codex.
 3. **Not a valid Task form** — the standard `Task` tool takes no per-call `model=` argument (a subagent's model comes from its agent-definition frontmatter) and has no built-in `claude` subagent_type (the catch-all is `general-purpose`).
 
-The check is a 6-item pass/fail on a short prompt — there is no context-isolation win from a subagent anyway. Keeping it inline makes Phase 3 run identically on all three runtimes.
+The check is a 6-item pass/fail on a short prompt — there is no context-isolation win from a subagent anyway. Keeping it inline makes Phase 3 run identically on both runtimes.
 
 ### OMC Verification Checklist
 

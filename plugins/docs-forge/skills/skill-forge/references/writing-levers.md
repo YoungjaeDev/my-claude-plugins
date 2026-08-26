@@ -112,6 +112,5 @@ description discipline instead.
 ## Provenance
 
 The levers above were synthesized while authoring this skill from public writing on agent-facing
-documentation, from the Hermes skill-authoring guidance, and from this repository's own audit
-history. That is attribution, not a pointer: nothing here requires reading any external skill, and
-this skill never loads one at runtime.
+documentation and from this repository's own audit history. That is attribution, not a pointer:
+nothing here requires reading any external skill, and this skill never loads one at runtime.

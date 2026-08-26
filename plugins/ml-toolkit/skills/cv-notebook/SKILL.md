@@ -5,20 +5,7 @@ description: Generate production-quality Computer Vision Jupyter notebooks. Supp
 
 # CV Notebook Generator
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `ml-toolkit:cv-notebook`, map Claude/Codex tool names to Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Read | read_file |
-| Write | write_file |
-| Edit | patch |
-| NotebookEdit | Hermes "Jupyter Live Kernel" skill, or write_file / patch on the .ipynb JSON |
-
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ml-toolkit:cv-notebook")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
-
-> **NotebookEdit across runtimes**: Claude and Codex use the `NotebookEdit` tool to author `.ipynb` cells (the global rule forbids hand-editing notebook JSON under Claude). Under Hermes there is no `NotebookEdit` tool — use the Hermes "Jupyter Live Kernel" skill, or write/patch the `.ipynb` JSON directly with `write_file` / `patch` (Hermes' Claude/GPT brain can emit valid notebook JSON).
+> **Structure-aware authoring**: Claude Code authors `.ipynb` cells with the `NotebookEdit` tool. Codex has no `NotebookEdit` — author cells through an `nbformat` Python snippet instead (detect the interpreter `python3` → `python` → `py -3`, check `<py> -c "import nbformat"`, install on miss with `<py> -m pip install nbformat`). Never hand-edit notebook JSON as raw text on either runtime.
 
 A skill for generating professional Computer Vision Jupyter notebooks following roboflow/notebooks patterns with Korean insights.
 
@@ -36,7 +23,7 @@ A skill for generating professional Computer Vision Jupyter notebooks following 
 - Hardcoded API keys (use environment variables or secrets)
 - Model-specific code outside templates
 - Execution of cells (user runs in their environment)
-- Direct .ipynb file manipulation (use NotebookEdit tool)
+- Direct .ipynb file manipulation (use the structure-aware path — NotebookEdit / nbformat)
 
 ## Supported Task Types
 
@@ -136,7 +123,7 @@ Standard section order for all CV notebooks:
 2. **Select template**: Load appropriate task template from references/templates/
 3. **Apply environment**: Insert Colab/Kaggle/Local specific setup
 4. **Inject insights**: Add Korean insights based on level density
-5. **Generate notebook**: Use NotebookEdit tool to create .ipynb file
+5. **Generate notebook**: author cells structure-aware — Claude Code: `NotebookEdit` tool; Codex: an `nbformat` snippet
 6. **Validate structure**: Ensure all required sections present
 7. **End gate**: validate the generated notebook actually parses (see below) — never hand back a notebook only asserted to be correct
 
@@ -146,8 +133,6 @@ Standard section order for all CV notebooks:
 
 1. **Execute setup + first-load cells (stronger, env-permitting)** — if `jupyter` is installed and the target env has the notebook's deps, execute the setup and first data-load cells: `jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=120 <notebook>` (slice a temp copy down to the GPU-check / Setup / first Data cells to avoid kicking off a full training run). This catches import and runtime errors py_compile cannot.
 2. **py_compile the code cells (deterministic fallback, always runs)** — no packages or GPU needed. Extract each code cell, strip IPython magics / shell escapes (`!…`, `%…`), and `py_compile` it in order. On the first failure, report **"unverified beyond cell N"** — cells 1..N-1 are syntactically sound, N is where it breaks.
-
-Under Hermes, run this block via `terminal` (`Bash`→`terminal`); it reads the `.ipynb` JSON directly, no `NotebookEdit` needed.
 
 ```bash
 NB="notebook.ipynb"           # the generated notebook
@@ -173,7 +158,7 @@ Fix the reported cell and re-run until it passes. If only the stronger nbconvert
 
 ## NotebookEdit Integration
 
-This skill uses the NotebookEdit tool for .ipynb generation:
+Claude Code path — on Codex, use the `nbformat` equivalent (append to `nb.cells` in the same order; the end gate above is runtime-neutral):
 
 ```python
 # Cell generation sequence

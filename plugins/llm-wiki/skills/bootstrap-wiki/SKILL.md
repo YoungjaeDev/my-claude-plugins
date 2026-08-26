@@ -7,7 +7,7 @@ description: Use to scaffold the LLM-Wiki knowledge system (`.llmwiki/` insight 
 
 LLM-Wiki 3-layer = `.llmwiki/insight/` (promoted cross-agent rules) + `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence). This skill drops the empty layout into any repo so the per-PR workflow (spec → resolve-issue → post-merge → ingest) has a place to land. All three layers live under the neutral `.llmwiki/` root so `codex-bridge`'s `.claude/`→`.codex/` body transform can never fork them per-agent — one copy, both agents (Claude Code + Codex). This skill does **not** scaffold a `.claude/rules/` schema layer: Codex can't read it, so cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes via the `core-config` prompt-injection hook instead. `.claude/rules/` stays reserved for mechanical tool-operation rules (not wiki lore), which this skill leaves to the project.
 
-> Ships with `llm-wiki` plugin; install via marketplace. Templates bundled at `<plugin-root>/skills/bootstrap-wiki/assets/templates/` — Step 3 resolves `<plugin-root>` across runtimes (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache, Hermes), since Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`.
+> Ships with `llm-wiki` plugin; install via marketplace. Templates bundled at `<plugin-root>/skills/bootstrap-wiki/assets/templates/` — Step 3 resolves `<plugin-root>` across runtimes (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache), since Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`.
 
 ## When to use
 
@@ -33,8 +33,7 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
    # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Every branch verifies
    # its target (CHK) exists before committing, so a stale env or an incomplete
    # cache version falls through instead of winning. The cache branch walks
-   # versions high-to-low and takes the first COMPLETE one. HERMES_HOME probes
-   # cover both Hermes layouts; unverified until live Hermes.
+   # versions high-to-low and takes the first COMPLETE one.
    CHK="skills/bootstrap-wiki/assets/templates"
    PLUGIN_ROOT=""
    [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
@@ -45,8 +44,6 @@ Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) alr
        [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
      done < <(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
    fi
-   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
-   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
    { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "bootstrap-wiki: plugin root not resolved (need $CHK)" >&2; exit 1; }
 
    # raw/ is bucketed by source-type (external / research / transcripts / audits);

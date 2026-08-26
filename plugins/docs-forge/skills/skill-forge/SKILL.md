@@ -1,17 +1,11 @@
 ---
 name: skill-forge
-description: "Write or revise a Claude Code skill so it survives all three runtimes this repo ships to. Owns the frontmatter schema, the writing levers behind skill prose, section structure, and the packaging contract (1024-char description cap, quoted colon-space, PLUGIN_ROOT resolver, version bump plus manifest regeneration). Use when creating a new skill, splitting or renaming an existing one, rewriting a skill body, deciding what belongs in references/ versus scripts/, or asking whether a skill should exist at all. Triggers — 스킬 작성, 스킬 만들어줘, 스킬 개정, SKILL.md 작성, 스킬 구조 잡기, write a skill, author a skill, create a new skill, revise this skill, restructure SKILL.md. For diagnosing one existing skill use docs-forge:skill-audit; for sweeping every skill in the repo use docs-forge:skill-fleet-review."
+description: "Write or revise a Claude Code skill so it survives both runtimes this repo ships to (Claude Code + Codex). Owns the frontmatter schema, the writing levers behind skill prose, section structure, and the packaging contract (1024-char description cap, quoted colon-space, PLUGIN_ROOT resolver, version bump). Use when creating a new skill, splitting or renaming an existing one, rewriting a skill body, deciding what belongs in references/ versus scripts/, or asking whether a skill should exist at all. Triggers — 스킬 작성, 스킬 만들어줘, 스킬 개정, SKILL.md 작성, 스킬 구조 잡기, write a skill, author a skill, create a new skill, revise this skill, restructure SKILL.md. For diagnosing one existing skill use docs-forge:skill-audit; for sweeping every skill in the repo use docs-forge:skill-fleet-review."
 ---
 
 # skill-forge
 
 Write a skill that actually loads, actually triggers, and actually reaches the person who needs it.
-
-## Hermes Agent compatibility
-
-`docs-forge` is Hermes-eligible, so this loads as `docs-forge:skill-forge` through the generated
-adapter. The Claude/Codex tool names below map to different Hermes tools — see
-[`../../references/hermes-tools.md`](../../references/hermes-tools.md) before running any step.
 
 ## Overview
 
@@ -125,10 +119,6 @@ if [ -z "$PLUGIN_ROOT" ]; then
   if sort -V </dev/null >/dev/null 2>&1; then vsort="sort -V"; else vsort="sort -t. -k1,1n -k2,2n -k3,3n"; fi
   PLUGIN_ROOT=$(ls -1d "$cache_root"/*/docs-forge/* 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | $vsort | tail -1 | cut -f2-)
 fi
-for h in "${HERMES_HOME:-$HOME/.hermes}/plugins/docs-forge" .hermes/plugins/docs-forge; do
-  [ -n "$PLUGIN_ROOT" ] && break
-  [ -d "$h/skills" ] && PLUGIN_ROOT="$h"
-done
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs-forge plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
 node "$PLUGIN_ROOT/skills/skill-forge/scripts/measure-skills.mjs"
 ```
@@ -143,9 +133,8 @@ Any file under `plugins/<name>/` changing means all of these, in the same change
 1. `plugins/<name>/.claude-plugin/plugin.json` → `version` (MINOR for a new skill).
 2. `.claude-plugin/marketplace.json` → the matching entry's `version`.
 3. `.claude-plugin/marketplace.json` → `metadata.version` (release counter, always MINOR).
-4. `node scripts/sync-codex-manifests.mjs` when Codex-eligible.
-5. `node scripts/sync-hermes-manifests.mjs` when in `HERMES_ELIGIBLE`.
 
+Codex reads the same `.claude-plugin` manifests natively — no generated layer to regenerate.
 Skipping the bump means users on a cached copy never receive the skill. Full contract in
 `references/runtime-contract.md`.
 
@@ -159,9 +148,7 @@ returning 0 would let a run that keys on the exit code treat a failed check as a
 
 ```bash
 failed=0
-for g in "check-skill-contract.mjs" "check-skill-tool-portability.mjs --check" \
-         "sync-codex-manifests.mjs --check" "sync-hermes-manifests.mjs --check" \
-         "check-doc-consistency.mjs"; do
+for g in "check-skill-contract.mjs" "check-doc-consistency.mjs"; do
   s=${g%% *}; rest=${g#"$s"}
   if [ -f "scripts/$s" ]; then
     node "scripts/$s" $rest; rc=$?
@@ -183,13 +170,12 @@ same trigger branch. That one is judgment; no guard covers it.
 | skill works in Claude Code, absent in Codex | description over 1024 characters, or `disable-model-invocation: true` |
 | skill has no description anywhere and never triggers | unquoted `: ` in the description, or frontmatter not starting at byte 0 |
 | bundled script "not found" on Codex | bare `${CLAUDE_PLUGIN_ROOT}` instead of the resolver |
-| the interaction gate stalls under Hermes | an interaction gate hardcoded to one runtime's tool, with no capability-aware branch (`references/runtime-contract.md` names them) |
 | users report the old behavior after a fix | version bump missing; their plugin cache never refreshed |
 | two skills fight over the same requests | overlapping trigger branches in sibling descriptions |
 | body grew past 300 lines | one skill covering two invocation moments, or an inlined reference |
 
 ## Verification
 
-The skill is done when: the five guard commands in step 8 pass, the measurement row shows nothing
+The skill is done when: the guard commands in step 8 pass, the measurement row shows nothing
 out of band, the description reads as trigger conditions rather than a summary, every step ends in
-an observable result, and the version bump plus regenerated manifests are in the same change.
+an observable result, and the version bump is in the same change.

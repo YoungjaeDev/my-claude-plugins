@@ -6,13 +6,6 @@ allowed-tools: Read Write Edit Glob Grep Bash
 
 # Write Rules
 
-## Hermes Agent Compatibility
-
-`docs-forge` is Hermes-eligible, so this skill loads as `docs-forge:write-rules` via the generated
-adapter. Claude/Codex tool names used below map to different Hermes tools — see
-[`../../references/hermes-tools.md`](../../references/hermes-tools.md) before running any step.
-
-
 ## Role
 
 AI Context Architect for CLAUDE.md systems. Scans the project state,

@@ -1,5 +1,0 @@
-name: ml-toolkit
-version: "1.5.1"
-description: "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration Also ships edit-notebook for safe Jupyter notebook editing."
-author: "YoungjaeDev"
-kind: standalone

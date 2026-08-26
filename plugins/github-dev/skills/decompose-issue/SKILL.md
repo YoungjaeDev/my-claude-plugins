@@ -6,30 +6,12 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 ## Decompose Work
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Codex tool names to Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Bash | terminal |
-| Read | read_file |
-| Write | write_file |
-| Edit | patch |
-| Glob/Grep | search_files |
-| AskUserQuestion | clarify |
-| Task | delegate_task |
-| Monitor | process |
-
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("github-dev:<skill>")` (or ask Hermes to load that qualified skill) rather than relying on bare text like `github-dev:<skill> ...`.
-
 ## Cross-runtime interactive input
 
 Every confirmation below runs through a **capability-aware** interactive-input gate, not one hardcoded tool. Read each `AskUserQuestion` mention as this gate:
 
 - **Claude Code** — use `AskUserQuestion`.
 - **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE concise blocking question only where a wrong assumption would be costly (e.g. creating GitHub issues); otherwise proceed on a documented safe default and state the assumption.
-- **Hermes** — use `clarify` (per the compatibility table above).
 
 Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 

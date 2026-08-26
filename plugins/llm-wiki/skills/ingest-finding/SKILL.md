@@ -20,8 +20,7 @@ The wiki is only useful if it stays current. Conversations end, audit mds accumu
 ```bash
 # --- Plugin root resolution (cross-runtime) --------------------------------
 # Each branch verifies the target exists before committing; the cache branch
-# walks versions high-to-low and takes the first COMPLETE one. HERMES_HOME
-# probes are additive/unverified until live Hermes.
+# walks versions high-to-low and takes the first COMPLETE one.
 CHK="references/wiki-conventions.md"
 PLUGIN_ROOT=""
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -e "$CLAUDE_PLUGIN_ROOT/$CHK" ] && PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
@@ -32,8 +31,6 @@ if [ -z "$PLUGIN_ROOT" ]; then
     [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
   done < <(ls -1d "$cache_root"/*/llm-wiki/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
 fi
-[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/llm-wiki/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/llm-wiki"   # unverified
-[ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME"                                    # unverified (skill-level install)
 # wiki-conventions.md is a supplementary reference — degrade quietly if unresolved (the skill handles "no wiki" itself) rather than abort.
 { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { PLUGIN_ROOT=""; echo "note: llm-wiki wiki-conventions.md not resolved; proceeding (supplementary reference)" >&2; }
 echo "PLUGIN_ROOT=$PLUGIN_ROOT"
@@ -195,8 +192,6 @@ Page-edit summary:
 ## Final self-check (MANDATORY) — supersede pairing on this run's pages
 
 Ingest can leave a supersede **half-applied**: a new page gets `> Supersedes: [[old]]` but the old page is never flipped to `status: stale`, or a page is marked `status: stale` without a `> Superseded-by:` back-pointer. Either one-sided pair silently corrupts the lifecycle (`lint-wiki`'s "monotonic relationships" rot mode) and won't surface until a much later audit. Before declaring the ingest done, run these three lint-wiki-style checks **scoped to only this run's touched pages** — the exact file list in the log.md block, NOT the whole wiki (`lint-wiki` owns the full sweep). A silent run is the pass; any `one-sided:` line must be fixed first.
-
-Under Hermes, run this block via `terminal` (`Bash`→`terminal`).
 
 ```bash
 # WIKI_ROOT: resolved wiki root (.llmwiki/wiki | .claude/wiki | .codex/wiki).

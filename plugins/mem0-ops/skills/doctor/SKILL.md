@@ -5,11 +5,10 @@ description: "Check mem0 configuration posture on this machine — MEM0_RERANK e
 
 # doctor
 
-## Hermes/Codex note
+## Codex note
 
-Script is plain `python3` on all runtimes. On Hermes, `Bash` maps to
-`terminal`. Codex 0.135 does NOT export `CLAUDE_PLUGIN_ROOT` — always
-resolve `PLUGIN_ROOT` first (block below).
+Script is plain `python3` on all runtimes. Codex 0.135 does NOT export
+`CLAUDE_PLUGIN_ROOT` — always resolve `PLUGIN_ROOT` first (block below).
 
 ## Steps
 

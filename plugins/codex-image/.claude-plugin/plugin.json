@@ -1,5 +1,5 @@
 {
   "name": "codex-image",
-  "version": "1.3.2",
-  "description": "Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync."
+  "version": "1.3.3",
+  "description": "Claude-only (do not install into Codex). Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync."
 }

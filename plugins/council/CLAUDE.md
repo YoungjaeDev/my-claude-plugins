@@ -44,9 +44,8 @@ Three seats, plus a chair that is not a seat:
 - **Only unfetchable context is pre-collected.** codex and agy read files themselves, so file
   paths are passed as paths. What gets packed into the prompt is what a path cannot carry:
   mem0 memories, Serena symbol graphs, code-scout research.
-- **Claude-only.** Listed in `CODEX_EXCLUDED` (`scripts/manifest-eligibility.mjs`). Running
-  this under Codex would summon codex as its own seat, and Codex has no `Agent` tool for the
-  Claude seat. Same reasoning that excludes `codex-image`.
+- **Claude-only.** Running this under Codex would summon codex as its own seat, and Codex has
+  no `Agent` tool for the Claude seat. Same reasoning that excludes `codex-image`.
 - **Autonomous agent-team debate was deliberately deferred.** It works technically, but
   teammates cannot question the user, which breaks the re-question gate. The full finding is
   in the spec's "보류된 갈래" section.

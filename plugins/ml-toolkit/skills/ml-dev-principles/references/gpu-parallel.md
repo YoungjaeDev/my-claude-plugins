@@ -47,7 +47,8 @@ def _predict_chunk(chunk: list[dict]) -> list[dict]:
 def run_multi_gpu(records: list[dict]) -> list[list[dict]]:
     visible = os.environ.get("CUDA_VISIBLE_DEVICES", "")
     device_tokens = visible.split(",") if visible else [str(i) for i in range(torch.cuda.device_count())]
-    if not device_tokens or device_tokens == [""]:
+    if visible.strip() == "-1" or not device_tokens or device_tokens == [""]:
+        # "-1" is CUDA's hide-all sentinel — one "-1" token is NOT one usable device
         raise RuntimeError("no CUDA devices visible - check drivers / CUDA_VISIBLE_DEVICES")
     n_gpus = len(device_tokens)
 

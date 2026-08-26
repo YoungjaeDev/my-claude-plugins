@@ -19,7 +19,7 @@
       "name": "github-dev",
       "source": "./plugins/github-dev",
       "description": "GitHub workflow: commit, PR, issue, worktree, unified CodeRabbit + ChatGPT-Codex cr-fix pipeline v2 (Step 5 pre-flight review detection across CR commit-status + comments + Codex reviews + Codex emoji 3-channel; autonomous Step 9 judgment replaces per-finding AskUserQuestion — LLM judges real/spurious + severity + fix-size and applies/defers/skips with logged reasoning; rate-limit sniffer now covers commit-status description + in-place comment edits; polling interval 60s → 8s; --auto-merge + --skip-minor + --cr-source retained), project tracking, release. All workflows are now skills (commit-and-push, create-issue-label, decompose-issue, update-progress, resolve-issue, release, cr-fix, post-merge) — no commands surface, so they run under Codex too. post-merge runs a mandatory built-in wiki-lore ingest step (absorbed llm-wiki:post-merge-wiki) plus an optional Step 4.5 ephemeral-artifact pruning gate (heuristic candidates → AskUserQuestion → git rm). 2.8.0 correctness repairs: CR-state fetch failures map to a real error channel (no longer masked as a clean 'none'), a null-repository GraphQL response fails loudly instead of a silent false-clean convergence, and an active `@coderabbitai rate limit` query resolves ambiguous passive rate-limit sniffs. Also ships state-tracker, the spec/issue/PR work-pipeline aggregate over .claude/state/spec.json.",
-      "version": "2.12.1",
+      "version": "3.0.0",
       "category": "github"
     },
     {
@@ -33,7 +33,7 @@
       "name": "code-scout",
       "source": "./plugins/code-scout",
       "description": "Multi-axis code & ML research harness. 5-axis scout team (github/hf/web/docs/paper) + synthesis-scout + research-orchestrator skill + exa-web-search skill. exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4 (WAF/blocked URLs). paper-scout wraps paper-search-tools 8-source family. /deep-research is the sibling for non-code/ML topics (code-scout does not delegate). Also ships brightdata-guide for Bright Data web data access (Web Unlocker scraping, SERP, structured web_data_* extractors) via MCP tools and the bdata CLI.",
-      "version": "2.4.1",
+      "version": "3.0.0",
       "category": "research"
     },
     {
@@ -47,7 +47,7 @@
       "name": "ml-toolkit",
       "source": "./plugins/ml-toolkit",
       "description": "ML/multimodal development principles, GPU parallel processing, Gradio CV apps, CV notebook generation, interactive CV data exploration Also ships edit-notebook for safe Jupyter notebook editing.",
-      "version": "1.5.2",
+      "version": "2.0.0",
       "category": "development"
     },
     {
@@ -61,7 +61,7 @@
       "name": "docs-forge",
       "source": "./plugins/docs-forge",
       "description": "README/CHANGELOG generation with CRO best practices, plus deployment-doc templates and MOC index generation Also absorbs agent-facing authoring: write-rules (CLAUDE.md + .claude/rules generation), interview-methodology (requirements interview / grill-me stress test), tcrei-prompt (TCREI prompt rewriting), voice-prompt (Korean voice-mode STT input normalization), and the skill-forge family (skill-forge authoring, skill-audit single-skill diagnosis, skill-fleet-review repository-wide sweep).",
-      "version": "0.6.3",
+      "version": "0.7.0",
       "category": "documentation"
     },
     {
@@ -81,8 +81,8 @@
     {
       "name": "codex-image",
       "source": "./plugins/codex-image",
-      "description": "Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
-      "version": "1.3.2",
+      "description": "Claude-only (do not install into Codex). Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
+      "version": "1.3.3",
       "category": "ai-models"
     },
     {
@@ -95,7 +95,7 @@
     {
       "name": "council",
       "source": "./plugins/council",
-      "description": "Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync.",
+      "description": "Claude-only (do not install into Codex). Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync.",
       "version": "0.1.1",
       "category": "ai-models"
     },

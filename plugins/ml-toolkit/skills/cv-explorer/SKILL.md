@@ -162,8 +162,8 @@ If `use_supervision=false`:
 - Use raw cv2.rectangle/cv2.drawContours for rendering
 - Remove supervision dependency
 
-### Step 6: NotebookEdit Cell Generation
-Generate cells sequentially using NotebookEdit tool:
+### Step 6: Structure-aware Cell Generation
+Generate cells sequentially — Claude Code: `NotebookEdit` tool; Codex: an `nbformat` snippet (build the cells list in section order, write the notebook once):
 1. Create new notebook or modify existing one
 2. Track cell IDs for each section
 3. Generate cells in section order
@@ -200,7 +200,7 @@ Fix the reported cell and re-run until it passes. If only the stronger nbconvert
 
 ## NotebookEdit Integration
 
-Same strategy as cv-notebook skill:
+Claude Code path — on Codex, apply the same sequence with `nbformat` (append cells to `nb.cells` in the same order; the Step 7 end gate is runtime-neutral). Same strategy as cv-notebook skill:
 
 ### Cell Generation Strategy
 ```

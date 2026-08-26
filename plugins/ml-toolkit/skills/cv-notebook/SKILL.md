@@ -23,7 +23,7 @@ A skill for generating professional Computer Vision Jupyter notebooks following 
 - Hardcoded API keys (use environment variables or secrets)
 - Model-specific code outside templates
 - Execution of cells (user runs in their environment)
-- Direct .ipynb file manipulation (use NotebookEdit tool)
+- Direct .ipynb file manipulation (use the structure-aware path — NotebookEdit / nbformat)
 
 ## Supported Task Types
 
@@ -123,7 +123,7 @@ Standard section order for all CV notebooks:
 2. **Select template**: Load appropriate task template from references/templates/
 3. **Apply environment**: Insert Colab/Kaggle/Local specific setup
 4. **Inject insights**: Add Korean insights based on level density
-5. **Generate notebook**: Use NotebookEdit tool to create .ipynb file
+5. **Generate notebook**: author cells structure-aware — Claude Code: `NotebookEdit` tool; Codex: an `nbformat` snippet
 6. **Validate structure**: Ensure all required sections present
 7. **End gate**: validate the generated notebook actually parses (see below) — never hand back a notebook only asserted to be correct
 
@@ -158,7 +158,7 @@ Fix the reported cell and re-run until it passes. If only the stronger nbconvert
 
 ## NotebookEdit Integration
 
-This skill uses the NotebookEdit tool for .ipynb generation:
+Claude Code path — on Codex, use the `nbformat` equivalent (append to `nb.cells` in the same order; the end gate above is runtime-neutral):
 
 ```python
 # Cell generation sequence

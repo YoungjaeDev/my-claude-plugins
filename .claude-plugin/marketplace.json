@@ -91,7 +91,7 @@
     {
       "name": "publish",
       "source": "./plugins/publish",
-      "description": "Publish a deliverable to another surface — Korean web-article translation, checklist markdown to a Tally questionnaire, and one-way local to Google Drive proposal sync",
+      "description": "Publish a deliverable to another surface — Korean web-article translation and one-way local to Google Drive proposal sync (tally-form retired 2026-08)",
       "version": "2.0.0",
       "category": "content"
     },

@@ -17,7 +17,7 @@ Use this to check which elements a prompt already has before adding more:
 
 ## Output Template
 
-```markdown
+````markdown
 # TCREI Prompt: [Title]
 
 > Structured with Google's TCREI framework. Copy and paste directly to any AI.
@@ -82,7 +82,7 @@ Use these refinement prompts if the output needs improvement:
 1. "[Specific refinement 1 - includes numbers/metrics]"
 2. "[Specific refinement 2 - includes action directive]"
 3. "[Specific refinement 3 - includes format/structure change]"
-```
+````
 
 Generation rules: each section must be self-contained (understandable without reading other
 sections); use specific numbers ("5 sentences" not "short"; "1 page" not "moderate"); iterate

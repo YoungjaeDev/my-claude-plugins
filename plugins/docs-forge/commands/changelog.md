@@ -7,6 +7,7 @@ allowed-tools:
   - Write
   - Bash
   - Glob
+  - Skill
 ---
 
 # CHANGELOG Command
@@ -29,6 +30,8 @@ Manage CHANGELOG files using Keep a Changelog format.
 - `--security` - Security fix
 
 ## Instructions
+
+First load `Skill("docs-forge:doc-guides")` and follow its `## CHANGELOG` section.
 
 ### For `init`
 

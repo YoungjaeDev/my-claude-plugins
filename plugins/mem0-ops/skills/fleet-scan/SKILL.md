@@ -22,7 +22,9 @@ Script is plain `python3` on all runtimes. Codex 0.135 does NOT export
      PLUGIN_ROOT=$(ls -1d "$cache_root"/*/mem0-ops/* 2>/dev/null | sort | tail -1)
    fi
    [ -d "$PLUGIN_ROOT/scripts" ] || { echo "mem0-ops scripts not found"; exit 1; }
-   python3 "$PLUGIN_ROOT/scripts/fleet_scan.py"
+   # Interpreter detection — python3 alone breaks python.org Windows installs (python + py launcher only)
+   if command -v python3 >/dev/null 2>&1; then PY=python3; elif command -v python >/dev/null 2>&1; then PY=python; else PY="py -3"; fi
+   $PY "$PLUGIN_ROOT/scripts/fleet_scan.py"
    ```
 
    - Requires `MEM0_API_KEY`; the script exits with guidance if unset.
@@ -38,10 +40,18 @@ Script is plain `python3` on all runtimes. Codex 0.135 does NOT export
 
 ## Config posture (absorbed from doctor)
 
-When the user asks about local mem0 configuration ('mem0 설정 점검', hook timeouts, rerank) rather than fleet contents, run the posture check with the same `PLUGIN_ROOT` resolved above:
+When the user asks about local mem0 configuration ('mem0 설정 점검', hook timeouts, rerank) rather than fleet contents, run the posture check. Shell state does not persist across tool calls, so this block re-resolves `PLUGIN_ROOT` and the interpreter itself:
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/doctor.py"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+[ -z "$PLUGIN_ROOT" ] && [ -d plugins/mem0-ops/scripts ] && PLUGIN_ROOT=plugins/mem0-ops
+if [ -z "$PLUGIN_ROOT" ]; then
+  cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/mem0-ops/* 2>/dev/null | sort | tail -1)
+fi
+[ -d "$PLUGIN_ROOT/scripts" ] || { echo "mem0-ops scripts not found"; exit 1; }
+if command -v python3 >/dev/null 2>&1; then PY=python3; elif command -v python >/dev/null 2>&1; then PY=python; else PY="py -3"; fi
+$PY "$PLUGIN_ROOT/scripts/doctor.py"
 ```
 
 For each WARN, explain the fix but do NOT apply automatically:

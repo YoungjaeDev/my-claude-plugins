@@ -173,8 +173,6 @@ Save as the source temp file the **main-content markdown you set out to translat
 - **Image-ref count** must match exactly. Fewer in the output = a dropped image (content loss); more = a hallucinated image. Rewriting a URL to a local `images/…` path keeps the `![…](…)` count unchanged, so the count is stable across the download step.
 - **Section-heading count** must match. The output's own header block (title + `원문`/`번역일`, ended by `---`) is stripped before counting, so the added title never offsets the comparison — the body must carry every source section, translated in place.
 
-Under Hermes, run this block via `terminal` (`Bash`→`terminal`); `Read`→`read_file`.
-
 ```bash
 SRC="/tmp/source-article.md"          # main-content markdown from Step 1 (chrome already stripped)
 OUT="{output_dir}/{article_name}.md"  # the generated translation

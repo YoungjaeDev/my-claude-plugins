@@ -20,11 +20,10 @@ hardcoded tool:
 - **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE
   concise blocking question only where a wrong assumption would be costly; otherwise proceed on
   a documented safe default and state the assumption.
-- **Hermes** — use `clarify`.
 
-This plugin is Claude-only in practice (it is listed in `CODEX_EXCLUDED`, and the Claude seat
-needs the `Agent` tool), so the Claude row is the operative one. The other rows are kept so the
-body never asserts that a single interactive tool exists.
+This plugin is Claude-only in practice (the Claude seat needs the `Agent` tool), so the Claude
+row is the operative one. The other row is kept so the body never asserts that a single
+interactive tool exists.
 
 ## Roles
 

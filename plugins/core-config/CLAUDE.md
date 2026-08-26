@@ -42,7 +42,7 @@ Codex now supports **bundled plugin hooks**, so this ships natively — no hand-
 { "hooks": { "UserPromptSubmit": [ { "hooks": [ { "type": "command", "command": "bash \"$PLUGIN_ROOT/hooks/prompt_inject.sh\" codex" } ] } ] } }
 ```
 
-`scripts/sync-codex-manifests.mjs` wires that descriptor into the generated `.codex-plugin/plugin.json` top-level `hooks` (`"hooks": "./hooks/codex-hooks.json"`). `PLUGIN_ROOT` is the Codex-provided plugin-root env-var (`CLAUDE_PLUGIN_ROOT` is a compatibility alias); the path is quoted so a `PLUGIN_ROOT` containing spaces still resolves. Only the `UserPromptSubmit` prompt-inject hook is bundled for Codex — the Python auto-formatter (`auto-format-python.py`) and notification (`notify_osc.py`) hooks stay **Claude-only** (they assume Claude Write/Edit tool payloads and Stop/Notification events, which do not map onto Codex the same way).
+Codex reads that descriptor directly from the plugin manifest's top-level `hooks` field (`"hooks": "./hooks/codex-hooks.json"`). `PLUGIN_ROOT` is the Codex-provided plugin-root env-var (`CLAUDE_PLUGIN_ROOT` is a compatibility alias); the path is quoted so a `PLUGIN_ROOT` containing spaces still resolves. Only the `UserPromptSubmit` prompt-inject hook is bundled for Codex — the Python auto-formatter (`auto-format-python.py`) and notification (`notify_osc.py`) hooks stay **Claude-only** (they assume Claude Write/Edit tool payloads and Stop/Notification events, which do not map onto Codex the same way).
 
 Install / trust / verify:
 

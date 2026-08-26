@@ -8,7 +8,7 @@
 
 # my-claude-plugins
 
-Claude Code를 위한 14개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 0.135 와 Hermes Agent 도 동일한 소스 트리를 네이티브로 로드합니다 (shared source).
+Claude Code를 위한 14개 플러그인 모음 - GitHub 워크플로우부터 AI 이미지 생성까지. Codex 도 동일한 소스 트리와 `.claude-plugin/` 매니페스트를 네이티브로 로드합니다 (shared source, 생성 계층 없음).
 
 [![Plugins](https://img.shields.io/badge/plugins-14-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -42,23 +42,6 @@ Claude Code에 빠져 있는 것들을 채웁니다:
 ```
 
 설치 후 `/github-dev:resolve-issue 123` 같은 명령어로 바로 사용 가능합니다.
-
-### Hermes Agent에서 github-dev만 설치
-
-Hermes Agent는 모노레포의 `plugins/github-dev` 서브디렉터리만 설치할 수 있습니다:
-
-```bash
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
-hermes gateway restart  # Slack/Telegram 등 gateway 사용 시
-```
-
-설치 후 새 Hermes 세션에서 plugin skill을 명시적으로 로드합니다 (`github-dev:<skill>`은 system prompt/skills_list에 자동 노출되지 않는 opt-in 대상입니다):
-
-```text
-skill_view("github-dev:resolve-issue")  # 이후 이슈 번호와 함께 실행 요청
-skill_view("github-dev:cr-fix")         # 이후 --cr-source auto 등 인자와 함께 실행 요청
-skill_view("github-dev:commit-and-push")
-```
 
 ## 플러그인 업데이트
 
@@ -179,8 +162,7 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 | `/e2e-harness:e2e-author` | CUF(critical user flow) 선정 → planner 계획서 → **사용자 검토 게이트** → generator 스펙 생성(semantic `getByRole` 강제) → `--repeat-each` 번인으로 플래키 차단 |
 | `/e2e-harness:e2e-debug` | 실패한 CI run/PR 입력 → 트레이스 아티팩트 다운로드 → 헤드리스 trace 분석 → healer 원인 분석·수리(최대 3회 후 skip + 사유 코멘트) → 재실행 검증 |
 
-**Cross-runtime (Claude / Codex):** 세 스킬은 런타임에 따라 두 런타임 계열·세 실행 경로(Path A/B/C)로 갈립니다. **Claude Code** 는 `init-agents --loop=claude` 가 생성한 named agent(planner/generator/healer)를 이름으로 디스패치합니다(**Path A**). **Codex 0.135** 는 그 agent 파일을 named subagent 로 등록하지 못하므로, 번들된 `references/role-contracts.md` 의 역할 계약을 인라인으로 실은 **generic subagent** 로 같은 역할을 실행하거나(**Path B**), 위임이 불가능하면 순차 실행합니다(**Path C**). CUF 선정·계획 검토 게이트·semantic locator·`--repeat-each` 번인·trace-first 진단·healer 3회 상한 등 모든 게이트는 두 경로에서 동일합니다. `--loop=codex` 는 버전 추정이 아니라 feature-detect 로만 사용하고, `.mcp.json` 의 `playwright-test` 항목은 기존 서버를 덮어쓰지 않고 머지합니다. (Hermes 는 forward-compatible — `e2e-harness` 는 아직 `HERMES_ELIGIBLE` 이 아니라 현재 Hermes 에는 로드되지 않으며, generic 경로가 향후 편입 시 `delegate_task` 로 매핑됩니다.)
-
+**Cross-runtime (Claude / Codex):** 세 스킬은 런타임에 따라 두 런타임 계열·세 실행 경로(Path A/B/C)로 갈립니다. **Claude Code** 는 `init-agents --loop=claude` 가 생성한 named agent(planner/generator/healer)를 이름으로 디스패치합니다(**Path A**). **Codex 0.135** 는 그 agent 파일을 named subagent 로 등록하지 못하므로, 번들된 `references/role-contracts.md` 의 역할 계약을 인라인으로 실은 **generic subagent** 로 같은 역할을 실행하거나(**Path B**), 위임이 불가능하면 순차 실행합니다(**Path C**). CUF 선정·계획 검토 게이트·semantic locator·`--repeat-each` 번인·trace-first 진단·healer 3회 상한 등 모든 게이트는 두 경로에서 동일합니다. `--loop=codex` 는 버전 추정이 아니라 feature-detect 로만 사용하고, `.mcp.json` 의 `playwright-test` 항목은 기존 서버를 덮어쓰지 않고 머지합니다.
 **Requirements:** Node.js + Playwright (`npm init playwright@latest`), `gh` CLI (e2e-debug 의 CI 트레이스 fetch)
 
 **Loose coupling:** Playwright 미설치 시 graceful degrade. `github-dev` 의 resolve-issue/commit-and-push 는 이 플러그인 없이도 E2E 를 옵트인 감지만 함 (상호 부재에 안전)
@@ -203,7 +185,7 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 **`brightdata-guide` 상세:** MCP 툴과 CLI 두 경로가 같은 플랫폼 + 무료 5,000 req/월 을 공유합니다.
 - **MCP 툴**: `search_engine` (SERP), `scrape_as_markdown`/`scrape_batch` (Web Unlocker — JS/CAPTCHA/봇 탐지 우회), `extract` (AI 구조화 JSON), 40+ `web_data_*` 구조화 추출기 (Amazon/LinkedIn/Instagram/TikTok/YouTube/X/Reddit 등), `scraping_browser_*` 브라우저 자동화
 - **CLI (`bdata`/`brightdata`)**: MCP 툴을 못 받는 `delegate_task` 서브에이전트용 fallback (터미널은 상속하지만 부모의 MCP 툴셋은 상속 안 함)
-- Claude / Codex / Hermes 공용 (MCP 툴명 동일; `terminal` ↔ Bash / execute_command). guide 스킬이라 설치·키를 하드코딩하지 않습니다 — operator 가 `BRIGHTDATA_API_KEY` 또는 `bdata login` 으로 out-of-band 연결.
+- Claude / Codex 공용 (MCP 툴명 동일). guide 스킬이라 설치·키를 하드코딩하지 않습니다 — operator 가 `BRIGHTDATA_API_KEY` 또는 `bdata login` 으로 out-of-band 연결.
 
 **Agent team (6, all `opus`):**
 | Agent | Axis |
@@ -215,7 +197,7 @@ Playwright 공식 AI 테스트 에이전트(planner/generator/healer)를 래핑�
 | `paper-scout` | paper-search-tools 8-source 래핑 (arXiv/Semantic Scholar/Crossref/PubMed/bioRxiv/medRxiv/IACR/Google Scholar). 도메인별 2-3 source 선택, 학술 신호 감지 시 deep mode 5-axis 에 자동 인입 |
 | `synthesis-scout` | dedup (DOI 포함) / trust ranking (peer-reviewed > arxiv high-cite > arxiv recent) / conflict resolution / 최종 보고서 |
 
-**런타임 이식성 (v2.2.0)**: 이 6개 agent 는 **Claude Code 전용** — Codex 0.135 는 skill 은 노출하지만 `agents/*.md` 를 등록하지 못한다 (Hermes 도 `delegate_task` fallback 대상이지만 `code-scout` 는 아직 Hermes-eligible 이 아니라 로드되지 않는다 — forward-compat). 그 런타임에서는 `research-orchestrator` skill 이 named agent 미등록을 감지해 동일 축을 generic 병렬 subagent (Codex `Task` / Hermes `delegate_task`) 로, 위임 불가 시 현재 에이전트 내 순차 실행으로 돌리고 synthesis 를 in-skill 로 수행한다. 세 경로가 공유하는 계약은 `skills/research-orchestrator/references/axis-contracts.md`. Claude named-agent quick / deep 경로 동작은 무변경.
+**런타임 이식성 (v2.2.0)**: 이 6개 agent 는 **Claude Code 전용** — Codex 는 skill 은 노출하지만 `agents/*.md` 를 등록하지 못한다. 그 런타임에서는 `research-orchestrator` skill 이 named agent 미등록을 감지해 동일 축을 generic 병렬 subagent (Codex `Task`) 로, 위임 불가 시 현재 에이전트 내 순차 실행으로 돌리고 synthesis 를 in-skill 로 수행한다. 경로들이 공유하는 계약은 `skills/research-orchestrator/references/axis-contracts.md`. Claude named-agent quick / deep 경로 동작은 무변경.
 
 **경계 — `/deep-research` 와 분리**: code-scout 는 code / ML / docs / papers 도메인 전용. 정책 / 시장 / 역사 / 인물 등 일반 토픽은 sibling `/deep-research` 직접 호출 (7-phase + adversarial verify + state machine). orchestrator 가 위임하지 않음 — 의도된 boundary.
 
@@ -233,7 +215,7 @@ Agent(subagent_type="code-scout:paper-scout",
       prompt="query=sparse autoencoder interpretability\nworkspace_dir=$WORKSPACE\nartifact_id=05_paper")
 ```
 
-> 위 `Agent(subagent_type="code-scout:*-scout")` 직접 호출은 **Claude Code 전용**이다. Codex 에서는 이 named agent 들이 등록되지 않으므로 `Skill("code-scout:research-orchestrator")` 로 진입하면 orchestrator 가 generic subagent / 순차 fallback 으로 같은 축을 실행한다 (Hermes 는 `code-scout` 가 아직 Hermes-eligible 이 아니라 미로드 — 위 "런타임 이식성" 참조).
+> 위 `Agent(subagent_type="code-scout:*-scout")` 직접 호출은 **Claude Code 전용**이다. Codex 에서는 이 named agent 들이 등록되지 않으므로 `Skill("code-scout:research-orchestrator")` 로 진입하면 orchestrator 가 generic subagent / 순차 fallback 으로 같은 축을 실행한다 (위 "런타임 이식성" 참조).
 
 **Workspace 준비 (위 직접 호출 전에 실제 셸에서):**
 ```bash
@@ -556,104 +538,58 @@ CLAUDE.md 와 `.claude/rules/*.md` 를 Claude Code 2026 공식 패턴(200줄 roo
 }
 ```
 
-### Codex 0.135 (shared source)
+### Codex (native shared source)
 
-Codex 도 동일한 `plugins/<name>/` 트리를 네이티브로 읽습니다. 매니페스트는 `scripts/sync-codex-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성:
+Codex 는 동일한 `plugins/<name>/` 트리와 `.claude-plugin/` 매니페스트를 **네이티브 폴백**으로 직접 읽습니다 — 매니페스트 탐색이 `.codex-plugin` → `.claude-plugin` 순, marketplace 카탈로그가 `.agents/plugins/marketplace.json` → `.claude-plugin/marketplace.json` 순으로 폴백하므로 생성 계층이 없습니다:
 
 ```bash
-# 매니페스트 생성 / 재생성 (플러그인 추가·삭제 / version·description 변경 시)
-node scripts/sync-codex-manifests.mjs
-
-# PR drift 가드 — CI 에서 실행
-node scripts/sync-codex-manifests.mjs --check
-
 # Codex CLI 에서 marketplace 등록 & 설치
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add llm-wiki@my-claude-plugins
 ```
 
-Codex 에서 제외되는 플러그인은 `codex-image` 와 `council` 둘입니다 (`codex-image` 는 Claude->Codex 브리지라 Codex 로 sync 하면 순환, `council` 은 codex 를 의석으로 앉히므로 Codex 에서 돌리면 자기 자신을 소환하는 순환이고 Claude 의석이 Agent 도구를 필요로 함). `core-config` 는 skill 이 없지만 번들 Codex hooks (`hooks/codex-hooks.json`) 를 실어 hooks-only 매니페스트로 Codex 에 sync 됩니다 (native `UserPromptSubmit` 훅). 즉 12 / 14 플러그인이 Codex 로 sync 되며 (core-config 는 hooks-only, 나머지는 skill 단위), `deepwiki` 와 `project-init` 은 1.41.0 부터 Claude 에서는 command + skill 양쪽으로, Codex 에서는 skill 로만 동작합니다 (Codex 는 command surface 를 로드하지 않음).
+`codex-image` 와 `council` 은 Codex 에 설치하지 않는 것을 권장합니다 (`codex-image` 는 Claude->Codex 브리지라 Codex 에서 돌리면 순환, `council` 은 codex 를 의석으로 앉히므로 자기 자신을 소환하는 순환이고 Claude 의석이 Agent 도구를 필요로 함).
 
-Codex 0.135 manifest top-level은 `skills` / `hooks` / `mcpServers` / `apps` 만 지원하므로, command-bearing 플러그인(`docs-forge`, `deepwiki` 등)도 Codex 측에는 skill만 노출됩니다 — Claude 측 commands 는 그대로 동작합니다. `github-dev` 는 모든 워크플로가 skill 로 전환돼 command surface 가 없으므로 Claude·Codex 양쪽에서 동일하게 동작합니다.
+Codex 는 매니페스트의 `commands` / `agents` 등 미지원 필드를 무시하고 skill 만 노출합니다 — command-bearing 플러그인(`docs-forge`, `deepwiki` 등)도 Codex 측에는 skill 만 보이고, Claude 측 commands 는 그대로 동작합니다.
 
-`--check` 는 manifest drift 외에 **skill `description` 길이**도 검증합니다 (Codex 0.135 는 1024자 초과 description 을 가진 skill 을 silent 하게 skip). 이 가드는 로컬 pre-commit 훅과 CI 양쪽에서 동일하게 실행됩니다:
+skill `description` 은 1024자 미만이어야 합니다 (Codex 는 초과 description 을 가진 skill 을 silent 하게 skip). 이 가드는 `scripts/check-skill-contract.mjs` 가 로컬 pre-commit 훅과 CI 양쪽에서 실행합니다:
 
 ```bash
 # 클론당 1회: 버전 관리되는 .githooks/pre-commit 활성화
 git config core.hooksPath .githooks
 ```
 
-활성화하면 매 커밋 전에 `node scripts/sync-codex-manifests.mjs --check` 가 돌아 drift / 길이 위반을 차단합니다. 훅을 건너뛴 기여자도 PR 시 `.github/workflows/validate-codex.yml` 이 동일 명령으로 잡습니다.
-
-### Hermes Agent (shared source)
-
-Hermes Agent 도 동일한 `plugins/<name>/` 트리를 네이티브로 읽습니다. 어댑터(`plugin.yaml` + `__init__.py`)는 `scripts/sync-hermes-manifests.mjs` 가 `.claude-plugin/marketplace.json` 으로부터 생성:
-
-```bash
-# 어댑터 생성 / 재생성 (eligible 플러그인의 version·description 변경 시)
-node scripts/sync-hermes-manifests.mjs
-
-# PR drift 가드 — CI(validate-codex.yml) + .githooks/pre-commit 에서 실행
-node scripts/sync-hermes-manifests.mjs --check
-
-# Hermes 에 플러그인 단위 설치 (plugin.yaml 어댑터 필요)
-hermes plugins install YoungjaeDev/my-claude-plugins/plugins/github-dev --enable
-hermes gateway restart  # 메시징 게이트웨이 사용 시
-```
-
-어댑터 필드는 marketplace 엔트리에서 파생되고(`plugin.yaml` name/version/description, `__init__.py` 는 SKILL.md 를 `<plugin>:<skill>` 로 등록하는 제네릭 엔트리포인트 — 플러그인별 로직 없음), 대상은 `HERMES_ELIGIBLE` allowlist (이번 라운드 4개: `github-dev`, `docs-forge`, `code-scout`, `ml-toolkit`) 입니다. allowlist 에 이름을 추가하면 커버리지가 확장됩니다. `--check` 가 어댑터 drift + orphan 어댑터를 잡습니다. 공유 skill 본문은 Claude/Codex 도구 용어를 Hermes 도구로 매핑하는 호환 표를 포함합니다.
-
-플러그인 스킬은 opt-in 이라 enable 후 `skill_view("<plugin>:<skill>")` 로 명시 로드합니다 (`--enable` 후 새 Hermes 세션 시작).
-
-**설치 두 경로:**
-- **플러그인 단위** (`hermes plugins install .../plugins/<name>` — 위 `plugin.yaml` 어댑터 필요, 이번 PR 이 5개 추가). 플러그인 전체를 Hermes 에 등록.
-- **스킬 단위** (`node scripts/install-skills.mjs` → `npx skills` — 어댑터와 무관, 어댑터 없는 플러그인도 가능). 개별 skill 만 설치.
-
-### 스킬을 Hermes / Codex 에 설치 (스킬 단위)
-
-이 마켓플레이스의 skill 을 **스킬 단위**로 Hermes Agent 와 Codex 에 설치하는 대화형 도구 (위 `plugin.yaml` 어댑터와 무관 — 어댑터 없는 플러그인도 설치 가능). `npx skills`(vercel-labs/skills) 를 래핑하며 Node builtin 만 사용(zero-dep):
-
-```bash
-node scripts/install-skills.mjs
-```
-
-플러그인 그룹 단위로 skill 을 고른 뒤 타겟(`hermes-agent` / `codex`)·scope(global `~/` / project `./`)·Hermes profile 을 선택하면 `npx skills add` 로 설치합니다. 설치 메커니즘(symlink/copy)·충돌·lockfile 은 `npx skills` 에 위임하고, Hermes profile 은 `HERMES_HOME` env 로 타겟팅합니다.
+훅을 건너뛴 기여자도 PR 시 `.github/workflows/validate-codex.yml` 이 동일 명령으로 잡습니다.
 
 ### CI 가드가 지키는 것 (curation / security)
 
-shared-source 배선은 7개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 다른 도구체인에 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
+4개 가드가 매 PR 과 매 커밋(`.githooks/pre-commit`)에서 함께 검증합니다 — 한 런타임에만 보이는 변경이 조용히 깨진 채로 나가는 것을 막는 것이 목적입니다:
 
-- `sync-codex-manifests.mjs --check` — Codex 매니페스트 drift + skill `description` 1024자 초과(Codex silent skip) + 번들 hook 디스크립터 shape·참조 스크립트 존재·orphan.
-- `sync-hermes-manifests.mjs --check` — Hermes 어댑터 drift + orphan.
-- `check-doc-consistency.mjs` — 플러그인 트리·`## 플러그인 상세` 의 `<summary>` 이름 집합·`## Plugins` 표·카운트(총 14 / Codex-eligible 12 / Hermes 4)가 `manifest-eligibility.mjs` SoT와 일치. 상세 절 검사는 나중에 붙었습니다 — 트리와 `<details>` 는 같은 문서의 다른 표면이라, 플러그인 제거 후 상세 절에 죽은 항목 11개가 남고 살아있는 항목 1개가 빠진 채 이 가드가 통과한 적이 있습니다.
-- `check-skill-tool-portability.mjs --check` — 공유 스킬 본문의 `AskUserQuestion` 사용이 파일럿 표준 매핑 또는 baseline 에 등록됐는지(미등록 크로스런타임 상호작용 경로 차단).
+- `check-doc-consistency.mjs` — 플러그인 트리·`## 플러그인 상세` 의 `<summary>` 이름 집합·`## Plugins` 표·카운트(총 14)가 `marketplace.json` 과 일치. 상세 절 검사는 나중에 붙었습니다 — 트리와 `<details>` 는 같은 문서의 다른 표면이라, 플러그인 제거 후 상세 절에 죽은 항목 11개가 남고 살아있는 항목 1개가 빠진 채 이 가드가 통과한 적이 있습니다.
 - `check-shell-portability.mjs` — GNU 전용 셸 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우 차단. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하고, 증거는 코드만 인정합니다(대체재를 언급하는 주석은 폴백이 아님). 예외는 `# portability-ok: <사유>`.
-- `check-skill-contract.mjs` — 한 런타임에서만 **조용히** 깨지는 스킬 위반 6종 차단: `description` 1024자 초과(Codex silent skip, 여러 줄 scalar 는 접어서 계산), 인용 없는 `: `(YAML frontmatter 붕괴), 펜스 블록별 bare `${CLAUDE_PLUGIN_ROOT}`(그 블록에 resolver 가 없으면 Codex 에서 첫 단계 실패), 비-kebab 또는 64자 초과 `name`, byte 0 에서 시작하지 않는 frontmatter, `name` 과 스킬 디렉터리명 불일치(Claude/Codex 는 frontmatter 이름을, 생성된 Hermes 어댑터는 디렉터리명을 써서 스킬 정체성이 갈림). 스캔 전에 RED/GREEN 픽스처를 먼저 돌려 탐지기 자체의 회귀도 막습니다. 위 가드들과 검사 항목이 겹치지 않습니다 — prose 는 비차단 측정, tool-portability 는 `AskUserQuestion` 이관, doc-consistency 는 문서 동기화, shell-portability 는 GNU 전용 구문입니다.
+- `check-skill-contract.mjs` — 한 런타임에서만 **조용히** 깨지는 스킬 위반 차단: `description` 1024자 초과(Codex silent skip, 여러 줄 scalar 는 접어서 계산), 인용 없는 `: `(YAML frontmatter 붕괴), 펜스 블록별 bare `${CLAUDE_PLUGIN_ROOT}`(그 블록에 resolver 가 없으면 Codex 에서 첫 단계 실패), 비-kebab 또는 64자 초과 `name`, byte 0 에서 시작하지 않는 frontmatter, `name` 과 스킬 디렉터리명 불일치. 스캔 전에 RED/GREEN 픽스처를 먼저 돌려 탐지기 자체의 회귀도 막습니다.
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로에 대한 정보성 경고(비차단, 항상 exit 0).
 
 가드와 별개로 두 개의 픽스처 스위트가 같은 자리에서 돕니다 — `plugins/github-dev/skills/cr-fix/tests/run-tests.sh` (1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로)와 `plugins/council/skills/convene/tests/run-tests.sh` (스킬 본문에만 존재해 아무도 실행하지 않는 codex/agy 호출 계약 + 레지스트리 TTL 산술). 후자가 지키는 것은 이식성 가드가 볼 수 없는 종류입니다 — agy 호출에서 `< /dev/null` 이 빠지면 그 의석이 영원히 멈추는데, 그건 GNU 전용 구문이 아니라서 `check-shell-portability` 의 관심사가 아닙니다.
 
 CI 는 여기에 더해 **macOS 레그**(`validate-codex.yml` 의 `macos` job)를 돌립니다. 두 스위트가 품은 BSD 폴백들은 GNU 러너에서 절반만 실행되므로, macOS 레그가 그 나머지 절반이 실제로 도는 유일한 지점입니다. `env -i PATH=/usr/bin:/bin` 는 쓰지 않습니다 — macOS 에서 `jq` 가 Homebrew 경로에 있어 스위트가 도구 부재로 죽습니다. 대신 `sed`/`date`/`stat` 이 BSD 빌드인지 assert 하고(Homebrew coreutils 가 시스템 도구를 가리면 실패), 스위트는 `/bin/bash` 로 돌려 bash 3.2 를 강제합니다.
 
-drift·길이·shape·이식성 위반은 **차단**(exit 1)이고, prose 경고는 측정치일 뿐 커밋을 막지 않습니다. 어느 가드도 소스를 자동 수정하지 않습니다 — 위반을 보고할 뿐이니, 로컬에서 generator 를 재실행해 파생물을 맞춘 뒤 다시 커밋하세요.
+길이·shape·이식성 위반은 **차단**(exit 1)이고, prose 경고는 측정치일 뿐 커밋을 막지 않습니다. 어느 가드도 소스를 자동 수정하지 않습니다 — 위반을 보고할 뿐이니, 소스를 고친 뒤 다시 커밋하세요.
 
 ### 머신 로컬 운영 갱신 (PR 밖 오퍼레이터 체크리스트)
 
-Codex 의 UserPromptSubmit 훅과 Hermes 스킬은 이제 **번들 디스크립터/어댑터**로 배포되므로 marketplace 업데이트가 정본입니다. 다만 예전에 손으로 설치한 복사본(수동 `~/.codex/hooks/prompt_inject.sh`, 스킬 단위로 깐 `~/.agents/skills/<...>`)을 쓰던 머신은 그 복사본이 stale 해질 수 있습니다. 아래는 리포지토리 상태를 바꾸지 않는 **머신 로컬 작업**이라 PR 에 포함되지 않으며, marketplace 업데이트 후 한 번 실행합니다:
+marketplace 업데이트가 정본입니다. 예전에 손으로 설치한 복사본(수동 `~/.codex/hooks/prompt_inject.sh`, 스킬 단위로 깐 `~/.agents/skills/<...>`)을 쓰던 머신은 그 복사본이 stale 해질 수 있습니다. 아래는 리포지토리 상태를 바꾸지 않는 **머신 로컬 작업**이라 PR 에 포함되지 않으며, marketplace 업데이트 후 한 번 실행합니다:
 
 ```bash
 # 1) marketplace 캐시 갱신 (위 "플러그인 업데이트" 절차)
 rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 
-# 2) Codex: 번들 디스크립터로 재설치 (수동 ~/.codex/hooks.json 항목을 쓰던 경우 먼저 제거)
+# 2) Codex: 네이티브 marketplace 로 재설치 (수동 ~/.codex/hooks.json 항목을 쓰던 경우 먼저 제거)
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
-codex plugin add core-config@my-claude-plugins   # 이후 /hooks 로 trust 재승인
-
-# 3) Hermes: 스킬 단위 설치본 갱신
-node scripts/install-skills.mjs                  # 또는 hermes plugins install ... --enable
+codex plugin add github-dev@my-claude-plugins
 ```
 
-번들 디스크립터/어댑터를 쓰는 신규 설치는 marketplace 업데이트만으로 최신이 됩니다 — 이 체크리스트는 레거시 수동 복사본을 쓰는 머신에만 필요합니다.
+신규 설치는 marketplace 업데이트만으로 최신이 됩니다 — 이 체크리스트는 레거시 수동 복사본을 쓰는 머신에만 필요합니다.
 
 ## 요구사항
 
@@ -663,9 +599,8 @@ node scripts/install-skills.mjs                  # 또는 hermes plugins install
 | `gh` | GitHub 플러그인 | github-dev |
 | `uv` | Python MCP 서버 | core-config |
 | `ruff` | Python 포매팅 | core-config |
-| Node 18+ | Codex/Hermes 매니페스트 생성기 런타임 | `scripts/sync-{codex,hermes}-manifests.mjs` |
-| Codex CLI 0.135+ | shared-source 네이티브 로드 (`.codex-plugin/plugin.json`) | Codex 사용자 |
-| Hermes Agent | shared-source 네이티브 로드 (`plugin.yaml` + `__init__.py`) | Hermes 사용자 |
+| Node 18+ | 저장소 가드 스크립트 런타임 | 기여자 (`scripts/check-*.mjs`) |
+| Codex CLI | shared-source 네이티브 로드 (`.claude-plugin/` 매니페스트 폴백) | Codex 사용자 |
 
 ## 프로젝트 구조
 
@@ -688,7 +623,7 @@ node scripts/install-skills.mjs                  # 또는 hermes plugins install
 │   ├── publish/               # 산출물 내보내기 (번역 / Tally 폼 / Google Drive 동기화)
 │   ├── project-init/          # Day-1 프로젝트 부트스트랩 (인터뷰 + .claude/ + AGENTS.md + gh repo)
 │   └── mem0-ops/              # 플릿 레벨 mem0 진단·정리 (fleet-scan/doctor/cleanup)
-├── AGENTS.md                 # 세 런타임 공통 최상위 지침 (정본)
+├── AGENTS.md                 # 두 런타임 공통 최상위 지침 (정본)
 ├── CLAUDE.md                 # @AGENTS.md import
 └── README.md
 ```

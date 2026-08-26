@@ -1,6 +1,6 @@
 # Bright Data MCP Server Setup
 
-> Agent-agnostic setup. Works for Hermes, Codex, and any MCP-capable client. Configure the MCP server through your agent's own MCP configuration UI/CLI — this guide describes the values to use, it does not edit your settings files for you.
+> Agent-agnostic setup. Works for Codex and any MCP-capable client. Configure the MCP server through your agent's own MCP configuration UI/CLI — this guide describes the values to use, it does not edit your settings files for you.
 
 ## Prerequisites
 
@@ -55,7 +55,6 @@ https://mcp.brightdata.com/mcp?token=YOUR_TOKEN&tools=web_data_amazon_product,se
 
 Add the URL above as a remote (HTTP) MCP server in your agent's MCP configuration. Each agent has its own way to register an MCP server:
 
-- **Hermes**: `hermes mcp add brightdata --url "https://mcp.brightdata.com/mcp?token=YOUR_TOKEN"` (or add it through the Hermes dashboard MCP tab). The connection is stored in the active profile's `config.yaml` under `mcp_servers`.
 - **Generic MCP client**: register a server entry with the `url` field pointing at the URL above.
 
 Verify the connection reports a healthy/connected status and that the Bright Data tools appear in the tool list.
@@ -82,12 +81,7 @@ API_TOKEN=your_token PRO_MODE=true npx @brightdata/mcp
 
 ### Connecting (any MCP client)
 
-Register a stdio MCP server whose command is `npx` with args `@brightdata/mcp`, passing the variables above as environment variables. Example for Hermes:
-
-```bash
-hermes mcp add brightdata --command npx --args @brightdata/mcp \
-  --env API_TOKEN=your_token WEB_UNLOCKER_ZONE=your_zone npm_config_yes=true
-```
+Register a stdio MCP server whose command is `npx` with args `@brightdata/mcp`, passing the variables above as environment variables.
 
 (The credential variable is named `API_TOKEN`. `npm_config_yes=true` auto-approves the npx package fetch.)
 

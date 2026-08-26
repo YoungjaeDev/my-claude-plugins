@@ -6,23 +6,6 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 # CodeRabbit + Codex Fix Pipeline (v2)
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `github-dev:<skill>`, map Claude/Codex tool names to Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Bash | terminal |
-| Read | read_file |
-| Write | write_file |
-| Edit | patch |
-| Glob/Grep | search_files |
-| AskUserQuestion | clarify |
-| Task | delegate_task |
-| Monitor | process |
-
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("github-dev:<skill>")` (or ask Hermes to load that qualified skill) rather than relying on bare text like `github-dev:<skill> ...`.
-
 Self-contained skill that owns the full review-resolution loop. One Claude turn drives the entire pipeline; wait phases use `Bash(run_in_background=true)` + `Monitor` so token cost is ~0 during reviews.
 
 v2 changes:
@@ -77,14 +60,8 @@ elif [ -d "plugins/github-dev/skills/cr-fix" ]; then
   SKILL_DIR="plugins/github-dev/skills/cr-fix"
 elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then
   SKILL_DIR="$CODEX_CAND/skills/cr-fix"
-elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/plugins/github-dev/skills/cr-fix" ]; then
-  SKILL_DIR="$HERMES_HOME/plugins/github-dev/skills/cr-fix"
-elif [ -n "${HERMES_HOME:-}" ] && [ -d "$HERMES_HOME/skills/cr-fix" ]; then
-  # unverified flat Hermes layout (no live-Hermes confirmation yet) — additive
-  # branch guarded by -d, never rewrites the plugin-layout branch above
-  SKILL_DIR="$HERMES_HOME/skills/cr-fix"
 else
-  SKILL_DIR="$HOME/.hermes/plugins/github-dev/skills/cr-fix"
+  SKILL_DIR="plugins/github-dev/skills/cr-fix"
 fi
 
 eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
@@ -92,7 +69,7 @@ eval "$(bash "$SKILL_DIR/scripts/parse-args.sh" $ARGUMENTS)"
 
 Sets: `SKILL_DIR, MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODEX_GRACE, NO_CODEX, SKIP_MINOR, MINOR_STOP, GENERALIZE, CR_SOURCE, SMALL_DIFF_LOC, SMALL_DIFF_FILES`.
 
-`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex 0.135 cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`), the active Hermes profile install (`$HERMES_HOME/plugins/github-dev/...` then the flat `$HERMES_HOME/skills/cr-fix` layout), then the default `~/.hermes/plugins/github-dev/...` install. Without the `${CLAUDE_PLUGIN_ROOT}` and Codex-cache branches, an invocation outside the source tree resolved to a non-existent Hermes path and `parse-args.sh` was unreachable. All `scripts/` and `references/` paths below resolve relative to this.
+`SKILL_DIR` resolves in order: Claude Code's `${CLAUDE_PLUGIN_ROOT}`, the source-tree plugin path, the Codex cache (`~/.codex/plugins/cache/<marketplace>/github-dev/<version>/`, newest by `sort -V`). All `scripts/` and `references/` paths below resolve relative to this.
 
 ## Step 2: Resolve repo / PR / START_SHA + pre-flight setup
 

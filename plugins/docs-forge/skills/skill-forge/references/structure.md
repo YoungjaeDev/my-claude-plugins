@@ -59,8 +59,6 @@ The shell forms bypass the harness's own file tracking and, in review, read as a
 edit tools. Reserve `Bash` for what genuinely needs a shell: running a bundled script, invoking a
 CLI, or a pipeline whose output the body then reads.
 
-For the Hermes tool names these terms map to, see `../../../references/hermes-tools.md`.
-
 ## Five quality failures
 
 Name the failure before editing — the fixes point in different directions.

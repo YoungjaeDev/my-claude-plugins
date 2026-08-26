@@ -1,8 +1,8 @@
 name: validate-codex
 
-# Catch Codex + Hermes manifest drift, skill-description length violations,
-# README/AGENTS doc-consistency drift, and Hermes adapter load breakage at PR
-# time, even if a contributor skipped the local .githooks pre-commit hook.
+# Catch README/AGENTS doc-consistency drift, silent skill-contract violations,
+# and GNU-only shell regressions at PR time, even if a contributor skipped the
+# local .githooks pre-commit hook.
 on:
   push:
   pull_request:
@@ -20,22 +20,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
-      - run: node scripts/sync-codex-manifests.mjs --check
-      - run: node scripts/sync-hermes-manifests.mjs --check
       # README.md / AGENTS.md plugin name-set + count strings must match the
-      # marketplace registry — drift the version files and manifest --checks miss.
+      # marketplace registry — drift the version files alone cannot catch.
       - run: node scripts/check-doc-consistency.mjs
-      # Shared skill bodies (read verbatim by three runtimes) must not assume a single
-      # interactive-input tool: each AskUserQuestion skill is a mapped pilot or reviewed
-      # baseline debt. See scripts/check-skill-tool-portability.mjs.
-      - run: node scripts/check-skill-tool-portability.mjs --check
       # Progressive-disclosure smell detector (skill docs > ~500 lines, deep bundled
       # references). INFORMATIONAL ONLY — always exits 0, never blocks the run.
       - run: node scripts/check-skill-prose.mjs || true
-      # Import each generated Hermes adapter with a stub ctx and assert register_skill
-      # fires — catches a generated-but-never-executed adapter regression (PyYAML is
-      # preinstalled on ubuntu-latest). See scripts/mock-load-hermes.py.
-      - run: python3 scripts/mock-load-hermes.py
       # cr-fix's CLI-fallback / CR-state / rate-limit paths only run after the
       # primary path fails, so nothing exercised them until they broke in
       # production (issues #105, #110). Fixture-driven, no network, sub-second.
@@ -51,8 +41,8 @@ jobs:
       # downloaded image to one filename on macOS (issue #172). Flags a construct
       # only when no fallback, capability probe, or `# portability-ok:` sits near it.
       - run: node scripts/check-shell-portability.mjs
-      # Five silent-failure checks on skill frontmatter/bodies: description over the
-      # Codex 0.135 1024-char skip threshold, unquoted `: ` collapsing the YAML, bare
+      # Silent-failure checks on skill frontmatter/bodies: description over the
+      # Codex 1024-char skip threshold, unquoted `: ` collapsing the YAML, bare
       # ${CLAUDE_PLUGIN_ROOT} in a shell block with no resolver, non-kebab name,
       # frontmatter not at byte 0. Every one of them loads fine under Claude Code, so
       # review never sees them. The step runs its own RED/GREEN fixtures before the

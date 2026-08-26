@@ -10,12 +10,11 @@
 //      own                                     → Codex does not export it; the call dies at step one
 //   4. `name` non-kebab or over 64 characters  → the command name stops being derivable
 //   5. frontmatter not starting at byte 0      → no runtime finds it; the skill never triggers
-//   6. `name` != skill directory name          → Claude/Codex use one identity, the
-//                                                generated Hermes adapter another
+//   6. `name` != skill directory name          → the skill's command identity and its
+//                                                on-disk identity stop matching
 //
 // Not covered here, on purpose — each already has an owner:
 //   check-skill-prose.mjs            informational only: 500-line ceiling, references depth
-//   check-skill-tool-portability.mjs blocking: AskUserQuestion cross-runtime migration
 //   check-doc-consistency.mjs        blocking: README/AGENTS name-sets and count strings
 //   check-shell-portability.mjs      blocking: GNU-only shell constructs without a fallback
 // This guard adds no overlap with any of them.
@@ -234,11 +233,11 @@ export function checkSkillContent(rel, content) {
       add(name.line, `\`name\` "${name.value}" is not a YAML string (${name.nested ? 'nested node' : /^[[{]/.test(name.value) ? 'flow collection' : nameType}) — quote it`);
     }
     // 6. name must equal the directory. Claude Code and Codex take the command's last
-    // segment from the frontmatter name while the generated Hermes adapter registers by
-    // directory name, so a mismatch splits one skill into two identities across runtimes.
+    // segment from the frontmatter name, so a mismatch makes the invocable name and
+    // the on-disk skill directory disagree.
     const dir = rel.match(/([^/]+)\/SKILL\.md$/);
     if (dir && name.value !== dir[1]) {
-      add(name.line, `\`name\` "${name.value}" does not match the skill directory "${dir[1]}" — Claude/Codex would use the frontmatter name and the Hermes adapter the directory name`);
+      add(name.line, `\`name\` "${name.value}" does not match the skill directory "${dir[1]}"`);
     }
   }
 

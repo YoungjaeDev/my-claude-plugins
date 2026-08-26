@@ -5,20 +5,7 @@ description: Generate interactive CV data exploration notebooks with ipywidgets 
 
 # cv-explorer Skill
 
-## Hermes Agent Compatibility
-
-When this skill is loaded through Hermes as `ml-toolkit:cv-explorer`, map Claude/Codex tool names to Hermes tools:
-
-| Claude/Codex term | Hermes tool |
-|---|---|
-| Read | read_file |
-| Write | write_file |
-| Edit | patch |
-| NotebookEdit | Hermes "Jupyter Live Kernel" skill, or write_file / patch on the .ipynb JSON |
-
-Treat `$ARGUMENTS` as the natural-language arguments supplied when the user asks Hermes to load the skill. Plugin-provided skills are explicit opt-in loads in Hermes; use `skill_view("ml-toolkit:cv-explorer")` (or ask Hermes to load that qualified skill) rather than relying on bare text.
-
-> **NotebookEdit across runtimes**: Claude and Codex use the `NotebookEdit` tool to author `.ipynb` cells (the global rule forbids hand-editing notebook JSON under Claude). Under Hermes there is no `NotebookEdit` tool — use the Hermes "Jupyter Live Kernel" skill, or write/patch the `.ipynb` JSON directly with `write_file` / `patch` (Hermes' Claude/GPT brain can emit valid notebook JSON).
+> **NotebookEdit**: Claude and Codex use the `NotebookEdit` tool to author `.ipynb` cells (the global rule forbids hand-editing notebook JSON under Claude).
 
 Interactive Computer Vision data exploration notebook generator using ipywidgets.
 
@@ -188,8 +175,6 @@ Generate cells sequentially using NotebookEdit tool:
 
 1. **Execute setup + first-load cells (stronger, env-permitting)** — if `jupyter` is installed and the target env has the notebook's deps, execute the Setup and first Data-loading cells: `jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=120 <notebook>` (slice a temp copy down to the Setup / Configuration / first Data-Loading cells so an interactive viewer widget can't hang the run). This catches import and runtime errors py_compile cannot.
 2. **py_compile the code cells (deterministic fallback, always runs)** — no packages needed. Extract each code cell, strip IPython magics / shell escapes (`!…`, `%…`), and `py_compile` it in order. On the first failure, report **"unverified beyond cell N"** — cells 1..N-1 are syntactically sound, N is where it breaks.
-
-Under Hermes, run this block via `terminal` (`Bash`→`terminal`); it reads the `.ipynb` JSON directly, no `NotebookEdit` needed.
 
 ```bash
 NB="notebook.ipynb"           # the generated notebook

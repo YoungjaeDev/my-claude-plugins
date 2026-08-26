@@ -25,7 +25,7 @@ Builds a checklist markdown into a Tally survey form, creates/publishes it, and 
 
 ## Execution
 
-`uv run <script>` — under Claude Code, `${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py` (works from any install/dev cwd). Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT` and loads the plugin from the cache tree (`~/.codex/plugins/cache/<marketplace>/publish/<version>/`) — so no separate `~/.agents/skills/tally-form` install is created — so use the resolver block below to find the real script path first, then `uv run "$TALLY_SCRIPT"` (the final run is still `uv run`). Hermes searches plugin/skill-level install paths additively (unverified). Since it is stdlib-only, `uv run` runs it directly in an ephemeral environment.
+`uv run <script>` — under Claude Code, `${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py` (works from any install/dev cwd). Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT` and loads the plugin from the cache tree (`~/.codex/plugins/cache/<marketplace>/publish/<version>/`) — so no separate `~/.agents/skills/tally-form` install is created — so use the resolver block below to find the real script path first, then `uv run "$TALLY_SCRIPT"` (the final run is still `uv run`). Since it is stdlib-only, `uv run` runs it directly in an ephemeral environment.
 
 ```bash
 # Claude Code — CLAUDE_PLUGIN_ROOT is set, run directly (cwd-independent)
@@ -35,7 +35,7 @@ uv run "${CLAUDE_PLUGIN_ROOT}/skills/tally-form/scripts/build_tally_form.py" --m
 
 # Codex / CLAUDE_PLUGIN_ROOT unset — resolve the real script path from the plugin cache.
 # Each branch confirms the target exists before committing; the cache picks the first "complete" version in descending version order.
-# The HERMES_HOME search is additive/unverified. The final run is still uv run.
+# The final run is still uv run.
 S="skills/tally-form/scripts/build_tally_form.py"
 TALLY_SCRIPT=""
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "$CLAUDE_PLUGIN_ROOT/$S" ] && TALLY_SCRIPT="$CLAUDE_PLUGIN_ROOT/$S"
@@ -46,8 +46,6 @@ if [ -z "$TALLY_SCRIPT" ]; then
     [ -f "$d/$S" ] && { TALLY_SCRIPT="$d/$S"; break; }
   done < <(ls -1d "$cache_root"/*/publish/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
 fi
-[ -z "$TALLY_SCRIPT" ] && [ -n "${HERMES_HOME:-}" ] && [ -f "$HERMES_HOME/plugins/publish/$S" ] && TALLY_SCRIPT="$HERMES_HOME/plugins/publish/$S"   # unverified
-[ -z "$TALLY_SCRIPT" ] && [ -n "${HERMES_HOME:-}" ] && [ -f "$HERMES_HOME/$S" ] && TALLY_SCRIPT="$HERMES_HOME/$S"                                          # unverified (skill-level install)
 [ -n "$TALLY_SCRIPT" ] || { echo "tally-form: build script not resolved" >&2; exit 1; }
 uv run "$TALLY_SCRIPT" --md <checklist.md> --dry-run
 ```

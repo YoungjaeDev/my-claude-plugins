@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Task AskUserQuestion
 
 The third leg of the harness. A CI failure is a sensor reading; this skill turns it back into a green test (or an honest quarantine), closing the planner -> generator -> **healer** self-improving loop.
 
-Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `e2e-setup` generated (**Path A**); on **Codex 0.135** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**). Hermes is forward-compatible only — `e2e-harness` is not yet in `HERMES_ELIGIBLE`, so it does not load on Hermes today; the generic dispatch maps to Hermes `delegate_task` for when it is added.
+Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `e2e-setup` generated (**Path A**); on **Codex 0.135** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
 
 > **Verified against Playwright 1.61.0.** The headless `npx playwright trace` CLI was introduced in 1.59; the subcommand set below is confirmed on 1.61. The GUI viewer `npx playwright show-trace <trace.zip>` is also available if a human wants to look.
 
@@ -34,12 +34,11 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
        [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
      done < <(ls -1d "$cache_root"/*/e2e-harness/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
    fi
-   [ -z "$PLUGIN_ROOT" ] && [ -n "${HERMES_HOME:-}" ] && [ -e "$HERMES_HOME/plugins/e2e-harness/$CHK" ] && PLUGIN_ROOT="$HERMES_HOME/plugins/e2e-harness"   # unverified
    { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "e2e-debug: role contracts not resolved (need $CHK)" >&2; exit 1; }
    echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```
    - **Path A** — named `playwright-test-healer` is registered (Claude Code): dispatch it by name (Step 3, unchanged).
-   - **Path B** — named agent not registerable but a generic subagent tool is available (Codex `Task`; Hermes `delegate_task`): dispatch a generic subagent carrying the `healer` contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
+   - **Path B** — named agent not registerable but a generic subagent tool is available (Codex `Task`): dispatch a generic subagent carrying the `healer` contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
    - **Path C** — no delegation available: run the healer role yourself per the same contract.
 
 1. **Identify the failing run**:
@@ -70,7 +69,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 
 3. **Heal (bounded loop)** — dispatch the healer with the diagnosis via the Step 0 path:
    - **Path A**: `Task(subagent_type="playwright-test-healer", prompt="Test <name> fails: <trace findings>. Replay the failing steps, find equivalent current elements, patch the test, and re-run until green.")`.
-   - **Path B** (Codex generic subagent): `Task(prompt="You are the Playwright healer role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'healer'): test <name> fails: <trace findings>. Replay the failing steps via the playwright-test MCP server, find equivalent current elements, patch the test, re-run until green then burn-in --repeat-each=3. Bounded to 3 attempts; do not auto-pass a suspected real regression.")` — paste the `healer` contract inline. (Hermes maps `Task` → `delegate_task`.)
+   - **Path B** (Codex generic subagent): `Task(prompt="You are the Playwright healer role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'healer'): test <name> fails: <trace findings>. Replay the failing steps via the playwright-test MCP server, find equivalent current elements, patch the test, re-run until green then burn-in --repeat-each=3. Bounded to 3 attempts; do not auto-pass a suspected real regression.")` — paste the `healer` contract inline.
    - **Path C**: run the healer role yourself per the contract.
    - **Bounded to 3 attempts** (all paths — the cr-fix MAX_ITER pattern): after 3 healer attempts that do not produce a green run, **stop**. Do not loop indefinitely on a stubborn test.
    - If a real regression is suspected (the app behavior genuinely changed, not the test), do **not** auto-patch the test to pass — surface it to the user; the test may be correctly failing.
@@ -90,7 +89,3 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 
 - The healer role drives the browser via the `playwright-test` MCP server; if its tool calls fail, verify `.mcp.json` is approved (`/mcp`).
 - This skill does not author new tests (`e2e-author`) or set up the harness (`e2e-setup`).
-
-## Runtime tool names
-
-Dispatch and file tools differ by runtime. Claude and Codex share names; Hermes (forward-compat only — not loaded today) maps as: `Task` → `delegate_task` (healer dispatch), `Bash` → `terminal` (`npx playwright trace`, `gh run download`, resolver), `Read` → `read_file` (the role contract), `Write`/`Edit` → `write_file`/`patch` (patch the spec), `AskUserQuestion` → `clarify`. Full contract + table: `${PLUGIN_ROOT}/references/role-contracts.md`.

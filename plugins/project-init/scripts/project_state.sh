@@ -101,8 +101,8 @@ done
 
 # --- guidance (CLAUDE.md / AGENTS.md / .claude/rules) ---------------------
 RULES_COUNT=$(count_md .claude/rules)
-# 크로스런타임 공백: Claude 전용 rules 가 있는데 Codex/Hermes 가 읽는 AGENTS.md 가 없음.
-# Codex/Hermes 는 `@import` 를 확장하지 않으므로 AGENTS.md 부재 = 지침 소실.
+# 크로스런타임 공백: Claude 전용 rules 가 있는데 Codex 가 읽는 AGENTS.md 가 없음.
+# Codex 는 `@import` 를 확장하지 않으므로 AGENTS.md 부재 = 지침 소실.
 CROSS_RUNTIME_GAP=false
 if [ "$RULES_COUNT" -gt 0 ] && [ "$S_AGENTS_MD" = false ]; then CROSS_RUNTIME_GAP=true; fi
 

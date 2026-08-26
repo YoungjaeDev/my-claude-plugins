@@ -5,7 +5,7 @@ description: Generate production-quality Computer Vision Jupyter notebooks. Supp
 
 # CV Notebook Generator
 
-> **Structure-aware authoring**: Claude Code authors `.ipynb` cells with the `NotebookEdit` tool. Codex has no `NotebookEdit` — author cells through an `nbformat` Python snippet instead (check `python3 -c "import nbformat"` first; install on miss with `pip install nbformat`). Never hand-edit notebook JSON as raw text on either runtime.
+> **Structure-aware authoring**: Claude Code authors `.ipynb` cells with the `NotebookEdit` tool. Codex has no `NotebookEdit` — author cells through an `nbformat` Python snippet instead (detect the interpreter `python3` → `python` → `py -3`, check `<py> -c "import nbformat"`, install on miss with `<py> -m pip install nbformat`). Never hand-edit notebook JSON as raw text on either runtime.
 
 A skill for generating professional Computer Vision Jupyter notebooks following roboflow/notebooks patterns with Korean insights.
 

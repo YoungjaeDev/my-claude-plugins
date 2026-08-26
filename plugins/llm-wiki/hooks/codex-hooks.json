@@ -6,6 +6,7 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_stale_check.sh\" codex",
+            "commandWindows": "$bash = Get-Command git -All -CommandType Application -ErrorAction Stop | ForEach-Object { $gitPath = $_.Source; $seeds = @((Split-Path $gitPath -Parent)); $execPath = & $gitPath --exec-path 2>$null; if ($LASTEXITCODE -eq 0 -and $execPath) { $seeds += $execPath }; foreach ($seed in $seeds) { $dir = $seed; while ($dir) { $candidate = Join-Path $dir 'bin\\bash.exe'; if (Test-Path -LiteralPath $candidate) { $candidate; break }; $parent = Split-Path $dir -Parent; if ($parent -eq $dir) { break }; $dir = $parent } } } | Select-Object -First 1; if (-not $bash) { throw 'Git Bash not found through git on PATH' }; & $bash \"$env:PLUGIN_ROOT/hooks/wiki_stale_check.sh\" codex",
             "timeout": 5
           }
         ]
@@ -17,11 +18,13 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_start_drain.sh\"",
+            "commandWindows": "$bash = Get-Command git -All -CommandType Application -ErrorAction Stop | ForEach-Object { $gitPath = $_.Source; $seeds = @((Split-Path $gitPath -Parent)); $execPath = & $gitPath --exec-path 2>$null; if ($LASTEXITCODE -eq 0 -and $execPath) { $seeds += $execPath }; foreach ($seed in $seeds) { $dir = $seed; while ($dir) { $candidate = Join-Path $dir 'bin\\bash.exe'; if (Test-Path -LiteralPath $candidate) { $candidate; break }; $parent = Split-Path $dir -Parent; if ($parent -eq $dir) { break }; $dir = $parent } } } | Select-Object -First 1; if (-not $bash) { throw 'Git Bash not found through git on PATH' }; & $bash \"$env:PLUGIN_ROOT/hooks/wiki_session_start_drain.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_start_lint_hint.sh\"",
+            "commandWindows": "$bash = Get-Command git -All -CommandType Application -ErrorAction Stop | ForEach-Object { $gitPath = $_.Source; $seeds = @((Split-Path $gitPath -Parent)); $execPath = & $gitPath --exec-path 2>$null; if ($LASTEXITCODE -eq 0 -and $execPath) { $seeds += $execPath }; foreach ($seed in $seeds) { $dir = $seed; while ($dir) { $candidate = Join-Path $dir 'bin\\bash.exe'; if (Test-Path -LiteralPath $candidate) { $candidate; break }; $parent = Split-Path $dir -Parent; if ($parent -eq $dir) { break }; $dir = $parent } } } | Select-Object -First 1; if (-not $bash) { throw 'Git Bash not found through git on PATH' }; & $bash \"$env:PLUGIN_ROOT/hooks/wiki_session_start_lint_hint.sh\"",
             "timeout": 5
           }
         ]
@@ -33,6 +36,7 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_capture.sh\"",
+            "commandWindows": "$bash = Get-Command git -All -CommandType Application -ErrorAction Stop | ForEach-Object { $gitPath = $_.Source; $seeds = @((Split-Path $gitPath -Parent)); $execPath = & $gitPath --exec-path 2>$null; if ($LASTEXITCODE -eq 0 -and $execPath) { $seeds += $execPath }; foreach ($seed in $seeds) { $dir = $seed; while ($dir) { $candidate = Join-Path $dir 'bin\\bash.exe'; if (Test-Path -LiteralPath $candidate) { $candidate; break }; $parent = Split-Path $dir -Parent; if ($parent -eq $dir) { break }; $dir = $parent } } } | Select-Object -First 1; if (-not $bash) { throw 'Git Bash not found through git on PATH' }; & $bash \"$env:PLUGIN_ROOT/hooks/wiki_session_capture.sh\"",
             "timeout": 5
           }
         ]
@@ -44,6 +48,7 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_session_capture.sh\"",
+            "commandWindows": "$bash = Get-Command git -All -CommandType Application -ErrorAction Stop | ForEach-Object { $gitPath = $_.Source; $seeds = @((Split-Path $gitPath -Parent)); $execPath = & $gitPath --exec-path 2>$null; if ($LASTEXITCODE -eq 0 -and $execPath) { $seeds += $execPath }; foreach ($seed in $seeds) { $dir = $seed; while ($dir) { $candidate = Join-Path $dir 'bin\\bash.exe'; if (Test-Path -LiteralPath $candidate) { $candidate; break }; $parent = Split-Path $dir -Parent; if ($parent -eq $dir) { break }; $dir = $parent } } } | Select-Object -First 1; if (-not $bash) { throw 'Git Bash not found through git on PATH' }; & $bash \"$env:PLUGIN_ROOT/hooks/wiki_session_capture.sh\"",
             "timeout": 5
           }
         ]
@@ -56,6 +61,7 @@
           {
             "type": "command",
             "command": "bash \"${PLUGIN_ROOT}/hooks/wiki_post_commit_hint.sh\" codex",
+            "commandWindows": "$bash = Get-Command git -All -CommandType Application -ErrorAction Stop | ForEach-Object { $gitPath = $_.Source; $seeds = @((Split-Path $gitPath -Parent)); $execPath = & $gitPath --exec-path 2>$null; if ($LASTEXITCODE -eq 0 -and $execPath) { $seeds += $execPath }; foreach ($seed in $seeds) { $dir = $seed; while ($dir) { $candidate = Join-Path $dir 'bin\\bash.exe'; if (Test-Path -LiteralPath $candidate) { $candidate; break }; $parent = Split-Path $dir -Parent; if ($parent -eq $dir) { break }; $dir = $parent } } } | Select-Object -First 1; if (-not $bash) { throw 'Git Bash not found through git on PATH' }; & $bash \"$env:PLUGIN_ROOT/hooks/wiki_post_commit_hint.sh\" codex",
             "timeout": 5
           }
         ]

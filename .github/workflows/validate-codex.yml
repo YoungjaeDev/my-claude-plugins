@@ -102,3 +102,18 @@ jobs:
         run: /bin/bash plugins/github-dev/skills/cr-fix/tests/run-tests.sh
       - name: convene suite under /bin/bash (3.2) + BSD tools
         run: /bin/bash plugins/council/skills/convene/tests/run-tests.sh
+
+  # commandWindows is interpreted by PowerShell, not cmd.exe. This leg executes the
+  # descriptor's real command strings through powershell.exe and Git Bash so quoting,
+  # executable invocation, and PLUGIN_ROOT expansion cannot regress silently.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: execute bundled Codex hooks through PowerShell
+        run: node scripts/windows-codex-hooks.test.mjs

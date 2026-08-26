@@ -578,18 +578,18 @@ CI 는 여기에 더해 **macOS 레그**(`validate-codex.yml` 의 `macos` job)�
 
 ### 머신 로컬 운영 갱신 (PR 밖 오퍼레이터 체크리스트)
 
-marketplace 업데이트가 정본입니다. 예전에 손으로 설치한 복사본(수동 `~/.codex/hooks/prompt_inject.sh`, 스킬 단위로 깐 `~/.agents/skills/<...>`)을 쓰던 머신은 그 복사본이 stale 해질 수 있습니다. 아래는 리포지토리 상태를 바꾸지 않는 **머신 로컬 작업**이라 PR 에 포함되지 않으며, marketplace 업데이트 후 한 번 실행합니다:
+marketplace 업데이트가 정본입니다. 예전에 스킬 단위로 손으로 깐 복사본(`~/.agents/skills/<...>`)을 쓰던 머신은 그 복사본이 stale 해질 수 있습니다. 아래는 리포지토리 상태를 바꾸지 않는 **머신 로컬 작업**이라 PR 에 포함되지 않으며, marketplace 업데이트 후 한 번 실행합니다:
 
 ```bash
 # 1) marketplace 캐시 갱신 (위 "플러그인 업데이트" 절차)
 rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 
-# 2) Codex: 네이티브 marketplace 로 재설치 (수동 ~/.codex/hooks.json 항목을 쓰던 경우 먼저 제거)
+# 2) Codex: 네이티브 marketplace 로 재설치
 codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add github-dev@my-claude-plugins
 ```
 
-신규 설치는 marketplace 업데이트만으로 최신이 됩니다 — 이 체크리스트는 레거시 수동 복사본을 쓰는 머신에만 필요합니다.
+**수동 `~/.codex/hooks.json` 등록은 지우지 마세요** — 생성 매니페스트 계층이 제거된 뒤로 Codex 훅(core-config 매 프롬프트 주입, llm-wiki stale 체크)의 유일한 실행 경로는 이 수동 등록입니다. 항목이 가리키는 스크립트 경로가 재설치 후에도 유효한지(설치된 플러그인의 `hooks/prompt_inject.sh` 등)만 확인하고, 바뀌었으면 경로를 갱신한 뒤 Codex `/hooks` 에서 trust 를 재승인합니다.
 
 ## 요구사항
 

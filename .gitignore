@@ -33,3 +33,6 @@ NUL
 .remember/
 .git-backup-remote
 .last-git-backup-ts
+
+# personal profile (local only)
+USER.md

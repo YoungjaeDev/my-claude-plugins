@@ -95,9 +95,9 @@ All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate 
 
 Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned by `github-dev:state-tracker`. llm-wiki tracks knowledge lore; state-tracker tracks the work pipeline. The two are independent concerns in separate plugins.
 
-## Codex hooks (bundled)
+## Codex hooks (descriptor shipped, manual wiring)
 
-All five hooks also ship to Codex via the source-controlled `hooks/codex-hooks.json` descriptor (`UserPromptSubmit` / `SessionStart` ×2 / `Stop` / `SubagentStop` / `PostToolUse:Bash`). Codex reads model-visible context only from a `hookSpecificOutput.additionalContext` JSON envelope (plain stdout is ignored), so `wiki_stale_check.sh` (UserPromptSubmit) and `wiki_post_commit_hint.sh` (PostToolUse) take a `codex` arg that switches their output to that envelope — the Claude no-arg path stays byte-identical. The two SessionStart hints already emit the envelope, and the capture hooks are side-effect only, so those wire as-is. Codex requires a `/hooks` trust approval before the hooks run.
+A source-controlled `hooks/codex-hooks.json` descriptor still ships with the plugin (`UserPromptSubmit` / `SessionStart` ×2 / `Stop` / `SubagentStop` / `PostToolUse:Bash`), but **nothing wires it automatically** — the generated Codex manifest layer was removed in the 2026-08 restructure, and `.claude-plugin/plugin.json`'s `hooks` field is the Claude-format inline object Codex does not consume. A Codex machine that wants these hooks registers them manually via `~/.codex/hooks.json` (then approves them with `/hooks` — Codex requires hook trust). The scripts remain Codex-ready: Codex reads model-visible context only from a `hookSpecificOutput.additionalContext` JSON envelope (plain stdout is ignored), so `wiki_stale_check.sh` (UserPromptSubmit) and `wiki_post_commit_hint.sh` (PostToolUse) take a `codex` arg that switches their output to that envelope — the Claude no-arg path stays byte-identical. The two SessionStart hints already emit the envelope, and the capture hooks are side-effect only.
 
 ## Conditional behavior
 

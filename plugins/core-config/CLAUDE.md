@@ -54,7 +54,7 @@ bash <plugin-root>/hooks/prompt_inject.sh codex   # -> {"hookSpecificOutput":{..
 # and approve it via /hooks in a Codex session (Codex requires hook trust)
 ```
 
-The bundled descriptor auto-updates with the plugin (no stale hand-copied script). The legacy manual `~/.codex/hooks.json` path still works if you prefer it, but the bundled descriptor is now the primary integration.
+The descriptor and script update with the plugin, but on Codex they run only through the manual `~/.codex/hooks.json` registration above — there is no automatic wiring.
 
 ## Guidelines
 

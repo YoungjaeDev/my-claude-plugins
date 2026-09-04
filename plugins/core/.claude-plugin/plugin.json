@@ -1,0 +1,66 @@
+{
+  "name": "core",
+  "version": "1.0.0",
+  "description": "Hooks only: Python auto-format on Write/Edit, cross-platform terminal notifications, and a per-prompt behavioral block (`prompt_inject.sh`, shared Claude + Codex). The block is fixed; two pointers are conditional — `.llmwiki/insight/` when a knowledge root resolves in cwd, and a one-line `[council]` delegation reminder when a second-model CLI (codex / agy) is on PATH (Claude-only). Work guidelines live in `~/.claude/CLAUDE.md`.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/prompt_inject.sh\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/prompt_inject.sh\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/auto-format-python.py\"; fi",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/notify_osc.py\" Claude \"Task completed\"; fi",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v python3 >/dev/null 2>&1; then python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/notify_osc.py\"; fi",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

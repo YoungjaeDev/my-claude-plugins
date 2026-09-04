@@ -1,20 +1,14 @@
 {
   "plugins": {
     "local": [
-      "./plugins/core-config",
-      "./plugins/github-dev",
-      "./plugins/e2e-harness",
-      "./plugins/code-scout",
-      "./plugins/deepwiki",
-      "./plugins/ml-toolkit",
-      "./plugins/paper-search-tools",
-      "./plugins/docs-forge",
-      "./plugins/llm-wiki",
-      "./plugins/project-init",
-      "./plugins/codex-image",
-      "./plugins/publish",
+      "./plugins/core",
+      "./plugins/dev",
+      "./plugins/docs",
+      "./plugins/scout",
+      "./plugins/ml",
+      "./plugins/wiki",
       "./plugins/council",
-      "./plugins/mem0-ops"
+      "./plugins/codex-image"
     ]
   }
 }

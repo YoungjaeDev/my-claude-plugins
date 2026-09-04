@@ -487,7 +487,7 @@ if (isMain) {
     if (errors.length) {
       console.error(`skill-contract violations (${errors.length}):`);
       for (const e of errors) console.error(`  ${e}`);
-      console.error('\nsee plugins/docs-forge/skills/skill-forge/references/runtime-contract.md for each failure mode.');
+      console.error('\nsee plugins/docs/skills/skill-forge/references/runtime-contract.md for each failure mode.');
       process.exit(1);
     }
     console.log(`skill-contract OK — ${scanned} skills scanned, 6 silent-failure checks, selftest ${RED.length} RED + 1 GREEN.`);

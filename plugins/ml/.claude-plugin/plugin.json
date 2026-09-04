@@ -1,0 +1,5 @@
+{
+  "name": "ml",
+  "version": "1.0.0",
+  "description": "ML / multimodal / CV development: ml-dev-principles (working discipline incl. GPU parallel patterns), gradio-cv-app (Gradio computer-vision demo apps), cv-notebook (CV experiment notebooks with an interactive ipywidgets exploration mode), edit-notebook (safe .ipynb editing through NotebookEdit)."
+}

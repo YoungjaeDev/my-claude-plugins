@@ -8,7 +8,7 @@ Manually sync project progress to GitHub milestones and issues. Regenerates arch
 The `/github-dev:update-progress` skill was retired; there is no slash command for this document.
 
 - **Automated** — `/github-dev:post-merge` Step 5.5 runs the workflow below for every related issue that carries a milestone.
-- **Manual full sync** — follow the workflow below by hand in the main session when tracking drifted outside a merge (issues closed by hand, a milestone renamed). Pick the target the same way the old arguments did: a milestone name selects `.claude/state/project-tracking-{slug}.json`; "all" means every state file; "local" means skip the GitHub writes in steps 5-6 and only refresh the local state file.
+- **Manual full sync** — follow the workflow below by hand in the main session when tracking drifted outside a merge (issues closed by hand, a milestone renamed). Pick the target the same way the old arguments did: a milestone name selects `.claude/state/project-tracking-{slug}.json`; `--all` means every state file; `--local` means skip the GitHub writes in step 6 and only refresh the local state file (the same spellings the workflow steps check).
 
 ## Workflow
 

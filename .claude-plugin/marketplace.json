@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 14 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.29.1"
+    "version": "2.29.2"
   },
   "plugins": [
     {
@@ -68,7 +68,7 @@
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
       "description": "Karpathy LLM-Wiki 3-layer (insight + wiki + raw under neutral .llmwiki/): 4 skills (ingest/lint/bootstrap/plaud-note-taking; query-wiki and migrate-wiki retired 2026-08: read index.md directly, migrate manually) + 5 hooks + bootstrap templates. Three soft hints plus an auto-capture/ingest path: a Stop hook mechanically captures ingest candidates to <root>/.staging/ and the next session's SessionStart drain hook surfaces them for ingest-finding curation (capture and curation split). Post-merge wiki ingest is a mandatory, force-logged step inside github-dev:post-merge (the standalone post-merge-wiki skill was removed — breaking, hence the 2.0.0 major bump). Promoted cross-agent rules graduate to .llmwiki/insight/ (via core-config prompt-inject hook), not .claude/rules/. Resolves .llmwiki/wiki -> legacy .claude/wiki -> .codex/wiki. Agent-facing wiki conventions deduped into references/wiki-conventions.md. Also ships plaud-note-taking, which corrects PLAUD voice-recorder Whisper transcripts against a project terminology dictionary and writes the result under .llmwiki/raw/transcripts/.",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "category": "memory"
     },
     {

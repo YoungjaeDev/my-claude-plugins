@@ -1,6 +1,6 @@
 ---
 name: cv-notebook
-description: Generate production-quality Computer Vision Jupyter notebooks. Supports detection, segmentation, classification, and VLM tasks. Follows roboflow/notebooks patterns with supervision visualization. Triggers on "CV notebook", "detection notebook", "segmentation notebook", "classification notebook", "VLM notebook", "train YOLO notebook", "fine-tune notebook", "inference notebook", "computer vision tutorial".
+description: Generate production-quality Computer Vision Jupyter notebooks. Supports detection, segmentation, classification, and VLM tasks. Follows roboflow/notebooks patterns with supervision visualization. Triggers on "CV notebook", "detection notebook", "segmentation notebook", "classification notebook", "VLM notebook", "train YOLO notebook", "fine-tune notebook", "inference notebook", "computer vision tutorial". Also builds interactive ipywidgets exploration notebooks over COCO, YOLO, NPZ, CSV, or ImageFolder data with detection, segmentation, tracking, or classification viewers, comparison view, and threshold tuning. Triggers on "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "browse dataset", "browse annotations".
 ---
 
 # CV Notebook Generator
@@ -172,10 +172,56 @@ NotebookEdit(notebook_path="notebook.ipynb", edit_mode="insert", cell_id="<previ
 - Use `edit_mode="insert"` with previous cell_id
 - **IMPORTANT**: Cell IDs are returned in the NotebookEdit response and must be tracked for subsequent insertions
 
+## Exploration mode (absorbed from cv-explorer)
+
+Triggers on "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "browse dataset", "browse annotations", "visualize dataset interactively" instead of the training/roboflow flow above. Generates an ipywidgets-based interactive data-exploration notebook — same structure-aware authoring (NotebookEdit / nbformat) and the same End Gate validation described above, different templates.
+
+**Non-triggers** (route to the standard flow above instead): "training notebook", "train model", "fine-tune", "transfer learning", "deploy model", "export model".
+
+### Viewer types
+
+| viewer_type | Description | Best data_format |
+|-------------|--------------|-------------------|
+| `detection` | Bounding box viewer, class/confidence filter | coco-json |
+| `segmentation` | Mask overlay viewer, opacity control | coco-json |
+| `tracking` | Frame-by-frame viewer, track ID highlight, play button | npz |
+| `classification` | Grid viewer, class filter, sorting | csv |
+| `custom` | Fallback: base navigation + cache + supervision/cv2 render | any |
+
+### Data formats
+
+`data_format`: `coco-json`, `yolo-txt`, `npz`, `csv`, `imagefolder` — one loader each in `references/explorer-data-loaders.md`. Detection/segmentation favor coco-json, tracking needs npz, classification favors csv/imagefolder. A mismatched viewer_type x data_format pairing gets a warning markdown cell in the generated notebook rather than a hard block.
+
+### Comparison, threshold tuning, statistics
+
+`comparison=true` adds a side-by-side view (raw vs annotated, or model A vs B); `threshold_tuning=true` adds a live confidence/NMS slider; `statistics=true` (default) adds class-distribution and bbox-size-distribution plots. All three are additive sections built from `references/explorer-patterns.md` Pattern C, D, and E+F respectively.
+
+### Parameters (exploration mode only)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `viewer_type` | `detection` | detection / segmentation / tracking / classification / custom |
+| `data_format` | `coco-json` | coco-json / yolo-txt / npz / csv / imagefolder |
+| `comparison` | `false` | side-by-side comparison view |
+| `threshold_tuning` | `false` | interactive confidence threshold slider |
+| `statistics` | `true` | dataset statistics section |
+| `use_supervision` | `true` | supervision library vs raw cv2 rendering |
+
+`level` and `language` follow the same beginner/intermediate/expert convention and Korean-insight category system documented in User Level Configuration above (format spec in `references/insights-ko.md`); compose ipywidgets-specific insights (continuous_update, Output/clear_output, cache eviction, NMS/threshold tuning) from the Key Points already listed under each pattern in `references/explorer-patterns.md` rather than a separate insight bank.
+
+### Generation
+
+1. Parse `viewer_type` / `data_format` / `comparison` / `threshold_tuning` / `statistics` / `use_supervision` from the request; check the viewer_type x data_format table above and warn on a mismatch.
+2. Load `references/explorer-patterns.md` (Pattern A + B + G minimum, plus C/D/E+F as the optional flags require) and the matching loader in `references/explorer-data-loaders.md`.
+3. Assemble the notebook from `references/templates/exploration.md`'s section order (Header, Setup, Configuration, Data Loading, Interactive Viewer, optional Comparison/Threshold/Statistics, Summary).
+4. Author cells the same structure-aware way as the standard flow (NotebookEdit / nbformat) and run the same End Gate validation before handing the notebook back.
+
 ## Additional Resources
 
 - Code patterns: [references/patterns.md](references/patterns.md)
+- Exploration-mode patterns: [references/explorer-patterns.md](references/explorer-patterns.md)
+- Exploration-mode data loaders: [references/explorer-data-loaders.md](references/explorer-data-loaders.md)
 - Environment setup: [references/environment-setup.md](references/environment-setup.md)
 - Korean insights: [references/insights-ko.md](references/insights-ko.md)
 - Architecture diagrams: [references/diagrams.md](references/diagrams.md)
-- Templates: [references/templates/](references/templates/)
+- Templates: [references/templates/](references/templates/) (`exploration.md` for exploration mode)

@@ -1,6 +1,6 @@
 ---
 name: interview-methodology
-description: This skill should be used when conducting in-depth user interviews, "gathering requirements", "interview me", "ask me questions", "understand my needs before implementing", "spec-based development", when preparing comprehensive specifications before implementation, or when relentlessly stress-testing an existing plan or decision ("grill me", "poke holes in this", "집요하게 캐물어").
+description: This skill should be used when conducting in-depth user interviews, "gathering requirements", "interview me", "ask me questions", "understand my needs before implementing", "spec-based development", when preparing comprehensive specifications before implementation, when relentlessly stress-testing an existing plan or decision ("grill me", "poke holes in this", "집요하게 캐물어"), or when the interview output should be a reusable prompt in Google's TCREI format ("TCREI", "structure this prompt", "make a prompt for next session", "rewrite as TCREI").
 version: 0.4.0
 ---
 
@@ -312,6 +312,10 @@ After interview completion, write a spec file with:
 ## Open Questions
 - [Any unresolved items for future discussion]
 ```
+
+## Reusable Prompt Output
+
+When the interview's goal is a copy-paste-ready prompt for next-session reuse rather than a spec file, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/Iterate) — see `references/tcrei-template.md` for the diagnosis table, output template, and domain-specific gap patterns.
 
 ## Interviewing Anti-Patterns to Avoid
 

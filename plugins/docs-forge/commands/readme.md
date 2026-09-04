@@ -34,6 +34,7 @@ Generate or analyze README files using patterns from awesome-readme.
 
 ### For `generate`
 
+0. Load `Skill("docs-forge:doc-guides")` and follow its `## README` section
 1. Determine project type from argument or by analyzing project structure
 2. Read the appropriate template from `references/TEMPLATES.md`
 3. Gather project info:
@@ -50,6 +51,7 @@ Generate or analyze README files using patterns from awesome-readme.
 
 ### For `analyze`
 
+0. Load `Skill("docs-forge:doc-guides")` and follow its `## README` section
 1. Read existing README.md
 2. Check against patterns in `references/README_PATTERNS.md`
 3. Evaluate using `references/CRO_CHECKLIST.md`

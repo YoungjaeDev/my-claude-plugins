@@ -36,9 +36,9 @@ Single-axis scout for the open web. Fans out under `research-orchestrator`; writ
 
 **Tier 4 guard**: `insane-search` is a *transport* fallback, not a search axis. It does not surface new URLs — only fetches a URL you already have. Do not call it as a substitute for exa / WebSearch.
 
-Read `skills/exa-web-search/SKILL.md` for exa usage details (numResults, query phrasing, when to fetch).
+Read `skills/research-orchestrator/references/exa-web-search.md` for exa usage details (numResults, query phrasing, when to fetch).
 
-**Bright Data is fetch-only here.** Do **not** call `mcp__brightdata__search_engine` / `search_engine_batch` as a search axis — they overlap with the orchestrator's own multi-axis flow and would double-research. Do not call `web_data_*`, `scraping_browser_*`, or `scrape_batch` either; structured extraction, browser automation, and list-wide fetching are outside this axis. If Bright Data is unconfigured, follow the `brightdata-guide` preflight and record the failing gate in `errors` rather than downgrading the fetch silently.
+**Bright Data is fetch-only here.** Do **not** call `mcp__brightdata__search_engine` / `search_engine_batch` as a search axis — they overlap with the orchestrator's own multi-axis flow and would double-research. Do not call `web_data_*`, `scraping_browser_*`, or `scrape_batch` either; structured extraction, browser automation, and list-wide fetching are outside this axis. If Bright Data is unconfigured, follow the preflight in `skills/research-orchestrator/references/brightdata-guide.md` and record the failing gate in `errors` rather than downgrading the fetch silently.
 
 ## Workflow
 
@@ -84,7 +84,7 @@ Reliability rubric: `high` = official blog / vendor docs / >1yr-stable consensus
 - If your `${artifact_id}.json` already exists from a prior run, overwrite it. Partial re-execution intentionally re-runs only the targeted scout's slot; sibling artifacts in the same workspace are left untouched by the orchestrator.
 - On exa quota / network error in quick mode, fall back to `WebSearch` and record the failed exa attempt in an `errors` array (`{tool: "exa", reason: "..."}`) alongside `tools_used`.
 - In deep mode, exa and `WebSearch` run independently — if either errors, keep the other's findings and record the failure in `errors`. Do not abort the artifact unless both fail.
-- `scrape_as_markdown` failures are fetch-level; record them in `errors` but still emit the finding using whatever the `Highlights` already captured. An unconfigured Bright Data setup is recorded the same way (the failing `brightdata-guide` preflight gate goes in `errors`) — never swap in a weaker fetch to hide it.
+- `scrape_as_markdown` failures are fetch-level; record them in `errors` but still emit the finding using whatever the `Highlights` already captured. An unconfigured Bright Data setup is recorded the same way (the failing `brightdata-guide.md` preflight gate goes in `errors`) — never swap in a weaker fetch to hide it.
 - `insane-search` failures (`challenge`, `blocked`) are likewise fetch-level; record in `errors`, fall back to `Highlights`-only finding rather than dropping the URL.
 - Do not call other scouts.
 

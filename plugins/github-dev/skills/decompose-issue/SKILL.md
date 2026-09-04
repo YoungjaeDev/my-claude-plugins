@@ -1,6 +1,6 @@
 ---
 name: decompose-issue
-description: Break a large work item into context-completable GitHub sub-issues, define a 10-20 node architecture and workflow mapping, propose a milestone, and create the issues with gh. Use ONLY when the user explicitly types /github-dev:decompose-issue or asks to decompose or break down work into issues. Do NOT auto-fire from incidental mentions of issues or planning — this creates GitHub issues, a milestone, and a project-tracking state file. Detects TDD applicability, captures dependencies, and writes .claude/state/project-tracking-{slug}.json for the milestone and diagram pipeline.
+description: "Break a large work item into context-completable GitHub sub-issues, define a 10-20 node architecture and workflow mapping, propose a milestone, and create the issues with gh. Also owns the repository issue-label taxonomy (absorbed create-issue-label) — on /github-dev:create-issue-label, 'create issue labels', '라벨 만들어줘', or a label-taxonomy setup request, run only the Labels step and stop. Use ONLY when the user explicitly types /github-dev:decompose-issue or /github-dev:create-issue-label, asks to decompose or break down work into issues, or asks for issue labels. Do NOT auto-fire from incidental mentions of issues or planning — this creates GitHub issues, a milestone, and a project-tracking state file. Detects TDD applicability, captures dependencies, and writes .claude/state/project-tracking-{slug}.json for the milestone and diagram pipeline."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -156,9 +156,9 @@ Break down large work items into manageable, independent issues. Follow project 
 10. **Ask about GitHub creation**: Use the interactive-input gate to let user decide on milestone and issue creation
     - Create milestone with **Markdown Table** in description.
 
-      > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `update-progress.md` "Type M-2"), never in the milestone description.
+      > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `../post-merge/references/update-progress.md` "Type M-2"), never in the milestone description.
 
-      Build `$MILESTONE_TABLE` with the required table block below (canonical spec at `update-progress.md:160`).
+      Build `$MILESTONE_TABLE` with the required table block below (canonical spec at `../post-merge/references/update-progress.md`, "Milestone Format").
       You may prepend objective/scope and dependency-order summary sections required by this file's milestone guidelines.
 
       ```markdown
@@ -264,6 +264,10 @@ Milestone description must include:
 
 ### Labels (Use actual repository labels)
 **Note**: Before assigning labels, verify repository labels with `gh label list`.
+
+**Label-only entry**: when the user asked for labels alone (`/github-dev:create-issue-label`, "create issue labels", a label taxonomy for the repo), run this section only — create the labels and stop without creating issues, a milestone, or a state file.
+
+If the repository has no usable taxonomy yet, create one first (absorbed from the retired create-issue-label skill): inspect `package.json`/`README`/code layout to pick areas, then create type/area/complexity labels with `gh label create`, e.g. `gh label create "type: feature" --color "0e8a16" --description "New feature addition"`.
 
 Examples (vary by project, for reference only):
 - **Type**: `type: feature`, `type: documentation`, `type: enhancement`, `type: bug`

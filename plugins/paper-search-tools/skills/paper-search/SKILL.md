@@ -1,11 +1,15 @@
 ---
 name: paper-search
-description: Use when user wants to search academic papers, find research articles, literature review, download PDFs, or extract paper content across arXiv, PubMed, bioRxiv, medRxiv, Google Scholar, IACR, Semantic Scholar, and CrossRef.
+description: Use when user wants to search academic papers, find research articles, literature review, download PDFs, or extract paper content across arXiv, PubMed, bioRxiv, medRxiv, Google Scholar, IACR, Semantic Scholar, and CrossRef. Also covers server setup and failure triage (Docker image install, JSON-RPC handshake verification, per-runtime MCP registration) via the bundled docker-setup reference.
 ---
 
 # Paper Search MCP
 
 Search, download, and read academic papers across 8 platforms.
+
+## Setup / troubleshooting (absorbed from the retired setup skill)
+
+Install, registration, and failure-class triage live in `references/docker-setup.md` — Read it when the server is missing, the handshake fails, or results look like infrastructure errors rather than empty searches. Search usage below assumes the server is already connected.
 
 ## Supported Platforms
 

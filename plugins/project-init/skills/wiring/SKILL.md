@@ -1,6 +1,6 @@
 ---
 name: wiring
-description: "This skill should be used when the user asks to run a project setup diagnostic on an EXISTING repository — phrases like '프로젝트 진단', '셋업 점검', '하네스 배선 확인', '이 repo 설정 제대로 됐는지 확인', 'check my project wiring', 'is this repo wired up', 'diagnose my project setup', or an explicit /project-init:wiring invocation. Detects 14 axes of agent-harness configuration, including four that check whether config takes EFFECT rather than merely exists: git core.hooksPath, an @import that defeats .claude/rules paths: scoping, MCP servers registered twice so one copy is silently discarded, and the Codex AGENTS.md byte budget. Verdicts are FAIL / WARN / ASK / INFO / SKIP / OK — an ASK is a decision nobody made yet, asked once and persisted to .claude/state/wiring.json. Read-only until approved. Complements /project-init:new (empty dirs only). Not for mem0 store diagnostics (/mem0-ops:doctor) or wiki-content health (/llm-wiki:lint-wiki)."
+description: "This skill should be used when the user asks to run a project setup diagnostic on an EXISTING repository — phrases like '프로젝트 진단', '셋업 점검', '하네스 배선 확인', '이 repo 설정 제대로 됐는지 확인', 'check my project wiring', 'is this repo wired up', 'diagnose my project setup', or an explicit /project-init:wiring invocation. Detects 14 axes of agent-harness configuration, including four that check whether config takes EFFECT rather than merely exists: git core.hooksPath, an @import that defeats .claude/rules paths: scoping, MCP servers registered twice so one copy is silently discarded, and the Codex AGENTS.md byte budget. Verdicts are FAIL / WARN / ASK / INFO / SKIP / OK — an ASK is a decision nobody made yet, asked once and persisted to .claude/state/wiring.json. Read-only until approved. Complements /project-init:new (empty dirs only). Not for mem0 store diagnostics (/mem0-ops:fleet-scan) or wiki-content health (/llm-wiki:lint-wiki)."
 ---
 
 # project-init `wiring` skill
@@ -78,7 +78,7 @@ Map the JSON to verdicts. Suppress an `ASK` only when its key in `.answers` hold
 | hooksPath | `.git.hooks_path`, `.hooks_dir_present` | — | `hooks_dir_present: true` but `hooks_path: null` | — | `git config core.hooksPath .githooks` |
 | guidance | `.seeded.claude_md`, `.guidance` | `claude_md: false`; `cross_runtime_gap: true` | — | — | `/docs-forge:write-rules` |
 | rules scoping | `.rules_scoping` | — | `paths_defeated_by_import` non-empty | — | drop the `@` (mechanical, Step 4) |
-| llm-wiki | `.llmwiki` | `staging_pending > 0` | `state: absent`; `state: legacy`; `state: current` but `insight_layer: false` or `raw_source_buckets: false` | — | pending → `/llm-wiki:ingest-finding`; absent → `/llm-wiki:bootstrap-wiki`; legacy → `/llm-wiki:migrate-wiki` |
+| llm-wiki | `.llmwiki` | `staging_pending > 0` | `state: absent`; `state: legacy`; `state: current` but `insight_layer: false` or `raw_source_buckets: false` | — | pending → `/llm-wiki:ingest-finding`; absent → `/llm-wiki:bootstrap-wiki`; legacy → manual migration per `/llm-wiki:bootstrap-wiki` guidance |
 | serena | `.serena` | — | `state: not-registered` / `registered`; `name_drift: true` | — | onboard via Serena MCP `onboarding`; drift → edit `.serena/project.yml` |
 | memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md`; `mem0_settings: true` but `federate_labels: false`; `mem0_project_mapped: false` | — | see "Memory posture" below |
 | mcp config | `.mcp` | `duplicates_drifted` non-empty | `duplicates` non-empty (identical copies); `unreadable` non-empty | — | collapse to one file (see below) |
@@ -163,7 +163,7 @@ Print a fixed-width table, most severe first. Name the remediation on every non-
 State the scan is filesystem-only. Things it deliberately does not check, to avoid duplicating their owners:
 
 - wiki page staleness / identity duplication → `/llm-wiki:lint-wiki`
-- mem0 store contents and config posture → `/mem0-ops:doctor`
+- mem0 store contents and config posture → `/mem0-ops:fleet-scan`
 - MCP servers left behind by deleted plugins, and which extensions go unused → the built-in `/doctor` (it reads usage history; this skill reads only the filesystem)
 
 ## Step 3.5 — Put the `ASK` axes to the user

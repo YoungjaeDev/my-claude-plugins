@@ -69,7 +69,7 @@ out=$(
   printf '[wiki-stale-hint] %d wiki/insight page(s) exceed their volatility window (stable 180d / volatile 30d):\n' "$n"
   for s in "${stale[@]:0:5}"; do printf '  - %s\n' "$s"; done
   (( n > 5 )) && printf '  - ... and %d more\n' "$((n - 5))"
-  printf 'Run /lint-wiki for a full report, or /query-wiki + bump last_verified after re-checking each page.'
+  printf 'Run /lint-wiki for a full report, or re-check each page and bump last_verified.'
 )
 
 # Emit plain (Claude: stdout -> additionalContext) or the Codex UserPromptSubmit

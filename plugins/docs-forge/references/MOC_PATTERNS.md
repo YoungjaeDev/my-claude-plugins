@@ -2,9 +2,9 @@
 
 The hook-sourcing ladder, lightweight/strict output examples, and llm-wiki
 `index.md` mapping for generating a Map of Content (MOC) over an arbitrary
-folder. The `## Quick Reference` in the `moc-guide` skill is the SSOT. Output
-examples below use the Korean-default form (hooks reflect the Korean docs being
-indexed).
+folder. The `## MOC` section's `### Quick Reference` in the `doc-guides` skill
+is the SSOT. Output examples below use the Korean-default form (hooks reflect
+the Korean docs being indexed).
 
 ## Hook sourcing
 

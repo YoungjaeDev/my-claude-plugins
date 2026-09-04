@@ -6,7 +6,7 @@ Karpathy LLM-Wiki 3-layer system packaged as a plugin. Universal — works in an
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| **6 skills** | `skills/{query,ingest,lint,bootstrap,migrate}-wiki/` + `skills/plaud-note-taking/` | wiki query, finding ingest, health audit, repo bootstrap, v1→v2 migration. (Post-merge ingest moved into `github-dev:post-merge` as a mandatory step.) |
+| **4 skills** | `skills/{ingest,lint,bootstrap}-wiki/` + `skills/plaud-note-taking/` | finding ingest, health audit, repo bootstrap, PLAUD transcript correction. (Post-merge ingest moved into `github-dev:post-merge` as a mandatory step; query-wiki and migrate-wiki were retired 2026-08 — read `index.md` directly, migrate manually per bootstrap-wiki.) |
 | **5 hooks** | `hooks/wiki_{stale_check,post_commit_hint,session_start_lint_hint,session_capture,session_start_drain}.sh` | UserPromptSubmit + PostToolUse(Bash) + SessionStart soft hints, plus Stop/SubagentStop-capture + SessionStart-drain auto-ingest (capture/curation split; `session_capture` wired to both Stop and SubagentStop — the latter scans the subagent's own `agent_transcript_path`, keyed by `agent_id` so it never collides with the parent capture) |
 | **plaud-note-taking** | `skills/plaud-note-taking/` | Corrects PLAUD voice-recorder Whisper transcripts against a project terminology dictionary and writes `*.corrected.md` under `.llmwiki/raw/transcripts/` (absorbed from `plaud-note-taking`) |
 | **bootstrap templates** | `skills/bootstrap-wiki/assets/templates/` | wiki-skeleton (index, log, spec) + insight-skeleton (index, _insight-template) |
@@ -25,7 +25,7 @@ Karpathy analogy: insight = `__init__.py` public contract, wiki = module docstri
 
 ## Resolution order
 
-Skills and hooks resolve the wiki root in order: `.llmwiki/wiki/` (preferred) → `.claude/wiki/` (legacy) → `.codex/wiki/` (legacy Codex fork). New repos get `.llmwiki/`; old repos keep working until migrated via `migrate-wiki`.
+Skills and hooks resolve the wiki root in order: `.llmwiki/wiki/` (preferred) → `.claude/wiki/` (legacy) → `.codex/wiki/` (legacy Codex fork). New repos get `.llmwiki/`; old repos keep working until migrated manually (see bootstrap-wiki).
 
 ## Memory overlay
 
@@ -94,6 +94,10 @@ All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate 
 ## Related: github-dev:state-tracker
 
 Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned by `github-dev:state-tracker`. llm-wiki tracks knowledge lore; state-tracker tracks the work pipeline. The two are independent concerns in separate plugins.
+
+## MOC-first lookup (the retired query-wiki convention)
+
+There is no lookup skill: read `<wiki-root>/index.md` first and follow its hook to the page. The plugin delivers that rule itself through the `wiki_session_start_lint_hint.sh` SessionStart hook (`[wiki-moc]` line, once per 4h per cwd whenever a wiki root resolves), so an installed copy carries it into repos whose own guidance never mentions the wiki. This repo's `AGENTS.md` and the core prompt-inject hook repeat it for their own readers.
 
 ## Codex hooks (descriptor shipped, manual wiring)
 

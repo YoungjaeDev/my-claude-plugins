@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: Run after a PR merges — clean up the local branch, sync tracking, integrate what merged into config + wiki, commit. Use when the user types /github-dev:post-merge, says "post-merge cleanup", "integrate PR learnings", or merged a PR. Identifies the merged PR (gh pr view is the authoritative merge signal — never compare git SHAs), switches to base, deletes the merged branch, syncs GitHub Project/milestone + .claude/state/spec.json, integrates learnings into CLAUDE.md/AGENTS.md/.claude/rules + Serena memory under a no-stamp current-state-only rule, then runs a MANDATORY wiki-lore ingest (absorbed post-merge-wiki, file-list-first candidates + autonomy triage, delegating to llm-wiki:ingest-finding), updates README, commits. Knowledge routing — mechanical tool rules → CLAUDE.md/.claude/rules; cross-agent lore → .llmwiki via the wiki step, recorded once. Runs from the main repo, not a worktree. Codex note — Serena/rules-forge/claude-md-improver/humanize-korean/docs-forge sub-steps are Claude-only and skip.
+description: Run after a PR merges — clean up the local branch, sync tracking, integrate what merged into config + wiki, commit. Use when the user types /github-dev:post-merge, says "post-merge cleanup", "integrate PR learnings", or merged a PR; /github-dev:post-merge --progress-only, "update progress", "sync milestone progress" runs only the milestone sync with no merged PR (absorbed update-progress). Identifies the merged PR (gh pr view is the authoritative merge signal — never compare git SHAs), switches to base, deletes the merged branch, syncs GitHub Project/milestone + .claude/state/spec.json, integrates learnings into CLAUDE.md/AGENTS.md/.claude/rules + Serena memory, runs a MANDATORY wiki-lore ingest (delegating to llm-wiki:ingest-finding), updates README, commits. Runs from the main repo, not a worktree. Codex note — Serena/humanize-korean/docs-forge sub-steps are Claude-only and skip.
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -23,6 +23,12 @@ For worktree removal, use `/exit` with its cleanup option.
 ## Arguments
 
 - PR number (optional): if not provided, infer from conversation context, else `gh pr list --state merged --limit 5` and prompt the user to select.
+- `--progress-only [milestone]` (optional): manual milestone-progress sync with no merged PR (the retired `update-progress` entry point). Also selected by "update progress" / "sync milestone progress" requests that name no PR. Not a shortcut past the guards; the protocol is:
+  - Step 1: run the worktree guard unchanged. Skip PR identification; instead set `RUN_KEY="progress-<milestone-slug>"` (or `progress-all`) and open the run record with `REC=".claude/state/post-merge-${RUN_KEY}.json"`, `run_id "post-merge-${RUN_KEY}"`, `anchor_sha` = `git rev-parse HEAD`, same archive rotation and `record_step` definition.
+  - Step 2: run the dirty-index gate unchanged, so pre-staged unrelated work is stashed, discarded, or aborts before anything is written.
+  - Steps 1.5, 3-5 and 5.7-9.5: skip, each recorded `skipped "progress-only"` (1.5 reads `cr-fix-<PR>.json`, which has no PR here).
+  - Step 5.5: run for the state file(s) selected as `references/update-progress.md` "Entry points" describes: a milestone name or `--all` picks the scope (and therefore `RUN_KEY`); `--local` is a modifier on either scope that skips the GitHub writes, so it never changes `RUN_KEY`, `REC`, or `run_id`.
+  - Step 10: `RUN_TOUCHED` is only the state files and tracking sections this run wrote; finalize with `REC=".claude/state/post-merge-${RUN_KEY:?...}.json"` in place of the `PR_NUMBER` form; commit message `chore: sync milestone progress`.
 
 ## Workflow
 
@@ -236,7 +242,7 @@ Serena/rules-forge).
 
 ### 5.5. Sync milestone progress (if issues have milestones)
 
-For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `skills/update-progress/SKILL.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
+For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `references/update-progress.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
 
 **Record.** `record_step 5.5 done`, or `record_step 5.5 skipped "no milestone"` when no related issue carries one.
 
@@ -287,9 +293,9 @@ If the PR changed features/commands/install/usage/deps and a README exists: draf
 
 ### 9.5. Update CHANGELOG (if present)
 
-If a `CHANGELOG.md` (or `CHANGELOG`) exists at the repo root **and** the merged PR is changelog-worthy (a user-visible feature / fix / breaking change — not a pure docs/test/chore merge), reflect the merge into it. Mirror Step 9's guide-driven approach: read the `docs-forge:changelog-guide` skill + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md` and apply the patterns **manually** (Keep-a-Changelog grouping, the `Unreleased` section, semantic-version discipline, no per-PR stamp noise in normative entries). Derive the entry from `gh pr diff <PR_NUMBER>` + the PR body, place it under the right `Unreleased` heading (Added / Changed / Fixed / Removed), present a diff-style proposal before applying, and add the file to `RUN_TOUCHED` for Step 10.
+If a `CHANGELOG.md` (or `CHANGELOG`) exists at the repo root **and** the merged PR is changelog-worthy (a user-visible feature / fix / breaking change — not a pure docs/test/chore merge), reflect the merge into it. Mirror Step 9's guide-driven approach: read the `docs-forge:doc-guides` skill (`## CHANGELOG` section) + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md` and apply the patterns **manually** (Keep-a-Changelog grouping, the `Unreleased` section, semantic-version discipline, no per-PR stamp noise in normative entries). Derive the entry from `gh pr diff <PR_NUMBER>` + the PR body, place it under the right `Unreleased` heading (Added / Changed / Fixed / Removed), present a diff-style proposal before applying, and add the file to `RUN_TOUCHED` for Step 10.
 
-The `/docs-forge:changelog` **command** is Claude-only (Codex 0.135 emits no command surface) — under Codex, skip the command and do the same edit manually from the `changelog-guide` skill patterns. Skip silently when no CHANGELOG exists or the merge is not changelog-worthy.
+The `/docs-forge:changelog` **command** is Claude-only (Codex 0.135 emits no command surface) — under Codex, skip the command and do the same edit manually from the `doc-guides` `## CHANGELOG` patterns. Skip silently when no CHANGELOG exists or the merge is not changelog-worthy.
 
 **Record.** `record_step 9.5 done`; on a skip, distinguish the cause — `record_step 9.5 skipped "no CHANGELOG"` (no file at the repo root) or `record_step 9.5 skipped "not changelog-worthy"` (a CHANGELOG exists but the merge is a pure docs/test/chore). One reason for both conditions loses why the step skipped.
 
@@ -333,8 +339,8 @@ jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 - **Run-record envelope** (Step 1 + Step 10 — per-step `.claude/state/post-merge-<PR>.json`, schema + archive rotation + per-skill jq): `.claude/rules/state-envelope.md` (concept mirror in `AGENTS.md`).
 - **Mandatory wiki ingest** (absorbed post-merge-wiki — candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
 - **Ephemeral artifact pruning** (Step 4.5 — heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
-- Milestone / Type M-2 diagram mechanics: `skills/update-progress/SKILL.md`
+- Milestone / Type M-2 diagram mechanics: `references/update-progress.md`
 - spec.json schema + ops: `plugins/github-dev/skills/state-tracker/SKILL.md`
-- CHANGELOG patterns (Step 9.5): `docs-forge:changelog-guide` skill + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md`
+- CHANGELOG patterns (Step 9.5): `docs-forge:doc-guides` skill (`## CHANGELOG`) + `plugins/docs-forge/references/CHANGELOG_PATTERNS.md`
 
 > Follow ~/.claude/CLAUDE.md and the project CLAUDE.md.

@@ -1,6 +1,6 @@
 ---
 name: bootstrap-wiki
-description: Use to scaffold the LLM-Wiki knowledge system (`.llmwiki/` insight + wiki + raw, plus spec) in a new repo that doesn't have it yet. Copies templates from the plugin's bundled assets, prompts for project pitch and 1-3 first domains, writes a slim CLAUDE.md.
+description: "Use to scaffold the LLM-Wiki knowledge system (.llmwiki/ insight + wiki + raw, plus spec) in a repo that doesn't have it yet, or to migrate a populated legacy .claude/wiki/ or .codex/wiki/ root to the .llmwiki/ layout (the retired migrate-wiki procedure; triggers 'migrate wiki', 'upgrade wiki', 'move the wiki to .llmwiki'). Copies templates from the plugin's bundled assets, prompts for project pitch and 1-3 first domains, writes a slim CLAUDE.md."
 ---
 
 # bootstrap-wiki
@@ -15,13 +15,13 @@ LLM-Wiki 3-layer = `.llmwiki/insight/` (promoted cross-agent rules) + `.llmwiki/
 - Existing repo where `.claude/` is just `settings.local.json` (or missing) and you want to start LLM-Wiki discipline
 - Asking "how do I add the wiki system here?"
 
-Do NOT use if `.llmwiki/wiki/index.md` (or a legacy `.claude/wiki/index.md`) already exists — the wiki is already initialized; instead use `/llm-wiki:query-wiki` or `/llm-wiki:ingest-finding`. If only a legacy `.claude/wiki/` exists and you want the v2 `.llmwiki/` layout, use `/llm-wiki:migrate-wiki` instead.
+Do NOT scaffold if any of the three roots (`.llmwiki/wiki/`, `.claude/wiki/`, `.codex/wiki/`) is already populated — `index.md`/`log.md` are the usual signals, but Step 1's populated-root check is the authoritative guard — the wiki is already initialized; read `index.md` directly or use `/llm-wiki:ingest-finding`. **Migration mode** (a "migrate wiki" / "upgrade wiki" request on a populated legacy root) runs the procedure in this paragraph instead of the Steps below. If only a legacy `.claude/wiki/` (or `.codex/wiki/`) exists and you want the v2 `.llmwiki/` layout, migrate manually: `mkdir -p .llmwiki && mv <legacy-root> .llmwiki/wiki` where `<legacy-root>` is whichever of `.claude/wiki` / `.codex/wiki` actually exists, add the v2 frontmatter fields (`status`/`volatility`/`sources`) opportunistically as pages get touched, then run `/llm-wiki:lint-wiki` to surface gaps — the dedicated migrate-wiki skill was retired once the legacy-fork era ended. If BOTH legacy roots exist (a repo forked by the retired codex-bridge), do not `mv` either one: `.llmwiki/wiki/` resolves first, so the pages unique to the root you did not move become invisible. Instead create `.llmwiki/wiki/` empty, copy pages from both roots merging by frontmatter `id` (identical pages once, diverging bodies only after the user picks or reconciles them), and delete the two originals only after `/llm-wiki:lint-wiki` passes on the merged tree.
 
 ## Steps
 
 1. **Confirm context**:
    - Run `pwd` and `git rev-parse --show-toplevel` to confirm the target repo root.
-   - If `.llmwiki/wiki/` (or a legacy `.claude/wiki/`) already has content, abort and report to user — overwriting is destructive.
+   - If any of `.llmwiki/wiki/`, `.claude/wiki/`, `.codex/wiki/` already has content, abort and report to user — bootstrapping beside a populated legacy root masks its pages and splits future writes across roots.
 
 2. **Gather project info via AskUserQuestion**:
    - One-line project pitch (will go into `CLAUDE.md`)

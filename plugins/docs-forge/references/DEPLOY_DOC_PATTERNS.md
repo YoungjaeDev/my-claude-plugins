@@ -1,10 +1,10 @@
 # Deploy Doc Patterns
 
 The standard skeleton, a filled example, and anti-patterns for client-facing
-deployment / procedure documents (`.md`). The `## Quick Reference` in the
-`deploy-doc-guide` skill is the SSOT; this document concretizes that skeleton.
-The skeleton and example below are shown in the Korean-default output form the
-tool generates (use `--lang en` for English labels).
+deployment / procedure documents (`.md`). The `## Deploy-doc` section's `### Quick
+Reference` in the `doc-guides` skill is the SSOT; this document concretizes that
+skeleton. The skeleton and example below are shown in the Korean-default output
+form the tool generates (use `--lang en` for English labels).
 
 ## Skeleton
 

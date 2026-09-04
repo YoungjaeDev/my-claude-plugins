@@ -21,7 +21,7 @@ Single-axis scout for GitHub. Fans out under `research-orchestrator`; writes fin
 
 ## Tools
 
-Primary: `gh search repos`, `gh search code`, `gh repo view`. Read `skills/resource-finder/SKILL.md` for query hygiene (date check, multi-query, quality filters).
+Primary: `gh search repos`, `gh search code`, `gh repo view`. Read `skills/research-orchestrator/references/resource-finder.md` for query hygiene (date check, multi-query, quality filters).
 
 ## Workflow
 

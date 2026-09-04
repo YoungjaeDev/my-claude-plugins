@@ -31,7 +31,7 @@ Claude Code 를 위한 8개 플러그인 모음. GitHub 워크플로우, 리서�
 /plugin install scout@my-claude-plugins
 ```
 
-설치 후 `/dev:resolve-issue 123` 처럼 `/plugin:skill` 형태로 호출한다. 플러그인명이 짧은 이유가 이것이다. 슬래시 자동완성은 `/plugin:skill` 전체 이름으로 매칭하므로 접두사가 짧아야 스킬을 찾기 쉽다.
+설치 후 `/dev:resolve-issue 123` 처럼 `/plugin:skill` 형태로 호출한다. 플러그인명을 짧게 둔 이유는 호출 길이와 가독성이다. 슬래시 메뉴는 `:`·`-`·`_` 를 무시하고 이름 안의 단어 시작에서도 매칭하므로 `/cr` 만 쳐도 `/dev:cr-fix` 가 하이라이트된다 (Claude Code 2.1.236 이상).
 
 ## 플러그인 업데이트
 

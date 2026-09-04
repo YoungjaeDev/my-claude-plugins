@@ -1,6 +1,6 @@
 ---
 name: ml-dev-principles
-description: Working discipline for ML / multimodal / CV development: candidate model and dataset selection with license filtering, EDA, training and fine-tuning (SFT/DPO/LoRA), eval-harness and train/val/test isolation, FP/FN error analysis, GPU throughput and multi-GPU pipelines (ProcessPool + CUDA isolation, batch inference). Load at the START of an ML task, on /ml:ml-dev-principles, "EDA", "error analysis", "fine-tune", "eval harness", "test leakage", "multi-GPU", "GPU parallel", "batch inference". How to work, not which library; demo UIs go to /ml:gradio-cv-app, notebooks to /ml:cv-notebook.
+description: "Working discipline for ML / multimodal / CV development: candidate model and dataset selection with license filtering, EDA, training and fine-tuning (SFT/DPO/LoRA), eval-harness and train/val/test isolation, FP/FN error analysis, GPU throughput and multi-GPU pipelines (ProcessPool + CUDA isolation, batch inference). Load at the START of an ML task, on /ml:ml-dev-principles, 'EDA', 'error analysis', 'fine-tune', 'eval harness', 'test leakage', 'multi-GPU', 'GPU parallel', 'batch inference'. How to work, not which library; demo UIs go to /ml:gradio-cv-app, notebooks to /ml:cv-notebook."
 ---
 
 # ML / 멀티모달 개발 원칙

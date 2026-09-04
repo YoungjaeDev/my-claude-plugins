@@ -1,6 +1,6 @@
 ---
 name: convene
-description: Convene a cross-vendor council: codex (GPT), agy (Gemini) and a Claude Opus seat answer independently, hand follow-up questions to the user, rebut each other, then the chair synthesizes agreement and surviving disagreement. Use on /council:convene, "카운슬", "심의", "다른 모델 의견", "convene a council", "second opinion from another model", "cross-model debate". For a decision that needs a different model's judgment rather than more Claude sampling; not for ordinary code review.
+description: "Convene a cross-vendor council: codex (GPT), agy (Gemini) and a Claude Opus seat answer independently, hand follow-up questions to the user, rebut each other, then the chair synthesizes agreement and surviving disagreement. Use on /council:convene, '카운슬', '심의', '다른 모델 의견', 'convene a council', 'second opinion from another model', 'cross-model debate'. For a decision that needs a different model's judgment rather than more Claude sampling; not for ordinary code review."
 ---
 
 # Council — cross-vendor deliberation

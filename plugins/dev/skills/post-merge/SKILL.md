@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: Clean up after a PR merges: switch to base, delete the merged branch, sync GitHub Project/milestone and .claude/state/spec.json, integrate what merged into CLAUDE.md/AGENTS.md/.claude/rules, run the mandatory wiki-lore ingest, commit. Use on /dev:post-merge, "post-merge cleanup", "머지 후 정리", "integrate PR learnings", or right after a PR merges; /dev:post-merge --progress-only, "update progress", "sync milestone progress" runs only the milestone sync with no merged PR. gh pr view is the merge signal, never git SHAs; runs from the main repo, not a worktree. Not for an open PR's review feedback (/dev:cr-fix).
+description: "Clean up after a PR merges: switch to base, delete the merged branch, sync GitHub Project/milestone and .claude/state/spec.json, integrate what merged into CLAUDE.md/AGENTS.md/.claude/rules, run the mandatory wiki-lore ingest, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', 'integrate PR learnings', or right after a PR merges; /dev:post-merge --progress-only, 'update progress', 'sync milestone progress' runs only the milestone sync with no merged PR. gh pr view is the merge signal, never git SHAs; runs from the main repo, not a worktree. Not for an open PR's review feedback (/dev:cr-fix)."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 

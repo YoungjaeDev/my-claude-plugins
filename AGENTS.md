@@ -45,7 +45,10 @@
 
 - `AGENTS.md`: 이 문서. 두 런타임 공통 최상위 지침 + 플러그인 목록 + 구조 요약.
 - `CLAUDE.md`: `@AGENTS.md` 를 import 하는 한 줄 파일. Claude Code 진입점일 뿐, 별도 내용이 없습니다.
-- `CLAUDE.md.global` / `CLAUDE.md.global.ko`: 사용자 전역 지침(`~/.claude/CLAUDE.md`)의 정본과 손으로 유지하는 한국어 번역. 영어 파일이 SoT — 영어를 먼저 고치고 `.ko` 를 미러한 뒤 `cp CLAUDE.md.global ~/.claude/CLAUDE.md` 로 사본을 갱신한다. `.ko` 는 어떤 에이전트도 로드하지 않는다. 사본을 이 워킹트리로의 심볼릭 링크로 걸지 않는다 — 그러면 브랜치 전환과 커밋 안 된 편집이 그 순간 전역 지침으로 발효된다.
+- `CLAUDE.md.global` / `CLAUDE.md.global.ko`: Claude 와 Codex 가 공통으로 사용하는 사용자 전역 지침의 저장소 정본과 손으로 유지하는 한국어 번역. 영문 `CLAUDE.md.global` 이 저장소 정본이다. 영어를 먼저 고치고 `.ko` 를 미러한다.
+  - 저장소 정본을 `cp CLAUDE.md.global ~/.claude/CLAUDE.md` 와 `cp CLAUDE.md.global ~/.codex/AGENTS.md` 로 복사해 두 런타임의 설치 사본을 갱신한다. `.ko` 는 어떤 에이전트도 로드하지 않는다.
+  - 사본을 이 워킹트리로의 심볼릭 링크로 걸지 않는다. 브랜치 전환과 커밋하지 않은 편집이 즉시 전역 지침으로 발효될 수 있다.
+  - 동기화 안내는 이 저장소에만 둔다. 모든 프로젝트에서 로드되는 전역 파일에는 규칙 외의 내용을 추가하지 않는다.
 - `README.md`: 사용자용 설치 및 플러그인 문서.
 - `.claude/settings.json`: 로컬 플러그인 로드 설정.
 - `.claude-plugin/marketplace.json`: marketplace 레지스트리와 플러그인 버전 목록. Codex 도 이 카탈로그를 네이티브로 읽는다.

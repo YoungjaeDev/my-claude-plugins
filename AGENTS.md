@@ -29,7 +29,7 @@
 | `council` | AI Models | (단독 유지, Claude 전용) |
 | `codex-image` | AI Models | (단독 유지, Claude 전용) |
 
-플러그인명을 짧게 둔 이유는 슬래시 자동완성이다. 플러그인 스킬은 항상 `/plugin:skill` 로 노출되고 매칭은 전체 이름 기준이라, 접두사가 길면 스킬명을 아무리 잘 지어도 찾기 어렵다. 플러그인은 `.claude/settings.json` 에서 auto-load 된다. 사용법은 `README.md`.
+플러그인명을 짧게 둔 이유는 호출 길이와 가독성이다. 플러그인 스킬은 항상 `/plugin:skill` 로 노출된다. 슬래시 메뉴는 `:`·`-`·`_` 를 무시하고 이름 안의 단어 시작에서도 매칭하므로 (`/cr` 이 `/dev:cr-fix` 를 하이라이트, Claude Code 2.1.236 이상) 접두사 길이가 매칭을 막지는 않는다. 플러그인은 `.claude/settings.json` 에서 auto-load 된다. 사용법은 `README.md`.
 
 ## 저장소 구조
 

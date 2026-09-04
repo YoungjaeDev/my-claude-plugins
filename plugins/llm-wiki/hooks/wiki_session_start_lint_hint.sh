@@ -50,18 +50,25 @@ newest=$(LC_ALL=C.UTF-8 sed -n 's/^##[[:space:]]\{1,\}\([0-9]\{4\}-[0-9]\{2\}-[0
 # The MOC-first pointer is the query-wiki convention this plugin carries on its own: an
 # installed copy must deliver it even where the repo's AGENTS.md and the core prompt-inject
 # hook are absent. Emitted whenever a wiki root resolves, once per rate-limit window.
-msg="[wiki-moc] Before answering a lore question (a why/how that is not a code invariant), read $wiki_root/index.md first, follow its hook to the page, and cite that page rather than memory."
+# A root can resolve on log.md alone (a moved legacy root without an index), so point at the
+# MOC only when it exists; otherwise the lint hint alone still fires.
+msg=""
+if [[ -f "$wiki_root/index.md" ]]; then
+  msg="[wiki-moc] Before answering a lore question (a why/how that is not a code invariant), read $wiki_root/index.md first, follow its hook to the page, and cite that page rather than memory."
+fi
 if [[ -z "$newest" ]]; then
-  msg="$msg [wiki-lint-hint] no lint-wiki baseline in $log_file; consider /lint-wiki to establish wiki health."
+  msg="${msg:+$msg }[wiki-lint-hint] no lint-wiki baseline in $log_file; consider /lint-wiki to establish wiki health."
 else
   n_ts=$(date -d "$newest" +%s 2>/dev/null || date -j -f '%Y-%m-%d' "$newest" +%s 2>/dev/null) || exit 0
   age_days=$(( ($(date +%s) - n_ts) / 86400 ))
   if (( age_days > 3 )); then
-    msg="$msg [wiki-lint-hint] last /lint-wiki was $age_days days ago ($newest); consider /lint-wiki to catch drift."
+    msg="${msg:+$msg }[wiki-lint-hint] last /lint-wiki was $age_days days ago ($newest); consider /lint-wiki to catch drift."
   fi
 fi
 
 # Emit as SessionStart additionalContext (model-visible)
+[[ -z "$msg" ]] && exit 0
+
 esc=$(printf '%s' "$msg" | sed 's/\\/\\\\/g; s/"/\\"/g')
 printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$esc"
 

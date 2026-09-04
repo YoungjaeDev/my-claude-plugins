@@ -41,6 +41,10 @@ jobs:
       # downloaded image to one filename on macOS (issue #172). Flags a construct
       # only when no fallback, capability probe, or `# portability-ok:` sits near it.
       - run: node scripts/check-shell-portability.mjs
+      # Both directions: constructs that must be flagged, and correct fallbacks
+      # that must not be. The second half is what keeps the guard usable -- one
+      # false positive on `stat -c … || stat -f …` and it gets switched off.
+      - run: node scripts/check-shell-portability.test.mjs
       # Silent-failure checks on skill frontmatter/bodies: description over the
       # Codex 1024-char skip threshold, unquoted `: ` collapsing the YAML, bare
       # ${CLAUDE_PLUGIN_ROOT} in a shell block with no resolver, non-kebab name,
@@ -58,11 +62,26 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
+      # Printed directly rather than through `echo "$(...)"`. Command substitution
+      # inside echo discards the inner status -- echo succeeds either way -- which
+      # is the "종료 상태가 사라지는 자리" P1 this repo added in #183, and a workflow
+      # that violates its own rule is a bad exemplar. The step's shell is `bash -e`,
+      # so a genuinely missing bash now fails here instead of printing a blank line.
+      # The loop keeps its `|| echo '(absent)'`: absence is the answer it is asking.
       - name: runner userland (informational)
         run: |
-          echo "bash on PATH: $(which -a bash | tr '\n' ' ')"
-          echo "PATH bash:    $(bash --version | head -1)"
-          echo "/bin/bash:    $(/bin/bash --version | head -1)"
+          # The step shell is `bash -e`, which does NOT set pipefail: a failing
+          # `/bin/bash --version` was masked by `head`'s success and the step
+          # still passed -- the same false green this block was rewritten to
+          # remove, one layer down. Verified: `bash -e -c '/missing/bash
+          # --version | head -1; echo survived'` exits 0.
+          set -o pipefail
+          echo "bash on PATH:"
+          which -a bash
+          echo "PATH bash:"
+          bash --version | head -1
+          echo "/bin/bash:"
+          /bin/bash --version | head -1
           for t in sed grep date stat jq md5sum timeout gsed gdate gstat; do
             printf '%-8s %s\n' "$t" "$(command -v "$t" || echo '(absent)')"
           done

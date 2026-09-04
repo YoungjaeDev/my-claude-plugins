@@ -143,12 +143,13 @@ cr-fix 의 스크립트·레퍼런스 경로는 `plugins/github-dev/skills/cr-fi
 ```bash
 node scripts/check-doc-consistency.mjs
 node scripts/check-shell-portability.mjs
+node scripts/check-shell-portability.test.mjs
 node scripts/check-skill-contract.mjs
 ```
 
 `check-doc-consistency.mjs` 는 README 구조 트리·README `## 플러그인 상세` 의 `<summary>` 이름 집합·`## Plugins` 표·문서에 박힌 카운트 문자열을 marketplace.json 과 대조하고 `.githooks/pre-commit` 에서 차단한다. 상세 절이 뒤늦게 추가된 이유가 이 가드의 성질을 말해준다 — 트리 엔트리와 `<details>` 블록은 같은 문서의 **서로 다른 표면**이라, 한쪽을 대조해도 다른 쪽은 안 대조된다. 플러그인 제거 후 상세 절에 죽은 항목 11개가 남고 살아있는 항목 1개가 빠진 채로 이 가드가 통과한 적이 있다. 문서 한 종류를 지킨다고 그 문서 전체가 지켜지는 게 아니므로, 새 문서 블록을 만들 때 어느 표면이 실제로 검사되는지 확인한다.
 
-`check-shell-portability.mjs` 는 `code_review.md` P1 의 크로스플랫폼 규칙을 기계적으로 강제한다 — GNU 전용 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우만 잡는다. 정상 폴백 쌍(`stat -c … || stat -f …`)과 probe 분기는 통과하며, 증거는 **코드여야 하고 주석은 인정하지 않는다**. 정말 예외인 줄은 `# portability-ok: <사유>` 로 표시한다. `.claude/spec/`·`code_review.md`·`AGENTS.md` 는 그 구문을 *설명*할 뿐이라 스캔에서 제외된다.
+`check-shell-portability.mjs` 는 `code_review.md` P1 의 크로스플랫폼 규칙을 기계적으로 강제한다 — GNU 전용 구문(`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등)이 **폴백도 capability probe 도 없이** 쓰인 경우만 잡는다. 정상 폴백 쌍(`stat -c … || stat -f …`)은 통과한다 — 단 **`||` 는 우변에 BSD 대응물이 있을 때만** 폴백으로 인정한다 (`md5sum "$f" || exit 1` 은 여전히 macOS 에서 깨지므로 통과시키지 않는다). capability probe 도 **대응물과 짝일 때만** 인정한다 — 짝 없는 `sed --version` 뒤의 `sed -i` 는 분기가 없으므로 잡는다. BSD 대응물이 아예 없는 구문(`grep -P`·`timeout`·bash 4 문법 등)은 가리킬 포터블 대안이 없으므로 `||` 나 probe 로 지워지지 않고 명시적 예외만 받는다. GNU 긴 옵션 별칭(`--perl-regexp`·`--date`·`--format`·`--in-place`)도 같은 규칙으로 잡는다. 증거는 **코드여야 하고 주석은 인정하지 않는다** (대체재를 언급하는 주석이 실제 폴백으로 계수되면 이 가드가 존재하는 이유인 `md5sum` 자체가 새어나간다). 정말 예외인 줄은 `# portability-ok: <사유>` 로 표시한다 — 사유는 필수이고, 콜론 뒤가 비면 예외로 인정하지 않는다. 판정은 **정규식이 아니라 셸 워드 토크나이저**로 한다: 옵션 문법을 정규식으로 흉내내면 새 철자(`-oP` → `-Pio` → `--perl-regexp` → `--color=always -P` → `-n --perl-regexp`)가 계속 새어 나가고, 토크나이저는 따옴표 인식이 딸려 와 **인용 문자열이 증거로 계수되는 것**(`printf 'md5'` 를 BSD 대안으로, `printf '# portability-ok: …'` 를 예외로 읽는 것)까지 같이 막는다. 명령 위치도 구분하므로 `command -v timeout` 의 `timeout` 은 인자이지 호출이 아니고, `case` 패턴의 `iteration_cap|timeout|…)` 도 실행이 아니다. 회귀 케이스는 `scripts/check-shell-portability.test.mjs` 30건이며 pre-commit + CI 양쪽에서 돈다 — 가드 자체가 detector 라 커버리지 없이 두면 "볼 수 없었다" 를 "문제 없다" 로 보고한다. 스캔 대상은 `*.sh`/`*.bash`/`*.md` 의 fenced bash 블록에 더해 **shebang 이 sh/bash 인 확장자 없는 tracked 파일**까지다 (`.githooks/pre-commit` 이 그것이고, 이 가드를 실행하는 파일 자신이 사각지대였다). `.claude/spec/`·`code_review.md`·`AGENTS.md` 는 그 구문을 *설명*할 뿐이라 스캔에서 제외된다.
 
 이 가드는 **git-tracked 파일만** 스캔한다. 새 파일을 스테이징하기 전에 돌리면 그 파일을 한 줄도 보지 않고 통과하므로, 신규 파일을 만든 변경에서는 `git add` 후 재실행해야 결과가 유효하다 (스캔 파일 수가 늘어나는 것으로 확인 가능).
 

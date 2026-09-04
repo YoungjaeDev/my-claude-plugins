@@ -34,7 +34,7 @@ explicitly: with no argument the script defaults to `plugins/` when it exists, s
 skill under `.claude/skills/` in a repository that also has `plugins/` silently measures a
 different tree and the target never appears in the output.
 
-Set `TARGET_ROOT` to the directory holding the target and its siblings — `plugins/<plugin>/skills`,
+Set `TARGET_ROOT` to the directory holding the target and its siblings: `plugins/<plugin>/skills`,
 `.claude/skills`, or whatever contains it. Siblings matter: the pointer axis is judged against them.
 
 ```bash
@@ -86,11 +86,11 @@ Emit, in this order:
 
 1. The measurement row for the target.
 2. Findings, P0 first, each as: axis, evidence (file and line), impact, and the concrete edit.
-3. Anything checked and found clean, in one line — so a later reader can tell an unchecked axis
+3. Anything checked and found clean, in one line, so a later reader can tell an unchecked axis
    from a passed one.
 4. What could not be determined, marked `unverified`, with what would settle it.
 
-Do not apply edits as part of the audit. Report, then let the caller choose — the P2 tier in
+Do not apply edits as part of the audit. Report, then let the caller choose: the P2 tier in
 particular is often not worth a version bump on its own.
 
 ## Pitfalls

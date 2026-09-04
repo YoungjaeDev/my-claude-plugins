@@ -163,7 +163,7 @@ Create a versioned GitHub release with automatic version detection, version file
 
 ### Multi-File Projects
 
-Some projects have version numbers in multiple files (e.g., Tauri: `tauri.conf.json` + `Cargo.toml` + optionally `package.json`). All detected files are updated together to keep versions in sync.
+All files detected in Step 3 are updated together, so a project with multiple version manifests (e.g., Tauri's `tauri.conf.json` + `Cargo.toml` + optionally `package.json`) stays in sync.
 
 ### Fallback
 

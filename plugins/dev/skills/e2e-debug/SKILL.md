@@ -4,7 +4,7 @@ description: Close the Playwright self-healing loop — diagnose and repair a fa
 allowed-tools: Read Write Edit Bash Glob Grep Task AskUserQuestion
 ---
 
-# E2E Debug — trace analysis + healer (close the loop)
+# E2E Debug: trace analysis + healer (close the loop)
 
 The third leg of the harness. A CI failure is a sensor reading; this skill turns it back into a green test (or an honest quarantine), closing the planner -> generator -> **healer** self-improving loop.
 
@@ -15,12 +15,12 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 ## Precondition check
 
 - Need `gh` CLI authenticated to fetch CI artifacts.
-- **Path A only**: confirm the named healer exists (`.claude/agents/playwright-test-healer.md`). If missing **and you are on Claude Code**, route to `dev:e2e-setup`. **Do not** demand this Claude agent file under Codex — there the bundled healer contract stands in (see Step 0).
-- **Requires Playwright >= 1.59** for the headless `npx playwright trace` CLI used in Step 2 (`npx playwright --version` to check). On older versions there is no headless trace CLI — fall back to the GUI viewer `npx playwright show-trace <trace.zip>`.
+- **Path A only**: confirm the named healer exists (`.claude/agents/playwright-test-healer.md`). If missing **and you are on Claude Code**, route to `dev:e2e-setup`. **Do not** demand this Claude agent file under Codex; there the bundled healer contract stands in (see Step 0).
+- **Requires Playwright >= 1.59** for the headless `npx playwright trace` CLI used in Step 2 (`npx playwright --version` to check). On older versions there is no headless trace CLI: fall back to the GUI viewer `npx playwright show-trace <trace.zip>`.
 
 ## Workflow
 
-0. **Resolve the plugin root + pick the execution path** — run once. The resolver reaches the bundled healer contract on Path B/C; the path decision governs Step 3. Tell the user which path you took in one sentence.
+0. **Resolve the plugin root + pick the execution path**: run once. The resolver reaches the bundled healer contract on Path B/C; the path decision governs Step 3. Tell the user which path you took in one sentence.
    ```bash
    # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Each branch verifies
    # the target (CHK) exists before committing, so a stale env falls through.
@@ -37,9 +37,9 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
    { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "e2e-debug: role contracts not resolved (need $CHK)" >&2; exit 1; }
    echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```
-   - **Path A** — named `playwright-test-healer` is registered (Claude Code): dispatch it by name (Step 3, unchanged).
-   - **Path B** — named agent not registerable but a generic subagent tool is available (Codex `Task`): dispatch a generic subagent carrying the `healer` contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
-   - **Path C** — no delegation available: run the healer role yourself per the same contract.
+   - **Path A**: named `playwright-test-healer` is registered (Claude Code). Dispatch it by name (Step 3, unchanged).
+   - **Path B**: named agent not registerable but a generic subagent tool is available (Codex `Task`). Dispatch a generic subagent carrying the `healer` contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
+   - **Path C**: no delegation available. Run the healer role yourself per the same contract.
 
 1. **Identify the failing run**:
    - Input is a failed CI run URL/ID or a PR. Resolve the run:
@@ -54,7 +54,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
      ```bash
      gh run download <run-id> -n playwright-report-<run-id> -D ./_e2e-artifacts
      ```
-   - Inspect the trace from the command line (no GUI needed — this is the agent-friendly path):
+   - Inspect the trace from the command line (no GUI needed; this is the agent-friendly path):
      ```bash
      TRACE=$(find ./_e2e-artifacts -name trace.zip | head -1)
      npx playwright trace open "$TRACE"      # extract for inspection
@@ -65,14 +65,14 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
      npx playwright trace errors             # errors with stack traces
      npx playwright trace close              # clean up extracted data
      ```
-   - Form a hypothesis: is it a **real regression** (app changed), a **selector drift** (UI moved), an **environment/data** issue, or a **genuine flake** (timing/race)? The fix differs per class — heal selector/timing issues; escalate real regressions to the user.
+   - Form a hypothesis: is it a **real regression** (app changed), a **selector drift** (UI moved), an **environment/data** issue, or a **genuine flake** (timing/race)? The fix differs per class: heal selector/timing issues; escalate real regressions to the user.
 
-3. **Heal (bounded loop)** — dispatch the healer with the diagnosis via the Step 0 path:
+3. **Heal (bounded loop)**. Dispatch the healer with the diagnosis via the Step 0 path:
    - **Path A**: `Task(subagent_type="playwright-test-healer", prompt="Test <name> fails: <trace findings>. Replay the failing steps, find equivalent current elements, patch the test, and re-run until green.")`.
-   - **Path B** (Codex generic subagent): `Task(prompt="You are the Playwright healer role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'healer'): test <name> fails: <trace findings>. Replay the failing steps via the playwright-test MCP server, find equivalent current elements, patch the test, re-run until green then burn-in --repeat-each=3. Bounded to 3 attempts; do not auto-pass a suspected real regression.")` — paste the `healer` contract inline.
+   - **Path B** (Codex generic subagent): `Task(prompt="You are the Playwright healer role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'healer'): test <name> fails: <trace findings>. Replay the failing steps via the playwright-test MCP server, find equivalent current elements, patch the test, re-run until green then burn-in --repeat-each=3. Bounded to 3 attempts; do not auto-pass a suspected real regression.")`. Paste the `healer` contract inline.
    - **Path C**: run the healer role yourself per the contract.
-   - **Bounded to 3 attempts** (all paths — the cr-fix MAX_ITER pattern): after 3 healer attempts that do not produce a green run, **stop**. Do not loop indefinitely on a stubborn test.
-   - If a real regression is suspected (the app behavior genuinely changed, not the test), do **not** auto-patch the test to pass — surface it to the user; the test may be correctly failing.
+   - **Bounded to 3 attempts** (all paths, the cr-fix MAX_ITER pattern): after 3 healer attempts that do not produce a green run, **stop**. Do not loop indefinitely on a stubborn test.
+   - If a real regression is suspected (the app behavior genuinely changed, not the test), do **not** auto-patch the test to pass. Surface it to the user; the test may be correctly failing.
 
 4. **Verify**:
    - Re-run the specific test, then burn it in:
@@ -83,7 +83,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 
 5. **Resolve or quarantine**:
    - **Fixed**: stage the patched spec, summarize the root cause, and reflect on the PR (comment or push the fix per the user's flow).
-   - **Not fixed after 3 attempts**: quarantine honestly — mark `test.skip` (or `test.fixme`) with a comment stating the reason and a link to a tracking issue. Never leave the suite red or silently drop coverage. Report the quarantine explicitly so it is visible, not buried.
+   - **Not fixed after 3 attempts**: quarantine honestly by marking `test.skip` (or `test.fixme`) with a comment stating the reason and a link to a tracking issue. Never leave the suite red or silently drop coverage. Report the quarantine explicitly so it is visible, not buried.
 
 ## Notes
 

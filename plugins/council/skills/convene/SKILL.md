@@ -16,8 +16,8 @@ systematic mistakes; a real second opinion has to come from a model somebody els
 Every question below runs through a **capability-aware** interactive-input gate rather than one
 hardcoded tool:
 
-- **Claude Code** — use `AskUserQuestion`.
-- **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE
+- **Claude Code**: use `AskUserQuestion`.
+- **Codex**: use `request_user_input` when that tool is exposed. When it is not, ask ONE
   concise blocking question only where a wrong assumption would be costly; otherwise proceed on
   a documented safe default and state the assumption.
 
@@ -44,7 +44,7 @@ Seat models are pinned in `~/.claude/council-models.json` so they survive across
 confirmed at most once a week.
 
 The seven-day window is a **constant here, never a field read back from the registry.** A TTL
-taken from the file it governs is not a guarantee — one hand-edited `ttl_days` and the pins never
+taken from the file it governs is not a guarantee: one hand-edited `ttl_days` and the pins never
 come up for confirmation again, which is exactly the "always ask on expiry" property this design
 was chosen for. A timestamp that is missing, non-numeric, or in the future is treated as expired
 for the same reason: those are the shapes a corrupted or tampered registry takes, and none of
@@ -53,7 +53,7 @@ them should buy indefinite freshness.
 Freshness also requires the pins to actually be there. A registry whose `checked_at_epoch` is
 recent but whose `seats` block is missing, malformed, or empty would otherwise read as `fresh`,
 and the seats would then run with a model name of `null`. Anything that fails to parse or is
-missing a seat pin is `expired` — that routes it back through confirmation instead of forward
+missing a seat pin is `expired`, which routes it back through confirmation instead of forward
 into a broken call.
 
 ```bash
@@ -82,9 +82,9 @@ else
 fi
 ```
 
-- `STATE=fresh` — the pins are still current; run the validity check below and, if it passes, go
+- `STATE=fresh`: the pins are still current; run the validity check below and, if it passes, go
   to Step 1 without asking anything.
-- `STATE=missing` or `STATE=expired` — confirm the pins with the user before convening. Expiry
+- `STATE=missing` or `STATE=expired`: confirm the pins with the user before convening. Expiry
   **always** asks, even when nothing changed. Deciding whether a newer model is actually better
   belongs to the user, and a silent upgrade drifts into unintended spend.
 
@@ -92,7 +92,7 @@ fi
 
 A CLI update can retire a model inside the seven-day window. The failure table says a pin that
 has vanished from the candidate list is asked about **before** expiry, so `fresh` cannot skip
-straight to Step 1 — otherwise the run reaches Round 1 with a dead pin and merely records the
+straight to Step 1: otherwise the run reaches Round 1 with a dead pin and merely records the
 seat as absent, which reads as "the seat failed" rather than "your pin is gone". The check is
 local and cheap:
 
@@ -128,7 +128,7 @@ fi
 ```
 
 A `STALE_PIN=` line means: tell the user which pin disappeared and ask for a replacement, even
-though the TTL has not elapsed. A `LIST_UNREAD=` line means the opposite — say nothing about that
+though the TTL has not elapsed. A `LIST_UNREAD=` line means the opposite: say nothing about that
 seat's pin, because a list you could not read is not evidence of anything.
 
 Gather the real candidate lists first so the question carries evidence rather than guesses:
@@ -167,14 +167,14 @@ failed to load is a pin confirmed against nothing.
 
 Show the current pins next to those lists and ask through the interactive-input gate whether to
 keep or change them. Accept a natural-language answer ("codex를 luna로 바꿔줘"), and resolve it
-against the candidate list you just printed — a name that is not on the list goes back to the
+against the candidate list you just printed: a name that is not on the list goes back to the
 user rather than into the registry. Then write the file; `checked_at_epoch` is what keeps the TTL
 arithmetic off `date -d` and portable.
 
 **The confirmed pins never pass through shell source.** Two failure modes sit on either side of
 that rule: hard-coding defaults into the block throws the user's actual choice away, and pasting
 their answer into a quoted string hands `$(…)` and stray quotes to the shell. Neither is
-necessary — the pins are data, so write them as data.
+necessary: the pins are data, so write them as data.
 
 First record the confirmed answer with the **`Write` tool** (not a heredoc, not `echo`) to
 `.claude/state/council-pins.json`. Nothing in that path is parsed by a shell, so no value the
@@ -244,7 +244,7 @@ claude `opus`.
 ### codex update setting
 
 When writing the registry, also make sure `~/.codex/config.toml` carries
-`check_for_update_on_startup = true`. Only write it when the key is absent — never rewrite keys
+`check_for_update_on_startup = true`. Only write it when the key is absent; never rewrite keys
 the user set. In the same breath as the weekly pin question, offer to run `codex update`.
 **Never run it mid-council**: it replaces the running binary, so a seat can vanish in the middle
 of a debate.
@@ -255,18 +255,18 @@ top-level key, and a real `config.toml` ends inside a table (`[projects."…"]`,
 silently does nothing and `--strict-config` may reject the file outright.
 
 A machine with no `config.toml` yet still needs the setting, so create the file rather than
-skipping. And **verify after writing** — a write that failed while the run continued would let
+skipping. And **verify after writing**: a write that failed while the run continued would let
 the probe below pass with the key still absent, which reads as "configured" when it is not.
 
 Both the presence check and the verification must be **TOML-scope aware**. A plain `grep` for the
 key matches one nested under `[projects."…"]` just as happily as a top-level one, so it would
-report "already configured" while the effective setting is still absent — and it would accept
+report "already configured" while the effective setting is still absent, and it would accept
 `= false` as success. The `awk` below only counts a `true` assignment that appears before the
 first table header.
 
 **"Not true" and "not there" are different, and only one of them may be written.** A user who
 deliberately set `check_for_update_on_startup = false` has made a decision; inserting a second
-assignment above it leaves a duplicate key in their global Codex config — invalid TOML that can
+assignment above it leaves a duplicate key in their global Codex config: invalid TOML that can
 break every later `codex` invocation, and it survives even when the verification aborts. Absent
 means insert; present-but-not-true means report and leave it alone.
 
@@ -328,7 +328,7 @@ else
 fi
 ```
 
-Confirm the result parses before relying on it — `codex exec --strict-config` rejects a malformed
+Confirm the result parses before relying on it: `codex exec --strict-config` rejects a malformed
 or unknown-key config, so one probe call proves the edit landed as a top-level key.
 
 Verify a pin is still valid on the installed CLI before relying on it. This costs one fast call
@@ -336,7 +336,7 @@ and catches a config key that a codex upgrade removed:
 
 Three things this block must get right, each of which was wrong in an earlier draft. It
 re-reads the pins (this is a separate tool call, so nothing from the write block survives). It
-guards on `codex` being installed — the failure policy makes a missing binary an absent seat, and
+guards on `codex` being installed: the failure policy makes a missing binary an absent seat, and
 an unguarded probe would kill the run with `command not found` before that path is reached. And
 it **branches on the probe's exit status**: a probe whose result is never checked is not a check.
 
@@ -367,7 +367,7 @@ fi
 rm -f "$out"
 ```
 
-`SEAT=codex FAILED` is **not** the same as absent — the binary is there and rejected the pinned
+`SEAT=codex FAILED` is **not** the same as absent: the binary is there and rejected the pinned
 model or the config. Surface it and offer the registry question rather than silently seating a
 model that will fail again in Round 1. An unknown key fails with `unknown configuration field`;
 an unknown model fails in seconds with an HTTP 400. Neither hangs.
@@ -377,7 +377,7 @@ an unknown model fails in seconds with an HTTP 400. Neither hangs.
 ## Step 1 — set up the run and pre-collect context
 
 `$SLUG` is a short kebab-case topic name you derive from the question. **Validate it before it
-reaches a path** — it comes from free text, and a `/` or a `..` segment would place the run
+reaches a path**: it comes from free text, and a `/` or a `..` segment would place the run
 directory, and every prompt and log written into it, outside `.council/`.
 
 ```bash
@@ -432,7 +432,7 @@ echo "DIR=$DIR RUN_KEY=$RUN_KEY"
 ```
 
 **Release the lock when the council ends.** The `shared` lock is held for the whole run, and
-nothing else clears it — a finished council would otherwise block every later invocation, and
+nothing else clears it: a finished council would otherwise block every later invocation, and
 telling the user to "finish that council" cannot help because it already did. Step 5 removes it
 on both the success and the give-up path:
 
@@ -444,7 +444,7 @@ rm -f ".claude/state/council-run-$RUN_KEY"
 exit 0
 ```
 
-The directory is **git-tracked** — it is the decision record, not scratch. The run pointer under
+The directory is **git-tracked**: it is the decision record, not scratch. The run pointer under
 `.claude/state/` is not.
 
 ### Re-hydrating state in every later block
@@ -466,8 +466,8 @@ CLAUDE_MODEL=$(jq -r '.seats.claude.model'      "$REG")
 ```
 
 The charset check repeats on every read, not just the write. `RUN_KEY` is interpolated into the
-path being read, so an id containing `..` would pull an arbitrary file's contents into `$DIR` —
-and `$DIR` is where every prompt and answer then gets written.
+path being read, so an id containing `..` would pull an arbitrary file's contents into `$DIR`,
+which is where every prompt and answer then gets written.
 
 ### What to pre-collect, and what not to
 
@@ -478,7 +478,7 @@ pasted. Only collect what a path cannot carry:
 |---|---|
 | mem0 memories | Behind an MCP service, not a file at all. Two searches (decisions, task learnings) keep the seats from re-proposing something already rejected. |
 | Serena symbol graph | `find_referencing_symbols` output needs a language-server index. agy cannot build one. |
-| scout research | Facts outside the repo. Most expensive — only when the question actually turns on external facts. |
+| scout research | Facts outside the repo. Most expensive; only when the question actually turns on external facts. |
 
 Do **not** paste `AGENTS.md`, `.llmwiki/` pages, or source files. Cite their paths.
 
@@ -492,7 +492,7 @@ context, and the file paths worth reading.
 Compose `$DIR/r1-prompt.md` from the brief plus these instructions to every seat:
 
 1. Answer the question directly with reasoning.
-2. Separately list **open questions for the user** — only things that would change the answer
+2. Separately list **open questions for the user**: only things that would change the answer
    and that the repo cannot settle.
 
 The Claude seat additionally gets the adversarial role described in Step 4.
@@ -543,14 +543,14 @@ the registry (`opus` by default; the tool accepts `sonnet`, `opus`, `haiku`, `fa
 write its answer to `$DIR/r1-claude.md`.
 
 Verify each file exists and is non-empty before moving on. A missing file is a failure, not an
-empty opinion — see the failure policy.
+empty opinion; see the failure policy.
 
 ---
 
 ## Step 3 — re-question gate
 
 Merge the seats' open questions. Drop duplicates, and drop anything the chair can answer itself
-from the repo or by running a read-only command — **facts are the chair's job, decisions are the
+from the repo or by running a read-only command: **facts are the chair's job, decisions are the
 user's**. Ask what remains through the interactive-input gate, in the user's language, in one
 batch.
 
@@ -565,7 +565,7 @@ final document rather than guessing.
 
 Compose `$DIR/r2-prompt.md` containing, for each seat: the other two seats' full Round 1
 answers, the user's answers from Step 3, and the instruction to state where it agrees, where it
-disagrees, and why — with reasons, not verdicts.
+disagrees, and why, with reasons, not verdicts.
 
 The Claude seat's prompt carries an extra line: **attack the strongest argument among the other
 seats first.** It shares weights with the chair, so agreement is its cheapest and least useful
@@ -573,7 +573,7 @@ move; the role exists to stop it defaulting there.
 
 Run the same three commands as Step 2 against `r2-prompt.md`, writing `r2-codex.md`,
 `r2-agy.md`, `r2-claude.md`. Each round is a fresh CLI invocation carrying the debate in its
-prompt — deterministic, and no dependence on `--resume-last` picking the right session.
+prompt: deterministic, and no dependence on `--resume-last` picking the right session.
 
 ---
 
@@ -581,17 +581,17 @@ prompt — deterministic, and no dependence on `--resume-last` picking the right
 
 The chair writes `$DIR/consensus.md`:
 
-- **합의** — what the seats converged on, and on what grounds.
-- **갈린 이견** — positions that survived rebuttal, each with its holder and its strongest
+- **합의**: what the seats converged on, and on what grounds.
+- **갈린 이견**: positions that survived rebuttal, each with its holder and its strongest
   argument. Do not average them into a fake middle.
-- **미해결** — what nobody could answer, plus questions the user left open.
-- **결석** — any seat that did not participate, and why.
+- **미해결**: what nobody could answer, plus questions the user left open.
+- **결석**: any seat that did not participate, and why.
 
 Apply the **same-family consensus discount**. The Claude seat shares weights with the chair, so
 its agreement is not an independent second judgment. Count it only when it brought an argument
 the chair had not already made; otherwise record the agreement without treating it as support.
 
-Print 합의 / 갈린 이견 / 미해결 to the conversation, and **결석 whenever any seat was absent** —
+Print 합의 / 갈린 이견 / 미해결 to the conversation, and **결석 whenever any seat was absent**;
 leave the rest of the record in the files. Dropping the absence line is what makes a two-seat
 result read as a full three-seat council.
 
@@ -603,19 +603,19 @@ result is a separate, explicit request.
 ## Failure policy
 
 Seats fail independently and the council continues without them. Every absence is named in
-`consensus.md` and in the chat summary — a quiet absence would make a two-seat result look like
+`consensus.md` and in the chat summary: a quiet absence would make a two-seat result look like
 a three-seat one.
 
 | Situation | Action |
 |---|---|
 | `codex` or `agy` missing from PATH | Mark the seat absent. Continue. |
 | agy produced no file, or an empty one | Retry once with the same prompt, then mark absent. |
-| agy log shows `auth timed out` / `silent auth failed` | Do not retry — the model never ran. Tell the user to run `agy` once interactively to re-authenticate. |
+| agy log shows `auth timed out` / `silent auth failed` | Do not retry: the model never ran. Tell the user to run `agy` once interactively to re-authenticate. |
 | codex returns HTTP 400 on the model | The pin is stale. Surface it and offer the Step 0 registry question. |
 | All three seats fail | There is no council. Report and stop; do not synthesize from nothing. |
 
 Triage an agy failure by matching its most recent log against the three known signatures. Match
-and report the classification, not the log body — the log sits in an agent configuration
+and report the classification, not the log body: the log sits in an agent configuration
 directory and its lines carry paths, settings, and auth diagnostics that the triage decision does
 not need. Grepping for the three patterns answers the question with none of that exposure:
 

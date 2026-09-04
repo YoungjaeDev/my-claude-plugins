@@ -11,11 +11,11 @@ Edit Jupyter Notebook files through a structure-aware path, never as raw text.
 
 ### Tool Selection
 - .ipynb = `NotebookEdit` (Claude Code)
-- Codex has no `NotebookEdit` tool — edit through a structure-aware path instead: a short
+- Codex has no `NotebookEdit` tool; edit through a structure-aware path instead: a short
   `nbformat` Python snippet (read → mutate cells → write), never raw text edits.
-  Detect the interpreter first (`python3` → `python` → `py -3` — name-pinning breaks
+  Detect the interpreter first (`python3` → `python` → `py -3`; name-pinning breaks
   either macOS or Windows), check with `<py> -c "import nbformat"`, and install on
-  miss with the same interpreter: `<py> -m pip install nbformat` — a bare `pip` can
+  miss with the same interpreter: `<py> -m pip install nbformat`. A bare `pip` can
   target a different environment than the one checked; nbformat is not in the stdlib
 - Never use `Edit`, `Write`, or `Bash(sed/cat)` on `.ipynb`
 

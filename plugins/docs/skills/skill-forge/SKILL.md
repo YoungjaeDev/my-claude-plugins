@@ -18,7 +18,7 @@ A skill fails in three separable ways, and they need different fixes:
   wrong rung of the information hierarchy, prose that changes nothing.
 
 This skill carries the rules for all three, plus the packaging obligations that decide whether a
-change reaches users at all. Everything needed is bundled — no external skill is read at any point.
+change reaches users at all. Everything needed is bundled: no external skill is read at any point.
 
 ## When to use
 
@@ -27,9 +27,9 @@ deciding between `references/` and `scripts/`, or judging whether a proposed ski
 
 Do not use it to:
 
-- diagnose one existing skill and get a graded fix list — that is `docs:skill-audit`
-- sweep every skill in the repository — that is `docs:skill-fleet-review`
-- write a slash command, a subagent, or a plugin manifest — those are different surfaces with
+- diagnose one existing skill and get a graded fix list: that is `docs:skill-audit`
+- sweep every skill in the repository: that is `docs:skill-fleet-review`
+- write a slash command, a subagent, or a plugin manifest: those are different surfaces with
   different contracts
 
 ## Quick reference
@@ -64,7 +64,7 @@ Say so plainly if the answer is no. Not writing the skill is the cheapest outcom
 Name: lowercase-kebab, matching the directory, naming the object rather than the verb alone
 (`bootstrap-project`, not `new`). Rules and the justified exception are in `references/structure.md`.
 
-Description — the highest-leverage text in the skill, and the only part loaded every turn:
+Description, the highest-leverage text in the skill and the only part loaded every turn:
 
 1. Lead with the trigger branches, phrased the way a user actually types them, including
    non-English phrasings where those are what people use.
@@ -82,9 +82,9 @@ about 100 lines simple, about 200 complex, 300 as the ceiling here.
 
 Two checks while drafting, both from `references/writing-levers.md`:
 
-- **Branch test** — content every run needs goes inline; content only some branches reach goes
+- **Branch test**: content every run needs goes inline; content only some branches reach goes
   behind a pointer to a bundled reference.
-- **Completion criteria** — each step ends in something observable. "Review the config" does not
+- **Completion criteria**: each step ends in something observable. "Review the config" does not
   distinguish done from not-done; "list every key the config sets and mark the ones this change
   touches" does.
 
@@ -94,13 +94,13 @@ Two checks while drafting, both from `references/writing-levers.md`:
 branch-specific material, exactly one level deep. `assets/` for files that end up in the output.
 
 A body that calls a bundled script carries the cross-runtime resolver rather than
-`${CLAUDE_PLUGIN_ROOT}` — the bare variable is not exported by Codex, so the call dies at step one.
+`${CLAUDE_PLUGIN_ROOT}`: the bare variable is not exported by Codex, so the call dies at step one.
 The block to copy is in `references/runtime-contract.md`.
 
 ### 5. Prune
 
-Take the five tests in `references/writing-levers.md` — single source of truth, cache, relevance,
-no-op, sediment — and apply them to each paragraph. Delete rather than soften. Prefer stating the
+Take the five tests in `references/writing-levers.md` (single source of truth, cache, relevance,
+no-op, sediment) and apply them to each paragraph. Delete rather than soften. Prefer stating the
 target behavior over forbidding its opposite; a prohibition puts the forbidden thing into context.
 
 ### 6. Measure
@@ -134,7 +134,7 @@ Any file under `plugins/<name>/` changing means all of these, in the same change
 2. `.claude-plugin/marketplace.json` → the matching entry's `version`.
 3. `.claude-plugin/marketplace.json` → `metadata.version` (release counter, always MINOR).
 
-Codex reads the same `.claude-plugin` manifests natively — no generated layer to regenerate.
+Codex reads the same `.claude-plugin` manifests natively: no generated layer to regenerate.
 Skipping the bump means users on a cached copy never receive the skill. Full contract in
 `references/runtime-contract.md`.
 

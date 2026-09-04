@@ -50,7 +50,6 @@ Follow Conventional Commits rules:
 
 ## Guidelines
 
-- **Do not analyze files other than those provided as arguments**
 - **Clarity**: Clearly communicate what was changed and why
 - **Follow CLAUDE.md**: Check project guidelines in `@CLAUDE.md`
 - **Single purpose**: One commit should contain only one logical change

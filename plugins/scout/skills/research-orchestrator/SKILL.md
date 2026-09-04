@@ -13,23 +13,23 @@ Use when:
 - The query needs more than one source axis (GitHub + docs, web + HF, etc.)
 - The user explicitly asks for a research report or comparison
 - The user says "thorough", "deep", "comprehensive", "compare", "best practices", "research"
-- A single-axis quick lookup is fine — the orchestrator will detect that and fan out to just one scout
+- A single-axis quick lookup is fine: the orchestrator will detect that and fan out to just one scout
 
 Skip / use something else when:
 - The user wants a GitHub PR review → `dev:cr-fix` / `dev:resolve-issue`
 - The user wants to ask a single question about one repo → `scout:ask` directly
 - The user wants to read library API docs only → `context7` MCP directly
 - The user wants a single paper's PDF or full text → `scout:paper-search` `download_*` / `read_*` directly (paper-scout is metadata-only)
-- The user's query is **outside the code / ML domain** (politics, market, history, biographies, general policy) → `/deep-research` directly. Its 7-phase + adversarial verify + state-machine flow is tuned for generic topics; scout's 5-axis routing is tuned for code/ML and would mis-route on those queries. Orchestrator does **not** delegate to `/deep-research` — the boundary is intentional.
+- The user's query is **outside the code / ML domain** (politics, market, history, biographies, general policy) → `/deep-research` directly. Its 7-phase + adversarial verify + state-machine flow is tuned for generic topics; scout's 5-axis routing is tuned for code/ML and would mis-route on those queries. Orchestrator does **not** delegate to `/deep-research`: the boundary is intentional.
 
 See `references/agent-routing.md` for the full should / should-NOT matrix.
 
 ## Inputs
 
-- `query` (required) — user's natural-language research target
-- `mode` (optional) — `quick` | `deep`; auto-detected if absent
-- `workspace_dir` (optional) — when set, the orchestrator reuses this directory and the caller owns lifecycle (enables partial re-execution; see Phase 0 below). When unset, each run gets its own `mktemp` directory.
-- `report_path` (optional) — defaults to `${workspace_dir}/final_report.md`
+- `query` (required): user's natural-language research target
+- `mode` (optional): `quick` | `deep`; auto-detected if absent
+- `workspace_dir` (optional): when set, the orchestrator reuses this directory and the caller owns lifecycle (enables partial re-execution; see Phase 0 below). When unset, each run gets its own `mktemp` directory.
+- `report_path` (optional): defaults to `${workspace_dir}/final_report.md`
 
 **Data-transfer protocol:** file-based via `$WORKSPACE/{NN}_{axis}.json`. Sibling scouts do not communicate directly; everything flows through the workspace and is merged by synthesis-scout. Lexical filename ordering = deterministic merge order.
 
@@ -87,23 +87,23 @@ Academic signal triggers: "paper", "arxiv", "preprint", "DOI", "SOTA", "benchmar
 
 ### 3.5 Execution capability detection
 
-Before dispatch, pick the execution path **once**. This decides *how* the chosen axes run, not *which* — Phase 3 already fixed the axis set. All three paths consume the shared query shape and emit the shared result envelope in `references/axis-contracts.md`, so synthesis and the final report are identical regardless of path.
+Before dispatch, pick the execution path **once**. This decides *how* the chosen axes run, not *which*; Phase 3 already fixed the axis set. All three paths consume the shared query shape and emit the shared result envelope in `references/axis-contracts.md`, so synthesis and the final report are identical regardless of path.
 
 | Path | Condition | How the axes run |
 |---|---|---|
-| **A — named plugin agents** | The qualified `scout:{axis}-scout` subagents are registered (Claude Code with scout installed). | Current named-agent fan-out — Phase 4A / 5A, **unchanged**. Default on Claude Code. |
-| **B — generic parallel subagents** | Named `scout:*-scout` are NOT registerable, but a generic subagent-delegation tool is available (Codex `Task`). | Phase 4B — one generic subagent per axis, each carrying its `axis-contracts.md` contract inline. |
-| **C — sequential in-agent** | Neither named agents nor generic delegation is available (delegation unsupported / disabled, or concurrency exhausted / repeated dispatch failure). | Phase 4C — run the axes one at a time in the current agent, following each `axis-contracts.md` contract. |
+| **A: named plugin agents** | The qualified `scout:{axis}-scout` subagents are registered (Claude Code with scout installed). | Current named-agent fan-out (Phase 4A / 5A), **unchanged**. Default on Claude Code. |
+| **B: generic parallel subagents** | Named `scout:*-scout` are NOT registerable, but a generic subagent-delegation tool is available (Codex `Task`). | Phase 4B: one generic subagent per axis, each carrying its `axis-contracts.md` contract inline. |
+| **C: sequential in-agent** | Neither named agents nor generic delegation is available (delegation unsupported / disabled, or concurrency exhausted / repeated dispatch failure). | Phase 4C: run the axes one at a time in the current agent, following each `axis-contracts.md` contract. |
 
-Detection is a runtime fact: Claude Code registers `agents/*.md` as plugin subagents (Path A); Codex 0.135 exposes this skill but cannot register those agent files, so it lands on Path B (generic `Task` delegation), degrading to Path C only when delegation is unavailable. **Never silently drop an axis because its named agent is missing — switch paths instead.** Tell the user which path you took in one sentence.
+Detection is a runtime fact: Claude Code registers `agents/*.md` as plugin subagents (Path A); Codex 0.135 exposes this skill but cannot register those agent files, so it lands on Path B (generic `Task` delegation), degrading to Path C only when delegation is unavailable. **Never silently drop an axis because its named agent is missing: switch paths instead.** Tell the user which path you took in one sentence.
 
 ### 4. Fan-out dispatch
 
-Run the axes Phase 3 selected via the path Phase 3.5 chose. Always pass the **resolved `$WORKSPACE`** from step 2 — never a literal fixed path, otherwise parallel orchestrator runs collide. Drop axis lines when fan-out narrows: skip `paper-scout` / `05_paper` in deep dispatches with no academic signal, and skip other axes accordingly. `web`/`web-scout` takes `mode` to choose exa-only (quick) vs exa + WebSearch in parallel (deep); the other axes ignore `mode` — their search surface is single-tool by design.
+Run the axes Phase 3 selected via the path Phase 3.5 chose. Always pass the **resolved `$WORKSPACE`** from step 2: never a literal fixed path, otherwise parallel orchestrator runs collide. Drop axis lines when fan-out narrows: skip `paper-scout` / `05_paper` in deep dispatches with no academic signal, and skip other axes accordingly. `web`/`web-scout` takes `mode` to choose exa-only (quick) vs exa + WebSearch in parallel (deep); the other axes ignore `mode`: their search surface is single-tool by design.
 
-**Wait for every dispatched axis to finish before step 5** on all paths — partial-result synthesis is a regression of the v1 quality bar. A stalled axis is expected to write a `{ "findings": [], "error": "..." }` artifact rather than hang.
+**Wait for every dispatched axis to finish before step 5** on all paths: partial-result synthesis is a regression of the v1 quality bar. A stalled axis is expected to write a `{ "findings": [], "error": "..." }` artifact rather than hang.
 
-#### 4A. Named plugin agents (Path A — Claude Code, unchanged)
+#### 4A. Named plugin agents (Path A: Claude Code, unchanged)
 
 For `deep` mode, dispatch all chosen scouts in a single message so they run concurrently:
 
@@ -122,9 +122,9 @@ Agent(subagent_type="scout:paper-scout",
 
 For long-running runs (more than ~2 minutes expected per scout), prefer `Agent({...}, {run_in_background: true})` + `Monitor` so the orchestrator can stream progress.
 
-#### 4B. Generic parallel subagents (Path B — Codex)
+#### 4B. Generic parallel subagents (Path B: Codex)
 
-The named `scout:*-scout` agents do not exist here. Dispatch one **generic** subagent per chosen axis in a single message so they run concurrently. Each task must carry that axis's contract from `references/axis-contracts.md` inline — role, tool order (with documented MCP fallback), the shared query shape, the result-envelope schema, and the reliability rubric — because the generic worker lacks the agent-definition context Path A relies on:
+The named `scout:*-scout` agents do not exist here. Dispatch one **generic** subagent per chosen axis in a single message so they run concurrently. Each task must carry that axis's contract from `references/axis-contracts.md` inline: role, tool order (with documented MCP fallback), the shared query shape, the result-envelope schema, and the reliability rubric, because the generic worker lacks the agent-definition context Path A relies on:
 
 ```text
 Task(prompt="""   # Codex tool
@@ -141,13 +141,13 @@ Task(prompt="""   # Codex tool
 
 Pass the resolved `$WORKSPACE` and the same optional inputs Phase 3 selected (`mode=deep` for web, `sources=...` for paper). If a generic dispatch fails outright (delegation unsupported / concurrency exhausted), fall to Path C rather than dropping the axis.
 
-#### 4C. Sequential in-agent execution (Path C — no delegation)
+#### 4C. Sequential in-agent execution (Path C: no delegation)
 
-When no delegation channel is available, run each chosen axis yourself, one at a time, following its `axis-contracts.md` contract with your own tools (`gh`, `curl` / `uvx hf`, exa / WebSearch, Context7 / DeepWiki, paper-search MCPs). After each axis, write its `${workspace_dir}/${artifact_id}.json` in the shared envelope, then move on. A failed axis writes `findings:[] + error` and you continue — never abandon the remaining axes. This path is slower (no concurrency) but produces byte-identical artifacts, so synthesis is unchanged.
+When no delegation channel is available, run each chosen axis yourself, one at a time, following its `axis-contracts.md` contract with your own tools (`gh`, `curl` / `uvx hf`, exa / WebSearch, Context7 / DeepWiki, paper-search MCPs). After each axis, write its `${workspace_dir}/${artifact_id}.json` in the shared envelope, then move on. A failed axis writes `findings:[] + error` and you continue: never abandon the remaining axes. This path is slower (no concurrency) but produces byte-identical artifacts, so synthesis is unchanged.
 
 ### 5. Synthesis dispatch
 
-Synthesis is runtime-independent — identical merge, dedup, trust ranking, conflict resolution, and report contract on every path. It is strictly read-only on the workspace (never calls exa / gh / HF, never rewrites a sibling artifact). See `references/synthesis-rules.md` for the merge / trust / conflict rules. **Do not skip synthesis just because the named agent is unavailable** — use the in-skill variant. Pick by capability:
+Synthesis is runtime-independent: identical merge, dedup, trust ranking, conflict resolution, and report contract on every path. It is strictly read-only on the workspace (never calls exa / gh / HF, never rewrites a sibling artifact). See `references/synthesis-rules.md` for the merge / trust / conflict rules. **Do not skip synthesis just because the named agent is unavailable**: use the in-skill variant. Pick by capability:
 
 #### 5A. Named synthesis-scout (Path A)
 
@@ -164,7 +164,7 @@ Agent(subagent_type="scout:synthesis-scout",
 
 ### 6. Return
 
-Surface the resolved `$REPORT` path and top-3 picks to the user. Do not paste the entire report inline unless the user asked for it — the file path is enough for follow-up.
+Surface the resolved `$REPORT` path and top-3 picks to the user. Do not paste the entire report inline unless the user asked for it; the file path is enough for follow-up.
 
 ## Quick mode shortcut
 
@@ -185,7 +185,7 @@ Agent(subagent_type="scout:<single>-scout",
 #   Path B/C: in-skill synthesis over $WORKSPACE/*.json per synthesis-rules.md.
 ```
 
-Do **not** ask the axis to "write findings to stdout" — every axis contract is artifact-based; ad-hoc stdout-only mode is not supported.
+Do **not** ask the axis to "write findings to stdout": every axis contract is artifact-based; ad-hoc stdout-only mode is not supported.
 
 ## Failure handling
 
@@ -197,9 +197,9 @@ Do **not** ask the axis to "write findings to stdout" — every axis contract is
 
 ## Reference files
 
-- `references/agent-routing.md` — full routing matrix (should / should-NOT per axis, near-miss disambiguation vs `scout:paper-search`, `scout:ask`, `dev:*`)
-- `references/axis-contracts.md` — shared per-axis query shape + result envelope + tool order / fallback / reliability rubric; the SoT the named-agent, generic-agent, and sequential paths all consume
-- `references/synthesis-rules.md` — synthesis dedup keys, trust rubric, and conflict resolution order
+- `references/agent-routing.md`: full routing matrix (should / should-NOT per axis, near-miss disambiguation vs `scout:paper-search`, `scout:ask`, `dev:*`)
+- `references/axis-contracts.md`: shared per-axis query shape + result envelope + tool order / fallback / reliability rubric; the SoT the named-agent, generic-agent, and sequential paths all consume
+- `references/synthesis-rules.md`: synthesis dedup keys, trust rubric, and conflict resolution order
 
 ## Examples
 
@@ -223,7 +223,7 @@ Synthesis reconciles official migration guide vs community pain points.
 
 ## Test scenarios
 
-### Normal flow — deep mode, all axes healthy
+### Normal flow: deep mode, all axes healthy
 
 1. User: "Compare vLLM vs TGI for production serving"
 2. Phase 0: no `workspace_dir` supplied → fresh run.
@@ -234,7 +234,7 @@ Synthesis reconciles official migration guide vs community pain points.
 
 **Expected stdout:** `report_path=/tmp/research/run.AbCd1234/final_report.md mode=deep sources_merged=4 conflicts=1`.
 
-### Error flow — one axis errors, partial re-execution
+### Error flow: one axis errors, partial re-execution
 
 1. User: "Research RAG eval frameworks 2026" → fresh deep run as above.
 2. `web-scout` returns an exa-quota error and writes `03_web.json` with `findings: []` + `error: "exa quota exhausted"`.

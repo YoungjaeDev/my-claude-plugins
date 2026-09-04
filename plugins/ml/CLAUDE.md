@@ -34,7 +34,7 @@ Generate production-quality Computer Vision Jupyter notebooks.
 - Level-based Korean insights (beginner/intermediate/expert)
 - Environment-specific setup (Colab/Kaggle/Local)
 
-Also generates interactive ipywidgets-based CV data exploration notebooks (absorbed from the former `cv-explorer` skill — see the "Exploration mode" section in `skills/cv-notebook/SKILL.md`).
+Also generates interactive ipywidgets-based CV data exploration notebooks (absorbed from the former `cv-explorer` skill; see the "Exploration mode" section in `skills/cv-notebook/SKILL.md`).
 
 **Exploration-mode triggers**: "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "image viewer", "browse dataset", "browse annotations"
 
@@ -46,7 +46,7 @@ Also generates interactive ipywidgets-based CV data exploration notebooks (absor
 
 ## ml-dev-principles
 
-General working discipline for ML / multimodal / CV development — how to work, not which library. Load at the start of an ML task.
+General working discipline for ML / multimodal / CV development (how to work, not which library). Load at the start of an ML task.
 
 **Triggers**: "EDA", "error analysis", "FP/FN", "train", "fine-tune", "SFT", "DPO", "LoRA", "eval harness", "test leakage", "dataset selection", "model selection", "license filtering", "GPU utilization", "multimodal", "VLM"
 

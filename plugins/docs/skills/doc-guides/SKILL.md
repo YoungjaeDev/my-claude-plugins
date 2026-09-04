@@ -6,7 +6,7 @@ description: "README/CHANGELOG/deploy-doc/MOC 저작 참조 카드 4종 통합 �
 # Doc Guides
 
 Four writing-reference cards for the `docs` document commands, one per output type. Each
-`/docs:*` command loads the matching section below deterministically — this skill is not
+`/docs:*` command loads the matching section below deterministically: this skill is not
 meant to be browsed top to bottom.
 
 ## README
@@ -150,7 +150,7 @@ For detailed patterns, see:
 ## Deploy-doc
 
 The cross-runtime SSOT for client-facing deployment / procedure documents. The `### Quick
-Reference` skeleton below is binding — the `deploy-doc` command and any agent must self-verify
+Reference` skeleton below is binding: the `deploy-doc` command and any agent must self-verify
 against it before writing.
 
 ### Triggers
@@ -164,21 +164,21 @@ against it before writing.
 ### Quick Reference
 
 The skeleton (Korean default; English labels in parentheses for `--lang en`). Each item is a
-self-verify checklist entry — confirm all before output:
+self-verify checklist entry: confirm all before output:
 
-1. **Title + top summary** — an optional `# H1` document title (from `--title`) on the first line,
+1. **Title + top summary**: an optional `# H1` document title (from `--title`) on the first line,
    then a 2-3 line summary paragraph directly below it and above the first `##`. The summary is
-   **untitled** in the sense that it carries no section heading of its own (no `## 요약`) — it is
+   **untitled** in the sense that it carries no section heading of its own (no `## 요약`): it is
    bare prose between the `# H1` and the first `##`. If no title is given, the summary paragraph
    is the very top of the file. The summary states what is deployed and the step count at a high
    level.
-2. **Prerequisites** — a `## 전제조건` (`## Prerequisites`) section where **every** line is a
+2. **Prerequisites**: a `## 전제조건` (`## Prerequisites`) section where **every** line is a
    `- [ ]` checklist item. No bare prose bullets.
-3. **Procedure** — a `## 절차` (`## Procedure`) section where **every** step is a `### N.`
+3. **Procedure**: a `## 절차` (`## Procedure`) section where **every** step is a `### N.`
    heading, numbered contiguously from `### 1.` with no gaps and no `### N.`-less prose steps.
-4. **Number-match rule** — the step count named or implied in the top summary MUST equal the
+4. **Number-match rule**: the step count named or implied in the top summary MUST equal the
    number of `### N.` headings. Mismatch = FAIL.
-5. **Link, don't redefine** — detailed contracts, schemas, and SSOT specifics are linked (to
+5. **Link, don't redefine**: detailed contracts, schemas, and SSOT specifics are linked (to
    `--links` documents), never inlined. The procedure references the authority; it does not
    restate it.
 
@@ -187,7 +187,7 @@ contiguous `### N.`? summary count == `### N.` count? contracts linked not inlin
 
 ### References
 
-- `../../references/DEPLOY_DOC_PATTERNS.md` — empty skeleton, a filled example, and anti-patterns.
+- `../../references/DEPLOY_DOC_PATTERNS.md`: empty skeleton, a filled example, and anti-patterns.
 
 ## MOC
 
@@ -209,7 +209,7 @@ The cross-runtime SSOT for generating a Map of Content index over an arbitrary d
 - One file: `<folder>/MOC.md`. No per-file fan-out.
 - Per-file bullets: `- [title](relative/path.md) — hook`.
 - Per-domain table: `## <domain>` heading then `| File | Hook |` rows.
-- No frontmatter validation, no `[[id]]`, no typed cross-refs — generic Markdown only.
+- No frontmatter validation, no `[[id]]`, no typed cross-refs: generic Markdown only.
 
 #### Strict (`--strict`)
 
@@ -220,7 +220,7 @@ Mirror the wiki `index.md` convention:
   link form.
 - An MOC intro paragraph and a typed-cross-ref legend (`> Refines:` / `> See-also:` / etc.) as
   scaffolding.
-- The full frontmatter / staleness model is NOT enforced here — real lore wiki is owned by the
+- The full frontmatter / staleness model is NOT enforced here: real lore wiki is owned by the
   `wiki` plugin. This is a generalized mirror, not a replacement.
 
 #### Hook source precedence (first hit wins)
@@ -235,12 +235,12 @@ Link text precedence: frontmatter `title:` -> first `# H1` -> filename.
 #### Conflict rules
 
 - Output is `<folder>/MOC.md` (or `--out`). **Never** overwrite an existing `index.md` or
-  `README.md` — exclude them from the scan AND from the output target: if `--out`'s basename
+  `README.md`: exclude them from the scan AND from the output target: if `--out`'s basename
   case-insensitively matches `readme.md` / `index.md`, refuse or confirm-then-route to `MOC.md`
   instead of clobbering it (case-insensitive filesystems alias `INDEX.md` to `index.md`).
 - If `MOC.md` already exists, confirm and update in place.
 
 ### References
 
-- `../../references/MOC_PATTERNS.md` — precedence ladder, lightweight + strict output examples,
+- `../../references/MOC_PATTERNS.md`: precedence ladder, lightweight + strict output examples,
   wiki index mapping.

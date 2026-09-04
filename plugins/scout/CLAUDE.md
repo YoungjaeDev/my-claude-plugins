@@ -13,9 +13,9 @@ Multi-axis code & ML research harness. v2.1 grows the v2.0 4-axis team to a 5-ax
 | Single-axis: official docs / repo Q&A | `Agent(subagent_type="scout:docs-scout")` |
 | Single-axis: academic papers (arxiv / DOI / SOTA / benchmark) | `Agent(subagent_type="scout:paper-scout")` |
 | Already have artifacts, just need merge | `Agent(subagent_type="scout:synthesis-scout")` |
-| General non-code/ML topic (politics / market / history / biographies) | `/deep-research` directly — scout doesn't delegate, boundary is intentional |
+| General non-code/ML topic (politics / market / history / biographies) | `/deep-research` directly (scout doesn't delegate; boundary is intentional) |
 
-**Runtime note:** the single-axis `Agent(subagent_type="scout:*-scout")` rows above are **Claude-only** — Codex 0.135 exposes the skills but cannot register the `agents/*.md` definitions. Under Codex, enter through `Skill("scout:research-orchestrator")`; it detects that the named agents are unregisterable and runs the same axes via generic parallel subagents (or sequential in-agent when delegation is unavailable), synthesizing in-skill. See `skills/research-orchestrator/references/axis-contracts.md` for the shared contract all three execution paths consume.
+**Runtime note:** the single-axis `Agent(subagent_type="scout:*-scout")` rows above are **Claude-only**: Codex 0.135 exposes the skills but cannot register the `agents/*.md` definitions. Under Codex, enter through `Skill("scout:research-orchestrator")`; it detects that the named agents are unregisterable and runs the same axes via generic parallel subagents (or sequential in-agent when delegation is unavailable), synthesizing in-skill. See `skills/research-orchestrator/references/axis-contracts.md` for the shared contract all three execution paths consume.
 
 For the full routing matrix (should / should-NOT, near-miss disambiguation vs `scout:paper-search`, `scout:ask`, `dev:*`, `/deep-research`), see `skills/research-orchestrator/references/agent-routing.md`.
 
@@ -46,7 +46,7 @@ All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical
 |---|---|
 | `research-orchestrator` | Entry point. Mode detection, fan-out routing, synthesis dispatch. |
 
-`exa-web-search`, `resource-finder`, and `brightdata-guide` were demoted from standalone skills to `research-orchestrator/references/*.md` — their only real consumers are the scout agents and the orchestrator itself, not a session-level skill surface, so agents `Read` them by path instead of triggering a separate skill description.
+`exa-web-search`, `resource-finder`, and `brightdata-guide` were demoted from standalone skills to `research-orchestrator/references/*.md`: their only real consumers are the scout agents and the orchestrator itself, not a session-level skill surface, so agents `Read` them by path instead of triggering a separate skill description.
 
 ## Migration
 
@@ -54,14 +54,14 @@ All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical
 
 | v1 entry point | v2 replacement |
 |---|---|
-| `Agent(subagent_type="scout:scout")` | `Skill("scout:research-orchestrator")` (quick mode auto-detected) — or call `github-scout` / `hf-scout` directly for single-axis |
+| `Agent(subagent_type="scout:scout")` | `Skill("scout:research-orchestrator")` (quick mode auto-detected), or call `github-scout` / `hf-scout` directly for single-axis |
 
-The legacy `scout` agent remains as a **doc-only deprecation pointer**: it returns a migration message but does not run searches. Subagents cannot reliably spawn further subagents, so the fan-out + synthesis flow must be initiated from the main session via the orchestrator skill or a direct `Agent(subagent_type="scout:{axis}-scout", ...)` call. Existing scripts that called the old `subagent_type` need to migrate — there is no transparent shim.
+The legacy `scout` agent remains as a **doc-only deprecation pointer**: it returns a migration message but does not run searches. Subagents cannot reliably spawn further subagents, so the fan-out + synthesis flow must be initiated from the main session via the orchestrator skill or a direct `Agent(subagent_type="scout:{axis}-scout", ...)` call. Existing scripts that called the old `subagent_type` need to migrate; there is no transparent shim.
 
 ### v2.0 → v2.1
 
 - `paper-scout` 5th axis is auto-included in `deep` mode when the query carries academic signal (paper / arxiv / DOI / SOTA / benchmark / 인용 / venue names). Existing 4-axis deep flows are unchanged.
-- `Agent(subagent_type="scout:deep-scout")` continues to return the same v2.0 deprecation message — the doc-only stub is **retained** for backward compatibility (no user-visible change vs v2.0). Permanent removal is deferred to a future MAJOR release. Callers should migrate to `Skill("scout:research-orchestrator")` (deep mode auto-detected from "deep / thorough / comprehensive / compare / best practices" keywords).
+- `Agent(subagent_type="scout:deep-scout")` continues to return the same v2.0 deprecation message: the doc-only stub is **retained** for backward compatibility (no user-visible change vs v2.0). Permanent removal is deferred to a future MAJOR release. Callers should migrate to `Skill("scout:research-orchestrator")` (deep mode auto-detected from "deep / thorough / comprehensive / compare / best practices" keywords).
 - `web-scout` now auto-retries WAF / 403 / blocked fetches through `insane-search` as a tier-4 transport fallback. No caller change required.
 - General non-code/ML research (politics / market / history / biographies) → call `/deep-research` directly. scout does not delegate; the boundary is intentional (each harness is tuned for its domain).
 
@@ -70,7 +70,7 @@ The legacy `scout` agent remains as a **doc-only deprecation pointer**: it retur
 - `gh` CLI authenticated (github-scout)
 - `uv`, `jq` (hf-scout, `research-orchestrator/references/resource-finder.md` wrappers)
 - exa MCP enabled in `~/.claude/settings.json` (web-scout primary; falls back to built-in `WebSearch`)
-- brightdata MCP enabled (web-scout tier-3 fetch fallback; `bdata` CLI is the delegate-subagent path — see the `research-orchestrator/references/brightdata-guide.md` preflight)
+- brightdata MCP enabled (web-scout tier-3 fetch fallback; `bdata` CLI is the delegate-subagent path; see the `research-orchestrator/references/brightdata-guide.md` preflight)
 - `insane-search` plugin installed (web-scout tier-4 fetch fallback for WAF / blocked pages; optional but recommended)
 - Context7 + DeepWiki MCPs enabled (docs-scout)
 - the bundled `paper-search` MCP server (`.mcp.json`, Docker) running (paper-scout)
@@ -116,14 +116,14 @@ AI-powered deep queries on GitHub repositories through the DeepWiki MCP. Two ski
 /scout:generate-llmstxt https://docs.example.com
 ```
 
-In conversational use (skill surface) the model can pick the right capability without the explicit slash — e.g. "what's the autograd internals of pytorch/pytorch?" triggers the `ask` skill.
+In conversational use (skill surface) the model can pick the right capability without the explicit slash, e.g. "what's the autograd internals of pytorch/pytorch?" triggers the `ask` skill.
 
 ### How it works
 
-1. **Structure** — first understand what documentation exists.
-2. **Context** — gather relevant sections (for broad questions).
-3. **Answer** — provide an AI-powered comprehensive response.
-4. **Expand** — decompose complex questions if needed.
+1. **Structure**: first understand what documentation exists.
+2. **Context**: gather relevant sections (for broad questions).
+3. **Answer**: provide an AI-powered comprehensive response.
+4. **Expand**: decompose complex questions if needed.
 
 ### MCP Tools Used
 
@@ -143,6 +143,6 @@ In conversational use (skill surface) the model can pick the right capability wi
 
 ### Requirements
 
-- DeepWiki MCP server configured in the host runtime. Setup: <https://mcp.deepwiki.com/>. If the MCP is missing, the skill will fail at the first `mcp__deepwiki__*` tool call — that is a host-side configuration step, not something this plugin auto-installs.
+- DeepWiki MCP server configured in the host runtime. Setup: <https://mcp.deepwiki.com/>. If the MCP is missing, the skill will fail at the first `mcp__deepwiki__*` tool call. That is a host-side configuration step, not something this plugin auto-installs.
 - For `generate-llmstxt` URL mode, the Bright Data MCP must be available as well, or the `bdata` CLI installed, authenticated, and given a default zone (see the `brightdata-guide` preflight).
 - Internet connection (queries the DeepWiki API).

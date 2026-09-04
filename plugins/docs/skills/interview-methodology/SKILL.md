@@ -10,8 +10,8 @@ version: 0.4.0
 
 Every question below runs through a **capability-aware** interactive-input gate, not one hardcoded tool. Read each `AskUserQuestion` mention as this gate:
 
-- **Claude Code** — use `AskUserQuestion`.
-- **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE concise blocking question only where a wrong assumption would be costly; otherwise proceed on a documented safe default and state the assumption.
+- **Claude Code**: use `AskUserQuestion`.
+- **Codex**: use `request_user_input` when that tool is exposed. When it is not, ask ONE concise blocking question only where a wrong assumption would be costly; otherwise proceed on a documented safe default and state the assumption.
 
 Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 
@@ -40,7 +40,7 @@ Explicit interview request - direct trigger.
 ## Critical Rules
 
 These govern a full interview once you've decided one is warranted. They are
-explicitly relaxed by the two scoping sections that follow — **"When NOT to
+explicitly relaxed by the two scoping sections that follow: **"When NOT to
 Interview"** (whether to interview at all) and the lightweight close in
 **"Interview Completion"** (how much to write). When those apply, they override
 rules 3-5 below.
@@ -53,7 +53,7 @@ rules 3-5 below.
 
 ## When NOT to Interview
 
-Interviewing has a cost — it interrupts the user and delays the work. Skip it (or
+Interviewing has a cost: it interrupts the user and delays the work. Skip it (or
 drop to a single clarifying question through the interactive-input gate) when the
 task is already well-specified or low-stakes:
 
@@ -67,13 +67,13 @@ task is already well-specified or low-stakes:
 When in doubt between "ask nothing" and "full interview", prefer the middle:
 2-3 targeted questions that resolve the decisions that actually change the
 implementation. A full multi-phase interview is for genuinely under-specified,
-multi-decision work — not a reflex for every request.
+multi-decision work, not a reflex for every request.
 
 ## Core Principle: Non-Obvious Questions
 
 **Never ask questions the user has already implicitly answered.** Instead, probe the gaps, assumptions, and unstated requirements.
 
-**Verify against the codebase first — don't ask what the repo can answer.** Before adding a question, check whether the existing code, config, tests, git history, or docs already settle it (which framework, which DB, the current error-handling pattern, existing naming conventions). Asking the user to restate something discoverable from the repo wastes their time and signals you didn't look. Reserve questions for what is genuinely *non-obvious from the code* — intent, priorities, future direction, and trade-offs only the user holds.
+**Verify against the codebase first: don't ask what the repo can answer.** Before adding a question, check whether the existing code, config, tests, git history, or docs already settle it (which framework, which DB, the current error-handling pattern, existing naming conventions). Asking the user to restate something discoverable from the repo wastes their time and signals you didn't look. Reserve questions for what is genuinely *non-obvious from the code*: intent, priorities, future direction, and trade-offs only the user holds.
 
 ### Bad Questions (Obvious)
 - "What feature do you want?" (they already told you)
@@ -134,12 +134,12 @@ and you need full coverage before a comprehensive spec. Batch related questions
 (the Phase 2 "5-10 questions" cadence) so the user answers efficiently.
 
 ### Depth-first / Socratic (focused mode)
-Target the **single biggest uncertainty** and resolve it before moving on — one
+Target the **single biggest uncertainty** and resolve it before moving on: one
 question (or one tight interactive-input gate) at a time, each chosen by "what is the
 one unknown that most changes the implementation right now?". The user's answer
 determines the next question. Best when one or two decisions dominate the design,
 or when a broad questionnaire would feel like a wall of forms. This mode aligns
-with "narrow to 2-3 interpretations and confirm" — you are not firing 10 questions,
+with "narrow to 2-3 interpretations and confirm": you are not firing 10 questions,
 you are walking down the decision that matters.
 
 The two modes compose: open breadth-first to map the territory, then switch to
@@ -148,10 +148,10 @@ focused mode when one answer opens a deep, consequential branch.
 ### Relentless / stress-test mode (adversarial)
 
 Use when the user hands you an existing plan, design, or decision and wants it
-*pressed*, not gathered — triggers like "grill me", "stress-test this", "poke
+*pressed*, not gathered: triggers like "grill me", "stress-test this", "poke
 holes in this", "집요하게 캐물어". This mode **inverts the default posture**: the two
 modes above optimize for *not bothering* the user, but here the user has
-explicitly asked to be bothered, so **"When NOT to Interview" does not apply** —
+explicitly asked to be bothered, so **"When NOT to Interview" does not apply**:
 there is no 2-3 question cap and no early exit. Press every branch of the
 decision tree until you and the user reach a genuine shared understanding.
 
@@ -160,30 +160,30 @@ Four rules separate this from a polite interview:
 1. **No escape hatches.** Do not offer to skip, defer, or "just proceed". The
    session ends when the plan is sound, not when it is merely tolerable. This
    constrains *your* offers, not the user's control: an explicit user request to
-   stop, cancel, or proceed anyway always overrides and ends the mode at once —
+   stop, cancel, or proceed anyway always overrides and ends the mode at once:
    you simply never volunteer the shortcut yourself.
-2. **Hard act-gate.** Do not act on the plan — no implementation, no spec write,
-   no edits — until the user *explicitly confirms* you have reached shared
+2. **Hard act-gate.** Do not act on the plan (no implementation, no spec write,
+   no edits) until the user *explicitly confirms* you have reached shared
    understanding. An agent that answers its own open questions and starts working
    has broken this rule.
 3. **Walk the dependency frontier.** Ask the decisions whose prerequisites are
    already settled first; a question whose answer depends on another still-open
    question belongs to a *later* round. Early answers are allowed to reshape
-   later questions — which is exactly why you never batch a downstream question
+   later questions, which is exactly why you never batch a downstream question
    ahead of its prerequisite.
 4. **Facts are yours, decisions are theirs.** Never ask the user anything the
-   repo or tools can answer — when a frontier question needs a fact, dispatch a
+   repo or tools can answer: when a frontier question needs a fact, dispatch a
    sub-agent or run the lookup yourself and keep pressing the rest of the
    frontier while it resolves (a pending fact-find blocks only the questions
    downstream of it). Fact-finding is **read-only**: it may read files, run
-   read-only queries, and search — it must not write files, run mutating
+   read-only queries, and search, and it must not write files, run mutating
    commands, or send data, since that would slip work past the act-gate. Never
    autonomously settle a judgment call that is the user's to make.
 
 ### Per-question scaffold
 
-Whichever mode, frame a substantive question so the user can answer in one glance
-— state your current understanding, name the decision, and offer a recommended
+Whichever mode, frame a substantive question so the user can answer in one glance:
+state your current understanding, name the decision, and offer a recommended
 default (so a low-stakes call can be a single confirmation, not an essay):
 
 ```text
@@ -244,7 +244,7 @@ Each option should explain implications, not just the choice itself.
 
 ## Interview Completion
 
-Scale the output to the interview's weight — don't force a full spec file onto a
+Scale the output to the interview's weight: don't force a full spec file onto a
 two-question focused session:
 
 - **Lightweight close (small / focused interviews):** summarize inline as
@@ -315,7 +315,7 @@ After interview completion, write a spec file with:
 
 ## Reusable Prompt Output
 
-When the interview's goal is a copy-paste-ready prompt for next-session reuse rather than a spec file, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/Iterate) — see `references/tcrei-template.md` for the diagnosis table, output template, and domain-specific gap patterns.
+When the interview's goal is a copy-paste-ready prompt for next-session reuse rather than a spec file, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/Iterate): see `references/tcrei-template.md` for the diagnosis table, output template, and domain-specific gap patterns.
 
 ## Interviewing Anti-Patterns to Avoid
 

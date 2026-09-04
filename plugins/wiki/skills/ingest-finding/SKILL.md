@@ -5,7 +5,7 @@ description: Use after producing a new audit md, after merging a PR with non-obv
 
 # ingest-finding
 
-The wiki is only useful if it stays current. Conversations end, audit mds accumulate in `.llmwiki/raw/` (or `docs/research/audits/`, or equivalent), PRs land — without an ingest step the wiki freezes. Use this skill to bring new evidence into the wiki layer.
+The wiki is only useful if it stays current. Conversations end, audit mds accumulate in `.llmwiki/raw/` (or `docs/research/audits/`, or equivalent), PRs land. Without an ingest step the wiki freezes. Use this skill to bring new evidence into the wiki layer.
 
 > Operates on the repo's wiki root, resolved in order: `.llmwiki/wiki/` (preferred) →
 > `.claude/wiki/` (legacy) → `.codex/wiki/` (legacy Codex fork). Examples below use
@@ -39,7 +39,7 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
 ## When to use
 
 - A new audit md just landed
-- A PR resolved a tricky bug — the *cause* is non-obvious from the diff
+- A PR resolved a tricky bug: the *cause* is non-obvious from the diff
 - A debugging session uncovered behavior (e.g. provider quirk, race condition) not yet in the wiki
 - An invariant changed and a rule + wiki need to be re-synced
 
@@ -47,7 +47,7 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
 
 ### Consolidate, don't append (governing rule)
 
-Ingest is **not** an append operation. Before writing anything, dedup and decide whether this is an update, a supersede, or (last resort) a new page. Naive accumulation — a new page or a new paragraph for every finding — is the dominant rot mode ("naive accumulation → bloat"): the wiki swells, cross-refs go stale, and the synthesis value collapses into a junk drawer. Every ingest must leave the wiki *more consolidated*, not just *longer*.
+Ingest is **not** an append operation. Before writing anything, dedup and decide whether this is an update, a supersede, or (last resort) a new page. Naive accumulation (a new page or a new paragraph for every finding) is the dominant rot mode ("naive accumulation → bloat"): the wiki swells, cross-refs go stale, and the synthesis value collapses into a junk drawer. Every ingest must leave the wiki *more consolidated*, not just *longer*.
 
 The dedup gate, run before any add:
 
@@ -55,7 +55,7 @@ The dedup gate, run before any add:
 - If an existing page's scope this *refines* / *contradicts* / extends → **edit that page** (or supersede it), don't add.
 - Condense to the claim; push long reasoning down to `> Evidence:` (a `.llmwiki/raw/` or external citation), never inline a wall of justification.
 - Only add a new page if the finding is a genuinely new top-level concept inside an existing `wiki/<domain>/`.
-- **Page-creation threshold**: even then, only spawn a new page when the concept appears in **2+ independent sources**, or is a **load-bearing concept of the current decision/fix**. A single passing mention lands in an existing page's body or a `> See-also:` — not its own page (this is what keeps the "new page for every finding" rot mode shut).
+- **Page-creation threshold**: even then, only spawn a new page when the concept appears in **2+ independent sources**, or is a **load-bearing concept of the current decision/fix**. A single passing mention lands in an existing page's body or a `> See-also:`, not its own page (this is what keeps the "new page for every finding" rot mode shut).
 
 ### Prefer updating existing pages over adding new ones
 
@@ -70,28 +70,28 @@ Karpathy's original observation: **one finding usually touches 10–15 wiki page
 When a finding *contradicts* an existing claim that still has historical value, do NOT silently overwrite it. Preserve the lifecycle:
 
 - Create a new page (or a new section) carrying the corrected claim, and add `> Supersedes: [[old-id]]` to it.
-- Mark the old page `status: stale` in frontmatter and add `> Superseded-by: [[new-id]]` to it. Stale pages are KEPT, marked, linked, timestamped — never deleted.
+- Mark the old page `status: stale` in frontmatter and add `> Superseded-by: [[new-id]]` to it. Stale pages are KEPT, marked, linked, timestamped, never deleted.
 
-For simple refinements/additions (no contradiction, or the old claim has no standalone historical value), still edit in place — that is the existing behavior.
+For simple refinements/additions (no contradiction, or the old claim has no standalone historical value), still edit in place; that is the existing behavior.
 
 ### Reversible diff-log discipline
 
-Silent corruption mode (LLM edits a stale page without noticing): rare but catastrophic. Mitigation — **always log the diff before applying it**:
+Silent corruption mode (LLM edits a stale page without noticing): rare but catastrophic. Mitigation: **always log the diff before applying it**:
 
 1. Compose the wiki page change as a unified diff in your head
 2. Append a `## YYYY-MM-DD — <one-line summary> (ingest-finding)` entry to the resolved root's `log.md` **first**, including the diff summary (file paths + 1-line description of each change)
 3. Apply the page edit
-4. If something breaks, `git revert` the commit that includes both log + page changes — both stay in sync
+4. If something breaks, `git revert` the commit that includes both log + page changes; both stay in sync
 
 This is cheap and gives `git log log.md` (at the resolved root) as the single audit trail.
 
 ### Bulk ingest (multiple sources / staging markers at once)
 
-When draining several sources at once (a SessionStart drain surfacing 2+ `.staging/` markers, or a post-merge sweep producing several findings), do NOT run the full single-finding loop per item — that re-greps and re-logs redundantly and tends to spawn duplicate pages. Batch it:
+When draining several sources at once (a SessionStart drain surfacing 2+ `.staging/` markers, or a post-merge sweep producing several findings), do NOT run the full single-finding loop per item: that re-greps and re-logs redundantly and tends to spawn duplicate pages. Batch it:
 
 1. **Read all** sources first (every marker / audit md) before touching any page.
-2. **One dedup pass** across the whole batch — cluster findings that hit the same page, and drop cross-source duplicates once (not once per source).
-3. **Batch the page edits** — apply every change to a given page in a single touch.
+2. **One dedup pass** across the whole batch: cluster findings that hit the same page, and drop cross-source duplicates once (not once per source).
+3. **Batch the page edits**: apply every change to a given page in a single touch.
 4. **Update `index.md` once** for the whole batch.
 5. **One `log.md` entry** covering the batch (list every page touched + every marker consumed), not one entry per source.
 
@@ -100,7 +100,7 @@ A batch-wide view is what catches "these three findings are actually the same pa
 ## Steps
 
 1. **Read the source of the finding** (audit md / PR diff / debug notes). If the source is a *newly captured* raw artifact (survey, chat/meeting transcript, external doc), first save it under the matching `raw/` source-type bucket (`external/ research/ transcripts/ audits/`) with a `YYYY-MM-DD-<slug>.<ext>` filename. *Text* raw (md/txt/html) also gets `source_url`/`ingested`/`sha256` frontmatter; *binary* raw (pdf) is stored as-is with no inline frontmatter (YAML would corrupt the bytes) and stays outside the Step 11 drift check. See `${PLUGIN_ROOT}/references/wiki-conventions.md` § raw/ layout & frontmatter.
-2. **Map to wiki pages**: search `index.md` + grep page bodies. Identify all pages the finding affects — usually 1 primary + 2-5 cross-ref updates. List them.
+2. **Map to wiki pages**: search `index.md` + grep page bodies. Identify all pages the finding affects: usually 1 primary + 2-5 cross-ref updates. List them.
 3. **Compose diff log entry**: draft the resolved root's `log.md` block now, listing every page you're about to touch.
 4. **Apply changes page-by-page**:
    - **If editing an existing page**:
@@ -108,21 +108,21 @@ A batch-wide view is what catches "these three findings are actually the same pa
      - Bump `last_verified: YYYY-MM-DD` in frontmatter.
      - Add the new evidence under `## Sources`, then set `sources:` to the new count of `## Sources` entries.
    - **If adding a new page** (only after step 2 confirms no existing page fits):
-     - Place under correct `wiki/<domain>/` (2-depth max — don't make a new dir unless explicitly approved).
+     - Place under correct `wiki/<domain>/` (2-depth max; don't make a new dir unless explicitly approved).
      - Use full v2 frontmatter (`id`, `aliases`, `last_verified`, `status: active`, inferred `volatility:`, `sources:`).
        - `status:` defaults to `active`.
-       - Infer `volatility:`: arch/design/decision lore → `stable` (180d window); bug/debug/quirk/transient lore → `volatile` (30d window); default `stable`. `volatile` = transient/bug lore (re-verified often), `stable` = recurring/architectural (trusted longer) — but either way the body is a *rule*, not a *one-off log*.
+       - Infer `volatility:`: arch/design/decision lore → `stable` (180d window); bug/debug/quirk/transient lore → `volatile` (30d window); default `stable`. `volatile` = transient/bug lore (re-verified often), `stable` = recurring/architectural (trusted longer), but either way the body is a *rule*, not a *one-off log*.
        - `sources:` = the count of `## Sources` entries on the page.
      - End with `## Sources` citing the raw evidence (preferred path `.llmwiki/raw/<file>`, or external `docs/...`).
      - Add a one-line entry to `index.md` under the matching domain heading.
-   - **If a finding contradicts a page with historical value**: apply the supersede pattern above — new page/section gets `> Supersedes: [[old-id]]`; old page gets `status: stale` + `> Superseded-by: [[new-id]]` (kept, not deleted).
-5. **Update cross-refs**: any page that previously linked to or contradicted the updated page may need a touch. Use typed grammar — `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:` — never raw `[[wikilink]]` (per-token meanings: `${PLUGIN_ROOT}/references/wiki-conventions.md` § Cross-reference grammar).
-6. **Decide whether to graduate to `.llmwiki/insight/`** (the promoted cross-agent layer — NOT `.claude/rules/`):
+   - **If a finding contradicts a page with historical value**: apply the supersede pattern above: new page/section gets `> Supersedes: [[old-id]]`; old page gets `status: stale` + `> Superseded-by: [[new-id]]` (kept, not deleted).
+5. **Update cross-refs**: any page that previously linked to or contradicted the updated page may need a touch. Use typed grammar: `> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` / `> Supersedes:` / `> Superseded-by:` / `> Uses:` / `> Depends-on:` / `> Caused-by:` / `> Fixed-by:`, never raw `[[wikilink]]` (per-token meanings: `${PLUGIN_ROOT}/references/wiki-conventions.md` § Cross-reference grammar).
+6. **Decide whether to graduate to `.llmwiki/insight/`** (the promoted cross-agent layer, NOT `.claude/rules/`):
    - The wiki is the default home. Graduate a finding up to `.llmwiki/insight/` **only when ALL four hold**:
-     1. **Recurs across sessions** — observed in 2+ independent sessions/PRs, not a one-off.
-     2. **Generalizable** — applies beyond the one file/bug that surfaced it.
-     3. **Costly to violate** — getting it wrong breaks a build/release/reproducibility gate or wastes a review cycle.
-     4. **Stabilized** — settled, not under active debate or still being designed.
+     1. **Recurs across sessions**: observed in 2+ independent sessions/PRs, not a one-off.
+     2. **Generalizable**: applies beyond the one file/bug that surfaced it.
+     3. **Costly to violate**: getting it wrong breaks a build/release/reproducibility gate or wastes a review cycle.
+     4. **Stabilized**: settled, not under active debate or still being designed.
    - Do NOT graduate: one-offs, undecided/contested points, things already known going in, or reusable *procedures* (those become a skill).
    - **Why insight, not `.claude/rules/`**: Codex never reads `.claude/rules/`, so a rule promoted there is invisible to half the toolchain. Insight lives at `.llmwiki/insight/` (neutral root) and reaches both agents via the `core` prompt-injection hook. wiki no longer promotes lore to `.claude/rules/` at all. See `.llmwiki/insight/index.md`.
    - **Insight is consolidate-first too**: dedup against existing insight entries (`id`/`aliases`/body grep) before adding; prefer update/supersede; keep each entry to rule + apply-when + why, with the long story left in the wiki page via `promoted_from:` + `> Evidence:`.
@@ -189,9 +189,9 @@ Page-edit summary:
 - The resolved root's `log.md` has a new entry that lists *every* page touched in this ingest (not just the primary)
 - The **Final self-check** (supersede pairing, below) ran on this run's touched pages and printed no `one-sided:` line
 
-## Final self-check (MANDATORY) — supersede pairing on this run's pages
+## Final self-check (MANDATORY): supersede pairing on this run's pages
 
-Ingest can leave a supersede **half-applied**: a new page gets `> Supersedes: [[old]]` but the old page is never flipped to `status: stale`, or a page is marked `status: stale` without a `> Superseded-by:` back-pointer. Either one-sided pair silently corrupts the lifecycle (`lint-wiki`'s "monotonic relationships" rot mode) and won't surface until a much later audit. Before declaring the ingest done, run these three lint-wiki-style checks **scoped to only this run's touched pages** — the exact file list in the log.md block, NOT the whole wiki (`lint-wiki` owns the full sweep). A silent run is the pass; any `one-sided:` line must be fixed first.
+Ingest can leave a supersede **half-applied**: a new page gets `> Supersedes: [[old]]` but the old page is never flipped to `status: stale`, or a page is marked `status: stale` without a `> Superseded-by:` back-pointer. Either one-sided pair silently corrupts the lifecycle (`lint-wiki`'s "monotonic relationships" rot mode) and won't surface until a much later audit. Before declaring the ingest done, run these three lint-wiki-style checks **scoped to only this run's touched pages**: the exact file list in the log.md block, NOT the whole wiki (`lint-wiki` owns the full sweep). A silent run is the pass; any `one-sided:` line must be fixed first.
 
 ```bash
 # WIKI_ROOT: resolved wiki root (.llmwiki/wiki | .claude/wiki | .codex/wiki).
@@ -228,15 +228,15 @@ Fix the missing half (mark the old page `status: stale` + `> Superseded-by:`, or
 
 ## Anti-patterns
 
-- **Copying audit-md contents verbatim** — wiki *synthesizes*; raw belongs in `.llmwiki/raw/` (or audits dir).
+- **Copying audit-md contents verbatim**: wiki *synthesizes*; raw belongs in `.llmwiki/raw/` (or audits dir).
 - **Single-page ingest** when the finding touches multiple pages → cross-refs go stale silently.
 - **New page for every finding** → append-only rot ("naive accumulation → bloat"). Run the dedup gate; update/supersede existing pages first.
-- **Wiki page body as PR diary** — do NOT stack a new `## PR #X did this` section onto a page for every PR that touches the topic. The body is the distilled rule / mechanism; per-PR observations compress into one `## Evidence` section (one bullet each) or move to `> Evidence:` / `## Sources`. A run of `## Confirming dogfood (PR #N)` sections is a variant of `naive accumulation → bloat` — the distilled rule drowns in one-off detail. (See `### Consolidate, don't append`. PR *citations* under `## Sources` are provenance and stay; PR *narratives* in the body do not.)
-- **Silently overwriting a contradicted page with historical value** — supersede instead (new page `> Supersedes:`, old page `status: stale` + `> Superseded-by:`).
-- **Promoting lore to `.claude/rules/`** — Codex can't read it. Graduate cross-agent rules to `.llmwiki/insight/` (all 4 criteria), surfaced via the prompt-injection hook.
-- **Graduating one-offs to insight** — insight is the most consolidated layer; promote only recurring + generalizable + costly-to-violate + stabilized findings.
-- **3rd-depth directory** without approval — wiki is 2-depth (domain/page) by design.
-- **Edit without log entry first** — silent corruption risk; no audit trail.
+- **Wiki page body as PR diary**: do NOT stack a new `## PR #X did this` section onto a page for every PR that touches the topic. The body is the distilled rule / mechanism; per-PR observations compress into one `## Evidence` section (one bullet each) or move to `> Evidence:` / `## Sources`. A run of `## Confirming dogfood (PR #N)` sections is a variant of `naive accumulation → bloat`: the distilled rule drowns in one-off detail. (See `### Consolidate, don't append`. PR *citations* under `## Sources` are provenance and stay; PR *narratives* in the body do not.)
+- **Silently overwriting a contradicted page with historical value**: supersede instead (new page `> Supersedes:`, old page `status: stale` + `> Superseded-by:`).
+- **Promoting lore to `.claude/rules/`**: Codex can't read it. Graduate cross-agent rules to `.llmwiki/insight/` (all 4 criteria), surfaced via the prompt-injection hook.
+- **Graduating one-offs to insight**: insight is the most consolidated layer; promote only recurring + generalizable + costly-to-violate + stabilized findings.
+- **3rd-depth directory** without approval: wiki is 2-depth (domain/page) by design.
+- **Edit without log entry first**: silent corruption risk; no audit trail.
 
 ## See also
 

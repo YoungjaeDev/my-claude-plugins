@@ -9,7 +9,7 @@ Search, download, and read academic papers across 8 platforms.
 
 ## Setup / troubleshooting (absorbed from the retired setup skill)
 
-Install, registration, and failure-class triage live in `references/docker-setup.md` — Read it when the server is missing, the handshake fails, or results look like infrastructure errors rather than empty searches. Search usage below assumes the server is already connected.
+Install, registration, and failure-class triage live in `references/docker-setup.md`; read it when the server is missing, the handshake fails, or results look like infrastructure errors rather than empty searches. Search usage below assumes the server is already connected.
 
 ## Supported Platforms
 
@@ -28,10 +28,10 @@ Install, registration, and failure-class triage live in `references/docker-setup
 
 Tool names carry an MCP prefix that depends on how the server is registered:
 
-- **Plugin-loaded (this repo's default, Claude Code)** — `mcp__plugin_paper-search-tools_paper-search__<tool>`, e.g. `mcp__plugin_paper-search-tools_paper-search__search_arxiv`. This is the live prefix and the one used in the tables below.
-- **Standalone `.mcp.json`** — if the server is registered directly under the name `paper-search` (not via the plugin), the tools are `mcp__paper-search__<tool>` instead.
+- **Plugin-loaded (this repo's default, Claude Code)**: `mcp__plugin_paper-search-tools_paper-search__<tool>`, e.g. `mcp__plugin_paper-search-tools_paper-search__search_arxiv`. This is the live prefix and the one used in the tables below.
+- **Standalone `.mcp.json`**: if the server is registered directly under the name `paper-search` (not via the plugin), the tools are `mcp__paper-search__<tool>` instead.
 
-Codex 0.135 loads the same `.mcp.json`; its exact tool-name prefix is unverified here — resolve it from Codex's own tool list if the plugin-loaded name does not match.
+Codex 0.135 loads the same `.mcp.json`; its exact tool-name prefix is unverified here; resolve it from Codex's own tool list if the plugin-loaded name does not match.
 
 ## MCP Tools (23)
 

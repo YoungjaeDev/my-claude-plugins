@@ -13,7 +13,7 @@ A fleet review that reads 50 bodies with a model costs more than it returns, and
 would find is mechanical. So: measure everything, let the numbers pick the cohort, and spend
 judgment there.
 
-The pointer axis is the exception. Descriptions are short, so reading all of them is cheap — and a
+The pointer axis is the exception. Descriptions are short, so reading all of them is cheap, and a
 trigger collision is invisible from inside one skill. It only shows up when siblings are read
 together, which is exactly what a fleet pass makes possible.
 
@@ -28,7 +28,7 @@ Do not use it for one skill (`docs:skill-audit`) or to write one (`docs:skill-fo
 
 ## Prerequisites
 
-Run from the repository root. Node 18+ for the measurement script. Nothing else — no MCP server, no
+Run from the repository root. Node 18+ for the measurement script. Nothing else: no MCP server, no
 external CLI, and no other skill is required at any step.
 
 ## Procedure
@@ -84,10 +84,10 @@ echo "report base: $OUT"
 ```
 
 Then run the mechanical guards, whose output feeds the P0 tier directly. They are
-repository scripts, not bundled with this plugin — in a repo that does not carry them,
+repository scripts, not bundled with this plugin: in a repo that does not carry them,
 report the gap instead of dying on it:
 
-Unlike `skill-forge`'s verification gate, a nonzero guard here is **data, not an error** —
+Unlike `skill-forge`'s verification gate, a nonzero guard here is **data, not an error**:
 a guard exits nonzero precisely because it found the violations that become the P0 tier, so
 aborting on it would kill the sweep for doing its job. The statuses are still recorded per
 guard and carried into the report; what must never happen is a status disappearing.
@@ -136,7 +136,7 @@ The inline sequential path is the primary one: take the axes in order, and for e
 and record findings. It completes on all three runtimes and must stay complete on its own.
 
 Under Claude Code only, the same work can be accelerated by dispatching one read-only `Task` agent
-per axis over the cohort and merging the results. That is an accelerator, not a requirement — never
+per axis over the cohort and merging the results. That is an accelerator, not a requirement: never
 move an axis's rules into an agent definition, because Codex has no agents surface and relocated
 logic would silently vanish for it.
 
@@ -147,9 +147,9 @@ Per the tiers in `../skill-forge/references/axes.md`: **P0** silent failure on a
 
 ### 6. Emit the report
 
-Write `$OUT.md` — the base path step 1 printed, beside the CSV it wrote — containing:
+Write `$OUT.md` (the base path step 1 printed, beside the CSV it wrote) containing:
 
-1. Scope — how many skills measured, how many in the cohort, how many read for the pointer axis
+1. Scope: how many skills measured, how many in the cohort, how many read for the pointer axis
    only, and the selection rule used.
 2. The mechanical guard output, verbatim.
 3. Findings by tier, each naming plugin, skill, axis, file and line, and the concrete edit.

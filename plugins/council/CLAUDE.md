@@ -9,7 +9,7 @@ agreement, the surviving disagreement, and the unanswered questions to a tracked
 Spawning several Claude subagents does not add perspective. They share weights, so they share
 their systematic errors. Real divergence needs a model trained by someone else on something
 else. `core` already injects a one-line `[council]` reminder that another model is on
-PATH, but nothing executes the delegation — until this plugin, every handoff was hand-assembled.
+PATH, but nothing executes the delegation. Until this plugin, every handoff was hand-assembled.
 
 ## Shape
 

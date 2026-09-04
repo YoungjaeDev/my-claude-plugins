@@ -9,7 +9,7 @@ description: "Backup-then-delete mem0 noise for one app (default: current projec
 
 Script is plain `python3` on all runtimes. The confirmation gate uses
 `AskUserQuestion` on Claude; on Codex ask in plain text and wait.
-Codex 0.135 does NOT export `CLAUDE_PLUGIN_ROOT` —
+Codex 0.135 does NOT export `CLAUDE_PLUGIN_ROOT`:
 always resolve `PLUGIN_ROOT` first (block below).
 
 ## Steps
@@ -41,9 +41,9 @@ always resolve `PLUGIN_ROOT` first (block below).
 5. Verify: run `python3 "$PLUGIN_ROOT/scripts/audit.py" --app X` and
    confirm the deleted type count is now 0.
 6. Restore procedure (if the user regrets): read the backup JSON at
-   `~/.mem0/backups/<app>-<timestamp>.json` — it holds `{app, target_ids,
+   `~/.mem0/backups/<app>-<timestamp>.json`: it holds `{app, target_ids,
    rows}` where `rows` is the WHOLE app at backup time and `target_ids`
    lists what was actually deleted. Re-add ONLY the rows whose id is in
    `target_ids` via mem0 `add_memory` with `infer=False`, same
-   app_id/user_id/metadata — re-adding all rows would duplicate the
+   app_id/user_id/metadata; re-adding all rows would duplicate the
    untouched ones.

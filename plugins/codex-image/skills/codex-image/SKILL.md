@@ -11,7 +11,7 @@ Generate or edit raster images by asking Codex CLI to use its image generation c
 
 ## Defaults
 
-- Generation needs explicit grounding: a direct user request, or a task spec that names codex-image as the image path. Without that grounding — or when scope/count is ambiguous — ask before generating, because image generation has cost and side effects.
+- Generation needs explicit grounding: a direct user request, or a task spec that names codex-image as the image path. Without that grounding, or when scope/count is ambiguous, ask before generating, because image generation has cost and side effects.
 - Default output directory: `assets/generated/codex-image/` under the project root.
 - Default size: `auto`.
 - Default quality: `auto`.
@@ -33,11 +33,11 @@ Parse the invocation arguments manually:
 - `--quality`: `low`, `medium`, `high`, or `auto`.
 - `--out`: output directory. Resolve relative paths from the project root.
 - `-n`: number of variants. Use `1` through `4` without extra confirmation; ask before generating more.
-- `--edit`: local image path to use as the base to edit — the prompt describes the change. Like every other run, the output is still saved as a **new**, non-destructive file in the output directory (see Defaults / Result Handling); the input at `--edit`'s path is never overwritten. Verify it exists and read it before delegating.
-- `--ref`: local image path to attach as a style/character reference while generating an image whose subject/scene is otherwise **new** (not a modification of the reference's own scene) — distinct intent from `--edit`, though the output is a new file either way. Verify it exists and read it before delegating. `--edit` and `--ref` are mutually exclusive (editing a specific image vs. using one as inspiration for a different image are different intents) — if both are given, ask which one is meant. **Unverified mechanism**: `codex exec`'s `-i, --image <FILE>...` flag (confirmed via `codex exec --help` on codex-cli 0.142.3) is a generic "attach image(s) to the prompt" transport — it does not itself distinguish edit-in-place from reference-only. The edit-vs-reference distinction relies entirely on how the prompt text frames the intent (see Prompt Handoff), not on a separate CLI mechanism. This has not been empirically verified with a live generation in this repo; on first real use, check the result actually looks like a new image guided by the reference (not a near-copy or a literal edit of it) and report back if it doesn't behave as expected.
-- `--model`: Codex model id, passed through as `codex exec -m <id>`. Omit to use Codex's own default model — that auto-tracks the latest model, so no model pin is maintained here.
-- `--reasoning`: reasoning effort, passed through as `-c model_reasoning_effort="<effort>"` (e.g. `low`, `medium`, `high`, `xhigh`). Explicit opt-in only — image generation barely benefits from reasoning effort, so omit unless the user asks for it.
-- `--sandbox`: Codex sandbox mode for the run: `read-only`, `workspace-write` (default), or `danger-full-access`. The default stays `workspace-write` (enough to save the PNG); escalate only on explicit request. The full approval+sandbox bypass is `--dangerously-bypass-approvals-and-sandbox` — pass it only when the user explicitly asks, never by default.
+- `--edit`: local image path to use as the base to edit; the prompt describes the change. Like every other run, the output is still saved as a **new**, non-destructive file in the output directory (see Defaults / Result Handling); the input at `--edit`'s path is never overwritten. Verify it exists and read it before delegating.
+- `--ref`: local image path to attach as a style/character reference while generating an image whose subject/scene is otherwise **new** (not a modification of the reference's own scene): distinct intent from `--edit`, though the output is a new file either way. Verify it exists and read it before delegating. `--edit` and `--ref` are mutually exclusive (editing a specific image vs. using one as inspiration for a different image are different intents); if both are given, ask which one is meant. **Unverified mechanism**: `codex exec`'s `-i, --image <FILE>...` flag (confirmed via `codex exec --help` on codex-cli 0.142.3) is a generic "attach image(s) to the prompt" transport; it does not itself distinguish edit-in-place from reference-only. The edit-vs-reference distinction relies entirely on how the prompt text frames the intent (see Prompt Handoff), not on a separate CLI mechanism. This has not been empirically verified with a live generation in this repo; on first real use, check the result actually looks like a new image guided by the reference (not a near-copy or a literal edit of it) and report back if it doesn't behave as expected.
+- `--model`: Codex model id, passed through as `codex exec -m <id>`. Omit to use Codex's own default model: that auto-tracks the latest model, so no model pin is maintained here.
+- `--reasoning`: reasoning effort, passed through as `-c model_reasoning_effort="<effort>"` (e.g. `low`, `medium`, `high`, `xhigh`). Explicit opt-in only: image generation barely benefits from reasoning effort, so omit unless the user asks for it.
+- `--sandbox`: Codex sandbox mode for the run: `read-only`, `workspace-write` (default), or `danger-full-access`. The default stays `workspace-write` (enough to save the PNG); escalate only on explicit request. The full approval+sandbox bypass is `--dangerously-bypass-approvals-and-sandbox`; pass it only when the user explicitly asks, never by default.
 - Remaining text is the image prompt.
 
 If the prompt is missing, ask the user for one concise image prompt. If the request asks for true/native transparent output, explain that the Codex CLI bridge may not expose a guaranteed transparent-background control; ask before switching to any API-key fallback.
@@ -56,12 +56,12 @@ Before generating:
    - Prefer Codex imagegen-compatible sizes: both edges multiples of 16, max edge <= 3840, aspect ratio <= 3:1, and total pixels from 655360 to 8294400.
    - If the requested size fails these constraints, ask for a valid size instead of silently changing it.
 6. Validate quality and count. Do not silently downgrade quality or reduce count.
-7. Validate the passthrough overrides before they reach the shell — each is interpolated into the `codex exec` command line:
+7. Validate the passthrough overrides before they reach the shell: each is interpolated into the `codex exec` command line:
    - `--model`: must match `^[A-Za-z0-9._:-]+$`. Refuse any other value (a model id with shell metacharacters could be parsed as a separate command).
    - `--reasoning`: must be one of `low`, `medium`, `high`, `xhigh`.
    - `--sandbox`: must be one of `read-only`, `workspace-write`, `danger-full-access`.
-   Do not silently drop or rewrite an invalid value — ask for a valid one, the same way size/quality are handled above.
-8. `--edit` / `--ref` also reach the shell, quoted into `-i "<path>"` (see Prompt Handoff) — validate the path the same way: resolve it, confirm it exists (step already required above), and confirm it resolves to a plain file under the project. Refuse any value containing shell-command metacharacters (`` ` $ " ' ; | & < > ( ) ``) — but **not** `\` or `:`, which are legitimate on Windows paths (backslash separator, drive letter). Never interpolate the raw value directly; pass it as a single quoted/escaped shell argument (or via an array-form exec, not string concatenation) — correct quoting, not blanket character exclusion, is what actually stops injection. Ask for a corrected path instead of silently stripping characters.
+   Do not silently drop or rewrite an invalid value; ask for a valid one, the same way size/quality are handled above.
+8. `--edit` / `--ref` also reach the shell, quoted into `-i "<path>"` (see Prompt Handoff); validate the path the same way: resolve it, confirm it exists (step already required above), and confirm it resolves to a plain file under the project. Refuse any value containing shell-command metacharacters (`` ` $ " ' ; | & < > ( ) ``), but **not** `\` or `:`, which are legitimate on Windows paths (backslash separator, drive letter). Never interpolate the raw value directly; pass it as a single quoted/escaped shell argument (or via an array-form exec, not string concatenation): correct quoting, not blanket character exclusion, is what actually stops injection. Ask for a corrected path instead of silently stripping characters.
 
 ## Prompt Handoff
 
@@ -71,10 +71,10 @@ Use host-appropriate stdin syntax. Append `--skip-git-repo-check` to `codex exec
 
 ### Delimiter safety (required every invocation)
 
-The prompt is delivered as the body of a quoted here-document (bash) or here-string (PowerShell) — never interpolated into a shell argument. A *fixed* delimiter is unsafe: if the prompt's own text contains a line equal to the delimiter, the block closes early and the lines after it execute as shell commands. Guard the handoff:
+The prompt is delivered as the body of a quoted here-document (bash) or here-string (PowerShell), never interpolated into a shell argument. A *fixed* delimiter is unsafe: if the prompt's own text contains a line equal to the delimiter, the block closes early and the lines after it execute as shell commands. Guard the handoff:
 
-- **Bash — randomize the delimiter.** Pick a fresh token per invocation, e.g. `CODEX_PROMPT_EOF_<8+ random hex/alnum>`, and write that exact literal token in BOTH the opening `<<'TOKEN'` and the closing `TOKEN` line (substitute a concrete suffix for `<random>` in the template below). Then scan the exact prompt text: if any line equals the token, pick a new token and re-check before emitting the command. Keep the delimiter single-quoted so the body is never expanded. Do **not** put the token in a shell variable (`<<"$DELIM"` … `$DELIM`): bash does not parameter-expand the here-document delimiter word, so it would match the literal string `$DELIM` — a fixed, predictable value — and the randomization is lost. The token must be a concrete literal in both places.
-- **PowerShell — the here-string terminator `'@` is fixed** and cannot be randomized. Reject instead: if any line of the prompt begins with `'@`, ask the user to reword that line before generating.
+- **Bash: randomize the delimiter.** Pick a fresh token per invocation, e.g. `CODEX_PROMPT_EOF_<8+ random hex/alnum>`, and write that exact literal token in BOTH the opening `<<'TOKEN'` and the closing `TOKEN` line (substitute a concrete suffix for `<random>` in the template below). Then scan the exact prompt text: if any line equals the token, pick a new token and re-check before emitting the command. Keep the delimiter single-quoted so the body is never expanded. Do **not** put the token in a shell variable (`<<"$DELIM"` … `$DELIM`): bash does not parameter-expand the here-document delimiter word, so it would match the literal string `$DELIM` (a fixed, predictable value), and the randomization is lost. The token must be a concrete literal in both places.
+- **PowerShell: the here-string terminator `'@` is fixed** and cannot be randomized. Reject instead: if any line of the prompt begins with `'@`, ask the user to reword that line before generating.
 
 For bash-like shells:
 
@@ -131,7 +131,7 @@ Requirements:
 '@ | codex exec - [-m <model>] [-c model_reasoning_effort="<effort>"] -C "<project-root>" -s <sandbox, default workspace-write>
 ```
 
-If `--edit` or `--ref` is provided, also pass the image via Codex CLI's image attachment option (`-i`) — the same flag, different intent conveyed in the prompt text (edit-in-place vs. reference-for-a-new-image):
+If `--edit` or `--ref` is provided, also pass the image via Codex CLI's image attachment option (`-i`): the same flag, different intent conveyed in the prompt text (edit-in-place vs. reference-for-a-new-image):
 
 ```bash
 codex exec - -i "<edit-or-ref-image-path>" -C "<project-root>" -s workspace-write ...
@@ -149,7 +149,7 @@ Shape vague prompts into a short production spec without inventing unrelated con
 - Exact text, quoted verbatim, if any.
 - Constraints and avoid list.
 
-For edits, preserve invariants explicitly: say what must change and what must remain unchanged. For a reference-guided new generation (`--ref`), state what to carry over from the reference (character, style, palette) and what is new (scene, pose, composition) — do not imply the reference itself will be altered.
+For edits, preserve invariants explicitly: say what must change and what must remain unchanged. For a reference-guided new generation (`--ref`), state what to carry over from the reference (character, style, palette) and what is new (scene, pose, composition); do not imply the reference itself will be altered.
 
 ## Transparent Output
 

@@ -77,7 +77,7 @@ chosen mode which `assets/examples/*.md` to Read for grounding.
    ```
 
    Collect `signal:*` lines into `state.contentSignals`. Empty list
-   is fine — examples are then skipped.
+   is fine: examples are then skipped.
 
 2. Compute `mode` per the rules above.
 
@@ -126,7 +126,7 @@ Generate a fresh CLAUDE.md system from scratch.
 5. **Fill** placeholders in root template using interview answers
    (project name, overview, tech stack, command examples).
 
-6. **Generate** `.claude/rules/*.md` files — one per selected
+6. **Generate** `.claude/rules/*.md` files, one per selected
    category, using `assets/templates/rule-file.md` as the per-file
    skeleton. Use Variant A (`paths:`) for path-scoped categories,
    Variant B (no frontmatter) for universal ones.
@@ -146,7 +146,7 @@ Generate a fresh CLAUDE.md system from scratch.
 
 ### Mode: TIGHTEN
 
-Patch the existing root CLAUDE.md in place — no new rules/ files.
+Patch the existing root CLAUDE.md in place: no new rules/ files.
 
 1. **Read** current root CLAUDE.md.
 
@@ -165,7 +165,7 @@ Patch the existing root CLAUDE.md in place — no new rules/ files.
    each non-trivial transformation. User confirms each cluster of
    changes.
 
-5. **Apply** edits via Edit tool — surgical, no whole-file rewrite
+5. **Apply** edits via Edit tool: surgical, no whole-file rewrite
    unless necessary.
 
 6. **Verify** (deterministic commands):
@@ -188,7 +188,7 @@ Extract sections from root CLAUDE.md into new `.claude/rules/*.md`.
 2. **Read** `assets/templates/rule-categories.md` (category
    vocabulary) and `assets/templates/rule-file.md` (per-target
    skeleton). For each tag in `state.contentSignals`, also **Read**
-   the matching `assets/examples/*.md` — these tell you the canonical
+   the matching `assets/examples/*.md`: these tell you the canonical
    shape an extracted section should land in, instead of dumping raw
    prose into a new file.
 
@@ -220,7 +220,7 @@ Extract sections from root CLAUDE.md into new `.claude/rules/*.md`.
 
 8. **Rewrite** root CLAUDE.md: keep Project Overview + Critical Rules
    + Quick Reference + Rules ToC. Remove extracted sections.
-   No `@import` directives — `.claude/rules/*.md` auto-loads.
+   No `@import` directives: `.claude/rules/*.md` auto-loads.
 
 9. **Verify** (deterministic commands):
    ```bash
@@ -238,9 +238,9 @@ Extract sections from root CLAUDE.md into new `.claude/rules/*.md`.
 Cross-check existing root + rules/ structure.
 
 1. **Read** the assets that ground the audit:
-   - `assets/templates/rule-file.md` — target shape (Role / Do / Don't
+   - `assets/templates/rule-file.md`: target shape (Role / Do / Don't
      / Source of Truth) for any restructure proposals.
-   - `assets/templates/rule-categories.md` — category vocabulary and
+   - `assets/templates/rule-categories.md`: category vocabulary and
      naming convention for any rename/split proposals.
    - For each tag in `state.contentSignals`, also **Read** the
      matching example: `clean-arch` → `assets/examples/nextjs-clean-arch.md`,
@@ -248,7 +248,7 @@ Cross-check existing root + rules/ structure.
      `supabase` → `assets/examples/tech-stack-supabase.md`,
      `service-spec` → `assets/examples/saas-service-spec.md`. These
      give canonical reference shapes for comparing against existing
-     rules — without them, "should this rule look different?" is a
+     rules: without them, "should this rule look different?" is a
      guess instead of a diff.
 
 2. **Read** root CLAUDE.md and all `.claude/rules/*.md`.
@@ -269,8 +269,8 @@ Cross-check existing root + rules/ structure.
    - Missing Do/Don't structure: if a rule is long prose, propose
      restructuring.
 
-4. **Present** findings as a numbered list via AskUserQuestion — user
-   chooses which items to apply (multi-select). No items applied
+4. **Present** findings as a numbered list via AskUserQuestion: the
+   user chooses which items to apply (multi-select). No items applied
    without explicit selection.
 
 5. **Apply** each accepted item:
@@ -292,7 +292,7 @@ Cross-check existing root + rules/ structure.
 
 A short trace of how the pieces fit together when the audit lands on
 a Clean Architecture codebase. The point is to show what
-`contentSignals` actually changes — without it the audit is generic
+`contentSignals` actually changes: without it the audit is generic
 prose; with it the audit can cite a canonical reference.
 
 ```
@@ -350,15 +350,15 @@ into "this rule should split along the layer seams the example uses".
 
 ### Don't
 
-- **Don't generate `@import` directives for `.claude/rules/*`** —
+- **Don't generate `@import` directives for `.claude/rules/*`**:
   they auto-load. `@import` would only add token cost.
 - **Don't generate emojis** in any output.
 - **Don't add sections the user did not request**. No drive-by
   additions like "Testing Best Practices" if testing wasn't discussed.
-- **Don't modify `AGENTS.md`** — it's managed by the user / other
+- **Don't modify `AGENTS.md`**: it's managed by the user / other
   tooling. Only hint about coexistence in summary.
-- **Don't manage auto-memory** at `~/.claude/projects/<proj>/memory/`
-  — that's Claude's own area.
+- **Don't manage auto-memory** at `~/.claude/projects/<proj>/memory/`:
+  that's Claude's own area.
 - **Don't generate `.gitignore` entries**. Mention `CLAUDE.local.md`
   pattern in summary hint only.
 - **Don't bundle file changes into one Write call** when separate
@@ -367,7 +367,7 @@ into "this rule should split along the layer seams the example uses".
 ## Post-generation Hints
 
 After any mode completes, append these hints to the summary based on
-detected state. Each hint is informational only — no auto-modification.
+detected state. Each hint is informational only: no auto-modification.
 
 | Detected state | Hint shown to user |
 |---|---|
@@ -381,7 +381,7 @@ detected state. Each hint is informational only — no auto-modification.
 
 Index of the files each mode's execution steps already cite. The
 single source of truth for *when* to Read each file is the numbered
-step list inside each Mode Execution section — this table is just
+step list inside each Mode Execution section; this table is just
 a quick lookup.
 
 | Mode | Always Read | Read if `contentSignals` matches |
@@ -390,7 +390,7 @@ a quick lookup.
 | TIGHTEN | `templates/root-claude-md.md` | same example-tag mapping as above |
 | SPLIT | `templates/rule-categories.md`, `templates/rule-file.md` | same example-tag mapping as above |
 | REORGANIZE | `templates/rule-file.md`, `templates/rule-categories.md` | same example-tag mapping as above |
-| Any (when user asks "why this structure") | `references/claude-code-memory.md` | — |
+| Any (when user asks "why this structure") | `references/claude-code-memory.md` | - |
 
 `contentSignals` are emitted by the Detection Logic bash scan
 (`grep -liE`). Tags: `clean-arch`, `nextjs-framework`, `supabase`,

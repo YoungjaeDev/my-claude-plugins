@@ -176,7 +176,7 @@ The write-side wiring is intentionally asymmetric:
 - **`complete` is auto-wired** — `dev:post-merge` Step 5.7 fires `complete <spec-path>` after a merge.
 - **`start` / `init` are NOT auto-wired** into `resolve-issue` / `decompose-issue`. They run manually, or as part of the `superpowers:writing-plans` chain.
 
-Consequence: `.claude/state/spec.json` stays absent until the first `start` / `init` in a repo. This dormancy is **by design**, not a bug — the cache materializes only once a tracked spec begins, and `dev:post-merge` Step 5.7 only fires `complete` when `.claude/state/` already exists, so the auto-call never hits a missing file. There is no overlap with `wiki`: that plugin tracks durable knowledge lore, `state-tracker` tracks transient work-pipeline state.
+Consequence: `.claude/state/spec.json` stays absent until the first `start` / `init` in a repo. This dormancy is **by design**, not a bug: the cache materializes only once a tracked spec begins, and `dev:post-merge` Step 5.7 only fires `complete` when `.claude/state/` already exists, so the auto-call never hits a missing file.
 
 ### Conditional behavior
 
@@ -184,7 +184,6 @@ Safe to install in any repo. Skill operations no-op gracefully when `.claude/sta
 
 
 ## project-init (흡수: project-init)
-
 
 Orchestrates a project's **agent-harness lifecycle**. The two directions are symmetric.
 
@@ -331,7 +330,7 @@ The three files share the same skeleton:
    - `### P1 — Performance / Maintainability`
    - `### Domain-specific` (differs per variant; general has only a TODO)
 
-The variant difference is the `### Domain-specific` section plus 1-2 domain-specific items added to `### P0` / `### P1`. **Only the domain sections differ on top of the base** — minimizing code duplication.
+The variant difference is the `### Domain-specific` section plus 1-2 domain-specific items added to `### P0` / `### P1`; nothing else differs across variants.
 
 ### Out of Scope
 

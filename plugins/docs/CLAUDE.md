@@ -9,9 +9,9 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 | `doc-guides` | README/CHANGELOG/deploy-doc/MOC authoring reference cards, one per `/docs:*` document command (absorbed `readme-guide`, `changelog-guide`, `deploy-doc-guide`, `moc-guide`) |
 | `write-rules` | CLAUDE.md + `.claude/rules/` generation with auto mode detection (absorbed from `rules-forge`) |
 | `interview-methodology` | Requirements interview: breadth-first / depth-first / relentless grill-me modes (absorbed from `interview`); also carries the TCREI reusable-prompt template (absorbed from `tcrei-prompt`) |
-| `skill-forge` | Write or revise a skill — frontmatter schema, writing levers, structure, three-runtime packaging contract |
+| `skill-forge` | Write or revise a skill: frontmatter schema, writing levers, structure, three-runtime packaging contract |
 | `skill-audit` | Diagnose one skill across seven axes, returning P0/P1/P2 findings with concrete edits |
-| `skill-fleet-review` | Repository-wide skill sweep — measure first, review a selected cohort, emit a dated audit report + CSV |
+| `skill-fleet-review` | Repository-wide skill sweep: measure first, review a selected cohort, emit a dated audit report + CSV |
 
 ## Commands
 
@@ -97,7 +97,7 @@ Based on awesome-readme curated list:
 Three skills that write, diagnose, and sweep skills. Split because they are called at different
 moments; merging them would put the fleet-sweep procedure on the single-skill authoring path.
 
-`skill-forge` owns the rules — `skills/skill-forge/references/{frontmatter,writing-levers,structure,runtime-contract}.md` —
+`skill-forge` owns the rules, in `skills/skill-forge/references/{frontmatter,writing-levers,structure,runtime-contract}.md`,
 and the other two apply them. The bundled `skills/skill-forge/scripts/measure-skills.mjs` produces
 the per-skill numbers (lines, body tokens, description length, sections, references depth, bundled
 scripts, frontmatter keys) plus a fleet-wide frontmatter key inventory.
@@ -149,8 +149,8 @@ The skill ships with three asset categories under
 | `templates/` | Output skeletons — root CLAUDE.md, single rule file (Variants A/B), category catalog | Per mode execution |
 | `examples/` | Four adapted reference rules from `codefactory-co/golden-rabbit-antigravity-v1` (Next.js Clean Architecture, Next.js Framework, Tech Stack: Supabase, SaaS Service Spec) | Per mode execution when tech stack matches |
 
-Assets are loaded with the `Read` tool only when the skill needs them
-— they don't enter context at session start.
+Assets are loaded with the `Read` tool only when the skill needs them:
+they don't enter context at session start.
 
 ### Output File Structure
 
@@ -170,8 +170,8 @@ your-project/
 Optional companions the skill detects and hints about (but does not
 generate):
 
-- `AGENTS.md` — if present, skill suggests `@AGENTS.md` import line
-- `CLAUDE.local.md` — skill hints about `.gitignore` pattern
+- `AGENTS.md`: if present, skill suggests `@AGENTS.md` import line
+- `CLAUDE.local.md`: skill hints about `.gitignore` pattern
 
 ### Output Conventions
 
@@ -182,7 +182,7 @@ generate):
 - Quick Reference table (build / test / dev commands)
 - Code Structure (brief, ≤10 lines)
 - Rules section (plain text ToC pointing to `.claude/rules/*.md`)
-- **No `@import` directives** — `.claude/rules/*.md` auto-loads
+- **No `@import` directives**: `.claude/rules/*.md` auto-loads
 
 #### Each `.claude/rules/*.md`
 
@@ -204,7 +204,7 @@ Variant B (always-load): no frontmatter at all.
 
 Rules Forge handles **initial creation and major restructuring**.
 The official `claude-md-management` plugin handles **ongoing
-maintenance** — incremental rule additions, edits, and refactors.
+maintenance**: incremental rule additions, edits, and refactors.
 
 Recommended workflow:
 
@@ -214,7 +214,7 @@ Recommended workflow:
 
 ### Version History
 
-- **2.1.0** (2026-05-13) — Asset routing fixes (non-breaking)
+- **2.1.0** (2026-05-13): Asset routing fixes (non-breaking)
   - Mode execution sections now cite `Read assets/*` inline at the
     first step (was: bottom-of-file `Assets Reference` table only).
     REORGANIZE / TIGHTEN / SPLIT no longer skip the bundled examples
@@ -227,7 +227,7 @@ Recommended workflow:
     bash commands (`wc -l`, `find`, `grep -c '^@\.claude/rules'`).
   - Added a Worked Example section showing REORGANIZE + Clean Arch
     signal flow end-to-end.
-- **2.0.0** (2026-05-12) — BREAKING
+- **2.0.0** (2026-05-12): BREAKING
   - Consolidated `rules-guide` skill + `generate` / `split` commands
     into a single `write-rules` skill with internal mode detection
   - Aligned output with Claude Code 2026 docs (200-line root cap,
@@ -237,7 +237,7 @@ Recommended workflow:
     docs change)
   - Migration: `/rules-forge:generate` and `/rules-forge:split` removed.
     Use `/docs:write-rules` (or natural-language triggers).
-- **1.0.0** (2026-02-14) — Initial release
+- **1.0.0** (2026-02-14): Initial release
 
 ## interview-methodology (흡수: interview, tcrei-prompt)
 
@@ -304,7 +304,7 @@ Full spec at `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`:
 
 When the interview's goal is a copy-paste-ready prompt for next-session reuse instead of a spec
 file, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/
-Iterate) — the diagnosis table, output template, and domain-specific gap patterns live in
+Iterate): the diagnosis table, output template, and domain-specific gap patterns live in
 `skills/interview-methodology/references/tcrei-template.md`.
 
 Triggers: "TCREI", "structure this prompt", "prompt enhance", "make a prompt for next session".
@@ -367,7 +367,7 @@ Translate web articles to Korean markdown with intelligent image captioning.
 ### gws-sync (흡수: gws-sync)
 
 Local folder → Google Drive **one-way, proposal-based sync**. Built on the gws
-CLI (the official googleworkspace/cli) — it calls the CLI, not an MCP server.
+CLI (the official googleworkspace/cli): it calls the CLI, not an MCP server.
 Authentication (`gws auth login`) is a prerequisite.
 
 #### Skill
@@ -378,15 +378,15 @@ Authentication (`gws auth login`) is a prerequisite.
 
 #### Design principles (hard rules)
 
-1. **One-way** — local → Drive only. Drive-side changes are never pulled back down to local.
-2. **Proposal-based** — every write happens only after a diff report plus user approval.
-3. **No automatic deletion** — orphaned Drive files are proposed as a list, never deleted.
-4. **Update ≠ re-upload** — updating an existing file uses `files update --upload` (keeping the ID). It never creates a new file that would break the link.
+1. **One-way**: local → Drive only. Drive-side changes are never pulled back down to local.
+2. **Proposal-based**: every write happens only after a diff report plus user approval.
+3. **No automatic deletion**: orphaned Drive files are proposed as a list, never deleted.
+4. **Update ≠ re-upload**: updating an existing file uses `files update --upload` (keeping the ID). It never creates a new file that would break the link.
 
 #### Dependencies
 
-- The `gws` CLI is **required** — if it is missing, print install guidance (`npm install -g @googleworkspace/cli` + github.com/googleworkspace/cli) and stop. Do not install it automatically.
-- `references/gws-skills-llms.txt` — a catalog of the 54 official skills + 41 recipes. An index for proposing an uninstalled skill/recipe that fits the user's situation, via an `npx skills add` line.
+- The `gws` CLI is **required**: if it is missing, print install guidance (`npm install -g @googleworkspace/cli` + github.com/googleworkspace/cli) and stop. Do not install it automatically.
+- `references/gws-skills-llms.txt`: a catalog of the 54 official skills + 41 recipes. An index for proposing an uninstalled skill/recipe that fits the user's situation, via an `npx skills add` line.
 
 #### Structure
 

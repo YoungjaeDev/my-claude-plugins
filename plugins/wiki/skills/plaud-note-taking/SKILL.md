@@ -11,8 +11,8 @@ version: 0.2.0
 Every question below runs through a **capability-aware** interactive-input gate rather than one
 hardcoded tool. Read each `AskUserQuestion` mention as this gate:
 
-- **Claude Code** — use `AskUserQuestion`.
-- **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE
+- **Claude Code**: use `AskUserQuestion`.
+- **Codex**: use `request_user_input` when that tool is exposed. When it is not, ask ONE
   concise blocking question only where a wrong assumption would be costly; otherwise proceed on
   a documented safe default and state the assumption.
 
@@ -46,14 +46,14 @@ This skill corrects a transcript conservatively and writes **new** files beside 
 originals. It never edits the uploaded originals. It sorts every span into four states (see
 `references/correction-policy.md`), tagged inline in the corrected file:
 
-- `[확인됨]` — present in the transcript and not in conflict with a trusted source.
-- `[정정]` — a misrecognition fixable with certain evidence: a `terminology.md` entry, an
+- `[확인됨]`: present in the transcript and not in conflict with a trusted source.
+- `[정정]`: a misrecognition fixable with certain evidence: a `terminology.md` entry, an
   in-transcript self-correction, or a cited trusted source. Keep original → corrected → basis.
-- `[해석]` — useful context inferred from flow, not stated verbatim. Never promote to a
+- `[해석]`: useful context inferred from flow, not stated verbatim. Never promote to a
   decision, action item, or commitment.
-- `[확인 필요]` — ambiguous / conflicting / STT-suspect. Becomes an open question.
+- `[확인 필요]`: ambiguous / conflicting / STT-suspect. Becomes an open question.
 
-## Output layout — originals frozen, derivatives in their own folder
+## Output layout: originals frozen, derivatives in their own folder
 
 ```text
 .llmwiki/raw/transcripts/
@@ -85,40 +85,40 @@ grill-me posture (step 4).
 1. **Locate input.** Find `<YYYY-MM-DD-slug>.transcript.txt` (and optional `.note.txt`) in
    `.llmwiki/raw/transcripts/`. If more than one recording is present, or the files are
    loosely / oddly named, use the interactive-input gate to ask which recording to process and
-   confirm the `<YYYY-MM-DD-slug>`, then normalize **copies** — never destructively rename or edit an
+   confirm the `<YYYY-MM-DD-slug>`, then normalize **copies**, never destructively rename or edit an
    original. If only a summary/note exists and there is no transcript, **stop**: you cannot
    correct against a summary. Report the missing transcript.
 
 2. **Understand the note.** Read transcript and summary as separate inputs. Keep PLAUD's
-   `Speaker 1 / Speaker 2` labels as **estimates** — PLAUD over-splits one person or merges
+   `Speaker 1 / Speaker 2` labels as **estimates**: PLAUD over-splits one person or merges
    two on cross-talk. Never convert a speaker label into a real name, an attendee count, or
    attribution of a decision without independent evidence.
 
-3. **Correct** (conservative — `references/correction-policy.md` + `references/terminology.md`):
+3. **Correct** (conservative: `references/correction-policy.md` + `references/terminology.md`):
    - STT fixes target the known error zone: Korean+English **code-switched tech terms**,
      **proper nouns** (company / product / person), garbled **English loanwords**, and
-     orthography (맞춤법). **Dropped or merged sentences are not reconstructed** — leave them
+     orthography (맞춤법). **Dropped or merged sentences are not reconstructed**: leave them
      `[확인 필요]` unless the boundary re-segments unambiguously (never invent missing content).
    - A correction needs a defensible basis: a `terminology.md` entry, an in-transcript
-     self-correction, or a cited trusted source. Context is a signal that *flags* a candidate —
+     self-correction, or a cited trusted source. Context is a signal that *flags* a candidate,
      it is not standalone authorization to rewrite a proper noun or a number. When the only
      basis is "it probably means X", flag `[확인 필요]` instead of correcting.
    - Terminology fixes use **only** verified entries in the **project's** term dictionary at
-     `.claude/plaud-note-taking/terminology.md` (a stable config path — never under
+     `.claude/plaud-note-taking/terminology.md` (a stable config path, never under
      `.llmwiki/raw/`, which wiki treats as immutable evidence). On first run, seed it by
      copying the bundled `references/terminology.md` template (the bundled file is an empty
-     template, never the live dictionary — a plugin-cache copy cannot hold a project's terms). A
-     term not in the dictionary is not corrected from memory — it becomes an open question or a
+     template, never the live dictionary: a plugin-cache copy cannot hold a project's terms). A
+     term not in the dictionary is not corrected from memory: it becomes an open question or a
      proposed dictionary addition.
    - **Numbers, dates, prices, contract terms**: never "clean up" by guessing. If STT-suspect
      or unbased, flag `[확인 필요]`.
    - Never change meaning. A correction restores what was said; it does not improve it.
 
-4. **Resolve open questions — grill me.** Collect every `[확인 필요]`: ambiguous owner /
+4. **Resolve open questions, grill me.** Collect every `[확인 필요]`: ambiguous owner /
    deadline / number, uncertain speaker attribution that affects a decision, and any place the
    **summary asserts a decision the transcript does not support**. If one or more open
    questions remain, load `docs:interview-methodology` and run it in a **relentless,
-   grill-me posture** ("집요하게 캐물어") over the open-question list — one fact per question, do
+   grill-me posture** ("집요하게 캐물어") over the open-question list: one fact per question, do
    not accept a vague answer, keep pressing until each is resolved or the user explicitly
    defers it. Ask it to run a focused close (resolve this list; do not spin up a separate
    spec). If the interview plugin is unavailable, question each open item directly, in the
@@ -127,21 +127,21 @@ grill-me posture (step 4).
 
 5. **Write the corrected file.** Produce `derived/<slug>.corrected.md` (creating the `derived/`
    subfolder if it is missing) using `templates/corrected-note.md`. **Never silently overwrite an
-   existing derived file** — the user may have hand-edited it. **Allocate the names as a pair, and
+   existing derived file**: the user may have hand-edited it. **Allocate the names as a pair, and
    let *either* name being taken move the whole pair**: use the unsuffixed
    `derived/<slug>.corrected.md` + `derived/<slug>.digest.md` only when both are free, otherwise
    take the lowest `N` where *both* `derived/<slug>.corrected-vN.md` and
    `derived/<slug>.digest-vN.md` are free (or ask before overwriting). Reserve that pair for this
    run. Testing only the corrected name overwrites a leftover digest whose corrected half is gone,
    and picking a corrected name on its own lets step 7 hit an occupied digest name and bump only
-   its own suffix — both desynchronize the pair the `derived_from:` chain depends on.
+   its own suffix; both desynchronize the pair the `derived_from:` chain depends on.
    **Whatever pair this step
-   reserves is the one steps 6-8 carry** — the approval message, the digest's `derived_from:`,
+   reserves is the one steps 6-8 carry**: the approval message, the digest's `derived_from:`,
    and the wiki citation all name those files, never the base name by default, so a rerun cannot
-   cite the previous run's corrected file. Do not edit the project dictionary yourself — if recurring unknown terms look
+   cite the previous run's corrected file. Do not edit the project dictionary yourself: if recurring unknown terms look
    worth adding, list them as candidates at the bottom of the corrected file for the user to
    confirm later. Do not dump raw personal data (phone numbers, emails, credentials) into the
-   corrected file — **mask it in place** with `[삭제됨: 유형]` (e.g. `[삭제됨: 전화번호]`) rather
+   corrected file: **mask it in place** with `[삭제됨: 유형]` (e.g. `[삭제됨: 전화번호]`) rather
    than deleting the span. This file is the full transcript with tagging, so a silent deletion is
    an untagged edit: the marker keeps speaker attribution, utterance order, and the positions the
    `[정정]` citations point at.
@@ -158,7 +158,7 @@ grill-me posture (step 4).
 7. **Write the digest.** Produce the digest half of the pair step 5 reserved, using
    `templates/digest.md`, the readable record a person opens instead of the transcript. Its
    `derived_from:` names the corrected half. Do **not** re-run a no-overwrite check here and bump
-   the digest's suffix on its own — step 5 already verified both names were free, and a second
+   the digest's suffix on its own: step 5 already verified both names were free, and a second
    independent allocation is exactly what breaks the pairing. It **compresses the corrected file and
    adds nothing**: every line traces back to a span already in it. Promotion is one-way and blocked
    upward: a `[해석]` span belongs under "논의만 됨", a `[확인 필요]` under "미해결", and neither may
@@ -166,7 +166,7 @@ grill-me posture (step 4).
 
 8. **Hand reusable lore to the wiki.** Resolve the wiki root in `ingest-finding`'s own order:
    `.llmwiki/wiki/` → `.claude/wiki/` (legacy) → `.codex/wiki/` (legacy Codex fork). Print one line
-   naming the **actual** reason and finish — this step never fails the skill:
+   naming the **actual** reason and finish: this step never fails the skill:
    `wiki-ingest: skipped (no wiki root)` when none of the three resolves, and
    `wiki-ingest: skipped (ingest-finding not installed)` when a root exists but the skill is
    missing. Reporting "no wiki root" for a repo that has one sends whoever reads the line looking
@@ -198,7 +198,7 @@ grill-me posture (step 4).
 
 - Never modify, rename, or delete the uploaded `.transcript.txt` / `.note.txt` originals.
 - Never treat the summary as a source of confirmed decisions, owners, or deadlines.
-- Never correct a name / company / product / number from memory — only from `terminology.md`
+- Never correct a name / company / product / number from memory, only from `terminology.md`
   or a cited trusted source.
 - Never promote a `[해석]` or a mere request/proposal into a confirmed decision or action item.
 - Never carry a `[해석]` or `[확인 필요]` span into the digest's "결정된 것". The digest compresses
@@ -244,8 +244,8 @@ grill-me posture (step 4).
 
 ## Reference files
 
-- `references/plaud-note-format.md` — what a PLAUD note is; STT error classes; transcript-over-summary rule.
-- `references/correction-policy.md` — the four states and when each applies; open-question rules.
-- `references/terminology.md` — empty template for the project term dictionary (seeded into `.claude/plaud-note-taking/terminology.md`; the only basis for a terminology `[정정]`).
-- `templates/corrected-note.md` — the `derived/*.corrected.md` output format.
-- `templates/digest.md` — the `derived/*.digest.md` output format and its promotion rules.
+- `references/plaud-note-format.md`: what a PLAUD note is; STT error classes; transcript-over-summary rule.
+- `references/correction-policy.md`: the four states and when each applies; open-question rules.
+- `references/terminology.md`: empty template for the project term dictionary (seeded into `.claude/plaud-note-taking/terminology.md`; the only basis for a terminology `[정정]`).
+- `templates/corrected-note.md`: the `derived/*.corrected.md` output format.
+- `templates/digest.md`: the `derived/*.digest.md` output format and its promotion rules.

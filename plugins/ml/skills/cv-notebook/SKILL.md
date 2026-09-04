@@ -5,7 +5,7 @@ description: Generate production-quality Computer Vision Jupyter notebooks. Supp
 
 # CV Notebook Generator
 
-> **Structure-aware authoring**: Claude Code authors `.ipynb` cells with the `NotebookEdit` tool. Codex has no `NotebookEdit` — author cells through an `nbformat` Python snippet instead (detect the interpreter `python3` → `python` → `py -3`, check `<py> -c "import nbformat"`, install on miss with `<py> -m pip install nbformat`). Never hand-edit notebook JSON as raw text on either runtime.
+> **Structure-aware authoring**: Claude Code authors `.ipynb` cells with the `NotebookEdit` tool. Codex has no `NotebookEdit`: author cells through an `nbformat` Python snippet instead (detect the interpreter `python3` → `python` → `py -3`, check `<py> -c "import nbformat"`, install on miss with `<py> -m pip install nbformat`). Never hand-edit notebook JSON as raw text on either runtime.
 
 A skill for generating professional Computer Vision Jupyter notebooks following roboflow/notebooks patterns with Korean insights.
 
@@ -23,7 +23,7 @@ A skill for generating professional Computer Vision Jupyter notebooks following 
 - Hardcoded API keys (use environment variables or secrets)
 - Model-specific code outside templates
 - Execution of cells (user runs in their environment)
-- Direct .ipynb file manipulation (use the structure-aware path — NotebookEdit / nbformat)
+- Direct .ipynb file manipulation (use the structure-aware path: NotebookEdit / nbformat)
 
 ## Supported Task Types
 
@@ -123,16 +123,16 @@ Standard section order for all CV notebooks:
 2. **Select template**: Load appropriate task template from references/templates/
 3. **Apply environment**: Insert Colab/Kaggle/Local specific setup
 4. **Inject insights**: Add Korean insights based on level density
-5. **Generate notebook**: author cells structure-aware — Claude Code: `NotebookEdit` tool; Codex: an `nbformat` snippet
+5. **Generate notebook**: author cells structure-aware, Claude Code with `NotebookEdit`, Codex with an `nbformat` snippet
 6. **Validate structure**: Ensure all required sections present
-7. **End gate**: validate the generated notebook actually parses (see below) — never hand back a notebook only asserted to be correct
+7. **End gate**: validate the generated notebook actually parses (see below); never hand back a notebook only asserted to be correct
 
 ## End Gate (MANDATORY): validate the generated notebook
 
-`NotebookEdit` builds cells but never runs them, so a syntax slip (an unclosed paren, a missing colon) ships silently and the user only hits it mid-run. Before declaring the notebook done, validate it. Two paths — take the strongest one the environment allows:
+`NotebookEdit` builds cells but never runs them, so a syntax slip (an unclosed paren, a missing colon) ships silently and the user only hits it mid-run. Before declaring the notebook done, validate it. Two paths, take the strongest one the environment allows:
 
-1. **Execute setup + first-load cells (stronger, env-permitting)** — if `jupyter` is installed and the target env has the notebook's deps, execute the setup and first data-load cells: `jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=120 <notebook>` (slice a temp copy down to the GPU-check / Setup / first Data cells to avoid kicking off a full training run). This catches import and runtime errors py_compile cannot.
-2. **py_compile the code cells (deterministic fallback, always runs)** — no packages or GPU needed. Extract each code cell, strip IPython magics / shell escapes (`!…`, `%…`), and `py_compile` it in order. On the first failure, report **"unverified beyond cell N"** — cells 1..N-1 are syntactically sound, N is where it breaks.
+1. **Execute setup + first-load cells (stronger, env-permitting)**: if `jupyter` is installed and the target env has the notebook's deps, execute the setup and first data-load cells: `jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=120 <notebook>` (slice a temp copy down to the GPU-check / Setup / first Data cells to avoid kicking off a full training run). This catches import and runtime errors py_compile cannot.
+2. **py_compile the code cells (deterministic fallback, always runs)**: no packages or GPU needed. Extract each code cell, strip IPython magics / shell escapes (`!…`, `%…`), and `py_compile` it in order. On the first failure, report **"unverified beyond cell N"**: cells 1..N-1 are syntactically sound, N is where it breaks.
 
 ```bash
 NB="notebook.ipynb"           # the generated notebook
@@ -154,11 +154,11 @@ done < "$tmp/cells.b64"
 rm -rf "$tmp"
 ```
 
-Fix the reported cell and re-run until it passes. If only the stronger nbconvert path failed on a missing dependency, say so explicitly — "unverified beyond cell N, env lacks `<pkg>`" — rather than claiming the notebook runs.
+Fix the reported cell and re-run until it passes. If only the stronger nbconvert path failed on a missing dependency, say so explicitly: "unverified beyond cell N, env lacks `<pkg>`", rather than claiming the notebook runs.
 
 ## NotebookEdit Integration
 
-Claude Code path — on Codex, use the `nbformat` equivalent (append to `nb.cells` in the same order; the end gate above is runtime-neutral):
+Claude Code path; on Codex, use the `nbformat` equivalent (append to `nb.cells` in the same order; the end gate above is runtime-neutral):
 
 ```python
 # Cell generation sequence
@@ -174,7 +174,7 @@ NotebookEdit(notebook_path="notebook.ipynb", edit_mode="insert", cell_id="<previ
 
 ## Exploration mode (absorbed from cv-explorer)
 
-Triggers on "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "browse dataset", "browse annotations", "visualize dataset interactively" instead of the training/roboflow flow above. Generates an ipywidgets-based interactive data-exploration notebook — same structure-aware authoring (NotebookEdit / nbformat) and the same End Gate validation described above, different templates.
+Triggers on "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "browse dataset", "browse annotations", "visualize dataset interactively" instead of the training/roboflow flow above. Generates an ipywidgets-based interactive data-exploration notebook: same structure-aware authoring (NotebookEdit / nbformat) and the same End Gate validation described above, different templates.
 
 **Non-triggers** (route to the standard flow above instead): "training notebook", "train model", "fine-tune", "transfer learning", "deploy model", "export model".
 
@@ -190,7 +190,7 @@ Triggers on "exploration notebook", "explore dataset", "interactive viewer", "da
 
 ### Data formats
 
-`data_format`: `coco-json`, `yolo-txt`, `npz`, `csv`, `imagefolder` — one loader each in `references/explorer-data-loaders.md`. Detection/segmentation favor coco-json, tracking needs npz, classification favors csv/imagefolder. A mismatched viewer_type x data_format pairing gets a warning markdown cell in the generated notebook rather than a hard block.
+`data_format`: `coco-json`, `yolo-txt`, `npz`, `csv`, `imagefolder`, one loader each in `references/explorer-data-loaders.md`. Detection/segmentation favor coco-json, tracking needs npz, classification favors csv/imagefolder. A mismatched viewer_type x data_format pairing gets a warning markdown cell in the generated notebook rather than a hard block.
 
 ### Comparison, threshold tuning, statistics
 

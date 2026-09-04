@@ -8,7 +8,7 @@ description: "Scan ALL mem0 app_ids at once — per-app memory count, noise rati
 ## Codex note
 
 Script is plain `python3` on all runtimes. Codex 0.135 does NOT export
-`CLAUDE_PLUGIN_ROOT` — always resolve `PLUGIN_ROOT` first (block below).
+`CLAUDE_PLUGIN_ROOT`: always resolve `PLUGIN_ROOT` first (block below).
 
 ## Steps
 
@@ -32,12 +32,12 @@ Script is plain `python3` on all runtimes. Codex 0.135 does NOT export
    ```
 
    - Requires `MEM0_API_KEY`; the script exits with guidance if unset.
-   - Full-fleet scan pages every app — expect ~1-2 minutes on large stores.
+   - Full-fleet scan pages every app: expect ~1-2 minutes on large stores.
 2. Interpret the report for the user:
    - `JUNK?` flag = basename-style name + noise >= 90% + zero manual types.
      These are cwd-fallback artifacts; suggest `cleanup --app <name> --all`.
    - `FRAG` pairs = same project split across two app_ids (recall is split).
-     Merge is out of scope v1 — report only.
+     Merge is out of scope v1: report only.
    - High noise% on a real project = suggest
      `cleanup --app <name> --type session_summary`.
 3. Do NOT delete anything from this skill. Route to the cleanup skill.
@@ -64,7 +64,7 @@ $PY "$PLUGIN_ROOT/scripts/doctor.py"
 For each WARN, explain the fix but do NOT apply automatically:
 
 - MEM0_RERANK unset -> add `"MEM0_RERANK": "off"` to `~/.claude/settings.json` env.
-- auto_save true -> set `"auto_save": false` in `~/.mem0/settings.json` (env `MEM0_AUTO_SAVE` does NOT work — upstream `_identity.sh` overwrites it from this file on every hook run).
-- hook timeout 8s -> raising it means editing the plugin cache copy, which resets on update; prefer rerank off first, upstream issue second. Multiple cached versions may be listed — only the session-pinned one is live.
+- auto_save true -> set `"auto_save": false` in `~/.mem0/settings.json` (env `MEM0_AUTO_SAVE` does NOT work: upstream `_identity.sh` overwrites it from this file on every hook run).
+- hook timeout 8s -> raising it means editing the plugin cache copy, which resets on update; prefer rerank off first, upstream issue second. Multiple cached versions may be listed; only the session-pinned one is live.
 - identity fragmentation -> consolidate `MEM0_USER_ID` across machines.
 - decay INFO line: if the REST read failed, tell the user to check the GUI toggle or run `client.project.get(fields=["decay"])` via the mem0 SDK.

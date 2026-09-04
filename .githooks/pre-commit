@@ -17,6 +17,11 @@ if command -v node >/dev/null 2>&1; then
   # has forbidden these for a while with nothing enforcing it, which is how
   # md5sum reached translator and broke image downloads on macOS (issue #172).
   node "$repo_root/scripts/check-shell-portability.mjs"
+  # The portability guard is a detector, and this repo's own lore says a
+  # detector without coverage reports "nothing wrong" when it means "could
+  # not look". Nine holes across three review rounds, each found by hand;
+  # these cases are that verification kept.
+  node "$repo_root/scripts/check-shell-portability.test.mjs"
   # The frontmatter/body violations that make a skill fail SILENTLY on at least
   # one runtime — description over the Codex 1024 cap, unquoted `: ` collapsing the
   # YAML, bare ${CLAUDE_PLUGIN_ROOT} in a shell block, non-kebab name, frontmatter not

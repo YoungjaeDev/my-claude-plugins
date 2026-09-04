@@ -3,25 +3,12 @@
 
 Manually sync project progress to GitHub milestones and issues. Regenerates architecture diagrams and updates tracking sections. Follow project guidelines in `@CLAUDE.md`.
 
-## Arguments
+## Entry points
 
-- Milestone name (optional): Target milestone to update. If omitted, auto-detect from `.claude/state/project-tracking-*.json`
+The `/github-dev:update-progress` skill was retired; there is no slash command for this document.
 
-## Flags
-
-| Flag | Description |
-|------|-------------|
-| `--all` | Update all active milestones (process every state file) |
-| `--local` | Skip GitHub sync, only update local state and print to terminal |
-
-## Usage
-
-```
-/github-dev:update-progress                    # Auto-detect active milestone
-/github-dev:update-progress "v1.0 Auth System" # Specific milestone
-/github-dev:update-progress --all              # All active milestones
-/github-dev:update-progress --local            # Local only, no GitHub sync
-```
+- **Automated** — `/github-dev:post-merge` Step 5.5 runs the workflow below for every related issue that carries a milestone.
+- **Manual full sync** — follow the workflow below by hand in the main session when tracking drifted outside a merge (issues closed by hand, a milestone renamed). Pick the target the same way the old arguments did: a milestone name selects `.claude/state/project-tracking-{slug}.json`; "all" means every state file; "local" means skip the GitHub writes in steps 5-6 and only refresh the local state file.
 
 ## Workflow
 

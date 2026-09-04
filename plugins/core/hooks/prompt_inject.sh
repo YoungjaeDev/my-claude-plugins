@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# UserPromptSubmit hook — compact behavioral block injected on EVERY prompt.
+# Shared by Claude Code and Codex CLI:
+#   - no arg  → plain stdout (Claude: stdout becomes additionalContext)
+#   - `codex` → JSON {"hookSpecificOutput":{"hookEventName":"UserPromptSubmit",
+#               "additionalContext":"..."}} — the UserPromptSubmit envelope Codex
+#               reads model-visible context from (a top-level additionalContext is
+#               NOT read).
+#
+# This block is fixed and fires every turn: an English behavioral block whose
+# first line mandates a Korean final reply, plus a few core behavioral one-liners.
+# A wiki/insight pointer ("consult .llmwiki/insight/ + wiki BEFORE reasoning") is
+# appended ONLY when a knowledge root resolves in CWD (.llmwiki → legacy .claude
+# → .codex), since core is installed globally — a repo with no wiki, or a
+# legacy-root repo, must not be told to read a path that isn't there. It never
+# inlines insight/wiki content — only the instruction to go read it.
+#
+# Zero runtime deps (no jq/python): JSON encoding via bash parameter expansion.
+# Keep the block free of literal double-quotes and backslashes so the encoder
+# only has to turn newlines into \n.
+
+set -u
+# Hooks must never spam the user, so stderr is discarded — but a discarded
+# stderr also hides a future GNU-only construct that has no `||` fallback,
+# leaving a silent no-op on macOS with nothing to diagnose. Set WIKI_HOOK_DEBUG
+# (any value) to keep stderr and see what the hook is actually saying.
+[ -n "${WIKI_HOOK_DEBUG:-}" ] || exec 2>/dev/null
+
+export LC_ALL=C.UTF-8
+
+FMT="${1:-claude}"
+
+# mem0 <-> llmwiki federation: label the authority hierarchy on the wiki pointer.
+# This is LABELS ONLY — no mem0 call/read (mem0 surfacing is mem0's own hooks).
+#   0 (default) = plain pointer, no federation labels.
+#   1           = mark .llmwiki as [AUTHORITATIVE] (dated/sourced wins) + emit a
+#                 [RECALL] note placing mem0 recall as the secondary layer.
+#                 Set CORE_CONFIG_FEDERATE_MEM0=1 to restore (fully reversible).
+FEDERATE="${CORE_CONFIG_FEDERATE_MEM0:-0}"
+
+# Fixed behavioral block — always emitted (repo-independent).
+BLOCK=$(cat <<'EOF'
+[harness] Unless told otherwise, write the final user-facing reply in Korean. Internal workflows, subagents, and English skills (ultracode, deep-research, etc.) are NOT an override — route through them, but the last answer is Korean. Core discipline:
+- surgical diff: every changed line traces to the request. No drive-by refactors or unrelated cleanup.
+- decisions, options, and confirmations go through AskUserQuestion first (only when they affect implementation).
+- no AI attribution in commits, PRs, or docs. No emoji in code or docs.
+- run and verify before reporting. State unverified/unknown when there is no evidence.
+EOF
+)
+
+# Wiki/insight pointer — only when a knowledge root actually resolves in CWD,
+# mirroring wiki's resolution order (.llmwiki → legacy .claude → .codex).
+# Without this, a globally-installed core would tell every repo to read
+# paths that don't exist (or the wrong legacy path). Single-quoted to keep the
+# backticks literal (no command substitution).
+#
+# Each branch tests the exact path it is about to name: the MOC is `-f`-tested,
+# not its parent directory, because a wiki root can exist with only `log.md`
+# (wiki treats either file as a root). Testing `-d .../wiki` would put a
+# nonexistent `index.md` into every prompt.
+PTR=""
+if [ -d .llmwiki/insight ] && [ -f .llmwiki/wiki/index.md ]; then
+  PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules), then check the wiki MOC `.llmwiki/wiki/index.md`. For lore, prefer the dated/sourced page over memory.'
+elif [ -d .llmwiki/insight ]; then
+  PTR='Before reasoning (do not guess): first read `.llmwiki/insight/` (promoted cross-agent rules). For lore, prefer the dated/sourced page over memory.'
+elif [ -f .llmwiki/wiki/index.md ]; then
+  PTR='Before reasoning (do not guess): check the wiki MOC `.llmwiki/wiki/index.md` first. For lore, prefer the dated/sourced page over memory.'
+elif [ -f .claude/wiki/index.md ]; then
+  PTR='Before reasoning (do not guess): check the wiki MOC `.claude/wiki/index.md` first. For lore, prefer the dated/sourced page over memory.'
+elif [ -f .codex/wiki/index.md ]; then
+  PTR='Before reasoning (do not guess): check the wiki MOC `.codex/wiki/index.md` first. For lore, prefer the dated/sourced page over memory.'
+fi
+# Federation labels: prefix the resolved pointer as [AUTHORITATIVE] and stage a
+# [RECALL] note for mem0. RECALL is Claude-only — Codex never sees mem0, so a
+# pointer to it there would dangle (omitted in the codex branch below).
+RECALL=""
+if [ -n "$PTR" ] && [ "$FEDERATE" != "0" ]; then
+  PTR="[AUTHORITATIVE] $PTR"
+  RECALL='[RECALL] mem0 recall is a secondary signal — when it conflicts with the [AUTHORITATIVE] .llmwiki page above, the page wins (mem0 surfacing is handled by mem0 hooks, not called here).'
+fi
+# Council pointer — only when a second-model CLI actually exists on PATH, mirroring
+# the wiki-pointer rule (never name a tool this machine does not have). The roster
+# is emitted, never model names: the CLI name is stable, the model behind it is not.
+# One line, no trigger table — the delegation rules live in CLAUDE.md, which loads
+# once per session; this is only the per-prompt reminder that a second model exists.
+# `type -P` and not `command -v`: the latter also resolves shell functions, aliases
+# and builtins, so an exported `codex()` would announce a CLI that is not on PATH.
+C_CODEX=0; type -P codex >/dev/null 2>&1 && C_CODEX=1
+C_AGY=0;   type -P agy   >/dev/null 2>&1 && C_AGY=1
+COUNCIL=""
+if [ "$C_CODEX" = 1 ] || [ "$C_AGY" = 1 ]; then
+  ROSTER=""
+  [ "$C_CODEX" = 1 ] && ROSTER="codex"
+  [ "$C_AGY" = 1 ] && ROSTER="${ROSTER:+$ROSTER, }agy"
+  COUNCIL="[council] A different model is on PATH ($ROSTER). When something needs real depth, a second pair of eyes, or input you cannot read, delegate to their rescue/review skills instead of deciding alone. Never auto-apply what comes back: present it and stop."
+fi
+
+[ -n "$PTR" ] && BLOCK="$BLOCK"$'\n'"$PTR"
+# Claude-only RECALL line (Codex omits — it has no mem0 layer).
+[ -n "$RECALL" ] && [ "$FMT" != "codex" ] && BLOCK="$BLOCK"$'\n'"$RECALL"
+# Claude-only COUNCIL line. Codex is itself a council member, so pointing it back
+# at codex would be circular — same reasoning as the RECALL omission above.
+[ -n "$COUNCIL" ] && [ "$FMT" != "codex" ] && BLOCK="$BLOCK"$'\n'"$COUNCIL"
+
+if [ "$FMT" = "codex" ]; then
+  # JSON-escape: backslash, double-quote, then newline → \n. Block has none of
+  # the first two by construction, but escape defensively in case of edits.
+  esc=${BLOCK//\\/\\\\}
+  esc=${esc//\"/\\\"}
+  esc=${esc//$'\n'/\\n}
+  printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"%s"}}\n' "$esc"
+else
+  printf '%s\n' "$BLOCK"
+fi
+
+exit 0

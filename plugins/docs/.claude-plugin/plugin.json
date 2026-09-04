@@ -1,0 +1,5 @@
+{
+  "name": "docs",
+  "version": "1.0.0",
+  "description": "Documents people and agents read, plus publishing them elsewhere. Project docs — readme / changelog / deploy-doc / moc commands backed by the doc-guides reference cards. Agent-facing authoring — write-rules (CLAUDE.md + .claude/rules), interview-methodology (requirements interview, grill-me stress test, TCREI reusable-prompt output), and the skill-forge family (skill-forge authoring, skill-audit single-skill diagnosis, skill-fleet-review repository-wide sweep). Publishing — translate-web-article (web page to Korean markdown) and gws-sync (one-way local to Google Drive sync behind an approval gate)."
+}

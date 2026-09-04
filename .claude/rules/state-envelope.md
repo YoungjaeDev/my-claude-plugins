@@ -13,8 +13,8 @@ own `jq` snippets; this file is only the schema they agree on.
 
 Give multi-step pipeline skills a uniform run-record shape so a step that skipped
 **silently** is visible after the fact, and so a re-run can find and archive the prior
-attempt. Introduced narrow: the v0 adopters are `github-dev:post-merge` (per-step
-records) and `project-init:new` (Phase 0.5 run record with resume + fail-loud writes).
+attempt. Introduced narrow: the v0 adopters are `dev:post-merge` (per-step
+records) and `dev:new` (Phase 0.5 run record with resume + fail-loud writes).
 Retrofitting other skills' state files onto this envelope is deliberately deferred to
 a later change.
 
@@ -57,7 +57,7 @@ a later change.
 ## Orthogonality to spec-state
 
 A state-envelope run record is **not** `.claude/state/spec.json`. `spec.json` (owned by
-`github-dev:state-tracker`) is the cross-run aggregate of spec → issue → PR pipeline work.
+`dev:state-tracker`) is the cross-run aggregate of spec → issue → PR pipeline work.
 A run record is a **single skill run's own step log**. They are separate files with
 separate owners: a state-envelope record never reads or writes `spec.json`, and the
 spec aggregate never carries per-run step logs.
@@ -65,7 +65,7 @@ spec aggregate never carries per-run step logs.
 ## Per-skill jq (no shared library)
 
 An adopting skill inlines these three moves directly in its body — there is no sourced
-helper file. Reference adopter: `github-dev:post-merge`.
+helper file. Reference adopter: `dev:post-merge`.
 
 Init (once the run's key + anchor sha are known):
 

@@ -1,0 +1,325 @@
+---
+name: decompose-issue
+description: "Break a large work item into context-completable GitHub sub-issues, define a 10-20 node architecture and workflow mapping, propose a milestone, and create the issues with gh. Also owns the repository issue-label taxonomy (absorbed create-issue-label) — on /dev:create-issue-label, 'create issue labels', '라벨 만들어줘', or a label-taxonomy setup request, run only the Labels step and stop. Use ONLY when the user explicitly types /dev:decompose-issue or /dev:create-issue-label, asks to decompose or break down work into issues, or asks for issue labels. Do NOT auto-fire from incidental mentions of issues or planning — this creates GitHub issues, a milestone, and a project-tracking state file. Detects TDD applicability, captures dependencies, and writes .claude/state/project-tracking-{slug}.json for the milestone and diagram pipeline."
+allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
+---
+
+## Decompose Work
+
+## Cross-runtime interactive input
+
+Every confirmation below runs through a **capability-aware** interactive-input gate, not one hardcoded tool. Read each `AskUserQuestion` mention as this gate:
+
+- **Claude Code** — use `AskUserQuestion`.
+- **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE concise blocking question only where a wrong assumption would be costly (e.g. creating GitHub issues); otherwise proceed on a documented safe default and state the assumption.
+
+Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+
+Break down large work items into manageable, independent issues. Follow project guidelines in `@CLAUDE.md`.
+
+## Workflow
+
+1. Check issue numbers: Run `gh issue list` to view current issue numbers
+2. **Discover available components**:
+   - Scan `.claude/agents/` for custom agents (read YAML frontmatter)
+   - Detect test frameworks (jest.config.*, pytest.ini, vitest.config.*, pyproject.toml, etc.)
+3. **Check TDD applicability** (if user hasn't specified):
+   - Analyze work type: code implementation vs docs/infra/config
+   - If test framework detected + code work → Ask: "Create issues with TDD approach?"
+   - If no test framework → Inform: "TDD not required. (Reason: No test framework detected)"
+   - If non-code work (docs/infra) → Inform: "TDD not required. (Reason: Non-code work)"
+   - If TDD selected: Add `<!-- TDD: enabled -->` marker to each issue body
+4. Analyze work: Understand core requirements and objectives
+5. Decompose work: Split major tasks into **context-completable units** - each issue should be completable in a single Claude session without context switching. Group related features together rather than splitting by individual functions
+6. Analyze dependencies: Identify prerequisite tasks
+7. Suggest milestone name: Propose a milestone to group decomposed tasks
+8. Check related PRs (optional): Run `gh pr list --state closed --limit 20` for similar work references (skip if none)
+9. Output decomposed issues: Display issues with proposed milestone name
+
+9.5. **Define Architecture & Workflow Mapping** (for project progress tracking):
+
+   #### Step A: Capture Project Workflow
+
+   Analyze the codebase and design a **10-20 node flowchart** of the project's core workflow. Store as Mermaid in the state file, but present to the user as an ASCII diagram.
+
+   - **Interview: Project Workflow** -- Use the interactive-input gate (Claude `AskUserQuestion`):
+     > "프로젝트의 전체 워크플로우를 다이어그램으로 정리했습니다. 수정할 부분이 있나요?"
+     - Present the proposed workflow as an **ASCII diagram** (terminal cannot render Mermaid)
+     - The diagram should capture the main data/control flow (not just layers)
+     - Use descriptive node names for easy mapping
+     - User can add/remove/rename nodes and connections
+     - Target: 10-20 nodes with branches and subgroups where logical
+
+   Example workflow (ASCII, shown to user in terminal):
+   ```
+   [Bot Loop] --> [scanChatList] --> <new request?>
+                                       |yes --> [Pipeline]
+                                       |         +--[parse]--[calculate]--[send]
+                                       |no  --> <customer reply?>
+                                                  |yes --> [AI Consultation]
+                                                  |         +--[FAQ match]--<resolved?>
+                                                  |                           |no --> [LLM escalation]
+                                                  |no  --> [Push System]
+                                                             +--[targets]--[filter]--[send push]
+   ```
+
+   Stored as Mermaid in state file (`architecture.mermaidSource`):
+   ```mermaid
+   flowchart TD
+       A[Bot Loop] --> B[scanChatList]
+       B --> C{new request?}
+       C -->|yes| D[Pipeline]
+       D --> D1[parse] --> D2[calculate] --> D3[send]
+       C -->|no| E{customer reply?}
+       E -->|yes| F[AI Consultation]
+       F --> F1[FAQ match] --> F2{resolved?}
+       F2 -->|no| F3[LLM escalation]
+       E -->|no| G[Push System]
+       G --> G1[targets] --> G2[filter] --> G3[send push]
+   ```
+
+   #### Step B: Select Scope Nodes
+
+   - **Interview: Milestone Scope** -- Use the interactive-input gate:
+     > "이 마일스톤이 커버하는 노드를 선택해 주세요."
+     - Present all node IDs from the workflow diagram
+     - User selects which nodes are in scope for this milestone (`scopeNodes`)
+     - These nodes will be highlighted with `:::scope` in generated diagrams
+
+   #### Step C: Module Grouping & Issue Mapping
+
+   - Analyze decomposed issues and propose module groupings based on workflow areas
+   - **Interview: Issue-Module-Node Mapping** -- Use the interactive-input gate:
+     > "이슈-모듈-노드 매핑이 맞나요?"
+     - Show each issue with: proposed module, mapped architecture node
+     - User can reassign issues between modules or change node mappings
+
+   #### Step D: Issue Dependencies
+
+   - Analyze issue order and propose dependency chains
+   - **Interview: Issue Dependencies** -- Use the interactive-input gate:
+     > "이슈 간 의존성(실행 순서)이 맞나요?"
+     - Show proposed dependency graph: `#1 -> #2 -> #3`, `#2 -> #4`
+     - User can add/remove dependencies
+     - Dependencies are stored as `dependsOn: [issueNumber]` per issue
+
+   #### Step E: Save State File
+
+   - Generate slug from milestone name: lowercase, spaces to hyphens, remove special chars
+     - Example: `"v1.0 Auth System"` -> `"v1-0-auth-system"`
+   - Save initial state file:
+     ```bash
+     mkdir -p .claude/state
+     cat > .claude/state/project-tracking-${SLUG}.json << 'STATEEOF'
+     {
+       "version": "2.0.0",
+       "milestoneId": null,
+       "milestoneName": "<milestone-name>",
+       "milestoneSlug": "<slug>",
+       "repoOwner": "<owner>",
+       "repoName": "<repo>",
+       "createdAt": "<ISO timestamp>",
+       "lastSyncedAt": null,
+       "architecture": {
+         "description": "<one-line architecture description>",
+         "mermaidSource": "<full Mermaid flowchart code from Step A>",
+         "scopeNodes": ["<node-id-1>", "<node-id-2>"]
+       },
+       "modules": [
+         {
+           "id": "<id>",
+           "name": "<name>",
+           "architectureNode": "<node-id>",
+           "issues": [],
+           "status": "pending",
+           "progress": 0
+         }
+       ],
+       "issues": {
+         "<number>": {
+           "title": "<title>",
+           "state": "open",
+           "pr": null,
+           "moduleId": "<module-id>",
+           "dependsOn": [],
+           "architectureNode": "<node-id>"
+         }
+       },
+       "diagramMarkers": {
+         "start": "<!-- project-tracking-start -->",
+         "end": "<!-- project-tracking-end -->"
+       }
+     }
+     STATEEOF
+     ```
+
+10. **Ask about GitHub creation**: Use the interactive-input gate to let user decide on milestone and issue creation
+    - Create milestone with **Markdown Table** in description.
+
+      > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `../post-merge/references/update-progress.md` "Type M-2"), never in the milestone description.
+
+      Build `$MILESTONE_TABLE` with the required table block below (canonical spec at `../post-merge/references/update-progress.md`, "Milestone Format").
+      You may prepend objective/scope and dependency-order summary sections required by this file's milestone guidelines.
+
+      ```markdown
+      ## <milestoneName> Progress (auto-updated: YYYY-MM-DD)
+
+      | Status | Issue | Title | Depends On |
+      |--------|-------|-------|------------|
+      | [ ] | #<n1> | <title1> | - |
+      | [ ] | #<n2> | <title2> | #<n1> |
+
+      **Progress: 0/<total> (0%)**
+      ```
+
+      Then create the milestone:
+      ```bash
+      RESPONSE=$(gh api repos/{owner}/{repo}/milestones \
+        -f title="<Milestone Name>" \
+        -f description="$MILESTONE_TABLE")
+      MILESTONE_NUMBER=$(echo "$RESPONSE" | jq '.number')
+      ```
+    - Update state file with milestoneId:
+      ```bash
+      STATE_FILE=".claude/state/project-tracking-${SLUG}.json"
+      jq --arg mid "$MILESTONE_NUMBER" '.milestoneId = ($mid | tonumber)' "$STATE_FILE" > tmp.$$.json && mv tmp.$$.json "$STATE_FILE"
+      ```
+    - **Inject the TDD marker (if TDD was enabled in Step 3)**: when creating each issue, prepend `<!-- TDD: enabled -->` as the first line of the issue body (before `**Purpose**:`). This is the exact marker `resolve-issue` Step 1 detects to switch on the TDD workflow. If TDD was not selected in Step 3, omit the prepend entirely — do not write the marker.
+    - Assign issues with `--milestone` option
+    - After issue creation, update the state file `issues` map with actual GitHub issue numbers
+
+11. **Add issues to GitHub Project (optional)**
+   - Check for existing projects: `gh project list --owner <owner> --format json`
+   - If no project exists: Display "No project found. You can create one with `/gh:init-project`" and skip
+   - If project exists: Ask user via the interactive-input gate whether to add issues
+   - If yes: Run `gh project item-add <project-number> --owner <owner> --url <issue-url>` for each issue
+
+## Issue Sizing Principle
+
+### Context-Completable Units
+Each issue should be designed to be **completable in a single Claude session**:
+
+- **Group related features** rather than splitting by individual functions
+- **Minimize context switching** - all necessary information should be within the issue
+- **Include implementation details** - specific enough that no external lookup is needed during execution
+
+### Sizing Guidelines
+
+| Good (Context-Completable) | Bad (Over-Fragmented) |
+|---------------------------|----------------------|
+| "Add user authentication with login/logout/session" | "Add login button", "Add logout button", "Add session handling" (3 separate issues) |
+| "Implement CRUD API for products" | "Add create endpoint", "Add read endpoint", "Add update endpoint", "Add delete endpoint" (4 separate issues) |
+| "Setup CI/CD pipeline with test and deploy stages" | "Add test stage", "Add deploy stage" (2 separate issues) |
+
+### Issue Content Depth
+Since issues are larger, content must be **more detailed**:
+
+1. **Implementation order** - numbered steps for execution sequence
+2. **File-by-file changes** - specific modifications per file
+3. **Code snippets** - key patterns or structures to implement
+4. **Edge cases** - known gotchas or considerations
+
+### Wide Refactors: the expand-contract exception
+
+Context-completable vertical slices are the default, but a **wide refactor** — a
+mechanical change that touches many call sites of one form (a renamed API, a
+changed signature, a moved type) — cannot be a single vertical slice without a
+giant blast radius, and cannot be split by feature. Sequence it as
+**expand -> migrate -> contract** instead:
+
+1. **Expand** (one issue): add the new form *beside* the old so nothing breaks
+   yet — both coexist.
+2. **Migrate** (one issue *per batch*, each blocked by Expand): move call sites
+   to the new form in batches sized by blast radius (per package, per directory).
+   Each batch is its own issue so each stays context-completable and green.
+3. **Contract** (one issue, blocked by *every* Migrate): delete the old form once
+   no caller remains.
+
+Keep each Migrate batch independently green — that is what lets `/dev:resolve-issue`
+drive it, since resolve-issue branches each issue off the default branch and
+gates BUILD/TEST before the PR. Only if a batch genuinely cannot stay green
+alone, fall back to a shared **integration branch**: the Migrate batches target
+it instead of the default branch, and a single **integrate-and-verify** issue
+`dependsOn` *every* Migrate batch and promises green. This fallback is a manual, multi-issue branch flow —
+resolve-issue's one-branch-per-issue model does not drive it, so sequence it by
+hand. In that path **Contract must block on integrate-and-verify, not on the
+individual Migrate issues** (`dependsOn: [<integrate-and-verify #>]`), or the old
+form could be deleted before the combined migration is validated. Record every
+blocking edge with `dependsOn` so the milestone dependency graph renders the
+expand -> migrate -> contract order.
+
+---
+
+## Milestone Description Guidelines
+
+Milestone description must include:
+- Overall objectives and scope
+- Issue processing order (dependency graph)
+- Example: "Issue order: #1 -> #2 -> #3 -> #4"
+
+## Issue Template
+
+### Title
+`[Type] Concise task description`
+
+### Labels (Use actual repository labels)
+**Note**: Before assigning labels, verify repository labels with `gh label list`.
+
+**Label-only entry**: when the user asked for labels alone (`/dev:create-issue-label`, "create issue labels", a label taxonomy for the repo), run this section only — create the labels and stop without creating issues, a milestone, or a state file.
+
+If the repository has no usable taxonomy yet, create one first (absorbed from the retired create-issue-label skill): inspect `package.json`/`README`/code layout to pick areas, then create type/area/complexity labels with `gh label create`, e.g. `gh label create "type: feature" --color "0e8a16" --description "New feature addition"`.
+
+Examples (vary by project, for reference only):
+- **Type**: `type: feature`, `type: documentation`, `type: enhancement`, `type: bug`
+- **Area**: `area: model/inference`, `area: model/training`, `area: dataset`, `area: detection`
+- **Complexity**: `complexity: easy`, `complexity: medium`, `complexity: hard`
+- **Priority**: `priority: high`, `priority: medium`, `priority: low`
+
+### Description
+<!-- TDD: enabled --> (Add this marker if TDD was selected in Step 3)
+
+**Purpose**: [Why this is needed]
+
+**Implementation Steps** (in order):
+1. [ ] Step 1 - description with specific details
+2. [ ] Step 2 - description with specific details
+3. [ ] Step 3 - description with specific details
+
+**Files to modify**:
+- `path/filename` - Specific change (add/modify/remove what)
+- `path/filename2` - Specific change with code pattern if needed
+
+**Key Implementation Details**:
+```
+// Include code snippets, patterns, or structures when helpful
+// This reduces need for external lookup during execution
+```
+
+**Completion criteria**:
+- [ ] Implementation complete (all tasks checked)
+- [ ] Execution verified (no runtime errors)
+- [ ] Tests pass (if applicable)
+- [ ] Added to demo page (for UI components, if applicable)
+
+**Dependencies**:
+- [ ] None or prerequisite issue #number
+
+**References** (optional):
+- Add related PRs if available (e.g., PR #36 - brief description)
+- Omit this section if none
+
+---
+
+## Verification Guidelines
+
+Verification is mandatory when issue work is complete:
+
+| Work Type | Verification Method |
+|-----------|---------------------|
+| Python code | `python -m py_compile file.py` + actual execution |
+| TypeScript/JS | `tsc --noEmit` or build |
+| API/Server | Endpoint call test |
+| CLI tools | Run basic commands |
+| Config files | Verify loading with related tools |
+
+**Never mark complete if only files are created without execution verification**

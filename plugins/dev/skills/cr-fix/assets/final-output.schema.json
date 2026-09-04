@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/YoungjaeDev/my-claude-plugins/plugins/dev/skills/cr-fix/assets/final-output.schema.json",
+  "title": "cr-fix final output",
+  "description": "Single JSON object emitted on stdout by scripts/emit-final-json.sh (run as bash EXIT trap).",
+  "type": "object",
+  "required": [
+    "iterations",
+    "applied_total",
+    "deferred_total",
+    "skipped_total",
+    "codex_state",
+    "final_state",
+    "merged",
+    "pr",
+    "last_sha",
+    "cr_source",
+    "cli_invocations",
+    "rate_limit_hits",
+    "auto_judge_stats"
+  ],
+  "properties": {
+    "iterations":      { "type": "integer", "minimum": 0 },
+    "applied_total":   { "type": "integer", "minimum": 0 },
+    "deferred_total":  { "type": "integer", "minimum": 0 },
+    "skipped_total":   { "type": "integer", "minimum": 0, "description": "CR Nitpicks + Codex P3 + (when --skip-minor) Minor severity + Codex P2" },
+    "codex_state":     { "type": "string", "enum": ["active", "inactive", "disabled", "unknown"] },
+    "final_state":     { "type": "string", "enum": ["clean", "user_declined", "minor_floor", "iteration_cap", "timeout", "failure", "cr_inactive", "rate_limited", "cli_failed", "unknown"] },
+    "merged":          { "type": "boolean" },
+    "pr":              { "type": "integer", "minimum": 0 },
+    "last_sha":        { "type": "string" },
+    "cr_source":       { "type": "string", "enum": ["auto", "pr-bot", "cli", "codex-only"], "description": "Final resolved source after any Step 7c silent flip; not necessarily the user-passed value." },
+    "cli_invocations": { "type": "integer", "minimum": 0, "description": "Count of Step 7d coderabbit CLI spawns across iterations." },
+    "rate_limit_hits": { "type": "integer", "minimum": 0, "description": "Count of Step 7b/c rate-limit detections across iterations." },
+    "auto_judge_stats": {
+      "type": "object",
+      "description": "v2 Step 9c autonomous judgment tallies across iterations (apply / defer / skip). Counts every per-finding LLM decision; sum may differ from skipped_total (which counts tier-skip filtered items, not auto-judge skips).",
+      "required": ["apply", "defer", "skip"],
+      "properties": {
+        "apply": { "type": "integer", "minimum": 0 },
+        "defer": { "type": "integer", "minimum": 0 },
+        "skip":  { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "pre_flight_last": {
+      "description": "v2 Step 5 pre-flight decision blob from the LAST iteration (the archived state file preserves all iters). Null when CR_SOURCE bypassed pre-flight (cli / codex-only).",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["gate"],
+          "properties": {
+            "cr_state":             { "type": "string" },
+            "cr_actionable":        { "type": "boolean" },
+            "cr_desc":              { "type": "string" },
+            "codex_state":          { "type": "string", "enum": ["actionable", "clean", "arriving", "disabled", "unknown"] },
+            "codex_actionable":     { "type": "boolean" },
+            "codex_latest_id":      { "type": ["integer", "null"] },
+            "codex_emoji_state":    { "type": "string", "enum": ["clean", "in_progress", "findings", "unknown"] },
+            "gate":                 { "type": "string", "enum": ["proceed", "cr_wait", "codex_wait", "rate_limited", "failure", "bypass"] },
+            "codex_timeout_active": { "type": "boolean" },
+            "push_age_seconds":     { "type": "integer", "minimum": 0 },
+            "rate_limit_source":    { "type": "string", "enum": ["none", "comment", "description", "both"] },
+            "iter":                 { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": true
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

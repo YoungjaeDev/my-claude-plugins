@@ -1,5 +1,5 @@
 {
   "name": "council",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Claude-only (do not install into Codex). Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync."
 }

@@ -1,0 +1,80 @@
+{
+  "name": "wiki",
+  "version": "1.0.0",
+  "description": "Memory and lore. Karpathy LLM-Wiki 3-layer under the neutral .llmwiki/ root (insight + wiki + raw): bootstrap-wiki, ingest-finding (reversible diff-log + cross-page update), lint-wiki (four wiki-rot modes), plaud-note-taking (PLAUD Whisper transcript correction into .llmwiki/raw/transcripts/), plus five hooks — stale-page hint, post-commit ingest hint, session-start lint hint, Stop-time capture of ingest candidates, and the next session's drain. mem0 fleet operations — fleet-scan (per-app noise / fragmentation / config posture, read-only) and cleanup (backup-then-delete behind a dry-run default and a per-app confirmation gate).",
+  "skills": [
+    "./skills/bootstrap-wiki",
+    "./skills/ingest-finding",
+    "./skills/lint-wiki",
+    "./skills/plaud-note-taking",
+    "./skills/fleet-scan",
+    "./skills/cleanup"
+  ],
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/wiki_stale_check.sh\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/wiki_post_commit_hint.sh\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/wiki_session_start_drain.sh\"",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/wiki_session_start_lint_hint.sh\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/wiki_session_capture.sh\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/wiki_session_capture.sh\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

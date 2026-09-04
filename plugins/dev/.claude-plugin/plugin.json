@@ -1,0 +1,19 @@
+{
+  "name": "dev",
+  "version": "1.0.0",
+  "description": "Development lifecycle in one bundle. GitHub workflow — commit-and-push, decompose-issue, resolve-issue, release, cr-fix (unified CodeRabbit + ChatGPT-Codex review loop with autonomous apply/defer/skip judgment and rate-limit fallback), post-merge (branch cleanup + config/wiki integration with a mandatory wiki-lore ingest), state-tracker (spec/issue/PR aggregate over .claude/state/spec.json). Project setup — new (first-day bootstrap: interview, .claude/ scaffold, CLAUDE.md + AGENTS.md with Codex reviewer guidelines, gh repo create) and wiring (14-axis harness diagnostic for an existing repo, read-only until approved). Playwright E2E harness — e2e-setup, e2e-author, e2e-debug wrap Playwright's planner/generator/healer agents; never overwrite an existing playwright.config and degrade gracefully without Playwright.",
+  "skills": [
+    "./skills/commit-and-push",
+    "./skills/decompose-issue",
+    "./skills/resolve-issue",
+    "./skills/release",
+    "./skills/cr-fix",
+    "./skills/post-merge",
+    "./skills/state-tracker",
+    "./skills/new",
+    "./skills/wiring",
+    "./skills/e2e-setup",
+    "./skills/e2e-author",
+    "./skills/e2e-debug"
+  ]
+}

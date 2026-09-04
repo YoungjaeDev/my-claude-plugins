@@ -8,8 +8,8 @@ agreement, the surviving disagreement, and the unanswered questions to a tracked
 
 Spawning several Claude subagents does not add perspective. They share weights, so they share
 their systematic errors. Real divergence needs a model trained by someone else on something
-else. `core-config` already injects a one-line `[council]` reminder that another model is on
-PATH, but nothing executes the delegation — until this plugin, every handoff was hand-assembled.
+else. `core` already injects a one-line `[council]` reminder that another model is on
+PATH, but nothing executes the delegation. Until this plugin, every handoff was hand-assembled.
 
 ## Shape
 
@@ -43,7 +43,7 @@ Three seats, plus a chair that is not a seat:
   user's call, and silent upgrades drift into unintended spend.
 - **Only unfetchable context is pre-collected.** codex and agy read files themselves, so file
   paths are passed as paths. What gets packed into the prompt is what a path cannot carry:
-  mem0 memories, Serena symbol graphs, code-scout research.
+  mem0 memories, Serena symbol graphs, scout research.
 - **Claude-only.** Running this under Codex would summon codex as its own seat, and Codex has
   no `Agent` tool for the Claude seat. Same reasoning that excludes `codex-image`.
 - **Autonomous agent-team debate was deliberately deferred.** It works technically, but

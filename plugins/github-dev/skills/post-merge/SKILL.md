@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: Run after a PR merges — clean up the local branch, sync tracking, integrate what merged into config + wiki, commit. Use when the user types /github-dev:post-merge, says "post-merge cleanup", "integrate PR learnings", or merged a PR. Identifies the merged PR (gh pr view is the authoritative merge signal — never compare git SHAs), switches to base, deletes the merged branch, syncs GitHub Project/milestone + .claude/state/spec.json, integrates learnings into CLAUDE.md/AGENTS.md/.claude/rules + Serena memory under a no-stamp current-state-only rule, then runs a MANDATORY wiki-lore ingest (absorbed post-merge-wiki, file-list-first candidates + autonomy triage, delegating to llm-wiki:ingest-finding), updates README, commits. Knowledge routing — mechanical tool rules → CLAUDE.md/.claude/rules; cross-agent lore → .llmwiki via the wiki step, recorded once. Runs from the main repo, not a worktree. Codex note — Serena/rules-forge/claude-md-improver/humanize-korean/docs-forge sub-steps are Claude-only and skip.
+description: Run after a PR merges — clean up the local branch, sync tracking, integrate what merged into config + wiki, commit. Use when the user types /github-dev:post-merge, says "post-merge cleanup", "integrate PR learnings", or merged a PR; also the manual milestone-progress sync — /github-dev:post-merge --progress-only, "update progress", "sync milestone progress" (absorbed update-progress: skips the merged-PR steps and runs only Step 5.5). Identifies the merged PR (gh pr view is the authoritative merge signal — never compare git SHAs), switches to base, deletes the merged branch, syncs GitHub Project/milestone + .claude/state/spec.json, integrates learnings into CLAUDE.md/AGENTS.md/.claude/rules + Serena memory under a no-stamp current-state-only rule, then runs a MANDATORY wiki-lore ingest (absorbed post-merge-wiki, file-list-first candidates + autonomy triage, delegating to llm-wiki:ingest-finding), updates README, commits. Knowledge routing — mechanical tool rules → CLAUDE.md/.claude/rules; cross-agent lore → .llmwiki via the wiki step, recorded once. Runs from the main repo, not a worktree. Codex note — Serena/rules-forge/claude-md-improver/humanize-korean/docs-forge sub-steps are Claude-only and skip.
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -23,6 +23,7 @@ For worktree removal, use `/exit` with its cleanup option.
 ## Arguments
 
 - PR number (optional): if not provided, infer from conversation context, else `gh pr list --state merged --limit 5` and prompt the user to select.
+- `--progress-only [milestone]` (optional): manual milestone-progress sync with no merged PR (the retired `update-progress` entry point). Skip Steps 1-4.6 and 5-5.7 except 5.5; load the state file(s) as `references/update-progress.md` "Entry points" describes (a milestone name, `--all`, or `--local`), run Step 5.5 for them, then Step 10. Also selected by "update progress" / "sync milestone progress" requests without a PR.
 
 ## Workflow
 

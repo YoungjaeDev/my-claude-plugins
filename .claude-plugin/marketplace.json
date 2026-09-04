@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 14 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.29.3"
+    "version": "2.29.4"
   },
   "plugins": [
     {
@@ -47,7 +47,7 @@
       "name": "ml-toolkit",
       "source": "./plugins/ml-toolkit",
       "description": "ML/multimodal development principles (incl. GPU parallel patterns, absorbed from gpu-parallel-pipeline), Gradio CV apps, CV notebook generation with an interactive exploration mode (absorbed from cv-explorer). Also ships edit-notebook for safe Jupyter notebook editing.",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "category": "development"
     },
     {

@@ -1,6 +1,6 @@
 ---
 name: ml-dev-principles
-description: General working discipline for ML / multimodal / CV development (how to work, not which library). Load at the START of an ML task — model/dataset candidate selection, license or eligibility filtering, EDA, training/fine-tuning (SFT/DPO/LoRA), evaluation-harness and train/val/test isolation design, error analysis on FP/FN cases, or GPU throughput tuning. Triggers on "EDA", "explore dataset", "error analysis", "FP/FN", "train", "fine-tune", "SFT", "DPO", "LoRA", "eval harness", "validation split", "test leakage", "dataset selection", "model selection", "license filtering", "GPU utilization", "multimodal", "VLM", "image review".
+description: General working discipline for ML / multimodal / CV development (how to work, not which library). Load at the START of an ML task — model/dataset candidate selection, license or eligibility filtering, EDA, training/fine-tuning (SFT/DPO/LoRA), evaluation-harness and train/val/test isolation design, error analysis on FP/FN cases, or GPU throughput tuning. Triggers on "EDA", "explore dataset", "error analysis", "FP/FN", "train", "fine-tune", "SFT", "DPO", "LoRA", "eval harness", "validation split", "test leakage", "dataset selection", "model selection", "license filtering", "GPU utilization", "multi-GPU", "GPU parallel", "batch inference", "CUDA isolation", "ProcessPool GPU", "PyTorch multi-GPU", "multimodal", "VLM", "image review".
 ---
 
 # ML / 멀티모달 개발 원칙

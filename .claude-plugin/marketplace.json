@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 14 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.29.0"
+    "version": "2.29.1"
   },
   "plugins": [
     {
@@ -61,7 +61,7 @@
       "name": "docs-forge",
       "source": "./plugins/docs-forge",
       "description": "README/CHANGELOG generation with CRO best practices, plus deployment-doc templates and MOC index generation (doc-guides). Also absorbs agent-facing authoring: write-rules (CLAUDE.md + .claude/rules generation), interview-methodology (requirements interview / grill-me stress test / TCREI reusable-prompt template), and the skill-forge family (skill-forge authoring, skill-audit single-skill diagnosis, skill-fleet-review repository-wide sweep).",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "documentation"
     },
     {

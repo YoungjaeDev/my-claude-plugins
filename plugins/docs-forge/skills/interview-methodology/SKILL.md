@@ -1,6 +1,6 @@
 ---
 name: interview-methodology
-description: This skill should be used when conducting in-depth user interviews, "gathering requirements", "interview me", "ask me questions", "understand my needs before implementing", "spec-based development", when preparing comprehensive specifications before implementation, or when relentlessly stress-testing an existing plan or decision ("grill me", "poke holes in this", "집요하게 캐물어").
+description: This skill should be used when conducting in-depth user interviews, "gathering requirements", "interview me", "ask me questions", "understand my needs before implementing", "spec-based development", when preparing comprehensive specifications before implementation, when relentlessly stress-testing an existing plan or decision ("grill me", "poke holes in this", "집요하게 캐물어"), or when the interview output should be a reusable prompt in Google's TCREI format ("TCREI", "structure this prompt", "make a prompt for next session", "rewrite as TCREI").
 version: 0.4.0
 ---
 

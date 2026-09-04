@@ -24,9 +24,9 @@ Single-axis scout for academic literature. Fans out under `research-orchestrator
 
 ## Tools
 
-Primary (search): `mcp__plugin_paper-search-tools_paper-search__search_arxiv`, `..._semantic`, `..._crossref`, `..._pubmed`, `..._biorxiv`, `..._medrxiv`, `..._iacr`, `..._google_scholar` — pick 2-3 per query, not all 8.
+Primary (search): `mcp__plugin_scout_paper-search__search_arxiv`, `..._semantic`, `..._crossref`, `..._pubmed`, `..._biorxiv`, `..._medrxiv`, `..._iacr`, `..._google_scholar` — pick 2-3 per query, not all 8.
 
-Optional (metadata enrichment): `mcp__plugin_paper-search-tools_paper-search__read_arxiv_paper`, `..._pubmed_paper`, `..._biorxiv_paper`, `..._medrxiv_paper`, `..._iacr_paper`, `..._semantic_paper`, `..._crossref_paper`, or `mcp__plugin_paper-search-tools_paper-search__get_crossref_paper_by_doi` for DOI / abstract / citation count where the search response is too thin. **Google Scholar has no read tool** — use `search_google_scholar` results directly, and if a hit carries a DOI, enrich via `get_crossref_paper_by_doi`. Do **not** call `download_*` — PDF fetch is the user's call, not the scout's (LLM context budget).
+Optional (metadata enrichment): `mcp__plugin_scout_paper-search__read_arxiv_paper`, `..._pubmed_paper`, `..._biorxiv_paper`, `..._medrxiv_paper`, `..._iacr_paper`, `..._semantic_paper`, `..._crossref_paper`, or `mcp__plugin_scout_paper-search__get_crossref_paper_by_doi` for DOI / abstract / citation count where the search response is too thin. **Google Scholar has no read tool** — use `search_google_scholar` results directly, and if a hit carries a DOI, enrich via `get_crossref_paper_by_doi`. Do **not** call `download_*` — PDF fetch is the user's call, not the scout's (LLM context budget).
 
 ## Workflow
 

@@ -12,7 +12,7 @@ allowed-tools:
 
 # MOC Command
 
-Generate a Map of Content (MOC) index for a docs folder: a one-line hook per file plus per-domain tables. Lightweight generic mode by default; `--strict` switches to the llm-wiki-style index. The hook-sourcing and conflict rules live in the `doc-guides` skill's `## MOC` section (cross-runtime SSOT); this command orchestrates the scan and write.
+Generate a Map of Content (MOC) index for a docs folder: a one-line hook per file plus per-domain tables. Lightweight generic mode by default; `--strict` switches to the wiki-style index. The hook-sourcing and conflict rules live in the `doc-guides` skill's `## MOC` section (cross-runtime SSOT); this command orchestrates the scan and write.
 
 ## Arguments
 

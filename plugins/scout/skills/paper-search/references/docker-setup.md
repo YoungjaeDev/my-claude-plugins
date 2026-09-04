@@ -126,7 +126,7 @@ registration and the connect/disable surface differ per runtime:
 - **Claude Code** — the plugin's `.mcp.json` is the registration (step 4). Restart (`exit`, then
   `claude`) so it reloads `.mcp.json`, run `/mcp`, and confirm the `paper-search` server shows as
   connected. Tool names then carry the plugin prefix
-  `mcp__plugin_paper-search-tools_paper-search__<tool>` (see the `paper-search` usage skill for the
+  `mcp__plugin_scout_paper-search__<tool>` (see the `paper-search` usage skill for the
   full tool catalog and the standalone-registration prefix variant).
 - **Codex** — installed as a plugin, Codex reads the plugin's `.claude-plugin/plugin.json` natively,
   which already points `mcpServers` at the same `.mcp.json`, so the server is registered automatically —

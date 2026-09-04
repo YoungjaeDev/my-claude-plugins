@@ -26,8 +26,8 @@ For worktree removal, use `/exit` with its cleanup option.
 - `--progress-only [milestone]` (optional): manual milestone-progress sync with no merged PR (the retired `update-progress` entry point). Also selected by "update progress" / "sync milestone progress" requests that name no PR. Not a shortcut past the guards; the protocol is:
   - Step 1: run the worktree guard unchanged. Skip PR identification; instead set `RUN_KEY="progress-<milestone-slug>"` (or `progress-all`) and open the run record with `REC=".claude/state/post-merge-${RUN_KEY}.json"`, `run_id "post-merge-${RUN_KEY}"`, `anchor_sha` = `git rev-parse HEAD`, same archive rotation and `record_step` definition.
   - Step 2: run the dirty-index gate unchanged, so pre-staged unrelated work is stashed, discarded, or aborts before anything is written.
-  - Steps 3-5 and 5.7-9.5: skip, each recorded `skipped "progress-only"`.
-  - Step 5.5: run for the state file(s) selected as `references/update-progress.md` "Entry points" describes (a milestone name, `--all`, or `--local`).
+  - Steps 1.5, 3-5 and 5.7-9.5: skip, each recorded `skipped "progress-only"` (1.5 reads `cr-fix-<PR>.json`, which has no PR here).
+  - Step 5.5: run for the state file(s) selected as `references/update-progress.md` "Entry points" describes: a milestone name or `--all` picks the scope (and therefore `RUN_KEY`); `--local` is a modifier on either scope that skips the GitHub writes, so it never changes `RUN_KEY`, `REC`, or `run_id`.
   - Step 10: `RUN_TOUCHED` is only the state files and tracking sections this run wrote; finalize with `REC=".claude/state/post-merge-${RUN_KEY:?...}.json"` in place of the `PR_NUMBER` form; commit message `chore: sync milestone progress`.
 
 ## Workflow

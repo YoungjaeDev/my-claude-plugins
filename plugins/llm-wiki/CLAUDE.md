@@ -95,6 +95,10 @@ All wiki events (lint reports, ingest summaries, post-merge ingests) accumulate 
 
 Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned by `github-dev:state-tracker`. llm-wiki tracks knowledge lore; state-tracker tracks the work pipeline. The two are independent concerns in separate plugins.
 
+## MOC-first lookup (the retired query-wiki convention)
+
+There is no lookup skill: read `<wiki-root>/index.md` first and follow its hook to the page. The plugin delivers that rule itself through the `wiki_session_start_lint_hint.sh` SessionStart hook (`[wiki-moc]` line, once per 4h per cwd whenever a wiki root resolves), so an installed copy carries it into repos whose own guidance never mentions the wiki. This repo's `AGENTS.md` and the core prompt-inject hook repeat it for their own readers.
+
 ## Codex hooks (descriptor shipped, manual wiring)
 
 A source-controlled `hooks/codex-hooks.json` descriptor still ships with the plugin (`UserPromptSubmit` / `SessionStart` ×2 / `Stop` / `SubagentStop` / `PostToolUse:Bash`), but **nothing wires it automatically** — the generated Codex manifest layer was removed in the 2026-08 restructure, and `.claude-plugin/plugin.json`'s `hooks` field is the Claude-format inline object Codex does not consume. A Codex machine that wants these hooks registers them manually via `~/.codex/hooks.json` (then approves them with `/hooks` — Codex requires hook trust). The scripts remain Codex-ready: Codex reads model-visible context only from a `hookSpecificOutput.additionalContext` JSON envelope (plain stdout is ignored), so `wiki_stale_check.sh` (UserPromptSubmit) and `wiki_post_commit_hint.sh` (PostToolUse) take a `codex` arg that switches their output to that envelope — the Claude no-arg path stays byte-identical. The two SessionStart hints already emit the envelope, and the capture hooks are side-effect only.

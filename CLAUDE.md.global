@@ -46,7 +46,7 @@
 - Work that changes behavior gets a failing test or a reproduction first, and confirms it passes after the fix.
 - Record in the PR why a runnable test does not apply and what verification was used instead.
 - Request automated review on the PR where the repository has it, and do not stop the work because it is unavailable.
-- Opening the issue and the PR directly satisfies the flow, and a skill such as `github-dev` is not a precondition.
+- Opening the issue and the PR directly satisfies the flow, and a skill such as `dev` is not a precondition.
 - Treat a typo fix, a version bump with the manifest updates it requires, and a single-file doc edit as mechanical regardless of file count.
 - Verify the work and commit directly where the flow cannot run for reasons such as remote, authentication, or permissions, and report which condition blocked it.
 

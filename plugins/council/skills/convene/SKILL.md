@@ -1,6 +1,6 @@
 ---
 name: convene
-description: Convene a cross-vendor model council — codex (GPT), agy (Gemini) and a Claude Opus seat answer independently, hand their follow-up questions back to the user, then rebut each other before the chair synthesizes agreement and surviving disagreement. Use when a decision needs a genuinely different model's judgment rather than more Claude sampling, or when the user asks to hear from another model. Korean triggers — "council", "카운슬", "심의", "다른 모델 의견", "codex랑 agy한테 물어봐", "토론시켜", "합의 봐줘", "2차 의견". English triggers — "convene a council", "second opinion from another model", "cross-model debate", "ask codex and gemini", "have the models argue".
+description: Convene a cross-vendor council: codex (GPT), agy (Gemini) and a Claude Opus seat answer independently, hand follow-up questions to the user, rebut each other, then the chair synthesizes agreement and surviving disagreement. Use on /council:convene, "카운슬", "심의", "다른 모델 의견", "convene a council", "second opinion from another model", "cross-model debate". For a decision that needs a different model's judgment rather than more Claude sampling; not for ordinary code review.
 ---
 
 # Council — cross-vendor deliberation
@@ -142,7 +142,7 @@ Gather the real candidate lists first so the question carries evidence rather th
 # codex: slugs plus the reasoning levels each one accepts.
 # Resolve through CODEX_HOME — codex layers `$CODEX_HOME/<name>.config.toml`, so on a
 # machine that sets it, `$HOME/.codex` is a directory the running CLI never reads.
-# Same rule the repo's own detector applies (plugins/project-init/scripts/project_state.sh).
+# Same rule the repo's own detector applies (plugins/dev/scripts/project_state.sh).
 CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
 if [ ! -f "$CODEX_DIR/models_cache.json" ]; then
   echo "(codex model cache absent)"
@@ -478,7 +478,7 @@ pasted. Only collect what a path cannot carry:
 |---|---|
 | mem0 memories | Behind an MCP service, not a file at all. Two searches (decisions, task learnings) keep the seats from re-proposing something already rejected. |
 | Serena symbol graph | `find_referencing_symbols` output needs a language-server index. agy cannot build one. |
-| code-scout research | Facts outside the repo. Most expensive — only when the question actually turns on external facts. |
+| scout research | Facts outside the repo. Most expensive — only when the question actually turns on external facts. |
 
 Do **not** paste `AGENTS.md`, `.llmwiki/` pages, or source files. Cite their paths.
 

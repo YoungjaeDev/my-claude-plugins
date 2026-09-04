@@ -13,9 +13,9 @@ if (process.platform !== 'win32') {
 }
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const descriptorPath = join(root, 'plugins', 'llm-wiki', 'hooks', 'codex-hooks.json');
+const descriptorPath = join(root, 'plugins', 'wiki', 'hooks', 'codex-hooks.json');
 const descriptor = JSON.parse(readFileSync(descriptorPath, 'utf8'));
-const probeRoot = mkdtempSync(join(tmpdir(), 'llm-wiki-codex-hooks-'));
+const probeRoot = mkdtempSync(join(tmpdir(), 'wiki-codex-hooks-'));
 const probeScript = '#!/usr/bin/env bash\nprintf \'CODEX_HOOK_PROBE:%s\\n\' "$*"\n';
 const gitLookup = spawnSync('where.exe', ['git.exe'], { encoding: 'utf8' });
 assert.equal(gitLookup.status, 0, `git.exe must be on PATH: ${gitLookup.stderr || gitLookup.error || ''}`);
@@ -81,7 +81,7 @@ try {
   }
 
   assert.ok(checked > 0, 'descriptor must contain at least one command hook');
-  console.log(`ok: ${checked} llm-wiki Codex hooks execute through PowerShell`);
+  console.log(`ok: ${checked} wiki Codex hooks execute through PowerShell`);
 } finally {
   rmSync(probeRoot, { recursive: true, force: true });
 }

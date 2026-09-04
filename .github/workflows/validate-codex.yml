@@ -29,7 +29,7 @@ jobs:
       # cr-fix's CLI-fallback / CR-state / rate-limit paths only run after the
       # primary path fails, so nothing exercised them until they broke in
       # production (issues #105, #110). Fixture-driven, no network, sub-second.
-      - run: bash plugins/github-dev/skills/cr-fix/tests/run-tests.sh
+      - run: bash plugins/dev/skills/cr-fix/tests/run-tests.sh
       # convene ships no scripts -- its runner contracts are shell inside SKILL.md,
       # so nothing executes them. A dropped `< /dev/null` on the agy call blocks
       # that seat forever (--print-timeout does not bound it), and parsing codex
@@ -118,7 +118,7 @@ jobs:
       # bash 5 earlier on PATH, and a real Mac user's /bin/bash is 3.2. Running the
       # suite under 5 would let a bash-4-only construct pass here and break for them.
       - name: cr-fix suite under /bin/bash (3.2) + BSD tools
-        run: /bin/bash plugins/github-dev/skills/cr-fix/tests/run-tests.sh
+        run: /bin/bash plugins/dev/skills/cr-fix/tests/run-tests.sh
       - name: convene suite under /bin/bash (3.2) + BSD tools
         run: /bin/bash plugins/council/skills/convene/tests/run-tests.sh
 

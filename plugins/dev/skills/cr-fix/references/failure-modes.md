@@ -53,8 +53,11 @@ if [ -n "$existing" ]; then
     jq -r '.auto_judge_log[]? | select(.action == "defer")
            | "| \(.src) | \(.badge_or_sev) | \(.path):\(.line // "-") | \(.reason) |"' "$STATE_FILE"
   } > "$BODY"
-  if ! gh issue comment "$existing" --body-file "$BODY" >/dev/null; then
-    # Recorded in state so Step 15 refuses the merge: the new defers are not visible anywhere yet.
+  # The flag is set on failure and cleared on success: it is inherited with the issue
+  # object, so a transient failure must not block every later run's merge.
+  if gh issue comment "$existing" --body-file "$BODY" >/dev/null; then
+    tmp=$(mktemp); jq '.followup_issue.append_failed = false' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+  else
     tmp=$(mktemp); jq '.followup_issue.append_failed = true' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
     echo "cr-fix: could not append to issue #$existing — auto-merge stays blocked" >&2
   fi

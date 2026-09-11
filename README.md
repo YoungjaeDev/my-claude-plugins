@@ -52,10 +52,14 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 
 `core` 플러그인이 사라졌다. 매 프롬프트 주입 훅(한국어 응답, `.llmwiki/insight/` 선독, surgical diff)은 전역 지침 파일 `CLAUDE.md.global` 로 옮겨졌고, marketplace 업데이트는 이 파일을 설치하지 않으므로 직접 복사한다.
 
+`/plugin marketplace add` 가 저장소를 `~/.claude/plugins/marketplaces/my-claude-plugins/` 에 체크아웃해 두므로, 저장소를 따로 clone 하지 않았다면 그 경로가 원본이다.
+
 ```bash
 /plugin uninstall core@my-claude-plugins
-cp CLAUDE.md.global ~/.claude/CLAUDE.md      # Claude Code
-cp CLAUDE.md.global ~/.codex/AGENTS.md       # Codex
+
+SRC=~/.claude/plugins/marketplaces/my-claude-plugins/CLAUDE.md.global   # 저장소를 clone 했다면 그쪽 경로
+cp "$SRC" ~/.claude/CLAUDE.md      # Claude Code
+cp "$SRC" ~/.codex/AGENTS.md       # Codex
 ```
 
 `~/.codex/hooks.json` 에 `core` 의 `prompt_inject.sh` 항목이 있으면 삭제한다.

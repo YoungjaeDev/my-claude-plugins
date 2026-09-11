@@ -6,9 +6,9 @@ Triggered at the top of every iteration BEFORE the wait/polling phase. Goal: dec
 
 Two reviewers (CR + Codex) on different channels with different timings:
 
-- Codex arrives **3-24 minutes earlier** than CR in the observed 7-PR / 4-repo sample. "Codex landed → CR done" is NOT a safe assumption.
+- Codex usually arrives well before CR, by anything from a few minutes to tens of minutes. "Codex landed → CR done" is NOT a safe assumption.
 - CR uses commit-status **or** a check-run, depending on how the app is installed on the repo; Codex uses PR reviews. They cannot be merged into one probe. `scripts/cr-commit-state.sh` normalizes CR's two surfaces onto one vocabulary.
-- Mid-action re-reviews are real (PR #30: 5 distinct Codex reviews across iterations). Pre-flight has to surface the latest unprocessed review id, not just "any review existed".
+- Mid-action re-reviews are real: one PR accumulates several distinct Codex reviews across iterations. Pre-flight has to surface the latest unprocessed review id, not just "any review existed".
 - PR timeline rendering can re-order arrivals (Codex emoji flip can push CR review visually first). Pre-flight sorts by `submitted_at` / `created_at` only — never by GitHub timeline body order.
 
 ## Five-source fetch (parallel-safe)
@@ -21,7 +21,7 @@ Two reviewers (CR + Codex) on different channels with different timings:
 | 4 | Codex emoji A | `repos/$O/$R/issues/$PR/reactions` | PR-level reactions left by `chatgpt-codex-connector[bot]` (in_progress / clean / findings) |
 | 5 | Codex emoji B | `repos/$O/$R/commits/$SHA/check-runs` | Check-run names / summaries from the connector — sometimes carries the state icon |
 
-Channel 4/5 (emoji) are best-effort. The Explore agent's 4-repo probe found **no reliable surfacing path** in the GitHub API as of plan date. If both return empty, fall back to **timeout-based** logic (`push_age vs codex_timeout_seconds`, default `600` = 10 min).
+Channel 4/5 (emoji) are best-effort: the GitHub API exposes **no reliable surfacing path** for the marker. If both return empty, fall back to **timeout-based** logic (`push_age vs codex_timeout_seconds`, default `600` = 10 min).
 
 > Channel C (`pulls/$PR/reviews/$rid/reactions`) was considered but returns 404 in most cases — only worth adding if a confirmed PR URL surfaces a real signal there.
 
@@ -42,7 +42,7 @@ cr_desc=$(jq -r '.description // ""' <<<"$cr_status")
 | `queued` \| `in_progress` | `pending` |
 | no CodeRabbit row on either surface | `none` |
 
-Reading only `/statuses` is what made every check-run repo report `cr_state: none` forever: pre-flight routed to `cr_wait`, `poll-cr-status.sh` never saw a terminal state, and the loop spun to `TIMEOUT` while the review had finished and posted inline comments (issue #105). Fixture-covered in `tests/run-tests.sh`.
+Reading only `/statuses` is what made every check-run repo report `cr_state: none` forever: pre-flight routed to `cr_wait`, `poll-cr-status.sh` never saw a terminal state, and the loop spun to `TIMEOUT` while the review had finished and posted inline comments. Fixture-covered in `tests/run-tests.sh`.
 
 - `cr_state ∈ {success, failure, pending, "", error}` (`""` → no status row yet).
 - `cr_desc` carries the free-tier-disabled and `Review limit reached` text in newer CR versions (this is the **new channel** Step 7b previously missed).
@@ -52,7 +52,7 @@ Reading only `/statuses` is what made every check-run repo report `cr_state: non
 
 The sniff script (`scripts/sniff-cr-rate-limit.sh`) checks three locations:
 
-1. issue-comment body (`created_at > push_time` OR `updated_at > push_time`) — catches both new posts AND CR's in-place edit-to-rate-limit pattern (PR #30).
+1. issue-comment body (`created_at > push_time` OR `updated_at > push_time`) — catches both new posts AND CR's in-place edit-to-rate-limit pattern.
 2. review body (`submitted_at > push_time`).
 3. commit-status `description` (no time check; latest CodeRabbit status only).
 
@@ -137,7 +137,7 @@ Any `gh api` returning a non-2xx propagates as `error` for that channel only —
 
 ## Polling-interval coupling
 
-When `gate == cr_wait` or `gate == codex_wait`, Step 6 / 6b take over with `INTERVAL` controlling poll frequency. The plan moves the default from `60s` to `8s` (within the 5-10s pseudo-interrupt window) because pre-flight already absorbs the cold-start latency that justified the original 60s value.
+When `gate == cr_wait` or `gate == codex_wait`, Step 6 / 6b take over with `INTERVAL` controlling poll frequency. The default is `8s`, inside the 5-10s pseudo-interrupt window: pre-flight already absorbs the cold-start latency that a longer interval would otherwise hide.
 
 ## Small-diff codex-only heuristic (Step 5b)
 

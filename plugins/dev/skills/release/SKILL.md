@@ -29,7 +29,7 @@ Create a versioned GitHub release: detect the current version, update the versio
    - Verify `gh` CLI is installed and authenticated: `gh auth status`
    - Verify clean working tree: `git status --porcelain`
      - If uncommitted changes exist, prompt user to commit or stash first
-   - Verify current branch is pushed to remote: `git rev-parse --abbrev-ref --symbolic-full-name @{u}`
+   - Verify current branch is pushed to remote: `git rev-parse --abbrev-ref --symbolic-full-name @{u}`. No upstream means the tag would point at a commit GitHub cannot see — stop and have the user push the branch first.
 
 2. **Detect Previous Tag**
    - Run `git fetch --tags` and then `git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1.2,1n -k2,2n -k3,3n | tail -1` to find the highest existing release tag; the strict `vX.Y.Z` filter keeps `v2`, pre-release and nightly tags out of the pick. Do not use `git describe --tags --abbrev=0`: it returns the nearest tag reachable from HEAD, which is not the latest version whenever a higher tag lives on another branch — and that single value feeds both the bump base and `--notes-start-tag`.
@@ -161,6 +161,15 @@ Create a versioned GitHub release: detect the current version, update the versio
    git push origin "v<NEW_VERSION>"
    ```
 
+   `--notes-start-tag` is resolved by GitHub, not locally, so the baseline has to be on the remote
+   too. An `--init` baseline is local-only until this point, which would fail the first release:
+
+   ```bash
+   if ! git ls-remote --exit-code --tags origin "refs/tags/<PREV_TAG>" >/dev/null 2>&1; then
+     git push origin "<PREV_TAG>" || PREV_TAG=""   # unpushable baseline: release without the flag
+   fi
+   ```
+
    Build the `gh release create` command:
    ```bash
    gh release create v<NEW_VERSION> \
@@ -168,6 +177,9 @@ Create a versioned GitHub release: detect the current version, update the versio
      --notes-start-tag <PREV_TAG> \
      --title "v<NEW_VERSION>"
    ```
+
+   Drop `--notes-start-tag` entirely when there is no baseline tag (`PREV_TAG` empty): `--generate-notes`
+   then falls back to the previous release GitHub knows about.
 
    Append flags if specified:
    - `--draft` -> add `--draft` to gh command
@@ -182,16 +194,11 @@ Create a versioned GitHub release: detect the current version, update the versio
 
 ## Version File Detection Details
 
-### Multi-File Projects
-
-All files detected in Step 3 are updated together, so a project with multiple version manifests (e.g., Tauri's `tauri.conf.json` + `Cargo.toml` + optionally `package.json`) stays in sync.
-
 ### Fallback
 
 If auto-detection finds no version files:
 1. Check `@CLAUDE.md` for version file hints
 2. Prompt user to specify file path(s)
-3. Store user response for future runs (in-session only)
 
 ## First Release Flow
 

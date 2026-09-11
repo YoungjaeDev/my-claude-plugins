@@ -15,7 +15,7 @@
 
 ## finding event fields
 
-Measured against **CLI 0.6.5** on a live run (issue #105). A `finding` carries exactly these five keys and no others:
+A `finding` carries exactly these five keys and no others:
 
 | Field | Type | Notes |
 |-------|------|-------|

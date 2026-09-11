@@ -1,6 +1,6 @@
 ---
 name: commit-and-push
-description: Analyze the Git changes in the files given as arguments, write a Conventional Commits message, commit, and push. Use when the user types /dev:commit-and-push, says "commit and push", or asks to commit specific files. Analyzes only the provided files (one logical change per commit), writes a type-prefixed imperative subject under 50 chars, then runs git add → git commit → git push. Follows the project CLAUDE.md commit guidelines and adds no AI attribution.
+description: Analyze the Git changes in the files given as arguments, write a Conventional Commits message, commit, and push. Use when the user types /dev:commit-and-push, says "commit and push", or asks to commit specific files. Analyzes only the provided files (one logical change per commit), writes a type-prefixed imperative subject under 50 chars, then runs git add → git commit → git push. Follows the project CLAUDE.md commit guidelines and adds no AI attribution. Not for resolving an issue end-to-end (/dev:resolve-issue), applying review feedback (/dev:cr-fix), cleaning up after a merge (/dev:post-merge), or cutting a release (/dev:release) — those drive their own commits.
 allowed-tools: Read Bash Agent
 ---
 

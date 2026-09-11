@@ -219,28 +219,3 @@ Orchestrator wraps top picks into a short Markdown answer.
 Mode: `deep` (compare + consensus).
 Fan-out: `web-scout` (community sentiment), `docs-scout` (Pydantic migration docs via Context7), `github-scout` (issues / migration PRs).
 Synthesis reconciles official migration guide vs community pain points.
-
-## Test scenarios
-
-### Normal flow: deep mode, all axes healthy
-
-1. User: "Compare vLLM vs TGI for production serving"
-2. Phase 0: no `workspace_dir` supplied → fresh run.
-3. Phase 2 creates `$PARENT/run.AbCd1234/`.
-4. Phase 4 dispatches 4 scouts in parallel; each writes its `{NN}_{axis}.json` in 30-90s.
-5. Phase 5 invokes synthesis-scout; it sorts artifacts, dedups (vLLM repo appears in both github + web → merged), trust-ranks, emits `final_report.md` with Recommended Picks + Conflicts table.
-6. Phase 6 surfaces the report path and top-3 picks. Exit clean.
-
-**Expected stdout:** `report_path=/tmp/research/run.AbCd1234/final_report.md mode=deep sources_merged=4 conflicts=1`.
-
-### Error flow: one axis errors, partial re-execution
-
-1. User: "Research RAG eval frameworks 2026" → fresh deep run as above.
-2. `web-scout` returns an exa-quota error and writes `03_web.json` with `findings: []` + `error: "exa quota exhausted"`.
-3. Synthesis still produces a report but adds `## Gaps` noting the missing web axis.
-4. User: "이전 결과의 web 축만 다시 돌려줘 — exa quota 풀렸음"
-5. Phase 0 detects existing `workspace_dir` + axis-specific refinement → partial re-execution mode.
-6. Only `web-scout` is re-dispatched with `artifact_id=03_web` (overwriting the previous error artifact).
-7. synthesis-scout re-runs on the merged set; `## Gaps` disappears from the new report.
-
-**Expected behavior:** existing `01_github.json`, `02_hf.json`, `04_docs.json` are untouched; only `03_web.json` is rewritten; final report regenerated.

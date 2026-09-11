@@ -1,14 +1,14 @@
 ---
 name: e2e-author
 description: Author Playwright E2E tests for critical user flows by orchestrating the official planner and generator agents. Use when the user asks to write or add E2E tests, create a Playwright test plan, generate specs for a flow, or cover a critical user flow end-to-end. Selects CUFs (flows whose failure breaks revenue, data, or trust), runs the planner agent to produce a Markdown plan behind a user review gate, then the generator agent to produce spec files with live-verified semantic getByRole locators, and burns each new spec in with --repeat-each to block flakes before merge. Requires e2e-setup to have generated the agents first. Run from the user's project root.
-allowed-tools: Read Write Edit Bash Glob Grep Task AskUserQuestion
+allowed-tools: Read Write Edit Bash Glob Grep Agent AskUserQuestion
 ---
 
 # E2E Author: planner -> generator orchestration
 
 Turn a critical user flow into a reliable Playwright spec by driving the planner and generator **roles**. This skill orchestrates; the roles do the exploration and code generation.
 
-Two runtime families, three execution paths, same gates: on **Claude Code** the roles are the named agents `e2e-setup` generated via `init-agents --loop=claude` (**Path A**); on **Codex 0.135** those agent files are not registerable as named subagents, so each role runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
+Two runtime families, three execution paths, same gates: on **Claude Code** the roles are the named agents that `e2e-setup` generated via `init-agents --loop=claude` (**Path A**); on **Codex** those agent files are not registerable as named subagents, so each role runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
 
 ## Precondition check
 
@@ -20,7 +20,7 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
 
 0. **Resolve the plugin root + pick the execution path**: run once. The resolver reaches the bundled role contracts on Path B/C; the path decision governs Steps 2-3. Tell the user which path you took in one sentence.
    ```bash
-   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Each branch verifies
+   # Claude exports CLAUDE_PLUGIN_ROOT; Codex does not. Each branch verifies
    # the target (CHK) exists before committing, so a stale env falls through.
    CHK="references/role-contracts.md"
    PLUGIN_ROOT=""
@@ -36,7 +36,7 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
    echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```
    - **Path A**: the named agents `playwright-test-planner` / `-generator` are registered (Claude Code). Dispatch them by name (Steps 2-3, unchanged).
-   - **Path B**: named agents are not registerable but a generic subagent tool is available (Codex `Task`). Dispatch one generic subagent per role, carrying the matching contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
+   - **Path B**: named agents are not registerable but a generic subagent tool is available (`Agent`). Dispatch one generic subagent per role, carrying the matching contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
    - **Path C**: no delegation available. Run each role yourself, in order, following the same contract with your own tools (`Bash` for `npx playwright`, the `playwright-test` MCP server for browser drive).
 
 1. **Select the critical user flow(s)**:
@@ -44,15 +44,15 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
    - If the SSOT doc lists CUFs, pick from it. Otherwise use AskUserQuestion to confirm the 1-3 flows in scope. Do not auto-pick everything: E2E breadth is a cost.
 
 2. **Plan (planner role) + review gate**. Dispatch via the Step 0 path:
-   - **Path A**: `Task(subagent_type="playwright-test-planner", prompt="<the CUF + any PRD/notes>. Run seed.spec.ts to set up the environment, explore the app, and write a Markdown test plan under specs/.")`.
-   - **Path B** (Codex generic subagent): `Task(prompt="You are the Playwright planner role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'planner'): run seed.spec.ts first, explore the app via the playwright-test MCP server, write specs/<flow>.md (plan only, no code). CUF: <the CUF + any PRD/notes>.")`. Paste the `planner` contract inline.
+   - **Path A**: `Agent(subagent_type="playwright-test-planner", prompt="<the CUF + any PRD/notes>. Run seed.spec.ts to set up the environment, explore the app, and write a Markdown test plan under specs/.")`.
+   - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright planner role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'planner'): run seed.spec.ts first, explore the app via the playwright-test MCP server, write specs/<flow>.md (plan only, no code). CUF: <the CUF + any PRD/notes>.")`. Paste the `planner` contract inline.
    - **Path C**: run the planner role yourself per the contract, running `seed.spec.ts`, exploring via the `playwright-test` MCP server, and writing `specs/<flow>.md`.
    - The planner writes `specs/<flow>.md` (a plan, no code) on every path.
    - **MANDATORY user review gate** (all paths): present the plan and get explicit approval (AskUserQuestion) before generating any code. The plan is cheap to fix; generated specs are not. Incorporate edits into `specs/<flow>.md` before proceeding.
 
 3. **Generate (generator role)**. Dispatch via the Step 0 path:
-   - **Path A**: `Task(subagent_type="playwright-test-generator", prompt="Turn specs/<flow>.md into Playwright spec files under e2e/. Verify every selector and assertion live as you go.")`.
-   - **Path B** (Codex generic subagent): `Task(prompt="You are the Playwright generator role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'generator'): turn specs/<flow>.md into e2e/<flow>.spec.ts, verifying every selector/assertion live via the playwright-test MCP server; semantic getByRole/getByLabel/getByText only, no CSS/XPath, no waitForTimeout.")`. Paste the `generator` contract inline.
+   - **Path A**: `Agent(subagent_type="playwright-test-generator", prompt="Turn specs/<flow>.md into Playwright spec files under e2e/. Verify every selector and assertion live as you go.")`.
+   - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright generator role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'generator'): turn specs/<flow>.md into e2e/<flow>.spec.ts, verifying every selector/assertion live via the playwright-test MCP server; semantic getByRole/getByLabel/getByText only, no CSS/XPath, no waitForTimeout.")`. Paste the `generator` contract inline.
    - **Path C**: run the generator role yourself per the contract.
    - The generator verifies selectors/assertions against the running app as it writes.
    - **Enforce semantic locators** (all paths): specs must use `getByRole(role, { name })` / `getByLabel` / `getByText`, not CSS/XPath. If brittle selectors are emitted, send the role back to fix them (Playwright's own best-practice is role-first locators).

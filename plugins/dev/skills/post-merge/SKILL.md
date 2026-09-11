@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: "Clean up after a PR merges: switch to base, delete the merged branch, sync GitHub Project/milestone and .claude/state/spec.json, integrate what merged into CLAUDE.md/AGENTS.md/.claude/rules, run the mandatory wiki-lore ingest, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', 'integrate PR learnings', or right after a PR merges; /dev:post-merge --progress-only, 'update progress', 'sync milestone progress' runs only the milestone sync with no merged PR. gh pr view is the merge signal, never git SHAs; runs from the main repo, not a worktree. Not for an open PR's review feedback (/dev:cr-fix)."
+description: "Clean up after a PR merges: switch to base, delete the merged branch, sync GitHub Project/milestone and .claude/state/spec.json, integrate what merged into CLAUDE.md/AGENTS.md/.claude/rules, run the mandatory wiki-lore ingest, curate README and the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', 'integrate PR learnings', or right after a PR merges. gh pr view is the merge signal, never git SHAs; runs from the main repo, not a worktree. Not for an open PR's review feedback (/dev:cr-fix)."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -18,17 +18,13 @@ For worktree removal, use `/exit` with its cleanup option.
 - **No stamps, current-state only.** Normative docs hold current rules; provenance lives in git/PR/blame. No `(#N)` / `PR #N` / `이슈 #N` citations, no `## Post-Merge` headers. Full rules + the `<!-- history-allowed [max=N] -->` opt-out + language consistency + SSOT cross-file dedup + content-first: see `references/core-principle.md`.
 - **Knowledge routing (no double-recording).** Mechanical / tool-operation rules → `CLAUDE.md` / `AGENTS.md` / `.claude/rules/` / Serena memory (Steps 6-7). Cross-agent *lore* (provider quirks, design rationale, debugging stories) → `.llmwiki/` via the wiki step (Step 8). Each fact is recorded in exactly one home; the wiki step (run *after* config integration) dedups against what Steps 6-7 already absorbed. Cross-agent rules that graduate do so to `.llmwiki/insight/` via the wiki step, never to `.claude/rules/` (Codex can't read it).
 - **Leftover-review surface (Step 1.5) is informational.** The run reads cr-fix's state file (`.claude/state/cr-fix-<PR>.json`, else the latest `.claude/state/archive/` copy) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line (mirroring the Step 8 wiki checkpoint) so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
-- **Codex partial-execution.** Under Codex 0.135 the Serena (Step 7), `docs:write-rules` / `claude-md-management:claude-md-improver` (Step 6.5), and `humanize-korean` / `docs:readme` (Step 9) sub-steps are Claude-only; gracefully skip them and note the skip rather than failing.
+- **Codex partial-execution.** The Serena (Step 7), `docs:write-rules` (Step 6.5), and `humanize-korean` / `docs:readme` (Step 9) sub-steps are Claude-only; under Codex, gracefully skip them and note the skip rather than failing. Every other step runs identically on both runtimes.
+- **Interactive input is capability-aware.** Every prompt and confirmation below, each `AskUserQuestion` mention included, is a gate rather than a tool name: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (`git rm`, `gh repo edit`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+- **Run record.** Step 1 opens `.claude/state/post-merge-<PR>.json` and every step appends its outcome, so a silent skip becomes visible; Step 10 finalizes it. Mechanism, per-step skip reasons, and the finalize block: `references/run-record.md`.
 
 ## Arguments
 
 - PR number (optional): if not provided, infer from conversation context, else `gh pr list --state merged --limit 5` and prompt the user to select.
-- `--progress-only [milestone]` (optional): manual milestone-progress sync with no merged PR (the retired `update-progress` entry point). Also selected by "update progress" / "sync milestone progress" requests that name no PR. Not a shortcut past the guards; the protocol is:
-  - Step 1: run the worktree guard unchanged. Skip PR identification; instead set `RUN_KEY="progress-<milestone-slug>"` (or `progress-all`) and open the run record with `REC=".claude/state/post-merge-${RUN_KEY}.json"`, `run_id "post-merge-${RUN_KEY}"`, `anchor_sha` = `git rev-parse HEAD`, same archive rotation and `record_step` definition.
-  - Step 2: run the dirty-index gate unchanged, so pre-staged unrelated work is stashed, discarded, or aborts before anything is written.
-  - Steps 1.5, 3-5 and 5.7-9.5: skip, each recorded `skipped "progress-only"` (1.5 reads `cr-fix-<PR>.json`, which has no PR here).
-  - Step 5.5: run for the state file(s) selected as `references/update-progress.md` "Entry points" describes: a milestone name or `--all` picks the scope (and therefore `RUN_KEY`); `--local` is a modifier on either scope that skips the GitHub writes, so it never changes `RUN_KEY`, `REC`, or `run_id`.
-  - Step 10: `RUN_TOUCHED` is only the state files and tracking sections this run wrote; finalize with `REC=".claude/state/post-merge-${RUN_KEY:?...}.json"` in place of the `PR_NUMBER` form; commit message `chore: sync milestone progress`.
 
 ## Workflow
 
@@ -52,40 +48,7 @@ esac
 - Verify `state` is `MERGED`. This result is the **authoritative merge signal** (see Guidelines); no later SHA comparison.
 - Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')`: this is **this PR's** merge commit, used to label the wiki log entry and read diff content. Step 8 derives the merged **file list** from `gh pr diff <N> --name-only` (PR-scoped, merge-method-agnostic, uncapped), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
 
-**Open the run record (state-envelope v0).** With `PR_NUMBER` + `MERGE_SHA` fixed, open a per-run record so every later step's outcome is machine-visible: a step that skipped **silently** was previously invisible. Convention + schema: `.claude/rules/state-envelope.md` (concept mirror in `AGENTS.md`). No shared library: this per-skill `jq` is the whole mechanism, and the file lives under gitignored `.claude/state/`, so it is machine-local and is **never** staged (never added to Step 10's `RUN_TOUCHED`).
-
-```bash
-REC=".claude/state/post-merge-${PR_NUMBER}.json"
-mkdir -p .claude/state/archive
-# Archive a prior same-PR record before overwriting (mirrors cr-fix Step 2).
-# Fail closed: a failed archive must abort init, else the jq below clobbers the only live copy.
-if [ -f "$REC" ]; then
-  mv "$REC" ".claude/state/archive/post-merge-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$.json" \
-    || { echo "post-merge: archiving the prior run record failed — aborting to avoid clobbering it" >&2; exit 1; }
-fi
-NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-jq -n --arg rid "post-merge-${PR_NUMBER}" --arg sha "$MERGE_SHA" --arg now "$NOW" \
-  '{schema:"state-envelope/v0", run_id:$rid, status:"in_progress", conclusion:null,
-    started_at:$now, updated_at:$now, anchor_sha:($sha // null), attempt:1,
-    session_id:(env.CLAUDE_SESSION_ID // null), steps:[]}' > "$REC"
-
-# record_step <n> <done|skipped> [reason] — append one entry, bump updated_at.
-record_step() {
-  if [ "$2" = "skipped" ] && [ -z "${3:-}" ]; then
-    echo "post-merge: a skipped step needs a reason" >&2; return 1
-  fi
-  local tmp; tmp=$(mktemp)
-  jq --argjson step "$1" --arg status "$2" --arg reason "${3:-}" \
-     --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-     '.updated_at = $now
-      | .steps += [ {step: $step, status: $status}
-                    + (if $reason == "" then {} else {reason: $reason} end) ]' \
-     "$REC" > "$tmp" && mv "$tmp" "$REC"
-}
-record_step 1 done
-```
-
-**Recording contract.** After each top-level Step 2-10 closes, append its outcome: `record_step <n> done`, or `record_step <n> skipped "<reason>"` when that step's skip-condition fires (Steps 5, 5.5, 5.7, 9, 9.5 skip silently today, and under Codex Step 7 records `skipped "Codex — Serena unavailable"`; the record is what makes each skip visible). Sub-steps (1.5, 4.5, 4.6, 6.5) fold into their parent top-level entry. **Shell state does not persist across separate tool calls**: `REC` is the deterministic path `.claude/state/post-merge-<PR>.json`, so in the bash block that closes a later step, re-`export REC=...` and re-declare `record_step` (or run the equivalent inline `jq`) before calling it. Step 10 finalizes the envelope to `status: completed`.
+**Open the run record.** With `PR_NUMBER` + `MERGE_SHA` fixed, run the init block in `references/run-record.md` and `record_step 1 done`. That file also holds the per-step recording contract every later step follows.
 
 ### 1.5. Surface unresolved review items (informational)
 
@@ -135,8 +98,7 @@ fi
 
 - **Leftover present**: after the `leftover-reviews: <N> deferred (final_state=<X>)` line, render the `$DEFERS` items as a table (`Path:Line · Severity · Reason`), and append the open-thread count when `OPEN_THREADS > 0`. Tell the user these were **not** auto-applied: review them on the PR page (`gh pr view <PR_NUMBER> --comments`) or in a follow-up; do not silently drop them.
 - **None**: print `leftover-reviews: none` when no cr-fix state file resolves, or it shows `defer == 0` with a non-trigger `final_state`.
-
-**Codex**: runs identically under Claude and Codex: `gh` / `jq` / `Read` only (no Serena / docs:write-rules).
+- **Recurring leftover**: before printing, grep the older archives (`.claude/state/archive/cr-fix-*.json`, excluding this PR) for the same finding. A leftover that surfaces a second time is a standing rule, not an incident — mark it `promotion-candidate` in the table and hand it to Step 8 so `wiki:ingest-finding` files it under `.llmwiki/insight/`. Do not promote it here.
 
 ### 2. Check local changes
 
@@ -145,8 +107,6 @@ fi
 - Modified/staged (`M`/`A`/`D`); prompt via `AskUserQuestion`: **stash** (`git stash push -m "post-merge: temp save"`) / **discard** (`git restore --staged --worktree -- .`, reverts tracked changes only; never `git clean`, so pre-existing untracked files/drafts are preserved per the rule above) / **abort**.
 - If stashed, prompt at the end of the run for **pop** / **apply** / **later**.
 
-**Record.** Close this step: `record_step 2 done`. Every closing bash block is a fresh shell, so re-`export REC=".claude/state/post-merge-${PR_NUMBER}.json"` and re-declare `record_step` (copy the definition from Step 1) before the call. This re-declaration applies to every step below.
-
 ### 3. Switch to base branch
 
 ```bash
@@ -154,8 +114,6 @@ git fetch origin
 git checkout <baseRefName>
 git pull origin <baseRefName>
 ```
-
-**Record.** `record_step 3 done`.
 
 ### 4. Clean up local branch
 
@@ -192,9 +150,6 @@ user selects skip-all.
    removed paths to `RUN_TOUCHED` (Step 10's `[ -e "$p" ]` add-loop cannot stage a
    deletion; `git rm` already staged it).
 
-**Codex**: runs identically under Claude and Codex (gh/git/AskUserQuestion only;
-no Serena/docs:write-rules).
-
 Full heuristics, confidence tiers, hard exclusions, and the Step 10 staging
 interaction: `references/ephemeral-heuristics.md`.
 
@@ -228,23 +183,15 @@ Skip silently when: no marker is found, or the user selects skip-all.
    stages them); `git rm` already stages the deletion. Do NOT add it to
    `RUN_TOUCHED`. Report each.
 
-**Codex**: runs identically (gh/git/grep/AskUserQuestion only; no
-Serena/rules-forge).
-
-**Record.** After Steps 4-4.6 close, `record_step 4 done`; sub-steps 4.5 and 4.6 fold into this single entry.
-
 ### 5. Update GitHub Project status (optional)
 
 - Extract issue refs from the PR body (`Closes #N` / `Fixes #N` / `Resolves #N`).
+- Verify the links actually closed: `gh pr view <N> --json closingIssuesReferences`. Take every `#N` the body mentions, subtract the issues in that list, and what remains was named without a closing keyword, so the merge left it open. List those and confirm through the interactive-input gate which ones this PR resolved, then `gh issue close <N> --comment "Resolved by #<PR>"` for each confirmed one. Do not close an issue the user did not confirm.
 - `gh project list --owner <owner> --format json`. If none, skip silently. Else `gh project item-list` → `gh project field-list` → `gh project item-edit` to set Status to "Done". Skip if the issue is not in the project.
-
-**Record.** `record_step 5 done`; on a skip, record the reason that matches which condition fired: `record_step 5 skipped "no GitHub Project"` (no project resolves) or `record_step 5 skipped "issue not in the project"` (a project exists but the issue is not on it). Collapsing both into one reason loses why the step skipped.
 
 ### 5.5. Sync milestone progress (if issues have milestones)
 
 For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `references/update-progress.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
-
-**Record.** `record_step 5.5 done`, or `record_step 5.5 skipped "no milestone"` when no related issue carries one.
 
 ### 5.7. Update `.claude/state/spec.json` (if present)
 
@@ -252,23 +199,17 @@ For each related issue with a milestone, recompute module progress and regenerat
 - Mechanics are owned by `dev:state-tracker`: invoke `/dev:state-tracker complete <spec-path>` if installed; otherwise apply the direct JSON edit per `plugins/dev/skills/state-tracker/SKILL.md`.
 - Skip silently if no matching entry, or if `.claude/state/` does not exist.
 
-**Record.** `record_step 5.7 done`, or `record_step 5.7 skipped "no spec.json entry"` when no matching entry exists or `.claude/state/` is absent.
-
 ### 6. Integrate learnings into config files
 
 Read `gh pr diff <PR_NUMBER>` + the PR body, then weave each learning into the **appropriate existing section** of `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `.claude/rules/*.md`. **Never append a "Post-Merge Notes" section.**
 
 **6.1 Cross-file dedup gate (run before writing any learning).** For each fact, first grep the SSOT set (`CLAUDE.md`, `AGENTS.md`, the relevant `.claude/rules/*.md`) for an existing home. If one exists, **update that line in place**; do not add a parallel statement in a second file. A rule that must bind both runtimes lives once in `.claude/rules/<x>.md` (Claude) with a concise mirror block in `AGENTS.md` (Codex), tied by a one-line pointer in `CLAUDE.md` `## Modular Rules`: that pairing is the SSOT pattern, not duplication. When the same fact already appears in two files, collapse to one authoritative home + pointer rather than editing both copies. This is the config-side twin of the Step 8 wiki dedup gate; together they keep each fact in exactly one home.
 
-Full procedure: Pre-Audit (scrub existing stamps first), the classification/placement table, the integration process, modular-rule-file structure, the pre-presentation stamp self-check, History Rotation (6.4), and the Normative Doc Size Audit (6.5, with `docs:write-rules` / `claude-md-improver` routing); this lives in **`references/learning-integration.md`**. Apply its Core Principle (`references/core-principle.md`) to every added/modified line; present a diff-style proposal before applying.
-
-**Record.** `record_step 6 done`; folds in the 6.5 normative-doc size audit.
+Full procedure: Pre-Audit (scrub existing stamps first), the classification/placement table, the integration process, modular-rule-file structure, the pre-presentation stamp self-check, History Rotation (6.4), and the Normative Doc Size Audit (6.5, `docs:write-rules` routing); this lives in **`references/learning-integration.md`**. Apply its Core Principle (`references/core-principle.md`) to every added/modified line; present a diff-style proposal before applying.
 
 ### 7. Update Serena memory (Claude-only — Codex skips)
 
 If Serena MCP is available, integrate PR learnings into existing memory files as native content (no `post_merge_prN.md`, no `## Post-Merge` headers). Pre-Audit, the memory-file mapping table, and the self-check are in **`references/learning-integration.md`** ("Serena memory"). Skip if Serena is unavailable or under Codex.
-
-**Record.** `record_step 7 done`, or `record_step 7 skipped "Serena unavailable"` (under Codex, `record_step 7 skipped "Codex — Serena unavailable"`).
 
 ### 8. Wiki lore ingest (MANDATORY)
 
@@ -283,21 +224,32 @@ Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`);
 
 Set `WIKI_AUTOINGEST=0` to disable the ingest work for a run; the checkpoint line still prints (`no-lore (disabled via WIKI_AUTOINGEST=0)`), so disabling is visible, not silent.
 
-**Record.** `record_step 8 done`; Step 8 is mandatory and always reaches its checkpoint, so it records `done` even on the `no-lore` path.
+### 9. Update README.md + repo About (README edit is optional; the About check is not)
 
-### 9. Update README.md (if needed — humanize-korean/docs are Claude-only)
+If the PR changed features/commands/install/usage/deps and a README exists: draft the changes, then refine. If the README is Korean and the `humanize-korean` plugin is installed, apply `/humanize-korean:humanize-korean` to strip AI-writing tells; if it is not installed (it is a user-external plugin, not bundled here), do the equivalent pass by manual edit. Then apply `/docs:readme` guidelines. Both skill passes are Claude-only; under Codex skip them and keep the manual edit. Present for confirmation. Skip the README edit if no README-relevant changes.
 
-If the PR changed features/commands/install/usage/deps and a README exists: draft the changes, then refine. If the README is Korean and the `humanize-korean` plugin is installed, apply `/humanize-korean:humanize-korean` to strip AI-writing tells; if it is not installed (it is a user-external plugin, not bundled here), do the equivalent pass by manual edit. Then apply `/docs:readme` guidelines. Both skill passes are Claude-only; under Codex skip them and keep the manual edit. Present for confirmation. Skip if no README-relevant changes.
+**Curate, don't append.** README is a normative doc and gets the same discipline Step 6 applies to config files: find the existing section that covers the topic and update it **in place**, collapse a fact that now appears twice into one home, and delete what this merge superseded (a removed command, a stale count, a workaround for a bug this PR fixed). A README that only grows across post-merge runs is the failure mode this step exists to prevent.
 
-**Record.** `record_step 9 done`, or `record_step 9 skipped "no README changes"`.
+**Repo About drift (runs even when the README needs no edit).** The remote About line is a separate surface nobody else in this skill touches, and it goes stale silently:
+
+```bash
+gh repo view --json description,repositoryTopics \
+  --jq '{description, topics: [.repositoryTopics[].name]}'
+```
+
+Compare `description` against the README's opening claim and against what this PR changed (a renamed or removed feature, a changed count, a new entry point). If it drifted, propose the new one-liner via `AskUserQuestion` and apply only on approval — `gh repo edit` writes to the remote and is never unattended work. Report topic drift in the same breath, but do not edit topics.
+
+```bash
+gh repo edit --description "<approved one-liner>"
+```
+
+Print one line either way so the check cannot pass unnoticed: `repo-about: in sync` or `repo-about: updated`.
 
 ### 9.5. Update CHANGELOG (if present)
 
 If a `CHANGELOG.md` (or `CHANGELOG`) exists at the repo root **and** the merged PR is changelog-worthy (a user-visible feature / fix / breaking change, not a pure docs/test/chore merge), reflect the merge into it. Mirror Step 9's guide-driven approach: read the `docs:doc-guides` skill (`## CHANGELOG` section) + `plugins/docs/references/CHANGELOG_PATTERNS.md` and apply the patterns **manually** (Keep-a-Changelog grouping, the `Unreleased` section, semantic-version discipline, no per-PR stamp noise in normative entries). Derive the entry from `gh pr diff <PR_NUMBER>` + the PR body, place it under the right `Unreleased` heading (Added / Changed / Fixed / Removed), present a diff-style proposal before applying, and add the file to `RUN_TOUCHED` for Step 10.
 
-The `/docs:changelog` **command** is Claude-only (Codex 0.135 emits no command surface); under Codex, skip the command and do the same edit manually from the `doc-guides` `## CHANGELOG` patterns. Skip silently when no CHANGELOG exists or the merge is not changelog-worthy.
-
-**Record.** `record_step 9.5 done`; on a skip, distinguish the cause: `record_step 9.5 skipped "no CHANGELOG"` (no file at the repo root) or `record_step 9.5 skipped "not changelog-worthy"` (a CHANGELOG exists but the merge is a pure docs/test/chore). One reason for both conditions loses why the step skipped.
+The `/docs:changelog` **command** is Claude-only (Codex emits no command surface); under Codex, skip the command and do the same edit manually from the `doc-guides` `## CHANGELOG` patterns. Skip silently when no CHANGELOG exists or the merge is not changelog-worthy.
 
 ### 10. Commit changes (optional)
 
@@ -317,26 +269,14 @@ done
 
 Skip the commit only when `git diff --cached --quiet` reports nothing staged after the `git add` (a staged-only check); `git status --porcelain` would also count pre-existing untracked files and wrongly attempt an empty-index commit.
 
-**Finalize the run record.** Record this closing step and mark the envelope terminal. Step 10 is a fresh shell, so re-set `PR_NUMBER` (the merged PR number) + `REC` first; `record_step` is not used here, the append + finalize are inlined. The record stays under gitignored `.claude/state/`; do **not** add it to `RUN_TOUCHED`:
-
-```bash
-# Step 10 runs in a fresh shell — neither PR_NUMBER nor record_step from Step 1 persist.
-# Re-set PR_NUMBER (the merged PR number) so REC points at the real record, not
-# .claude/state/post-merge-.json; the :? guard fails loud if it is empty. Append + finalize inline.
-REC=".claude/state/post-merge-${PR_NUMBER:?Step 10: re-set PR_NUMBER to the merged PR number before finalizing}.json"
-tmp=$(mktemp)
-jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  '.steps += [{step: 10, status: "done"}]
-   | .status = "completed" | .conclusion = "success" | .updated_at = $now' \
-  "$REC" > "$tmp" && mv "$tmp" "$REC"
-```
+**Finalize the run record.** Run the finalize block in `references/run-record.md` to append Step 10 and mark the envelope terminal. The record stays under gitignored `.claude/state/`; do **not** add it to `RUN_TOUCHED`.
 
 ## References
 
 - **No-stamp Core Principle + knowledge-routing boundary**: `references/core-principle.md`
 - **Config + Serena learning integration** (Pre-Audit, classification, history rotation, size audit, memory mapping): `references/learning-integration.md`
 - **Unresolved review surface** (Step 1.5, cr-fix state-file defer list + `final_state`, open-thread proxy): reads `.claude/state/cr-fix-<PR>.json` / `.claude/state/archive/`; field schema in `plugins/dev/skills/cr-fix/assets/final-output.schema.json`.
-- **Run-record envelope** (Step 1 + Step 10, per-step `.claude/state/post-merge-<PR>.json`, schema + archive rotation + per-skill jq): `.claude/rules/state-envelope.md` (concept mirror in `AGENTS.md`).
+- **Run-record envelope** (Step 1 init + recording contract + per-step skip reasons + Step 10 finalize): `references/run-record.md`; convention + schema in `.claude/rules/state-envelope.md` (concept mirror in `AGENTS.md`).
 - **Mandatory wiki ingest** (absorbed post-merge-wiki, candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
 - **Ephemeral artifact pruning** (Step 4.5, heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
 - Milestone / Type M-2 diagram mechanics: `references/update-progress.md`

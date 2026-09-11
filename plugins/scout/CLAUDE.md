@@ -1,6 +1,6 @@
 # scout
 
-Multi-axis code & ML research harness. v2.1 grows the v2.0 4-axis team to a 5-axis team (adds `paper-scout`) + synthesis orchestrator, and wires `insane-search` as a tier-4 transport fetch fallback.
+Multi-axis code & ML research harness. `github` / `hf` / `web` / `docs` scouts fan out in parallel + a synthesis orchestrator merges results; `insane-search` is wired as a tier-4 transport fetch fallback.
 
 ## When to use
 
@@ -11,13 +11,12 @@ Multi-axis code & ML research harness. v2.1 grows the v2.0 4-axis team to a 5-ax
 | Single-axis: HF models / datasets / Spaces | `Agent(subagent_type="scout:hf-scout")` |
 | Single-axis: web / blogs / community | `Agent(subagent_type="scout:web-scout")` |
 | Single-axis: official docs / repo Q&A | `Agent(subagent_type="scout:docs-scout")` |
-| Single-axis: academic papers (arxiv / DOI / SOTA / benchmark) | `Agent(subagent_type="scout:paper-scout")` |
 | Already have artifacts, just need merge | `Agent(subagent_type="scout:synthesis-scout")` |
 | General non-code/ML topic (politics / market / history / biographies) | `/deep-research` directly (scout doesn't delegate; boundary is intentional) |
 
-**Runtime note:** the single-axis `Agent(subagent_type="scout:*-scout")` rows above are **Claude-only**: Codex 0.135 exposes the skills but cannot register the `agents/*.md` definitions. Under Codex, enter through `Skill("scout:research-orchestrator")`; it detects that the named agents are unregisterable and runs the same axes via generic parallel subagents (or sequential in-agent when delegation is unavailable), synthesizing in-skill. See `skills/research-orchestrator/references/axis-contracts.md` for the shared contract all three execution paths consume.
+**Runtime note:** the single-axis `Agent(subagent_type="scout:*-scout")` rows above are **Claude-only**: Codex exposes the skills but cannot register the `agents/*.md` definitions. Under Codex, enter through `Skill("scout:research-orchestrator")`; it detects that the named agents are unregisterable and runs the same axes via generic parallel subagents (or sequential in-agent when delegation is unavailable), synthesizing in-skill. See `skills/research-orchestrator/references/axis-contracts.md` for the shared contract all three execution paths consume.
 
-For the full routing matrix (should / should-NOT, near-miss disambiguation vs `scout:paper-search`, `scout:ask`, `dev:*`, `/deep-research`), see `skills/research-orchestrator/references/agent-routing.md`.
+For the full routing matrix (should / should-NOT, near-miss disambiguation vs `scout:ask`, `dev:*`, `/deep-research`), see `skills/research-orchestrator/references/agent-routing.md`.
 
 ## Team layout
 
@@ -31,7 +30,6 @@ research-orchestrator (skill, entry point)
   │   hf-scout        (uvx hf + HF REST)              │ → $WORKSPACE/{NN}_{axis}.json
   │   web-scout       (exa → brightdata → insane)     │
   │   docs-scout      (context7 + deepwiki)           │
-  │   paper-scout     (scout:paper-search 8-source)   │
   │                                                   │
   └─ fan-in ─────────────────────────────────────────►│
       synthesis-scout (dedup, trust, conflict)
@@ -54,15 +52,15 @@ All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical
 
 | v1 entry point | v2 replacement |
 |---|---|
-| `Agent(subagent_type="scout:scout")` | `Skill("scout:research-orchestrator")` (quick mode auto-detected), or call `github-scout` / `hf-scout` directly for single-axis |
+| `Agent(subagent_type="scout:scout")` / `Agent(subagent_type="scout:deep-scout")` | `Skill("scout:research-orchestrator")` (mode auto-detected), or call `github-scout` / `hf-scout` / `web-scout` / `docs-scout` directly for single-axis |
 
-The legacy `scout` agent remains as a **doc-only deprecation pointer**: it returns a migration message but does not run searches. Subagents cannot reliably spawn further subagents, so the fan-out + synthesis flow must be initiated from the main session via the orchestrator skill or a direct `Agent(subagent_type="scout:{axis}-scout", ...)` call. Existing scripts that called the old `subagent_type` need to migrate; there is no transparent shim.
+The v2.0 `scout` / `deep-scout` agents were doc-only deprecation pointers (migration message, no search execution); both were permanently removed in the scout 2.0.0 breaking release — see the change log. Subagents cannot reliably spawn further subagents, so the fan-out + synthesis flow must be initiated from the main session via the orchestrator skill or a direct `Agent(subagent_type="scout:{axis}-scout", ...)` call. Existing scripts that called the old `subagent_type` need to migrate; there is no transparent shim.
 
-### v2.0 → v2.1
+### code-scout 2.x → scout 2.0.0 (breaking)
 
-- `paper-scout` 5th axis is auto-included in `deep` mode when the query carries academic signal (paper / arxiv / DOI / SOTA / benchmark / 인용 / venue names). Existing 4-axis deep flows are unchanged.
-- `Agent(subagent_type="scout:deep-scout")` continues to return the same v2.0 deprecation message: the doc-only stub is **retained** for backward compatibility (no user-visible change vs v2.0). Permanent removal is deferred to a future MAJOR release. Callers should migrate to `Skill("scout:research-orchestrator")` (deep mode auto-detected from "deep / thorough / comprehensive / compare / best practices" keywords).
-- `web-scout` now auto-retries WAF / 403 / blocked fetches through `insane-search` as a tier-4 transport fallback. No caller change required.
+- The `paper-scout` axis, the `scout:paper-search` skill, and the bundled `.mcp.json` were removed entirely: no academic/paper research axis remains in scout. Papers are out of scope; route academic queries to a dedicated paper-search tool outside this plugin.
+- The `scout:scout` / `scout:deep-scout` deprecation stubs were permanently removed (see v1.x → v2.0 above).
+- `web-scout` auto-retries WAF / 403 / blocked fetches through `insane-search` as a tier-4 transport fallback. No caller change required.
 - General non-code/ML research (politics / market / history / biographies) → call `/deep-research` directly. scout does not delegate; the boundary is intentional (each harness is tuned for its domain).
 
 ## Requirements
@@ -73,12 +71,14 @@ The legacy `scout` agent remains as a **doc-only deprecation pointer**: it retur
 - brightdata MCP enabled (web-scout tier-3 fetch fallback; `bdata` CLI is the delegate-subagent path; see the `research-orchestrator/references/brightdata-guide.md` preflight)
 - `insane-search` plugin installed (web-scout tier-4 fetch fallback for WAF / blocked pages; optional but recommended)
 - Context7 + DeepWiki MCPs enabled (docs-scout)
-- the bundled `paper-search` MCP server (`.mcp.json`, Docker) running (paper-scout)
 
 ## Change log
 
+The `scout` bundle counter restarted at 1.0.0 when the plugin was renamed; rows from 2.3.0 down are the `code-scout` lineage and are kept as history.
+
 | Version | Notes |
 |---|---|
+| 2.0.0 (scout) | Removes the `paper-scout` axis, the `scout:paper-search` skill, `agents/paper-scout.md`, and the bundled `.mcp.json` (Docker paper-search MCP) entirely — scout no longer has an academic/paper research axis. Permanently removes the `scout:scout` / `scout:deep-scout` deprecation stubs (doc-only pointers since v2.0). `research-orchestrator` routes github/hf/web/docs only; axis counts are no longer hardcoded in prose. **Breaking**: callers of `scout:paper-search`, `scout:paper-scout`, `scout:scout`, or `scout:deep-scout` must migrate — there is no shim. |
 | 2.3.0 | Moves `web-scout`'s tier-3 fetch slot onto Bright Data `scrape_as_markdown`, replacing the scraping MCP retired in this release. The exa-first pipeline is unchanged — only the tier-3 tool swaps, and tier-4 `insane-search` now triggers when `scrape_as_markdown` is the one that gets blocked. Adds a scope guard so the axis stays fetch-only (no `search_engine` as a search axis, no `web_data_*` / `scraping_browser_*` / `scrape_batch`) and routes an unconfigured Bright Data through the `brightdata-guide` four-gate preflight, recording the failing gate in `errors` instead of silently downgrading the fetch. Drops the routing row for the presentation plugin retired in this release. |
 | 2.2.0 | `research-orchestrator` now runs under Codex 0.135, where the `agents/*.md` scout definitions are not registerable. Adds a Phase 3.5 capability branch: **Path A** named plugin agents (Claude Code — unchanged), **Path B** generic parallel subagents (Codex `Task`), **Path C** sequential in-agent. Synthesis is runtime-independent (named `synthesis-scout` on Path A, in-skill synthesis on B / C). New `references/axis-contracts.md` holds the shared per-axis query shape + result envelope + tool order / fallback / reliability so all three paths stay interchangeable. Claude named-agent quick + deep paths are behaviorally unchanged. |
 | 2.1.1 | Shortens `research-orchestrator` skill description under the Codex 1024-char frontmatter limit (full routing matrix kept in the skill body). Adds a pre-commit hook + `validate-codex.yml` CI guard that enforces the limit on every skill description. |

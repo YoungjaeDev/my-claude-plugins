@@ -77,7 +77,7 @@ msg+=$'\n'"BEFORE other work this session, process each through the wiki:ingest-
 # quotes, and arbitrary staging filenames correctly (a manually-dropped pending file
 # with a quote/newline in its name cannot break the JSON). Fall back to
 # parameter-expansion escaping when jq is absent (extended to \r and \t beyond the
-# core \ " \n), mirroring core's prompt_inject.sh encoder.
+# baseline \ " \n set).
 if command -v jq >/dev/null 2>&1; then
   jq -nc --arg ctx "$msg" '{hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:$ctx}}'
 else

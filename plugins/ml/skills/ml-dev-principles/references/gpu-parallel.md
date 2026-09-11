@@ -45,6 +45,9 @@ def _predict_chunk(chunk: list[dict]) -> list[dict]:
     return _model.predict_batch(chunk)
 
 def run_multi_gpu(records: list[dict]) -> list[list[dict]]:
+    if not records:
+        return []  # before device discovery: an empty run needs no GPU at all
+
     visible = os.environ.get("CUDA_VISIBLE_DEVICES", "")
     device_tokens = visible.split(",") if visible else [str(i) for i in range(torch.cuda.device_count())]
     if visible.strip() == "-1" or not device_tokens or device_tokens == [""]:
@@ -53,13 +56,22 @@ def run_multi_gpu(records: list[dict]) -> list[list[dict]]:
     n_gpus = len(device_tokens)
 
     ctx = mp.get_context("spawn")  # fork silently corrupts CUDA state
-    chunk_size = (len(records) + n_gpus - 1) // n_gpus  # ceiling division
-    chunks = [records[i*chunk_size:(i+1)*chunk_size] for i in range(n_gpus)]
+    # An empty chunk still spawns a worker and loads the model for zero rows, so
+    # split into exactly min(n_gpus, len(records)) chunks and spread the remainder
+    # one record at a time: 5 records over 4 GPUs gives [2,1,1,1]. Ceiling division
+    # would give chunk_size 2 and leave the last GPU with a 0-row chunk.
+    n_chunks = min(n_gpus, len(records))
+    base, extra = divmod(len(records), n_chunks)
+    chunks, start = [], 0
+    for i in range(n_chunks):
+        stop = start + base + (1 if i < extra else 0)
+        chunks.append(records[start:stop])
+        start = stop
 
     pools = [
         ProcessPoolExecutor(max_workers=1, mp_context=ctx,
                             initializer=_worker_init_with_gpu, initargs=(tok,))
-        for tok in device_tokens
+        for tok in device_tokens[:n_chunks]  # only the GPUs that receive work
     ]
     try:
         futures = [pool.submit(_predict_chunk, chunk) for pool, chunk in zip(pools, chunks)]

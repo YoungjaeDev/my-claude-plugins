@@ -56,12 +56,16 @@ def suggestion_line:
     { "critical": "🔴 Critical", "major": "🟠 Major", "minor": "🟡 Minor",
       "trivial": "🟢 Trivial", "info": "🟢 Info" }[((.severity // "") | ascii_downcase)] // null
   ),
-  # The `_Type_ | _Severity_` header only exists in PR-bot comment bodies. When
-  # the CLI omits `comment` this stays null and classify-item.sh falls through to
-  # its severity-only branch, which is the documented behavior.
-  type_emoji: (
-    first_or_null((.comment // "") | capture("_(?<t>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_").t)
+  # The `_<category>_ | _<severity>_ | _<effort>_` header only exists in PR-bot
+  # comment bodies. When the CLI omits `comment` both stay null and
+  # classify-item.sh falls through to its severity-only branch.
+  category_emoji: (
+    first_or_null((.comment // "") | capture("_(?<c>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_").c)
     // (.category // null)
+  ),
+  effort_emoji: (
+    first_or_null((.comment // "")
+      | capture("_[^_]+_\\s*\\|\\s*_[^_]+_\\s*\\|\\s*_(?<e>[^_]+)_").e)
   )
 }
 JQ

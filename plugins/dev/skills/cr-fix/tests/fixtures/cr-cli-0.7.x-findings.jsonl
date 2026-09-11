@@ -1,0 +1,4 @@
+{"type":"review_context","reviewType":"committed","baseBranch":"main"}
+{"type":"finding","severity":"major","fileName":"src/a.py","comment":"_🎯 Functional Correctness_ | _🟠 Major_ | _🏗️ Heavy lift_\n\n**boom**","codegenInstructions":"fix it at line 7","suggestions":["--- a\n+++ b\n"]}
+{"type":"finding","severity":"minor","fileName":"src/b.py","comment":"_📐 Maintainability & Code Quality_ | _🟡 Minor_ | _⚡ Quick win_\n\ntidy","codegenInstructions":"around lines 11 - 23","suggestions":[]}
+{"type":"complete"}

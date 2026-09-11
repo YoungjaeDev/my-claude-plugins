@@ -14,7 +14,7 @@ mkdir -p "$TMP/foreign" "$TMP/stale" "$TMP/none"
 
 # Extract the Step 0 resolver into a runnable script that echoes PLUGIN_ROOT.
 RUN="$TMP/run.sh"
-awk '/# Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not/{f=1} f{print} /plugin root not resolved/{if(f)exit}' "$SKILL" \
+awk '/# Claude exports CLAUDE_PLUGIN_ROOT; Codex does not/{f=1} f{print} /plugin root not resolved/{if(f)exit}' "$SKILL" \
   | sed 's/^[[:space:]]*//' > "$RUN"
 printf 'printf "%%s" "$PLUGIN_ROOT"\n' >> "$RUN"
 

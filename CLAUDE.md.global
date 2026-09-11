@@ -57,3 +57,9 @@
 - This does not ban the terms themselves where AI or Claude is the subject of the document.
 - Use no decorative emoji in code, docs, commits, issues, or PRs.
 - Use no em dash in prose you write or rewrite, and split with a period, comma, colon, or parentheses to match the sentence structure.
+
+## 6. Reply in Korean, and read the repository's memory before reasoning
+
+- Write the final reply to the user in Korean unless told otherwise; internal workflows, subagents, and English skills do not override this.
+- When the working directory has `.llmwiki/insight/`, read it and then `.llmwiki/wiki/index.md` before reasoning about repository lore, and prefer the dated, sourced page over memory.
+- Change only the lines the request calls for, with no drive-by refactor or unrelated cleanup.

@@ -93,4 +93,3 @@ Reliability rubric: `high` = official blog / vendor docs / >1yr-stable consensus
 - GitHub repo discovery (`github-scout`)
 - HF models/datasets (`hf-scout`)
 - Library API docs (`docs-scout`)
-- Academic papers (`paper-scout`)

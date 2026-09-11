@@ -1,6 +1,6 @@
 # Runtime contract
 
-What a skill in this repository owes the two runtimes that load it: Claude Code and Codex 0.135.
+What a skill in this repository owes the two runtimes that load it: Claude Code and Codex.
 Both read the same `plugins/<name>/` tree — there is no per-runtime mirror — so a body that assumes
 one runtime's behavior is wrong on the other without saying so.
 
@@ -11,9 +11,9 @@ first step.
 
 | Violation | What happens | Caught by |
 |---|---|---|
-| `description` over 1024 characters | Codex 0.135 skips the skill. Claude Code loads it normally, so the loss is invisible from the authoring side | `scripts/check-skill-contract.mjs` |
+| `description` over 1024 characters | Codex skips the skill. Claude Code loads it normally, so the loss is invisible from the authoring side | `scripts/check-skill-contract.mjs` |
 | unquoted `: ` inside `description` | YAML parses the value as a nested mapping; the frontmatter fails and the skill loads with no description on both runtimes | `scripts/check-skill-contract.mjs` |
-| bare `${CLAUDE_PLUGIN_ROOT}` | Codex 0.135 does not export it, so a bundled-script call resolves to `/scripts/...` and dies at step one | `scripts/check-skill-contract.mjs` |
+| bare `${CLAUDE_PLUGIN_ROOT}` | Codex does not export it, so a bundled-script call resolves to `/scripts/...` and dies at step one | `scripts/check-skill-contract.mjs` |
 | `name` non-kebab or over 64 characters | the command name stops being predictable from the tree, and the Codex validator rejects an empty name | `scripts/check-skill-contract.mjs` |
 | frontmatter not starting at byte 0 | no runtime finds the frontmatter; the skill has no description and never triggers | `scripts/check-skill-contract.mjs` |
 | `disable-model-invocation: true` | the Codex plugin validator rejects the plugin | reviewed by hand; see `frontmatter.md` |
@@ -56,7 +56,7 @@ let the caller decide.
 
 ## Surfaces that do not exist everywhere
 
-- **Commands and subagents are Claude-only.** Codex 0.135 manifests support `skills`, `hooks`,
+- **Commands and subagents are Claude-only.** Codex manifests support `skills`, `hooks`,
   `mcpServers`, and `apps`. Logic moved into an agent definition silently disappears for Codex. A
   subagent fan-out may accelerate a phase whose inline sequential path stays primary and complete.
 - **`.claude/rules/` is Claude-only.** Codex cannot read the directory. Guidance that must bind both

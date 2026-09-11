@@ -8,11 +8,11 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 Stand up Playwright's official AI test harness (planner -> generator -> healer) plus the surrounding engineering (auth separation, deterministic mocking, an E2E SSOT doc, gated CI). The harness is the point: a test run is a sensor, a test file is a spec, and the three roles form a self-improving loop. This skill only does **setup + orchestration + CI + integration**; it does not re-implement the roles.
 
-> **Two runtime paths (Step 2).** Under **Claude Code**, `init-agents --loop=claude` generates the planner/generator/healer as registerable `.claude/agents/*.md`, and `e2e-author` / `e2e-debug` dispatch them by name (**Path A**). Under **Codex 0.135**, those generated agent files are not registerable as named subagents, so setup skips them, ensures the `.mcp.json` `playwright-test` entry, and the author/debug skills run the same roles as **generic subagents** carrying the bundled `references/role-contracts.md` (**Path B**), or sequentially when no delegation is available (**Path C**). The engineering below (Steps 3-7) and every gate are identical on both paths.
+> **Two runtime paths (Step 2).** Under **Claude Code**, `init-agents --loop=claude` generates the planner/generator/healer as registerable `.claude/agents/*.md`, and `e2e-author` / `e2e-debug` dispatch them by name (**Path A**). Under **Codex**, those generated agent files are not registerable as named subagents, so setup skips them, ensures the `.mcp.json` `playwright-test` entry, and the author/debug skills run the same roles as **generic subagents** carrying the bundled `references/role-contracts.md` (**Path B**), or sequentially when no delegation is available (**Path C**). The engineering below (Steps 3-7) and every gate are identical on both paths.
 
 > **Why this skill exists (the harness-engineering point).** Installing the official agents is NOT enough: out of the box they skip auth setup, can't resolve project-known API errors, and don't know test-account usage, because they lack codebase context. Steps 3-7 below *onboard them like a new hire*: the config, auth scaffold, route-mock guidance, and especially the E2E SSOT doc are the context an agent needs to work autonomously. Skipping them is the usual reason "the official agents didn't just work."
 
-> Bundled templates live at `<plugin-root>/assets/`. Resolve `<plugin-root>` with the cross-runtime block in Step 0 (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache). Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so a bare `${CLAUDE_PLUGIN_ROOT}/assets/...` copy fails there. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
+> Bundled templates live at `<plugin-root>/assets/`. Resolve `<plugin-root>` with the cross-runtime block in Step 0 (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache). Codex does not export `CLAUDE_PLUGIN_ROOT`, so a bare `${CLAUDE_PLUGIN_ROOT}/assets/...` copy fails there. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
 >
 > **Verified against Playwright 1.61.0** (init-agents introduced in 1.56; trace CLI in 1.59). Filenames/output below are current-version facts: Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.
 
@@ -26,7 +26,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
 
 0. **Resolve the plugin root (cross-runtime)**: run once, reuse `PLUGIN_ROOT` in the `cp` steps below (Steps 5-7). Re-run the block if a later step runs in a fresh shell.
    ```bash
-   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Every branch verifies
+   # Claude exports CLAUDE_PLUGIN_ROOT; Codex does not. Every branch verifies
    # its target (CHK) exists before committing, so a stale env or an incomplete
    # cache version falls through instead of winning. The cache branch walks
    # versions high-to-low and takes the first COMPLETE one.
@@ -54,7 +54,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    | Path | Condition | How the roles are set up |
    |---|---|---|
    | **A: Claude generated agents** | Running under Claude Code (init-agents can generate registerable `.claude/agents/*.md`). | `init-agents --loop=claude` + verify the generated files. Default on Claude Code. |
-   | **B/C: Codex bundled contracts** | Running under Codex 0.135 (or any runtime that cannot register generated agent files as named subagents). | Do **not** generate/rely on named agents. Ensure the `.mcp.json` `playwright-test` entry and point `e2e-author` / `e2e-debug` at the bundled role contracts. |
+   | **B/C: Codex bundled contracts** | Running under Codex (or any runtime that cannot register generated agent files as named subagents). | Do **not** generate/rely on named agents. Ensure the `.mcp.json` `playwright-test` entry and point `e2e-author` / `e2e-debug` at the bundled role contracts. |
 
    **Path A (Claude Code):**
    ```bash
@@ -69,7 +69,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
      - `seed.spec.ts` at the **repo root** (default environment seed the planner runs first) and `specs/README.md` (test-plan directory).
 
    **Path B/C (Codex, no registerable named agents):**
-   - Do not invent an unsupported loop. Feature-detect `--loop=codex` rather than version-guessing (`npx playwright init-agents --help | grep -qw codex`). Even when it is advertised, Codex 0.135 cannot register the generated agent files as named subagents, so `e2e-author` / `e2e-debug` will dispatch **generic** subagents carrying the bundled contracts (or run the roles sequentially). Running `--loop=codex` is at most an optional scaffold for `.mcp.json` / `seed.spec.ts` / `specs/`; skip agent generation when it is not advertised.
+   - Do not invent an unsupported loop. Feature-detect `--loop=codex` rather than version-guessing (`npx playwright init-agents --help | grep -qw codex`). Even when it is advertised, Codex cannot register the generated agent files as named subagents, so `e2e-author` / `e2e-debug` will dispatch **generic** subagents carrying the bundled contracts (or run the roles sequentially). Running `--loop=codex` is at most an optional scaffold for `.mcp.json` / `seed.spec.ts` / `specs/`; skip agent generation when it is not advertised.
    - The runtime-neutral planner/generator/healer contracts ship at `${PLUGIN_ROOT}/references/role-contracts.md` (PLUGIN_ROOT from Step 0, same root that holds `assets/`). `e2e-author` / `e2e-debug` read them via their own Step 0 resolver; no per-project copy is needed.
    - **Seed the environment scaffold**: Path A gets `seed.spec.ts` + `specs/README.md` from `init-agents`, but Path B/C skip agent generation, so create the equivalents yourself (the planner runs `seed.spec.ts` first on every path, and `e2e-author` requires it: without this, Codex setup leaves authoring blocked). Skip either file if it already exists. Write `seed.spec.ts` at the repo root:
      ```ts

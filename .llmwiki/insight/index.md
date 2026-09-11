@@ -6,7 +6,7 @@ last_verified: 2026-09-04
 
 # Insight Map of Content (MOC)
 
-The **insight layer** is the promoted, cross-agent-visible top of the knowledge system. It holds the small set of findings that earned graduation from `.llmwiki/wiki/`. Both Claude Code and Codex read it (it lives under the neutral `.llmwiki/` root), and the `core` `prompt_inject.sh` hook points every prompt here *first*, before the wiki MOC.
+The **insight layer** is the promoted, cross-agent-visible top of the knowledge system. It holds the small set of findings that earned graduation from `.llmwiki/wiki/`. Both Claude Code and Codex read it (it lives under the neutral `.llmwiki/` root), and the user-global instructions (`CLAUDE.md.global`, installed as `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`) point both runtimes here *first*, before the wiki MOC.
 
 > **For LLMs**: consult this MOC before acting on remembered guidance. Entries are extremely condensed (rule + when-to-apply + why). Follow `promoted_from:` / `> Evidence:` down to the wiki/raw page for the full story — never inline that detail back up here.
 
@@ -14,11 +14,11 @@ The **insight layer** is the promoted, cross-agent-visible top of the knowledge 
 
 | Layer | Path | Loaded? | Purpose |
 |-------|------|---------|---------|
-| **Insight (promoted)** | `.llmwiki/insight/**` | via the `prompt_inject.sh` hook (Claude + Codex), every prompt | cross-agent promoted rules: recurring, generalizable, costly-to-violate, stabilized |
+| **Insight (promoted)** | `.llmwiki/insight/**` | via the user-global instructions (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`), at session start | cross-agent promoted rules: recurring, generalizable, costly-to-violate, stabilized |
 | **Wiki (lore)** | `.llmwiki/wiki/**` | on-demand direct read (start at `index.md`) | LLM-maintained domain knowledge: provider quirks, debugging stories, design rationale, module maps |
 | **Raw evidence** | `.llmwiki/raw/**` (+ external docs) | direct read | append-only immutable evidence — wiki cites, never copies |
 
-All three live under the neutral `.llmwiki/` root so no per-agent transform can fork them — one copy, both agents. `.claude/rules/` is **not** part of this system: it is reserved for mechanical tool-operation rules (Codex can't read it), so wiki lore is never promoted there. Cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes through the prompt-injection hook.
+All three live under the neutral `.llmwiki/` root so no per-agent transform can fork them — one copy, both agents. `.claude/rules/` is **not** part of this system: it is reserved for mechanical tool-operation rules (Codex can't read it), so wiki lore is never promoted there. Cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes through the user-global instructions that point here first.
 
 ## Memory overlay
 

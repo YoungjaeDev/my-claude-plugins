@@ -2,8 +2,8 @@
 
 Shared planner / generator / healer role contracts consumed by **all three execution paths** of `e2e-setup`, `e2e-author`, and `e2e-debug`:
 
-- **Path A — Claude generated agents.** `e2e-setup` runs `npx playwright init-agents --loop=claude`, which writes `.claude/agents/playwright-test-{planner,generator,healer}.md`. Those generated agent definitions are the canonical detail; `e2e-author` / `e2e-debug` dispatch them by name (`Task(subagent_type="playwright-test-planner")` etc.). This file is not consulted on Path A.
-- **Path B — generic subagents (Codex 0.135).** Codex exposes these skills but cannot register `.claude/agents/*.md` as named subagents, so it dispatches one **generic** subagent per role, carrying that role's contract from this file inline (`Task(prompt=...)`). This file is the portable condensation of the generated agents' behavior.
+- **Path A — Claude generated agents.** `e2e-setup` runs `npx playwright init-agents --loop=claude`, which writes `.claude/agents/playwright-test-{planner,generator,healer}.md`. Those generated agent definitions are the canonical detail; `e2e-author` / `e2e-debug` dispatch them by name (`Agent(subagent_type="playwright-test-planner")` etc.). This file is not consulted on Path A.
+- **Path B — generic subagents (Codex).** Codex exposes these skills but cannot register `.claude/agents/*.md` as named subagents, so it dispatches one **generic** subagent per role, carrying that role's contract from this file inline (`Agent(prompt=...)`). This file is the portable condensation of the generated agents' behavior.
 - **Path C — sequential in-agent.** When no delegation channel is available, the skill executes each role itself, one at a time, following the contract below.
 
 Keep these contracts in sync with the behavior of the init-agents-generated agents (verified on Playwright 1.61 — see `.llmwiki/wiki/e2e-harness-ops/playwright-ai-harness.md`) when either changes.
@@ -55,7 +55,7 @@ Do **not** pass `--loop=codex` unless the installed Playwright explicitly advert
 npx playwright init-agents --help 2>/dev/null | grep -qw codex && LOOP_CODEX_ADVERTISED=1 || LOOP_CODEX_ADVERTISED=0
 ```
 
-Even when `--loop=codex` is advertised, Codex 0.135 cannot register the generated `.claude/agents/*.md` (or their codex-loop equivalents) as named subagents, so the reliable Codex path stays generic-subagent dispatch with the contracts below. `--loop=codex` is at most an optional scaffold for `.mcp.json` / `seed.spec.ts` / `specs/`; when it is not advertised, skip agent generation entirely and create `.mcp.json` with the merge recipe above.
+Even when `--loop=codex` is advertised, Codex cannot register the generated `.claude/agents/*.md` (or their codex-loop equivalents) as named subagents, so the reliable Codex path stays generic-subagent dispatch with the contracts below. `--loop=codex` is at most an optional scaffold for `.mcp.json` / `seed.spec.ts` / `specs/`; when it is not advertised, skip agent generation entirely and create `.mcp.json` with the merge recipe above.
 
 ## Role contracts
 
@@ -85,4 +85,4 @@ Each role drives the app through the approved `playwright-test` MCP server. A ge
 
 ## PLUGIN_ROOT
 
-`e2e-author` / `e2e-debug` reach this file via the cross-runtime `PLUGIN_ROOT` resolver in their Step 0 (Claude `CLAUDE_PLUGIN_ROOT` → source-tree `plugins/dev` → Codex plugin cache). Do not reference `${CLAUDE_PLUGIN_ROOT}` bare — Codex 0.135 does not export it, so the read fails at step one.
+`e2e-author` / `e2e-debug` reach this file via the cross-runtime `PLUGIN_ROOT` resolver in their Step 0 (Claude `CLAUDE_PLUGIN_ROOT` → source-tree `plugins/dev` → Codex plugin cache). Do not reference `${CLAUDE_PLUGIN_ROOT}` bare — Codex does not export it, so the read fails at step one.

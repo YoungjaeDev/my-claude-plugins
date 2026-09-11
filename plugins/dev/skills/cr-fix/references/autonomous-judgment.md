@@ -1,18 +1,14 @@
 # Autonomous Judgment (Step 9c)
 
-The v2 replacement for the per-finding `AskUserQuestion` gate. The LLM main session reads the affected code, judges each finding on five axes, and decides apply / defer / skip without prompting the user.
+The main session reads the affected code, judges each finding on six axes, and decides apply / defer / skip without prompting the user.
 
 ## Why no AskUserQuestion
 
-Sample of 10 PRs (PR #30 / #31 / 4-repo Explore + dogfood runs): **100%** of CR Minor + Codex P2 items would have been auto-skipped or auto-applied. The prompt was almost always rhetorical. Removing it:
+A per-finding prompt is almost always rhetorical: the answer is already determined by what the local code says. Removing it eliminates the wait for user input, forces the model to articulate *why* it applied or skipped each item, and keeps the user as auditor of the log rather than gatekeeper of every line.
 
-- Eliminates the iter-stretching wait for user input (cr-fix can complete a 5-iter run in one Claude turn).
-- Forces the model to articulate WHY it's applying/skipping each item — the reasoning surfaces in the final JSON instead of dying in conversation.
-- Keeps the user as auditor (post-hoc review of the log), not gatekeeper.
+Three escape hatches remain, each where input is structurally required: pre-flight `gate=failure`, the auto-merge gate when branch protection is missing (Step 15), and the rate-limit fallback when no fallback channel is available (Step 7c).
 
-The escape hatch: pre-flight `gate=failure` still bubbles up to the user; auto-merge gate (Step 15) still uses AskUserQuestion when branch protection is missing; rate-limit fallback (Step 7c) still asks when no fallback channel is available.
-
-## Five judgment axes
+## Six judgment axes
 
 ### 1. `is_real`
 
@@ -37,11 +33,13 @@ Reviewer-assigned severity vs. observed impact.
 
 | Reviewer says | Local read suggests | `severity_reassess` |
 |---|---|---|
-| Codex P1 / CR Bug+Critical | matches the criticality | `high` |
+| Codex P1 / CR Critical | matches the criticality | `high` |
 | Codex P1 / CR Critical | actually cosmetic | `cosmetic` |
 | Codex P2 / CR Minor | actually security-adjacent | `high` |
 | Codex P2 / CR Minor | matches the assigned tier | `low` |
-| Codex P3 / CR Nitpick | (skip tier already filtered out before Step 9c) | n/a |
+| CR Trivial / Info | (skip tier already filtered out before Step 9c) | n/a |
+
+**Location rule.** A Codex P1 that lands on frontmatter `description` text, prose, or a comment — anywhere that is not executable code — is `low`, not `high`. Codex assigns P1 by topic, not by blast radius, and a wording drift badged P1 otherwise keeps `high_sev_this_cycle` above zero forever and blocks every soft stop below.
 
 The reassessment matters because reviewers regularly over-flag (Codex P1 on cosmetics) and under-flag (CR Minor on a missing `try/finally` that leaks a file handle). Trust the local evidence over the badge.
 
@@ -63,6 +61,18 @@ Does the *suggestion itself* demand unrequested complexity? This judges the **fi
 | `no` | The suggestion does not add unrequested complexity (it may even remove some, or be a pure correctness/clarity fix). |
 
 The distinction that matters: a complex *surrounding file* is not `yes`. Only a suggestion that *adds* complexity to satisfy a hypothetical is. This keeps cr-fix from importing a reviewer's speculative-generality habit into the codebase under cover of a "valid" finding.
+
+### 6. `in_prev_diff`
+
+Did the loop produce the material this finding sits on, rather than the PR?
+
+```bash
+bash "$SKILL_DIR/scripts/churn-scope.sh" "$PREV_SHA" "origin/$BASE" "$path" "$line"
+```
+
+`churn` when the line falls inside a hunk the previous iteration's commit added or changed, or falls outside the PR diff entirely; `fresh` otherwise. From `ITER >= 2` only — the first iteration has no prior commit, and `PREV_SHA` empty disables the first test. A file-level finding with no line is always `fresh`.
+
+A `churn` finding has its `severity_reassess` forced to `cosmetic` and increments `churn_this_cycle`. It does not become unfixable — the matrix still applies — but it can no longer hold the loop open, which is the point: a reviewer that keeps finding material on its own review responses has run out of PR to review.
 
 ## Decision matrix
 
@@ -105,7 +115,8 @@ Every Step 9c decision appends one record to `STATE_FILE.auto_judge_log`:
     "confidence": "high",
     "severity_reassess": "low",
     "fix_size": "small-safe",
-    "over_engineering": "no"
+    "over_engineering": "no",
+    "in_prev_diff": "fresh"
   },
   "action": "apply",
   "reason": "real + small/safe → fix in place"
@@ -119,15 +130,28 @@ The final JSON aggregates counts (`auto_judge_stats: {apply, defer, skip}`); the
 - `action=apply` → `applied_this_cycle++`, `auto_judge_apply++`
 - `action=defer` → `deferred_this_cycle++`, `auto_judge_defer++`
 - `action=skip` → `auto_judge_skip++` only (the existing `skipped_total` continues to count tier=skip filtered-before-table items per `references/skip-minor-rules.md`)
-- `action ∈ {apply, defer}` AND `severity_reassess=="high"` → `high_sev_this_cycle++` (loop-local; feeds the Step 13 `minor_floor` soft-stop — see below)
+- `action ∈ {apply, defer}` AND `severity_reassess=="high"` → `high_sev_this_cycle++` (loop-local; feeds the Step 13 `minor_floor` soft-stop)
+- `in_prev_diff == "churn"` → `churn_this_cycle++` (loop-local; feeds the Step 13 `churn` stop)
 
-This keeps the v1 convergence test (`applied==0 && deferred==0 → clean`) intact while exposing the new autonomous-skip counter as a separate dimension.
+This keeps the `applied==0 && deferred==0 → clean` convergence test intact while exposing the autonomous-skip counter as a separate dimension.
+
+## No new surfaces inside the loop
+
+A review-response commit fixes **existing behaviour only**. A finding that needs a new flag, a new branch, a new entry point, or any other surface the PR does not already have is **deferred**, never applied — regardless of how small the change looks. Every new surface handed to a reviewer mid-loop is fresh material for the next round, which is how a review loop turns into churn. Deferred findings of this class are exactly what the Step 14 follow-up issue exists to carry.
 
 ## Minor soft-stop (`minor_floor`)
 
 Default-on (disable with `--no-minor-stop`). The v1 convergence test only stopped when a cycle applied *and* deferred nothing, so a PR with an endless low-value tail (CR Minor / Codex P2 that keep being `real + small-safe → apply`) would loop to `MAX_ITER`. The soft-stop adds an early exit: from **iter 2 onward**, if a cycle applied at least one fix but reassessed **no** finding as `high` severity and deferred nothing (`high_sev_this_cycle == 0 && deferred_this_cycle == 0`), the loop ends with `final_state=minor_floor`.
 
-It is safe because Step 12 already pushed the applied fixes before Step 13 runs. It is **not** auto-merge eligible: the latest push has not been re-reviewed by CR yet, so `minor_floor` is held to the same bar as `user_declined` (Step 15 runs only on `final_state=clean`). When a cycle defers anything, the finding was `high`/`ambiguous` and the user should see it — so the soft-stop deliberately does not fire.
+It is safe because Step 12 already pushed the applied fixes before Step 13 runs. When a cycle defers anything, the finding was `high` or `ambiguous` and the user should see it, so the soft-stop deliberately does not fire.
+
+## Churn stop (`churn`)
+
+From `ITER >= 2`, when every finding this cycle came back `churn` on the `in_prev_diff` axis, the loop ends with `final_state=churn`. The reviewer is no longer reviewing the pull request; it is reviewing the loop's own commits and the code around them. More iterations produce more of the same.
+
+## Merge eligibility
+
+`clean` merges on its own. `minor_floor` and `churn` merge only once Step 14 has filed the follow-up issue carrying what was left behind — `scripts/auto-merge-gate.sh` reads `FINAL_STATE` and `FOLLOWUP_ISSUE` and reports `eligible: false` without it, so a failed `gh issue create` keeps the PR open. Every other `final_state` is ineligible.
 
 ## Bounded same-file generalization
 

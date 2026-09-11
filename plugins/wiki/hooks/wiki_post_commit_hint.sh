@@ -19,7 +19,7 @@ FMT="${1:-claude}"
 
 # Emit the hint (plain stdout for Claude, the Codex PostToolUse envelope for `codex`),
 # arm the rate-limit marker, then exit. Zero-dep JSON encoding via bash parameter
-# expansion, mirroring core's prompt_inject.sh. Byte-identical Claude output.
+# expansion (no jq dependency). Byte-identical Claude output.
 emit() {
   local msg="$1"
   if [[ "$FMT" == "codex" ]]; then

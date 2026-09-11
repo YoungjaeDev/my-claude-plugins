@@ -60,7 +60,7 @@ The procedure file uses `${PLUGIN_ROOT}` for all asset / script references (`scr
 
 1. Honors a caller-supplied `PLUGIN_ROOT` (escape hatch for unusual layouts).
 2. Falls back to `${CLAUDE_PLUGIN_ROOT:-}` — the Claude Code path.
-3. Falls back to `${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}/<marketplace>/dev/<version>/`, picking the highest version available — the Codex 0.135 path.
+3. Falls back to `${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}/<marketplace>/dev/<version>/`, picking the highest version available — the Codex path.
 4. Aborts with an explicit message asking the user to export `PLUGIN_ROOT` manually if none of the above resolves to a directory containing readable `scripts/` and `assets/` subdirectories.
 
 All subsequent bash blocks in `references/new-procedure.md` reference `${PLUGIN_ROOT}` rather than `${CLAUDE_PLUGIN_ROOT}` directly, so the same procedure body runs unchanged under both runtimes.

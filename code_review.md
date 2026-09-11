@@ -1,6 +1,6 @@
 # Code Review Guidelines
 
-> 이 저장소의 상세 코드 리뷰 룰. `AGENTS.md`의 `## Review guidelines`가 이 파일을 참조하고, Codex 리뷰어는 참조를 따라 이 파일을 읽을 수 있다 (소프트 개런티, <https://developers.openai.com/codex/learn/best-practices>). GitHub cloud reviewer는 P0/P1만 코멘트로 표면화한다.
+> 이 저장소의 상세 코드 리뷰 룰. `AGENTS.md`의 `## Code Review Rules`가 이 파일을 참조하고, Codex 리뷰어는 참조를 따라 이 파일을 읽을 수 있다 (소프트 개런티, <https://learn.chatgpt.com/guides/best-practices>). GitHub cloud reviewer는 P0/P1만 코멘트로 표면화한다.
 >
 > 한국어로 리뷰한다. 발견사항은 영향, 근거(파일/라인), 수정 방향 순서로 쓴다. 근거가 부족하면 `unverified`로 표시한다.
 >

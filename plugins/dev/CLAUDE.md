@@ -10,9 +10,10 @@ GitHub workflow automation skills for Claude Code. All workflows are skills (no 
 | `/dev:decompose-issue` | Break down large issues into sub-tasks, define architecture mapping |
 | `/dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
-| `/dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex pipeline (multi-file skill at `skills/cr-fix/`): wait + fetch + apply + push loop until clean, with optional auto-merge (default OFF; pass `--auto-merge` to enroll). Gates merge on branch-protection presence and on actual CR engagement. Step 9 v2 judges each finding autonomously: the LLM validates it against local code, reassesses severity and fix size, then applies/defers/skips per the decision matrix — no per-finding AskUserQuestion gate. CR Nitpicks and Codex P3 are silently skipped. Codex is auto-detected per PR (engaged at least once → ON; never engaged → OFF). `--skip-minor` opt-in demotes CR Minor severity (excluding Bug/Security) + Codex P2 to skip. `--cr-source <auto\|pr-bot\|cli\|codex-only>` controls review source; `auto` falls back to the local `coderabbit` CLI or Codex-only when the PR-bot is rate-limited (early-escape ~30s, no more 1800s spin). Minor soft-stop (default ON, `--no-minor-stop` off): from iter 2 a cycle that applied only low-severity fixes with nothing deferred stops at `final_state=minor_floor` (not auto-merge eligible) instead of looping the low-value tail. Bounded same-file generalization (default ON, `--no-generalize` off): a real + high-confidence + grep-able finding also patches sibling occurrences of the same pattern within the same file (audit-logged, never cross-file). 2.8.0 correctness repairs: `cr-commit-state.sh` fetch failures (auth/network/rate-limit) now map to a distinct `state:"error"` channel instead of a clean `none`; `fetch-cr-threads.sh` fails loudly on a null-repository GraphQL response rather than converging false-clean on `[]`; an active `query-cr-rate-limit.sh` (`@coderabbitai rate limit`, id-anchored to its own post) resolves ambiguous passive rate-limit sniffs; check-run `created_at` prefers `completed_at`; `auto-merge-gate.sh` reads CR state through the same dual-surface reader as the rest of the loop, so `--auto-merge` works on check-run-only repos (not just commit-status repos). Fixture suite (`tests/run-tests.sh`) runs in `.githooks/pre-commit` + `validate-codex.yml`. |
-| `/dev:release` | Create versioned GitHub release with auto-generated changelog |
+| `/dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex review loop (multi-file skill at `skills/cr-fix/`): pre-flight detects which reviewers are engaged, then wait + fetch + judge + apply + push per iteration. Each finding is validated against local code and severity-reassessed before apply / defer / skip; CodeRabbit tiers are severity-first with the effort field as the second axis, Security is always gated, Nitpicks are skipped, Codex P1/P2 are gated. The loop stops on `clean`, a low-severity floor (`minor_floor`), churn (findings only on the previous iteration's lines or outside the PR diff), or the iteration cap, and files one follow-up issue (`tbd` label) for whatever it deferred. `--auto-merge` (default OFF) merges on `clean`, or on `minor_floor` / `churn` once the follow-up issue exists. `--cr-source` selects the review source; `auto` falls back to the local `coderabbit` CLI or Codex-only when the PR bot is rate-limited. Same-file generalization (default ON) patches sibling occurrences of a real, high-confidence, grep-able finding within the same file. The skill posts no PR comment except the `@coderabbitai rate limit` query; re-review is triggered by the push. |
+| `/dev:release` | Bump the version manifests, tag, and create a GitHub release with auto-generated release notes (does not touch `CHANGELOG.md` — that is `post-merge` Step 9.5 + `docs:changelog`) |
 | `/dev:state-tracker` | spec/issue/PR work-pipeline aggregate over `.claude/state/spec.json` (absorbed from `spec-state`) |
+| `/dev:session-handoff` | End-of-session handoff summary (decisions, shipped changes, key files, running state, verification, deferrals) so a fresh agent continues from chat alone. Chat-only: writes no file, updates no memory |
 
 ## resolve-issue Flags
 
@@ -23,9 +24,9 @@ GitHub workflow automation skills for Claude Code. All workflows are skills (no 
 | `--skip-cr-fix` | Skip the auto cr-fix loop after PR creation (default ON) |
 | `--cr-fix-max <n>` | Cap iterations on the auto cr-fix loop (default: 5) |
 | `--auto-merge` | Pass through to cr-fix; auto-merge after convergence (default OFF) |
-| `--codex-grace <sec>` | Pass through to cr-fix; Codex grace window after CR completes (default: 90) |
+| `--codex-grace <sec>` | Pass through to cr-fix; Codex grace window after CR completes (default: 30) |
 | `--no-codex` | Pass through to cr-fix; force-disable Codex auto-detect for the run |
-| `--skip-minor` | Pass through to cr-fix; demote CR Minor (excluding Bug/Security) + Codex P2 to skip |
+| `--skip-minor` | Pass through to cr-fix; demote CR Minor (excluding `🔒 Security & Privacy`) + Codex P2 to skip |
 | `--no-minor-stop` | Pass through to cr-fix; disable the minor soft-stop (default ON — stop from iter 2 on a low-severity-only cycle, `final_state=minor_floor`) |
 | `--no-generalize` | Pass through to cr-fix; disable bounded same-file generalization (default ON — patch same-file siblings of a real + high-confidence + grep-able finding) |
 | `--cr-source <mode>` | Pass through to cr-fix; review source: `auto` (default, fall back to CLI/codex-only on PR-bot rate-limit), `pr-bot`, `cli`, `codex-only` |
@@ -74,8 +75,7 @@ Tracks milestone progress with architecture diagrams synced to GitHub.
 |------|-------------|
 | `decompose-issue` | Architecture interview, state file + initial diagram created |
 | `resolve-issue` | Local state updated (issue marked in_progress) |
-| `post-merge` | GitHub auto-sync (milestone desc + issue bodies updated) |
-| (manual full sync) | Retired update-progress skill — mechanics live in `skills/post-merge/references/update-progress.md`; post-merge Step 5.5 is the automated path |
+| `post-merge` | GitHub auto-sync (milestone desc + issue bodies updated); Step 5.5 mechanics live in `skills/post-merge/references/update-progress.md`, the only entry point |
 
 **Body markers**: `<!-- project-tracking-start -->` / `<!-- project-tracking-end -->` -- only the section between markers is replaced, preserving existing content.
 
@@ -96,12 +96,12 @@ All commands in this plugin shell out to `gh` and `jq`. Five pitfalls that silen
 - `/commits/{sha}/statuses` (plural) returns every individual status event; `/commits/{sha}/status` (singular) collapses to one latest entry per context. The singular endpoint hides early `pending` entries, so use plural when the earliest moment a SHA was observed matters.
 - Commit `committer.date` is git metadata — cherry-picks, rebases, or stale-commit pushes make it arbitrarily older than the actual push. For "when did GitHub first see this SHA" use the earliest `/statuses` `created_at`; `committer.date` is acceptable only as a last-resort fallback when no statuses exist yet.
 
-## Task Tool 2.1.16 Syntax
+## Agent Tool Syntax
 
-This plugin uses Claude Code built-in agents with Task Tool 2.1.16:
+This plugin dispatches Claude Code's built-in agents through the Agent tool:
 
 ```
-Task(
+Agent(
   subagent_type="Explore",
   prompt="..."
 )
@@ -226,7 +226,7 @@ The Codex config location is `${CODEX_HOME:-$HOME/.codex}` (`codex --help`). Har
 - **Name the owning skill for each defect**: a verdict with no next action is noise. wiring directly fixes only mechanical, reversible edits (a `.gitignore` line, creating `.tmp/`, `core.hooksPath`, serena `project_name`); anything needing judgment (`.staging` curation, wiki bootstrap/migrate, CLAUDE.md authoring, spec migration, Serena onboarding, mem0 changes) is delegated.
 - **Minimal seeding, explicit follow-ups**: seed only what Day 1 needs. Tech-stack-based rule generation and the wiki-domain interview are **not invoked, only pointed to**. Generating generic content in an empty project imposes an overwrite cost on the user.
 - **Owner gate is mandatory**: since the user has a personal + multiple-org context, never auto-decide the owner. Require an explicit choice via `AskUserQuestion`.
-- **Codex GitHub reviewer surface**: the AGENTS.md `## Review guidelines` section is what the Codex GitHub cloud reviewer reads automatically. It must be **seeded at repo-creation time** to take effect from the first PR.
+- **Codex GitHub reviewer surface**: the AGENTS.md `## Code Review Rules` section is what the Codex GitHub cloud reviewer reads automatically. It must be **seeded at repo-creation time** to take effect from the first PR.
 - **Idempotent re-runs**: on a second invocation in the same directory, preserve existing files + skip steps + print a notice. Never overwrite. (But since the hard guard aborts on the mere presence of `.git`/`.claude`, an idempotent re-run does not occur on the normal path — it only matters on the recovery path for a partial seed that bypassed the guard.)
 
 ### File layout
@@ -300,7 +300,7 @@ fi
 ```
 
 - Under **Claude Code**, `${CLAUDE_PLUGIN_ROOT}` is set automatically and the resolver short-circuits on the first branch.
-- Under **Codex 0.135**, no equivalent env var is currently exposed, so the resolver falls back to `~/.codex/plugins/cache/<marketplace>/dev/<version>/`. Users can override with `CODEX_PLUGIN_CACHE` or set `PLUGIN_ROOT` directly.
+- Under **Codex**, no equivalent env var is exposed, so the resolver falls back to `~/.codex/plugins/cache/<marketplace>/dev/<version>/`. Users can override with `CODEX_PLUGIN_CACHE` or set `PLUGIN_ROOT` directly.
 - **The sort key is the version basename, not the full path.** Sorting whole paths compares the marketplace directory name before it ever reaches the version, so `zeta/dev/0.4.0` beats `alpha/dev/0.10.0` — and `sort -V` does not save you, because it too starts at the first differing component. The `awk` prefix puts the version first and `cut -f2-` recovers the path. The `sort -V` probe stays for userlands that predate it (Apple's FreeBSD sort has had `-V` since 10.13, so this is rarer than it looks), and its fallback is a numeric dotted-field sort rather than plain `sort`, which would rank `0.6.1` above `0.10.0`. Same form as `plugins/dev/skills/cr-fix/SKILL.md`, whose `tests/run-tests.sh` case guards it.
 - All subsequent bash blocks reference `${PLUGIN_ROOT}/scripts/...` and `${PLUGIN_ROOT}/assets/...`. Adding a new asset / script means updating only the procedure file — no per-surface duplication.
 
@@ -324,7 +324,7 @@ The three files share the same skeleton:
 
 1. `## Project context` — `{{PROJECT_NAME}}` + `{{ONE_LINER}}` (1-2 lines)
 2. `## Build / Test / Lint` — placeholder TODO
-3. `## Review guidelines` — **the section the Codex cloud reviewer reads**
+3. `## Code Review Rules` — **the section the Codex cloud reviewer reads**
    - `### Do not flag` (linter territory — handled by tooling)
    - `### P0 — Correctness / Security`
    - `### P1 — Performance / Maintainability`
@@ -342,5 +342,5 @@ The variant difference is the `### Domain-specific` section plus 1-2 domain-spec
 ### References
 
 - Plugin versioning rules: `.claude/rules/plugin-versioning.md`
-- Codex GitHub integration: <https://developers.openai.com/codex/integrations/github>
+- Codex GitHub integration: <https://learn.chatgpt.com/docs/third-party/github>
 - Related follow-ups: `/docs:write-rules`, `/wiki:bootstrap-wiki`

@@ -63,7 +63,7 @@ All wiki edits append one line to `log.md` (`## YYYY-MM-DD — <summary>` header
 
 ## guards
 
-- [review-loop-churn](guards/review-loop-churn.md) — a review loop that keeps producing P1s on lines the previous iteration added is churn, not convergence; stop and defer
+- [review-loop-churn](guards/review-loop-churn.md) — a round that finds defects in the loop's own fixes is churn, not convergence; measure against the whole loop, and know why a prose cap and a defer-keyed soft stop both fail open
 
 ## runtimes
 

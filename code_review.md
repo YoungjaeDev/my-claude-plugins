@@ -39,6 +39,7 @@
 - zsh는 인용 없는 파라미터를 단어 분리하지 않는다. `cmd $MULTI_VALUE`가 한 인자로 넘어가 조용히 아무것도 안 한다. `set -o shwordsplit 2>/dev/null || true`로 요청한다.
 - 이식성 수정은 양방향으로 확인한다. `python` → `python3`는 macOS를 고치고 Windows(python.org 설치, `python` + `py`만 존재)를 깬다. 이름 고정이 아니라 후보 탐지(`python3` → `python` → `py -3`)가 정답이다.
 - 이식성 검증은 stock 유저랜드에서 한다. 대화형 셸의 `grep` shim(ugrep)이 `grep -P`를 통과시켜도 훅·Codex의 stock grep에서는 깨진다. `env -i PATH=/usr/bin:/bin`로 재확인한다.
+- `git diff`의 `+++` 헤더를 경로로 쓰려면 정규화한다. 기본값에서 비ASCII 이름은 `"b/\355\225\234…"`처럼 따옴표+octal escape로 나오고, 공백이 든 이름 뒤에는 탭이 붙는다. `-c core.quotePath=false`로 escape를 끄고 탭 이후를 잘라야 원래 경로와 비교된다. 정규화 없이 비교하면 해당 파일의 모든 판정이 조용히 한쪽으로 쏠린다.
 
 ### 종료 상태
 
@@ -51,6 +52,7 @@
 
 - `gh api --paginate` + `--jq` 조합에 `--slurp` 누락. 단 `gh`는 둘의 동시 사용을 거부하므로 `gh api --paginate ENDPOINT | jq -s 'add'` 패턴을 쓴다.
 - `gh api ... || echo "[]"`는 네트워크·rate-limit·권한 에러를 "결과 없음"으로 삼킨다. 실패는 명시적 exit 또는 stderr 통보로 구분한다.
+- 출력과 종료 상태가 독립인 `gh` 하위 명령에 `|| <기본값>`을 붙이지 않는다. `gh pr checks`는 pending에서 8, 실패에서 1로 끝나면서도 필터 결과를 정상 출력하므로 `$(gh pr checks … || echo 0)`은 `0\n0`이 되어 뒤의 `jq --argjson`이 깨진다. stdout과 rc를 따로 받아 rc를 분류하고, 값이 정수인지 확인한다.
 - 읽기 실패 삼킴의 write 쌍도 잡는다: 변환 결과를 검사 없이 `gh issue/pr edit --body "$NEW"`로 내보내면 변환 실패가 원격 본문을 공백으로 파괴한다. 원격 write 앞에는 빈 값 가드.
 - `sed` replacement의 사용자 입력은 정화한다: `&`는 매치 전체로 확장되고 `\`와 구분자도 escape가 필요하다 (`sed 's/[\\&|]/\\&/g'`). `AskUserQuestion` 라벨을 그대로 경로/플래그 토큰으로 쓰지 않는다 — case-match로 도메인 토큰을 추출한다.
 

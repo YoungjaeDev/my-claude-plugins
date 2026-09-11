@@ -79,5 +79,4 @@ Do NOT promote: one-offs, undecided/contested points, prior-knowledge, or reusab
 
 ## Entries
 
-<!-- No insights promoted yet. Graduate findings here via `/wiki:ingest-finding`,
-     one entry per line: `- [title](<slug>.md) — rule + when-to-apply (promoted_from [[wiki-id]])` -->
+- [review-loop-churn](review-loop-churn.md) — a review round that finds defects in the loop's own fixes is churn: stop, file one follow-up issue, merge; measure against the whole loop, not the previous commit (promoted_from [[review-loop-churn]])

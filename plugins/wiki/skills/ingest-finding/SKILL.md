@@ -15,7 +15,7 @@ The wiki is only useful if it stays current. Conversations end, audit mds accumu
 
 ## Resolving `${PLUGIN_ROOT}`
 
-`${PLUGIN_ROOT}/references/wiki-conventions.md` (referenced below) lives at the plugin root. Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so resolve it once before reading that file:
+`${PLUGIN_ROOT}/references/wiki-conventions.md` (referenced below) lives at the plugin root. Codex does not export `CLAUDE_PLUGIN_ROOT`, so resolve it once before reading that file:
 
 ```bash
 # --- Plugin root resolution (cross-runtime) --------------------------------
@@ -124,7 +124,7 @@ A batch-wide view is what catches "these three findings are actually the same pa
      3. **Costly to violate**: getting it wrong breaks a build/release/reproducibility gate or wastes a review cycle.
      4. **Stabilized**: settled, not under active debate or still being designed.
    - Do NOT graduate: one-offs, undecided/contested points, things already known going in, or reusable *procedures* (those become a skill).
-   - **Why insight, not `.claude/rules/`**: Codex never reads `.claude/rules/`, so a rule promoted there is invisible to half the toolchain. Insight lives at `.llmwiki/insight/` (neutral root) and reaches both agents via the `core` prompt-injection hook. wiki no longer promotes lore to `.claude/rules/` at all. See `.llmwiki/insight/index.md`.
+   - **Why insight, not `.claude/rules/`**: Codex never reads `.claude/rules/`, so a rule promoted there is invisible to half the toolchain. Insight lives at `.llmwiki/insight/` (neutral root) and reaches both agents via the user-global instructions (`CLAUDE.md.global`, copied to `~/.claude/CLAUDE.md` + `~/.codex/AGENTS.md`). wiki no longer promotes lore to `.claude/rules/` at all. See `.llmwiki/insight/index.md`.
    - **Insight is consolidate-first too**: dedup against existing insight entries (`id`/`aliases`/body grep) before adding; prefer update/supersede; keep each entry to rule + apply-when + why, with the long story left in the wiki page via `promoted_from:` + `> Evidence:`.
    - When graduating, write the insight entry with the insight frontmatter (`tier: insight`, `promoted_from: [[wiki-id]]`, `evidence_count: N`, plus the standard `id`/`aliases`/`last_verified`/`status`/`volatility`/`sources`), add a hook to `.llmwiki/insight/index.md`, and log it in the diff-log block like any other page touch.
    - If nothing meets the bar, insight stays out of it (lore stays in the wiki).

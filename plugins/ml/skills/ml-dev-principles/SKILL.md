@@ -45,6 +45,7 @@ hard-block(컴플라이언스·안전·산출물 누설)과 process-caution(보�
 - 왜: "GPU 기계장치 더 동원" != 빠름. 핵심은 모델에 맞는 전략 + eff-batch 고정으로 정확도 회귀 없는 공짜 속도.
 - 적용: util 프로파일 → 90% 미만이면 exotic 병렬 꺼내기 전에 deepspeed/ZeRO 오버헤드나 과소 batch부터 의심.
 - 데이터셋 전체를 여러 GPU로 나눠 처리해야 하는 경우(위 "여러 모델 병렬 추론"과는 다른 케이스, 단일 모델로 대량 이미지를 처리하는 배치 작업)의 ProcessPool/CUDA_VISIBLE_DEVICES 격리, CUDA Streams, I/O+compute 파이프라인 구현 패턴은 [references/gpu-parallel.md](references/gpu-parallel.md) 참고.
+- 배치 추론 안티패턴(파일 단위 루프), BGR/RGB 순서, Ultralytics YOLO 의 내부 변환 예외, WandB 토글 등 라이브러리 레벨 함정은 [references/ml-pitfalls.md](references/ml-pitfalls.md) 참고.
 
 ## 6. 이중 판단 도구는 정액 구독: 아끼지 말고 적극 쓴다
 

@@ -9,25 +9,23 @@ set -euo pipefail
 jq -c --argjson skip_minor "$( [ "$SKIP_MINOR" = "true" ] && echo true || echo false )" '
   . as $r
   | (.source // "") as $src
-  | (.type_emoji // "") as $type
+  | (.category_emoji // "") as $cat
   | (.severity_emoji // "") as $sev
+  | (.effort_emoji // "") as $eff
   | ((.p_badge // "") | tostring) as $pb
   | (
-      # Base tier
+      # Base tier. CR/CLI is severity-first: the header category names the defect
+      # domain, not how bad it is, so only Security escalates on category alone.
       if $src == "codex" then
-        if $pb == "1" then "gated"
-        elif $pb == "2" then "gated"
-        elif $pb == "3" then "skip"
-        else "review"
-        end
+        if $pb == "1" or $pb == "2" then "gated" else "review" end
       else
         # cr or cli — same rules
-        if ($type | test("Nitpick"; "i")) then "skip"
-        elif ($type | test("Verification agent|Outside diff range"; "i")) then "review"
-        elif ($type | test("Security"; "i")) then "gated"
-        elif ($type | test("Bug|Potential issue"; "i")) then "gated"
+        if ($cat | test("Security"; "i")) then "gated"
+        elif ($cat | test("Nitpick"; "i")) then "skip"
         elif ($sev | test("Critical|High|Major"; "i")) then "gated"
-        elif ($type | test("Refactor"; "i")) and ($sev | test("Minor|Trivial|Info"; "i")) then "auto"
+        elif ($sev | test("Trivial|Info"; "i")) then "skip"
+        elif ($sev | test("Minor"; "i")) then
+          (if ($eff | test("Heavy lift"; "i")) then "gated" else "auto" end)
         else "review"
         end
       end
@@ -38,7 +36,7 @@ jq -c --argjson skip_minor "$( [ "$SKIP_MINOR" = "true" ] && echo true || echo f
         if $src == "codex" and $pb == "2" then "skip"
         elif ($src == "cr" or $src == "cli")
              and ($sev | test("Minor|Trivial|Info"; "i"))
-             and (($type | test("Bug|Security"; "i")) | not)
+             and (($cat | test("Security"; "i")) | not)
         then "skip"
         else $base_tier
         end

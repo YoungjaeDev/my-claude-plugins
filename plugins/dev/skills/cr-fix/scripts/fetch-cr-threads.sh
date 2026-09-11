@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Usage: bash scripts/fetch-cr-threads.sh OWNER REPO PR_NUM
 # Emits a JSON array of actionable CR threads (isResolved=false, isOutdated=false, author=coderabbit*).
-# Each element has: {source:"cr", path, line, startLine, originalLine, body, databaseId, type, severity}.
+# Each element has: {source:"cr", path, line, startLine, originalLine, body, databaseId,
+# category_emoji, severity_emoji, effort_emoji}.
 # Exit non-zero on GraphQL error or null repository.
 set -euo pipefail
 
@@ -76,10 +77,18 @@ jq -c '
         startLine: $c.startLine,
         originalLine: $c.originalLine,
         body: $c.body,
-        databaseId: $c.databaseId,
-        # header regex: _Type_ | _Severity_
-        type_emoji:     (($c.body | capture("_(?<t>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_").t) // null),
-        severity_emoji: (($c.body | capture("_(?<t>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_").s) // null)
+        databaseId: $c.databaseId
       }
+    # Inline header: `_<category>_ | _<severity>_ | _<effort>_`. The third field
+    # is optional so the two-field form still yields category + severity.
+    # capture() emits NOTHING on a non-match, and an empty value anywhere in an
+    # object constructor deletes the whole object — bind through a one-element
+    # array so "no header" becomes an honest null instead of a dropped finding.
+    + ( ( [ $c.body
+            | capture("_(?<c>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_(?:\\s*\\|\\s*_(?<e>[^_]+)_)?") ]
+          | .[0] ) as $h
+        | { category_emoji: ($h.c // null),
+            severity_emoji: ($h.s // null),
+            effort_emoji:   ($h.e // null) } )
   ]
 ' <<<"$all"

@@ -36,6 +36,58 @@ Step 6b discovers Codex work via review `id` instead — robust to SHA progressi
 
 If the user wants to re-surface an already-processed review, they can delete the relevant id from `codex_processed_reviews` in the state file by hand. The next iter will re-discover it as unprocessed.
 
-## Cancel semantics
+## Re-review triggers
 
-If the user picks Cancel in Step 9b's AskUserQuestion (which exits the loop before Step 9c-gated runs), Step 9c.7 is unreached and the review id stays unprocessed. The user gets to retry from scratch on the next run. That is intentional: Cancel is the escape hatch for "I want to re-think this review from the top".
+Codex states its own triggers as PR open, draft marked ready, and a `@codex review` comment. Repositories that enable automatic reviews also get one on every push, which is what the loop relies on: Step 12's push is the re-review trigger, and the skill never posts a trigger comment of its own.
+
+## Review-id discovery and the grace cap (Step 6b)
+
+```bash
+if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
+  PROCESSED=$(jq -c '.codex_processed_reviews // []' "$STATE_FILE")
+  # jq -sr, not -s: without -r an empty result prints the two-char string '""',
+  # which is non-empty -> candidate looks found -> grace polling is skipped and
+  # the iter silently loses every Codex finding (fetch by review id '""' -> []).
+  candidate=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
+    | jq -sr --argjson p "$PROCESSED" 'add // []
+        | [ .[] | select(.user.login=="chatgpt-codex-connector[bot]")
+                | select(.state=="COMMENTED" or .state=="CHANGES_REQUESTED")
+                | select(.id as $i | $p | index($i) | not) ]
+        | sort_by(.submitted_at) | last | .id // ""')
+  if [ -n "$candidate" ] && [ "$candidate" != "null" ]; then
+    codex_review_id_to_process="$candidate"
+  elif [ "$CODEX_GRACE" -gt 0 ] && [ "$gate" = "codex_wait" -o "$gate" = "cr_wait" -o "$gate" = "bypass" ]; then
+    # Cap the poll at the larger of CODEX_GRACE and the pre-flight remainder:
+    # gate=codex_wait promised Codex is not assumed clean before
+    # push_age >= CODEX_PREFLIGHT_TIMEOUT, and the knob alone lets Step 8c mark
+    # `clean` mid-review. $pf exists only on the auto|pr-bot path, so read it
+    # under gate=codex_wait alone — a bare `<<<"$pf"` aborts bypass under
+    # `set -u`, and `${pf:-{}}` mis-expands to `<value>}` when it IS set.
+    if [ "$gate" = "codex_wait" ]; then
+      pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
+      push_age=$(jq -r '.push_age_seconds // 0' <<<"$pf")
+      pf_remaining=$(( pf_timeout - push_age ))
+      [ "$pf_remaining" -lt 0 ] && pf_remaining=0
+      [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
+    else
+      grace_cap="$CODEX_GRACE"
+    fi
+    # Bash(run_in_background=true, timeout=grace_cap*1000):
+    #   OWNER=... REPO=... PR_NUM=... PROCESSED=... INTERVAL=15 \
+    #     bash $SKILL_DIR/scripts/poll-codex-grace.sh
+    # Monitor returns one JSON line: {codex_review_id:N, pr:N} or grace timeout (no line).
+  fi
+fi
+```
+
+## Auto-detect block (Step 6)
+
+```bash
+if [ "$ITER" = "1" ] && [ "$codex_active" = "unknown" ]; then
+  codex_active=$(bash $SKILL_DIR/scripts/probe-codex-engagement.sh "$OWNER" "$REPO" "$PR_NUM")
+  [ "$NO_CODEX" = "true" ] && codex_active=disabled
+elif [ "$codex_active" = "inactive" ]; then
+  new=$(bash $SKILL_DIR/scripts/probe-codex-engagement.sh "$OWNER" "$REPO" "$PR_NUM")
+  [ "$new" = "active" ] && codex_active=active
+fi
+```

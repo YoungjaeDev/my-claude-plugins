@@ -48,8 +48,9 @@ touch "$marker"
 newest=$(LC_ALL=C.UTF-8 sed -n 's/^##[[:space:]]\{1,\}\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\).*(lint-wiki).*/\1/p' "$log_file" 2>/dev/null | sort -r | head -1)
 
 # The MOC-first pointer is the query-wiki convention this plugin carries on its own: an
-# installed copy must deliver it even where the repo's AGENTS.md and the core prompt-inject
-# hook are absent. Emitted whenever a wiki root resolves, once per rate-limit window.
+# installed copy must deliver it even where the repo's AGENTS.md and the user-global
+# instructions (CLAUDE.md.global) are absent. Emitted whenever a wiki root resolves, once
+# per rate-limit window.
 # A root can resolve on log.md alone (a moved legacy root without an index), so point at the
 # MOC only when it exists; otherwise the lint hint alone still fires.
 msg=""

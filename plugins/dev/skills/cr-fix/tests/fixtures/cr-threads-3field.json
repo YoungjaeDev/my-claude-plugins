@@ -1,0 +1,6 @@
+{"data":{"repository":{"pullRequest":{"title":"t","reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[
+{"isResolved":false,"isOutdated":false,"comments":{"nodes":[{"databaseId":1,"body":"_🎯 Functional Correctness_ | _🟠 Major_ | _⚡ Quick win_\n\n**boom**","path":"src/a.py","line":10,"startLine":null,"originalLine":10,"author":{"login":"coderabbitai[bot]"}}]}},
+{"isResolved":false,"isOutdated":false,"comments":{"nodes":[{"databaseId":2,"body":"_📐 Maintainability & Code Quality_ | _🟡 Minor_ | _🏗️ Heavy lift_\n\nrefactor","path":"src/b.py","line":20,"startLine":null,"originalLine":20,"author":{"login":"coderabbitai[bot]"}}]}},
+{"isResolved":false,"isOutdated":false,"comments":{"nodes":[{"databaseId":3,"body":"_🛠️ Refactor suggestion_ | _🟡 Minor_\n\nlegacy two-field header","path":"src/c.py","line":30,"startLine":null,"originalLine":30,"author":{"login":"coderabbitai[bot]"}}]}},
+{"isResolved":false,"isOutdated":false,"comments":{"nodes":[{"databaseId":4,"body":"no header at all","path":"src/d.py","line":40,"startLine":null,"originalLine":40,"author":{"login":"coderabbitai[bot]"}}]}}
+]}}}}}

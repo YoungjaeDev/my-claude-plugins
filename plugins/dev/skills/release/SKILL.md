@@ -6,7 +6,12 @@ allowed-tools: Read Edit Bash AskUserQuestion
 
 # Release
 
-Create a versioned GitHub release with automatic version detection, version file updates, tagging, and changelog generation via `gh release create --generate-notes`.
+Create a versioned GitHub release: detect the current version, update the version manifests, commit, tag, push, and let `gh release create --generate-notes` write the release-page notes. The repository's `CHANGELOG.md` is not this skill's file — `dev:post-merge` Step 9.5 and `docs:changelog` own it.
+
+## Guidelines
+
+- **Interactive input is capability-aware.** Every prompt and confirmation below is a gate, not one hardcoded tool: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (the tag, the push, `gh release create`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+- **The tag and the release are public and irreversible.** Never run Steps 8-9 without the Step 5 confirmation, and never publish a tag this run did not create.
 
 ## Arguments
 
@@ -24,10 +29,10 @@ Create a versioned GitHub release with automatic version detection, version file
    - Verify `gh` CLI is installed and authenticated: `gh auth status`
    - Verify clean working tree: `git status --porcelain`
      - If uncommitted changes exist, prompt user to commit or stash first
-   - Verify current branch is pushed to remote: `git rev-parse --abbrev-ref --symbolic-full-name @{u}`
+   - Verify current branch is pushed to remote: `git rev-parse --abbrev-ref --symbolic-full-name @{u}`. No upstream means the tag would point at a commit GitHub cannot see — stop and have the user push the branch first.
 
 2. **Detect Previous Tag**
-   - Run `git describe --tags --abbrev=0 2>/dev/null` to find the latest tag
+   - Run `git fetch --tags` and then `git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1.2,1n -k2,2n -k3,3n | tail -1` to find the highest existing release tag; the strict `vX.Y.Z` filter keeps `v2`, pre-release and nightly tags out of the pick. Do not use `git describe --tags --abbrev=0`: it returns the nearest tag reachable from HEAD, which is not the latest version whenever a higher tag lives on another branch — and that single value feeds both the bump base and `--notes-start-tag`.
    - If no tags exist:
      - If `--init <commit>` provided: create baseline tag at specified commit
        ```bash
@@ -54,7 +59,7 @@ Create a versioned GitHub release with automatic version detection, version file
    - Read current version from the first detected file
    - Cross-check with latest git tag version
    - If no version files found, prompt user for the file path
-   - Store list of all detected files for batch update in Step 6
+   - Store list of all detected files for batch update in Step 7
 
 4. **Determine New Version**
 
@@ -127,15 +132,48 @@ Create a versioned GitHub release with automatic version detection, version file
 
 8. **Commit and Tag**
 
+   Commit only when Step 7 actually staged something. A re-run, or a version the manifests already
+   carry, stages nothing, and a bare `git commit` then aborts on `nothing to commit` and takes the
+   tag down with it:
+
    ```bash
-   git commit -m "chore: release v<NEW_VERSION>"
-   git tag v<NEW_VERSION>
+   if git diff --cached --quiet; then
+     echo "release: version files already at v<NEW_VERSION> — tagging the existing commit"
+   else
+     git commit -m "chore: release v<NEW_VERSION>"
+   fi
+   # Idempotent after a partial release: an existing tag is accepted only when it already
+   # points at this commit; a tag on a different commit is a mismatch, not something to move.
+   if git rev-parse --verify --quiet "refs/tags/v<NEW_VERSION>" >/dev/null; then
+     [ "$(git rev-list -n1 "v<NEW_VERSION>")" = "$(git rev-parse HEAD)" ] \
+       || { echo "release: tag v<NEW_VERSION> points at a different commit" >&2; exit 1; }
+   else
+     git tag v<NEW_VERSION>
+   fi
    ```
 
 9. **Push and Create Release**
 
+   Push the branch and **only the tag this run created**. `--tags` would publish every local tag, including an `--init` baseline or an unrelated experiment:
+
    ```bash
-   git push origin <current-branch> --tags
+   git push origin <current-branch>
+   git push origin "v<NEW_VERSION>"
+   ```
+
+   `--notes-start-tag` is resolved by GitHub, not locally, so the baseline has to be on the remote
+   too, and an `--init` baseline is local-only until this point. Publish only the baseline **this
+   run** created: any other local-only tag is something the user never agreed to push, so drop the
+   flag instead and let `--generate-notes` fall back to the last release GitHub knows about.
+
+   ```bash
+   if ! git ls-remote --exit-code --tags origin "refs/tags/<PREV_TAG>" >/dev/null 2>&1; then
+     if [ "<PREV_TAG>" = "<the tag --init created this run>" ]; then
+       git push origin "<PREV_TAG>" || PREV_TAG=""
+     else
+       PREV_TAG=""   # local-only tag from elsewhere: never published on the user's behalf
+     fi
+   fi
    ```
 
    Build the `gh release create` command:
@@ -145,6 +183,9 @@ Create a versioned GitHub release with automatic version detection, version file
      --notes-start-tag <PREV_TAG> \
      --title "v<NEW_VERSION>"
    ```
+
+   Drop `--notes-start-tag` entirely when there is no baseline tag (`PREV_TAG` empty): `--generate-notes`
+   then falls back to the previous release GitHub knows about.
 
    Append flags if specified:
    - `--draft` -> add `--draft` to gh command
@@ -157,20 +198,13 @@ Create a versioned GitHub release with automatic version detection, version file
     Release created: https://github.com/<owner>/<repo>/releases/tag/v<NEW_VERSION>
     ```
 
-> Follow ~/.claude/CLAUDE.md and project CLAUDE.md.
-
 ## Version File Detection Details
-
-### Multi-File Projects
-
-All files detected in Step 3 are updated together, so a project with multiple version manifests (e.g., Tauri's `tauri.conf.json` + `Cargo.toml` + optionally `package.json`) stays in sync.
 
 ### Fallback
 
 If auto-detection finds no version files:
 1. Check `@CLAUDE.md` for version file hints
 2. Prompt user to specify file path(s)
-3. Store user response for future runs (in-session only)
 
 ## First Release Flow
 
@@ -191,3 +225,5 @@ Example first-time setup:
 /dev:release --minor
 # -> Creates v0.1.0 with changelog from v0.0.0..HEAD
 ```
+
+> Follow ~/.claude/CLAUDE.md and project CLAUDE.md.

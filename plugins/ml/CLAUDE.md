@@ -78,7 +78,7 @@ Skills auto-activate based on trigger keywords.
 
 ## Related
 
-See `core/guidelines/ml-guidelines.md` for common ML pitfalls (BGR/RGB, batch inference anti-patterns, YOLO edge cases).
+See `skills/ml-dev-principles/references/ml-pitfalls.md` for common ML pitfalls (BGR/RGB, batch inference anti-patterns, YOLO edge cases).
 
 ## edit-notebook (흡수: notebook)
 

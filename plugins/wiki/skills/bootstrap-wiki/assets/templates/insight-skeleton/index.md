@@ -6,7 +6,7 @@ last_verified: TODO-INITIAL-DATE
 
 # Insight Map of Content (MOC)
 
-The **insight layer** is the promoted, cross-agent-visible top of the knowledge system. It holds the small set of findings that earned graduation from `.llmwiki/wiki/`. Both Claude Code and Codex read it (it lives under the neutral `.llmwiki/` root), and the `core` `prompt_inject.sh` hook points every prompt here *first*, before the wiki MOC.
+The **insight layer** is the promoted, cross-agent-visible top of the knowledge system. It holds the small set of findings that earned graduation from `.llmwiki/wiki/`. Both Claude Code and Codex read it (it lives under the neutral `.llmwiki/` root), and the user-global instructions (`CLAUDE.md.global`, copied to `~/.claude/CLAUDE.md` + `~/.codex/AGENTS.md`) point here *first*, before the wiki MOC, once per session.
 
 > **For LLMs**: consult this MOC before acting on remembered guidance. Entries are extremely condensed (rule + when-to-apply + why). Follow `promoted_from:` / `> Evidence:` down to the wiki/raw page for the full story — never inline that detail back up here.
 
@@ -14,7 +14,7 @@ The **insight layer** is the promoted, cross-agent-visible top of the knowledge 
 
 | Layer | Path | Loaded? | Purpose |
 |-------|------|---------|---------|
-| **Insight (promoted)** | `.llmwiki/insight/**` | via the `prompt_inject.sh` hook (Claude + Codex), every prompt | cross-agent promoted rules: recurring, generalizable, costly-to-violate, stabilized |
+| **Insight (promoted)** | `.llmwiki/insight/**` | via user-global instructions (Claude + Codex), once per session | cross-agent promoted rules: recurring, generalizable, costly-to-violate, stabilized |
 | **Wiki (lore)** | `.llmwiki/wiki/**` | on-demand direct read (start at `index.md`) | LLM-maintained domain knowledge: provider quirks, debugging stories, design rationale, module maps |
 | **Raw evidence** | `.llmwiki/raw/**` (+ external docs) | direct read | append-only immutable evidence — wiki cites, never copies |
 

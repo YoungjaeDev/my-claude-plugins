@@ -103,22 +103,20 @@ Sections without `max=N`, or with bullet count ≤ N, are skipped. Rotation is o
 
 ### Step 6.5: Normative Doc Size Audit
 
-After Step 6 integration, measure normative docs and offer split/improve when oversized. **Threshold: 32000 chars** (8k below Claude Code's 40k perf-warning).
+After Step 6 integration, measure normative docs and offer a split when oversized. **Threshold: 32000 chars** (8k below Claude Code's 40k perf-warning).
 
 1. Build candidate list (files that exist): `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` at repo root + one-level `.claude/rules/*.md` (no recursion).
 2. Measure char count per file with `wc -m` (chars, not bytes — Korean/multibyte safe).
 3. If no file exceeds 32000 chars: emit `All normative docs within 32k; size audit clean.` and proceed.
 4. If at least one file exceeds 32000 chars, show a per-file size table marking offenders, then `AskUserQuestion` (header `Size audit`):
-   - **Split with docs:write-rules** (Recommended) — `/docs:write-rules` in split mode per oversized file. Best when the file is bulky.
-   - **Improve with claude-md-improver** — the `claude-md-management:claude-md-improver` skill (dedup, stale content, rubric scoring). Best when already modular but verbose.
-   - **Both: split first, then improve** — split, re-measure, run improver on the trimmed root if still > 32000.
-   - **Defer** — print `Run /docs:write-rules or /claude-md-management:claude-md-improver later on: <files>` and continue.
+   - **Split with docs:write-rules** (Recommended) — `/docs:write-rules` in split mode per oversized file.
+   - **Defer** — print `Run /docs:write-rules later on: <files>` and continue.
    - **Skip** — continue silently.
-5. Each path runs inline; the invoked skill prompts before applying. If the user declines mid-skill, return control to Step 7 (do not block the rest of post-merge).
+5. The split runs inline and `docs:write-rules` prompts before applying. If the user declines mid-skill, return control to Step 7 (do not block the rest of post-merge).
 
-**Why split-first is recommended**: at 32k+ chars the dominant problem is bulk, not phrasing. `docs:write-rules` is the dedicated extraction engine (auto-classifies sections, generates `@import`, supports `--dry-run`); `claude-md-improver` is rubric-based quality audit with no size-reduction logic.
+**Why split**: at 32k+ chars the dominant problem is bulk, not phrasing. `docs:write-rules` is the dedicated extraction engine — it auto-classifies sections, generates `@import`, and supports `--dry-run`.
 
-> **Codex note**: `docs:write-rules` and `claude-md-improver` are Claude-only. Under Codex, report the oversized files and defer rather than invoking the skills.
+> **Codex note**: `docs:write-rules` is Claude-only. Under Codex, report the oversized files and defer rather than invoking it.
 
 ## Step 7: Update Serena memory (Claude-only — Codex skips)
 

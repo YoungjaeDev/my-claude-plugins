@@ -5,8 +5,13 @@
 #   2. review body submitted after PUSH_TIME
 #   3. commit-status `description` on the latest CodeRabbit context (newer CR variant —
 #      "Review skipped: free tier disabled")
-# Exit 0 = detected (emits JSON: {hits, reset_minutes_estimate, channel}).
+# Exit 0 = detected (emits JSON: {hits, reset_minutes_estimate, channel, permanent}).
 # Exit 1 = no match.
+#
+# `permanent: true` marks a skip that no waiting resolves — currently
+# `Review skipped: N files exceed the limit of M`. The caller must treat it as a
+# source failure (fall back to CLI / codex-only, or end the run) and must never
+# offer a "wait for reset" option or let the iteration converge to `clean`.
 #
 # --paginate is used on all REST calls per plugins/dev/CLAUDE.md (default per_page=30
 # can drop early rows on PRs with >30 comments / >30 statuses).
@@ -47,10 +52,13 @@ if pr_obj=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM" 2>/dev/null); then
   fi
 fi
 
-# 5 patterns now: 3 historic + free-tier-disabled + refill phrasing ("Next review
-# available in" appears alone in Fair-Usage comments; without it here RESET_RE
-# below never runs because hits stays 0)
-pattern='auto-generated comment: rate limited by coderabbit\.ai|More reviews will be available in|Next review available in|Review limit reached|Review skipped: free tier disabled'
+# Refill phrasings must be listed even though they carry no rate-limit noun of
+# their own: they appear alone in Fair-Usage comments, and without them `hits`
+# stays 0 and RESET_RE below never runs.
+pattern='auto-generated comment: rate limited by coderabbit\.ai|More reviews will be available in|Next (included )?review available in|Review limit reached|Review skipped: free tier disabled|Review skipped: [0-9]+ files exceed the limit'
+# Skips that no reset window clears. Waiting, re-pushing and re-running all
+# produce the same skip, so the caller routes them to a source fallback.
+permanent_pattern='Review skipped: [0-9]+ files exceed the limit'
 
 hits=$(jq --arg p "$pattern" '[ .[] | select(test($p; "i")) ] | length' <<<"$bodies")
 desc_hit=0
@@ -61,6 +69,13 @@ fi
 
 total=$((hits + desc_hit))
 if [ "$total" -eq 0 ]; then exit 1; fi
+
+permanent=false
+if jq -e --arg p "$permanent_pattern" 'any(.[]; test($p; "i"))' <<<"$bodies" >/dev/null 2>&1 \
+   || { [ -n "$status_desc" ] && jq -ne --arg d "$status_desc" --arg p "$permanent_pattern" \
+          '$d | test($p; "i")' >/dev/null 2>&1; }; then
+  permanent=true
+fi
 
 # Determine reset estimate from any source.
 # Two phrasings are in the wild, and the newer one is wrapped in markdown bold:
@@ -75,7 +90,7 @@ if [ "$total" -eq 0 ]; then exit 1; fi
 # null. `try ... catch empty` therefore changes nothing here, but it is kept so a
 # genuinely malformed body (invalid regex input) cannot abort the array build.
 # The `[ ... ] | first // empty` around it is what turns "no match" into a value.
-RESET_RE='(?:More reviews will be available in|Next review available in)[^0-9]{0,12}(?<m>[0-9]+)\s*minutes?'
+RESET_RE='(?:More reviews will be available in|Next (?:included )?review available in)[^0-9]{0,12}(?<m>[0-9]+)\s*minutes?'
 reset=$(jq -r --arg re "$RESET_RE" '[ .[] | (try capture($re; "i").m catch empty) ] | first // empty' <<<"$bodies")
 if [ -z "$reset" ] && [ -n "$status_desc" ]; then
   reset=$(jq -nr --arg d "$status_desc" --arg re "$RESET_RE" \
@@ -88,4 +103,5 @@ elif [ "$hits" -gt 0 ]; then channel="comment"
 else channel="description"
 fi
 
-printf '{"hits":%s,"reset_minutes_estimate":%s,"channel":"%s"}\n' "$total" "$reset" "$channel"
+printf '{"hits":%s,"reset_minutes_estimate":%s,"channel":"%s","permanent":%s}\n' \
+  "$total" "$reset" "$channel" "$permanent"

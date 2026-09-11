@@ -1,7 +1,6 @@
 # Skill frontmatter schema
 
-Field-by-field rules for `SKILL.md` frontmatter in this repository. Verified against Claude Code
-2.1.226 documentation and the Codex 0.135 plugin validator on 2026-08-10. A field whose behavior
+Field-by-field rules for `SKILL.md` frontmatter in this repository. A field whose behavior
 could not be established is marked `unverified` and carries no prohibition — an unfounded ban is
 worse than a missing rule.
 
@@ -22,7 +21,7 @@ worse than a missing rule.
 The only trigger mechanism. It is loaded every turn for every skill, so it is the one part of a
 skill that always costs context. Rules:
 
-- **Under 1024 characters.** Codex 0.135 silently skips a skill whose description exceeds this.
+- **Under 1024 characters.** Codex silently skips a skill whose description exceeds this.
   Claude Code has no such limit, so the violation is invisible from the Claude side.
   `scripts/check-skill-contract.mjs` blocks it at commit time.
 - **Quote the value if it contains a colon-space (`: `).** Unquoted, YAML parses
@@ -35,7 +34,7 @@ skill that always costs context. Rules:
 
 ## Optional fields, and what each runtime does with them
 
-| Field | Claude Code | Codex 0.135 | Use here |
+| Field | Claude Code | Codex | Use here |
 |---|---|---|---|
 | `allowed-tools` | pre-approves those tools for the invoking turn | ignored | allowed; see the portability note below |
 | `disable-model-invocation` | supported | **validation error unless `false`** | not in a Codex-eligible plugin |

@@ -1,21 +1,17 @@
 ---
 name: decompose-issue
-description: "Break a large work item into context-completable GitHub sub-issues, define a 10-20 node architecture and workflow mapping, propose a milestone, and create the issues with gh. Also owns the repository issue-label taxonomy (absorbed create-issue-label) — on /dev:create-issue-label, 'create issue labels', '라벨 만들어줘', or a label-taxonomy setup request, run only the Labels step and stop. Use ONLY when the user explicitly types /dev:decompose-issue or /dev:create-issue-label, asks to decompose or break down work into issues, or asks for issue labels. Do NOT auto-fire from incidental mentions of issues or planning — this creates GitHub issues, a milestone, and a project-tracking state file. Detects TDD applicability, captures dependencies, and writes .claude/state/project-tracking-{slug}.json for the milestone and diagram pipeline."
+description: "Break a large work item into context-completable GitHub sub-issues, define a 10-20 node architecture and workflow mapping, propose a milestone, and create the issues with gh. Also owns the repository issue-label taxonomy — on 'create issue labels', '라벨 만들어줘', or a label-taxonomy setup request, run only the Labels step and stop. Use ONLY when the user explicitly types /dev:decompose-issue, asks to decompose or break down work into issues, or asks for issue labels. Do NOT auto-fire from incidental mentions of issues or planning — this creates GitHub issues, a milestone, and a project-tracking state file. Detects TDD applicability, captures dependencies, and writes .claude/state/project-tracking-{slug}.json for the milestone and diagram pipeline."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
-## Decompose Work
+# Decompose Issue
 
-## Cross-runtime interactive input
+Break a large work item into manageable, independent GitHub issues, map them onto the project's architecture, and create them with a milestone. Follow project guidelines in `@CLAUDE.md`.
 
-Every confirmation below runs through a **capability-aware** interactive-input gate, not one hardcoded tool. Read each `AskUserQuestion` mention as this gate:
+## Guidelines
 
-- **Claude Code** — use `AskUserQuestion`.
-- **Codex** — use `request_user_input` when that tool is exposed. When it is not, ask ONE concise blocking question only where a wrong assumption would be costly (e.g. creating GitHub issues); otherwise proceed on a documented safe default and state the assumption.
-
-Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
-
-Break down large work items into manageable, independent issues. Follow project guidelines in `@CLAUDE.md`.
+- **Interactive input is capability-aware.** Every confirmation below runs through a gate, not one hardcoded tool; read each `AskUserQuestion` mention as this gate. Claude Code uses `AskUserQuestion`. Codex uses `request_user_input` when that tool is exposed; when it is not, ask ONE concise blocking question only where a wrong assumption would be costly (creating GitHub issues), otherwise proceed on a documented safe default and state the assumption. Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+- **The state file schema is owned elsewhere.** `../post-merge/references/update-progress.md` holds the `project-tracking-{slug}.json` schema, its field reference, the slug rule, and the milestone/diagram formats. This skill writes the file; it does not restate the schema.
 
 ## Workflow
 
@@ -105,53 +101,20 @@ Break down large work items into manageable, independent issues. Follow project 
 
    #### Step E: Save State File
 
-   - Generate slug from milestone name: lowercase, spaces to hyphens, remove special chars
-     - Example: `"v1.0 Auth System"` -> `"v1-0-auth-system"`
-   - Save initial state file:
-     ```bash
-     mkdir -p .claude/state
-     cat > .claude/state/project-tracking-${SLUG}.json << 'STATEEOF'
-     {
-       "version": "2.0.0",
-       "milestoneId": null,
-       "milestoneName": "<milestone-name>",
-       "milestoneSlug": "<slug>",
-       "repoOwner": "<owner>",
-       "repoName": "<repo>",
-       "createdAt": "<ISO timestamp>",
-       "lastSyncedAt": null,
-       "architecture": {
-         "description": "<one-line architecture description>",
-         "mermaidSource": "<full Mermaid flowchart code from Step A>",
-         "scopeNodes": ["<node-id-1>", "<node-id-2>"]
-       },
-       "modules": [
-         {
-           "id": "<id>",
-           "name": "<name>",
-           "architectureNode": "<node-id>",
-           "issues": [],
-           "status": "pending",
-           "progress": 0
-         }
-       ],
-       "issues": {
-         "<number>": {
-           "title": "<title>",
-           "state": "open",
-           "pr": null,
-           "moduleId": "<module-id>",
-           "dependsOn": [],
-           "architectureNode": "<node-id>"
-         }
-       },
-       "diagramMarkers": {
-         "start": "<!-- project-tracking-start -->",
-         "end": "<!-- project-tracking-end -->"
-       }
-     }
-     STATEEOF
-     ```
+   Write `.claude/state/project-tracking-${SLUG}.json` in the shape defined by
+   `../post-merge/references/update-progress.md` ("State File Schema", "Schema Field Reference",
+   "Slug Generation"). At creation time:
+
+   - `version` is `"2.0.0"`; `milestoneId` and `lastSyncedAt` are `null` until Step 10 creates the
+     milestone; `issues` is filled in after the issues exist on GitHub.
+   - `architecture.mermaidSource` is the full Mermaid flowchart from Step A, `scopeNodes` the Step B
+     selection, `modules[]` the Step C grouping, and `issues[].dependsOn` the Step D edges.
+   - `diagramMarkers` carries the `<!-- project-tracking-start -->` / `<!-- project-tracking-end -->`
+     pair that `post-merge` replaces between.
+
+   ```bash
+   mkdir -p .claude/state
+   ```
 
 10. **Ask about GitHub creation**: Use the interactive-input gate to let user decide on milestone and issue creation
     - Create milestone with **Markdown Table** in description.
@@ -182,7 +145,8 @@ Break down large work items into manageable, independent issues. Follow project 
     - Update state file with milestoneId:
       ```bash
       STATE_FILE=".claude/state/project-tracking-${SLUG}.json"
-      jq --arg mid "$MILESTONE_NUMBER" '.milestoneId = ($mid | tonumber)' "$STATE_FILE" > tmp.$$.json && mv tmp.$$.json "$STATE_FILE"
+      TMP=$(mktemp)
+      jq --arg mid "$MILESTONE_NUMBER" '.milestoneId = ($mid | tonumber)' "$STATE_FILE" > "$TMP" && mv "$TMP" "$STATE_FILE"
       ```
     - **Inject the TDD marker (if TDD was enabled in Step 3)**: when creating each issue, prepend `<!-- TDD: enabled -->` as the first line of the issue body (before `**Purpose**:`). This is the exact marker `resolve-issue` Step 1 detects to switch on the TDD workflow. If TDD was not selected in Step 3, omit the prepend entirely — do not write the marker.
     - Assign issues with `--milestone` option
@@ -190,7 +154,7 @@ Break down large work items into manageable, independent issues. Follow project 
 
 11. **Add issues to GitHub Project (optional)**
    - Check for existing projects: `gh project list --owner <owner> --format json`
-   - If no project exists: Display "No project found. You can create one with `/gh:init-project`" and skip
+   - If no project exists: report "No GitHub Project found — create one on GitHub and re-run if you want the issues tracked there" and skip
    - If project exists: Ask user via the interactive-input gate whether to add issues
    - If yes: Run `gh project item-add <project-number> --owner <owner> --url <issue-url>` for each issue
 
@@ -265,9 +229,15 @@ Milestone description must include:
 ### Labels (Use actual repository labels)
 **Note**: Before assigning labels, verify repository labels with `gh label list`.
 
-**Label-only entry**: when the user asked for labels alone (`/dev:create-issue-label`, "create issue labels", a label taxonomy for the repo), run this section only — create the labels and stop without creating issues, a milestone, or a state file.
+**Label-only entry**: when the user asked for labels alone ("create issue labels", a label taxonomy for the repo), run this section only — create the labels and stop without creating issues, a milestone, or a state file.
 
-If the repository has no usable taxonomy yet, create one first (absorbed from the retired create-issue-label skill): inspect `package.json`/`README`/code layout to pick areas, then create type/area/complexity labels with `gh label create`, e.g. `gh label create "type: feature" --color "0e8a16" --description "New feature addition"`.
+If the repository has no usable taxonomy yet, create one first: inspect `package.json`/`README`/code layout to pick areas, then create type/area/complexity labels. `--force` makes the call create-or-update, so a re-run refreshes an existing label instead of erroring, and each category keeps a stable color (an omitted `--color` gets a random one every run):
+
+```bash
+gh label create "type: feature" --color "0e8a16" --description "New feature addition" --force
+gh label create "area: frontend" --color "1d76db" --description "Frontend-related work" --force
+gh label create "complexity: easy" --color "7057ff" --description "Simple task" --force
+```
 
 Examples (vary by project, for reference only):
 - **Type**: `type: feature`, `type: documentation`, `type: enhancement`, `type: bug`

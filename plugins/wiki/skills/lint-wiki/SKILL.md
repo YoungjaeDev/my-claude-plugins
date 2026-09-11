@@ -22,7 +22,7 @@ LLM-maintained wikis rot in predictable ways (Karpathy gist comments cite 4 fail
 
 ## Resolving `${PLUGIN_ROOT}`
 
-`${PLUGIN_ROOT}/references/wiki-conventions.md` (referenced below) lives at the plugin root. Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`, so resolve it once before reading that file:
+`${PLUGIN_ROOT}/references/wiki-conventions.md` (referenced below) lives at the plugin root. Codex does not export `CLAUDE_PLUGIN_ROOT`, so resolve it once before reading that file:
 
 ```bash
 # --- Plugin root resolution (cross-runtime) --------------------------------

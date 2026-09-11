@@ -51,9 +51,18 @@ is "0.6.5 body falls back to codegenInstructions" \
 out=$(bash "$SCRIPTS/parse-cr-cli-jsonl.sh" "$FIX/cr-cli-0.5.x-findings.jsonl" 2>/dev/null); rc=$?
 is "0.5.x exits 0"                  "$rc" 0
 is "0.5.x line from suggestions[0]" "$(jq -r '.[0].line' <<<"$out")" 42
-is "0.5.x type_emoji from comment header" \
-   "$(jq -r '.[0].type_emoji' <<<"$out")" "🎯 Functional Correctness"
-is "0.5.x nitpick header parsed"    "$(jq -r '.[1].type_emoji' <<<"$out")" "📝 Nitpick"
+is "0.5.x category_emoji from comment header" \
+   "$(jq -r '.[0].category_emoji' <<<"$out")" "🎯 Functional Correctness"
+is "0.5.x two-field header has no effort" "$(jq -r '.[0].effort_emoji' <<<"$out")" null
+
+# 0.7.x header carries a third `effort` field. It is what splits a Minor into
+# auto vs gated, so the parser must surface it rather than stop at two fields.
+out=$(bash "$SCRIPTS/parse-cr-cli-jsonl.sh" "$FIX/cr-cli-0.7.x-findings.jsonl" 2>/dev/null); rc=$?
+is "0.7.x exits 0"                  "$rc" 0
+is "0.7.x category from 3-field header" \
+   "$(jq -r '.[0].category_emoji' <<<"$out")" "🎯 Functional Correctness"
+is "0.7.x effort from 3-field header"  "$(jq -r '.[0].effort_emoji' <<<"$out")" "🏗️ Heavy lift"
+is "0.7.x quick-win effort parsed"     "$(jq -r '.[1].effort_emoji' <<<"$out")" "⚡ Quick win"
 
 # A genuinely unparseable line must degrade, not abort.
 out=$(bash "$SCRIPTS/parse-cr-cli-jsonl.sh" "$FIX/cr-cli-malformed.jsonl" 2>/dev/null); rc=$?
@@ -205,7 +214,172 @@ SH
 chmod +x "$SHIMDIR/gh"
 g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "check-run-only CR -> cr_state success" "$(jq -r '.cr_state' <<<"$g" 2>/dev/null)" success
+
+# Convergence axis. `clean` merges on its own; `minor_floor`/`churn` stopped with
+# real findings still open, so they merge only once the follow-up issue recorded
+# them. A failed `gh issue create` therefore keeps the PR open by construction,
+# rather than merging a PR whose deferred findings exist nowhere a person looks.
+elig() { FINAL_STATE="$1" FOLLOWUP_ISSUE="${2:-}" PATH="$SHIMDIR:$PATH"            bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible'; }
+is "clean -> eligible"                       "$(elig clean)" true
+is "minor_floor without issue -> ineligible" "$(elig minor_floor)" false
+is "minor_floor with issue -> eligible"      "$(elig minor_floor 321)" true
+is "churn without issue -> ineligible"       "$(elig churn)" false
+is "churn with issue -> eligible"            "$(elig churn 321)" true
+is "churn with null issue -> ineligible"     "$(elig churn null)" false
+is "churn with issue 0 -> ineligible"        "$(elig churn 0)" false
+is "minor_floor, nothing deferred -> eligible" "$(DEFERRED_TOTAL=0 elig minor_floor)" true
+is "churn, deferred but no issue -> ineligible" "$(DEFERRED_TOTAL=2 elig churn)" false
+is "churn, append failed -> ineligible"       "$(FOLLOWUP_APPEND_FAILED=true elig churn 321)" false
+is "iteration_cap with issue -> still ineligible" "$(elig iteration_cap 321)" false
+is "user_declined -> ineligible"             "$(elig user_declined)" false
+is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false
+is "ineligible carries a reason"    "$(FINAL_STATE=churn PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null       | jq -r '.ineligible_reason | length > 0')" true
 rm -rf "$SHIMDIR"
+
+echo
+echo "classify-item.sh"
+
+# Severity, not category, decides a CR tier. Reading header field 1 as an issue
+# TYPE sent every Minor to `review` (surfaced, never applied) and left `auto`
+# unreachable, because CodeRabbit's field 1 is the defect CATEGORY.
+cls() { printf '%s' "$1" | SKIP_MINOR="${2:-false}" bash "$SCRIPTS/classify-item.sh" | jq -r '.tier'; }
+cr()  { jq -nc --arg c "$1" --arg s "$2" --arg e "$3" \
+          '{source:"cr",path:"p",line:1,category_emoji:$c,severity_emoji:$s,effort_emoji:$e}'; }
+
+is "CR Major -> gated"  "$(cls "$(cr '🎯 Functional Correctness' '🟠 Major' '⚡ Quick win')")"  gated
+is "CR Critical -> gated" "$(cls "$(cr '🩺 Stability & Availability' '🔴 Critical' '🏗️ Heavy lift')")" gated
+is "CR Minor + Quick win -> auto" \
+   "$(cls "$(cr '📐 Maintainability & Code Quality' '🟡 Minor' '⚡ Quick win')")" auto
+is "CR Minor + Heavy lift -> gated" \
+   "$(cls "$(cr '📐 Maintainability & Code Quality' '🟡 Minor' '🏗️ Heavy lift')")" gated
+is "CR Trivial -> skip"  "$(cls "$(cr '📐 Maintainability & Code Quality' '🟢 Trivial' '⚡ Quick win')")" skip
+# Security escalates on category alone: a Minor-rated privacy leak is still a leak.
+is "CR Security + Minor -> gated" \
+   "$(cls "$(cr '🔒 Security & Privacy' '🟡 Minor' '⚡ Quick win')")" gated
+is "CR Security + Trivial -> gated" \
+   "$(cls "$(cr '🔒 Security & Privacy' '🟢 Trivial' '⚡ Quick win')")" gated
+# Legacy two-field header: no effort field reads as Quick win, so Minor still
+# reaches `auto` rather than silently regressing to `review`.
+is "CR Minor, no effort field -> auto" \
+   "$(cls "$(jq -nc '{source:"cr",category_emoji:"🛠️ Refactor suggestion",severity_emoji:"🟡 Minor"}')")" auto
+is "CR no header -> review" "$(cls "$(jq -nc '{source:"cr",path:"p"}')")" review
+is "CR Nitpick -> skip" "$(cls "$(cr '📝 Nitpick' '🟡 Minor' '⚡ Quick win')")" skip
+
+# Codex flags P1/P2 on GitHub and nothing else. The old P3 branch was dead; an
+# unfamiliar badge must surface as `review`, never be applied unseen.
+is "Codex P1 -> gated" "$(cls "$(jq -nc '{source:"codex",p_badge:"1"}')")" gated
+is "Codex P2 -> gated" "$(cls "$(jq -nc '{source:"codex",p_badge:"2"}')")" gated
+is "Codex unfamiliar badge -> review" "$(cls "$(jq -nc '{source:"codex",p_badge:"3"}')")" review
+is "Codex no badge -> review" "$(cls "$(jq -nc '{source:"codex",p_badge:"none"}')")" review
+
+# --skip-minor demotes Minor unless the category is Security.
+is "skip-minor: CR Minor -> skip" \
+   "$(cls "$(cr '🎯 Functional Correctness' '🟡 Minor' '⚡ Quick win')" true)" skip
+is "skip-minor: CR Security+Minor stays gated" \
+   "$(cls "$(cr '🔒 Security & Privacy' '🟡 Minor' '⚡ Quick win')" true)" gated
+is "skip-minor: Codex P2 -> skip" "$(cls "$(jq -nc '{source:"codex",p_badge:"2"}')" true)" skip
+is "skip-minor: Codex P1 stays gated" "$(cls "$(jq -nc '{source:"codex",p_badge:"1"}')" true)" gated
+
+echo
+echo "fetch-cr-threads.sh header fields"
+
+# The inline header is `_<category>_ | _<severity>_ | _<effort>_`. Dropping the
+# third field is what made every Minor look effort-less; a body with NO header
+# must still yield a record (capture() emits nothing on a non-match, and an empty
+# value inside an object constructor deletes the whole object).
+th=$(CR_THREADS_RESPONSE_FILE="$FIX/cr-threads-3field.json" \
+       bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null)
+is "3-field header -> 4 records kept"   "$(jq 'length' <<<"$th")" 4
+is "3-field header -> category"         "$(jq -r '.[0].category_emoji' <<<"$th")" "🎯 Functional Correctness"
+is "3-field header -> severity"         "$(jq -r '.[0].severity_emoji' <<<"$th")" "🟠 Major"
+is "3-field header -> effort"           "$(jq -r '.[0].effort_emoji' <<<"$th")" "⚡ Quick win"
+is "3-field header -> heavy lift"       "$(jq -r '.[1].effort_emoji' <<<"$th")" "🏗️ Heavy lift"
+is "legacy 2-field header -> severity"  "$(jq -r '.[2].severity_emoji' <<<"$th")" "🟡 Minor"
+is "legacy 2-field header -> null effort" "$(jq -r '.[2].effort_emoji' <<<"$th")" null
+is "headerless body -> record survives" "$(jq -r '.[3].path' <<<"$th")" "src/d.py"
+is "headerless body -> null category"   "$(jq -r '.[3].category_emoji' <<<"$th")" null
+
+echo
+echo "churn-scope.sh"
+
+# A finding on lines the PREVIOUS iteration's own commit produced, or outside the
+# PR diff entirely, is churn: the reviewer has run out of pull request to review.
+CH=$(mktemp -d)
+(
+  cd "$CH" && git init -q . && git config user.email t@t && git config user.name t \
+    && git checkout -q -b main \
+    && printf 'a\nb\nc\nd\ne\n' > base.txt && git add -A && git commit -qm base \
+    && git checkout -q -b feat \
+    && printf 'a\nb\nNEW-PR\nd\ne\n' > base.txt && git add -A && git commit -qm pr-change \
+    && printf 'p\nq\n' > 'space file.txt' && printf 'p\nq\n' > '한글.txt' \
+    && git add -A && git commit -qm awkward-names \
+    && printf 'x\ny\n' > added-by-loop.txt && git add -A && git commit -qm iter-commit
+) >/dev/null 2>&1
+# PREV_SHA = HEAD~1, i.e. everything the last iteration committed.
+PREV=$(cd "$CH" && git rev-parse HEAD~1)
+ch() { (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "$PREV" main "$1" "$2"); }
+is "line added by the previous iteration -> churn" "$(ch added-by-loop.txt 1)" churn
+is "line the PR itself changed -> fresh"           "$(ch base.txt 3)" fresh
+is "line outside the PR diff -> churn"             "$(ch base.txt 5)" churn
+is "file not in the PR at all -> churn"            "$(ch untouched.txt 1)" churn
+# Iter 1 has no previous commit; the PR-diff test still applies.
+is "no PREV_SHA: PR line still fresh" \
+   "$( (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "" main base.txt 3) )" fresh
+# A file-level finding has no position to compare. Defaulting it to churn would
+# silence real file-level work, so it stays fresh.
+is "file-level finding (no line) -> fresh"  "$(ch base.txt '')" fresh
+is "non-numeric line -> fresh"              "$(ch base.txt 'null')" fresh
+# An unresolvable base must not manufacture churn out of a lookup failure.
+is "unresolvable base -> fresh" \
+   "$( (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "" no-such-ref base.txt 3) )" fresh
+# git pads the `+++` header with a tab and octal-escapes non-ASCII names. Comparing
+# the raw header text marked every finding in such a file as churn, which quietly
+# demoted real findings to cosmetic and let the loop stop early.
+is "path with a space -> fresh"             "$(ch 'space file.txt' 1)" fresh
+is "non-ASCII path -> fresh"                "$(ch '한글.txt' 1)" fresh
+rm -rf "$CH"
+
+echo
+echo "sniff-cr-rate-limit.sh permanent skip"
+
+# "Review skipped: N files exceed the limit" is not a rate-limit that resets —
+# waiting reproduces it forever. Treating it as transient let the iteration
+# converge to `clean` on a PR CodeRabbit had never actually read.
+SSHIM=$(mktemp -d)
+cat > "$SSHIM/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/issues/"*"/comments"*) echo '[{"user":{"login":"coderabbitai[bot]"},"created_at":"2030-01-01T00:00:00Z","updated_at":"2030-01-01T00:00:00Z","body":"Review skipped: 356 files exceed the limit of 300"}]' ;;
+  *"/pulls/"*"/reviews"*)   echo '[]' ;;
+  *"/pulls/"*)              echo '{"head":{"sha":"deadbeef"}}' ;;
+  *"/statuses"*)            echo '[]' ;;
+  *"/check-runs"*)          echo '{"check_runs":[]}' ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$SSHIM/gh"
+rl=$(PATH="$SSHIM:$PATH" bash "$SCRIPTS/sniff-cr-rate-limit.sh" o r 42 "2020-01-01T00:00:00Z" 2>/dev/null) || true
+is "file-limit skip -> detected"  "$(jq -r '.hits > 0' <<<"$rl" 2>/dev/null)" true
+is "file-limit skip -> permanent" "$(jq -r '.permanent' <<<"$rl" 2>/dev/null)" true
+
+# A plain quota refill is NOT permanent, and its minute count must still parse
+# through the newer "Next included review available in" phrasing.
+cat > "$SSHIM/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/issues/"*"/comments"*) echo '[{"user":{"login":"coderabbitai[bot]"},"created_at":"2030-01-01T00:00:00Z","updated_at":"2030-01-01T00:00:00Z","body":"Review limit reached. **Next included review available in:** **6 minutes**"}]' ;;
+  *"/pulls/"*"/reviews"*)   echo '[]' ;;
+  *"/pulls/"*)              echo '{"head":{"sha":"deadbeef"}}' ;;
+  *"/statuses"*)            echo '[]' ;;
+  *"/check-runs"*)          echo '{"check_runs":[]}' ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+rl2=$(PATH="$SSHIM:$PATH" bash "$SCRIPTS/sniff-cr-rate-limit.sh" o r 42 "2020-01-01T00:00:00Z" 2>/dev/null) || true
+is "quota refill -> not permanent" "$(jq -r '.permanent' <<<"$rl2" 2>/dev/null)" false
+is "'Next included review available in' -> reset parsed" \
+   "$(jq -r '.reset_minutes_estimate' <<<"$rl2" 2>/dev/null)" 6
+rm -rf "$SSHIM"
 
 echo
 echo "cr-cli-spawn.sh"
@@ -646,6 +820,56 @@ gcap2=$(bash -euo pipefail -c '
   fi
   printf "%s" "$grace_cap"')
 is "grace-cap codex_wait: pre-flight remaining wins" "$gcap2" 500
+
+# Step 13 convergence ladder. Mirrors the SKILL.md Step 13 block. The churn test
+# must be guarded by judged_this_cycle > 0, or an iteration with NO findings
+# (0 == 0) reports churn instead of clean and never files the follow-up issue.
+conv() {
+  ITER=$1 JUDGED=$2 CHURN=$3 APPLIED=$4 DEFERRED=$5 HIGH=$6 MINOR_STOP=${7:-true} REVIEW=${8:-0} \
+  bash -c '
+    if [ "$ITER" -ge 2 ] && [ "$JUDGED" -gt 0 ] && [ "$CHURN" = "$JUDGED" ]; then echo churn
+    elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$APPLIED" -gt 0 ] \
+         && [ "$HIGH" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ]; then echo minor_floor
+    elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ]; then echo clean
+    elif [ "$APPLIED" = 0 ]; then echo user_declined
+    else echo continue; fi'
+}
+# Step 15 cr_state allow-list. Mirrors the SKILL.md Step 15 block. It must be an
+# allow-list: a deny-list of failure|error lets `none` / `unknown` through, and those
+# mean CR was never observed on this SHA — merging there merges an unreviewed PR.
+merge_state() {
+  CR_STATE=$1 bash -c '
+    case "$CR_STATE" in success|pending) echo proceed;; *) echo stop;; esac'
+}
+is "cr_state success -> proceed"          "$(merge_state success)" proceed
+is "cr_state pending -> proceed"          "$(merge_state pending)" proceed
+is "cr_state none -> stop"                "$(merge_state none)" stop
+is "cr_state unknown -> stop"             "$(merge_state unknown)" stop
+is "cr_state failure -> stop"             "$(merge_state failure)" stop
+is "cr_state error -> stop"               "$(merge_state error)" stop
+
+# Step 15 append_failed gating. The flag rides on the inherited followup_issue, so it
+# only speaks for a run that actually deferred something; a clean run must not inherit
+# an older run's append failure and stay unmergeable forever.
+append_flag() {
+  DEFERRED=$1 FLAG=$2 bash -c '
+    [ "$DEFERRED" -gt 0 ] && echo "$FLAG" || echo false'
+}
+is "deferred>0 keeps append_failed"       "$(append_flag 2 true)" true
+is "deferred=0 drops stale append_failed" "$(append_flag 0 true)" false
+
+#         iter judged churn applied deferred high
+is "all findings churn -> churn"          "$(conv 2 3 3 2 1 0)" churn
+is "iter 1 never churns"                  "$(conv 1 3 3 2 1 0)" continue
+is "no findings at all -> clean not churn" "$(conv 3 0 0 0 0 0)" clean
+is "partial churn keeps looping"          "$(conv 2 3 2 2 1 0)" continue
+is "low-severity-only cycle -> minor_floor" "$(conv 2 2 0 2 0 0)" minor_floor
+is "--no-minor-stop keeps looping"        "$(conv 2 2 0 2 0 0 false)" continue
+is "high severity blocks minor_floor"     "$(conv 2 2 0 2 0 1)" continue
+# A `review`-tier item is a finding nobody could parse, so nobody examined it. Calling
+# that a floor would hand an unexamined finding to the auto-merge gate.
+is "unparsed review item blocks minor_floor" "$(conv 2 2 0 2 0 0 true 1)" continue
+is "deferred everything -> user_declined"  "$(conv 2 2 0 0 2 0)" user_declined
 
 echo
 echo "path-trust.sh"

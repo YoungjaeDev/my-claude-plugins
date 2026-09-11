@@ -158,18 +158,6 @@ for f in "${SETTINGS_CASCADE[@]}"; do
   if [ -n "$v" ]; then NATIVE_ENABLED="$v"; fi
 done
 
-# 연합 라벨: 런타임 env 가 우선, 없으면 settings 의 env 블록. 기본 off (=0).
-FED_RAW="${CORE_CONFIG_FEDERATE_MEM0:-}"
-if [ -z "$FED_RAW" ]; then
-  for f in "${SETTINGS_CASCADE[@]}"; do
-    [ -f "$f" ] || continue
-    v=$(jq -r '.env.CORE_CONFIG_FEDERATE_MEM0 // empty' "$f" 2>/dev/null || true)
-    if [ -n "$v" ]; then FED_RAW="$v"; fi
-  done
-fi
-FEDERATE=false
-if [ "$FED_RAW" = "1" ]; then FEDERATE=true; fi
-
 # --- spec ----------------------------------------------------------------
 SPEC_CLAUDE=$(count_md .claude/spec)
 SPEC_SUPERPOWERS=$(count_md docs/superpowers/specs)
@@ -309,7 +297,6 @@ jq -nc \
   --arg serena_name "$SERENA_NAME" --argjson serena_drift "$SERENA_DRIFT" \
   --argjson native_mem "$NATIVE_MEM" --argjson native_enabled "$NATIVE_ENABLED" \
   --argjson mem0_settings "$MEM0_SETTINGS" --argjson mem0_mapped "$MEM0_MAPPED" \
-  --argjson federate "$FEDERATE" \
   --argjson spec_claude "$SPEC_CLAUDE" --argjson spec_sp "$SPEC_SUPERPOWERS" \
   --argjson spec_state "$SPEC_STATE" --argjson spec_no_fm "$SPEC_NO_FM" \
   --argjson gws_cli "$GWS_CLI" --argjson gws_config "$GWS_CONFIG" \
@@ -352,8 +339,7 @@ jq -nc \
       native_memory_md: $native_mem,
       native_auto_memory_enabled: $native_enabled,
       mem0_settings: $mem0_settings,
-      mem0_project_mapped: $mem0_mapped,
-      federate_labels: $federate
+      mem0_project_mapped: $mem0_mapped
     },
     spec: {
       claude_spec: $spec_claude, superpowers_spec: $spec_sp,

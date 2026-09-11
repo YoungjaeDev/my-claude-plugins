@@ -10,7 +10,7 @@ How cr-fix v2 reads Codex review state without relying on PR timeline body order
 - "clean" (no findings)
 - "findings" (review submitted with comments)
 
-The emoji marker is visible on the PR page but its API surface is **not fully nailed down** — Explore agent's 4-repo sweep found channel A returning `[]` in every case, and channel B occasionally carrying check-runs with no state hint. Until a confirmed signal channel is found, treat emoji as a HINT for early routing, never as a definitive gate.
+The emoji marker is visible on the PR page but its API surface is **not fully nailed down** — channel A returns `[]` in practice, and channel B sometimes carries check-runs with no state hint. Until a confirmed signal channel is found, treat emoji as a HINT for early routing, never as a definitive gate.
 
 ## Two-tier reading
 
@@ -68,18 +68,18 @@ When all three channels return `unknown`:
 - If `push_age < codex_timeout_seconds` (default `600`) → treat as `in_progress` (Codex may still post).
 - Otherwise → treat as `clean` (Codex never posted; assume nothing to add).
 
-The 10-minute default matches the upper end of Codex publish latency observed in PR #30 / PR #31. Override via `CODEX_PREFLIGHT_TIMEOUT` env var when a repo shows consistently slower turnaround.
+The 10-minute default covers the upper end of Codex publish latency. Override via `CODEX_PREFLIGHT_TIMEOUT` env var when a repo shows consistently slower turnaround.
 
 ## False-emoji warning
 
-Explore noted one case (4-repo sample) where channel B reported `conclusion=success` BEFORE the review submission was created. The connector occasionally posts the check-run minutes before the review payload lands. To avoid premature `proceed`:
+Channel B can report `conclusion=success` BEFORE the review submission is created: the connector occasionally posts the check-run minutes before the review payload lands. To avoid premature `proceed`:
 
 - A `clean` emoji_state alone (no review submission AND no past `processed` review) still gates on `push_age >= 60s` minimum. Pre-flight emits `gate=codex_wait` for the first minute even on `clean` emoji.
 - A `findings` emoji_state without a review submission falls through to `codex_wait` — never `proceed`. The review is mandatory for fetching the actual comments.
 
 ## Mid-action re-review (`review.id` dedupe)
 
-CR re-review on each push is well-understood. Codex does the SAME — across iterations on PR #30 it submitted 5 distinct reviews, each with its own `id`. State file's `codex_processed_reviews` array tracks ids surfaced to the user; pre-flight + Step 6b filter against it; Step 9c.7 appends each surfaced id.
+CR re-review on each push is well-understood. Codex does the SAME: across iterations it submits distinct reviews, each with its own `id`. State file's `codex_processed_reviews` array tracks ids surfaced to the user; pre-flight + Step 6b filter against it; Step 9c.7 appends each surfaced id.
 
 **Important nuance**: Codex review `commit_id` is pinned to the SHA where the review was *submitted*. It does NOT shift forward on subsequent pushes. A naive `select(.commit_id == $CUR_SHA)` filter blinds Step 6b to legitimate reviews submitted on a prior iter SHA that the user has not yet seen. Always join on `id` instead.
 

@@ -1,7 +1,7 @@
 ---
 name: resolve-issue
 description: Resolve a GitHub issue end-to-end — analyze the issue, create a feature branch, implement the fix (TDD when the issue is marked), run verification gates, open a PR, and drive the cr-fix review loop to convergence. Use ONLY when the user explicitly types /dev:resolve-issue <number> or asks to resolve or implement a specific issue. Do NOT auto-fire from incidental issue mentions — this creates a branch, commits, and opens a GitHub PR. Flags pass through to cr-fix — --skip-review, --strict, --skip-cr-fix, --cr-fix-max, --auto-merge, --codex-grace, --no-codex, --skip-minor, --no-minor-stop, --no-generalize, --cr-source.
-allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion Task
+allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion Agent
 ---
 
 # Resolve GitHub Issue
@@ -89,23 +89,23 @@ Before starting the workflow:
    | **Narrow** (1-2 files, specific function) | Serena: `get_symbols_overview` -> `find_symbol` -> `find_referencing_symbols` |
    | **Broad** (multiple modules, architecture) | Explorer agents in parallel (preserves main context) |
 
-   **For broad changes**, spawn 2-3 Explorer agents simultaneously using Task Tool:
+   **For broad changes**, spawn 2-3 Explorer agents simultaneously using Agent tool:
 
    ```
    # Structure analysis
-   Task(
+   Agent(
      subagent_type="Explore",
      prompt="Analyze architecture related to [feature]. Map file relationships and module boundaries."
    )
 
    # Pattern analysis
-   Task(
+   Agent(
      subagent_type="Explore",
      prompt="Find similar implementations of [feature type] in the codebase."
    )
 
    # Dependency analysis
-   Task(
+   Agent(
      subagent_type="Explore",
      prompt="Identify all modules that depend on [target]. List potential breaking changes."
    )
@@ -130,14 +130,14 @@ Before starting the workflow:
 
    ```
    # For complex implementation
-   Task(
+   Agent(
      subagent_type="claude",
      model="opus",
      prompt="Implement [complex feature]. Ensure type safety and error handling."
    )
 
    # For standard implementation
-   Task(
+   Agent(
      subagent_type="claude",
      model="sonnet",
      prompt="Implement [feature] in [file]. Follow existing patterns."
@@ -151,7 +151,7 @@ Before starting the workflow:
 
    ```
    # Parallel test writing
-   Task(
+   Agent(
      subagent_type="claude",
      model="sonnet",
      prompt="Write unit tests for [file]. Target 80% coverage. Test happy path, edge cases, error conditions."
@@ -163,13 +163,13 @@ Before starting the workflow:
 
    ```
    # Parallel validation
-   Task(
+   Agent(
      subagent_type="claude",
      model="haiku",
      prompt="Run test suite and report pass/fail count."
    )
 
-   Task(
+   Agent(
      subagent_type="claude",
      model="haiku",
      prompt="Run linter and report issues."
@@ -329,7 +329,7 @@ Quality gates that must pass before commit.
 
 ### Running Verification
 ```
-Task(
+Agent(
   subagent_type="claude",
   model="haiku",
   prompt="Run verification checks for this project:
@@ -358,7 +358,7 @@ Before PR creation, implementation passes two review stages:
 ### Stage 1: Spec Compliance Review
 
 ```
-Task(
+Agent(
   subagent_type="claude",
   model="sonnet",
   prompt="Spec compliance review for issue #${ISSUE_NUMBER}
@@ -377,7 +377,7 @@ Task(
 ### Stage 2: Code Quality Review
 
 ```
-Task(
+Agent(
   subagent_type="claude",
   model="opus",
   prompt="Code quality review for issue #${ISSUE_NUMBER}

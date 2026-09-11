@@ -19,8 +19,10 @@ set -euo pipefail
 # Capture the LAST pre-flight decision before STATE_FILE is archived; the full
 # history remains in the archive copy for audit.
 PRE_FLIGHT_LAST='null'
+FOLLOWUP_ISSUE='null'
 if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
   PRE_FLIGHT_LAST=$(jq -c '.pre_flight_decisions // [] | .[-1] // null' "$STATE_FILE" 2>/dev/null || echo 'null')
+  FOLLOWUP_ISSUE=$(jq -c '.followup_issue // null' "$STATE_FILE" 2>/dev/null || echo 'null')
 fi
 
 if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
@@ -65,6 +67,7 @@ jq -nc \
   --argjson aj_defer  "$AUTO_JUDGE_DEFER" \
   --argjson aj_skip   "$AUTO_JUDGE_SKIP" \
   --argjson pf_last   "$PRE_FLIGHT_LAST" \
+  --argjson followup  "$FOLLOWUP_ISSUE" \
   '{
     iterations: $iters,
     applied_total: $applied,
@@ -79,5 +82,6 @@ jq -nc \
     cli_invocations: $cli_inv,
     rate_limit_hits: $rl_hits,
     auto_judge_stats: { apply: $aj_apply, defer: $aj_defer, skip: $aj_skip },
+    followup_issue: $followup,
     pre_flight_last: $pf_last
   }'

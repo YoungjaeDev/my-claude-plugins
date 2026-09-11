@@ -7,7 +7,7 @@ description: "Scan ALL mem0 app_ids at once — per-app memory count, noise rati
 
 ## Codex note
 
-Script is plain `python3` on all runtimes. Codex 0.135 does NOT export
+Script is plain `python3` on all runtimes. Codex does NOT export
 `CLAUDE_PLUGIN_ROOT`: always resolve `PLUGIN_ROOT` first (block below).
 
 ## Steps

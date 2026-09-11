@@ -1,6 +1,6 @@
 # Axis Contracts
 
-Shared per-axis input/output contract consumed by **all three orchestrator execution paths** — named plugin agents, generic parallel subagents, sequential in-agent. Path A (named agents) uses the full agent definitions in `../../../agents/{axis}-scout.md` as the canonical detail; this file is the portable condensation that the generic-agent and sequential paths embed inline, because `agents/*.md` are Claude-only and are **not registerable** under Codex 0.135. Keep the two in sync when an axis contract changes.
+Shared per-axis input/output contract consumed by **all three orchestrator execution paths** — named plugin agents, generic parallel subagents, sequential in-agent. Path A (named agents) uses the full agent definitions in `../../../agents/{axis}-scout.md` as the canonical detail; this file is the portable condensation that the generic-agent and sequential paths embed inline, because `agents/*.md` are Claude-only and are **not registerable** under Codex. Keep the two in sync when an axis contract changes.
 
 ## Shared query shape (input to every axis)
 
@@ -17,7 +17,7 @@ Every axis writes exactly one JSON file at `${workspace_dir}/${artifact_id}.json
 
 ```json
 {
-  "platform": "github|huggingface|web|docs|paper",
+  "platform": "github|huggingface|web|docs",
   "query_used": ["variant 1", "variant 2"],
   "ran_at": "2026-07-14T10:00:00Z",
   "findings": [
@@ -63,7 +63,7 @@ Envelope rules that hold on **every** path:
 ### `03_web` — Web axis (`platform: web`)
 - **Role**: Reddit, StackOverflow, blogs, news, announcements, person/company background.
 - **Optional inputs**: `mode` (`quick`|`deep` — drives search tiers), `site_hints`, `time_range`.
-- **Search tool order**: tier-1 `mcp__exa__web_search_exa` (always first). Deep mode also runs `WebSearch` in parallel (keyword + `site:` coverage); quick mode falls back to `WebSearch` when exa is unavailable / quota-exhausted / empty.
+- **Search tool order**: tier-1 `mcp__exa__web_search_exa` (always first). Deep mode also runs `WebSearch` in parallel (keyword + `site:` coverage); quick mode falls back to `WebSearch` when exa is unavailable / quota-exhausted / empty. Parameter shapes, query hygiene, and the exa failure modes: `exa-web-search.md` (sibling in this directory).
 - **Fetch tool order** (escalate only on failure): `mcp__exa__web_fetch_exa` → `mcp__brightdata__scrape_as_markdown` (JS-heavy / anti-bot) → `Skill("insane-search:insane-search", url=...)` (tier-4 transport for WAF / 403 / challenge on X/Reddit/Coupang; treat `challenge`/`blocked` as terminal and emit from `Highlights`). `insane-search` is **optional** — if not installed / errors, skip tier-4 and record `insane_search: not_installed` (or the error) in `errors`. Bright Data is fetch-only here: do **not** call `search_engine` / `search_engine_batch` as a search axis, and do not call `web_data_*` / `scraping_browser_*` / `scrape_batch`. If Bright Data is unconfigured, follow the preflight in `brightdata-guide.md` (sibling in this directory) and record the failing gate in `errors` instead of downgrading the fetch.
 - **Finding fields**: `title`, `published`, `source_type` (`reddit`|`stackoverflow`|`hackernews`|`blog`|`news`|`twitter`|`official_blog`|`other`), plus shared. Top-level `tools_used`, `fetch_tools_used`.
 - **Reliability**: `high` = official blog / vendor docs / stable consensus; `medium` = corroborated community thread; `low` = single tweet / opinion blog.
@@ -76,15 +76,6 @@ Envelope rules that hold on **every** path:
 - **Finding fields**: `topic`, `answer`, `source_type` (`official_docs`|`deepwiki_qa`|`deepwiki_wiki`|`other`), plus shared. Top-level `sources_used`.
 - **Reliability**: `high` = official docs / DeepWiki verbatim quote; `medium` = inferred from docs; `low` = uncertain / stale MCP content.
 - **Fallback**: if both MCPs fail / return empty write `findings: []` + `error`.
-
-### `05_paper` — Paper axis (`platform: paper`; deep + academic signal only)
-- **Role**: academic literature; metadata-only (no PDF download).
-- **Optional inputs**: `sources` (subset of `arxiv`|`semantic`|`crossref`|`pubmed`|`biorxiv`|`medrxiv`|`iacr`|`google_scholar`), `year_from`, `year_to`, `authors`, `limit`.
-- **Source selection** (pick 2-3, not all 8): CS/ML/AI/NLP/vision/RL → `arxiv`+`semantic`; medical/bio/clinical → `pubmed`+`biorxiv` (+`medrxiv` for epidemiology / clinical-trial); crypto/security → `iacr`+`semantic`; physics/chemistry → `arxiv`+`crossref`; cross-disciplinary → `semantic`+`crossref`. User `sources` overrides.
-- **Tool order**: `mcp__plugin_scout_paper-search__search_{source}` (parallel, cap ~5 searches) → optional `..._read_{source}_paper` / `get_crossref_paper_by_doi` for enrichment. Google Scholar has no read tool — enrich DOI hits via `get_crossref_paper_by_doi`. Never call `download_*`.
-- **Finding fields**: `id` (DOI lowercase with `https://doi.org/` stripped, else `arxiv:<id>` / `iacr:<year>/<n>`), `title`, `authors`, `published`, `venue`, `abstract`, `citation_count`, `kind`, plus shared. Top-level `sources_used`.
-- **Reliability**: `high` = peer-reviewed venue or arXiv preprint with citation_count > 100; `medium` = recent arXiv (< 2yr) / workshop / obscure venue; `low` = unverified / retracted / no citations and > 3yr old.
-- **Fallback**: record failed sources in `errors`, keep the rest; `findings: []` + top-level `error` only if all chosen sources fail.
 
 ## Synthesis (`synthesis-scout` agent on Path A / in-skill on Paths B-C)
 

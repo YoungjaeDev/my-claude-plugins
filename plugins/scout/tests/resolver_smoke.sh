@@ -5,7 +5,7 @@
 # names both runtimes (Claude / Codex) for resolving it.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
-PLUGIN_DIR=$(cd "$HERE/.." && pwd)                 # plugins/deepwiki
+PLUGIN_DIR=$(cd "$HERE/.." && pwd)                 # plugins/scout
 SKILL="$PLUGIN_DIR/skills/ask/SKILL.md"
 fail=0; pass(){ echo "  PASS: $1"; }; die(){ echo "  FAIL: $1"; fail=1; }
 

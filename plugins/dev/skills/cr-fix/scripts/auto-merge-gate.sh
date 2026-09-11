@@ -2,7 +2,7 @@
 # Usage: [FINAL_STATE=clean] [FOLLOWUP_ISSUE=<number>] \
 #          bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
 # Returns JSON on stdout summarizing the gates:
-#   {"cr_state":"success|...", "blocking_checks":N, "base_branch":"...",
+#   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N, "base_branch":"...",
 #    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null}
 # `eligible` covers the convergence axis only — `clean` always qualifies, and
 # `minor_floor`/`churn` qualify once the follow-up issue carrying the deferred

@@ -146,7 +146,9 @@ engagement probing. When the PR is small enough that a full CR review is not wor
 Codex is already engaged, the run flips to `codex-only` for its remaining iterations.
 
 ```bash
-if [ "$ITER" = "1" ] && [ "$CR_SOURCE" = "auto" ] && [ "$SMALL_DIFF_LOC" -gt 0 ] && [ "$gate" != "rate_limited" ] && [ "$gate" != "failure" ]; then
+# `gate=proceed` means CR already finished on this HEAD and may be holding inline findings.
+# Flipping to codex-only there makes Step 8 skip the CR fetch and lose them.
+if [ "$ITER" = "1" ] && [ "$CR_SOURCE" = "auto" ] && [ "$SMALL_DIFF_LOC" -gt 0 ] && [ "$gate" != "proceed" ] && [ "$gate" != "rate_limited" ] && [ "$gate" != "failure" ]; then
   codex_active=$(bash $SKILL_DIR/scripts/probe-codex-engagement.sh "$OWNER" "$REPO" "$PR_NUM")
   [ "$NO_CODEX" = "true" ] && codex_active=disabled
   # A checkout without origin/$BASE or a merge-base cannot measure the diff; an empty

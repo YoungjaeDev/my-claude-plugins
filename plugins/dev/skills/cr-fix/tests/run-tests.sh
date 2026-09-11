@@ -827,6 +827,30 @@ conv() {
     elif [ "$APPLIED" = 0 ]; then echo user_declined
     else echo continue; fi'
 }
+# Step 15 cr_state allow-list. Mirrors the SKILL.md Step 15 block. It must be an
+# allow-list: a deny-list of failure|error lets `none` / `unknown` through, and those
+# mean CR was never observed on this SHA — merging there merges an unreviewed PR.
+merge_state() {
+  CR_STATE=$1 bash -c '
+    case "$CR_STATE" in success|pending) echo proceed;; *) echo stop;; esac'
+}
+is "cr_state success -> proceed"          "$(merge_state success)" proceed
+is "cr_state pending -> proceed"          "$(merge_state pending)" proceed
+is "cr_state none -> stop"                "$(merge_state none)" stop
+is "cr_state unknown -> stop"             "$(merge_state unknown)" stop
+is "cr_state failure -> stop"             "$(merge_state failure)" stop
+is "cr_state error -> stop"               "$(merge_state error)" stop
+
+# Step 15 append_failed gating. The flag rides on the inherited followup_issue, so it
+# only speaks for a run that actually deferred something; a clean run must not inherit
+# an older run's append failure and stay unmergeable forever.
+append_flag() {
+  DEFERRED=$1 FLAG=$2 bash -c '
+    [ "$DEFERRED" -gt 0 ] && echo "$FLAG" || echo false'
+}
+is "deferred>0 keeps append_failed"       "$(append_flag 2 true)" true
+is "deferred=0 drops stale append_failed" "$(append_flag 0 true)" false
+
 #         iter judged churn applied deferred high
 is "all findings churn -> churn"          "$(conv 2 3 3 2 1 0)" churn
 is "iter 1 never churns"                  "$(conv 1 3 3 2 1 0)" continue

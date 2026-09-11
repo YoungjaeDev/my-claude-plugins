@@ -223,7 +223,7 @@ See `references/pre-flight-rules.md` for the full decision matrix + JSON contrac
 
 ### Step 5b: Small-diff codex-only heuristic (iter 1 only)
 
-Runs after pre-flight, so a rate-limited PR does not spend a cycle on engagement probing. On `ITER=1` with `CR_SOURCE=auto`, `SMALL_DIFF_LOC > 0`, `gate ∉ {rate_limited, failure}` and Codex active, a diff below both thresholds flips `CR_SOURCE=codex-only` for the run. Block and threshold arithmetic: `references/pre-flight-rules.md`.
+Runs after pre-flight, so a rate-limited PR does not spend a cycle on engagement probing. On `ITER=1` with `CR_SOURCE=auto`, `SMALL_DIFF_LOC > 0`, `gate ∉ {proceed, rate_limited, failure}` and Codex active, a diff below both thresholds flips `CR_SOURCE=codex-only` for the run. Block and threshold arithmetic: `references/pre-flight-rules.md`.
 
 **Three-dot, never two-dot.** `A..B` compares endpoints, so every commit the base picked up after the fork counts as part of this PR; `A...B` diffs from the merge-base, which is what GitHub shows. The same rule governs the churn axis's PR-diff test.
 
@@ -378,8 +378,6 @@ For each non-skip finding, in severity order (CR/CLI Critical → High → Major
      || { log "untrusted path: $path" >&2; auto_judge_skip=$((auto_judge_skip+1)); continue; }
    ```
    An untrusted path still gets its `auto_judge_log` record (`action: "skip"`, `reason: "untrusted-path"`, the six judgment axes left null) before `continue`, so `auto_judge_stats` and the log stay in step.
-   ```bash
-   ```
 
 2. **Sanitize** reviewer guidance (`references/sanitization-rules.md`). Refuse-and-warn on signals listed there.
 
@@ -501,7 +499,7 @@ Run only when `--auto-merge` is set and `verification_blocking=false`. The gate 
 HEAD_SHA=$(git rev-parse HEAD)
 gate=$(FINAL_STATE="$final_state" \
        FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$deferred_total" \
-       FOLLOWUP_APPEND_FAILED="$(jq -r '.followup_issue.append_failed // false' "$STATE_FILE")" \
+       FOLLOWUP_APPEND_FAILED="$([ "$deferred_total" -gt 0 ] && jq -r '.followup_issue.append_failed // false' "$STATE_FILE" || echo false)" \
        bash $SKILL_DIR/scripts/auto-merge-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$HEAD_SHA")
 eligible=$(jq -r '.eligible' <<<"$gate")
 cr_state=$(jq -r '.cr_state' <<<"$gate")
@@ -511,9 +509,10 @@ base=$(jq -r '.base_branch' <<<"$gate")
 if [ "$eligible" != "true" ]; then
   echo "auto-merge: $(jq -r '.ineligible_reason' <<<"$gate")" >&2; exit 0
 fi
-# A push this cycle leaves CR and the checks pending; `--auto` waits for them, so only a
-# failed or errored state blocks here.
-case "$cr_state" in failure|error) exit 0;; esac
+# Allow-list. A push this cycle leaves CR pending and `--auto` waits for it, so `pending`
+# qualifies — but `none` / `unknown` mean CR was never observed on this SHA, which must
+# never merge, and a deny-list would let them through.
+case "$cr_state" in success|pending) : ;; *) echo "auto-merge: cr_state=$cr_state is not a merge-approved state" >&2; exit 0;; esac
 [ "$blocking" = 0 ] || exit 0
 if [ "$proto" = 200 ]; then
   gh pr merge "$PR_NUM" --auto --squash --delete-branch && merged=true

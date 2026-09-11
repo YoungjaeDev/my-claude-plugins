@@ -1,6 +1,6 @@
 ---
 name: research-orchestrator
-description: "Multi-axis research orchestrator for code, ML, docs, and web sources: routes a query to github/hf/web/docs scouts in parallel, then synthesis-scout dedups, trust-ranks, and writes a Markdown report. Use on /scout:research-orchestrator, 'research X', '리서치해줘', 'best practices for Y', 'compare A vs B', 'deep dive', 'find boilerplate', or to refine prior research. Not for single-repo Q&A (/scout:ask), one-off library docs (context7 MCP), or non-code topics (/deep-research)."
+description: "Multi-axis research orchestrator for code, ML, docs, and web sources: routes a query to github/hf/web/docs scouts in parallel, then synthesis-scout dedups, trust-ranks, and writes a Markdown report. Use on /scout:research-orchestrator, 'research X', '리서치해줘', 'best practices for Y', 'compare A vs B', 'deep dive', 'find boilerplate', or to refine prior research. Not for single-repo Q&A (/scout:ask), one-off library docs (context7 MCP), non-code topics (/deep-research), or academic literature — papers, arXiv, citations and literature reviews have no axis here and belong to a dedicated paper-search tool."
 ---
 
 # Research Orchestrator

@@ -1,6 +1,6 @@
 # dev `new` — procedure
 
-Shared procedure body for `/dev:new` (command) and the `new` skill. Both surfaces resolve this file via `references/new-procedure.md` relative to the plugin's installed root — Claude Code exposes that root as `${PLUGIN_ROOT}`; Codex places it under `~/.codex/plugins/cache/<marketplace>/dev/<version>/`.
+Procedure body for the `new` skill (`/dev:new`), which resolves this file via `references/new-procedure.md` relative to the plugin's installed root — Claude Code exposes that root as `${PLUGIN_ROOT}`; Codex places it under `~/.codex/plugins/cache/<marketplace>/dev/<version>/`.
 
 > **Trigger surface**: explicit user invocation only. No automatic trigger (running it in the wrong directory is dangerous). The preflight guard below MUST run before any destructive op — both surfaces re-state the guard at the top of their body so it cannot be skipped.
 
@@ -8,7 +8,7 @@ Shared procedure body for `/dev:new` (command) and the `new` skill. Both surface
 
 - **Minimal seeding, explicit follow-ups**: seed only what Day 1 truly needs (the empty `.claude/` structure, a CLAUDE.md stub, AGENTS.md review guidelines, README/CHANGELOG, the gh repo). Tech-stack-based rule generation (`/docs:write-rules`) and the wiki-domain interview (`/wiki:bootstrap-wiki`) are **not invoked — only pointed to in Phase 7**. Generating generic content in an empty project imposes an overwrite cost on the user.
 - **Owner gate is mandatory**: since the user has a side-project context (personal + org repos), owner selection must not be automated — always ask in the Phase 1 interview.
-- **Codex GitHub reviewer surface**: the `## Review guidelines` section of `AGENTS.md` is what the Codex GitHub cloud reviewer reads automatically. It must be seeded at repo-creation time to take effect from the first PR.
+- **Codex GitHub reviewer surface**: the `## Code Review Rules` section of `AGENTS.md` is what the Codex GitHub cloud reviewer reads automatically. It must be seeded at repo-creation time to take effect from the first PR.
 
 ## Prerequisites
 
@@ -262,7 +262,7 @@ else
 fi
 ```
 
-The `## Review guidelines` section of AGENTS.md is read automatically by the Codex GitHub cloud reviewer ([OpenAI Codex GitHub integration](https://developers.openai.com/codex/integrations/github)) — give the user a one-line note.
+The `## Code Review Rules` section of AGENTS.md is read automatically by the Codex GitHub cloud reviewer ([OpenAI Codex GitHub integration](https://developers.openai.com/codex/integrations/github)) — give the user a one-line note.
 
 **Record.** `record_step 4 done`, or `record_step 4 skipped "AGENTS.md already exists"` when the seed is skipped (re-derive `SLUG`/`REC` + re-declare `record_step`, Phase 0.5).
 
@@ -367,7 +367,7 @@ Files seeded:
   .llmwiki/raw/.gitkeep
   .llmwiki/wiki/.gitkeep
   CLAUDE.md       (minimal stub — LLM Wiki entrypoint)
-  AGENTS.md       (variant: <variant> — includes Codex Review guidelines)
+  AGENTS.md       (variant: <variant> — includes Codex Code Review Rules)
   README.md       (6-section minimal)
   CHANGELOG.md    ([Unreleased] only)
 

@@ -27,7 +27,7 @@ Owner: {{OWNER}}
 <!-- # pnpm lint -->
 <!-- ``` -->
 
-## Review guidelines
+## Code Review Rules
 
 > 이 섹션은 Codex GitHub cloud reviewer 가 자동으로 읽는 영역이다 ([공식 문서](https://developers.openai.com/codex/integrations/github)). 한국어로 리뷰한다. 발견사항은 영향 + 근거 (파일/라인) + 수정 방향 순서로 제시한다. 근거가 부족하면 `unverified` 로 표시한다.
 

@@ -186,7 +186,7 @@ Codex 는 named agent 를 등록하지 못하므로 세 스킬은 번들 `refere
 | `/scout:ask` | GitHub 레포에 DeepWiki MCP 로 질문 |
 | `/scout:generate-llmstxt` | 레포의 `llms.txt` 생성 |
 
-**Agent team (Claude Code 전용):** `scout:github-scout`, `scout:hf-scout`, `scout:web-scout` (exa → brightdata → insane-search 4-tier fetch), `scout:docs-scout` (Context7 + DeepWiki), `scout:synthesis-scout`. Codex 에는 agent 표면이 없으므로 orchestrator 가 generic subagent 또는 순차 실행으로 같은 축을 돌린다. `scout:scout` / `scout:deep-scout` 는 마이그레이션 메시지만 반환하는 stub 이다.
+**Agent team (Claude Code 전용):** `scout:github-scout`, `scout:hf-scout`, `scout:web-scout` (exa → brightdata → insane-search 4-tier fetch), `scout:docs-scout` (Context7 + DeepWiki), `scout:synthesis-scout`. Codex 에는 agent 표면이 없으므로 orchestrator 가 generic subagent 또는 순차 실행으로 같은 축을 돌린다.
 
 ```text
 Skill("scout:research-orchestrator", "Research RAG eval frameworks 2026")

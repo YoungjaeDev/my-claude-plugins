@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent AskUserQuestion
 
 The third leg of the harness. A CI failure is a sensor reading; this skill turns it back into a green test (or an honest quarantine), closing the planner -> generator -> **healer** self-improving loop.
 
-Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `e2e-setup` generated (**Path A**); on **Codex** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
+Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `playwright-test-healer` that `e2e-setup` generated (**Path A**); on **Codex** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
 
 > **Verified against Playwright 1.61.0.** The headless `npx playwright trace` CLI was introduced in 1.59; the subcommand set below is confirmed on 1.61. The GUI viewer `npx playwright show-trace <trace.zip>` is also available if a human wants to look.
 
@@ -38,7 +38,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
    echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```
    - **Path A**: named `playwright-test-healer` is registered (Claude Code). Dispatch it by name (Step 3, unchanged).
-   - **Path B**: named agent not registerable but a generic subagent tool is available (Codex `Task`). Dispatch a generic subagent carrying the `healer` contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
+   - **Path B**: named agent not registerable but a generic subagent tool is available (`Agent`). Dispatch a generic subagent carrying the `healer` contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
    - **Path C**: no delegation available. Run the healer role yourself per the same contract.
 
 1. **Identify the failing run**:

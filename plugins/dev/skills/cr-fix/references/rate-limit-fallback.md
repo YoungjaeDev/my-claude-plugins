@@ -99,7 +99,7 @@ The table above in executable form:
 
 ```text
 if CR_SOURCE != "auto" → respect user choice:
-  - "pr-bot"     → final_state="rate_limited", break (no flip)
+  - "pr-bot"     → permanent=true: final_state="rate_limited", break; otherwise keep waiting (Step 6 timeout path), no flip
   - "cli"/"codex-only" → unreachable
 elif probe-cr-cli.sh exits 0:
   CR_SOURCE=cli; log "cr-source: auto → cli (rate-limit via ${channel}, CLI authed${reset:+, reset in ~${reset} min})"

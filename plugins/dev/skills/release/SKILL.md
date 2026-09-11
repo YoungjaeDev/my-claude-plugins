@@ -32,7 +32,7 @@ Create a versioned GitHub release: detect the current version, update the versio
    - Verify current branch is pushed to remote: `git rev-parse --abbrev-ref --symbolic-full-name @{u}`
 
 2. **Detect Previous Tag**
-   - Run `git tag --sort=-v:refname | head -1` to find the highest existing version tag. Do not use `git describe --tags --abbrev=0`: it returns the nearest tag reachable from HEAD, which is not the latest version whenever a higher tag lives on another branch — and that single value feeds both the bump base and `--notes-start-tag`.
+   - Run `git fetch --tags` and then `git tag --list 'v[0-9]*' --sort=-v:refname | head -1` to find the highest existing release tag; the pattern keeps nightly or non-release tags out of the pick. Do not use `git describe --tags --abbrev=0`: it returns the nearest tag reachable from HEAD, which is not the latest version whenever a higher tag lives on another branch — and that single value feeds both the bump base and `--notes-start-tag`.
    - If no tags exist:
      - If `--init <commit>` provided: create baseline tag at specified commit
        ```bash
@@ -142,7 +142,14 @@ Create a versioned GitHub release: detect the current version, update the versio
    else
      git commit -m "chore: release v<NEW_VERSION>"
    fi
-   git tag v<NEW_VERSION>
+   # Idempotent after a partial release: an existing tag is accepted only when it already
+   # points at this commit; a tag on a different commit is a mismatch, not something to move.
+   if git rev-parse --verify --quiet "refs/tags/v<NEW_VERSION>" >/dev/null; then
+     [ "$(git rev-list -n1 "v<NEW_VERSION>")" = "$(git rev-parse HEAD)" ] \
+       || { echo "release: tag v<NEW_VERSION> points at a different commit" >&2; exit 1; }
+   else
+     git tag v<NEW_VERSION>
+   fi
    ```
 
 9. **Push and Create Release**

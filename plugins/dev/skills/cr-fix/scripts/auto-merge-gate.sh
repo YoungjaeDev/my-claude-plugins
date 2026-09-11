@@ -25,7 +25,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 case "$FINAL_STATE" in
   clean)              eligible=true;  reason="" ;;
   minor_floor|churn)
-    if [ -n "$FOLLOWUP_ISSUE" ]; then eligible=true; reason=""
+    # Only a positive integer counts: a failed create can leave "null", "", or error text behind.
+    case "$FOLLOWUP_ISSUE" in
+      ""|*[!0-9]*|0*) eligible=false; reason="$FINAL_STATE without a valid follow-up issue number" ;;
+      *) eligible=true; reason="" ;;
+    esac
+    if [ "$eligible" = true ]; then :
     else eligible=false; reason="$FINAL_STATE without a follow-up issue"; fi ;;
   *)                  eligible=false; reason="final_state=$FINAL_STATE is not a merge-eligible convergence" ;;
 esac

@@ -160,7 +160,7 @@ Classify the request once, then run:
 
 Words like *different*, *alternatives*, *concepts*, *directions*, *options*, *시안*, *다른 디자인* select the concept branch; a bare count does not.
 
-- If a branch needs an anchor and none exists yet, generate image #1 first, then fan out from that path.
+- If a branch needs an anchor and none exists yet, generate image #1 first and count it as one of the N; fan out the remaining N-1 from that path. `--variants 4` is four generations, never five.
 - Issue the N `codex exec` calls as parallel Bash tool calls, each writing its own file.
 - Each prompt must stand alone and carry **no ordinal metadata** — no "option 2", no "1번째 시안". Ordering lives in the filename only.
 - Finish by `Read`-ing all N and presenting them with their paths so the user picks one. The picked path becomes the `--edit` target for the next revision.
@@ -183,7 +183,7 @@ The built-in image tool always writes first to `${CODEX_HOME:-~/.codex}/generate
 After `codex exec` finishes:
 
 1. Check the output directory for the expected file(s).
-2. If one is missing, recover it. `codex exec` prints `session id: <UUID>` near the top of its output. Take the newest `*.png` under that session folder — do not pin a filename pattern, it varies by Codex version — and copy it into the output directory under the requested filename base, refusing to overwrite:
+2. If one is missing, recover it. Each `codex exec` call is one session and prints `session id: <UUID>` near the top of its output; with `-n` or `--variants` there is one expected destination per generated image, so recover one source file per missing destination from the session that produced it, never one file into several destinations. Take the newest `*.png` under that session folder — do not pin a filename pattern, it varies by Codex version — and copy it into the output directory under the requested filename base, refusing to overwrite:
 
    ```bash
    src=$(ls -t "${CODEX_HOME:-$HOME/.codex}/generated_images/<session-id>"/*.png 2>/dev/null | head -1)

@@ -39,7 +39,7 @@ Does NOT change `final_state` directly. Sets `verification_blocking=true` which 
 
 ## Follow-up issue block (Step 14)
 
-Fires when `final_state ∈ {churn, minor_floor, iteration_cap}` and `deferred_total + skipped_minor > 0`.
+Fires when `final_state ∈ {churn, minor_floor, iteration_cap}` and `deferred_total > 0`. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
 
 ```bash
 # Idempotent: a re-run on the same PR reuses the issue instead of opening a second one.

@@ -106,7 +106,7 @@ BASE=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
 
 ```bash
 mkdir -p .claude/state/archive
-PRIOR_PROCESSED='[]'
+PRIOR_PROCESSED='[]'; PRIOR_ISSUE='null'
 # Step 16's EXIT trap archives the live file, so on the next run the live path is
 # usually absent — fall back to the newest archive or the Codex dedupe resets.
 # `|| true`: a first run has no archive at all.
@@ -115,6 +115,8 @@ PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
 if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
   # Fail loud before creating a new state file: a silently reset dedupe re-judges
   # every already-processed Codex review.
+  # The follow-up issue is inherited too, or every re-run on the same PR opens another one.
+  PRIOR_ISSUE=$(jq -c '.followup_issue // null' "$PRIOR_STATE" 2>/dev/null) || PRIOR_ISSUE='null'
   PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null) || {
     echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
     exit 1
@@ -127,8 +129,8 @@ if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
   fi
 fi
 STATE_FILE=".claude/state/cr-fix-${PR_NUM}.json"
-jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --arg src "$CR_SOURCE" \
-  '{start_sha:$sha,iter:0,applied_total:0,deferred_total:0,codex_processed_reviews:$prior,cr_source:($src // "pending"),pre_flight_decisions:[],auto_judge_log:[]}' \
+jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --argjson issue "$PRIOR_ISSUE" --arg src "$CR_SOURCE" \
+  '{start_sha:$sha,iter:0,applied_total:0,deferred_total:0,codex_processed_reviews:$prior,followup_issue:$issue,cr_source:($src // "pending"),pre_flight_decisions:[],auto_judge_log:[]}' \
   > "$STATE_FILE"
 
 TRACK_FILE="/tmp/cr-fix-${PR_NUM}-modified.list"; : > "$TRACK_FILE"
@@ -295,7 +297,7 @@ permanent=$(jq -r '.permanent // false' <<<"$rl")
 
 `--cr-source auto` flips to `cli` when `probe-cr-cli.sh` exits 0, else to `codex-only` when Codex is
 active, and asks only when neither channel is left. Any user-explicit `--cr-source` is final: `pr-bot`
-ends the run at `final_state=rate_limited` rather than flip. The flip persists to
+keeps waiting through a transient limit (Step 6 timeout path) and ends at `final_state=rate_limited` only on a permanent skip. The flip persists to
 `STATE_FILE.cr_source` and is sticky for the remaining iterations. Query block, full decision table,
 the install-hint line and the interactive branch: `references/rate-limit-fallback.md`.
 
@@ -356,7 +358,7 @@ cr_records=$cli_records
 ```bash
 all=$(jq -c -s 'add' <(echo "$cr_records") <(echo "$codex_records"))
 classified=$(echo "$all" | jq -c '.[]' \
-  | while read -r rec; do echo "$rec" | SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
+  | while IFS= read -r rec; do printf '%s\n' "$rec" | SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
   | jq -s '.')
 ```
 
@@ -406,7 +408,7 @@ For each non-skip finding, in severity order (CR/CLI Critical → High → Major
    | real | any | any *(over_engineering=yes)* | **skip** ("YAGNI: suggestion adds unrequested complexity; fails the senior-engineer test") |
    | real | any | small-safe | **apply** |
    | real | high (P1 / Critical / Major / Security) | large-risky | **defer** ("needs review: too invasive for autopilot") |
-   | real | low (P2 / Minor / churn) | large-risky | **skip** ("low value vs. invasiveness") |
+   | real | low / cosmetic (P2 / Minor / churn) | large-risky | **skip** ("low value vs. invasiveness") |
    | spurious / stylistic-only | any | any | **skip** ("did not match local code" / "stylistic preference, repo convention differs") |
    | ambiguous | any | any | **defer** ("needs human review on intent") |
 
@@ -479,7 +481,7 @@ done  # end of for-iter
 
 Loop exited at `ITER == MAX_ITER` with threads still actionable → `final_state=iteration_cap`; surface the remaining thread count + `target_url`.
 
-Then, when `final_state ∈ {churn, minor_floor, iteration_cap}` AND `deferred_total + skipped_minor > 0`, file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment, and do not call `dev:decompose-issue`, whose contract is explicit user invocation.
+Then, when `final_state ∈ {churn, minor_floor, iteration_cap}` AND `deferred_total > 0`, file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment, and do not call `dev:decompose-issue`, whose contract is explicit user invocation.
 
 Build the body from `auto_judge_log`'s `defer` records — reviewer prose reaches it through a file,
 never the command line — then `gh issue create --label tbd`. The block is idempotent: a re-run on the
@@ -536,7 +538,7 @@ See `references/failure-modes.md` for the `final_state` enum.
 The run is done when all of these hold:
 
 - Step 16 emitted one JSON line validating against `assets/final-output.schema.json`, with a `final_state` from the `references/failure-modes.md` enum — never `unknown`.
-- Every finding that reached Step 9c has a record in `auto_judge_log`, so `auto_judge_stats` sums to the count the Step 9a table rendered.
+- Every finding that reached Step 9c has a record in `auto_judge_log`, so `auto_judge_stats` sums to the number of non-skip, non-review items the Step 9a table rendered (9c-review items are displayed only and never judged).
 - Each iteration that applied anything produced exactly one commit and one push.
 - `final_state ∈ {churn, minor_floor, iteration_cap}` with anything deferred carries a `followup_issue`, or an explicit creation-failure message saying why auto-merge stayed blocked.
 - The PR carries no comment from this run other than a possible `@coderabbitai rate limit` query.

@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Bash Glob Grep Agent AskUserQuestion
 
 Turn a critical user flow into a reliable Playwright spec by driving the planner and generator **roles**. This skill orchestrates; the roles do the exploration and code generation.
 
-Two runtime families, three execution paths, same gates: on **Claude Code** the roles are the named agents `e2e-setup` generated via `init-agents --loop=claude` (**Path A**); on **Codex** those agent files are not registerable as named subagents, so each role runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
+Two runtime families, three execution paths, same gates: on **Claude Code** the roles are the named agents that `e2e-setup` generated via `init-agents --loop=claude` (**Path A**); on **Codex** those agent files are not registerable as named subagents, so each role runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
 
 ## Precondition check
 
@@ -36,7 +36,7 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
    echo "PLUGIN_ROOT=$PLUGIN_ROOT"
    ```
    - **Path A**: the named agents `playwright-test-planner` / `-generator` are registered (Claude Code). Dispatch them by name (Steps 2-3, unchanged).
-   - **Path B**: named agents are not registerable but a generic subagent tool is available (Codex `Task`). Dispatch one generic subagent per role, carrying the matching contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
+   - **Path B**: named agents are not registerable but a generic subagent tool is available (`Agent`). Dispatch one generic subagent per role, carrying the matching contract from `${PLUGIN_ROOT}/references/role-contracts.md` inline.
    - **Path C**: no delegation available. Run each role yourself, in order, following the same contract with your own tools (`Bash` for `npx playwright`, the `playwright-test` MCP server for browser drive).
 
 1. **Select the critical user flow(s)**:

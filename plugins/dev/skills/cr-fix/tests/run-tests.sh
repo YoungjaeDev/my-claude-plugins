@@ -225,6 +225,8 @@ is "minor_floor without issue -> ineligible" "$(elig minor_floor)" false
 is "minor_floor with issue -> eligible"      "$(elig minor_floor 321)" true
 is "churn without issue -> ineligible"       "$(elig churn)" false
 is "churn with issue -> eligible"            "$(elig churn 321)" true
+is "churn with null issue -> ineligible"     "$(elig churn null)" false
+is "churn with issue 0 -> ineligible"        "$(elig churn 0)" false
 is "iteration_cap with issue -> still ineligible" "$(elig iteration_cap 321)" false
 is "user_declined -> ineligible"             "$(elig user_declined)" false
 is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false

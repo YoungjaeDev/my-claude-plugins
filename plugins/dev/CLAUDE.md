@@ -226,7 +226,7 @@ The Codex config location is `${CODEX_HOME:-$HOME/.codex}` (`codex --help`). Har
 - **Name the owning skill for each defect**: a verdict with no next action is noise. wiring directly fixes only mechanical, reversible edits (a `.gitignore` line, creating `.tmp/`, `core.hooksPath`, serena `project_name`); anything needing judgment (`.staging` curation, wiki bootstrap/migrate, CLAUDE.md authoring, spec migration, Serena onboarding, mem0 changes) is delegated.
 - **Minimal seeding, explicit follow-ups**: seed only what Day 1 needs. Tech-stack-based rule generation and the wiki-domain interview are **not invoked, only pointed to**. Generating generic content in an empty project imposes an overwrite cost on the user.
 - **Owner gate is mandatory**: since the user has a personal + multiple-org context, never auto-decide the owner. Require an explicit choice via `AskUserQuestion`.
-- **Codex GitHub reviewer surface**: the AGENTS.md `## Review guidelines` section is what the Codex GitHub cloud reviewer reads automatically. It must be **seeded at repo-creation time** to take effect from the first PR.
+- **Codex GitHub reviewer surface**: the AGENTS.md `## Code Review Rules` section is what the Codex GitHub cloud reviewer reads automatically. It must be **seeded at repo-creation time** to take effect from the first PR.
 - **Idempotent re-runs**: on a second invocation in the same directory, preserve existing files + skip steps + print a notice. Never overwrite. (But since the hard guard aborts on the mere presence of `.git`/`.claude`, an idempotent re-run does not occur on the normal path — it only matters on the recovery path for a partial seed that bypassed the guard.)
 
 ### File layout
@@ -324,7 +324,7 @@ The three files share the same skeleton:
 
 1. `## Project context` — `{{PROJECT_NAME}}` + `{{ONE_LINER}}` (1-2 lines)
 2. `## Build / Test / Lint` — placeholder TODO
-3. `## Review guidelines` — **the section the Codex cloud reviewer reads**
+3. `## Code Review Rules` — **the section the Codex cloud reviewer reads**
    - `### Do not flag` (linter territory — handled by tooling)
    - `### P0 — Correctness / Security`
    - `### P1 — Performance / Maintainability`

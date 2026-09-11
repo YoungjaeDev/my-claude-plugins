@@ -23,7 +23,7 @@ case "$LINE" in ''|*[!0-9]*) printf 'fresh\n'; exit 0;; esac
 # count of 0 is a pure deletion, which owns no post-image line.
 hunk_hit() {
   awk -v want="$FPATH" -v ln="$LINE" '
-    /^\+\+\+ /      { f=$2; sub(/^b\//, "", f); next }
+    /^\+\+\+ /      { f=$0; sub(/^\+\+\+ /, "", f); sub(/^b\//, "", f); next }
     /^@@ /          { split($3, a, ","); s=a[1]; sub(/^\+/, "", s);
                       n = (a[2] == "" ? 1 : a[2]) + 0;
                       if (f == want && n > 0 && ln+0 >= s+0 && ln+0 < s+n) { print "hit"; exit } }

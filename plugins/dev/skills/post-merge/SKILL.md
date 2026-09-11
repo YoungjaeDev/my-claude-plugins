@@ -186,7 +186,7 @@ Skip silently when: no marker is found, or the user selects skip-all.
 ### 5. Update GitHub Project status (optional)
 
 - Extract issue refs from the PR body (`Closes #N` / `Fixes #N` / `Resolves #N`).
-- Verify the links actually closed: `gh pr view <N> --json closingIssuesReferences`. When that list is empty but the body mentions `#N` in plain text (an issue named without a closing keyword), the merge left those issues open. List them and confirm through the interactive-input gate which ones this PR resolved, then `gh issue close <N> --comment "Resolved by #<PR>"` for each confirmed one. Do not close an issue the user did not confirm.
+- Verify the links actually closed: `gh pr view <N> --json closingIssuesReferences`. Take every `#N` the body mentions, subtract the issues in that list, and what remains was named without a closing keyword, so the merge left it open. List those and confirm through the interactive-input gate which ones this PR resolved, then `gh issue close <N> --comment "Resolved by #<PR>"` for each confirmed one. Do not close an issue the user did not confirm.
 - `gh project list --owner <owner> --format json`. If none, skip silently. Else `gh project item-list` → `gh project field-list` → `gh project item-edit` to set Status to "Done". Skip if the issue is not in the project.
 
 ### 5.5. Sync milestone progress (if issues have milestones)

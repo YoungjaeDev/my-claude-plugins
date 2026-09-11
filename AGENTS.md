@@ -94,7 +94,8 @@ git add -A \
   CH=$(mktemp -d)
   trap 'rm -rf "$CH"' EXIT
   CODEX_HOME="$CH" codex plugin marketplace add "$PWD"
-  CODEX_HOME="$CH" codex plugin list --marketplace my-claude-plugins
+  CODEX_HOME="$CH" codex plugin list --marketplace my-claude-plugins --available --json \
+    | jq -e '[.available[].name] | sort == ["codex-image","council","dev","docs","ml","scout","wiki"]' >/dev/null
   ```
 - Python 테스트는 해당 플러그인 디렉터리에서 `uv run pytest`.
 

@@ -54,7 +54,7 @@ All scouts use `model: opus`. Workspace artifacts use `{NN}_{axis}.json` lexical
 |---|---|
 | `Agent(subagent_type="scout:scout")` / `Agent(subagent_type="scout:deep-scout")` | `Skill("scout:research-orchestrator")` (mode auto-detected), or call `github-scout` / `hf-scout` / `web-scout` / `docs-scout` directly for single-axis |
 
-The v2.0 `scout` / `deep-scout` agents were doc-only deprecation pointers (migration message, no search execution); both were permanently removed in the v3.0 breaking release — see the change log. Subagents cannot reliably spawn further subagents, so the fan-out + synthesis flow must be initiated from the main session via the orchestrator skill or a direct `Agent(subagent_type="scout:{axis}-scout", ...)` call. Existing scripts that called the old `subagent_type` need to migrate; there is no transparent shim.
+The v2.0 `scout` / `deep-scout` agents were doc-only deprecation pointers (migration message, no search execution); both were permanently removed in the scout 2.0.0 breaking release — see the change log. Subagents cannot reliably spawn further subagents, so the fan-out + synthesis flow must be initiated from the main session via the orchestrator skill or a direct `Agent(subagent_type="scout:{axis}-scout", ...)` call. Existing scripts that called the old `subagent_type` need to migrate; there is no transparent shim.
 
 ### code-scout 2.x → scout 2.0.0 (breaking)
 

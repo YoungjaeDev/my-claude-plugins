@@ -90,7 +90,7 @@ Before dispatch, pick the execution path **once**. This decides *how* the chosen
 | **B: generic parallel subagents** | Named `scout:*-scout` are NOT registerable, but a generic subagent-delegation tool is available (Codex `Task`). | Phase 4B: one generic subagent per axis, each carrying its `axis-contracts.md` contract inline. |
 | **C: sequential in-agent** | Neither named agents nor generic delegation is available (delegation unsupported / disabled, or concurrency exhausted / repeated dispatch failure). | Phase 4C: run the axes one at a time in the current agent, following each `axis-contracts.md` contract. |
 
-Detection is a runtime fact: Claude Code registers `agents/*.md` as plugin subagents (Path A); Codex exposes this skill but cannot register those agent files, so it lands on Path B (generic `Task` delegation), degrading to Path C only when delegation is unavailable. **Never silently drop an axis because its named agent is missing: switch paths instead.** Tell the user which path you took in one sentence.
+Detection is a runtime fact: Claude Code registers `agents/*.md` as plugin subagents (Path A); Codex exposes this skill but cannot register those agent files, so it lands on Path B (generic `Agent` delegation), degrading to Path C only when delegation is unavailable. **Never silently drop an axis because its named agent is missing: switch paths instead.** Tell the user which path you took in one sentence.
 
 ### 4. Fan-out dispatch
 

@@ -1,6 +1,6 @@
 # dev `new` — procedure
 
-Shared procedure body for `/dev:new` (command) and the `new` skill. Both surfaces resolve this file via `references/new-procedure.md` relative to the plugin's installed root — Claude Code exposes that root as `${PLUGIN_ROOT}`; Codex 0.135 places it under `~/.codex/plugins/cache/<marketplace>/dev/<version>/`.
+Shared procedure body for `/dev:new` (command) and the `new` skill. Both surfaces resolve this file via `references/new-procedure.md` relative to the plugin's installed root — Claude Code exposes that root as `${PLUGIN_ROOT}`; Codex places it under `~/.codex/plugins/cache/<marketplace>/dev/<version>/`.
 
 > **Trigger surface**: explicit user invocation only. No automatic trigger (running it in the wrong directory is dangerous). The preflight guard below MUST run before any destructive op — both surfaces re-state the guard at the top of their body so it cannot be skipped.
 
@@ -21,7 +21,7 @@ Shared procedure body for `/dev:new` (command) and the `new` skill. Both surface
 
 ```bash
 # --- Plugin root resolution (cross-runtime) ---------------------------------
-# Claude Code exports CLAUDE_PLUGIN_ROOT. Codex 0.135 does not export an
+# Claude Code exports CLAUDE_PLUGIN_ROOT. Codex does not export an
 # equivalent variable yet, so we fall back to discovering the cached plugin
 # directory. If neither path resolves we abort early — running with a wrong
 # PLUGIN_ROOT would silently miss scripts/* and assets/* later.

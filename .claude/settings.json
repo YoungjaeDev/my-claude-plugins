@@ -1,7 +1,6 @@
 {
   "plugins": {
     "local": [
-      "./plugins/core",
       "./plugins/dev",
       "./plugins/docs",
       "./plugins/scout",

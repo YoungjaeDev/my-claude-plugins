@@ -1,21 +1,18 @@
 
 # Update Progress
 
-Manually sync project progress to GitHub milestones and issues. Regenerates architecture diagrams and updates tracking sections. Follow project guidelines in `@CLAUDE.md`.
+Sync project progress to GitHub milestones and issues. Regenerates architecture diagrams and updates tracking sections. Follow project guidelines in `@CLAUDE.md`.
 
-## Entry points
+## Entry point
 
-The `/dev:update-progress` skill was retired; there is no slash command for this document.
-
-- **Automated** — `/dev:post-merge` Step 5.5 runs the workflow below for every related issue that carries a milestone.
-- **Manual full sync** — follow the workflow below by hand in the main session when tracking drifted outside a merge (issues closed by hand, a milestone renamed). Pick the target the same way the old arguments did: a milestone name selects `.claude/state/project-tracking-{slug}.json`; `--all` means every state file; `--local` means skip the GitHub writes in step 6 and only refresh the local state file (the same spellings the workflow steps check).
+`/dev:post-merge` Step 5.5 is the only entry point: it runs the workflow below for every related issue that carries a milestone. There is no slash command and no flag surface for this document — the scope words the workflow steps still name (`--all` for every state file, `--local` to skip the GitHub writes in step 6) describe the two scopes Step 5.5 can select, not user input.
 
 ## Workflow
 
 1. **Load State File**
-   - If milestone name provided: slugify and load `.claude/state/project-tracking-{slug}.json`
-   - If `--all`: scan all `.claude/state/project-tracking-*.json` files
-   - If no argument: scan for state files, if exactly one found use it, if multiple ask user to select
+   - Milestone name known: slugify and load `.claude/state/project-tracking-{slug}.json`
+   - `--all` scope: scan all `.claude/state/project-tracking-*.json` files
+   - Neither: scan for state files, if exactly one found use it, if multiple ask user to select
    - If no state file found: inform user to run `/dev:decompose-issue` first to set up tracking
 
 2. **Fetch Latest Issue States from GitHub**
@@ -159,9 +156,9 @@ The `/dev:update-progress` skill was retired; there is no slash command for this
       ```bash
       MILESTONE_NUMBER=$(cat .claude/state/project-tracking-{slug}.json | jq -r '.milestoneId')
       # If milestoneId is null, fetch from API:
-      # MILESTONE_NUMBER=$(gh api repos/:owner/:repo/milestones --jq '.[] | select(.title=="<name>") | .number')
+      # MILESTONE_NUMBER=$(gh api repos/{owner}/{repo}/milestones --jq '.[] | select(.title=="<name>") | .number')
 
-      gh api repos/:owner/:repo/milestones/$MILESTONE_NUMBER \
+      gh api "repos/{owner}/{repo}/milestones/$MILESTONE_NUMBER" \
         -X PATCH -f description="$MILESTONE_TABLE"
       ```
 

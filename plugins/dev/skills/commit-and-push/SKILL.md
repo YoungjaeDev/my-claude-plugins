@@ -1,7 +1,7 @@
 ---
 name: commit-and-push
 description: Analyze the Git changes in the files given as arguments, write a Conventional Commits message, commit, and push. Use when the user types /dev:commit-and-push, says "commit and push", or asks to commit specific files. Analyzes only the provided files (one logical change per commit), writes a type-prefixed imperative subject under 50 chars, then runs git add → git commit → git push. Follows the project CLAUDE.md commit guidelines and adds no AI attribution.
-allowed-tools: Read Bash Task
+allowed-tools: Read Bash Agent
 ---
 
 # Commit & Push
@@ -20,8 +20,8 @@ Analyze only the files provided as arguments, create an appropriate commit messa
 3. **Commit, verify (opt-in), push**:
    1. `git add <provided files>` (stage only the files passed as arguments, never `git add -A` / `git add .`)
    2. `git commit` with the message from Step 2
-   3. **If `--verify`** (default OFF): run the gates in the "Verify Gate" section below. A BUILD or TEST failure **aborts here** — the commit stays local and nothing is pushed. A LINT failure warns only (blocks only with `--strict`).
-   4. `git push`
+   3. **If `--verify`**: run the "Verify Gate" section below and obey its Enforcement rules before continuing
+   4. `git push`. A branch with no upstream needs `git push -u origin "$(git rev-parse --abbrev-ref HEAD)"`; check with `git rev-parse --abbrev-ref --symbolic-full-name @{u}` and use the `-u` form when it fails.
 
 ## Commit Message Format
 
@@ -32,6 +32,8 @@ Follow Conventional Commits rules:
 
 [optional body]
 ```
+
+**No AI attribution.** The message ends at the body: no `Co-Authored-By:` line, no "Generated with" line, no session-link trailer, whatever the ambient session convention is.
 
 ### Types
 - `feat`: New feature addition
@@ -50,15 +52,15 @@ Follow Conventional Commits rules:
 
 ## Guidelines
 
-- **Clarity**: Clearly communicate what was changed and why
-- **Follow CLAUDE.md**: Check project guidelines in `@CLAUDE.md`
-- **Single purpose**: One commit should contain only one logical change
-- **`--verify`** (default OFF): run BUILD / TEST / LINT (+ opt-in E2E) gates between commit and push. Without the flag, behavior is unchanged — plain commit + push.
-- **`--strict`**: only meaningful together with `--verify`; promotes a LINT failure from warn to a push-blocking error.
+- **Follow the project's own commit rules**: read the repository `CLAUDE.md` before writing the message; its conventions win over the defaults above
+- **Single purpose**: one commit contains one logical change
 
 ## Verify Gate
 
-Quality gates that run **only when `--verify` is passed** (Step 3.3). They run after the local commit and decide whether the push proceeds — keeping the default path (no flag) a plain commit + push.
+Two flags govern this section, both off by default:
+
+- `--verify` — run the gates below between the local commit and the push. Without it the run is a plain commit + push.
+- `--strict` — meaningful only with `--verify`; see Enforcement.
 
 ### Project Type Detection
 
@@ -71,11 +73,13 @@ Quality gates that run **only when `--verify` is passed** (Step 3.3). They run a
 
 ### Running the Gate
 
-Run BUILD / TEST / LINT in parallel via independent sub-agents (Task), then enforce:
+Run BUILD / TEST / LINT in parallel via independent sub-agents (Agent), then enforce:
+
+**Codex**: there is no sub-agent surface — run the BUILD / TEST / LINT commands inline in one bash block and apply the same enforcement below.
 
 ```
-Task(
-  subagent_type="claude",
+Agent(
+  subagent_type="general-purpose",
   model="haiku",
   prompt="Run verification checks for this project:
     1. Detect project type from config files
@@ -88,7 +92,6 @@ Task(
 
 ### Enforcement
 
-- **BUILD failure**: abort before push; the commit stays local. Report errors.
-- **TEST failure**: abort before push; the commit stays local. Report failures.
-- **LINT failure**: warn but push anyway — unless `--strict`, which makes it blocking.
-- **E2E (opt-in within `--verify`)**: if `playwright.config.*` or an `e2e/` directory is detected, run the suite (e.g. `npx playwright test`) and report. E2E failures are **warn-only — never block the push** (mirrors `resolve-issue` Step 9.4). If no E2E setup is detected, silently skip.
+- **BUILD or TEST failure**: stop before the push. Leave the commit in place, report the failing output, and give the user `git reset --soft HEAD~1` as the command to undo it — never run that reset unprompted.
+- **LINT failure**: report it and push anyway. With `--strict` it stops the push like a TEST failure.
+- **E2E**: if `playwright.config.*` or an `e2e/` directory exists, run the suite (e.g. `npx playwright test`) and report the result. E2E never blocks the push. With no E2E setup present, skip silently.

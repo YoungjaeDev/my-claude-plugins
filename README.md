@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code 를 위한 8개 플러그인 모음. GitHub 워크플로우, 리서치, 문서 저작, ML 개발, LLM-Wiki 메모리를 짧은 이름의 번들로 묶었다. Codex CLI 도 같은 소스 트리와 `.claude-plugin/` 매니페스트를 네이티브로 읽는다.
+Claude Code 를 위한 7개 플러그인 모음. GitHub 워크플로우, 리서치, 문서 저작, ML 개발, LLM-Wiki 메모리를 짧은 이름의 번들로 묶었다. Codex CLI 도 같은 소스 트리와 `.claude-plugin/` 매니페스트를 네이티브로 읽는다.
 
-[![Plugins](https://img.shields.io/badge/plugins-8-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-7-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -54,7 +54,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 
 | 옛 플러그인 | 새 번들 | 예시 |
 |---|---|---|
-| `core-config` | `core` | (hooks 전용) |
+| `core-config` | (제거) | 훅 없이 전역 지침 (`CLAUDE.md.global`) 으로 대체 |
 | `github-dev`, `project-init`, `e2e-harness` | `dev` | `/github-dev:cr-fix` → `/dev:cr-fix`, `/project-init:new` → `/dev:new` |
 | `docs-forge`, `publish` | `docs` | `/docs-forge:readme` → `/docs:readme`, `/publish:gws-sync` → `/docs:gws-sync` |
 | `code-scout`, `deepwiki`, `paper-search-tools` | `scout` | `/deepwiki:ask` → `/scout:ask`, `code-scout:github-scout` → `scout:github-scout` |
@@ -72,7 +72,6 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 # ... core-config, project-init, e2e-harness, docs-forge, publish, code-scout, deepwiki, paper-search-tools, ml-toolkit, mem0-ops
 
 # 3. 새 번들 설치 후 Claude Code 재시작
-/plugin install core@my-claude-plugins
 /plugin install dev@my-claude-plugins
 /plugin install docs@my-claude-plugins
 /plugin install scout@my-claude-plugins
@@ -86,10 +85,9 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 
 | 플러그인 | 분류 | 내용 |
 |---------|------|------|
-| `core` | Core | Python 자동 포매팅, 터미널 알림, 매 프롬프트 behavioral 주입 훅 (`prompt_inject.sh`, Claude + Codex 공유). 스킬 없음 |
-| `dev` | Development | GitHub 워크플로우 7 (commit-and-push, decompose-issue, resolve-issue, release, cr-fix, post-merge, state-tracker) + 프로젝트 셋업 2 (new, wiring) + Playwright E2E 하네스 3 (e2e-setup, e2e-author, e2e-debug) |
+| `dev` | Development | GitHub 워크플로우 7 (commit-and-push, decompose-issue, resolve-issue, release, cr-fix, post-merge, state-tracker) + 세션 인수인계 1 (session-handoff) + 프로젝트 셋업 2 (new, wiring) + Playwright E2E 하네스 3 (e2e-setup, e2e-author, e2e-debug) |
 | `docs` | Documentation | 프로젝트 문서 커맨드 4 (readme, changelog, deploy-doc, moc) + 저작 스킬 (doc-guides, write-rules, interview-methodology, skill-forge, skill-audit, skill-fleet-review) + 내보내기 (translate-web-article, gws-sync) |
-| `scout` | Research | research-orchestrator (5축 scout 에이전트 + synthesis), ask / generate-llmstxt (DeepWiki), paper-search (8개 학술 소스 MCP) |
+| `scout` | Research | research-orchestrator (github / hf / web / docs scout 에이전트 + synthesis), ask / generate-llmstxt (DeepWiki) |
 | `ml` | Development | ml-dev-principles, gradio-cv-app, cv-notebook, edit-notebook |
 | `wiki` | Memory & Lore | LLM-Wiki 3-layer (bootstrap-wiki, ingest-finding, lint-wiki, plaud-note-taking + hooks 5) + mem0 플릿 운영 (fleet-scan, cleanup) |
 | `council` | AI Models | 이종 벤더 3인 심의 (`/council:convene`). Claude 전용 |
@@ -110,23 +108,6 @@ git clone git@github.com:YoungjaeDev/my-claude-plugins.git && cd my-claude-plugi
 ## 플러그인 상세
 
 <details>
-<summary><strong>core</strong> - 훅 전용 기본 설정</summary>
-
-스킬 없이 훅만 싣는다.
-
-| Hook | Trigger | Description |
-|------|---------|-------------|
-| `prompt_inject.sh` | UserPromptSubmit, SessionStart(compact) | 한국어 응답 기본 + 핵심 규율 + `.llmwiki/insight/` 포인터 (cwd 에 knowledge root 가 있을 때) + `[council]` 위임 리마인더 (`codex` / `agy` 가 PATH 에 있을 때, Claude 전용). Codex 에서는 `codex` 인자로 `hookSpecificOutput` JSON 을 낸다 |
-| `auto-format-python.py` | PostToolUse(Write, Edit) | ruff 로 Python 포매팅 |
-| `notify_osc.py` | Stop, Notification | 크로스 플랫폼 터미널 알림 |
-
-작업 가이드라인 자체는 `~/.claude/CLAUDE.md` (저장소 정본은 `CLAUDE.md.global`) 가 담당한다.
-
-**Requirements:** `uv`, `ruff`
-
-</details>
-
-<details>
 <summary><strong>dev</strong> - GitHub 워크플로우 + 프로젝트 셋업 + E2E 하네스</summary>
 
 **GitHub 워크플로우**
@@ -136,10 +117,11 @@ git clone git@github.com:YoungjaeDev/my-claude-plugins.git && cd my-claude-plugi
 | `/dev:commit-and-push` | 변경 분석, Conventional Commits 메시지, 커밋, 푸시 |
 | `/dev:decompose-issue` | 이슈를 하위 작업으로 분해. 라벨 taxonomy 가 없으면 먼저 생성 |
 | `/dev:resolve-issue` | 이슈 해결 E2E (worktree, 구현, 리뷰, 검증, PR) |
-| `/dev:cr-fix` | CodeRabbit + Codex 리뷰를 pre-flight 로 감지해 finding 별로 apply / defer / skip 을 판단하고 clean 까지 루프. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate-limit 시 로컬 CLI 또는 Codex-only 폴백) |
-| `/dev:post-merge` | 머지 후 브랜치 정리, Project/milestone + `.claude/state/spec.json` 동기화, 학습을 CLAUDE.md / AGENTS.md / rules 에 통합, 필수 wiki lore 적재, 커밋 |
-| `/dev:release` | 버전 릴리스 + CHANGELOG |
+| `/dev:cr-fix` | CodeRabbit + Codex 리뷰를 pre-flight 로 감지해 finding 별로 apply / defer / skip 을 판단하고, 수렴·low-severity 바닥·churn 중 하나에서 정지하며 남은 지적은 후속 이슈 1건으로 넘긴다. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate-limit 시 로컬 CLI 또는 Codex-only 폴백) |
+| `/dev:post-merge` | 머지 후 브랜치 정리, Project/milestone + `.claude/state/spec.json` 동기화, 학습을 CLAUDE.md / AGENTS.md / rules 에 통합 (append 가 아니라 큐레이션), README 와 repo About(description) drift 점검, 필수 wiki lore 적재, 커밋 |
+| `/dev:release` | 버전 태그 + GitHub Release (릴리스 노트 자동 생성) |
 | `/dev:state-tracker` | `.claude/state/spec.json` (spec / issue / PR 파이프라인 집계) `read` / `init` / `start` / `complete` |
+| `/dev:session-handoff` | 컨텍스트를 비우기 전 세션 인수인계 요약 (결정, 변경, 핵심 파일, 실행 중 상태, 검증 명령, 보류·미해결 질문). 채팅 출력 전용, 파일·메모리 미기록 |
 
 **프로젝트 셋업**
 
@@ -200,12 +182,11 @@ Codex 는 named agent 를 등록하지 못하므로 세 스킬은 번들 `refere
 
 | Skill | Description |
 |-------|-------------|
-| `/scout:research-orchestrator` | 유일한 리서치 진입점. 쿼리 → mode 감지 (quick / deep) → github / hf / web / docs / paper scout 병렬 fan-out → synthesis-scout 합성 (dedup, trust ranking, 충돌 해소, Markdown 보고서) |
+| `/scout:research-orchestrator` | 유일한 리서치 진입점. 쿼리 → mode 감지 (quick / deep) → github / hf / web / docs scout 병렬 fan-out → synthesis-scout 합성 (dedup, trust ranking, 충돌 해소, Markdown 보고서) |
 | `/scout:ask` | GitHub 레포에 DeepWiki MCP 로 질문 |
 | `/scout:generate-llmstxt` | 레포의 `llms.txt` 생성 |
-| `/scout:paper-search` | arXiv, PubMed, bioRxiv, medRxiv, Google Scholar, IACR, Semantic Scholar, CrossRef 논문 검색·다운로드·읽기. 번들 `.mcp.json` 의 `paper-search` MCP 서버 (Docker) |
 
-**Agent team (Claude Code 전용):** `scout:github-scout`, `scout:hf-scout`, `scout:web-scout` (exa → brightdata → insane-search 4-tier fetch), `scout:docs-scout` (Context7 + DeepWiki), `scout:paper-scout`, `scout:synthesis-scout`. Codex 에는 agent 표면이 없으므로 orchestrator 가 generic subagent 또는 순차 실행으로 같은 축을 돌린다. `scout:scout` / `scout:deep-scout` 는 마이그레이션 메시지만 반환하는 stub 이다.
+**Agent team (Claude Code 전용):** `scout:github-scout`, `scout:hf-scout`, `scout:web-scout` (exa → brightdata → insane-search 4-tier fetch), `scout:docs-scout` (Context7 + DeepWiki), `scout:synthesis-scout`. Codex 에는 agent 표면이 없으므로 orchestrator 가 generic subagent 또는 순차 실행으로 같은 축을 돌린다. `scout:scout` / `scout:deep-scout` 는 마이그레이션 메시지만 반환하는 stub 이다.
 
 ```text
 Skill("scout:research-orchestrator", "Research RAG eval frameworks 2026")
@@ -215,7 +196,7 @@ Agent(subagent_type="scout:github-scout",
 
 정책 / 시장 / 역사 같은 비-code 토픽은 sibling `/deep-research` 를 직접 부른다.
 
-**Requirements:** `gh`, `uvx` (hf), Docker (paper-search MCP), `SEMANTIC_SCHOLAR_API_KEY` (선택)
+**Requirements:** `gh`, `uvx` (hf)
 
 </details>
 
@@ -234,7 +215,7 @@ Agent(subagent_type="scout:github-scout",
 <details>
 <summary><strong>wiki</strong> - LLM-Wiki 메모리 + mem0 플릿 운영</summary>
 
-중립 `.llmwiki/` 루트의 3-layer: `insight/` (승격된 cross-agent 규칙, `core` 의 prompt-inject 훅이 매 프롬프트 가리킴), `wiki/` (LLM 이 유지하는 lore), `raw/` (immutable evidence). 해석 순서는 `.llmwiki/wiki/` → legacy `.claude/wiki/` → `.codex/wiki/`.
+중립 `.llmwiki/` 루트의 3-layer: `insight/` (승격된 cross-agent 규칙, 전역 지침 `CLAUDE.md.global` 이 먼저 읽게 함), `wiki/` (LLM 이 유지하는 lore), `raw/` (immutable evidence). 해석 순서는 `.llmwiki/wiki/` → legacy `.claude/wiki/` → `.codex/wiki/`.
 
 | Skill | Description |
 |-------|-------------|
@@ -283,7 +264,8 @@ Cross-ref 는 typed 만 허용한다: `> Refines:` `> Contradicts:` `> Evidence:
 
 - 명시 요청 또는 작업 사양이 codex-image 를 지정한 경우만 생성, 모호하면 확인
 - 기본 출력 `assets/generated/codex-image/`, non-destructive 파일명
-- `--size` / `--quality` / `--out` / `-n` / `--edit` / `--ref` 옵션, opt-in `--model` / `--reasoning` / `--sandbox`
+- `--size` / `--quality` / `--out` / `-n` (같은 프롬프트 N장) / `--variants` (서로 다른 시안 N장, 최대 4, 전부 보여주고 고른다) / `--verbatim` / `--edit` / `--ref` 옵션, opt-in `--model` / `--reasoning` / `--sandbox`
+- Codex 는 이미지를 `$CODEX_HOME/generated_images/` 에 먼저 쓰므로, 출력 디렉터리에 없으면 세션 폴더에서 회수한다 (전 플랫폼 공통)
 - Claude 전용 (Codex 에서 돌리면 순환)
 
 **Requirements:** Codex CLI + ChatGPT OAuth 로그인
@@ -316,7 +298,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add dev@my-claude-plugins
 ```
 
-**수동 `~/.codex/hooks.json` 등록은 지우지 말고 경로만 고친다.** Codex 훅 (`core` 매 프롬프트 주입, `wiki` stale 체크 등) 의 유일한 실행 경로가 이 수동 등록이다. 2.30.0 이후 캐시 경로가 바뀌므로 항목의 스크립트 경로를 `core-config/<ver>/hooks/...` → `core/1.0.0/hooks/...`, `llm-wiki/<ver>/hooks/...` → `wiki/1.0.0/hooks/...` 로 바꾼 뒤 Codex `/hooks` 에서 trust 를 재승인한다. 승인 전까지 훅은 아무 신호 없이 실행되지 않는다. 각 플러그인의 `hooks/codex-hooks.json` 이 등록할 항목의 문서화된 소스다.
+**수동 `~/.codex/hooks.json` 등록은 지우지 말고 경로만 고친다.** Codex 훅 (`wiki` stale 체크 등) 의 유일한 실행 경로가 이 수동 등록이다. 캐시 경로가 플러그인 이름과 버전을 따르므로 항목의 스크립트 경로를 `llm-wiki/<ver>/hooks/...` → `wiki/<ver>/hooks/...` 로 바꾼 뒤 Codex `/hooks` 에서 trust 를 재승인한다. `core-config` / `core` 의 `prompt_inject.sh` 항목은 플러그인이 사라졌으므로 삭제한다 (전역 지침 `CLAUDE.md.global` 이 같은 역할을 한다). 승인 전까지 훅은 아무 신호 없이 실행되지 않는다. 각 플러그인의 `hooks/codex-hooks.json` 이 등록할 항목의 문서화된 소스다.
 
 ### 기여자 가드
 
@@ -342,9 +324,7 @@ git config core.hooksPath .githooks   # clone 당 1회
 |------|------|------|
 | [Claude Code](https://docs.anthropic.com/claude-code) | 기본 CLI | Yes |
 | `gh` | GitHub 워크플로우 | dev |
-| `uv`, `ruff` | Python 포매팅 훅 | core |
 | `jq` | 상태 파일, wiki 훅, council | dev, wiki, council |
-| Docker | paper-search MCP 서버 | scout (paper-search) |
 | Node 18+ | 가드 스크립트 | 기여자 |
 | Codex CLI | 네이티브 로드, council 좌석, codex-image | Codex 사용자 |
 
@@ -358,10 +338,9 @@ git config core.hooksPath .githooks   # clone 당 1회
 ├── .claude-plugin/
 │   └── marketplace.json      # 레지스트리 + 버전
 ├── plugins/
-│   ├── core/                 # 훅 전용 (포매팅, 알림, prompt inject)
 │   ├── dev/                  # GitHub 워크플로우 + 프로젝트 셋업 + E2E 하네스
 │   ├── docs/                 # 문서 저작 + 스킬 저작 + 내보내기
-│   ├── scout/                # 리서치 orchestrator + DeepWiki + paper-search MCP
+│   ├── scout/                # 리서치 orchestrator + DeepWiki
 │   ├── ml/                   # ML / CV 개발
 │   ├── wiki/                 # LLM-Wiki 3-layer + hooks + mem0 플릿 운영
 │   ├── council/              # 이종 벤더 3인 심의 (Claude 전용)

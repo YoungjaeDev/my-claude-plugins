@@ -29,7 +29,7 @@ Three keys the parser once assumed are **absent in 0.6.x**: `comment`, `location
 
 - `body` therefore falls back to `codegenInstructions`; without it the Step 9a table renders empty rows.
 - `line` is parsed out of `codegenInstructions`. `suggestions[0].line` is still tried first for 0.5.x compatibility, but only after a `type == "object"` guard — indexing a patch string with `.line` aborts jq (`Cannot index string with string "line"`) and, because the slurp path and the per-line fallback shared the expression, took the fallback down with it.
-- `type_emoji` stays `null`, so `classify-item.sh` falls through to its severity-only branch. That means a `minor` CLI finding with no `Refactor` header lands in the `review` tier (surfaced, not applied) — a known consequence, not a bug in the parser.
+- `category_emoji` and `effort_emoji` stay `null`, so `classify-item.sh` decides on severity alone. A `minor` CLI finding with no header therefore lands in `auto` (the absent effort field reads as `⚡ Quick win`), and only a finding with no severity either falls through to `review`.
 
 **jq gotcha, load-bearing here**: `capture()` on a non-match yields *no output*. It does not throw and it does not return null, so `try capture(...) catch null` still yields `empty` — and an `empty` anywhere inside an object constructor makes the entire object disappear. A finding with no line hint was silently dropped from the array. The parser wraps every `capture()` in `first_or_null(f): ([ f? ] | .[0])`.
 
@@ -49,7 +49,8 @@ record {
   path: "src/foo.py",
   line: 11,                  // suggestions[0].line if object, else parsed from codegenInstructions
   severity_emoji: "🟠 Major",
-  type_emoji: null,          // no `comment` -> severity-only tier classification
+  category_emoji: null,      // no `comment` -> severity-only tier classification
+  effort_emoji: null,
   body: <codegenInstructions>,
   guidance: <codegenInstructions>,
   comment_id: null           // CLI has no GitHub comment id

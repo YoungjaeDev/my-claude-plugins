@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# Usage: bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
-# Returns JSON on stdout summarizing the 4 gates:
-#   {"cr_state":"success|...", "blocking_checks":N, "base_branch":"...", "protection_http":200|404|0}
+# Usage: [FINAL_STATE=clean] [FOLLOWUP_ISSUE=<number>] \
+#          bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
+# Returns JSON on stdout summarizing the gates:
+#   {"cr_state":"success|...", "blocking_checks":N, "base_branch":"...",
+#    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null}
+# `eligible` covers the convergence axis only — `clean` always qualifies, and
+# `minor_floor`/`churn` qualify once the follow-up issue carrying the deferred
+# findings exists. The caller still enforces cr_state / blocking_checks /
+# protection_http before merging.
 # Caller (SKILL.md Step 15) decides:
 #   - protection_http == 200 → `gh pr merge --auto --squash --delete-branch`
 #   - protection_http == 404 → AskUserQuestion (Merge now / Skip / Cancel)
@@ -11,6 +17,18 @@ set -euo pipefail
 
 OWNER="${1:?}"; REPO="${2:?}"; PR_NUM="${3:?}"; HEAD_SHA="${4:?}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+: "${FINAL_STATE:=unknown}"; : "${FOLLOWUP_ISSUE:=}"
+
+# Convergence axis. A run that stopped at the low-severity floor or on churn has
+# real findings left behind; merging is allowed only once they are recorded in an
+# issue, so a failed `gh issue create` keeps the PR open by construction.
+case "$FINAL_STATE" in
+  clean)              eligible=true;  reason="" ;;
+  minor_floor|churn)
+    if [ -n "$FOLLOWUP_ISSUE" ]; then eligible=true; reason=""
+    else eligible=false; reason="$FINAL_STATE without a follow-up issue"; fi ;;
+  *)                  eligible=false; reason="final_state=$FINAL_STATE is not a merge-eligible convergence" ;;
+esac
 
 # CR state must come from the SAME dual-surface reader the rest of cr-fix uses.
 # CodeRabbit reports through EITHER the commit-status API OR a check-run,
@@ -47,4 +65,7 @@ jq -nc \
   --argjson bc "$blocking" \
   --arg base "$base" \
   --argjson http "$http" \
-  '{cr_state:$cr, blocking_checks:$bc, base_branch:$base, protection_http:$http}'
+  --argjson eligible "$eligible" \
+  --arg reason "$reason" \
+  '{cr_state:$cr, blocking_checks:$bc, base_branch:$base, protection_http:$http,
+    eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end)}'

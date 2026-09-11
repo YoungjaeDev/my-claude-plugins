@@ -14,13 +14,12 @@
 
 플러그인 트리 하나를 Claude Code 와 Codex CLI 가 함께 읽는다 (one source, two runtimes). Codex 는 `.claude-plugin/marketplace.json` 과 `plugins/*/.claude-plugin/plugin.json` 을 네이티브 폴백으로 직접 읽으므로 생성 계층이 없다.
 
-## Plugins (8)
+## Plugins (7)
 
 각 플러그인의 설명은 `jq -r '.plugins[] | "\(.name): \(.description)"' .claude-plugin/marketplace.json` 으로 읽는다. 아래 표는 이름과 분류만 유지하고, `check-doc-consistency.mjs` 가 이 이름 집합을 marketplace.json 과 대조한다.
 
 | Plugin | Category | 흡수한 옛 플러그인 |
 |--------|----------|-------------------|
-| `core` | Core | core-config |
 | `dev` | Development | github-dev, project-init, e2e-harness |
 | `docs` | Documentation | docs-forge, publish |
 | `scout` | Research & Search | code-scout, deepwiki, paper-search-tools |
@@ -39,13 +38,13 @@
 - `CLAUDE.md`: `@AGENTS.md` 한 줄. Claude Code 진입점일 뿐 별도 내용이 없다.
 - `CLAUDE.md.global`: 사용자 전역 지침의 저장소 정본 (Claude 와 Codex 공통). 고친 뒤 `cp CLAUDE.md.global ~/.claude/CLAUDE.md` 와 `cp CLAUDE.md.global ~/.codex/AGENTS.md` 로 두 런타임의 설치 사본을 갱신한다. 사본을 이 워킹트리로의 심볼릭 링크로 걸지 않는다 (브랜치 전환과 커밋 안 된 편집이 즉시 전역 지침으로 발효된다). 동기화 안내는 이 저장소에만 두고, 모든 프로젝트에서 로드되는 전역 파일에는 규칙 외의 줄을 넣지 않는다.
 - `README.md`: 사용자용 설치·마이그레이션·플러그인 문서.
-- `code_review.md`: Codex cloud reviewer 용 상세 리뷰 룰 (아래 `## Review guidelines` 가 참조).
+- `code_review.md`: Codex cloud reviewer 용 상세 리뷰 룰 (아래 `## Code Review Rules` 가 참조).
 - `.claude/settings.json`: 로컬 플러그인 auto-load 목록. 플러그인을 추가하면 여기도 등록한다 (어떤 가드도 누락을 잡지 않는다).
 - `.claude-plugin/marketplace.json`: marketplace 레지스트리와 플러그인 버전. Codex 도 이 카탈로그를 읽는다.
 - `.claude/rules/`: 경로 스코프 상세 규칙 (Claude 전용, Codex 는 못 읽는다). `plugin-versioning.md` 는 매니페스트를 만질 때, `state-envelope.md` 는 `.claude/state/*.json` 을 만질 때만 로드된다. 포인터를 `@import` 로 바꾸면 스코핑이 죽으므로 백틱으로 둔다.
-- `plugins/<name>/`: 플러그인 원본. `.claude-plugin/plugin.json` 이 매니페스트이자 버전이며 두 런타임이 같은 파일을 읽는다. `hooks/codex-hooks.json` (core, wiki) 은 수동 `~/.codex/hooks.json` 등록의 문서화된 소스다.
+- `plugins/<name>/`: 플러그인 원본. `.claude-plugin/plugin.json` 이 매니페스트이자 버전이며 두 런타임이 같은 파일을 읽는다. `hooks/codex-hooks.json` (wiki) 은 수동 `~/.codex/hooks.json` 등록의 문서화된 소스다.
 - `scripts/`: 가드 스크립트. Node 18+ 내장 모듈만 쓰고 런타임 의존성을 추가하지 않는다.
-- `.llmwiki/`: 두 런타임이 공유하는 lore 루트. per-agent 로 fork 하지 않고, wiki lore 를 `.claude/rules/` 로 승격하지 않는다 (Codex 가 못 읽는다). cross-agent 규칙은 `.llmwiki/insight/` 로 graduate 해 `core` 의 prompt-inject 훅으로 노출한다.
+- `.llmwiki/`: 두 런타임이 공유하는 lore 루트. per-agent 로 fork 하지 않고, wiki lore 를 `.claude/rules/` 로 승격하지 않는다 (Codex 가 못 읽는다). cross-agent 규칙은 `.llmwiki/insight/` 로 graduate 하고, 전역 지침 (`CLAUDE.md.global`) 의 포인터가 두 런타임에서 이를 먼저 읽게 한다.
 
 ## Codex 통합
 
@@ -55,7 +54,7 @@
 - 번들 `scripts/` 를 부르는 skill 본문은 `${CLAUDE_PLUGIN_ROOT}` 를 그대로 쓰지 않는다. Codex 는 이 변수를 export 하지 않으므로 `CLAUDE_PLUGIN_ROOT` → 소스트리 `plugins/<name>` → Codex 캐시 순의 `PLUGIN_ROOT` resolver 블록을 본문에 둔다 (참조 구현: `dev:new`, `wiki:cleanup`).
 - Codex 훅은 `codex plugin add` 만으로 실행되지 않는다. 수동 `~/.codex/hooks.json` 등록 후 `/hooks` 에서 trust 승인이 있어야 발화하고, 승인 전에는 아무 신호 없이 죽어 있다. `UserPromptSubmit`/`PostToolUse` 훅은 plain stdout 이 아니라 `hookSpecificOutput.additionalContext` JSON 을 내야 Codex 가 읽는다 (공유 스크립트는 `codex` 인자로 분기).
 - 사용자에게 되묻는 상호작용은 capability-aware 게이트로 쓴다: Claude 는 `AskUserQuestion`, Codex 는 `request_user_input` (노출된 경우), 없으면 틀린 가정의 비용이 큰 지점에서만 짧은 blocking 질문 하나를 던지고 그 외에는 문서화된 안전한 기본값으로 진행한다.
-- `AGENTS.md` 를 `CLAUDE.md` 로의 포인터로 축약하지 않는다. Codex 는 `@` 를 확장하지 않아 `@CLAUDE.md` 는 죽은 텍스트이고, Codex cloud reviewer 는 `## Review guidelines` 를 시스템 프롬프트에 직접 로드하므로 산문 redirect 를 따라가지 않는다. 실패는 조용하다.
+- `AGENTS.md` 를 `CLAUDE.md` 로의 포인터로 축약하지 않는다. Codex 는 `@` 를 확장하지 않아 `@CLAUDE.md` 는 죽은 텍스트이고, Codex cloud reviewer 는 `## Code Review Rules` 를 시스템 프롬프트에 직접 로드하므로 산문 redirect 를 따라가지 않는다. 실패는 조용하다.
 
 ## 플러그인 변경 규칙
 
@@ -69,21 +68,34 @@
 
 ## 검증
 
+한 줄로 돌리고 마지막 줄이 `verify: ok` 이면 통과다. 어느 가드든 실패하면 체인이 그 자리에서 멈추고 그 가드의 출력이 마지막에 남는다.
+
 ```bash
-git add -A                                  # 가드는 git-tracked 파일만 스캔한다
-node scripts/check-doc-consistency.mjs
-node scripts/check-shell-portability.mjs
-node scripts/check-shell-portability.test.mjs
-node scripts/check-skill-contract.mjs
-node scripts/windows-codex-hooks.test.mjs   # Windows 에서만 실행, 그 외 skip
-bash plugins/dev/skills/cr-fix/tests/run-tests.sh
-bash plugins/council/skills/convene/tests/run-tests.sh
+git add -A \
+  && node scripts/check-doc-consistency.mjs \
+  && node scripts/check-shell-portability.mjs \
+  && node scripts/check-shell-portability.test.mjs \
+  && node scripts/check-skill-contract.mjs \
+  && node scripts/windows-codex-hooks.test.mjs \
+  && bash plugins/dev/skills/cr-fix/tests/run-tests.sh \
+  && bash plugins/council/skills/convene/tests/run-tests.sh \
+  && echo "verify: ok"
 ```
+
+- `git add -A` 가 먼저다: 가드는 git-tracked 파일만 스캔한다. `windows-codex-hooks.test.mjs` 는 Windows 밖에서는 skip 으로 통과한다.
 
 - `.githooks/pre-commit` 이 매 커밋마다 같은 가드를 돌린다. clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화한다.
 - `check-shell-portability.mjs` 는 GNU 전용 셸 구문이 폴백도 capability probe 도 없이 쓰인 경우만 잡는다. 증거는 코드여야 하고 주석은 인정하지 않는다. 예외는 `# portability-ok: <사유>` 로 표시한다. 상세는 `README.md` 의 "CI 가드가 지키는 것".
 - macOS CI 레그(`validate-codex.yml` 의 `macos` job)가 BSD 폴백이 실제로 실행되는 유일한 지점이다. `/bin/bash` 로 돌려 bash 3.2 를 강제한다.
-- Codex 카탈로그 확인: `codex plugin marketplace add "$PWD" && codex plugin list --marketplace my-claude-plugins && codex plugin marketplace remove my-claude-plugins` (8 entries).
+- Codex 카탈로그 확인은 일회용 `CODEX_HOME` 에서 돌린다 (7 entries). 실제 홈에서 `marketplace add` 하면 기존 등록과 소스가 달라 실패하고, 이어지는 `marketplace remove` 는 레시피가 만든 것이 아니라 원래 등록을 지운다. 정리는 `trap` 이 맡으므로 검증 명령의 종료 상태가 그대로 남는다.
+
+  ```bash
+  set -e
+  CH=$(mktemp -d)
+  trap 'rm -rf "$CH"' EXIT
+  CODEX_HOME="$CH" codex plugin marketplace add "$PWD"
+  CODEX_HOME="$CH" codex plugin list --marketplace my-claude-plugins
+  ```
 - Python 테스트는 해당 플러그인 디렉터리에서 `uv run pytest`.
 
 ## 문서 작성 스타일
@@ -92,11 +104,11 @@ bash plugins/council/skills/convene/tests/run-tests.sh
 - README 류는 실제 설치·사용 흐름을 우선하고, 플러그인 수·이름·명령어 예시는 매니페스트와 일치시킨다.
 - 스킬 본문과 플러그인 `CLAUDE.md` 는 영어로 쓴다 (두 런타임과 Codex cloud reviewer 가 한 언어를 읽는다). 도메인 콘텐츠와 `description:` 의 한국어 트리거 문구는 예외다.
 
-## Review guidelines
+## Code Review Rules
 
 > 이 섹션은 Codex GitHub cloud reviewer 가 자동으로 읽는 영역이다. 한국어로 리뷰한다. 발견사항은 영향 + 근거 (파일/라인) + 수정 방향 순서로 제시한다. 근거가 부족하면 `unverified` 로 표시한다.
 >
-> **상세 리뷰 룰 (Do-not-flag / P0 / P1 / Domain-specific 전문) 은 루트 [`code_review.md`](code_review.md) 로 분리했다.** OpenAI Codex best-practices 문서 기준, `AGENTS.md` 가 참조하는 `code_review.md` 를 리뷰어가 리뷰 시 따라가 읽을 수 있다 (소프트 개런티 — <https://developers.openai.com/codex/learn/best-practices>). 이 `## Review guidelines` 섹션 자체는 리뷰어 시스템 프롬프트에 **직접** 로드되므로 (하드 개런티), 아래에 핵심 최소본을 인라인으로 남겨 `code_review.md` 를 따라가지 못하는 경우에도 P0/P1 은 항상 적용되게 한다. GitHub cloud reviewer 는 P0/P1 만 코멘트로 표면화한다 (<https://developers.openai.com/codex/code-review>).
+> **상세 리뷰 룰 (Do-not-flag / P0 / P1 / Domain-specific 전문) 은 루트 [`code_review.md`](code_review.md) 로 분리했다.** OpenAI Codex best-practices 문서 기준, `AGENTS.md` 가 참조하는 `code_review.md` 를 리뷰어가 리뷰 시 따라가 읽을 수 있다 (소프트 개런티 — <https://learn.chatgpt.com/guides/best-practices>). 이 `## Code Review Rules` 섹션 자체는 (Codex 가 규정한 헤딩명) 리뷰어 시스템 프롬프트에 **직접** 로드되므로 (하드 개런티), 아래에 핵심 최소본을 인라인으로 남겨 `code_review.md` 를 따라가지 못하는 경우에도 P0/P1 은 항상 적용되게 한다. GitHub cloud reviewer 는 P0/P1 만 코멘트로 표면화한다 (<https://learn.chatgpt.com/docs/third-party/github>).
 
 ### 핵심 최소본 (전문은 `code_review.md`)
 - **P0 (must-block)** — secret/token 노출, 사용자 확인 없는 destructive `gh` 명령 (`gh pr merge` / `gh repo create` / `gh api`), shell injection (사용자 입력 unquoted).
@@ -108,12 +120,16 @@ bash plugins/council/skills/convene/tests/run-tests.sh
 
 이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:cr-fix` 스킬이 양쪽을 동시에 처리한다 (`plugins/dev/skills/cr-fix/SKILL.md` + `references/` + `scripts/`). PR-bot rate-limit 시 `--cr-source auto` 가 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback 한다.
 
+CodeRabbit inline 헤더는 `_<카테고리>_ | _<심각도>_ | _<노력>_` (예: `_🎯 Functional Correctness_ | _🟠 Major_ | _⚡ Quick win_`) 이다. 첫 필드는 이슈 타입이 아니라 카테고리이므로 티어는 심각도 우선으로 정한다. Codex 는 GitHub 에서 P1/P2 만 표면화한다.
+
 | Source | Tier 정책 |
 |--------|-----------|
-| CR `🚨 Bug` / `⚠️ Potential issue` / `🔒 Security` / `🔴 Critical-High` / `🟠 Major` | `gated` — per-issue 확인 |
-| CR `🛠️ Refactor` (`🟡 Minor` / `🟢 Trivial` / `🟢 Info`) | `auto` — 자동 적용 |
-| CR `📝 Nitpick` | `skip` |
+| CR 카테고리 `🔒 Security & Privacy` | `gated` — 심각도 무관 |
+| CR `🔴 Critical` / `🟠 Major` | `gated` — per-issue 확인 |
+| CR `🟡 Minor` + `🏗️ Heavy lift` | `gated` |
+| CR `🟡 Minor` + `⚡ Quick win` (또는 effort 필드 없음) | `auto` — 자동 적용 |
+| CR `🟢 Trivial` / `🟢 Info` | `skip` |
+| CR `📝 Nitpick` (리뷰 요약 `<details>` 전용) | `skip` |
 | Codex P1 (red), P2 (yellow) | `gated` |
-| Codex P3 (green) | `skip` |
 
-cr-fix 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지 (auto-merge 불가), `--no-minor-stop` 으로 비활성화. **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 cr-fix state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.
+cr-fix 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지, `--no-minor-stop` 으로 비활성화. **churn stop** (opt-out 없음) — iter 2 부터 이번 사이클 finding 이 전부 직전 iter 커밋 위나 PR diff 밖이면 `final_state=churn` 으로 정지. **후속 이슈 1건** — `final_state` 가 `churn` / `minor_floor` / `iteration_cap` 이고 deferred 가 있으면 `gh issue create --label tbd` 로 1건 발행한다 (`dev:decompose-issue` 는 호출하지 않는다). **auto-merge** — `clean`, 또는 후속 이슈 발행에 성공한 `minor_floor` / `churn` 만 통과하고 이슈 발행 실패 시 머지를 차단한다. cr-fix 는 `@coderabbitai rate limit` 외에 어떤 PR 댓글도 올리지 않는다 (재리뷰는 push 가 트리거한다). **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 cr-fix state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.

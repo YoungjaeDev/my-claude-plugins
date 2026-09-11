@@ -80,7 +80,7 @@ Map the JSON to verdicts. Suppress an `ASK` only when its key in `.answers` hold
 | rules scoping | `.rules_scoping` | — | `paths_defeated_by_import` non-empty | — | drop the `@` (mechanical, Step 4) |
 | wiki | `.llmwiki` | `staging_pending > 0` | `state: absent`; `state: legacy`; `state: current` but `insight_layer: false` or `raw_source_buckets: false` | — | pending → `/wiki:ingest-finding`; absent → `/wiki:bootstrap-wiki`; legacy → manual migration per `/wiki:bootstrap-wiki` guidance |
 | serena | `.serena` | — | `state: not-registered` / `registered`; `name_drift: true` | — | onboard via Serena MCP `onboarding`; drift → edit `.serena/project.yml` |
-| memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md`; `mem0_settings: true` but `federate_labels: false`; `mem0_project_mapped: false` | — | see "Memory posture" below |
+| memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md`; `mem0_project_mapped: false` | — | see "Memory posture" below |
 | mcp config | `.mcp` | `duplicates_drifted` non-empty | `duplicates` non-empty (identical copies); `unreadable` non-empty | — | collapse to one file (see below) |
 | codex | `.codex` | `agents_md_bytes + global_agents_md_bytes` > `project_doc_max_bytes` | same sum ≥ 80% of `project_doc_max_bytes` | **INFO** otherwise when `config: true` | over cap → trim `AGENTS.md` or raise `project_doc_max_bytes`; else visibility only |
 | spec | `.spec` | — | `missing_frontmatter > 0` | **INFO** `claude_spec > 0` **and** `superpowers_spec > 0` | `/dev:state-tracker init` |
@@ -213,7 +213,7 @@ Four surfaces, one role each:
 
 When `native_auto_memory_enabled` and `mem0_settings` are both true, two writers fight: mem0's `block_memory_write.sh` PreToolUse hook blocks `Write`/`Edit` to `MEMORY.md`, so the native file is loaded into every session's context yet cannot be updated. It rots silently.
 
-Resolving it means user-scope settings changes — `autoMemoryEnabled: false`, plus `CORE_CONFIG_FEDERATE_MEM0=1` to activate the `[AUTHORITATIVE]` / `[RECALL]` labels in the prompt-inject hook. Both live outside this repo. Report the conflict, name the change, apply only with explicit approval, and never edit `~/.claude/settings.json` as part of "apply all".
+Resolving it means a user-scope settings change — `autoMemoryEnabled: false` — which lives outside this repo. Report the conflict, name the change, apply only with explicit approval, and never edit `~/.claude/settings.json` as part of "apply all".
 
 `autoMemoryEnabled` resolves through the settings cascade (user < project < local); unset means native auto-memory is ON.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: BASE=<base-branch> PR_NUM=N ITER=N CONFIG_FILES="CLAUDE.md AGENTS.md" bash scripts/cr-cli-spawn.sh
-# Spawns `coderabbit review --agent --type committed --base $BASE` in foreground,
+# Spawns `coderabbit review --agent --committed --base $BASE` in foreground,
 # writing JSONL to a mktemp-created /tmp/cr-cli-review-${PR_NUM}-iter${ITER}-XXXXXX file.
 # Caller wraps this script with Bash(run_in_background=true, timeout=TIMEOUT*1000).
 # Prints terminal JSON marker on stdout: {"jsonl":"<path>","exit":N,"emitted_complete":bool}
@@ -17,7 +17,7 @@ OUT=$(mktemp "/tmp/cr-cli-review-${PR_NUM}-iter${ITER}-XXXXXX")
 read -r -a CONFIG_FILES_ARR <<< "$CONFIG_FILES"
 
 set +e
-coderabbit review --agent --type committed --base "$BASE" --config "${CONFIG_FILES_ARR[@]}" > "$OUT" 2>&1
+coderabbit review --agent --committed --base "$BASE" --config "${CONFIG_FILES_ARR[@]}" > "$OUT" 2>&1
 rc=$?
 set -e
 

@@ -15,11 +15,11 @@ Karpathy LLM-Wiki 3-layer system packaged as a plugin. Universal: works in any r
 
 | Layer | Path | Loaded? | Purpose |
 |-------|------|---------|---------|
-| **Insight (promoted)** | `.llmwiki/insight/**` | via `core` `prompt_inject.sh` hook (Claude + Codex), every prompt | cross-agent promoted rules: recurring, generalizable, costly-to-violate, stabilized |
+| **Insight (promoted)** | `.llmwiki/insight/**` | via user-global instructions (`CLAUDE.md.global`, copied to `~/.claude/CLAUDE.md` + `~/.codex/AGENTS.md`), once per session | cross-agent promoted rules: recurring, generalizable, costly-to-violate, stabilized |
 | **Wiki (lore)** | `.llmwiki/wiki/**` | on-demand | LLM-maintained domain knowledge |
 | **Raw evidence** | `.llmwiki/raw/**` (+ external docs) | direct read | append-only immutable evidence: wiki cites, never copies |
 
-All three layers live under the neutral `.llmwiki/` root: one copy, both agents (Claude + Codex read the same tree in place). wiki no longer maintains a `.claude/rules/` schema layer: Codex never reads `.claude/rules/`, so cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes via the prompt-injection hook instead of Claude's `paths:`-glob auto-load. `.claude/rules/` stays reserved for mechanical tool-operation rules (e.g. versioning), not wiki lore. See `> See-also: [[insight-layer-via-hook]]` in `.llmwiki/wiki/llm-wiki-design/`.
+All three layers live under the neutral `.llmwiki/` root: one copy, both agents (Claude + Codex read the same tree in place). wiki no longer maintains a `.claude/rules/` schema layer: Codex never reads `.claude/rules/`, so cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes via the `CLAUDE.md.global` pointer (copied to `~/.claude/CLAUDE.md` + `~/.codex/AGENTS.md`) instead of Claude's `paths:`-glob auto-load. `.claude/rules/` stays reserved for mechanical tool-operation rules (e.g. versioning), not wiki lore. See `> See-also: [[insight-layer-via-hook]]` in `.llmwiki/wiki/llm-wiki-design/`.
 
 Karpathy analogy: insight = `__init__.py` public contract, wiki = module docstrings + design notes, skills = CLI subcommands.
 
@@ -97,11 +97,13 @@ Spec / issue / PR work-pipeline aggregate (`.claude/state/spec.json`) is owned b
 
 ## MOC-first lookup (the retired query-wiki convention)
 
-There is no lookup skill: read `<wiki-root>/index.md` first and follow its hook to the page. The plugin delivers that rule itself through the `wiki_session_start_lint_hint.sh` SessionStart hook (`[wiki-moc]` line, once per 4h per cwd whenever a wiki root resolves), so an installed copy carries it into repos whose own guidance never mentions the wiki. This repo's `AGENTS.md` and the core prompt-inject hook repeat it for their own readers.
+There is no lookup skill: read `<wiki-root>/index.md` first and follow its hook to the page. The plugin delivers that rule itself through the `wiki_session_start_lint_hint.sh` SessionStart hook (`[wiki-moc]` line, once per 4h per cwd whenever a wiki root resolves), so an installed copy carries it into repos whose own guidance never mentions the wiki. This repo's `AGENTS.md` and the user-global instructions (`CLAUDE.md.global`) repeat it for their own readers.
 
 ## Codex hooks (descriptor shipped, manual wiring)
 
 A source-controlled `hooks/codex-hooks.json` descriptor still ships with the plugin (`UserPromptSubmit` / `SessionStart` ×2 / `Stop` / `SubagentStop` / `PostToolUse:Bash`), but **nothing wires it automatically**: the generated Codex manifest layer was removed in the 2026-08 restructure, and `.claude-plugin/plugin.json`'s `hooks` field is the Claude-format inline object Codex does not consume. A Codex machine that wants these hooks registers them manually via `~/.codex/hooks.json` (then approves them with `/hooks`; Codex requires hook trust). The scripts remain Codex-ready: Codex reads model-visible context only from a `hookSpecificOutput.additionalContext` JSON envelope (plain stdout is ignored), so `wiki_stale_check.sh` (UserPromptSubmit) and `wiki_post_commit_hint.sh` (PostToolUse) take a `codex` arg that switches their output to that envelope. The Claude no-arg path stays byte-identical. The two SessionStart hints already emit the envelope, and the capture hooks are side-effect only.
+
+Registering the hooks is not enough on its own: `/hooks` records trust in `~/.codex/config.toml`, not in `hooks.json`, as `[hooks.state."<source path>:<event>:<i>:<j>"]` entries carrying a `trusted_hash` (sha256). With no matching `config.toml` entry the hook is skipped silently, with no error and no warning. A `hook: UserPromptSubmit` (or `PostToolUse`) line in `codex exec` output does not confirm one of these wiki hooks fired: the same line comes from any already-trusted hook registered elsewhere, so identify a hook by its command path, never by the event name. `trusted_hash` is presumably a content hash, so editing `wiki_stale_check.sh` or `wiki_post_commit_hint.sh` after approval probably forces re-approval — unverified. Details: `.llmwiki/wiki/runtimes/codex-plugin-surfaces.md`.
 
 ## Conditional behavior
 

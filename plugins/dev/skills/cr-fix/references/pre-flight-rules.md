@@ -56,6 +56,8 @@ The sniff script (`scripts/sniff-cr-rate-limit.sh`) checks three locations:
 2. review body (`submitted_at > push_time`).
 3. commit-status `description` (no time check; latest CodeRabbit status only).
 
+A hit whose text is `Review skipped: N files exceed the limit of M` additionally carries `permanent: true` — a skip no reset clears. It routes to `rate_limited` like any other hit, but Step 7c must not offer to wait it out, and the iteration must never converge to `clean` on it (`references/rate-limit-fallback.md`).
+
 Hit on ANY of the three → rate-limited — **except** a `comment`-channel-only hit while the commit-status already reports a terminal `success`/`failure`. The commit-status/check-run is authoritative, so a lingering rate-limit comment (stale from an earlier push, or CR's in-place edit that outlived the real review) does not override it. The `description` and `both` channels are commit-status-derived and keep override authority.
 
 ## Codex review id read
@@ -121,7 +123,7 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
   "gate": "proceed|cr_wait|codex_wait|rate_limited|failure",
   "codex_timeout_active": true,
   "push_age_seconds": 42,
-  "rate_limit_source": "comment|description|none"
+  "rate_limit_source": "comment|description|both|none"
 }
 ```
 
@@ -136,3 +138,28 @@ Any `gh api` returning a non-2xx propagates as `error` for that channel only —
 ## Polling-interval coupling
 
 When `gate == cr_wait` or `gate == codex_wait`, Step 6 / 6b take over with `INTERVAL` controlling poll frequency. The plan moves the default from `60s` to `8s` (within the 5-10s pseudo-interrupt window) because pre-flight already absorbs the cold-start latency that justified the original 60s value.
+
+## Small-diff codex-only heuristic (Step 5b)
+
+Runs once, on `ITER=1`, after the pre-flight gate so a rate-limited PR does not spend a cycle on
+engagement probing. When the PR is small enough that a full CR review is not worth a quota slot and
+Codex is already engaged, the run flips to `codex-only` for its remaining iterations.
+
+```bash
+if [ "$ITER" = "1" ] && [ "$CR_SOURCE" = "auto" ] && [ "$SMALL_DIFF_LOC" -gt 0 ] && [ "$gate" != "rate_limited" ] && [ "$gate" != "failure" ]; then
+  codex_active=$(bash $SKILL_DIR/scripts/probe-codex-engagement.sh "$OWNER" "$REPO" "$PR_NUM")
+  [ "$NO_CODEX" = "true" ] && codex_active=disabled
+  if [ "$codex_active" = "active" ]; then
+    loc=$(git diff --shortstat "origin/$BASE...HEAD" 2>/dev/null | awk '{s=0; for(i=1;i<=NF;i++) if($i~/^[0-9]+$/ && ($(i+1)~/insertion/||$(i+1)~/deletion/)) s+=$i; print s+0}')
+    files=$(git diff --name-only "origin/$BASE...HEAD" 2>/dev/null | wc -l)
+    if [ "${loc:-0}" -lt "$SMALL_DIFF_LOC" ] && [ "${files:-0}" -lt "$SMALL_DIFF_FILES" ]; then
+      echo "cr-source: auto → codex-only (small diff: ${loc} LoC / ${files} files, Codex active)"
+      CR_SOURCE=codex-only
+    fi
+  fi
+fi
+```
+
+Both thresholds must hold; `--small-diff-threshold-loc 0` disables the heuristic entirely. The
+`origin/$BASE...HEAD` three-dot range is the merge-base diff GitHub itself shows — a two-dot range
+would count every commit the base picked up after the fork.

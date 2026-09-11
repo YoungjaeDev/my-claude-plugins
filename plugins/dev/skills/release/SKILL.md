@@ -6,7 +6,12 @@ allowed-tools: Read Edit Bash AskUserQuestion
 
 # Release
 
-Create a versioned GitHub release with automatic version detection, version file updates, tagging, and changelog generation via `gh release create --generate-notes`.
+Create a versioned GitHub release: detect the current version, update the version manifests, commit, tag, push, and let `gh release create --generate-notes` write the release-page notes. The repository's `CHANGELOG.md` is not this skill's file — `dev:post-merge` Step 9.5 and `docs:changelog` own it.
+
+## Guidelines
+
+- **Interactive input is capability-aware.** Every prompt and confirmation below is a gate, not one hardcoded tool: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (the tag, the push, `gh release create`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+- **The tag and the release are public and irreversible.** Never run Steps 8-9 without the Step 5 confirmation, and never publish a tag this run did not create.
 
 ## Arguments
 
@@ -27,7 +32,7 @@ Create a versioned GitHub release with automatic version detection, version file
    - Verify current branch is pushed to remote: `git rev-parse --abbrev-ref --symbolic-full-name @{u}`
 
 2. **Detect Previous Tag**
-   - Run `git describe --tags --abbrev=0 2>/dev/null` to find the latest tag
+   - Run `git tag --sort=-v:refname | head -1` to find the highest existing version tag. Do not use `git describe --tags --abbrev=0`: it returns the nearest tag reachable from HEAD, which is not the latest version whenever a higher tag lives on another branch — and that single value feeds both the bump base and `--notes-start-tag`.
    - If no tags exist:
      - If `--init <commit>` provided: create baseline tag at specified commit
        ```bash
@@ -54,7 +59,7 @@ Create a versioned GitHub release with automatic version detection, version file
    - Read current version from the first detected file
    - Cross-check with latest git tag version
    - If no version files found, prompt user for the file path
-   - Store list of all detected files for batch update in Step 6
+   - Store list of all detected files for batch update in Step 7
 
 4. **Determine New Version**
 
@@ -127,15 +132,26 @@ Create a versioned GitHub release with automatic version detection, version file
 
 8. **Commit and Tag**
 
+   Commit only when Step 7 actually staged something. A re-run, or a version the manifests already
+   carry, stages nothing, and a bare `git commit` then aborts on `nothing to commit` and takes the
+   tag down with it:
+
    ```bash
-   git commit -m "chore: release v<NEW_VERSION>"
+   if git diff --cached --quiet; then
+     echo "release: version files already at v<NEW_VERSION> — tagging the existing commit"
+   else
+     git commit -m "chore: release v<NEW_VERSION>"
+   fi
    git tag v<NEW_VERSION>
    ```
 
 9. **Push and Create Release**
 
+   Push the branch and **only the tag this run created**. `--tags` would publish every local tag, including an `--init` baseline or an unrelated experiment:
+
    ```bash
-   git push origin <current-branch> --tags
+   git push origin <current-branch>
+   git push origin "v<NEW_VERSION>"
    ```
 
    Build the `gh release create` command:
@@ -156,8 +172,6 @@ Create a versioned GitHub release with automatic version detection, version file
     ```
     Release created: https://github.com/<owner>/<repo>/releases/tag/v<NEW_VERSION>
     ```
-
-> Follow ~/.claude/CLAUDE.md and project CLAUDE.md.
 
 ## Version File Detection Details
 
@@ -191,3 +205,5 @@ Example first-time setup:
 /dev:release --minor
 # -> Creates v0.1.0 with changelog from v0.0.0..HEAD
 ```
+
+> Follow ~/.claude/CLAUDE.md and project CLAUDE.md.

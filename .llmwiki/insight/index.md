@@ -6,7 +6,7 @@ last_verified: 2026-09-04
 
 # Insight Map of Content (MOC)
 
-The **insight layer** is the promoted, cross-agent-visible top of the knowledge system. It holds the small set of findings that earned graduation from `.llmwiki/wiki/`. Both Claude Code and Codex read it (it lives under the neutral `.llmwiki/` root), and the `core` `prompt_inject.sh` hook points every prompt here *first*, before the wiki MOC.
+The **insight layer** is the promoted, cross-agent-visible top of the knowledge system. It holds the small set of findings that earned graduation from `.llmwiki/wiki/`. Both Claude Code and Codex read it (it lives under the neutral `.llmwiki/` root), and the user-global instructions (`CLAUDE.md.global`, installed as `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`) point both runtimes here *first*, before the wiki MOC.
 
 > **For LLMs**: consult this MOC before acting on remembered guidance. Entries are extremely condensed (rule + when-to-apply + why). Follow `promoted_from:` / `> Evidence:` down to the wiki/raw page for the full story — never inline that detail back up here.
 

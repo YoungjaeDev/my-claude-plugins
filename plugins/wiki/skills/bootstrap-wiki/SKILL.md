@@ -5,9 +5,9 @@ description: "Use to scaffold the LLM-Wiki knowledge system (.llmwiki/ insight +
 
 # bootstrap-wiki
 
-LLM-Wiki 3-layer = `.llmwiki/insight/` (promoted cross-agent rules) + `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence). This skill drops the empty layout into any repo so the per-PR workflow (spec → resolve-issue → post-merge → ingest) has a place to land. All three layers live under the neutral `.llmwiki/` root so no per-agent transform can fork them: one copy, both agents (Claude Code + Codex). This skill does **not** scaffold a `.claude/rules/` schema layer: Codex can't read it, so cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes via the `core` prompt-injection hook instead. `.claude/rules/` stays reserved for mechanical tool-operation rules (not wiki lore), which this skill leaves to the project.
+LLM-Wiki 3-layer = `.llmwiki/insight/` (promoted cross-agent rules) + `.llmwiki/wiki/` (LLM-maintained lore) + `.llmwiki/raw/` (immutable evidence). This skill drops the empty layout into any repo so the per-PR workflow (spec → resolve-issue → post-merge → ingest) has a place to land. All three layers live under the neutral `.llmwiki/` root so no per-agent transform can fork them: one copy, both agents (Claude Code + Codex). This skill does **not** scaffold a `.claude/rules/` schema layer: Codex can't read it, so cross-agent rules graduate to `.llmwiki/insight/` and reach both runtimes via the user-global instructions (`CLAUDE.md.global`, copied to `~/.claude/CLAUDE.md` + `~/.codex/AGENTS.md`) instead. `.claude/rules/` stays reserved for mechanical tool-operation rules (not wiki lore), which this skill leaves to the project.
 
-> Ships with `wiki` plugin; install via marketplace. Templates bundled at `<plugin-root>/skills/bootstrap-wiki/assets/templates/`. Step 3 resolves `<plugin-root>` across runtimes (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache), since Codex 0.135 does not export `CLAUDE_PLUGIN_ROOT`.
+> Ships with `wiki` plugin; install via marketplace. Templates bundled at `<plugin-root>/skills/bootstrap-wiki/assets/templates/`. Step 3 resolves `<plugin-root>` across runtimes (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache), since Codex does not export `CLAUDE_PLUGIN_ROOT`.
 
 ## When to use
 
@@ -30,7 +30,7 @@ Do NOT scaffold if any of the three roots (`.llmwiki/wiki/`, `.claude/wiki/`, `.
 3. **Create layout** (idempotent: `mkdir -p` + existence guards; avoid GNU-only `cp --update=none` so it works on macOS/BSD too):
    ```bash
    # --- Plugin root resolution (cross-runtime) -------------------------------
-   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Every branch verifies
+   # Claude exports CLAUDE_PLUGIN_ROOT; Codex does not. Every branch verifies
    # its target (CHK) exists before committing, so a stale env or an incomplete
    # cache version falls through instead of winning. The cache branch walks
    # versions high-to-low and takes the first COMPLETE one.

@@ -1,14 +1,14 @@
 ---
 name: e2e-debug
 description: Close the Playwright self-healing loop — diagnose and repair a failing or flaky E2E run using the trace and the official healer agent. Use when the user points at a failed CI run or PR, asks to fix a broken or flaky E2E test, debug a Playwright failure, or repair the suite. Downloads the CI trace artifact, inspects it headlessly via npx playwright trace (actions/requests/console/errors), then runs the healer agent to find the root cause and patch the test, bounded to 3 attempts before quarantining the test with test.skip plus a reason comment. Re-runs to verify green before reflecting the fix on the PR. Requires e2e-setup to have generated the agents. Run from the user's project root.
-allowed-tools: Read Write Edit Bash Glob Grep Task AskUserQuestion
+allowed-tools: Read Write Edit Bash Glob Grep Agent AskUserQuestion
 ---
 
 # E2E Debug: trace analysis + healer (close the loop)
 
 The third leg of the harness. A CI failure is a sensor reading; this skill turns it back into a green test (or an honest quarantine), closing the planner -> generator -> **healer** self-improving loop.
 
-Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `e2e-setup` generated (**Path A**); on **Codex 0.135** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
+Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `e2e-setup` generated (**Path A**); on **Codex** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
 
 > **Verified against Playwright 1.61.0.** The headless `npx playwright trace` CLI was introduced in 1.59; the subcommand set below is confirmed on 1.61. The GUI viewer `npx playwright show-trace <trace.zip>` is also available if a human wants to look.
 
@@ -22,7 +22,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 
 0. **Resolve the plugin root + pick the execution path**: run once. The resolver reaches the bundled healer contract on Path B/C; the path decision governs Step 3. Tell the user which path you took in one sentence.
    ```bash
-   # Claude exports CLAUDE_PLUGIN_ROOT; Codex 0.135 does not. Each branch verifies
+   # Claude exports CLAUDE_PLUGIN_ROOT; Codex does not. Each branch verifies
    # the target (CHK) exists before committing, so a stale env falls through.
    CHK="references/role-contracts.md"
    PLUGIN_ROOT=""
@@ -68,8 +68,8 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
    - Form a hypothesis: is it a **real regression** (app changed), a **selector drift** (UI moved), an **environment/data** issue, or a **genuine flake** (timing/race)? The fix differs per class: heal selector/timing issues; escalate real regressions to the user.
 
 3. **Heal (bounded loop)**. Dispatch the healer with the diagnosis via the Step 0 path:
-   - **Path A**: `Task(subagent_type="playwright-test-healer", prompt="Test <name> fails: <trace findings>. Replay the failing steps, find equivalent current elements, patch the test, and re-run until green.")`.
-   - **Path B** (Codex generic subagent): `Task(prompt="You are the Playwright healer role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'healer'): test <name> fails: <trace findings>. Replay the failing steps via the playwright-test MCP server, find equivalent current elements, patch the test, re-run until green then burn-in --repeat-each=3. Bounded to 3 attempts; do not auto-pass a suspected real regression.")`. Paste the `healer` contract inline.
+   - **Path A**: `Agent(subagent_type="playwright-test-healer", prompt="Test <name> fails: <trace findings>. Replay the failing steps, find equivalent current elements, patch the test, and re-run until green.")`.
+   - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright healer role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'healer'): test <name> fails: <trace findings>. Replay the failing steps via the playwright-test MCP server, find equivalent current elements, patch the test, re-run until green then burn-in --repeat-each=3. Bounded to 3 attempts; do not auto-pass a suspected real regression.")`. Paste the `healer` contract inline.
    - **Path C**: run the healer role yourself per the contract.
    - **Bounded to 3 attempts** (all paths, the cr-fix MAX_ITER pattern): after 3 healer attempts that do not produce a green run, **stop**. Do not loop indefinitely on a stubborn test.
    - If a real regression is suspected (the app behavior genuinely changed, not the test), do **not** auto-patch the test to pass. Surface it to the user; the test may be correctly failing.

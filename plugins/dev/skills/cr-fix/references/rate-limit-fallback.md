@@ -26,15 +26,22 @@ Triggered by `scripts/sniff-cr-rate-limit.sh` detecting a CR rate-limit comment 
 
 If the user passes `--cr-source pr-bot|cli|codex-only`, Step 7c **never** silently flips. Rate-limit detection on `pr-bot` falls through to the regular Step 6 timeout path (user gets the timeout error message naming `target_url` and reset minutes).
 
+## Permanent skips
+
+`scripts/sniff-cr-rate-limit.sh` emits `permanent: true` for a skip that no reset window clears — currently `Review skipped: N files exceed the limit of M`. The PR is simply larger than the PR-bot will review, so waiting, re-pushing and re-running all reproduce it.
+
+Step 7c treats a permanent hit as a **source failure**, not a wait:
+
+- `auto` → flip to `cli` (or `codex-only`), exactly as for a genuine rate-limit.
+- `pr-bot` → `final_state=rate_limited`. It must never fall through to `clean`: CR posted no findings because it never looked, and a run that converges on that silence merges an unreviewed PR.
+- The AskUserQuestion offers **no "wait NN min" option** when `permanent` is true.
+
 ## Rate-limit reset extraction
 
-`scripts/sniff-cr-rate-limit.sh` parses 3 body patterns:
+`scripts/sniff-cr-rate-limit.sh` parses these body patterns:
 
 1. `auto-generated comment: rate limited by coderabbit\.ai` — generic, no reset hint.
-2. `(?:More reviews will be available in|Next review available in)[^0-9]{0,12}(\d+)\s*minutes?` — extract the digits as `reset_minutes`.
-   Both phrasings occur; the newer one is markdown-bold (`**Next review available in:** **41 minutes**`), which is why the
-   `[^0-9]{0,12}` bridge is needed. Matching only the older phrasing returned `reset_minutes_estimate: null` on a comment
-   that plainly stated 41 minutes.
+2. `(?:More reviews will be available in|Next (?:included )?review available in)[^0-9]{0,12}(\d+)\s*minutes?` — extract the digits as `reset_minutes`. All three phrasings occur, and the newer ones are markdown-bold (`**Next included review available in:** **41 minutes**`), which is why the `[^0-9]{0,12}` bridge is needed.
 3. `Review limit reached` — generic, no reset hint.
 
 If a reset estimate was extracted, the SKILL.md log line includes it: `... (reset in ~12 minutes)`. The AskUserQuestion "wait NN min" option uses the extracted estimate; if absent, default to 15 min.
@@ -65,3 +72,51 @@ bites is the adaptive-decayed rate, not the nominal 10/hr. Default 5 stays
 developer who is not already near the 7-day cap, while still leaving headroom
 below the nominal 10/hr. Raise `--max-iterations` only when the account is known
 to be fresh on the rolling window; lower it when recent activity is heavy.
+
+## Active query block (Step 7b)
+
+When the sniff confirmed a rate-limit but extracted no reset estimate (`reset` empty), ask CodeRabbit rather than guess 15 min: the query posts one `@coderabbitai rate limit` comment and polls for the reply. **Once per run** — the post is a non-idempotent external write, so persist the outcome to `STATE_FILE.rate_limit_query` and reuse it on later iterations.
+
+```bash
+prior_aq=$(jq -c '.rate_limit_query // empty' "$STATE_FILE")
+if [ "$permanent" = "true" ]; then
+  : # no reset to query for
+elif [ -n "$prior_aq" ]; then
+  reset=$(jq -r '.reset_minutes // empty' <<<"$prior_aq")
+elif [ -n "$rl" ] && [ -z "$reset" ]; then
+  # Bash(run_in_background=true, timeout=180000):
+  #   bash $SKILL_DIR/scripts/query-cr-rate-limit.sh "$OWNER" "$REPO" "$PR_NUM"
+  # Monitor returns one JSON line: {remaining, reset_minutes, replied, body_excerpt}
+  #   aq=<that line>
+  #   [ "$(jq -r '.replied' <<<"$aq")" = true ] && reset=$(jq -r '.reset_minutes // empty' <<<"$aq")
+  #   tmp=$(mktemp); jq --argjson q "$aq" '.rate_limit_query = $q' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+fi
+```
+
+## Fallback decision block (Step 7c)
+
+The table above in executable form:
+
+```text
+if CR_SOURCE != "auto" → respect user choice:
+  - "pr-bot"     → final_state="rate_limited", break (no flip)
+  - "cli"/"codex-only" → unreachable
+elif probe-cr-cli.sh exits 0:
+  CR_SOURCE=cli; log "cr-source: auto → cli (rate-limit via ${channel}, CLI authed${reset:+, reset in ~${reset} min})"
+elif codex_active == "active":
+  CR_SOURCE=codex-only; log "cr-source: auto → codex-only (rate-limit via ${channel}, no CLI)"
+  # The flip landed here only because no CLI is installed; surface the
+  # platform-aware install command so the NEXT run can fall back to cli instead.
+  cli_hint=$(bash $SKILL_DIR/scripts/probe-cr-cli.sh 2>/dev/null | jq -r '.hint // empty') || cli_hint=""
+  [ -n "$cli_hint" ] && log "suggest: install the CodeRabbit CLI to keep CR coverage under rate limits. $cli_hint"
+else:
+  # Interactive gate (SKILL.md hard constraints): [Abort] / [Install CLI (${cli_hint})
+  # then retry] / [Force codex-only], plus [Wait ${reset:-15} min] unless
+  # permanent=true. With no interaction tool on the runtime, abort — flipping a
+  # source the user did not choose is not a safe default.
+```
+
+When `cli_hint` is non-empty, the Step 16 summary carries one "install the CodeRabbit CLI" line.
+
+`jq '.cr_source = $src' "$STATE_FILE"` persists the flip. Flip is sticky for remaining iters of this run.
+

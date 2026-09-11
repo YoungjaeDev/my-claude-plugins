@@ -4,7 +4,7 @@
 
 ## 설정이 사는 곳
 
-`mcpdocs` 는 **프로젝트 `.mcp.json` 이 아니라 사용자 스코프**(`~/.claude.json`, `claude mcp add` 로 등록)에 있다. 저장소 루트에는 `mcpdocs` 용 `.mcp.json` 이 없다 (루트에 존재하는 유일한 `.mcp.json` 은 `plugins/scout/.mcp.json` 으로 무관한 paper-search 서버다). `mcpdoc` 는 모든 URL 을 단일 서버의 `--urls` 인자로 받으므로, 소스를 추가하려면 전체 목록을 다시 등록한다.
+`mcpdocs` 는 **프로젝트 `.mcp.json` 이 아니라 사용자 스코프**(`~/.claude.json`, `claude mcp add` 로 등록)에 있다. 저장소에는 `mcpdocs` 용 `.mcp.json` 이 없다. `mcpdoc` 는 모든 URL 을 단일 서버의 `--urls` 인자로 받으므로, 소스를 추가하려면 전체 목록을 다시 등록한다.
 
 `mcpdoc` 는 재등록 시 `--urls` 에 준 목록으로 **통째로 교체**하므로, 하나라도 빠뜨리면 그 소스가 사라진다. 아래는 현재 16종 전체 + 신규 `github-docs` 를 명시한 실행 가능한 형태다 (이름에 공백이 있는 항목은 따옴표로 감쌌다). 실행 전 `claude mcp get mcpdocs` 로 현재 등록을 백업해 두면 실패 시 복구할 수 있다.
 

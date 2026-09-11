@@ -4,22 +4,15 @@
     "name": "YoungjaeDev"
   },
   "metadata": {
-    "description": "Personal Claude Code plugin collection with 8 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.30.0"
+    "description": "Personal Claude Code plugin collection with 7 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
+    "version": "2.31.0"
   },
   "plugins": [
     {
-      "name": "core",
-      "source": "./plugins/core",
-      "description": "Hooks only: Python auto-format on Write/Edit, cross-platform terminal notifications, and a per-prompt behavioral block (`prompt_inject.sh`, shared Claude + Codex). The block is fixed; two pointers are conditional — `.llmwiki/insight/` when a knowledge root resolves in cwd, and a one-line `[council]` delegation reminder when a second-model CLI (codex / agy) is on PATH (Claude-only). Work guidelines live in `~/.claude/CLAUDE.md`.",
-      "version": "1.0.0",
-      "category": "core"
-    },
-    {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Development lifecycle in one bundle. GitHub workflow — commit-and-push, decompose-issue, resolve-issue, release, cr-fix (unified CodeRabbit + ChatGPT-Codex review loop with autonomous apply/defer/skip judgment and rate-limit fallback), post-merge (branch cleanup + config/wiki integration with a mandatory wiki-lore ingest), state-tracker (spec/issue/PR aggregate over .claude/state/spec.json). Project setup — new (first-day bootstrap: interview, .claude/ scaffold, CLAUDE.md + AGENTS.md with Codex reviewer guidelines, gh repo create) and wiring (14-axis harness diagnostic for an existing repo, read-only until approved). Playwright E2E harness — e2e-setup, e2e-author, e2e-debug wrap Playwright's planner/generator/healer agents; never overwrite an existing playwright.config and degrade gracefully without Playwright.",
-      "version": "1.0.0",
+      "description": "Development lifecycle in one bundle. GitHub workflow — commit-and-push, decompose-issue, resolve-issue, release, cr-fix (unified CodeRabbit + ChatGPT-Codex review loop with autonomous apply/defer/skip judgment and rate-limit fallback), post-merge (branch cleanup + config/wiki integration with a mandatory wiki-lore ingest), state-tracker (spec/issue/PR aggregate over .claude/state/spec.json), session-handoff (chat-only end-of-session summary for a fresh agent). Project setup — new (first-day bootstrap: interview, .claude/ scaffold, CLAUDE.md + AGENTS.md with Codex reviewer guidelines, gh repo create) and wiring (14-axis harness diagnostic for an existing repo, read-only until approved). Playwright E2E harness — e2e-setup, e2e-author, e2e-debug wrap Playwright's planner/generator/healer agents; never overwrite an existing playwright.config and degrade gracefully without Playwright.",
+      "version": "1.1.0",
       "category": "development"
     },
     {
@@ -32,22 +25,22 @@
     {
       "name": "scout",
       "source": "./plugins/scout",
-      "description": "Research and search. research-orchestrator routes a query to five scout agents (github / hf / web / docs / paper) in parallel and synthesis-scout dedups, trust-ranks, and writes the report (exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4). ask and generate-llmstxt query a GitHub repository through the DeepWiki MCP. paper-search searches and downloads papers from arXiv, PubMed, Semantic Scholar, and five more sources through the bundled paper-search MCP server (.mcp.json, Docker). Non-code/ML topics go to the sibling /deep-research.",
-      "version": "1.0.0",
+      "description": "Research and search. research-orchestrator routes a query to the github / hf / web / docs scout agents in parallel and synthesis-scout dedups, trust-ranks, and writes the report (exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4). ask and generate-llmstxt query a GitHub repository through the DeepWiki MCP. Non-code/ML topics go to the sibling /deep-research.",
+      "version": "2.0.0",
       "category": "research"
     },
     {
       "name": "ml",
       "source": "./plugins/ml",
       "description": "ML / multimodal / CV development: ml-dev-principles (working discipline incl. GPU parallel patterns), gradio-cv-app (Gradio computer-vision demo apps), cv-notebook (CV experiment notebooks with an interactive ipywidgets exploration mode), edit-notebook (safe .ipynb editing through NotebookEdit).",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "category": "development"
     },
     {
       "name": "wiki",
       "source": "./plugins/wiki",
       "description": "Memory and lore. Karpathy LLM-Wiki 3-layer under the neutral .llmwiki/ root (insight + wiki + raw): bootstrap-wiki, ingest-finding (reversible diff-log + cross-page update), lint-wiki (four wiki-rot modes), plaud-note-taking (PLAUD Whisper transcript correction into .llmwiki/raw/transcripts/), plus five hooks — stale-page hint, post-commit ingest hint, session-start lint hint, Stop-time capture of ingest candidates, and the next session's drain. mem0 fleet operations — fleet-scan (per-app noise / fragmentation / config posture, read-only) and cleanup (backup-then-delete behind a dry-run default and a per-app confirmation gate).",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "memory"
     },
     {
@@ -64,7 +57,7 @@
       "name": "codex-image",
       "source": "./plugins/codex-image",
       "description": "Claude-only (do not install into Codex). Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
-      "version": "1.3.4",
+      "version": "1.4.0",
       "category": "ai-models",
       "policy": {
         "installation": "NOT_AVAILABLE"

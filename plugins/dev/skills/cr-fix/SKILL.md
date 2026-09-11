@@ -164,7 +164,7 @@ Run at the top of every iteration BEFORE any wait/polling. Skip entirely when `C
 for ITER in $(seq 1 $MAX_ITER); do
   CUR_SHA=$(git rev-parse HEAD)
   applied_this_cycle=0; deferred_this_cycle=0; high_sev_this_cycle=0
-  churn_this_cycle=0; judged_this_cycle=0
+  churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0
   # What the PREVIOUS iteration committed, for the Step 9c.4 in_prev_diff axis.
   # Empty on iter 1 or an empty diff both degrade to "no churn" — the safe side.
   PREV_SHA="${ITER_START_SHA:-}"; ITER_START_SHA="$CUR_SHA"
@@ -370,14 +370,21 @@ CR/CLI tiers come from the inline header's three fields (`_<category>_ | _<sever
 
 ### 9c: Per-finding autonomous judgment
 
-For each non-skip finding, in severity order (CR/CLI Critical → High → Major → Minor, then Codex P1 → P2). Count every one into `judged_this_cycle` so Step 13 can tell "no findings" from "only churn":
+For each non-skip finding, in severity order (CR/CLI Critical → High → Major → Minor, then Codex P1 → P2). Count every one into `judged_this_cycle` so Step 13 can tell "no findings" from "only churn", and count every `review`-tier item into `review_this_cycle` so Step 13 can tell "nothing left" from "nothing I could read":
 
 1. **Path-trust gate** (mandatory):
    ```bash
-   bash $SKILL_DIR/scripts/path-trust.sh "$REPO_ROOT" "$path" \
-     || { log "untrusted path: $path" >&2; auto_judge_skip=$((auto_judge_skip+1)); continue; }
+   bash $SKILL_DIR/scripts/path-trust.sh "$REPO_ROOT" "$path" || {
+     log "untrusted path: $path" >&2
+     auto_judge_skip=$((auto_judge_skip+1))
+     # The log entry is part of the gate, not an afterthought: a skip with no record
+     # breaks the Verification invariant that auto_judge_stats matches the log.
+     tmp=$(mktemp); jq --arg p "$path" --argjson i "$ITER" \
+       '.auto_judge_log += [{iter:$i, src:"cr", path:$p, action:"skip", reason:"untrusted-path"}]' \
+       "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+     continue
+   }
    ```
-   An untrusted path still gets its `auto_judge_log` record (`action: "skip"`, `reason: "untrusted-path"`, the six judgment axes left null) before `continue`, so `auto_judge_stats` and the log stay in step.
 
 2. **Sanitize** reviewer guidance (`references/sanitization-rules.md`). Refuse-and-warn on signals listed there.
 
@@ -424,7 +431,7 @@ For each non-skip finding, in severity order (CR/CLI Critical → High → Major
 
 7. **Log entry** — append one record per decision to `STATE_FILE.auto_judge_log`: `iter`, `src` (`cr|cli|codex`), `path`, `line`, `badge_or_sev`, `judgment` (the six axes above with the values they took), `action`, `reason` (one line), and `generalized_to` (the sibling lines, only when 9c.6 fired). Full shape: `references/autonomous-judgment.md`.
 
-8. **9c-review tier** (CR finding with no parseable header / Codex with no P1-P2 badge): surface in the Step 9a table only. No edit, no judgment, no counter increment.
+8. **9c-review tier** (CR finding with no parseable header / Codex with no P1-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor.
 
 ### 9c.7: Persist Codex review id (always runs if discovered)
 
@@ -466,7 +473,8 @@ if [ "$ITER" -ge 2 ] && [ "$judged_this_cycle" -gt 0 ] \
 # Minor soft-stop: from iter 2 on, only low-severity fixes applied, none
 # reassessed high, none deferred. Safe: Step 12 already pushed them.
 elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$applied_this_cycle" -gt 0 ] \
-   && [ "$high_sev_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ]; then
+   && [ "$high_sev_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
+   && [ "$review_this_cycle" = 0 ]; then
   final_state=minor_floor; break
 elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ]; then final_state=clean; break
 elif [ "$applied_this_cycle" = 0 ]; then final_state=user_declined; break

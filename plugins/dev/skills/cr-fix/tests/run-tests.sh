@@ -311,6 +311,8 @@ CH=$(mktemp -d)
     && printf 'a\nb\nc\nd\ne\n' > base.txt && git add -A && git commit -qm base \
     && git checkout -q -b feat \
     && printf 'a\nb\nNEW-PR\nd\ne\n' > base.txt && git add -A && git commit -qm pr-change \
+    && printf 'p\nq\n' > 'space file.txt' && printf 'p\nq\n' > '한글.txt' \
+    && git add -A && git commit -qm awkward-names \
     && printf 'x\ny\n' > added-by-loop.txt && git add -A && git commit -qm iter-commit
 ) >/dev/null 2>&1
 # PREV_SHA = HEAD~1, i.e. everything the last iteration committed.
@@ -330,6 +332,11 @@ is "non-numeric line -> fresh"              "$(ch base.txt 'null')" fresh
 # An unresolvable base must not manufacture churn out of a lookup failure.
 is "unresolvable base -> fresh" \
    "$( (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "" no-such-ref base.txt 3) )" fresh
+# git pads the `+++` header with a tab and octal-escapes non-ASCII names. Comparing
+# the raw header text marked every finding in such a file as churn, which quietly
+# demoted real findings to cosmetic and let the loop stop early.
+is "path with a space -> fresh"             "$(ch 'space file.txt' 1)" fresh
+is "non-ASCII path -> fresh"                "$(ch '한글.txt' 1)" fresh
 rm -rf "$CH"
 
 echo
@@ -818,11 +825,11 @@ is "grace-cap codex_wait: pre-flight remaining wins" "$gcap2" 500
 # must be guarded by judged_this_cycle > 0, or an iteration with NO findings
 # (0 == 0) reports churn instead of clean and never files the follow-up issue.
 conv() {
-  ITER=$1 JUDGED=$2 CHURN=$3 APPLIED=$4 DEFERRED=$5 HIGH=$6 MINOR_STOP=${7:-true} \
+  ITER=$1 JUDGED=$2 CHURN=$3 APPLIED=$4 DEFERRED=$5 HIGH=$6 MINOR_STOP=${7:-true} REVIEW=${8:-0} \
   bash -c '
     if [ "$ITER" -ge 2 ] && [ "$JUDGED" -gt 0 ] && [ "$CHURN" = "$JUDGED" ]; then echo churn
     elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$APPLIED" -gt 0 ] \
-         && [ "$HIGH" = 0 ] && [ "$DEFERRED" = 0 ]; then echo minor_floor
+         && [ "$HIGH" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ]; then echo minor_floor
     elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ]; then echo clean
     elif [ "$APPLIED" = 0 ]; then echo user_declined
     else echo continue; fi'
@@ -859,6 +866,9 @@ is "partial churn keeps looping"          "$(conv 2 3 2 2 1 0)" continue
 is "low-severity-only cycle -> minor_floor" "$(conv 2 2 0 2 0 0)" minor_floor
 is "--no-minor-stop keeps looping"        "$(conv 2 2 0 2 0 0 false)" continue
 is "high severity blocks minor_floor"     "$(conv 2 2 0 2 0 1)" continue
+# A `review`-tier item is a finding nobody could parse, so nobody examined it. Calling
+# that a floor would hand an unexamined finding to the auto-merge gate.
+is "unparsed review item blocks minor_floor" "$(conv 2 2 0 2 0 0 true 1)" continue
 is "deferred everything -> user_declined"  "$(conv 2 2 0 0 2 0)" user_declined
 
 echo

@@ -55,8 +55,17 @@ cr_state="${cr_state:-unknown}"
 
 # Pending checks are not blocking: `gh pr merge --auto` waits for them. Only a check
 # that has already failed, errored, or been cancelled blocks the merge.
+# `gh pr checks` exits 8 when checks are pending and 1 when some failed, printing the
+# count either way; `|| echo 0` would append a second value and break the jq below.
 blocking=$(gh pr checks "$PR_NUM" --json name,state \
-  --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT" or .state == "ACTION_REQUIRED")] | length' 2>/dev/null || echo 0)
+  --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT" or .state == "ACTION_REQUIRED")] | length' 2>/dev/null); rc=$?
+case "$rc" in
+  0|1|8) : ;;                       # counted normally, whatever the check outcome was
+  *)     blocking="" ;;             # the query itself failed — fall through to the guard
+esac
+# Anything that is not a plain integer means we could not measure: report 1 so the
+# caller refuses to merge on an unverified check state.
+case "$blocking" in ''|*[!0-9]*) blocking=1 ;; esac
 
 base=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
 

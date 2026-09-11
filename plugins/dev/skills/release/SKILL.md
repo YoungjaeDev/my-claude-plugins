@@ -162,11 +162,17 @@ Create a versioned GitHub release: detect the current version, update the versio
    ```
 
    `--notes-start-tag` is resolved by GitHub, not locally, so the baseline has to be on the remote
-   too. An `--init` baseline is local-only until this point, which would fail the first release:
+   too, and an `--init` baseline is local-only until this point. Publish only the baseline **this
+   run** created: any other local-only tag is something the user never agreed to push, so drop the
+   flag instead and let `--generate-notes` fall back to the last release GitHub knows about.
 
    ```bash
    if ! git ls-remote --exit-code --tags origin "refs/tags/<PREV_TAG>" >/dev/null 2>&1; then
-     git push origin "<PREV_TAG>" || PREV_TAG=""   # unpushable baseline: release without the flag
+     if [ "<PREV_TAG>" = "<the tag --init created this run>" ]; then
+       git push origin "<PREV_TAG>" || PREV_TAG=""
+     else
+       PREV_TAG=""   # local-only tag from elsewhere: never published on the user's behalf
+     fi
    fi
    ```
 

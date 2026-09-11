@@ -1,6 +1,6 @@
 # dev `new` — procedure
 
-Procedure body for the `new` skill (`/dev:new`), which resolves this file via `references/new-procedure.md` relative to the plugin's installed root — Claude Code exposes that root as `${PLUGIN_ROOT}`; Codex places it under `~/.codex/plugins/cache/<marketplace>/dev/<version>/`.
+Procedure body for the `new` skill (`/dev:new`), which resolves this file via `references/new-procedure.md` relative to the plugin's installed root — Claude Code exposes that root as `${CLAUDE_PLUGIN_ROOT}`, which Phase 0 normalizes into `PLUGIN_ROOT`; Codex places it under `~/.codex/plugins/cache/<marketplace>/dev/<version>/`.
 
 > **Trigger surface**: explicit user invocation only. No automatic trigger (running it in the wrong directory is dangerous). The preflight guard below MUST run before any destructive op — both surfaces re-state the guard at the top of their body so it cannot be skipped.
 

@@ -42,8 +42,20 @@ Does NOT change `final_state` directly. Sets `verification_blocking=true` which 
 Fires when `final_state ∈ {churn, minor_floor, iteration_cap}` and `deferred_total > 0`. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
 
 ```bash
-# Idempotent: a re-run on the same PR reuses the issue instead of opening a second one.
-if [ -z "$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" ]; then
+# Idempotent: a re-run on the same PR reuses the issue instead of opening a second one;
+# this run's new defers are appended to it as a comment so they are not lost in the archive.
+existing=$(jq -r '.followup_issue.number // empty' "$STATE_FILE")
+if [ -n "$existing" ]; then
+  BODY=$(mktemp)
+  {
+    printf '%s\n\n' "Additional findings deferred by a later cr-fix run (\`final_state=$final_state\`):"
+    printf '| Reviewer | Severity | Location | Why deferred |\n|---|---|---|---|\n'
+    jq -r '.auto_judge_log[]? | select(.action == "defer")
+           | "| \(.src) | \(.badge_or_sev) | \(.path):\(.line // "-") | \(.reason) |"' "$STATE_FILE"
+  } > "$BODY"
+  gh issue comment "$existing" --body-file "$BODY" >/dev/null || echo "cr-fix: could not append to issue #$existing" >&2
+  rm -f "$BODY"
+else
   # Reviewer prose reaches the body through a file, never through the command line.
   BODY=$(mktemp)
   {

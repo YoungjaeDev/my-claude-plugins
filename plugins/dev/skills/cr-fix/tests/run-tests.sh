@@ -227,6 +227,8 @@ is "churn without issue -> ineligible"       "$(elig churn)" false
 is "churn with issue -> eligible"            "$(elig churn 321)" true
 is "churn with null issue -> ineligible"     "$(elig churn null)" false
 is "churn with issue 0 -> ineligible"        "$(elig churn 0)" false
+is "minor_floor, nothing deferred -> eligible" "$(DEFERRED_TOTAL=0 elig minor_floor)" true
+is "churn, deferred but no issue -> ineligible" "$(DEFERRED_TOTAL=2 elig churn)" false
 is "iteration_cap with issue -> still ineligible" "$(elig iteration_cap 321)" false
 is "user_declined -> ineligible"             "$(elig user_declined)" false
 is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false

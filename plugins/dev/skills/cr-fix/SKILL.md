@@ -375,7 +375,7 @@ For each non-skip finding, in severity order (CR/CLI Critical → High → Major
 1. **Path-trust gate** (mandatory):
    ```bash
    bash $SKILL_DIR/scripts/path-trust.sh "$REPO_ROOT" "$path" \
-     || { log "untrusted path: $path" >&2; auto_judge_skip=$((auto_judge_skip+1)); continue; }
+     || { log "untrusted path: $path" >&2; auto_judge_skip=$((auto_judge_skip+1)); continue; }  # and append an auto_judge_log record with action "skip", reason "untrusted-path"
    ```
 
 2. **Sanitize** reviewer guidance (`references/sanitization-rules.md`). Refuse-and-warn on signals listed there.
@@ -492,12 +492,12 @@ Creation failure is **not** fatal to the run, but it does block Step 15: the def
 
 ## Step 15: Auto-merge gate
 
-Run only when `--auto-merge` is set and `verification_blocking=false`. The gate script owns the convergence axis: `clean` always qualifies, `minor_floor` and `churn` qualify once Step 14's follow-up issue exists, and everything else is ineligible — so a failed `gh issue create` leaves the PR open by construction.
+Run only when `--auto-merge` is set and `verification_blocking=false`. The gate script owns the convergence axis: `clean` always qualifies, `minor_floor` and `churn` qualify once Step 14's follow-up issue exists or when the run deferred nothing, and everything else is ineligible — so a failed `gh issue create` leaves the PR open by construction.
 
 ```bash
 HEAD_SHA=$(git rev-parse HEAD)
 gate=$(FINAL_STATE="$final_state" \
-       FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" \
+       FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$deferred_total" \
        bash $SKILL_DIR/scripts/auto-merge-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$HEAD_SHA")
 eligible=$(jq -r '.eligible' <<<"$gate")
 cr_state=$(jq -r '.cr_state' <<<"$gate")
@@ -507,7 +507,9 @@ base=$(jq -r '.base_branch' <<<"$gate")
 if [ "$eligible" != "true" ]; then
   echo "auto-merge: $(jq -r '.ineligible_reason' <<<"$gate")" >&2; exit 0
 fi
-[ "$cr_state" = "success" ] || exit 0
+# A push this cycle leaves CR and the checks pending; `--auto` waits for them, so only a
+# failed or errored state blocks here.
+case "$cr_state" in failure|error) exit 0;; esac
 [ "$blocking" = 0 ] || exit 0
 if [ "$proto" = 200 ]; then
   gh pr merge "$PR_NUM" --auto --squash --delete-branch && merged=true

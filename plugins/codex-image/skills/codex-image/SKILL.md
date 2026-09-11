@@ -161,7 +161,7 @@ Classify the request once, then run:
 Words like *different*, *alternatives*, *concepts*, *directions*, *options*, *시안*, *다른 디자인* select the concept branch; a bare count does not.
 
 - If a branch needs an anchor and none exists yet, generate image #1 first and count it as one of the N; fan out the remaining N-1 from that path. `--variants 4` is four generations, never five.
-- Issue the N `codex exec` calls as parallel Bash tool calls, each writing its own file.
+- Issue the remaining `codex exec` calls (N, or N-1 after an anchor) as parallel Bash tool calls, each writing its own file.
 - Each prompt must stand alone and carry **no ordinal metadata** — no "option 2", no "1번째 시안". Ordering lives in the filename only.
 - Finish by `Read`-ing all N and presenting them with their paths so the user picks one. The picked path becomes the `--edit` target for the next revision.
 

@@ -32,7 +32,7 @@ Create a versioned GitHub release: detect the current version, update the versio
    - Verify current branch is pushed to remote: `git rev-parse --abbrev-ref --symbolic-full-name @{u}`
 
 2. **Detect Previous Tag**
-   - Run `git fetch --tags` and then `git tag --list 'v[0-9]*' --sort=-v:refname | head -1` to find the highest existing release tag; the pattern keeps nightly or non-release tags out of the pick. Do not use `git describe --tags --abbrev=0`: it returns the nearest tag reachable from HEAD, which is not the latest version whenever a higher tag lives on another branch — and that single value feeds both the bump base and `--notes-start-tag`.
+   - Run `git fetch --tags` and then `git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1.2,1n -k2,2n -k3,3n | tail -1` to find the highest existing release tag; the strict `vX.Y.Z` filter keeps `v2`, pre-release and nightly tags out of the pick. Do not use `git describe --tags --abbrev=0`: it returns the nearest tag reachable from HEAD, which is not the latest version whenever a higher tag lives on another branch — and that single value feeds both the bump base and `--notes-start-tag`.
    - If no tags exist:
      - If `--init <commit>` provided: create baseline tag at specified commit
        ```bash

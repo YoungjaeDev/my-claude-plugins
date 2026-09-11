@@ -25,7 +25,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 case "$FINAL_STATE" in
   clean)              eligible=true;  reason="" ;;
   minor_floor|churn)
-    # Only a positive integer counts: a failed create can leave "null", "", or error text behind.
+    # Nothing deferred means nothing to record: no issue is required. Otherwise only a
+    # positive integer counts: a failed create can leave "null", "", or error text behind.
+    if [ "${DEFERRED_TOTAL:-}" = 0 ]; then FOLLOWUP_ISSUE="${FOLLOWUP_ISSUE:-0}"; [ "$FOLLOWUP_ISSUE" = 0 ] && FOLLOWUP_ISSUE=1; fi
     case "$FOLLOWUP_ISSUE" in
       ""|*[!0-9]*|0*) eligible=false; reason="$FINAL_STATE without a valid follow-up issue number" ;;
       *) eligible=true; reason="" ;;

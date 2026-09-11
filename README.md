@@ -48,13 +48,25 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 /plugin marketplace update my-claude-plugins
 ```
 
+### 2.31.0 마이그레이션 (core 제거)
+
+`core` 플러그인이 사라졌다. 매 프롬프트 주입 훅(한국어 응답, `.llmwiki/insight/` 선독, surgical diff)은 전역 지침 파일 `CLAUDE.md.global` 로 옮겨졌고, marketplace 업데이트는 이 파일을 설치하지 않으므로 직접 복사한다.
+
+```bash
+/plugin uninstall core@my-claude-plugins
+cp CLAUDE.md.global ~/.claude/CLAUDE.md      # Claude Code
+cp CLAUDE.md.global ~/.codex/AGENTS.md       # Codex
+```
+
+`~/.codex/hooks.json` 에 `core` 의 `prompt_inject.sh` 항목이 있으면 삭제한다.
+
 ### 2.30.0 마이그레이션 (14 → 8 번들)
 
 2.30.0 에서 14개 플러그인을 8개 번들로 통합했다. 옛 이름은 marketplace 에서 사라졌으므로 옛 플러그인을 제거하고 새 번들을 설치한다. 스킬 이름은 그대로이고 네임스페이스만 바뀐다.
 
 | 옛 플러그인 | 새 번들 | 예시 |
 |---|---|---|
-| `core-config` | (제거) | 훅 없이 전역 지침 (`CLAUDE.md.global`) 으로 대체 |
+| `core-config` | `core` | (hooks 전용, 2.31.0 에서 제거 — 아래 절) |
 | `github-dev`, `project-init`, `e2e-harness` | `dev` | `/github-dev:cr-fix` → `/dev:cr-fix`, `/project-init:new` → `/dev:new` |
 | `docs-forge`, `publish` | `docs` | `/docs-forge:readme` → `/docs:readme`, `/publish:gws-sync` → `/docs:gws-sync` |
 | `code-scout`, `deepwiki`, `paper-search-tools` | `scout` | `/deepwiki:ask` → `/scout:ask`, `code-scout:github-scout` → `scout:github-scout` |

@@ -36,6 +36,9 @@ case "$FINAL_STATE" in
     else eligible=false; reason="$FINAL_STATE without a follow-up issue"; fi ;;
   *)                  eligible=false; reason="final_state=$FINAL_STATE is not a merge-eligible convergence" ;;
 esac
+# A re-run that could not append its new defers to the inherited issue has findings
+# recorded nowhere a person will look; that blocks the merge like a failed create.
+if [ "${FOLLOWUP_APPEND_FAILED:-false}" = true ]; then eligible=false; reason="follow-up issue append failed"; fi
 
 # CR state must come from the SAME dual-surface reader the rest of cr-fix uses.
 # CodeRabbit reports through EITHER the commit-status API OR a check-run,
@@ -50,8 +53,10 @@ cr_state=$(bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$HEAD_SHA" 2>
   | jq -r '.state // "unknown"' || echo "unknown")
 cr_state="${cr_state:-unknown}"
 
+# Pending checks are not blocking: `gh pr merge --auto` waits for them. Only a check
+# that has already failed, errored, or been cancelled blocks the merge.
 blocking=$(gh pr checks "$PR_NUM" --json name,state \
-  --jq '[.[] | select(.state != "SUCCESS" and .state != "SKIPPED")] | length' 2>/dev/null || echo 0)
+  --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT" or .state == "ACTION_REQUIRED")] | length' 2>/dev/null || echo 0)
 
 base=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
 

@@ -149,7 +149,9 @@ Codex is already engaged, the run flips to `codex-only` for its remaining iterat
 if [ "$ITER" = "1" ] && [ "$CR_SOURCE" = "auto" ] && [ "$SMALL_DIFF_LOC" -gt 0 ] && [ "$gate" != "rate_limited" ] && [ "$gate" != "failure" ]; then
   codex_active=$(bash $SKILL_DIR/scripts/probe-codex-engagement.sh "$OWNER" "$REPO" "$PR_NUM")
   [ "$NO_CODEX" = "true" ] && codex_active=disabled
-  if [ "$codex_active" = "active" ]; then
+  # A checkout without origin/$BASE or a merge-base cannot measure the diff; an empty
+  # measurement must not read as "small", or a large PR loses its CodeRabbit review.
+  if [ "$codex_active" = "active" ] && git merge-base "origin/$BASE" HEAD >/dev/null 2>&1; then
     loc=$(git diff --shortstat "origin/$BASE...HEAD" 2>/dev/null | awk '{s=0; for(i=1;i<=NF;i++) if($i~/^[0-9]+$/ && ($(i+1)~/insertion/||$(i+1)~/deletion/)) s+=$i; print s+0}')
     files=$(git diff --name-only "origin/$BASE...HEAD" 2>/dev/null | wc -l)
     if [ "${loc:-0}" -lt "$SMALL_DIFF_LOC" ] && [ "${files:-0}" -lt "$SMALL_DIFF_FILES" ]; then

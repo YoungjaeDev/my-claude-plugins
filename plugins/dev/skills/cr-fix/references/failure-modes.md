@@ -53,7 +53,11 @@ if [ -n "$existing" ]; then
     jq -r '.auto_judge_log[]? | select(.action == "defer")
            | "| \(.src) | \(.badge_or_sev) | \(.path):\(.line // "-") | \(.reason) |"' "$STATE_FILE"
   } > "$BODY"
-  gh issue comment "$existing" --body-file "$BODY" >/dev/null || echo "cr-fix: could not append to issue #$existing" >&2
+  if ! gh issue comment "$existing" --body-file "$BODY" >/dev/null; then
+    # Recorded in state so Step 15 refuses the merge: the new defers are not visible anywhere yet.
+    tmp=$(mktemp); jq '.followup_issue.append_failed = true' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+    echo "cr-fix: could not append to issue #$existing — auto-merge stays blocked" >&2
+  fi
   rm -f "$BODY"
 else
   # Reviewer prose reaches the body through a file, never through the command line.

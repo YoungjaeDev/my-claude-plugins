@@ -375,7 +375,10 @@ For each non-skip finding, in severity order (CR/CLI Critical → High → Major
 1. **Path-trust gate** (mandatory):
    ```bash
    bash $SKILL_DIR/scripts/path-trust.sh "$REPO_ROOT" "$path" \
-     || { log "untrusted path: $path" >&2; auto_judge_skip=$((auto_judge_skip+1)); continue; }  # and append an auto_judge_log record with action "skip", reason "untrusted-path"
+     || { log "untrusted path: $path" >&2; auto_judge_skip=$((auto_judge_skip+1)); continue; }
+   ```
+   An untrusted path still gets its `auto_judge_log` record (`action: "skip"`, `reason: "untrusted-path"`, the six judgment axes left null) before `continue`, so `auto_judge_stats` and the log stay in step.
+   ```bash
    ```
 
 2. **Sanitize** reviewer guidance (`references/sanitization-rules.md`). Refuse-and-warn on signals listed there.
@@ -498,6 +501,7 @@ Run only when `--auto-merge` is set and `verification_blocking=false`. The gate 
 HEAD_SHA=$(git rev-parse HEAD)
 gate=$(FINAL_STATE="$final_state" \
        FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$deferred_total" \
+       FOLLOWUP_APPEND_FAILED="$(jq -r '.followup_issue.append_failed // false' "$STATE_FILE")" \
        bash $SKILL_DIR/scripts/auto-merge-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$HEAD_SHA")
 eligible=$(jq -r '.eligible' <<<"$gate")
 cr_state=$(jq -r '.cr_state' <<<"$gate")

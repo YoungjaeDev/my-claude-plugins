@@ -22,7 +22,7 @@
       "description": "Resolved source after Step 5b heuristic and Step 7c silent flip. 'pending' before any iter has run."
     },
     "followup_issue": {
-      "type": "object",
+      "type": ["object", "null"],
       "description": "The single issue Step 14 files for findings the run left behind. Present only once creation succeeded; its presence is what makes minor_floor / churn auto-merge eligible, and it makes the creation idempotent across re-runs.",
       "required": ["number", "url"],
       "properties": {

@@ -45,7 +45,8 @@ decisions through `AskUserQuestion` before slicing.
 | max | `dev:worker-max` | opus / xhigh | correctness the orchestrator cannot verify cheaply; only when the user asks for maximum accuracy |
 
 Volume pushes a slice toward fast or standard, accuracy toward deep or max. A slice that fails the
-quality gate twice moves one preset up. Pass `model` on the `Agent` call only to deviate from a
+quality gate twice moves one preset up; that escalation is the one path to max that needs no user
+request. Pass `model` on the `Agent` call only to deviate from a
 preset for one job; the preset's effort still applies.
 
 ### Structure selection
@@ -55,7 +56,7 @@ preset for one job; the preset's effort still applies.
 | independent slices, results come back as text | `Agent` with a `dev:worker-*` type, `name` set, background, all dispatched in one message |
 | the worker needs the conversation so far | `Agent` with `subagent_type: fork` |
 | slices must exchange results or run long | named agents plus `SendMessage`; `ListAgents` shows who is idle |
-| two writers need the same files at once | `isolation: worktree` on the `Agent` call, with the cleanup gate in step 7 |
+| parallel writers own disjoint paths but each needs its own clean checkout (build, test, or generated files) | `isolation: worktree` on the `Agent` call, with the baseline in step 4 and the cleanup gate in step 7 |
 | many-stage pipeline and the user typed `/dev:orchestrate` or "ultracode" | `Workflow`, after loading `workflow-authoring` |
 | another vendor's agent (codex-rescue, agy-rescue, sidekick) looks like a better fit | ask through `AskUserQuestion` first, every time |
 | one slice with a known location | inline, no delegation |
@@ -89,14 +90,18 @@ Preset:        which dev:worker-* and the one-clause reason
 3. **Pick preset and structure** from the two tables. Give every agent a `name` so a re-query can
    reach the same transcript. Done when each card names its preset and the run names its structure.
 4. **Dispatch.** Independent slices go out in one message, in the background. Dependent slices wait
-   for the result they consume. While agents run, the orchestrator prepares the verification of step 6
-   instead of doing a worker's job in parallel. Done when every card has been sent.
+   for the result they consume. When any card uses `isolation: worktree`, record `git worktree list`
+   before the first dispatch as the baseline for step 7. While agents run, the orchestrator prepares
+   the verification of step 6 instead of doing a worker's job in parallel. Done when every card has
+   been sent and, where worktrees are in play, the baseline is recorded.
 5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer is
-   ambiguous or hedged where the card asked for a decision, a claim carries no `file:line`, the
+   ambiguous or hedged where the card asked for a decision, a claim carries no evidence (`file:line`
+   for file content, command plus output for a run result, the path for a path), the
    result contradicts what the repository shows, the done criteria are not met, or an owned path list
    was exceeded. On rejection, re-query in this order and stop at the first pass:
    1. `SendMessage` to the same agent, naming the failed criterion, at most twice.
    2. Re-dispatch the card once on the next preset up, with the rejected answer attached as an input.
+      A rejected `dev:worker-max` result has no next preset and goes straight to 3.
    3. `AskUserQuestion` with the rejected answers summarised; another vendor's agent is one of the
       options offered there, never a silent fallback.
    Done when every slice has an accepted result or an open question in front of the user.

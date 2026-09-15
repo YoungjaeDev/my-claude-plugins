@@ -8,6 +8,10 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-09-15 — vendor-neutral data folder for cross-runtime skill files (post-merge)
+
+- runtimes/codex-plugin-surfaces.md: added the `.agents/` placement rule from `docs:vp`, noted that plaud-note-taking still keeps its dictionary under `.claude/`, `last_verified` 2026-09-11 -> 2026-09-15, `sources` 3 -> 4
+
 ## 2026-09-11 — review-loop churn: the stop rule shipped and still did not stop (ingest-finding)
 
 - guards/review-loop-churn.md: rewrote the body as the distilled stop rule (whole-loop churn measurement, defer-floor dependency, enforced cap), compressed both occurrences into `## Evidence`, added PR #223 + issue #225 sources, `last_verified` 2026-09-04 -> 2026-09-11, `sources` 2 -> 4

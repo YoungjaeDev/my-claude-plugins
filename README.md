@@ -102,7 +102,7 @@ cp "$SRC" ~/.codex/AGENTS.md       # Codex
 | 플러그인 | 분류 | 내용 |
 |---------|------|------|
 | `dev` | Development | GitHub 워크플로우 7 (commit-and-push, decompose-issue, resolve-issue, release, cr-fix, post-merge, state-tracker) + 세션 인수인계 1 (session-handoff) + 프로젝트 셋업 2 (new, wiring) + Playwright E2E 하네스 3 (e2e-setup, e2e-author, e2e-debug) |
-| `docs` | Documentation | 프로젝트 문서 커맨드 4 (readme, changelog, deploy-doc, moc) + 저작 스킬 (doc-guides, write-rules, interview-methodology, skill-forge, skill-audit, skill-fleet-review) + 내보내기 (translate-web-article, gws-sync) |
+| `docs` | Documentation | 프로젝트 문서 커맨드 4 (readme, changelog, deploy-doc, moc) + 저작 스킬 (doc-guides, write-rules, interview-methodology, vp, skill-forge, skill-audit, skill-fleet-review) + 내보내기 (translate-web-article, gws-sync) |
 | `scout` | Research | research-orchestrator (github / hf / web / docs scout 에이전트 + synthesis), ask / generate-llmstxt (DeepWiki) |
 | `ml` | Development | ml-dev-principles, gradio-cv-app, cv-notebook, edit-notebook |
 | `wiki` | Memory & Lore | LLM-Wiki 3-layer (bootstrap-wiki, ingest-finding, lint-wiki, plaud-note-taking + hooks 5) + mem0 플릿 운영 (fleet-scan, cleanup) |
@@ -180,6 +180,7 @@ Codex 는 named agent 를 등록하지 못하므로 세 스킬은 번들 `refere
 |-------|-------------|
 | `/docs:write-rules` | CLAUDE.md 와 `.claude/rules/*.md` 를 공식 패턴(200줄 root cap, `paths:` 스코핑)에 맞게 생성·재구조화. 상태 스캔 후 `NEW / TIGHTEN / SPLIT / REORGANIZE` 중 하나를 추천 |
 | `/docs:interview-methodology` | 요구사항 인터뷰. breadth-first 5-phase, depth-first Socratic, relentless stress-test ("grill me"). 결과가 재사용 프롬프트여야 하면 Google TCREI 구조로 출력 |
+| `/docs:vp` | 음성 전사 프롬프트 게이트. 프롬프트 앞·뒤·중간 어디에 넣어도 됨. `.agents/voice-terms.md` 사전으로 오인식 교정 후, 명확하면 한 줄 요약하고 진행, 모호하면 핵심 질문 2-3개. 사전 행은 승인 후에만 추가 (Claude·Codex 공용) |
 | `/docs:skill-forge` | 스킬 작성·개정. 프론트매터 스키마, 작성 레버, 두 런타임 패키징 계약 |
 | `/docs:skill-audit` | 단일 스킬 7축 진단 + P0/P1/P2 수정안 |
 | `/docs:skill-fleet-review` | 플러그인 트리 전수 검토. 측정 우선 코호트 선정 후 `docs/audit/<date>-fleet.md` + CSV |

@@ -9,6 +9,7 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 | `doc-guides` | README/CHANGELOG/deploy-doc/MOC authoring reference cards, one per `/docs:*` document command (absorbed `readme-guide`, `changelog-guide`, `deploy-doc-guide`, `moc-guide`) |
 | `write-rules` | CLAUDE.md + `.claude/rules/` generation with auto mode detection (absorbed from `rules-forge`) |
 | `interview-methodology` | Requirements interview: breadth-first / depth-first / relentless grill-me modes (absorbed from `interview`); also carries the TCREI reusable-prompt template (absorbed from `tcrei-prompt`) |
+| `vp` | Voice-dictated prompt gate: normalize misheard terms against `.agents/voice-terms.md`, restate and proceed, or ask 2-3 questions when ambiguous |
 | `skill-forge` | Write or revise a skill: frontmatter schema, writing levers, structure, three-runtime packaging contract |
 | `skill-audit` | Diagnose one skill across seven axes, returning P0/P1/P2 findings with concrete edits |
 | `skill-fleet-review` | Repository-wide skill sweep: measure first, review a selected cohort, emit a dated audit report + CSV |

@@ -8,6 +8,11 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-09-15 — agent-definition `effort:` field and per-tier worker presets (post-merge #227)
+
+- runtimes/agent-definition-effort.md: new page — undocumented `effort:` frontmatter (`low`/`medium`/`high`/`xhigh`/`max`, silent downgrade on unsupporting models), `Agent` tool overrides `model` only, hence the four `dev:worker-*` preset files; sources: official `claude-security` agents, CLI 2.1.272 binary enum, commit 98f36f5
+- index.md: added the runtimes hook
+
 ## 2026-09-15 — vendor-neutral data folder for cross-runtime skill files (post-merge)
 
 - runtimes/codex-plugin-surfaces.md: added the `.agents/` placement rule from `docs:vp`, noted that plaud-note-taking still keeps its dictionary under `.claude/`, `last_verified` 2026-09-11 -> 2026-09-15, `sources` 3 -> 4

@@ -67,4 +67,5 @@ All wiki edits append one line to `log.md` (`## YYYY-MM-DD — <summary>` header
 
 ## runtimes
 
+- [agent-definition-effort](runtimes/agent-definition-effort.md) — undocumented `effort:` frontmatter on agent definitions (`low`…`max`, silent downgrade); the `Agent` tool overrides `model` but not `effort`, so each tier needs its own preset file
 - [codex-plugin-surfaces](runtimes/codex-plugin-surfaces.md) — Codex registers only `skills/` from an installed plugin; hooks need manual `~/.codex/hooks.json` + `/hooks` trust, commands and agents are Claude-only

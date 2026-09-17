@@ -260,7 +260,7 @@ fi
 
 Skip if `codex_active != "active"`, or if pre-flight already populated `codex_review_id_to_process`
 (the `gate=proceed` path). Otherwise query `pulls/$PR_NUM/reviews` for the newest
-`chatgpt-codex-connector[bot]` review not already in `codex_processed_reviews`; when none is found
+`chatgpt-codex-connector*` review not already in `codex_processed_reviews`; when none is found
 and `CODEX_GRACE > 0`, poll `scripts/poll-codex-grace.sh` under `grace_cap` and take the
 `codex_review_id` it prints, or proceed with none when the cap expires.
 

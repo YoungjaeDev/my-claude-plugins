@@ -18,9 +18,9 @@ pr_reviews=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev
 jq -n --arg t "$PUSH_TIME" \
   --argjson comments "$issue_comments" \
   --argjson reviews  "$pr_reviews" '
-  [ ($comments[]? | select((.user.login // "") | test("coderabbit"; "i"))
+  [ ($comments[]? | select((.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i"))
                   | select(.created_at > $t) | .body // ""),
-    ($reviews[]?  | select((.user.login // "") | test("coderabbit"; "i"))
+    ($reviews[]?  | select((.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i"))
                   | select(.submitted_at > $t) | .body // "") ]
   | map(select(test("Come back again in a few minutes"; "i")))
   | length

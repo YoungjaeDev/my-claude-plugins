@@ -500,6 +500,63 @@ g=$(PATH="$GSHIM:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[555]' INTERVAL=0 \
 is "unprocessed review found -> id 777" "$(jq -r '.codex_review_id' <<<"$g" 2>/dev/null)" 777
 rm -rf "$GSHIM"
 
+# Same review set, but authored by the suffixless login GraphQL reports. REST
+# says `chatgpt-codex-connector[bot]`, GraphQL says `chatgpt-codex-connector`,
+# and the old `== "chatgpt-codex-connector[bot]"` equality matched only the
+# first — zero rows on the other, which is indistinguishable from "Codex has
+# not reviewed yet" and spins the grace poll to its cap. The fixture also
+# carries a null `user` (ghost/deleted account) because `null | test(...)`
+# aborts the whole jq program, so the `// ""` guard is part of the contract.
+# RED against the equality filter AND against a `// ""`-less test().
+GSHIM3=$(mktemp -d)
+cat > "$GSHIM3/gh" <<SH
+#!/usr/bin/env bash
+cat "$FIX/pr-reviews-codex-graphql-login.json"
+SH
+chmod +x "$GSHIM3/gh"
+g3=$(PATH="$GSHIM3:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[555]' INTERVAL=0 \
+      bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null) || true
+is "suffixless (GraphQL) codex login still matches -> id 777" "$(jq -r '.codex_review_id' <<<"$g3" 2>/dev/null)" 777
+
+e3=$(PATH="$GSHIM3:$PATH" bash "$SCRIPTS/probe-codex-engagement.sh" o r 42 2>/dev/null) || true
+is "suffixless (GraphQL) codex login reads as engaged" "$e3" active
+rm -rf "$GSHIM3"
+
+# Matching the login as a bare stem (`test("chatgpt-codex-connector"; "i")`) is
+# a SUBSTRING match, and `chatgpt-codex-connector-evil` is a registrable GitHub
+# login (28 chars, alnum+hyphen) that any account can use to review a public PR.
+# cr-fix feeds Codex review bodies back into code edits, so a matcher an
+# outsider can satisfy is an injection path into that loop. The anchored form
+# `^chatgpt-codex-connector(\[bot\])?$` is forgery-proof because `[` and `]`
+# are not legal login characters. The spoof review is the NEWEST here, so the
+# stem filter fails as a WRONG SUCCESS, not as an error: `sort_by(.submitted_at)
+# | last` hands back id 999. RED against the unanchored stem by construction.
+GSHIM4=$(mktemp -d)
+cat > "$GSHIM4/gh" <<SH
+#!/usr/bin/env bash
+cat "$FIX/pr-reviews-codex-spoof-login.json"
+SH
+chmod +x "$GSHIM4/gh"
+g4=$(PATH="$GSHIM4:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[]' INTERVAL=0 \
+      bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null) || true
+is "spoofed codex-lookalike login is not picked as newest -> id 777" "$(jq -r '.codex_review_id' <<<"$g4" 2>/dev/null)" 777
+rm -rf "$GSHIM4"
+
+# Same threat on the engagement probe, which counts authors rather than picking
+# one. A PR whose ONLY review comes from the lookalike must read as inactive;
+# under the stem filter it read as active, which is how a forged review gets the
+# state machine to treat outsider text as Codex output. (Separate fixture: the
+# probe has no processed-id filter, so the legit 777 above would mask this.)
+GSHIM5=$(mktemp -d)
+cat > "$GSHIM5/gh" <<SH
+#!/usr/bin/env bash
+cat "$FIX/pr-reviews-codex-spoof-only.json"
+SH
+chmod +x "$GSHIM5/gh"
+e5=$(PATH="$GSHIM5:$PATH" bash "$SCRIPTS/probe-codex-engagement.sh" o r 42 2>/dev/null) || true
+is "spoofed codex-lookalike login alone reads as inactive" "$e5" inactive
+rm -rf "$GSHIM5"
+
 # No unprocessed review -> the poll must KEEP WAITING, not emit a fabricated
 # empty id. Without jq -r the empty jq result printed the two-char string '""',
 # which passed [ -n ] and ended the until-loop on round 1 (reproduced live:
@@ -566,6 +623,24 @@ chmod +x "$ESHIM2/gh"
 e2=$(PATH="$ESHIM2:$PATH" bash "$SCRIPTS/engagement-gate.sh" o r 42 "2026-07-27T14:20:43Z" 2>/dev/null) || true
 is "comment untouched since before the push is not engagement" "$e2" 0
 rm -rf "$ESHIM2"
+
+# Same anchoring contract on the CodeRabbit side, where the stem is only 10
+# chars (`coderabbit`) and the canonical login is `coderabbitai` — so
+# `coderabbitfake` slipped through and counted as a convergence signal, letting
+# an outside account tell Step 8c the review landed. RED against
+# `test("coderabbit"; "i")` by construction.
+ESHIM3=$(mktemp -d)
+cat > "$ESHIM3/gh" <<SH
+#!/usr/bin/env bash
+case "\$3" in
+  *pulls*reviews) cat "$FIX/pr-reviews-cr-spoof-login.json";;
+  *) echo '[]';;
+esac
+SH
+chmod +x "$ESHIM3/gh"
+e3g=$(PATH="$ESHIM3:$PATH" bash "$SCRIPTS/engagement-gate.sh" o r 42 "2026-07-27T14:20:43Z" 2>/dev/null) || true
+is "spoofed coderabbit-lookalike login is not engagement" "$e3g" 0
+rm -rf "$ESHIM3"
 
 echo
 echo "poll-cr-status.sh"

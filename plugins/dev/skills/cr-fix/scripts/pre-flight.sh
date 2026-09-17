@@ -127,7 +127,7 @@ if [ "${NO_CODEX:-false}" != "true" ]; then
   if codex_pages=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null); then
     codex_latest_id=$(jq -rs --argjson p "$PROCESSED" 'add // []
         | [ .[]
-            | select(.user.login == "chatgpt-codex-connector[bot]")
+            | select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
             | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
             | select(.id as $i | $p | index($i) | not) ]
         | sort_by(.submitted_at) | last | .id // ""' <<<"$codex_pages")

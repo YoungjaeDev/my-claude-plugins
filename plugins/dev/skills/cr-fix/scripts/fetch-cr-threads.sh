@@ -69,7 +69,7 @@ jq -c '
   [ .[]
     | select(.isResolved == false and .isOutdated == false)
     | .comments.nodes[0] as $c
-    | select(($c.author.login // "") | test("coderabbit"; "i"))
+    | select(($c.author.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i"))
     | {
         source: "cr",
         path: $c.path,

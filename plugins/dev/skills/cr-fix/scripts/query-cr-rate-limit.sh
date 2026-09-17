@@ -69,7 +69,7 @@ for _ in $(seq 1 "$POLLS"); do
              (map(select(.body == "@coderabbitai rate limit")) | last | .id) // null
            end) as $anchor
         | if $anchor == null then "" else
-            ([ .[] | select(.user.login // "" | test("coderabbit"; "i"))
+            ([ .[] | select(.user.login // "" | test("^coderabbitai(\\[bot\\])?$"; "i"))
                    | select((.id // 0) > $anchor)
                    | .body // "" ] | last // "")
           end') || reply=""

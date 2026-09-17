@@ -50,7 +50,7 @@ if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
   # the iter silently loses every Codex finding (fetch by review id '""' -> []).
   candidate=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
     | jq -sr --argjson p "$PROCESSED" 'add // []
-        | [ .[] | select((.user.login // "") | test("chatgpt-codex-connector"; "i"))
+        | [ .[] | select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
                 | select(.state=="COMMENTED" or .state=="CHANGES_REQUESTED")
                 | select(.id as $i | $p | index($i) | not) ]
         | sort_by(.submitted_at) | last | .id // ""')

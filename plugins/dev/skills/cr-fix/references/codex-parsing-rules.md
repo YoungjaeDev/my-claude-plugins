@@ -24,7 +24,7 @@ GitHub treats PRs as issues for the reactions endpoint. Codex sometimes (per use
 ```bash
 gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/reactions" 2>/dev/null \
   | jq -s 'add // []
-           | map(select((.user.login // "") | test("chatgpt-codex-connector"; "i")))
+           | map(select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i")))
            | sort_by(.created_at) | last // {}'
 ```
 

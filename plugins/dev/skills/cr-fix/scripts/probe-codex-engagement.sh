@@ -15,6 +15,6 @@ fi
 # Pipe form per plugins/dev/CLAUDE.md gh / jq invariants; jq -s slurps the
 # multi-document --paginate stream into a single array before counting Codex authors.
 count=$(jq -s 'add // []
-               | map(select((.user.login // "") | test("chatgpt-codex-connector"; "i")))
+               | map(select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i")))
                | length' <<< "$pages")
 if [ "${count:-0}" -gt 0 ]; then printf 'active\n'; else printf 'inactive\n'; fi

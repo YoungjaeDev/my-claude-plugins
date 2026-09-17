@@ -8,6 +8,11 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-09-17 — bot login matching: stem fixes the two spellings and opens spoofing (post-merge #228)
+
+- guards/bot-identity-matching.md: new page — two spellings per surface (GraphQL strips `[bot]`, REST keeps it), equality → silent zero, unanchored stem → registrable lookalike (`coderabbit-evil`) reaching a loop that edits code, `^<login>(\[bot\])?$` as the only closing form (`[`/`]` are illegal login characters), jq double-escape, `sort_by | last` turning a spoof into a wrong success, anchoring's silent-zero cost paid by regression tests; sources: PR #228, its CodeRabbit review
+- index.md: added the guards hook
+
 ## 2026-09-15 — agent-definition `effort:` field and per-tier worker presets (post-merge #227)
 
 - runtimes/agent-definition-effort.md: new page — undocumented `effort:` frontmatter (`low`/`medium`/`high`/`xhigh`/`max`, silent downgrade on unsupporting models), `Agent` tool overrides `model` only, hence the four `dev:worker-*` preset files; sources: official `claude-security` agents, CLI 2.1.272 binary enum, commit 98f36f5

@@ -16,7 +16,7 @@ until id=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/n
     | jq -sr --argjson processed "$PROCESSED" '
         add // []
         | [ .[]
-            | select(.user.login == "chatgpt-codex-connector[bot]")
+            | select((.user.login // "") | test("chatgpt-codex-connector"; "i"))
             | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
             | select(.id as $i | $processed | index($i) | not) ]
         | sort_by(.submitted_at) | last | .id // ""'); \

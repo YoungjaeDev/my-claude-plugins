@@ -13,7 +13,7 @@ Two related state caches live alongside the iteration loop: `codex_active` (per-
 
 ## Transition rules
 
-- **First iter (Step 6)**: always probe `/pulls/{pr}/reviews` filtered by `chatgpt-codex-connector[bot]`. Sets `disabled` (if `--no-codex`), `active` (count > 0), or `inactive` (count == 0).
+- **First iter (Step 6)**: always probe `/pulls/{pr}/reviews` filtered by `chatgpt-codex-connector` (REST reports it as `chatgpt-codex-connector[bot]`, GraphQL strips the suffix). Sets `disabled` (if `--no-codex`), `active` (count > 0), or `inactive` (count == 0).
 - **Subsequent iters (Step 6)**: re-probe only if cache is `inactive`. `active` and `disabled` never flip back. This catches the common case where a PR opens just before its first Codex review arrives — without the mid-run re-probe the run would skip Codex output entirely.
 - **Mid-iter constancy**: `codex_active` is cached within an iteration so Step 6b grace polling and Step 8b inline-fetch both see a fixed value. Within a single iteration the resolution is fixed.
 - **Probe error handling**: if `gh api` fails, the `inactive` decision is non-sticky (treats failure as "unknown, retry next iter"). The earlier bug pattern was `gh api ... | wc -l` returning 0 on failure, silently locking `codex_active` to `inactive` — fixed by separating the gh call from the count.
@@ -50,7 +50,7 @@ if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
   # the iter silently loses every Codex finding (fetch by review id '""' -> []).
   candidate=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
     | jq -sr --argjson p "$PROCESSED" 'add // []
-        | [ .[] | select(.user.login=="chatgpt-codex-connector[bot]")
+        | [ .[] | select((.user.login // "") | test("chatgpt-codex-connector"; "i"))
                 | select(.state=="COMMENTED" or .state=="CHANGES_REQUESTED")
                 | select(.id as $i | $p | index($i) | not) ]
         | sort_by(.submitted_at) | last | .id // ""')

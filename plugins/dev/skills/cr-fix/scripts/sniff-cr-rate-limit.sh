@@ -26,12 +26,12 @@ bodies=$(
   {
     gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2>/dev/null \
       | jq -s --arg t "$PUSH_TIME" 'add // []
-          | [ .[] | select(.user.login | test("coderabbit"; "i"))
+          | [ .[] | select((.user.login // "") | test("coderabbit"; "i"))
                   | select(.created_at > $t or .updated_at > $t)
                   | .body // "" ]'
     gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null \
       | jq -s --arg t "$PUSH_TIME" 'add // []
-          | [ .[] | select(.user.login | test("coderabbit"; "i"))
+          | [ .[] | select((.user.login // "") | test("coderabbit"; "i"))
                   | select(.submitted_at > $t)
                   | .body // "" ]'
   } | jq -s 'add // []'

@@ -13,7 +13,7 @@ gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/comments" --paginate 2>/dev/null \
   | jq -s --argjson rid "$RID" '
     add // []
     | [ .[]
-        | select(.user.login == "chatgpt-codex-connector[bot]")
+        | select((.user.login // "") | test("chatgpt-codex-connector"; "i"))
         | select(.pull_request_review_id == $rid)
         | {
             source: "codex",

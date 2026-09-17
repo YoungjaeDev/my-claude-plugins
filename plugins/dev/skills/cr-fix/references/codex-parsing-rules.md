@@ -4,7 +4,7 @@ How cr-fix v2 reads Codex review state without relying on PR timeline body order
 
 ## Background
 
-`chatgpt-codex-connector[bot]` posts the same review surface as a human reviewer (`pulls/$PR/reviews`) plus an opaque emoji marker that flips through three states:
+`chatgpt-codex-connector*` posts the same review surface as a human reviewer (`pulls/$PR/reviews`) plus an opaque emoji marker that flips through three states:
 
 - "in progress" (working)
 - "clean" (no findings)
@@ -14,7 +14,7 @@ The emoji marker is visible on the PR page but its API surface is **not fully na
 
 ## Two-tier reading
 
-1. **Review submission (definitive)** — `pulls/$PR/reviews` filtered by `chatgpt-codex-connector[bot]` and `state ∈ {COMMENTED, CHANGES_REQUESTED}`, dedupe-filtered by `codex_processed_reviews`. **Any non-empty result → actionable, period**. Skip emoji probing in that branch.
+1. **Review submission (definitive)** — `pulls/$PR/reviews` filtered by `chatgpt-codex-connector*` and `state ∈ {COMMENTED, CHANGES_REQUESTED}`, dedupe-filtered by `codex_processed_reviews`. **Any non-empty result → actionable, period**. Skip emoji probing in that branch.
 2. **Emoji hint (best-effort)** — Only consulted when review submission is empty. Three channels tried in order, first signal wins.
 
 ## Channel A: PR-level reactions (`issues/$PR/reactions`)
@@ -24,7 +24,7 @@ GitHub treats PRs as issues for the reactions endpoint. Codex sometimes (per use
 ```bash
 gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/reactions" 2>/dev/null \
   | jq -s 'add // []
-           | map(select(.user.login == "chatgpt-codex-connector[bot]"))
+           | map(select((.user.login // "") | test("chatgpt-codex-connector"; "i")))
            | sort_by(.created_at) | last // {}'
 ```
 

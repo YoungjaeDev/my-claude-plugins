@@ -37,7 +37,7 @@ emit() {
 content=""
 if pages=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/reactions" 2>/dev/null); then
   content=$(jq -sr --arg t "$PUSH_TIME" 'add // []
-                    | map(select(.user.login == "chatgpt-codex-connector[bot]"))
+                    | map(select((.user.login // "") | test("chatgpt-codex-connector"; "i")))
                     | map(select($t == "" or .created_at > $t))
                     | sort_by(.created_at) | last | .content // ""' <<<"$pages")
 fi
@@ -78,7 +78,7 @@ fi
 # ── Channel C: review-level reactions on latest Codex review (cheap, often 404) ─
 if rid=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null \
            | jq -sr 'add // []
-                     | [ .[] | select(.user.login == "chatgpt-codex-connector[bot]") ]
+                     | [ .[] | select((.user.login // "") | test("chatgpt-codex-connector"; "i")) ]
                      | sort_by(.submitted_at) | last | .id // ""'); \
    [ -n "$rid" ] && [ "$rid" != "null" ]; then
   if rrxn=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews/$rid/reactions" 2>/dev/null); then

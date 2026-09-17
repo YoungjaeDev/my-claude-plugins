@@ -89,7 +89,9 @@ Tracks milestone progress with architecture diagrams synced to GitHub.
 
 ## gh / jq Invariants
 
-All commands in this plugin shell out to `gh` and `jq`. Five pitfalls that silently break new bash blocks:
+All commands in this plugin shell out to `gh` and `jq`. Six pitfalls that silently break new bash blocks:
+
+- **A bot login has two spellings and the surface decides which one you get.** GraphQL (`gh pr view <N> --json comments,reviews`, `gh api graphql`) strips the `[bot]` suffix; REST (`gh api repos/{owner}/{repo}/issues/<N>/comments`, `.../pulls/<N>/reviews`, `.../pulls/<N>/comments`, `.../issues/<N>/reactions`) keeps it. On one live PR: `gh pr view 116 --json comments --jq '.comments[].author.login'` printed `coderabbitai`, while `gh api repos/OWNER/REPO/issues/116/comments --jq '.[].user.login'` printed `coderabbitai[bot]`. An equality filter therefore matches on one surface and returns zero rows on the other — and zero rows reads exactly like "the bot has not reviewed yet", so the loop waits forever or exits as a false `clean`. Match on the stem instead: `select((.user.login // "") | test("coderabbit"; "i"))`. The `// ""` is load-bearing — a ghost or deleted account carries a null `user`, and `null | test(...)` aborts the whole jq program.
 
 - A `gh api` REST path in a skill body must use gh's literal `{owner}/{repo}` placeholder (auto-resolved from the current repo) — never `$OWNER/$REPO` shell vars unless that skill demonstrably sets them. A skill step that interpolates an unset `$OWNER`/`$REPO` calls `repos//pulls/...` and fails silently or returns nothing. Prefer `gh api "repos/{owner}/{repo}/pulls/<N>/files"` (or `gh pr view/diff <N>`, which carry no repo coordinates) over raw-var REST.
 - `gh ... --jq <expr>` accepts a single filter string and does NOT forward jq CLI flags (`--arg`, `--argjson`). Variable injection requires the pipe form: `gh ... | jq --arg name "$value" '...'`. Trying `gh ... --jq --arg name "$v" '...'` fails with `accepts 1 arg(s), received 4`.

@@ -500,6 +500,28 @@ g=$(PATH="$GSHIM:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[555]' INTERVAL=0 \
 is "unprocessed review found -> id 777" "$(jq -r '.codex_review_id' <<<"$g" 2>/dev/null)" 777
 rm -rf "$GSHIM"
 
+# Same review set, but authored by the suffixless login GraphQL reports. REST
+# says `chatgpt-codex-connector[bot]`, GraphQL says `chatgpt-codex-connector`,
+# and the old `== "chatgpt-codex-connector[bot]"` equality matched only the
+# first — zero rows on the other, which is indistinguishable from "Codex has
+# not reviewed yet" and spins the grace poll to its cap. The fixture also
+# carries a null `user` (ghost/deleted account) because `null | test(...)`
+# aborts the whole jq program, so the `// ""` guard is part of the contract.
+# RED against the equality filter AND against a `// ""`-less test().
+GSHIM3=$(mktemp -d)
+cat > "$GSHIM3/gh" <<SH
+#!/usr/bin/env bash
+cat "$FIX/pr-reviews-codex-graphql-login.json"
+SH
+chmod +x "$GSHIM3/gh"
+g3=$(PATH="$GSHIM3:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[555]' INTERVAL=0 \
+      bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null) || true
+is "suffixless (GraphQL) codex login still matches -> id 777" "$(jq -r '.codex_review_id' <<<"$g3" 2>/dev/null)" 777
+
+e3=$(PATH="$GSHIM3:$PATH" bash "$SCRIPTS/probe-codex-engagement.sh" o r 42 2>/dev/null) || true
+is "suffixless (GraphQL) codex login reads as engaged" "$e3" active
+rm -rf "$GSHIM3"
+
 # No unprocessed review -> the poll must KEEP WAITING, not emit a fabricated
 # empty id. Without jq -r the empty jq result printed the two-char string '""',
 # which passed [ -n ] and ended the until-loop on round 1 (reproduced live:

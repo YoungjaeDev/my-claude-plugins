@@ -1016,6 +1016,8 @@ is "non-default base, no base_branches -> request" "$(rq feature/x "$RQ/none.yam
 is "no config file -> request"                   "$(rq feature/x "$RQ/missing.yaml")"  request
 # Decision 17: auto-review switched off to save quota wins over the manual request.
 is "auto_review.enabled false -> skip"           "$(rq feature/x "$RQ/off.yaml")"      skip
+printf 'reviews:\n  auto_review:\n    enabled: False\n' > "$RQ/off-cap.yaml"
+is "auto_review.enabled False -> skip"           "$(rq feature/x "$RQ/off-cap.yaml")"  skip
 is "default base, no config -> skip"             "$(rq main "$RQ/missing.yaml")"       skip
 # An empty list item is not a match-everything pattern.
 printf 'reviews:\n  auto_review:\n    base_branches:\n      -\n      - ""\n' > "$RQ/empty.yaml"

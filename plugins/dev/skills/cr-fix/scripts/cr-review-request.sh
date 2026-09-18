@@ -46,7 +46,8 @@ parsed=$(awk -v q="'" '
     }
   }' "$CONFIG") || { echo "could not parse $CONFIG" >&2; echo request; exit 0; }
 
-if printf '%s\n' "$parsed" | grep -q "^enabled	false$"; then
+# YAML reads false / False / FALSE alike.
+if printf '%s\n' "$parsed" | grep -qi "^enabled	false$"; then
   echo "reviews.auto_review.enabled is false" >&2; echo skip; exit 0
 fi
 

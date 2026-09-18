@@ -216,6 +216,9 @@ for ITER in $(seq 1 $MAX_ITER); do
   # Step 5a, before CUR_SHA is taken.
   if [ "$(gh pr view "$PR_NUM" --json mergeable --jq '.mergeable')" = CONFLICTING ]; then
     # references/merge-conflicts.md: merge origin/$BASE, resolve, re-check, commit, push.
+    if [ "$CR_REVIEW_REQUEST" = request ] && { [ "$CR_SOURCE" = auto ] || [ "$CR_SOURCE" = pr-bot ]; }; then
+      request_cr_review
+    fi
     continue  # the merge commit is this iteration's one commit
   fi
   CUR_SHA=$(git rev-parse HEAD)

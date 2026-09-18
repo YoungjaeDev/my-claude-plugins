@@ -8,6 +8,8 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion Agent
 
 Act as an expert developer who systematically analyzes and resolves GitHub issues. Receive a GitHub issue number as argument and resolve the issue. Follow project guidelines in `@CLAUDE.md`.
 
+The TDD seam-confirmation order below is adapted from mattpocock/skills `tdd/SKILL.md` (commit `74ca5fe`).
+
 ## Prerequisites
 
 Before starting the workflow:
@@ -37,6 +39,9 @@ Before starting the workflow:
 1. **Analyze Issue**:
    - Run `gh issue view $ISSUE_NUMBER --json title,body,comments,milestone` to get issue title, body, labels, and milestone
    - **Check TDD marker**: Look for `<!-- TDD: enabled -->` in issue body -> Set TDD workflow flag
+   - **Bug issues**: if the `bug` label is present (or the branch type below infers `fix`), run
+     `dev:diagnose` before Step 7's implementation to get a falsified root cause and a regression
+     test instead of a guess-and-check patch.
    - If milestone exists, run `gh issue list --milestone "<milestone-name>" --json number,title,state` to view related issues and understand overall context
    - Identify requirements precisely
    - **[NEW] Save checkpoint**: phase="analyze"
@@ -118,8 +123,17 @@ Before starting the workflow:
    - **File edits**: For non-code files or complex multi-line changes
    - **Sub-agents**: For large-scale parallel modifications
    - **If TDD enabled** (marker detected in Step 1):
+     - **Confirm the test seam first**, before writing any test. Resolve in this order:
+       1. The issue body already carries an agreed seam (decompose-issue's "테스트 seam" field, or
+          equivalent prose): use it as-is, no further question.
+       2. No seam in the issue body, and `AskUserQuestion` is available (main session, not a
+          subagent): ask the user what the seam should be, then proceed.
+       3. No seam in the issue body, and running as a subagent (no `AskUserQuestion`,
+          subagents do not receive it: https://code.claude.com/docs/en/sub-agents, "Available
+          tools"): do not write a test at a guessed seam. Return a seam proposal as this run's
+          result and stop the TDD branch here.
      - **Prefer the shared TDD skill**: If `superpowers:test-driven-development` is installed, invoke it and follow its discipline. It is the source of truth for TDD rigor (RED -> GREEN -> REFACTOR with tracer-bullet vertical slices, never refactor while RED, test behavior over implementation, mock only at boundaries, and **independent expected values** — never assert a value the test recomputed the way the code does).
-     - **Fallback (skill not installed)**: `superpowers` is an external plugin and MUST NOT be a hard dependency — Codex and minimal installs may lack it, and this skill must not break there. When it is absent, degrade gracefully to these four built-in rules:
+     - **Fallback (skill not installed)**: `superpowers` is an external plugin and MUST NOT be a hard dependency — Codex and minimal installs may lack it, and this skill must not break there. When it is absent, degrade gracefully to these five built-in rules:
        1. **Tracer-bullet vertical slice** — one failing test -> one minimal implementation -> repeat. Do not write a batch of tests up front (no horizontal slicing).
        2. **Strict RED -> GREEN** — watch the test fail first, then write the minimum to pass. Never refactor while a test is RED.
        3. **Behavior over implementation** — assert through the public interface only; do not couple tests to internal structure.
@@ -146,15 +160,15 @@ Before starting the workflow:
    - **[NEW] Save checkpoint**: phase="implement"
 
 8. **Write Tests**:
-   - **If TDD enabled**: Verify test coverage meets target (tests already written in Step 7), add missing edge cases if needed
-   - **If TDD not enabled**: Spawn independent sub-agents per file to write unit tests in parallel, achieving at least 80% coverage
+   - **If TDD enabled**: Verify the agreed seam from Step 7 is actually exercised (tests already written in Step 7), add missing edge cases at that same seam if needed
+   - **If TDD not enabled**: Spawn independent sub-agents per file to write unit tests in parallel; the target is the issue's completion criteria verified through the code's public interface, not a coverage percentage. Use the issue's recorded seam when one happens to be present, but this path runs no seam-confirmation step of its own
 
    ```
    # Parallel test writing
    Agent(
      subagent_type="claude",
      model="sonnet",
-     prompt="Write unit tests for [file]. Target 80% coverage. Test happy path, edge cases, error conditions."
+     prompt="Write unit tests for [file]. Verify the issue's completion criteria through the public interface. Test happy path, edge cases, error conditions."
    )
    ```
    - **[NEW] Save checkpoint**: phase="test"
@@ -207,10 +221,11 @@ Before starting the workflow:
     - Print one banner line at start: `CR auto-fix loop starting; pass --skip-cr-fix to disable.`
     - For a PR into a branch CodeRabbit does not auto-review, cr-fix on the `auto` / `pr-bot` source posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/cr-fix/SKILL.md` Step 2).
     - On non-success exit:
-      - `final_state` ∈ {failure, iteration_cap, user_declined, minor_floor, cr_inactive}: cr-fix emits a final JSON line via its EXIT trap (Step 16). Surface that JSON's diagnostic to the user.
+      - `final_state` ∈ {failure, iteration_cap, user_declined, minor_floor, cr_inactive, reviewers_unavailable}: cr-fix emits a final JSON line via its EXIT trap (Step 16). Surface that JSON's diagnostic to the user.
       - `final_state="timeout"`: cr-fix's trap still emits the JSON line (with `final_state="timeout"` and `merged=false`), but the user-facing message should additionally mention exit code 124 if the underlying poller hit the wall-clock cap. Surface "cr-fix timed out — re-run with a larger `--cr-fix-max` or `--timeout`, or check the CodeRabbit dashboard."
       - `final_state="cr_inactive"`: CodeRabbit never engaged with the PR within the iteration budget. Surface "CodeRabbit did not review the PR; merge not attempted. Check the CodeRabbit dashboard or re-run with a larger `--cr-fix-max`."
       - `final_state="minor_floor"`: cr-fix stopped at the low-severity floor (default on; `--no-minor-stop` disables) — the last cycle applied only minor fixes with nothing deferred. Those fixes were pushed but the latest push has not been CR-re-reviewed. Surface "cr-fix stopped at minor_floor — low-severity fixes pushed, latest push not yet re-reviewed; re-run cr-fix to confirm clean or merge via GitHub UI." Pass `--no-minor-stop` to keep looping.
+      - `final_state="reviewers_unavailable"`: neither reviewer this run uses would engage (Codex usage limit, CodeRabbit auto-review disabled, or CodeRabbit dropped and Codex never engaged). cr-fix stopped before any wait, not converged. Do NOT auto-merge. Surface the reviewer comment URLs from cr-fix's report and suggest `--cr-source cli`, `@coderabbitai review`, or waiting for the Codex quota.
       - In all non-success cases, resolve-issue still considers itself complete (PR is open and reviewable). Do NOT auto-merge in any non-clean exit.
     - On `final_state="clean"` and `--auto-merge` flag set: cr-fix's Step 15 branches on branch-protection presence. With protection, `gh pr merge --auto --squash --delete-branch` queues the merge until protection requirements are met. Without protection, cr-fix prompts the user (Merge now / Skip merge / Cancel) — `--auto` would otherwise collapse to immediate merge and bypass any external review.
     - Save checkpoint: phase="cr-fix"

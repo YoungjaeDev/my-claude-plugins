@@ -111,6 +111,10 @@ request_cr_review() {  # GitHub comments are the record; no state file
   decision=$(bash "$SKILL_DIR/scripts/cr-review-posted.sh" "$OWNER" "$REPO" "$PR_NUM" "$since") || return 0
   [ "$decision" = post ] && gh pr comment "$PR_NUM" --body "@coderabbitai review"
 }
+# Before iter 1: the PR's opening push was never auto-reviewed.
+if [ "$CR_REVIEW_REQUEST" = request ] && { [ "$CR_SOURCE" = auto ] || [ "$CR_SOURCE" = pr-bot ]; }; then
+  request_cr_review
+fi
 ```
 
 An absent CodeRabbit review is never convergence here: Step 8c's `cr_engagement == 0` waits or ends at `cr_inactive`, never at `clean`. The CLI and codex-only sources never post it.
@@ -510,7 +514,7 @@ On BUILD or TEST failure: `verification_blocking=true`, surface the failing outp
 ```bash
 # A rejected push leaves the loop (references/failure-modes.md); nothing below may
 # run for a head the PR never received.
-git push 2>&1 || break
+git push 2>&1 || { final_state=failure; break; }
 : > "$TRACK_FILE"  # reset for next iter
 # Non-default base only (Step 2): this push will not be auto-reviewed.
 if [ "$CR_REVIEW_REQUEST" = request ] && { [ "$CR_SOURCE" = auto ] || [ "$CR_SOURCE" = pr-bot ]; }; then

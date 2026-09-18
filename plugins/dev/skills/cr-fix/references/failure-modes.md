@@ -29,7 +29,7 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 
 | Case | Behavior |
 |------|----------|
-| `git push` rejected (non-fast-forward) | Surface error, exit loop. `final_state` reflects the most recent loop state; trap still emits JSON with that value. User resolves locally. |
+| `git push` rejected (non-fast-forward) | Surface error, set `final_state=failure`, exit loop (Step 12). No review request is posted for the unpushed head, and `failure` never auto-merges. User resolves locally. |
 | `gh pr merge --auto` fails (merge conflicts, missing required reviews after enroll) | Capture stderr, print, exit non-zero — loop already completed with `final_state=clean`. `merged=false` in JSON. |
 | Step 15 branch-protection probe gh api error | `protection_http: 0` — never merge on an unverified protection state; surface and leave the PR open. |
 | Step 14 `gh issue create` fails | `followup_issue` stays absent, so `auto-merge-gate.sh` reports `eligible: false` and `minor_floor` / `churn` do not merge. Surface the error; the deferred findings are still in the archived `auto_judge_log`. |

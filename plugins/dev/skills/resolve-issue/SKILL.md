@@ -125,12 +125,12 @@ Before starting the workflow:
    - **If TDD enabled** (marker detected in Step 1):
      - **Confirm the test seam first**, before writing any test. Resolve in this order:
        1. The issue body already carries an agreed seam (decompose-issue's "테스트 seam" field, or
-          equivalent prose) — use it as-is, no further question.
+          equivalent prose): use it as-is, no further question.
        2. No seam in the issue body, and `AskUserQuestion` is available (main session, not a
-          subagent) — ask the user what the seam should be, then proceed.
-       3. No seam in the issue body, and running as a subagent (no `AskUserQuestion` —
+          subagent): ask the user what the seam should be, then proceed.
+       3. No seam in the issue body, and running as a subagent (no `AskUserQuestion`,
           subagents do not receive it: https://code.claude.com/docs/en/sub-agents, "Available
-          tools") — do not write a test at a guessed seam. Return a seam proposal as this run's
+          tools"): do not write a test at a guessed seam. Return a seam proposal as this run's
           result and stop the TDD branch here.
      - **Prefer the shared TDD skill**: If `superpowers:test-driven-development` is installed, invoke it and follow its discipline. It is the source of truth for TDD rigor (RED -> GREEN -> REFACTOR with tracer-bullet vertical slices, never refactor while RED, test behavior over implementation, mock only at boundaries, and **independent expected values** — never assert a value the test recomputed the way the code does).
      - **Fallback (skill not installed)**: `superpowers` is an external plugin and MUST NOT be a hard dependency — Codex and minimal installs may lack it, and this skill must not break there. When it is absent, degrade gracefully to these five built-in rules:
@@ -161,14 +161,14 @@ Before starting the workflow:
 
 8. **Write Tests**:
    - **If TDD enabled**: Verify the agreed seam from Step 7 is actually exercised (tests already written in Step 7), add missing edge cases at that same seam if needed
-   - **If TDD not enabled**: Spawn independent sub-agents per file to write unit tests in parallel; the target is behaviour verified at the agreed seam, not a coverage percentage
+   - **If TDD not enabled**: Spawn independent sub-agents per file to write unit tests in parallel; the target is the issue's completion criteria verified through the code's public interface, not a coverage percentage. Use the issue's recorded seam when one happens to be present, but this path runs no seam-confirmation step of its own
 
    ```
    # Parallel test writing
    Agent(
      subagent_type="claude",
      model="sonnet",
-     prompt="Write unit tests for [file]. Verify behaviour at the agreed seam. Test happy path, edge cases, error conditions."
+     prompt="Write unit tests for [file]. Verify the issue's completion criteria through the public interface. Test happy path, edge cases, error conditions."
    )
    ```
    - **[NEW] Save checkpoint**: phase="test"

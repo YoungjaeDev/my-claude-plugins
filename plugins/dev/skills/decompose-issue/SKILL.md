@@ -30,7 +30,7 @@ Vertical-slice sizing and the decision-forward issue template are adapted from m
      seam per issue now (see "Decide seams and open decisions before creating issues" below) so the
      issue body carries an agreed seam instead of leaving it for `resolve-issue` to ask about.
 
-3.5. **Check E2E applicability** (only when the work has a critical user flow — skip silently
+3.5. **Check E2E applicability** (only when the work has a critical user flow: skip silently
    otherwise, do not ask on every issue):
    - If a critical user flow is in scope → ask through the interactive-input gate: "이 흐름에 E2E
      테스트가 필요한가요?" naming the flow.
@@ -130,8 +130,8 @@ Vertical-slice sizing and the decision-forward issue template are adapted from m
    ```
 
 9.7. **Decide seams and open decisions before creating issues** (Decision 13): pull forward every
-   decision `resolve-issue` would otherwise have to ask about mid-implementation — test seam,
-   design decisions with more than one reasonable option, scope boundaries — and settle them now
+   decision `resolve-issue` would otherwise have to ask about mid-implementation (test seam,
+   design decisions with more than one reasonable option, scope boundaries), and settle them now
    through the interactive-input gate while the user is still in the loop. Write what got settled
    into each issue's "결정 사항" section and whatever is still genuinely undecided into "Open
    questions". The goal is that `resolve-issue`, run from a worker subagent with no
@@ -189,7 +189,7 @@ Vertical-slice sizing and the decision-forward issue template are adapted from m
 
 One issue becomes one PR becomes one review cycle. An issue is not free to create: every issue this
 skill opens costs its own PR and its own pass through `cr-fix` (bot review rounds, human attention,
-CI minutes). Sizing is a trade-off against that cost, not a virtue to maximize in either direction —
+CI minutes). Sizing is a trade-off against that cost, not a virtue to maximize in either direction:
 neither "as many small issues as possible" nor "as few issues as possible" is the goal on its own.
 
 ### Context-Completable Units
@@ -208,10 +208,10 @@ Split along these three axes, in order:
    layer it touches (schema, API, UI, tests) for one behaviour, not one layer across many
    behaviours. A slice is demoable or verifiable on its own once merged.
 2. **Non-overlapping file ownership.** Two issues that would need to write the same file in the
-   same PR belong in one issue, or must be ordered with a blocking edge — never left to race.
+   same PR belong in one issue, or must be ordered with a blocking edge; never left to race.
 3. **Neither over-fragmented nor under-split.** Don't split a single cohesive behaviour into one
    issue per function or endpoint (that multiplies review cycles for no independent value). Don't
-   bias toward the fewest possible issues either — a wide, blast-radius-spanning change is the
+   bias toward the fewest possible issues either: a wide, blast-radius-spanning change is the
    **expand-contract exception** below, not a reason to cram unrelated behaviours into one issue.
 
 ### Sizing Guidelines
@@ -305,7 +305,7 @@ Examples (vary by project, for reference only):
 2. [ ] Step 2 - description with specific details
 3. [ ] Step 3 - description with specific details
 
-**결정 사항** (settled during decomposition — Decision 13; resolve-issue must not have to ask):
+**결정 사항** (settled during decomposition, Decision 13; resolve-issue must not have to ask):
 - [Test seam, design decision, or scope boundary already decided, and what was decided]
 
 **테스트 seam** (only when TDD is enabled): the public interface / boundary the tests for this

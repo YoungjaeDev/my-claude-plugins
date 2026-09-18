@@ -1059,6 +1059,9 @@ is "cli source ignores the PR-bot skip"  "$(av "$UNAV" cli | jq -r '.action')" d
 is "codex-only source + codex limit -> stop" "$(av "$AV/codex-only.json" codex-only | jq -r '.action')" stop
 is "--no-codex + cr skip -> stop"        "$(av "$AV/cr-only.json" auto true | jq -r '.action')" stop
 is "no signal -> proceed"                "$(av "$FIX/issue-comments-rl.json" | jq -r '.action')" proceed
+# A signal older than this push belongs to an earlier one; the quota may be back.
+is "signals before SINCE ignored"        "$(SINCE=2030-01-01T00:00:00Z av "$UNAV" | jq -r '.action')" proceed
+is "signals after SINCE still count"     "$(SINCE=2020-01-01T00:00:00Z av "$UNAV" | jq -r '.action')" stop
 # A failed fetch is not "no signal": exit non-zero so the caller knows it did not look.
 cat > "$AV/gh" <<'SH'
 #!/usr/bin/env bash

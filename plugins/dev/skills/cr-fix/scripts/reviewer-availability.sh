@@ -17,19 +17,21 @@
 # Exit 1 with no stdout when the comments cannot be fetched: that is "did not
 # look", not "no signal", and the caller keeps the normal wait path.
 #
-# ponytail: any matching comment counts, whatever its age, so a reviewer whose quota
-# came back after the signal stays off for the run; add a PUSH_TIME cut if that recurs.
+# SINCE (ISO-8601, optional): ignore comments last touched before it. The caller
+# passes the head SHA's push time, so a signal from an earlier push, whose quota
+# may have come back since, cannot switch a reviewer off. Empty = no cut.
 set -uo pipefail
 
 OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr required}"
-CR_SOURCE="${CR_SOURCE:-auto}"; NO_CODEX="${NO_CODEX:-false}"
+CR_SOURCE="${CR_SOURCE:-auto}"; NO_CODEX="${NO_CODEX:-false}"; SINCE="${SINCE:-}"
 
 raw=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2>/dev/null) \
   || { echo "reviewer-availability: could not fetch PR #$PR_NUM comments" >&2; exit 1; }
 
-jq -sc --arg src "$CR_SOURCE" --arg nocodex "$NO_CODEX" '
+jq -sc --arg src "$CR_SOURCE" --arg nocodex "$NO_CODEX" --arg since "$SINCE" '
   def newest_url(login_re; test_body):
-    [ .[] | select((.user.login // "") | test(login_re; "i")) | select((.body // "") | test_body) ]
+    [ .[] | select((.user.login // "") | test(login_re; "i")) | select((.body // "") | test_body)
+          | select((.updated_at // .created_at // "") >= $since) ]
     | sort_by(.created_at) | last | .html_url // null;
   (add // []) as $c
   | ($c | newest_url("^chatgpt-codex-connector(\\[bot\\])?$";

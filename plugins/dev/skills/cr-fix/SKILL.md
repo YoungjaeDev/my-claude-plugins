@@ -160,7 +160,9 @@ trap 'ITER=${ITER:-0} APPLIED_TOTAL=$applied_total DEFERRED_TOTAL=$deferred_tota
 A reviewer that will not review this PR says so in an issue comment seconds after the PR opens: Codex with "You have reached your Codex usage limits for code reviews", CodeRabbit with its `skip review` marker and "Auto reviews are disabled on this repository". Without this check the loop spends its whole grace and poll budget waiting for them and ends at `timeout`.
 
 ```bash
-if ru=$(CR_SOURCE="$CR_SOURCE" NO_CODEX="$NO_CODEX" \
+# Signals from an earlier push do not count: its quota may be back.
+SINCE=$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "$START_SHA")
+if ru=$(CR_SOURCE="$CR_SOURCE" NO_CODEX="$NO_CODEX" SINCE="$SINCE" \
         bash "$SKILL_DIR/scripts/reviewer-availability.sh" "$OWNER" "$REPO" "$PR_NUM"); then
   case "$(jq -r '.action' <<<"$ru")" in
     drop_codex) NO_CODEX=true; codex_active=disabled ;;  # no Codex grace wait, no Codex fetch

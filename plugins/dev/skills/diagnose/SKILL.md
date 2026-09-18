@@ -58,4 +58,4 @@ If no correct seam exists, that absence is itself a finding: note it in the PR/c
 ## Related skills
 
 - `dev:e2e-debug` picks up once a Playwright CI failure needs a self-healing repair loop; its hypothesis step points here for the general procedure.
-- `dev:resolve-issue`'s bug branch routes here when the issue is a defect rather than a new feature.
+- `dev:resolve-issue` has no pointer to this skill yet; on a defect issue, run this skill before its implementation step.

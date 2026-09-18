@@ -14,7 +14,7 @@ GitHub workflow automation skills for Claude Code. All workflows are skills (no 
 | `/dev:release` | Bump the version manifests, tag, and create a GitHub release with auto-generated release notes (does not touch `CHANGELOG.md` — that is `post-merge` Step 9.5 + `docs:changelog`) |
 | `/dev:state-tracker` | spec/issue/PR work-pipeline aggregate over `.claude/state/spec.json` (absorbed from `spec-state`) |
 | `/dev:session-handoff` | End-of-session handoff summary (decisions, shipped changes, key files, running state, verification, deferrals) so a fresh agent continues from chat alone. Chat-only: writes no file, updates no memory |
-| `/dev:orchestrate` | Subagent orchestration discipline: one job card per slice (goal, scope, absolute paths, inputs, output shape, done criteria, preset), model x effort worker presets `dev:worker-fast/standard/deep/max` (haiku low / sonnet medium / opus high / opus xhigh), one writer per path, quality gate with bounded re-query (2x same agent, 1x next preset up, then the user), orchestrator runs the verification itself and reports a per-agent ledger. `Workflow` only on a manual `/dev:orchestrate` call; worktree isolation only for parallel writers, with a `git worktree list` baseline cleanup gate |
+| `/dev:orchestrate` | Subagent orchestration discipline: one job card per slice (goal, scope, absolute paths, inputs, output shape, done criteria, preset), model x effort worker presets `dev:worker-standard/deep/max` (sonnet medium / opus high / opus xhigh), one writer per path, quality gate with bounded re-query (2x same agent, 1x next preset up, then the user), orchestrator runs the verification itself and reports a per-agent ledger. `Workflow` only on a manual `/dev:orchestrate` call; worktree isolation only for parallel writers, with a `git worktree list` baseline cleanup gate |
 
 ## resolve-issue Flags
 
@@ -118,7 +118,7 @@ Agent(
 | Implementation | `claude` | `sonnet` |
 | Complex refactoring | `claude` | `opus` |
 | Test writing | `claude` | `sonnet` |
-| Validation | `claude` | `haiku` |
+| Validation | `claude` | `sonnet` |
 
 ## state-tracker (흡수: spec-state)
 

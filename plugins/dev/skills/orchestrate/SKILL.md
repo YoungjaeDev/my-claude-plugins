@@ -39,12 +39,11 @@ decisions through `AskUserQuestion` before slicing.
 
 | Preset | `subagent_type` | Model / effort | Pick when |
 |---|---|---|---|
-| fast | `dev:worker-fast` | haiku / low | locate, list, grep-style lookup, mechanical rename; a wrong answer is cheap to catch |
-| standard | `dev:worker-standard` | sonnet / medium | bounded implementation, tests, docs, module summary; the default for most slices |
+| standard | `dev:worker-standard` | sonnet / medium | bounded implementation, tests, docs, module summary, locate, list, grep-style lookup, mechanical rename; the default for most slices |
 | deep | `dev:worker-deep` | opus / high | root cause, cross-module refactor, design or security review; a wrong answer costs a rerun |
 | max | `dev:worker-max` | opus / xhigh | correctness the orchestrator cannot verify cheaply; only when the user asks for maximum accuracy |
 
-Volume pushes a slice toward fast or standard, accuracy toward deep or max. A slice that fails the
+Volume pushes a slice toward standard, accuracy toward deep or max. A slice that fails the
 quality gate twice moves one preset up; that escalation is the one path to max that needs no user
 request. Pass `model` on the `Agent` call only to deviate from a
 preset for one job; the preset's effort still applies.
@@ -57,11 +56,13 @@ preset for one job; the preset's effort still applies.
 | the worker needs the conversation so far | `Agent` with `subagent_type: fork` |
 | slices must exchange results or run long | named agents plus `SendMessage`; `ListAgents` shows who is idle |
 | parallel writers own disjoint paths but each needs its own clean checkout (build, test, or generated files) | `isolation: worktree` on the `Agent` call, with the baseline in step 4 and the cleanup gate in step 7 |
-| many-stage pipeline and the user typed `/dev:orchestrate` or "ultracode" | `Workflow`, after loading `workflow-authoring` |
+| many-stage pipeline with no user judgment mid-way, or resume is needed, and the user typed `/dev:orchestrate` or "ultracode" | `Workflow`, after loading `workflow-authoring` |
 | another vendor's agent (codex-rescue, agy-rescue, sidekick) looks like a better fit | ask through `AskUserQuestion` first, every time |
 | one slice with a known location | inline, no delegation |
 
-A description-triggered run uses `Agent` only; `Workflow` needs the user's own opt-in.
+A description-triggered run uses `Agent` only; `Workflow` needs the user's own opt-in (the user's
+`/dev:orchestrate` call counts as that opt-in). If a slice inside a running `Workflow` turns out to
+need a user question, return to the `Agent` loop for that slice instead of stalling the script.
 
 ### Job card
 

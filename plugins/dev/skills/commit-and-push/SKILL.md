@@ -80,7 +80,7 @@ Run BUILD / TEST / LINT in parallel via independent sub-agents (Agent), then enf
 ```
 Agent(
   subagent_type="general-purpose",
-  model="haiku",
+  model="sonnet",
   prompt="Run verification checks for this project:
     1. Detect project type from config files
     2. Run BUILD command (skip if n/a for the project type)

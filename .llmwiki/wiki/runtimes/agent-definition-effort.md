@@ -13,7 +13,7 @@ Agent definition frontmatter accepts an `effort:` field that the public Claude C
 
 - Anthropic's own official marketplace ships agents that use it, so it is a real supported field and not a local invention.
 - The `Agent` tool overrides only `model` at call time. There is no `effort` parameter on the call, so the effort level can be set **only** in the agent definition file.
-- That asymmetry is why a tier is a file, not an argument: `dev:worker-fast` (haiku / `low`), `dev:worker-standard` (sonnet / `medium`), `dev:worker-deep` (opus / `high`), `dev:worker-max` (opus / `xhigh`). One generic worker plus a per-call effort argument is not expressible.
+- That asymmetry is why a tier is a file, not an argument: `dev:worker-standard` (sonnet / `medium`), `dev:worker-deep` (opus / `high`), `dev:worker-max` (opus / `xhigh`). One generic worker plus a per-call effort argument is not expressible. A fourth tier, `dev:worker-fast` (haiku / `low`), existed through dev 2.x and was removed in dev 3.0.0 (issue #229) once the user stopped using haiku; `standard`'s Pick when absorbed its lookup/listing/grep-style-search/mechanical-rename cases.
 - `effort:` is a Claude-only surface, like the rest of `agents/`. Codex registers `skills/` only and ignores the directory entirely.
 
 ## Sources

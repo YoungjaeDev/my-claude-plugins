@@ -165,13 +165,13 @@ Before starting the workflow:
    # Parallel validation
    Agent(
      subagent_type="claude",
-     model="haiku",
+     model="sonnet",
      prompt="Run test suite and report pass/fail count."
    )
 
    Agent(
      subagent_type="claude",
-     model="haiku",
+     model="sonnet",
      prompt="Run linter and report issues."
    )
    ```
@@ -331,7 +331,7 @@ Quality gates that must pass before commit.
 ```
 Agent(
   subagent_type="claude",
-  model="haiku",
+  model="sonnet",
   prompt="Run verification checks for this project:
     1. Detect project type from config files
     2. Run BUILD command - must pass

@@ -15,6 +15,10 @@
 # skill (YAGNI). Recorded here as a deliberate choice, not an oversight.
 reviews:
   auto_review:
+    # Auto-review is off while the review quota is exhausted; the GitHub
+    # integration stays connected, and a PR is reviewed only when someone
+    # comments `@coderabbitai review`. Remove this line to turn auto-review back on.
+    enabled: false
     # Explicit 0 = DISABLED. Omitting this key does NOT disable it — CodeRabbit
     # defaults to 5 (pause auto-review after 5 reviewed commits since the last
     # pause; "Set to 0 to disable" per docs.coderabbit.ai/reference/configuration).

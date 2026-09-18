@@ -232,6 +232,8 @@ is "churn, deferred but no issue -> ineligible" "$(DEFERRED_TOTAL=2 elig churn)"
 is "churn, append failed -> ineligible"       "$(FOLLOWUP_APPEND_FAILED=true elig churn 321)" false
 is "iteration_cap with issue -> still ineligible" "$(elig iteration_cap 321)" false
 is "user_declined -> ineligible"             "$(elig user_declined)" false
+# No reviewer looked at the PR: stopping is not convergence.
+is "reviewers_unavailable -> ineligible"     "$(elig reviewers_unavailable)" false
 is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false
 is "ineligible carries a reason"    "$(FINAL_STATE=churn PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null       | jq -r '.ineligible_reason | length > 0')" true
 rm -rf "$SHIMDIR"
@@ -993,6 +995,78 @@ else
 fi
 # Nonexistent intermediate dir has no resolvable parent — reject, do not crash.
 is "unresolvable parent rejected"    "$(pt 'no/such/dir/f.md')"     1
+
+echo
+echo "cr-review-request.sh"
+
+# Non-default base: CodeRabbit auto-reviews only the default branch plus
+# reviews.auto_review.base_branches, so an unmatched base needs a manual
+# `@coderabbitai review` per push. No network: the config is a local file.
+RQ=$(mktemp -d)
+rq() { bash "$SCRIPTS/cr-review-request.sh" "$1" main "$2" 2>/dev/null; }
+printf 'reviews:\n  auto_review:\n    base_branches: ["release/.*", "develop"]\n' > "$RQ/flow.yaml"
+printf 'reviews:\n  auto_review:\n    enabled: true  # on\n    base_branches:\n      - %s\n' "'release/.*'" > "$RQ/block.yaml"
+printf 'reviews:\n  auto_review:\n    enabled: false\n    base_branches: []\n' > "$RQ/off.yaml"
+printf 'reviews:\n  path_instructions: []\n' > "$RQ/none.yaml"
+is "default base -> skip"                        "$(rq main "$RQ/flow.yaml")"          skip
+is "non-default base matched (flow list) -> skip" "$(rq release/1.2 "$RQ/flow.yaml")"  skip
+is "non-default base matched (block list) -> skip" "$(rq release/1.2 "$RQ/block.yaml")" skip
+is "non-default base unmatched -> request"       "$(rq feature/x "$RQ/flow.yaml")"     request
+is "non-default base, no base_branches -> request" "$(rq feature/x "$RQ/none.yaml")"   request
+is "no config file -> request"                   "$(rq feature/x "$RQ/missing.yaml")"  request
+# Decision 17: auto-review switched off to save quota wins over the manual request.
+is "auto_review.enabled false -> skip"           "$(rq feature/x "$RQ/off.yaml")"      skip
+is "default base, no config -> skip"             "$(rq main "$RQ/missing.yaml")"       skip
+rm -rf "$RQ"
+
+echo
+echo "reviewer-availability.sh"
+
+# The two "will not review" comments observed on PR #237, seconds after the PR
+# opened. Without this probe the loop spent its whole grace and poll budget and
+# ended as `timeout`.
+AV=$(mktemp -d)
+cat > "$AV/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/issues/"*"/comments"*) cat "$AV_COMMENTS" ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$AV/gh"
+UNAV="$FIX/issue-comments-reviewers-unavailable.json"
+jq '[.[] | select(.user.login | startswith("chatgpt"))]' "$UNAV" > "$AV/codex-only.json"
+jq '[.[] | select(.user.login | startswith("coderabbit"))]' "$UNAV" > "$AV/cr-only.json"
+# Impostor: a registrable login that only prefixes the bot's name must not count.
+jq '[.[] | if (.user.login | startswith("coderabbit")) then .user.login = "coderabbitai-evil" else . end]' \
+  "$UNAV" > "$AV/impostor.json"
+jq '[.[] | .user.login |= sub("\\[bot\\]$"; "")]' "$UNAV" > "$AV/graphql-spelling.json"
+av() { AV_COMMENTS="$1" CR_SOURCE="${2:-auto}" NO_CODEX="${3:-false}" PATH="$AV:$PATH" \
+         bash "$SCRIPTS/reviewer-availability.sh" o r 42 2>/dev/null; }
+out=$(av "$UNAV")
+is "both unavailable -> stop"            "$(jq -r '.action' <<<"$out")" stop
+is "both unavailable -> codex url"       "$(jq -r '.codex_url' <<<"$out")" \
+   "https://github.com/YoungjaeDev/my-claude-plugins/pull/237#issuecomment-5723787512"
+is "both unavailable -> cr url"          "$(jq -r '.cr_url' <<<"$out")" \
+   "https://github.com/YoungjaeDev/my-claude-plugins/pull/237#issuecomment-5723787904"
+is "codex only unavailable -> drop_codex" "$(av "$AV/codex-only.json" | jq -r '.action')" drop_codex
+is "cr only unavailable -> drop_cr"      "$(av "$AV/cr-only.json" | jq -r '.action')" drop_cr
+is "impostor coderabbitai-evil ignored"  "$(av "$AV/impostor.json" | jq -r '.cr_unavailable')" false
+is "impostor + codex limit -> drop_codex" "$(av "$AV/impostor.json" | jq -r '.action')" drop_codex
+is "login without [bot] still matched"   "$(av "$AV/graphql-spelling.json" | jq -r '.action')" stop
+# The CLI is local: a PR-bot skip comment says nothing about it.
+is "cli source ignores the PR-bot skip"  "$(av "$UNAV" cli | jq -r '.action')" drop_codex
+is "codex-only source + codex limit -> stop" "$(av "$AV/codex-only.json" codex-only | jq -r '.action')" stop
+is "--no-codex + cr skip -> stop"        "$(av "$AV/cr-only.json" auto true | jq -r '.action')" stop
+is "no signal -> proceed"                "$(av "$FIX/issue-comments-rl.json" | jq -r '.action')" proceed
+# A failed fetch is not "no signal": exit non-zero so the caller knows it did not look.
+cat > "$AV/gh" <<'SH'
+#!/usr/bin/env bash
+exit 1
+SH
+AV_COMMENTS=/dev/null PATH="$AV:$PATH" bash "$SCRIPTS/reviewer-availability.sh" o r 42 >/dev/null 2>&1; rc=$?
+is "gh failure -> non-zero exit"         "$rc" 1
+rm -rf "$AV"
 
 echo
 printf '%d passed, %d failed\n' "$pass" "$fail"

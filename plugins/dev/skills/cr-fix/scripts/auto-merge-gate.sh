@@ -34,6 +34,7 @@ case "$FINAL_STATE" in
     esac
     if [ "$eligible" = true ]; then :
     else eligible=false; reason="$FINAL_STATE without a follow-up issue"; fi ;;
+  # Everything else, `reviewers_unavailable` included: no reviewer looked, so stopping is not convergence.
   *)                  eligible=false; reason="final_state=$FINAL_STATE is not a merge-eligible convergence" ;;
 esac
 # A re-run that could not append its new defers to the inherited issue has findings

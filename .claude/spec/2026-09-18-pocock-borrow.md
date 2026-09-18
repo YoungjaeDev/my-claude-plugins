@@ -25,7 +25,7 @@ Owner: YoungjaeDev
 아래 Plan 의 이슈 8개가 머지되면 다음이 성립한다.
 - dev 워커 프리셋이 standard/deep/max 3개다.
 - post-merge 가 worktree 안에서 끝까지 돈다.
-- cr-fix 가 non-default base PR 과 merge conflict 를 처리한다.
+- cr-fix 가 non-default base PR, merge conflict, 리뷰어 쿼터 소진을 처리한다.
 - decompose-issue 가 수직 슬라이스 이슈를 만든다.
 - resolve-issue 가 seam 을 합의한 뒤 테스트를 쓴다.
 - `dev:diagnose` 와 dev 흐름 라우터가 있다.
@@ -59,6 +59,7 @@ Owner: YoungjaeDev
 | 14 | E2E 도입 시점 | 기본은 로컬 단위·기능 테스트. 이슈에 핵심 사용자 흐름이 있을 때만 decompose-issue 가 E2E 여부를 묻고, 승인되면 `dev:e2e-setup`(CI 포함)과 `dev:e2e-author` 로 이어간다 | 사용자 지정. 큰 병목이 없으면 로컬 테스트로 충분하다 |
 | 15 | Playwright 구동 방식 | planner·generator 탐색은 `playwright-cli`, healer 는 `playwright-test` MCP 유지 | `microsoft/playwright-cli` README: 코딩 에이전트에는 CLI 가 토큰 효율적이고, MCP 는 self-healing 같은 장시간 루프에 맞다. CLI 는 v0.1.20 (2026-09-14) 으로 0.x |
 | 16 | CLI 우선, 정량 평가는 스크립트 | 전역 지침(`CLAUDE.md.global`)에 두 줄 추가 | 사용자 지정. 모든 프로젝트와 두 런타임에 적용 |
+| 17 | 리뷰어 사용 불가 조기 감지 | cr-fix 가 iter 1 대기 전에 PR 댓글에서 리뷰어의 "리뷰 안 함" 신호를 찾는다. 두 리뷰어 모두 불가면 대기 없이 `final_state=reviewers_unavailable` 로 멈추고, 이 상태는 수렴이 아니므로 auto-merge 대상이 아니다. `auto_review.enabled: false` 인 저장소에서는 `@coderabbitai review` 를 자동으로 남기지 않는다 (Decision 5 보다 우선) | 2026-09-18 PR #237 에서 두 신호가 PR 생성 2초 안에 댓글로 달렸다. 지금 cr-fix 는 이 신호를 모르고 grace·poll 예산을 다 쓴 뒤 timeout 으로 끝난다. 자동 리뷰를 끈 이유가 쿼터 절약이라 자동 요청은 그 의도를 거스른다 |
 
 ## Plan
 
@@ -83,7 +84,7 @@ Owner: YoungjaeDev
   - 새 Step 11 은 `cd "<MAIN_REPO>" && git worktree remove "<WT_PATH>" && git branch -d "<branch>"` 를 출력만 한다.
   - `:11` 의 "`/exit` cleanup 먼저" 안내를 삭제한다.
 - **cr-fix non-default base:**
-  - `:96` 직후에 BASE 와 `defaultBranchRef` 를 비교하고, `base_branches` 와도 매치되지 않으면 push 마다 `@coderabbitai review` 를 남긴다.
+  - `:96` 직후에 BASE 와 `defaultBranchRef` 를 비교하고, `base_branches` 와도 매치되지 않으면 push 마다 `@coderabbitai review` 를 남긴다. 단, `auto_review.enabled: false` 면 남기지 않는다 (Decision 17).
   - `:24` 에 이 경우를 예외로 적는다.
   - resolve-issue 와 post-merge Guidelines 에는 한 줄 포인터만 둔다.
 - **`.coderabbit.yaml` (루트 파일, 버전 범프 없음):**
@@ -93,6 +94,14 @@ Owner: YoungjaeDev
     - `.claude/rules/state-envelope.md` → `.claude/state/**`
     - `code_review.md` → `**`
   - 지침 파일 이름을 `path_instructions` 에 넣지 않는다. 넣으면 지침이 아니라 리뷰 대상이 된다.
+- **리뷰어 사용 불가 조기 감지 (Decision 17):**
+  - 감지할 신호 (2026-09-18 PR #237 실측):
+    - Codex: `chatgpt-codex-connector[bot]` 의 issue comment 본문 "You have reached your Codex usage limits for code reviews".
+    - CodeRabbit: `coderabbitai[bot]` 의 issue comment 에 `auto-generated comment: skip review by coderabbit.ai` 마커와 "Auto reviews are disabled on this repository".
+  - 작성자 매칭은 양끝 고정 (`^chatgpt-codex-connector(\[bot\])?$`, `^coderabbitai(\[bot\])?$`). AGENTS.md P1 봇 신원 규칙.
+  - 한쪽만 불가면 그 리뷰어를 이번 run 에서 끄고(Codex grace 대기 생략, CR poll 생략) 나머지로 진행한다. 둘 다 불가면 `final_state=reviewers_unavailable` 로 즉시 멈추고 각 신호의 댓글 URL 을 보고한다.
+  - 판정은 번들 스크립트로 두고 `tests/run-tests.sh` 에 위 두 본문을 fixture 로 넣는다 (둘 다 불가, 한쪽만, 사칭 로그인 `coderabbitai-evil`).
+  - `final_state` enum(`references/failure-modes.md`)과 `assets/final-output.schema.json` 에 새 값을 추가하고, `auto-merge-gate.sh` 에서 ineligible 로 둔다.
 - **merge conflict:**
   - cr-fix pre-flight 에서 `gh pr view --json mergeable` 이 `CONFLICTING` 이면 base 를 merge 하고 hunk 단위로 해결한다.
   - 해결 기준은 양쪽 원래 의도다. `--abort` 는 쓰지 않는다. 해결 후 체크를 재실행한다.
@@ -179,7 +188,7 @@ Owner: YoungjaeDev
   - Codex 카탈로그 7 entries 레시피가 통과한다.
 - **I2:**
   - scratchpad 임시 저장소에서 worktree 를 만들고 그 안에서 post-merge 의 git 단계를 재현한다. base 전환 오류가 사라지고, Step 11 한 줄로 worktree 와 branch 가 제거돼야 한다.
-  - cr-fix 테스트(`plugins/dev/skills/cr-fix/tests/run-tests.sh`)에 non-default base 판정 케이스를 추가한다.
+  - cr-fix 테스트(`plugins/dev/skills/cr-fix/tests/run-tests.sh`)에 non-default base 판정 케이스와 리뷰어 사용 불가 fixture 케이스를 추가한다.
 - **I3:** decompose-issue 를 샘플 기능 설명에 dry-run 한다. 수직 슬라이스 이슈가 나오고, 스니펫이 없어야 한다.
 - **I4:** 이 저장소의 과거 버그 1건으로 `dev:diagnose` 절차를 따라간다. 실패하는 명령을 먼저 확보하는지 본다.
 - **I5:** 일회용 `CODEX_HOME` 에서 `allow_implicit_invocation` 이 적용되는지 확인한다.

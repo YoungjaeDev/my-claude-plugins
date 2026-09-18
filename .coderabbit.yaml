@@ -9,7 +9,7 @@
 # and .githooks/pre-commit. These warnings only surface advisories in the Walkthrough.
 #
 # Evaluate-only decision (Issue #121): CodeRabbit's autofix and custom review
-# recipes overlap the /github-dev:cr-fix apply loop, which already judges and
+# recipes overlap the /dev:cr-fix apply loop, which already judges and
 # applies each finding with repo-specific autonomy. Enabling CR-side autofix would
 # double-drive edits against the same diff. Decision: NOT adopted; no `cr-tune`
 # skill (YAGNI). Recorded here as a deliberate choice, not an oversight.
@@ -22,7 +22,7 @@ reviews:
     # Explicit 0 = DISABLED. Omitting this key does NOT disable it — CodeRabbit
     # defaults to 5 (pause auto-review after 5 reviewed commits since the last
     # pause; "Set to 0 to disable" per docs.coderabbit.ai/reference/configuration).
-    # Auto-pause conflicts with this repo's core workflow: /github-dev:cr-fix pushes
+    # Auto-pause conflicts with this repo's core workflow: /dev:cr-fix pushes
     # one fix commit per iteration and relies on CodeRabbit auto-reviewing each push
     # to detect convergence; a pause (needing a manual `@coderabbitai review`) emits
     # no rate_limited signal, so cr-fix's Step 6 poll would time out with no review.

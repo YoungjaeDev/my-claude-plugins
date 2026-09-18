@@ -33,7 +33,7 @@ parsed=$(awk -v q="'" '
     match($0, /^ */); ind = RLENGTH; line = substr($0, ind + 1)
     if (ind == 0) { in_rev = (line ~ /^reviews:/); in_ar = 0; in_bb = 0; next }
     if (!in_rev) next
-    if (in_bb && line ~ /^- / && ind >= bb_ind) { print "branch\t" strip(substr(line, 3)); next }
+    if (in_bb && line ~ /^-( |$)/ && ind >= bb_ind) { p = strip(substr(line, 2)); if (p != "") print "branch\t" p; next }
     in_bb = 0
     if (in_ar && ind <= ar_ind) in_ar = 0
     if (!in_ar) { if (line ~ /^auto_review:/) { in_ar = 1; ar_ind = ind }; next }

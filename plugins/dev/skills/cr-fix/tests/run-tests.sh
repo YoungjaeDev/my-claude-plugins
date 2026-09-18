@@ -1017,6 +1017,9 @@ is "no config file -> request"                   "$(rq feature/x "$RQ/missing.ya
 # Decision 17: auto-review switched off to save quota wins over the manual request.
 is "auto_review.enabled false -> skip"           "$(rq feature/x "$RQ/off.yaml")"      skip
 is "default base, no config -> skip"             "$(rq main "$RQ/missing.yaml")"       skip
+# An empty list item is not a match-everything pattern.
+printf 'reviews:\n  auto_review:\n    base_branches:\n      -\n      - ""\n' > "$RQ/empty.yaml"
+is "empty base_branches items -> request"        "$(rq feature/x "$RQ/empty.yaml")"    request
 rm -rf "$RQ"
 
 echo

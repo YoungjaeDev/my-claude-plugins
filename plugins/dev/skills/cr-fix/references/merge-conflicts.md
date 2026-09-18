@@ -22,4 +22,4 @@ MERGEABLE=$(gh pr view "$PR_NUM" --json mergeable --jq '.mergeable')
 4. **Re-run the checks.** Run the same build, test and lint commands as Step 11 (from `AGENTS.md`, Step 3) and fix what the merge broke. A failure sets `verification_blocking=true` exactly as in Step 11.
 5. **Finish.** `git add` the resolved files, `git commit --no-edit` (append the trade-off notes, if any), and `git push`. The push triggers re-review like any Step 12 push, and the Step 2 review-request rule applies to it too.
 
-The merge commit is not a review-response commit: it does not count toward `applied_this_cycle`, and the iteration continues into Step 5 with the new `HEAD` as `CUR_SHA`.
+The merge commit is the iteration's one commit, not a review-response commit: it does not count toward `applied_this_cycle`, and the loop `continue`s to the next iteration, whose Step 5 takes the new `HEAD` as `CUR_SHA`.

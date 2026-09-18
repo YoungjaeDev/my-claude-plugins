@@ -193,7 +193,7 @@ If `--paste` non-empty: treat the block as one thread-equivalent (extract path/l
 
 Run at the top of every iteration BEFORE any wait/polling. Skip entirely when `CR_SOURCE ∈ {cli, codex-only}`: those modes have their own deterministic source.
 
-**Step 5a: merge conflict (every source, first thing in the iteration).** When `gh pr view "$PR_NUM" --json mergeable --jq '.mergeable'` prints `CONFLICTING`, merge `origin/$BASE`, resolve hunk by hunk on both sides' original intent, re-run the checks, commit and push, then continue this iteration on the new `HEAD`. Never `git merge --abort`. `UNKNOWN` proceeds. Procedure: `references/merge-conflicts.md`.
+**Step 5a: merge conflict (every source, first thing in the iteration).** When `gh pr view "$PR_NUM" --json mergeable --jq '.mergeable'` prints `CONFLICTING`, merge `origin/$BASE`, resolve hunk by hunk on both sides' original intent, re-run the checks, commit and push. That merge commit is this iteration's one commit: `continue` to the next iteration, which reviews the new `HEAD`. Never `git merge --abort`. `UNKNOWN` proceeds. Procedure: `references/merge-conflicts.md`.
 
 ```bash
 for ITER in $(seq 1 $MAX_ITER); do

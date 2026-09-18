@@ -23,7 +23,7 @@ Produce a Markdown report:
 
 Report only. Do not auto-fix. User reviews and triggers `/wiki:ingest-finding` for each remediation.
 
-### Worked example
+## Worked example
 
 ```text
 ## Wiki Health Report — 2026-05-29

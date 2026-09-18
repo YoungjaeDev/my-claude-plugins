@@ -65,7 +65,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
      npx playwright trace errors             # errors with stack traces
      npx playwright trace close              # clean up extracted data
      ```
-   - Form a hypothesis: is it a **real regression** (app changed), a **selector drift** (UI moved), an **environment/data** issue, or a **genuine flake** (timing/race)? The fix differs per class: heal selector/timing issues; escalate real regressions to the user.
+   - Form a hypothesis: is it a **real regression** (app changed), a **selector drift** (UI moved), an **environment/data** issue, or a **genuine flake** (timing/race)? The fix differs per class: heal selector/timing issues; escalate real regressions to the user. For the general ranked-hypothesis discipline behind this step, see `dev:diagnose`.
 
 3. **Heal (bounded loop)**. Dispatch the healer with the diagnosis via the Step 0 path:
    - **Path A**: `Agent(subagent_type="playwright-test-healer", prompt="Test <name> fails: <trace findings>. Replay the failing steps, find equivalent current elements, patch the test, and re-run until green.")`.

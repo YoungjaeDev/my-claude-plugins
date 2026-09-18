@@ -1,6 +1,6 @@
 ---
 name: e2e-setup
-description: Onboard a full Playwright E2E test harness in the current project — verify/install Playwright, check playwright-cli availability for the planner/generator roles, generate the official planner/generator/healer agents via npx playwright init-agents --loop=claude, scaffold auth separation (storageState + setup project), network route mocking, an E2E operating SSOT doc, and a gated GitHub Actions CI workflow with trace artifacts and PR-failure comments. Use when the user asks to set up E2E, add Playwright AI agents, bootstrap end-to-end testing, wire E2E into CI, "E2E 셋업", "E2E 테스트 설치", or "플레이라이트 설정해줘". Never overwrites an existing playwright.config (merge proposal + backup). Degrades gracefully when Playwright is absent. Run from the user's project root, not this marketplace repo.
+description: Onboard a full Playwright E2E test harness in the current project — verify/install Playwright, check playwright-cli availability for the planner/generator roles, generate the official planner/generator/healer agents via npx playwright init-agents --loop=claude (Claude Code Path A; Codex Path B/C skips agent generation and uses the bundled role contracts instead), scaffold auth separation (storageState + setup project), network route mocking, an E2E operating SSOT doc, and a gated GitHub Actions CI workflow with trace artifacts and PR-failure comments. Use when the user asks to set up E2E, add Playwright AI agents, bootstrap end-to-end testing, wire E2E into CI, "E2E 셋업", "E2E 테스트 설치", or "플레이라이트 설정해줘". Never overwrites an existing playwright.config (merge proposal + backup). Degrades gracefully when Playwright is absent. Run from the user's project root, not this marketplace repo.
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -53,7 +53,9 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
      if command -v playwright-cli >/dev/null 2>&1; then
        PW_CLI_MODE=global
      elif npx --no-install @playwright/cli --version >/dev/null 2>&1; then
-       PW_CLI_MODE=npx
+       PW_CLI_MODE=npx  # already cached locally
+     elif command -v npx >/dev/null 2>&1; then
+       PW_CLI_MODE=npx  # not cached yet, but npx fetches @playwright/cli on demand (verified this works)
      else
        PW_CLI_MODE=missing
      fi

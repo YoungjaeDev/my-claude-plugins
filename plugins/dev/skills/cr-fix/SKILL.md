@@ -197,7 +197,11 @@ Run at the top of every iteration BEFORE any wait/polling. Skip entirely when `C
 
 ```bash
 for ITER in $(seq 1 $MAX_ITER); do
-  # Step 5a runs here, before CUR_SHA is taken.
+  # Step 5a, before CUR_SHA is taken.
+  if [ "$(gh pr view "$PR_NUM" --json mergeable --jq '.mergeable')" = CONFLICTING ]; then
+    # references/merge-conflicts.md: merge origin/$BASE, resolve, re-check, commit, push.
+    continue  # the merge commit is this iteration's one commit
+  fi
   CUR_SHA=$(git rev-parse HEAD)
   applied_this_cycle=0; deferred_this_cycle=0; high_sev_this_cycle=0
   churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0

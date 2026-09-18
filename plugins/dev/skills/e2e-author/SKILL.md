@@ -1,6 +1,6 @@
 ---
 name: e2e-author
-description: Author Playwright E2E tests for critical user flows by orchestrating the official planner and generator agents. Use when the user asks to write or add E2E tests, create a Playwright test plan, generate specs for a flow, or cover a critical user flow end-to-end. Selects CUFs (flows whose failure breaks revenue, data, or trust), runs the planner agent to produce a Markdown plan behind a user review gate, then the generator agent to produce spec files with live-verified semantic getByRole locators, and burns each new spec in with --repeat-each to block flakes before merge. Requires e2e-setup to have generated the agents first. Run from the user's project root.
+description: Author Playwright E2E tests for critical user flows by orchestrating the official planner and generator agents, exploring the app via playwright-cli. Use when the user asks to write or add E2E tests, create a Playwright test plan, generate specs for a flow, cover a critical user flow end-to-end, "E2E 테스트 작성", "플레이라이트 테스트 추가", or "E2E 시나리오 만들어줘". Selects CUFs (flows whose failure breaks revenue, data, or trust), runs the planner agent to produce a Markdown plan behind a user review gate, then the generator agent to produce spec files with live-verified semantic getByRole locators, and burns each new spec in with --repeat-each to block flakes before merge. Requires e2e-setup to have generated the agents first. Run from the user's project root.
 allowed-tools: Read Write Edit Bash Glob Grep Agent AskUserQuestion
 ---
 
@@ -13,7 +13,7 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
 ## Precondition check
 
 - Read the E2E SSOT doc (`e2e/AGENTS.md` or `.claude/e2e-guidelines.md`) for the CUF list and conventions. If absent, run `e2e-setup` Step 5 or capture the CUFs inline.
-- Confirm the `playwright-test` `.mcp.json` entry and `seed.spec.ts` exist (both paths need them). If missing, route the user to `dev:e2e-setup` first.
+- Confirm `playwright-cli` is available (global `playwright-cli` or `npx @playwright/cli`) and `seed.spec.ts` exists (both paths need them). If `playwright-cli` is unavailable, the planner/generator fall back to the `playwright-test` MCP server (confirm the `.mcp.json` entry instead). If either is missing entirely, route the user to `dev:e2e-setup` first.
 - **Path A only**: confirm the named agents exist (`.claude/agents/playwright-test-planner.md`, `playwright-test-generator.md`). If they are missing **and you are on Claude Code**, run `e2e-setup`. Do not hand-roll them. **Do not** demand these Claude agent files under Codex; there the bundled contracts stand in (see Step 0).
 
 ## Workflow
@@ -43,16 +43,16 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
    - A CUF is a flow where a regression breaks **revenue, data integrity, or user trust** (checkout, signup+login, create/edit/delete persistence, permissions). Prefer these over breadth.
    - If the SSOT doc lists CUFs, pick from it. Otherwise use AskUserQuestion to confirm the 1-3 flows in scope. Do not auto-pick everything: E2E breadth is a cost.
 
-2. **Plan (planner role) + review gate**. Dispatch via the Step 0 path:
-   - **Path A**: `Agent(subagent_type="playwright-test-planner", prompt="<the CUF + any PRD/notes>. Run seed.spec.ts to set up the environment, explore the app, and write a Markdown test plan under specs/.")`.
-   - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright planner role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'planner'): run seed.spec.ts first, explore the app via the playwright-test MCP server, write specs/<flow>.md (plan only, no code). CUF: <the CUF + any PRD/notes>.")`. Paste the `planner` contract inline.
-   - **Path C**: run the planner role yourself per the contract, running `seed.spec.ts`, exploring via the `playwright-test` MCP server, and writing `specs/<flow>.md`.
+2. **Plan (planner role) + review gate**. Dispatch via the Step 0 path. The planner explores the app with `playwright-cli` (Decision 15: token-efficient CLI calls over MCP tool schemas for this role), falling back to the `playwright-test` MCP server only when `playwright-cli` is unavailable (Precondition check):
+   - **Path A**: `Agent(subagent_type="playwright-test-planner", prompt="<the CUF + any PRD/notes>. Run seed.spec.ts to set up the environment, explore the app with playwright-cli (open/goto/snapshot/find/click), and write a Markdown test plan under specs/.")`.
+   - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright planner role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'planner'): run seed.spec.ts first, explore the app via playwright-cli (npx @playwright/cli if no global install), write specs/<flow>.md (plan only, no code). CUF: <the CUF + any PRD/notes>.")`. Paste the `planner` contract inline.
+   - **Path C**: run the planner role yourself per the contract, running `seed.spec.ts`, exploring via `playwright-cli`, and writing `specs/<flow>.md`.
    - The planner writes `specs/<flow>.md` (a plan, no code) on every path.
    - **MANDATORY user review gate** (all paths): present the plan and get explicit approval (AskUserQuestion) before generating any code. The plan is cheap to fix; generated specs are not. Incorporate edits into `specs/<flow>.md` before proceeding.
 
-3. **Generate (generator role)**. Dispatch via the Step 0 path:
-   - **Path A**: `Agent(subagent_type="playwright-test-generator", prompt="Turn specs/<flow>.md into Playwright spec files under e2e/. Verify every selector and assertion live as you go.")`.
-   - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright generator role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'generator'): turn specs/<flow>.md into e2e/<flow>.spec.ts, verifying every selector/assertion live via the playwright-test MCP server; semantic getByRole/getByLabel/getByText only, no CSS/XPath, no waitForTimeout.")`. Paste the `generator` contract inline.
+3. **Generate (generator role)**. Dispatch via the Step 0 path. The generator also verifies selectors/assertions live via `playwright-cli` (falling back to MCP the same way as the planner):
+   - **Path A**: `Agent(subagent_type="playwright-test-generator", prompt="Turn specs/<flow>.md into Playwright spec files under e2e/. Verify every selector and assertion live with playwright-cli as you go.")`.
+   - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright generator role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'generator'): turn specs/<flow>.md into e2e/<flow>.spec.ts, verifying every selector/assertion live via playwright-cli (npx @playwright/cli if no global install); semantic getByRole/getByLabel/getByText only, no CSS/XPath, no waitForTimeout.")`. Paste the `generator` contract inline.
    - **Path C**: run the generator role yourself per the contract.
    - The generator verifies selectors/assertions against the running app as it writes.
    - **Enforce semantic locators** (all paths): specs must use `getByRole(role, { name })` / `getByLabel` / `getByText`, not CSS/XPath. If brittle selectors are emitted, send the role back to fix them (Playwright's own best-practice is role-first locators).
@@ -74,5 +74,5 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
 ## Notes
 
 - **Test independence: set state via API, don't replay shared prefixes.** When flows share a long common prefix (e.g. consent -> phone auth) before branching, do NOT make each test re-run that prefix through the UI. Have the generator put the user at the branch's start state via a test API, then assert only that branch. This avoids cascade failures (a prefix change failing every test) and cumulative runtime, and keeps tests independent. This is distinct from `storageState` (auth only): it sets mid-flow app state. Capture the available state-setup endpoints in the E2E SSOT doc.
-- The planner/generator roles drive the browser through the `playwright-test` MCP server; if their tool calls fail, verify `.mcp.json` is approved (`/mcp`).
+- The planner/generator roles drive the browser through `playwright-cli` (Decision 15); if commands fail, check `playwright-cli --help` / `npx @playwright/cli --help`. In degraded mode they fall back to the `playwright-test` MCP server: verify `.mcp.json` is approved (`/mcp`).
 - This skill does not set up the harness (`e2e-setup`) or repair CI failures (`e2e-debug`).

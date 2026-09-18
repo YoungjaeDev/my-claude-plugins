@@ -1,6 +1,6 @@
 ---
 name: e2e-setup
-description: Onboard a full Playwright E2E test harness in the current project — verify/install Playwright, generate the official planner/generator/healer agents via npx playwright init-agents --loop=claude, scaffold auth separation (storageState + setup project), network route mocking, an E2E operating SSOT doc, and a gated GitHub Actions CI workflow with trace artifacts and PR-failure comments. Use when the user asks to set up E2E, add Playwright AI agents, bootstrap end-to-end testing, or wire E2E into CI. Never overwrites an existing playwright.config (merge proposal + backup). Degrades gracefully when Playwright is absent. Run from the user's project root, not this marketplace repo.
+description: Onboard a full Playwright E2E test harness in the current project — verify/install Playwright, check playwright-cli availability for the planner/generator roles, generate the official planner/generator/healer agents via npx playwright init-agents --loop=claude, scaffold auth separation (storageState + setup project), network route mocking, an E2E operating SSOT doc, and a gated GitHub Actions CI workflow with trace artifacts and PR-failure comments. Use when the user asks to set up E2E, add Playwright AI agents, bootstrap end-to-end testing, wire E2E into CI, "E2E 셋업", "E2E 테스트 설치", or "플레이라이트 설정해줘". Never overwrites an existing playwright.config (merge proposal + backup). Degrades gracefully when Playwright is absent. Run from the user's project root, not this marketplace repo.
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -48,6 +48,19 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    - Check for `@playwright/test` in `package.json` and a `playwright.config.*`. If absent, propose `npm init playwright@latest` (interactive) or `npm i -D @playwright/test && npx playwright install --with-deps`.
    - Always ensure browsers are installed: `npx playwright install --with-deps`.
    - If the user declines installation, stop here: the rest of the harness needs Playwright.
+   - **Check `playwright-cli` availability** (Decision 15: the planner/generator roles explore the app with `playwright-cli` instead of the `playwright-test` MCP server; the healer keeps the MCP server regardless):
+     ```bash
+     if command -v playwright-cli >/dev/null 2>&1; then
+       PW_CLI_MODE=global
+     elif npx --no-install @playwright/cli --version >/dev/null 2>&1; then
+       PW_CLI_MODE=npx
+     else
+       PW_CLI_MODE=missing
+     fi
+     echo "playwright-cli: $PW_CLI_MODE"
+     ```
+     - `global` or `npx`: report the mode found; `e2e-author` / `e2e-debug` will use `playwright-cli <cmd>` or `npx @playwright/cli <cmd>` accordingly.
+     - `missing`: do **not** force `npm install -g @playwright/cli`. Print the install command (`npm install -g @playwright/cli@latest`) and continue in degraded mode: the planner/generator fall back to the `playwright-test` MCP server (same as the healer) until `playwright-cli` becomes available.
 
 2. **Set up the roles: runtime branch** (planner / generator / healer). Pick the path **once** by capability; the same gates apply on every path (`${PLUGIN_ROOT}/references/role-contracts.md`, "Gates that hold on every path"). Tell the user which path you took in one sentence.
 
@@ -162,7 +175,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    - It uploads `playwright-report/` + `test-results/` as artifacts and posts a **PR comment on failure** via `gh pr comment` (no official Playwright PR-comment step exists; this is custom). Remind the user to set `E2E_USER` / `E2E_PASS` secrets and the `E2E_BASE_URL` variable.
    - Validate the YAML if `actionlint` is available; otherwise note it is unvalidated.
 
-8. **Report**: state the runtime path taken (A generated agents / B-C bundled contracts), list every file created/modified, whether `.mcp.json` was present, merged, or written, the SSOT doc location, and the next step: author CUF tests with `dev:e2e-author`.
+8. **Report**: state the runtime path taken (A generated agents / B-C bundled contracts), the `playwright-cli` mode found (`global` / `npx` / `missing`), list every file created/modified, whether `.mcp.json` was present, merged, or written, the SSOT doc location, and the next step: author CUF tests with `dev:e2e-author`.
 
 ## Out of scope
 

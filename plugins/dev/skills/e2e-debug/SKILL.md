@@ -1,6 +1,6 @@
 ---
 name: e2e-debug
-description: Close the Playwright self-healing loop — diagnose and repair a failing or flaky E2E run using the trace and the official healer agent. Use when the user points at a failed CI run or PR, asks to fix a broken or flaky E2E test, debug a Playwright failure, or repair the suite. Downloads the CI trace artifact, inspects it headlessly via npx playwright trace (actions/requests/console/errors), then runs the healer agent to find the root cause and patch the test, bounded to 3 attempts before quarantining the test with test.skip plus a reason comment. Re-runs to verify green before reflecting the fix on the PR. Requires e2e-setup to have generated the agents. Run from the user's project root.
+description: Close the Playwright self-healing loop — diagnose and repair a failing or flaky E2E run using the trace and the official healer agent. Use when the user points at a failed CI run or PR, asks to fix a broken or flaky E2E test, debug a Playwright failure, repair the suite, "E2E 깨졌어", "E2E 테스트 실패", or "플레이라이트 디버그". Downloads the CI trace artifact, inspects it headlessly via npx playwright trace (actions/requests/console/errors), then runs the healer agent to find the root cause and patch the test, bounded to 3 attempts before quarantining the test with test.skip plus a reason comment. Re-runs to verify green before reflecting the fix on the PR. Requires e2e-setup to have generated the agents. Run from the user's project root.
 allowed-tools: Read Write Edit Bash Glob Grep Agent AskUserQuestion
 ---
 

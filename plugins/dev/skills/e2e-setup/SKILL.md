@@ -50,12 +50,14 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    - If the user declines installation, stop here: the rest of the harness needs Playwright.
    - **Check `playwright-cli` availability** (Decision 15: the planner/generator roles explore the app with `playwright-cli` instead of the `playwright-test` MCP server; the healer keeps the MCP server regardless):
      ```bash
+     # Pinned to the version this skill verified (0.1.20); bump PW_CLI_VER when
+     # re-verifying a newer release. A resolution failure (offline, registry
+     # down) correctly falls through to `missing` instead of assuming npx works.
+     PW_CLI_VER=0.1.20
      if command -v playwright-cli >/dev/null 2>&1; then
        PW_CLI_MODE=global
-     elif npx --no-install @playwright/cli --version >/dev/null 2>&1; then
-       PW_CLI_MODE=npx  # already cached locally
-     elif command -v npx >/dev/null 2>&1; then
-       PW_CLI_MODE=npx  # not cached yet, but npx fetches @playwright/cli on demand (verified this works)
+     elif npx --yes "@playwright/cli@${PW_CLI_VER}" --version >/dev/null 2>&1; then
+       PW_CLI_MODE=npx
      else
        PW_CLI_MODE=missing
      fi

@@ -41,7 +41,7 @@ synthesizes. **The chair is not a seat and does not vote.**
 ## Step 0 — resolve the model registry
 
 Seat models are pinned in `~/.claude/council-models.json`, confirmed at most once a week. The
-seven-day TTL is a **constant, never a field read back from the registry** — a `ttl_days` taken
+seven-day TTL is a **constant, never a field read back from the registry**: a `ttl_days` taken
 from the file it governs could never come up for confirmation again. A timestamp that is
 missing, non-numeric, or in the future counts as expired, and so does a registry whose `seats`
 block is missing, malformed, or empty: none of those shapes may buy freshness or let a seat run
@@ -49,15 +49,15 @@ with a model name of `null`.
 
 - `STATE=fresh` **and** the pin still appears in the CLI's own candidate list: go to Step 1
   without asking anything. A CLI update can retire a pinned model inside the seven-day window,
-  so freshness alone is not enough — the candidate-list check runs first.
+  so freshness alone is not enough, and the candidate-list check runs first.
 - `STATE=missing`, `STATE=expired`, or a pin that has fallen off the candidate list: confirm the
-  pins with the user before convening. Expiry **always** asks, even when nothing changed —
+  pins with the user before convening. Expiry **always** asks, even when nothing changed:
   deciding whether a newer model is actually better belongs to the user, not a silent upgrade.
 
 The confirmed pins are recorded with the **`Write` tool** (never a heredoc or `echo`) to
 `.claude/state/council-pins.json` as data, then a separate block validates every value against a
 conservative charset and the Claude seat's fixed model enum before writing the registry through
-a temp file — a value that fails validation must stop the write, not land a registry that looks
+a temp file: a value that fails validation must stop the write, not land a registry that looks
 valid. Registry writes also maintain `~/.codex/config.toml`'s `check_for_update_on_startup` key
 (insert only when the key is absent; never touch a user's own `false`), and a final preflight
 call re-reads the pins and probes the installed `codex` CLI before Step 1 relies on them.
@@ -75,15 +75,15 @@ runnable bash.
 
 `$SLUG` is a short kebab-case topic name you derive from the question, validated before it
 reaches a path (it comes from free text, and a `/` or `..` segment would place the run
-directory outside `.council/`). The run directory is allocated per session — keyed by
-`CLAUDE_SESSION_ID`/`CODEX_COMPANION_SESSION_ID`, or a `shared` lock when neither is exposed —
+directory outside `.council/`). The run directory is allocated per session, keyed by
+`CLAUDE_SESSION_ID`/`CODEX_COMPANION_SESSION_ID`, or a `shared` lock when neither is exposed,
 so two concurrent councils never share one run pointer or one output directory; both the key
 and the directory allocation are claimed atomically (`mkdir`, never a check-then-write). The
 run directory itself is **git-tracked**: it is the decision record, not scratch. The run
 pointer under `.claude/state/` is not, and Step 5 releases the `shared` lock on both the
 success and the give-up path.
 
-Shell variables do **not** survive between tool calls — every bash block from here on starts by
+Shell variables do **not** survive between tool calls: every bash block from here on starts by
 re-reading `$DIR` and the seat model variables from the registry and the run pointer; skipping
 that hands empty model names and an empty output path to the first seat call.
 
@@ -91,7 +91,7 @@ codex and agy read files on their own, so **anything reachable by a path is pass
 never pasted. Only collect context a path cannot carry: mem0 memories (behind an MCP service,
 not a file), the Serena symbol graph (`find_referencing_symbols` needs a language-server index
 agy cannot build), and scout research (facts outside the repo, and the most expensive of the
-three — only when the question actually turns on external facts). Do **not** paste `AGENTS.md`,
+three, and only when the question actually turns on external facts). Do **not** paste `AGENTS.md`,
 `.llmwiki/` pages, or source files; cite their paths. Write the shared brief to `$DIR/brief.md`:
 the question, the resolved facts, the pre-collected context, and the file paths worth reading.
 
@@ -110,7 +110,7 @@ Compose `$DIR/r1-prompt.md` from the brief plus these instructions to every seat
 
 The Claude seat additionally gets the adversarial role described in Step 4.
 
-Run the three seats — they must not see each other's answers in this round. codex takes its
+Run the three seats: they must not see each other's answers in this round. codex takes its
 prompt on stdin and writes its answer to a file with `-o`; never parse its stdout, which
 interleaves hook lines and token counts. agy takes its prompt as a shell argument, so `--print`
 must be the last flag and the call must end with `< /dev/null`, or it blocks forever waiting on

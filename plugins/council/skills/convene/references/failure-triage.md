@@ -1,4 +1,4 @@
-# Failure triage — agy log classification
+# Failure triage: agy log classification
 
 Detail for the Failure policy section's agy triage step, pulled out of SKILL.md so the body
 keeps only the failure table.

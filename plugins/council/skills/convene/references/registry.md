@@ -1,4 +1,4 @@
-# Registry — Step 0 detail
+# Registry: Step 0 detail
 
 Full procedure for the model registry (Step 0), pulled out of SKILL.md so the body keeps only
 the decision rule. Referenced from SKILL.md's Step 0.

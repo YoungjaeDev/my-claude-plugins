@@ -75,54 +75,9 @@ multi-decision work, not a reflex for every request.
 
 **Verify against the codebase first: don't ask what the repo can answer.** Before adding a question, check whether the existing code, config, tests, git history, or docs already settle it (which framework, which DB, the current error-handling pattern, existing naming conventions). Asking the user to restate something discoverable from the repo wastes their time and signals you didn't look. Reserve questions for what is genuinely *non-obvious from the code*: intent, priorities, future direction, and trade-offs only the user holds.
 
-### Bad Questions (Obvious)
-- "What feature do you want?" (they already told you)
-- "Do you want it to work well?" (obviously yes)
-- "Should it be fast?" (obviously yes)
-
-### Good Questions (Non-Obvious)
-- "What happens when X fails? Should it retry, fail silently, or notify?"
-- "Who else might use this besides you? Do they have different needs?"
-- "What's the worst thing that could happen if this feature misbehaves?"
-
-## Question Framework by Category
-
-### 1. Technical Implementation
-- What existing systems does this need to integrate with?
-- Are there performance constraints (response time, memory, etc.)?
-- What's the expected scale? 10 users or 10,000?
-- Are there security or compliance requirements?
-- Should this work offline? On mobile?
-- What happens during network failures or timeouts?
-
-### 2. User Interface & Experience
-- Who are the different user personas interacting with this?
-- What's the primary device/platform? Secondary?
-- Are there accessibility requirements?
-- What's the user's technical proficiency level?
-- What should happen on errors - technical message or friendly guidance?
-- Are there existing UI patterns in the app this should follow?
-
-### 3. Edge Cases & Error Handling
-- What inputs are considered invalid? How should they be handled?
-- What if the user does X when they should do Y?
-- What's the behavior when data is missing or malformed?
-- How should concurrent/conflicting operations be handled?
-- What are the failure modes and recovery strategies?
-
-### 4. Constraints & Tradeoffs
-- What's more important: speed of delivery or completeness?
-- Are there budget/resource limitations?
-- What can we cut if we run out of time?
-- What's the minimum viable version vs. ideal version?
-- Are there dependencies on other teams or systems?
-
-### 5. Business Context
-- Why is this feature needed now?
-- What problem does this solve for the business?
-- How will success be measured?
-- What's the cost of NOT doing this?
-- Are there regulatory or legal considerations?
+Bad-vs-good question examples and the 5-category question bank
+(Technical / UX / Edge Cases / Constraints / Business Context) used in
+Phase 2 below: `references/question-framework.md`.
 
 ## Three Interview Modes
 
@@ -218,29 +173,9 @@ Summarize understanding and confirm before finalizing.
 
 ## Interactive-Input Gate Best Practices (Claude: AskUserQuestion)
 
-### Structure Questions with Options
-```
-Question: "How should the system handle authentication failures?"
-Options:
-1. Show error and retry (simple)
-2. Lock account after 3 attempts (secure)
-3. Send email notification (audit trail)
-4. Custom handling...
-```
-
-### Use multiSelect for Non-Exclusive Choices
-```
-Question: "Which platforms need to be supported?"
-multiSelect: true
-Options:
-1. Web browser
-2. iOS app
-3. Android app
-4. Desktop app
-```
-
-### Provide Context in Descriptions
-Each option should explain implications, not just the choice itself.
+Structure each question with explicit options (single-select or
+`multiSelect`) and put the implications in each option's description,
+not just the choice: worked examples in `references/gate-examples.md`.
 
 ## Interview Completion
 
@@ -266,57 +201,10 @@ When the interview warrants a full spec:
 
 ## Spec Output Format
 
-**File path**: `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`
-
-**Examples**:
-- `.claude/spec/2026-01-20-dark-mode.md`
-- `.claude/spec/2026-01-20-api-rate-limiting.md`
-
-After interview completion, write a spec file with:
-
-```markdown
-# Feature Specification: [Feature Name]
-
-## Overview
-[1-2 sentence summary]
-
-## User Stories
-- As a [user type], I want [goal] so that [benefit]
-
-## Requirements
-
-### Must Have (P0)
-- [ ] Requirement 1
-- [ ] Requirement 2
-
-### Should Have (P1)
-- [ ] Requirement 3
-
-### Nice to Have (P2)
-- [ ] Requirement 4
-
-## Technical Constraints
-- [List technical requirements and limitations]
-
-## UI/UX Requirements
-- [List interface requirements]
-
-## Edge Cases
-| Scenario | Expected Behavior |
-|----------|------------------|
-| Case 1   | Behavior 1       |
-
-## Testing Decisions
-- **Seam**: [the public interface/boundary tests assert through]
-- **Behavior under test**: [what this seam must do, in observable terms]
-- **Excluded**: [what this spec deliberately does not test, and why]
-
-## Out of Scope
-- [Explicitly list what this feature does NOT include]
-
-## Open Questions
-- [Any unresolved items for future discussion]
-```
+File path pattern (`.claude/spec/{YYYY-MM-DD}-{feature-name}.md`) and
+the full markdown template (Overview / User Stories / Requirements
+P0-P2 / Technical Constraints / UI-UX / Edge Cases / Testing Decisions
+/ Out of Scope / Open Questions): `references/spec-template.md`.
 
 ## Reusable Prompt Output
 

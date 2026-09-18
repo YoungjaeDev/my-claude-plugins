@@ -87,7 +87,9 @@ Preset:        which dev:worker-* and the one-clause reason
    one writer.
 2. **Write the job cards.** One card per slice with all seven fields filled. Inputs carry what the
    conversation already settled; the worker never inherits the session, so the card is its whole
-   world. Done when each card can be read on its own and answered without a follow-up question.
+   world. A slice that needs a test seam gets that seam agreed before dispatch and carried in
+   Inputs — a worker subagent has no `AskUserQuestion` to fall back on. Done when each card can be
+   read on its own and answered without a follow-up question.
 3. **Pick preset and structure** from the two tables. Give every agent a `name` so a re-query can
    reach the same transcript. Done when each card names its preset and the run names its structure.
 4. **Dispatch.** Independent slices go out in one message, in the background. Dependent slices wait

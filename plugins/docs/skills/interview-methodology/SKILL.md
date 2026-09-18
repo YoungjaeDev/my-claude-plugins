@@ -306,6 +306,11 @@ After interview completion, write a spec file with:
 |----------|------------------|
 | Case 1   | Behavior 1       |
 
+## Testing Decisions
+- **Seam**: [the public interface/boundary tests assert through]
+- **Behavior under test**: [what this seam must do, in observable terms]
+- **Excluded**: [what this spec deliberately does not test, and why]
+
 ## Out of Scope
 - [Explicitly list what this feature does NOT include]
 

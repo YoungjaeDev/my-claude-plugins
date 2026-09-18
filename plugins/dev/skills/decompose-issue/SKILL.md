@@ -8,6 +8,8 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 Break a large work item into manageable, independent GitHub issues, map them onto the project's architecture, and create them with a milestone. Follow project guidelines in `@CLAUDE.md`.
 
+Vertical-slice sizing and the decision-forward issue template are adapted from mattpocock/skills `to-tickets/SKILL.md` (commit `74ca5fe`).
+
 ## Guidelines
 
 - **Interactive input is capability-aware.** Every confirmation below runs through a gate, not one hardcoded tool; read each `AskUserQuestion` mention as this gate. Claude Code uses `AskUserQuestion`. Codex uses `request_user_input` when that tool is exposed; when it is not, ask ONE concise blocking question only where a wrong assumption would be costly (creating GitHub issues), otherwise proceed on a documented safe default and state the assumption. Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
@@ -24,7 +26,18 @@ Break a large work item into manageable, independent GitHub issues, map them ont
    - If test framework detected + code work → Ask: "Create issues with TDD approach?"
    - If no test framework → Inform: "TDD not required. (Reason: No test framework detected)"
    - If non-code work (docs/infra) → Inform: "TDD not required. (Reason: Non-code work)"
-   - If TDD selected: Add `<!-- TDD: enabled -->` marker to each issue body
+   - If TDD selected: Add `<!-- TDD: enabled -->` marker to each issue body, and confirm the test
+     seam per issue now (see "Decide seams and open decisions before creating issues" below) so the
+     issue body carries an agreed seam instead of leaving it for `resolve-issue` to ask about.
+
+3.5. **Check E2E applicability** (only when the work has a critical user flow — skip silently
+   otherwise, do not ask on every issue):
+   - If a critical user flow is in scope → ask through the interactive-input gate: "이 흐름에 E2E
+     테스트가 필요한가요?" naming the flow.
+   - If approved: record the target flow and a pointer to `dev:e2e-author` in the issue body's
+     "결정 사항" section.
+   - If no E2E harness exists in the repo (no `playwright.config.*`, no `e2e/` directory): add a
+     blocking prerequisite issue for `dev:e2e-setup` instead of assuming one exists.
 4. Analyze work: Understand core requirements and objectives
 5. Decompose work: Split major tasks into **context-completable units** - each issue should be completable in a single Claude session without context switching. Group related features together rather than splitting by individual functions
 6. Analyze dependencies: Identify prerequisite tasks
@@ -116,6 +129,18 @@ Break a large work item into manageable, independent GitHub issues, map them ont
    mkdir -p .claude/state
    ```
 
+9.7. **Decide seams and open decisions before creating issues** (Decision 13): pull forward every
+   decision `resolve-issue` would otherwise have to ask about mid-implementation — test seam,
+   design decisions with more than one reasonable option, scope boundaries — and settle them now
+   through the interactive-input gate while the user is still in the loop. Write what got settled
+   into each issue's "결정 사항" section and whatever is still genuinely undecided into "Open
+   questions". The goal is that `resolve-issue`, run from a worker subagent with no
+   `AskUserQuestion`, never has to stall on a question the issue could have answered.
+
+9.8. **Check labels** before creating anything on GitHub: run `gh label list`. If the labels this
+   decomposition needs (type/area, and any complexity/priority labels referenced above) are not in
+   that output, run the "Labels" section below to create them first.
+
 10. **Ask about GitHub creation**: Use the interactive-input gate to let user decide on milestone and issue creation
     - Create milestone with **Markdown Table** in description.
 
@@ -160,12 +185,34 @@ Break a large work item into manageable, independent GitHub issues, map them ont
 
 ## Issue Sizing Principle
 
+### Cost model
+
+One issue becomes one PR becomes one review cycle. An issue is not free to create: every issue this
+skill opens costs its own PR and its own pass through `cr-fix` (bot review rounds, human attention,
+CI minutes). Sizing is a trade-off against that cost, not a virtue to maximize in either direction —
+neither "as many small issues as possible" nor "as few issues as possible" is the goal on its own.
+
 ### Context-Completable Units
 Each issue should be designed to be **completable in a single Claude session**:
 
 - **Group related features** rather than splitting by individual functions
 - **Minimize context switching** - all necessary information should be within the issue
-- **Include implementation details** - specific enough that no external lookup is needed during execution
+- **Specify behaviour, not implementation** - detailed enough that no external lookup is needed
+  during execution, without prescribing file-level code
+
+### Splitting criteria (Decision 7)
+
+Split along these three axes, in order:
+
+1. **Vertical slice per user-facing capability.** Each issue cuts a complete path through every
+   layer it touches (schema, API, UI, tests) for one behaviour, not one layer across many
+   behaviours. A slice is demoable or verifiable on its own once merged.
+2. **Non-overlapping file ownership.** Two issues that would need to write the same file in the
+   same PR belong in one issue, or must be ordered with a blocking edge — never left to race.
+3. **Neither over-fragmented nor under-split.** Don't split a single cohesive behaviour into one
+   issue per function or endpoint (that multiplies review cycles for no independent value). Don't
+   bias toward the fewest possible issues either — a wide, blast-radius-spanning change is the
+   **expand-contract exception** below, not a reason to cram unrelated behaviours into one issue.
 
 ### Sizing Guidelines
 
@@ -175,12 +222,15 @@ Each issue should be designed to be **completable in a single Claude session**:
 | "Implement CRUD API for products" | "Add create endpoint", "Add read endpoint", "Add update endpoint", "Add delete endpoint" (4 separate issues) |
 | "Setup CI/CD pipeline with test and deploy stages" | "Add test stage", "Add deploy stage" (2 separate issues) |
 
-### Issue Content Depth
-Since issues are larger, content must be **more detailed**:
+### Issue Content Depth (Decision 8)
 
-1. **Implementation order** - numbered steps for execution sequence
-2. **File-by-file changes** - specific modifications per file
-3. **Code snippets** - key patterns or structures to implement
+Content stays behaviour-level, not implementation-level:
+
+1. **Implementation order** - numbered steps for execution sequence, stated as outcomes
+2. **File paths as a starting-point hint only** - point to where the work begins, never a
+   file-by-file change list
+3. **No code snippets** - patterns and structures go stale the moment the code around them moves;
+   describe the decision in prose instead
 4. **Edge cases** - known gotchas or considerations
 
 ### Wide Refactors: the expand-contract exception
@@ -255,21 +305,21 @@ Examples (vary by project, for reference only):
 2. [ ] Step 2 - description with specific details
 3. [ ] Step 3 - description with specific details
 
-**Files to modify**:
-- `path/filename` - Specific change (add/modify/remove what)
-- `path/filename2` - Specific change with code pattern if needed
+**결정 사항** (settled during decomposition — Decision 13; resolve-issue must not have to ask):
+- [Test seam, design decision, or scope boundary already decided, and what was decided]
 
-**Key Implementation Details**:
-```
-// Include code snippets, patterns, or structures when helpful
-// This reduces need for external lookup during execution
-```
+**테스트 seam** (only when TDD is enabled): the public interface / boundary the tests for this
+issue assert through. This is what `resolve-issue`'s TDD branch reads as the agreed seam.
 
-**Completion criteria**:
-- [ ] Implementation complete (all tasks checked)
-- [ ] Execution verified (no runtime errors)
-- [ ] Tests pass (if applicable)
-- [ ] Added to demo page (for UI components, if applicable)
+**Open questions**: anything genuinely still undecided that implementation must surface, not
+silently resolve on its own.
+
+**시작점 힌트** (starting-point hints, not a file-by-file change list):
+- `path/filename` - what area of the code this touches
+
+**Completion criteria** (user-facing acceptance criteria):
+- [ ] Acceptance criterion 1, stated as observable behaviour from the user's perspective
+- [ ] Acceptance criterion 2
 
 **Dependencies**:
 - [ ] None or prerequisite issue #number

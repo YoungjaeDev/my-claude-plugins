@@ -13,7 +13,7 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
 ## Precondition check
 
 - Read the E2E SSOT doc (`e2e/AGENTS.md` or `.claude/e2e-guidelines.md`) for the CUF list and conventions. If absent, run `e2e-setup` Step 5 or capture the CUFs inline.
-- Confirm `playwright-cli` is available: `e2e-setup` Step 1 already ran this check (global `playwright-cli`, or `npx --yes @playwright/cli@0.1.20 --version` resolving) and `seed.spec.ts` exists (both paths need them). If `playwright-cli` is unavailable, the planner/generator fall back to the `playwright-test` MCP server (confirm the `.mcp.json` entry instead). If either is missing entirely, route the user to `dev:e2e-setup` first.
+- `seed.spec.ts` must exist (both paths need it). For app exploration, the planner/generator need at least one of: `playwright-cli` (`e2e-setup` Step 1 already checked this: global `playwright-cli`, or `npx --yes @playwright/cli@0.1.20 --version` resolving) or the `.mcp.json` `playwright-test` entry (fallback when `playwright-cli` is unavailable). The two are independent, so having only one is enough to proceed. Route the user to `dev:e2e-setup` first only when `seed.spec.ts` is missing, or when both `playwright-cli` and the MCP entry are unavailable.
 - **Path A only**: confirm the named agents exist (`.claude/agents/playwright-test-planner.md`, `playwright-test-generator.md`). If they are missing **and you are on Claude Code**, run `e2e-setup`. Do not hand-roll them. **Do not** demand these Claude agent files under Codex; there the bundled contracts stand in (see Step 0).
 
 ## Workflow

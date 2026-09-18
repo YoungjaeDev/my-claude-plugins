@@ -288,7 +288,8 @@ Skip the commit only when `git -C "$MAIN_REPO" diff --cached --quiet` reports no
 Print this one line, filled in, as the last line of the run, and do not run it. The user runs it after leaving the worktree session; removing a worktree from inside itself only half deletes it on Windows.
 
 ```bash
-[ "$IN_WT" = 1 ] && printf 'cd "%s" && git worktree remove "%s" && git branch -d "%s"\n' \
+# %q: a quote, `$` or space in a path or branch name cannot change the pasted command.
+[ "$IN_WT" = 1 ] && printf 'cd %q && git worktree remove %q && git branch -d %q\n' \
   "$MAIN_REPO" "$WT_PATH" "$headRefName"
 ```
 

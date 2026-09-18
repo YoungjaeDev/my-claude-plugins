@@ -2,6 +2,53 @@
 
 The main session reads the affected code, judges each finding on six axes, and decides apply / defer / skip without prompting the user.
 
+## Per-finding procedure (Step 9c)
+
+Items 3-8 of the SKILL.md Step 9c list, in full. Items 1-2 (path-trust gate, sanitization) run first, in the skill body.
+
+3. **Read affected code**:
+   - Line-anchored finding → Read with offset `max(1, line-20)` and limit `40`.
+   - Codex file-level (no line, file ≤ 1000 LoC) → Read whole file.
+   - Codex file-level (file > 1000 LoC) → skip with reason `codex-file-too-large`.
+
+4. **Independent judgment** (LLM, structured reasoning before action):
+   - `is_real`: does the claim match what the local code actually does? (`real` / `spurious` / `stylistic-only`)
+   - `confidence`: `high` / `medium` / `low`, based on how unambiguous the local evidence is.
+   - `severity_reassess`: reviewer-assigned severity vs. observed impact. Codex P1 with cosmetic effect → `cosmetic`. CR Minor with security implication → `high`.
+   - `fix_size`: `small-safe` (1-5 line change, no API surface delta) / `large-risky` (refactor / signature change / cross-file) / `ambiguous`.
+   - `over_engineering`: does the *suggestion itself* demand unrequested complexity: speculative abstraction, defensive flexibility against hypotheticals, premature generalization, or unrequested configurability? `yes` / `no`. Judge the *fix being asked for*, not the code it sits in: a complex surrounding file is not `yes`; only a suggestion that *adds* complexity is.
+   - `in_prev_diff`: did the loop, not the PR, produce the material this finding sits on?
+     Run the "Step 9c.4: churn scope" block in `references/run-blocks.md` verbatim.
+     `churn` (inside the previous iteration's own commit, or outside the PR diff) forces `severity_reassess=cosmetic` and `churn_this_cycle=$((churn_this_cycle+1))`; `fresh` changes nothing.
+
+   **Location rule for Codex P1.** A P1 on frontmatter text, prose or a comment — anything that is not executable code — is `severity_reassess=low`. Codex badges by topic, not blast radius, and a wording drift left at `high` keeps every soft stop below from ever firing.
+
+   A finding asking for a new surface is `defer` regardless of `fix_size` (hard constraint above).
+
+5. **Decision matrix** (`references/autonomous-judgment.md` for full rationale):
+
+   | `is_real` | `severity_reassess` | `fix_size` | action |
+   |---|---|---|---|
+   | real | any | any *(over_engineering=yes)* | **skip** ("YAGNI: suggestion adds unrequested complexity; fails the senior-engineer test") |
+   | real | any | small-safe | **apply** |
+   | real | high (P1 / Critical / Major / Security) | large-risky | **defer** ("needs review: too invasive for autopilot") |
+   | real | low / cosmetic (P2 / Minor / churn) | large-risky | **skip** ("low value vs. invasiveness") |
+   | spurious / stylistic-only | any | any | **skip** ("did not match local code" / "stylistic preference, repo convention differs") |
+   | ambiguous | any | any | **defer** ("needs human review on intent") |
+
+   `over_engineering=yes` is evaluated first and overrides `fix_size`, including at `small-safe`.
+
+6. **Apply / defer / skip**:
+   - **apply** → **Stale-line guard**: before editing, if `$path` already appears in `$TRACK_FILE` from an earlier finding this cycle, re-Read the target region (offset `max(1, line-20)`, limit `40`) and re-locate the finding's quoted context in it: an earlier edit may have shifted the line numbers this finding was anchored to. Edit only where the expected context still matches; if the anchor content cannot be re-found in the re-Read region, **defer** the finding instead of editing a guessed location. Then Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
+     - **9c.6: Bounded same-file generalization**. After the flagged-line fix lands, when `GENERALIZE=true` AND `is_real=="real"` AND `confidence=="high"` AND the pattern is mechanically grep-able (a literal or regex-matchable construct, not a judgement call), grep the **same file** — or that symbol's body, when the finding is symbol-scoped — for sibling occurrences and apply the identical fix in the same commit. **Never cross-file.** Record the extra lines in `generalized_to`; the finding still counts as 1, so `applied_this_cycle` / `auto_judge_apply` are not re-incremented. Full contract: `references/autonomous-judgment.md`.
+   - **defer** → `deferred_this_cycle=$((deferred_this_cycle+1))`; `auto_judge_defer=$((auto_judge_defer+1))`; log judgment.
+   - **High-severity accumulator (Step 13 soft-stop signal)**: for any `apply` or `defer` whose `severity_reassess=="high"`, `high_sev_this_cycle=$((high_sev_this_cycle+1))`. This feeds the Step 13 `minor_floor` soft-stop: a cycle that applied only low-severity fixes and deferred nothing can stop early.
+   - **skip** → `auto_judge_skip=$((auto_judge_skip+1))`; log judgment. Does NOT touch `applied_this_cycle` or `deferred_this_cycle`.
+
+7. **Log entry** — append one record per decision to `STATE_FILE.auto_judge_log`: `iter`, `src` (`cr|cli|codex`), `path`, `line`, `badge_or_sev`, `judgment` (the six axes above with the values they took), `action`, `reason` (one line), and `generalized_to` (the sibling lines, only when 9c.6 fired). Full shape: `references/autonomous-judgment.md`.
+
+8. **9c-review tier** (CR finding with no parseable header / Codex with no P1-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor.
+
 ## Why no AskUserQuestion
 
 A per-finding prompt is almost always rhetorical: the answer is already determined by what the local code says. Removing it eliminates the wait for user input, forces the model to articulate *why* it applied or skipped each item, and keeps the user as auditor of the log rather than gatekeeper of every line.

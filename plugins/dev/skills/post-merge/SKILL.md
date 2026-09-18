@@ -49,12 +49,18 @@ fi
 
 ```bash
 if [ "$IN_WT" = 1 ]; then
-  mkdir -p "$MAIN_REPO/.claude/state/archive"
+  # Fail loud: Step 11's command deletes the worktree, so a silent failed copy loses the state.
+  ARC="$MAIN_REPO/.claude/state/archive"
+  mkdir -p "$ARC" || { echo "post-merge: cannot create $ARC" >&2; exit 1; }
   for f in "$WT_PATH/.claude/state/archive/cr-fix-${PR_NUMBER}-"*.json; do
-    [ -f "$f" ] && cp -p "$f" "$MAIN_REPO/.claude/state/archive/"
+    [ -f "$f" ] || continue
+    cp -p "$f" "$ARC/" || { echo "post-merge: copying $f failed" >&2; exit 1; }
   done
   live="$WT_PATH/.claude/state/cr-fix-${PR_NUMBER}.json"
-  [ -f "$live" ] && cp -p "$live" "$MAIN_REPO/.claude/state/archive/cr-fix-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-wt.json"
+  if [ -f "$live" ]; then
+    cp -p "$live" "$ARC/cr-fix-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-wt.json" \
+      || { echo "post-merge: copying $live failed" >&2; exit 1; }
+  fi
 fi
 ```
 

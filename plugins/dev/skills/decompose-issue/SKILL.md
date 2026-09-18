@@ -174,7 +174,7 @@ Vertical-slice sizing and the decision-forward issue template are adapted from m
       TMP=$(mktemp)
       jq --arg mid "$MILESTONE_NUMBER" '.milestoneId = ($mid | tonumber)' "$STATE_FILE" > "$TMP" && mv "$TMP" "$STATE_FILE"
       ```
-    - **Inject the TDD marker (if TDD was enabled in Step 3)**: when creating each issue, prepend `<!-- TDD: enabled -->` as the first line of the issue body (before `**Purpose**:`). This is the exact marker `resolve-issue` Step 1 detects to switch on the TDD workflow. If TDD was not selected in Step 3, omit the prepend entirely — do not write the marker.
+    - **Inject the TDD marker (if TDD was enabled in Step 3)**: when creating each issue that carries actual code implementation, prepend `<!-- TDD: enabled -->` as the first line of the issue body (before `**Purpose**:`). This is the exact marker `resolve-issue` Step 1 detects to switch on the TDD workflow. If TDD was not selected in Step 3, omit the prepend entirely; do not write the marker. A prerequisite issue that is pure infra/setup (for example the `dev:e2e-setup` prerequisite from Step 3.5) gets no marker either way, TDD-enabled decomposition or not: it has no code implementation to test-drive.
     - Assign issues with `--milestone` option
     - After issue creation, update the state file `issues` map with actual GitHub issue numbers
 

@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: "Clean up after a PR merges: switch to base, delete the merged branch, sync GitHub Project/milestone and .claude/state/spec.json, integrate what merged into CLAUDE.md/AGENTS.md/.claude/rules, run the mandatory wiki-lore ingest, curate README and the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', 'integrate PR learnings', or right after a PR merges. gh pr view is the merge signal, never git SHAs; runs from the main repo, not a worktree. Not for an open PR's review feedback (/dev:cr-fix)."
+description: "Clean up after a PR merges: switch to base, delete the merged branch, sync GitHub Project/milestone and .claude/state/spec.json, integrate what merged into CLAUDE.md/AGENTS.md/.claude/rules, run the mandatory wiki-lore ingest, curate README and the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', 'integrate PR learnings', or right after a PR merges. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:cr-fix)."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -8,11 +8,10 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 Local cleanup + knowledge integration after a PR is merged. One run takes a merged PR from branch cleanup → tracking sync → config/memory integration → **mandatory** wiki-lore ingest → README → commit. Follow project guidelines in `@CLAUDE.md` and `@AGENTS.md` throughout.
 
-For worktree removal, use `/exit` with its cleanup option.
-
 ## Guidelines
 
-- **Worktree guard (P0).** post-merge must run from the main repo, not a worktree: Step 3 checks out the base branch, which collides with the original repo's checkout. The Step 1 guard aborts when run inside a worktree.
+- **Worktree mode.** post-merge runs from the main repo or from the PR's worktree. Every step works on the main repo: git calls run as `git -C "$MAIN_REPO"` and repo paths resolve under `$MAIN_REPO/`, in the steps below and in `references/`. `MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")` gives the same answer from either place, so re-derive it in any fresh shell. Inside a worktree (`IN_WT=1`) Step 1 copies the worktree's cr-fix state into the main repo's archive, Step 4 leaves the branch alone (the worktree still has it checked out), and Step 11 prints the one command that removes the worktree and the branch. post-merge never removes the worktree itself: on Windows a worktree removed from inside itself is only half deleted.
+- **Non-default base.** For a PR into a branch CodeRabbit does not auto-review, cr-fix on the `auto` / `pr-bot` source posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/cr-fix/SKILL.md` Step 2); Step 3 below checks out that base like any other.
 - **`gh pr view` is the authoritative merge signal.** Step 1's `gh pr view ... state=MERGED` is the single source of truth for "did this land". Later steps MUST NOT re-verify merge state by comparing git SHAs.
 - **Never use SHA-level merge comparison.** `git log <base>..<branch>`, `git cherry`, `git rev-list --left-right` all false-positive after squash merge (base gets one new SHA) and rebase merge (branch SHAs rewritten). If unsure content landed, diff content not SHAs (Step 4).
 - **No stamps, current-state only.** Normative docs hold current rules; provenance lives in git/PR/blame. No `(#N)` / `PR #N` / `이슈 #N` citations, no `## Post-Merge` headers. Full rules + the `<!-- history-allowed [max=N] -->` opt-out + language consistency + SSOT cross-file dedup + content-first: see `references/core-principle.md`.
@@ -30,23 +29,41 @@ For worktree removal, use `/exit` with its cleanup option.
 
 ### 1. Identify PR
 
-**Worktree guard (P0)**: run first:
+**Worktree detection**: run first. A linked worktree's git dir differs from the common git dir; the main checkout's does not.
 
 ```bash
-case "$(git rev-parse --absolute-git-dir)" in
-  */worktrees/*)
-    MAIN_REPO=$(cd "$(git rev-parse --git-common-dir)/.." && pwd -P)
-    echo "[abort] post-merge cannot run inside a worktree."
-    echo "Run /exit (cleanup option), then re-run /dev:post-merge from $MAIN_REPO"
-    exit 1
-    ;;
-esac
+MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+IN_WT=0; WT_PATH=""
+if [ "$(git rev-parse --absolute-git-dir)" != "$(git rev-parse --path-format=absolute --git-common-dir)" ]; then
+  IN_WT=1; WT_PATH=$(git rev-parse --show-toplevel)
+  echo "post-merge: worktree mode (worktree $WT_PATH, main repo $MAIN_REPO)"
+fi
 ```
 
 - Use the PR number argument if given; else infer from context; else `gh pr list --state merged --limit 5` and prompt.
 - `gh pr view <PR_NUMBER> --json number,title,baseRefName,headRefName,body,state,files,mergeCommit`.
 - Verify `state` is `MERGED`. This result is the **authoritative merge signal** (see Guidelines); no later SHA comparison.
 - Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')`: this is **this PR's** merge commit, used to label the wiki log entry and read diff content. Step 8 derives the merged **file list** from `gh pr diff <N> --name-only` (PR-scoped, merge-method-agnostic, uncapped), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
+
+**Carry cr-fix state out of the worktree** (`IN_WT=1` only). cr-fix wrote its state under the worktree, which Step 11's command deletes; copy it to the main repo's archive first so Step 1.5 and later runs still find it. The archive name keeps the `cr-fix-<PR>-` prefix Step 1.5 globs for:
+
+```bash
+if [ "$IN_WT" = 1 ]; then
+  # Fail loud: Step 11's command deletes the worktree, so a silent failed copy loses the state.
+  ARC="$MAIN_REPO/.claude/state/archive"
+  mkdir -p "$ARC" || { echo "post-merge: cannot create $ARC" >&2; exit 1; }
+  for f in "$WT_PATH/.claude/state/archive/cr-fix-${PR_NUMBER}-"*.json; do
+    [ -f "$f" ] || continue
+    cp -p "$f" "$ARC/" || { echo "post-merge: copying $f failed" >&2; exit 1; }
+  done
+  live="$WT_PATH/.claude/state/cr-fix-${PR_NUMBER}.json"
+  if [ -f "$live" ]; then
+    # $$ as in cr-fix's own archive names: a same-second rerun keeps both copies.
+    cp -p "$live" "$ARC/cr-fix-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$-wt.json" \
+      || { echo "post-merge: copying $live failed" >&2; exit 1; }
+  fi
+fi
+```
 
 **Open the run record.** With `PR_NUMBER` + `MERGE_SHA` fixed, run the init block in `references/run-record.md` and `record_step 1 done`. That file also holds the per-step recording contract every later step follows.
 
@@ -57,8 +74,8 @@ A merge can land while `cr-fix` still left findings unresolved: items it autonom
 **Primary signal: the cr-fix state file.** cr-fix archives its live state on exit (`emit-final-json.sh` persists the final `final_state` + `auto_judge_stats` into the file, then moves `.claude/state/cr-fix-<PR>.json` → `.claude/state/archive/cr-fix-<PR>-<ts>.json`), so the archived copy is the usual hit and is self-describing; check the live path first, then the latest archive:
 
 ```bash
-CRF=".claude/state/cr-fix-${PR_NUMBER}.json"
-[ -f "$CRF" ] || CRF=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUMBER}-"*.json 2>/dev/null | head -1)
+CRF="$MAIN_REPO/.claude/state/cr-fix-${PR_NUMBER}.json"
+[ -f "$CRF" ] || CRF=$(ls -1t "$MAIN_REPO/.claude/state/archive/cr-fix-${PR_NUMBER}-"*.json 2>/dev/null | head -1)
 if [ -n "${CRF:-}" ] && [ -f "$CRF" ]; then
   CRF_FINAL=$(jq -r '.final_state // "unknown"' "$CRF")
   # deferred findings, audit detail: path:line + severity + reason
@@ -86,7 +103,7 @@ OPEN_THREADS=$(gh api --paginate "repos/{owner}/{repo}/pulls/${PR_NUMBER}/commen
 
 ```bash
 case "$CRF_FINAL" in
-  iteration_cap|timeout|cli_failed|rate_limited) CAP_TRIGGER=1 ;;
+  iteration_cap|timeout|cli_failed|rate_limited|reviewers_unavailable) CAP_TRIGGER=1 ;;
   *) CAP_TRIGGER=0 ;;
 esac
 if [ "$DEFER_N" -gt 0 ] || [ "$CAP_TRIGGER" = 1 ]; then
@@ -102,26 +119,27 @@ fi
 
 ### 2. Check local changes
 
-`git status --porcelain`:
+`git -C "$MAIN_REPO" status --porcelain` (the main repo is what Step 3 switches):
 - Untracked (`??`): ignore, proceed.
-- Modified/staged (`M`/`A`/`D`); prompt via `AskUserQuestion`: **stash** (`git stash push -m "post-merge: temp save"`) / **discard** (`git restore --staged --worktree -- .`, reverts tracked changes only; never `git clean`, so pre-existing untracked files/drafts are preserved per the rule above) / **abort**.
+- Modified/staged (`M`/`A`/`D`); prompt via `AskUserQuestion`: **stash** (`git -C "$MAIN_REPO" stash push -m "post-merge: temp save"`) / **discard** (`git -C "$MAIN_REPO" restore --staged --worktree -- .`, reverts tracked changes only; never `git clean`, so pre-existing untracked files/drafts are preserved per the rule above) / **abort**.
 - If stashed, prompt at the end of the run for **pop** / **apply** / **later**.
 
 ### 3. Switch to base branch
 
 ```bash
-git fetch origin
-git checkout <baseRefName>
-git pull origin <baseRefName>
+git -C "$MAIN_REPO" fetch origin
+git -C "$MAIN_REPO" checkout <baseRefName>
+git -C "$MAIN_REPO" pull origin <baseRefName>
 ```
 
 ### 4. Clean up local branch
 
-- `git branch --list "$headRefName"`.
-- **No SHA-level merge check** (see Guidelines). If unsure content landed, diff content: `git diff "origin/$baseRefName..$headRefName" -- <paths>` (empty = fully landed; safe for squash).
-- If the branch exists, confirm deletion, then `git branch -d "$headRefName"`.
+- `IN_WT=1`: skip the deletion (the worktree still has the branch checked out, so `git branch -d` would refuse); Step 11 prints it. The content check below still applies.
+- `git -C "$MAIN_REPO" branch --list "$headRefName"`.
+- **No SHA-level merge check** (see Guidelines). If unsure content landed, diff content: `git -C "$MAIN_REPO" diff "origin/$baseRefName..$headRefName" -- <paths>` (empty = fully landed; safe for squash).
+- If the branch exists, confirm deletion, then `git -C "$MAIN_REPO" branch -d "$headRefName"`.
   - For squash merges expect `warning: not yet merged to HEAD`, which is normal; `-d` detects the merge via `origin/<branch>` tracking and still succeeds. Do NOT escalate to `-D`, do NOT treat as data loss, do NOT open a "missing commits" PR.
-- If worktrees remain for the branch, tell the user to run `/exit` with cleanup.
+- If another worktree (not this one) still has the branch checked out, report its path from `git -C "$MAIN_REPO" worktree list` and leave it.
 
 ### 4.5. Prune ephemeral artifacts merged by this PR (optional)
 
@@ -145,7 +163,7 @@ user selects skip-all.
    ("named scratch_*", "root-level analysis script", ...). Options: pick files to
    remove / skip all. Read each candidate's head first; if it looks load-bearing,
    drop it before prompting.
-4. For each confirmed file: `git rm -- "$path"` (stages the removal immediately).
+4. For each confirmed file: `git -C "$MAIN_REPO" rm -- "$path"` (stages the removal immediately in the main repo's index, which Step 10 commits).
    Report each. Step 10's staged-diff gate then commits the deletion. Do NOT add
    removed paths to `RUN_TOUCHED` (Step 10's `[ -e "$p" ]` add-loop cannot stage a
    deletion; `git rm` already staged it).
@@ -166,7 +184,7 @@ Skip silently when: no marker is found, or the user selects skip-all.
 1. Scan the merged file list (`gh pr diff <PR_NUMBER> --name-only`) for markers
    in the **current base-branch content** (not the diff): `@deprecated`,
    `DEPRECATED`, `deprecated alias`, `Deprecated:`, doc-only "deprecated pointer"
-   stubs. `git grep -nE 'deprecated|DEPRECATED' -- <merged-files>` is enough.
+   stubs. `git -C "$MAIN_REPO" grep -nE 'deprecated|DEPRECATED' -- <merged-files>` is enough.
 2. **Distinguish intent before surfacing**: a marker the PR *added* usually means
    "deprecated but kept on purpose" (a grace-period alias); that is NOT a removal
    candidate. Only surface a marker as removable when its target is already gone,
@@ -179,7 +197,7 @@ Skip silently when: no marker is found, or the user selects skip-all.
 4. Gate via `AskUserQuestion` (multi-select): each candidate with path + marker +
    reason. Options: pick items to clean up / skip all.
 5. For each confirmed item: remove the deprecated block via `Edit` (in-file) or
-   `git rm` (whole stub file). `Edit`ed files go into `RUN_TOUCHED` (Step 10
+   `git -C "$MAIN_REPO" rm` (whole stub file); `Edit` the `$MAIN_REPO/` path, never the worktree copy. `Edit`ed files go into `RUN_TOUCHED` (Step 10
    stages them); `git rm` already stages the deletion. Do NOT add it to
    `RUN_TOUCHED`. Report each.
 
@@ -263,13 +281,26 @@ Stage **only the exact files this run created or modified**: collect them as you
 # stale path would abort the whole add (and `|| true` would hide it), leaving
 # real changes unstaged.
 for p in "${RUN_TOUCHED[@]}"; do
-  [ -e "$p" ] && git add -- "$p"
+  # RUN_TOUCHED holds $MAIN_REPO/... paths; -C keeps the index the main repo's.
+  [ -e "$p" ] && git -C "$MAIN_REPO" add -- "$p"
 done
 ```
 
-Skip the commit only when `git diff --cached --quiet` reports nothing staged after the `git add` (a staged-only check); `git status --porcelain` would also count pre-existing untracked files and wrongly attempt an empty-index commit.
+Skip the commit only when `git -C "$MAIN_REPO" diff --cached --quiet` reports nothing staged after the `git add` (a staged-only check); `git status --porcelain` would also count pre-existing untracked files and wrongly attempt an empty-index commit.
 
 **Finalize the run record.** Run the finalize block in `references/run-record.md` to append Step 10 and mark the envelope terminal. The record stays under gitignored `.claude/state/`; do **not** add it to `RUN_TOUCHED`.
+
+### 11. Print the worktree cleanup command (`IN_WT=1` only)
+
+Print this one line, filled in, as the last line of the run, and do not run it. The user runs it after leaving the worktree session; removing a worktree from inside itself only half deletes it on Windows.
+
+```bash
+# %q: a quote, `$` or space in a path or branch name cannot change the pasted command.
+[ "$IN_WT" = 1 ] && printf 'cd %q && git worktree remove %q && git branch -d %q\n' \
+  "$MAIN_REPO" "$WT_PATH" "$headRefName"
+```
+
+`git worktree remove` refuses a worktree with modified or untracked files, which is the check to keep: anything it names was never committed. `git branch -d` behaves as in Step 4.
 
 ## References
 

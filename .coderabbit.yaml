@@ -29,6 +29,9 @@ reviews:
     # Review-consumption is instead bounded by cr-fix's MAX_ITER cap + minor-soft-stop
     # and the ignore_title_keywords / path_instructions levers below.
     auto_pause_after_reviewed_commits: 0
+    # Review PRs into any base, not only the default branch (regex list). This adds
+    # stacked and release-branch PRs; PRs into main are reviewed as before.
+    base_branches: [".*"]
     # Skip review entirely while a PR is still work-in-progress.
     ignore_title_keywords:
       - WIP
@@ -76,3 +79,16 @@ reviews:
           in `.claude/rules/` without a corresponding mirror block in `AGENTS.md`.
           Path-scoped mechanical rules (e.g. `plugin-versioning.md`, loaded only when
           its target files are touched) are exempt. Otherwise PASS.
+knowledge_base:
+  code_guidelines:
+    # **/AGENTS.md and **/CLAUDE.md are read by default. These files sit outside the
+    # default patterns, so they are registered here as guidelines scoped to the files
+    # they govern. Do not list them under path_instructions: that makes them review
+    # targets, not review criteria.
+    filePatterns:
+      - files: ".claude/rules/plugin-versioning.md"
+        applyTo: ".claude-plugin/marketplace.json,plugins/*/.claude-plugin/plugin.json"
+      - files: ".claude/rules/state-envelope.md"
+        applyTo: ".claude/state/**"
+      - files: "code_review.md"
+        applyTo: "**"

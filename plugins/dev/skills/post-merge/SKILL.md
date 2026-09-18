@@ -11,7 +11,7 @@ Local cleanup + knowledge integration after a PR is merged. One run takes a merg
 ## Guidelines
 
 - **Worktree mode.** post-merge runs from the main repo or from the PR's worktree. Every step works on the main repo: git calls run as `git -C "$MAIN_REPO"` and repo paths resolve under `$MAIN_REPO/`, in the steps below and in `references/`. `MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")` gives the same answer from either place, so re-derive it in any fresh shell. Inside a worktree (`IN_WT=1`) Step 1 copies the worktree's cr-fix state into the main repo's archive, Step 4 leaves the branch alone (the worktree still has it checked out), and Step 11 prints the one command that removes the worktree and the branch. post-merge never removes the worktree itself: on Windows a worktree removed from inside itself is only half deleted.
-- **Non-default base.** A PR into a branch other than the default one gets its CodeRabbit review through cr-fix's manual `@coderabbitai review` rule (`plugins/dev/skills/cr-fix/SKILL.md` Step 2); Step 3 below checks out that base like any other.
+- **Non-default base.** For a PR into a branch CodeRabbit does not auto-review, cr-fix posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/cr-fix/SKILL.md` Step 2); Step 3 below checks out that base like any other.
 - **`gh pr view` is the authoritative merge signal.** Step 1's `gh pr view ... state=MERGED` is the single source of truth for "did this land". Later steps MUST NOT re-verify merge state by comparing git SHAs.
 - **Never use SHA-level merge comparison.** `git log <base>..<branch>`, `git cherry`, `git rev-list --left-right` all false-positive after squash merge (base gets one new SHA) and rebase merge (branch SHAs rewritten). If unsure content landed, diff content not SHAs (Step 4).
 - **No stamps, current-state only.** Normative docs hold current rules; provenance lives in git/PR/blame. No `(#N)` / `PR #N` / `이슈 #N` citations, no `## Post-Merge` headers. Full rules + the `<!-- history-allowed [max=N] -->` opt-out + language consistency + SSOT cross-file dedup + content-first: see `references/core-principle.md`.
@@ -162,7 +162,7 @@ user selects skip-all.
    ("named scratch_*", "root-level analysis script", ...). Options: pick files to
    remove / skip all. Read each candidate's head first; if it looks load-bearing,
    drop it before prompting.
-4. For each confirmed file: `git rm -- "$path"` (stages the removal immediately).
+4. For each confirmed file: `git -C "$MAIN_REPO" rm -- "$path"` (stages the removal immediately in the main repo's index, which Step 10 commits).
    Report each. Step 10's staged-diff gate then commits the deletion. Do NOT add
    removed paths to `RUN_TOUCHED` (Step 10's `[ -e "$p" ]` add-loop cannot stage a
    deletion; `git rm` already staged it).
@@ -183,7 +183,7 @@ Skip silently when: no marker is found, or the user selects skip-all.
 1. Scan the merged file list (`gh pr diff <PR_NUMBER> --name-only`) for markers
    in the **current base-branch content** (not the diff): `@deprecated`,
    `DEPRECATED`, `deprecated alias`, `Deprecated:`, doc-only "deprecated pointer"
-   stubs. `git grep -nE 'deprecated|DEPRECATED' -- <merged-files>` is enough.
+   stubs. `git -C "$MAIN_REPO" grep -nE 'deprecated|DEPRECATED' -- <merged-files>` is enough.
 2. **Distinguish intent before surfacing**: a marker the PR *added* usually means
    "deprecated but kept on purpose" (a grace-period alias); that is NOT a removal
    candidate. Only surface a marker as removable when its target is already gone,
@@ -196,7 +196,7 @@ Skip silently when: no marker is found, or the user selects skip-all.
 4. Gate via `AskUserQuestion` (multi-select): each candidate with path + marker +
    reason. Options: pick items to clean up / skip all.
 5. For each confirmed item: remove the deprecated block via `Edit` (in-file) or
-   `git rm` (whole stub file). `Edit`ed files go into `RUN_TOUCHED` (Step 10
+   `git -C "$MAIN_REPO" rm` (whole stub file); `Edit` the `$MAIN_REPO/` path, never the worktree copy. `Edit`ed files go into `RUN_TOUCHED` (Step 10
    stages them); `git rm` already stages the deletion. Do NOT add it to
    `RUN_TOUCHED`. Report each.
 

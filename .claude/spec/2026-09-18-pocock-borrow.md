@@ -1,7 +1,7 @@
 # Spec: pocock-borrow
 
 Date: 2026-09-18
-Status: draft
+Status: merged (2026-09-18, PR #237-#251)
 Owner: YoungjaeDev
 
 ## Context

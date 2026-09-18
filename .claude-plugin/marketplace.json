@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 7 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.40.0"
+    "version": "2.41.0"
   },
   "plugins": [
     {
@@ -19,7 +19,7 @@
       "name": "docs",
       "source": "./plugins/docs",
       "description": "Documents people and agents read, plus publishing them elsewhere. Project docs — readme / changelog / deploy-doc / moc commands backed by the doc-guides reference cards. Agent-facing authoring — write-rules (CLAUDE.md + .claude/rules), interview-methodology (requirements interview, grill-me stress test, TCREI reusable-prompt output), vp (voice-dictated prompt gate with a shared .agents/voice-terms.md dictionary), and the skill-forge family (skill-forge authoring, skill-audit single-skill diagnosis, skill-fleet-review repository-wide sweep). Publishing — translate-web-article (web page to Korean markdown) and gws-sync (one-way local to Google Drive sync behind an approval gate).",
-      "version": "1.1.2",
+      "version": "1.1.3",
       "category": "documentation"
     },
     {

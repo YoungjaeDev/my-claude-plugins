@@ -138,11 +138,14 @@ Vertical-slice sizing and the decision-forward issue template are adapted from m
    questions". The goal is that `resolve-issue`, run from a worker subagent with no
    `AskUserQuestion`, never has to stall on a question the issue could have answered.
 
-9.8. **Check labels** before creating anything on GitHub: run `gh label list`. If the labels this
-   decomposition needs (type/area, and any complexity/priority labels referenced above) are not in
-   that output, run the "Labels" section below to create them first.
+9.8. **Check labels** (read-only, no gh writes here): run `gh label list` and note which labels
+   this decomposition needs (type/area, and any complexity/priority labels referenced above) are
+   missing. Do not create labels yet; label creation is a state-changing GitHub write and belongs
+   after the Step 10 approval gate like every other GitHub write in this workflow.
 
 10. **Ask about GitHub creation**: Use the interactive-input gate to let user decide on milestone and issue creation
+    - If Step 9.8 found missing labels, run the "Labels" section below to create them now, after
+      this approval gate.
     - Create milestone with **Markdown Table** in description.
 
       > **CRITICAL — DO NOT include Mermaid in milestone description.** GitHub milestone pages do not render Mermaid; the raw code shows as plain text. Mermaid belongs in **issue bodies** (Type M-2; see `../post-merge/references/update-progress.md` "Type M-2"), never in the milestone description.

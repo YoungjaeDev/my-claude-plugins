@@ -1,6 +1,6 @@
 ---
 name: diagnose
-description: "Diagnose a bug by capturing a failing command before touching code, then falsify ranked hypotheses instead of guessing. Use when the user asks to diagnose or debug something broken, throwing, failing, or slow, or says '버그 원인', '디버깅', '왜 실패', '원인 분석'. Procedure: (1) capture one failing command that reproduces the user's exact symptom, (2) minimize the repro to its load-bearing parts, (3) rank 3-5 falsifiable hypotheses, (4) add tagged instrumentation that targets one hypothesis at a time, (5) write a regression test at a real seam before the fix, (6) run a cleanup checklist (remove instrumentation, confirm the fix, state the cause). Not for authoring new tests (dev:e2e-author) or healing a known-flaky Playwright run (dev:e2e-debug) — those start after a cause is already known."
+description: "Diagnose a bug by capturing a failing command before touching code, then falsify ranked hypotheses instead of guessing. Use when the user asks to diagnose or debug something broken, throwing, failing, or slow, or says '버그 원인', '디버깅', '왜 실패', '원인 분석'. Procedure: (1) capture one failing command that reproduces the user's exact symptom, (2) minimize the repro to its load-bearing parts, (3) rank 3-5 falsifiable hypotheses, (4) add tagged instrumentation that targets one hypothesis at a time, (5) write a regression test at a real seam before the fix, (6) run a cleanup checklist (remove instrumentation, confirm the fix, state the cause). Not for authoring new tests (dev:e2e-author) or healing a known-flaky Playwright run (dev:e2e-debug): those start after a cause is already known."
 ---
 
 # diagnose
@@ -23,7 +23,7 @@ This is the step that matters; everything after it just consumes the signal this
 
 In rough order of preference: a failing test at the seam that reaches the bug, a CLI invocation or curl against a fixture, a headless browser script, a replayed captured trace, or a minimal throwaway harness. For "sometimes wrong" bugs, loop the trigger N times and report the failure rate instead of chasing a single clean repro.
 
-If no such command exists yet, building it is the task — do not skip to Step 3. If it genuinely cannot be built (needs an environment or access you do not have), stop and say so explicitly, listing what was tried and what is missing.
+If no such command exists yet, building it is the task; do not skip to Step 3. If it genuinely cannot be built (needs an environment or access you do not have), stop and say so explicitly, listing what was tried and what is missing.
 
 **Done when:** you can show the command and its actual output (redacted), and it failed.
 
@@ -33,17 +33,17 @@ Shrink the failing case to the smallest input, config, and call chain that still
 
 ## Step 3: Rank 3-5 falsifiable hypotheses
 
-Generate 3-5 hypotheses before testing any of them — a single first guess anchors on whatever is most visible, not most likely. Each hypothesis states a falsifiable prediction: "if `<cause>` is true, then `<change>` makes the failing command pass; `<other change>` makes it worse."
+Generate 3-5 hypotheses before testing any of them: a single first guess anchors on whatever is most visible, not most likely. Each hypothesis states a falsifiable prediction: "if `<cause>` is true, then `<change>` makes the failing command pass; `<other change>` makes it worse."
 
 Show the ranked list to the user before testing when they are reachable; domain knowledge often re-ranks it instantly. Do not block on it if they are unavailable.
 
 ## Step 4: Tagged instrumentation
 
-Add probes that target one hypothesis at a time — never "log everything and grep." Prefer a debugger or REPL breakpoint over logs where the environment supports it. Every debug log carries a unique tag, e.g. `[DEBUG-a4f2]`, so Step 6 cleanup is one grep. For performance regressions, measure with a timing harness or profiler before touching logs — establish the baseline number first, then bisect against it.
+Add probes that target one hypothesis at a time (never "log everything and grep"). Prefer a debugger or REPL breakpoint over logs where the environment supports it. Every debug log carries a unique tag, e.g. `[DEBUG-a4f2]`, so Step 6 cleanup is one grep. For performance regressions, measure with a timing harness or profiler before touching logs: establish the baseline number first, then bisect against it.
 
 ## Step 5: Regression test at a seam
 
-Before applying the fix, turn the minimized repro into a test at a seam that actually exercises the bug as it occurs in production — not a shallow single-caller test standing in for a multi-caller path. Watch it fail, apply the fix, watch it pass, then re-run the Step 1 command against the original unminimized scenario.
+Before applying the fix, turn the minimized repro into a test at a seam that actually exercises the bug as it occurs in production (not a shallow single-caller test standing in for a multi-caller path). Watch it fail, apply the fix, watch it pass, then re-run the Step 1 command against the original unminimized scenario.
 
 If no correct seam exists, that absence is itself a finding: note it in the PR/commit instead of writing a test that gives false confidence.
 

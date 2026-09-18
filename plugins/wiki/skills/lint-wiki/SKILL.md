@@ -48,23 +48,23 @@ echo "PLUGIN_ROOT=$PLUGIN_ROOT"
 Run each scan below against the resolved wiki root. Exact commands for every step:
 `references/lint-checks.md`.
 
-1. **Identity scan + dedup scoring**: duplicate `id:` or `aliases:` across pages. For each cluster, score overlap High/Medium/Low and suggest merge/supersede/alias respectively (never auto-apply — you may delete load-bearing content).
+1. **Identity scan + dedup scoring**: duplicate `id:` or `aliases:` across pages. For each cluster, score overlap High/Medium/Low and suggest merge/supersede/alias respectively (never auto-apply: you may delete load-bearing content).
 2. **Level scan**: any page `*.md` over 5KB → propose split.
 3. **Relationship scan**: any bare `[[wikilink]]` line (untyped) → must convert to a typed cross-ref (`> Refines:` etc., per-token meanings in `${PLUGIN_ROOT}/references/wiki-conventions.md` § Cross-reference grammar). Typed refs are never flagged.
 4. **Staleness scan**: `last_verified:` older than the page's volatility window (`volatile` 30d / `stable` or absent 180d; covers `.llmwiki/insight/` too) → re-verify against current code and bump the date, or mark for review.
 5. **Orphan scan**: pages not listed in `index.md`, or indexed pages that don't exist on disk → both are a flag.
 6. **MOC integrity**: every `[[wikilink]]` target must resolve to an existing page.
-7. **Contradictions**: any page with a `> Contradicts:` link is a flag — resolve (update or merge one side), don't leave it standing.
+7. **Contradictions**: any page with a `> Contradicts:` link is a flag; resolve it (update or merge one side), don't leave it standing.
 8. **Status/supersession integrity**: every `status: stale` page needs a `> Superseded-by:`, and every `> Supersedes:` target must itself be `status: stale`. Report-only, no auto-fix.
 9. **Sources sanity** (soft): `sources: N` should roughly match the bullet count under `## Sources`. Large divergence is a flag, not a fail.
-10. **Insight layer integrity** (skip if `.llmwiki/insight/` absent): `promoted_from:` must resolve to a non-stale wiki page; entries must stay under 2KB and declare `tier:` + `promoted_from:`. Beyond the mechanical checks, eyeball each entry against its source page — it must condense, not contradict or duplicate, the page.
-11. **Source-drift scan**: for any `.llmwiki/raw/` file carrying a `sha256:` frontmatter field, the body hash must still match — a mismatch means the immutable file was edited, or the source URL's content moved (re-ingest as a new dated snapshot, never overwrite). Files without `sha256:` are skipped (prospective-only).
-12. **Link-poverty scan**: an indexed page with zero typed cross-refs is invisible to graph traversal. Report-only — a genuinely standalone page (a domain's first page, a raw-citing leaf) can legitimately be ref-poor; the human decides.
+10. **Insight layer integrity** (skip if `.llmwiki/insight/` absent): `promoted_from:` must resolve to a non-stale wiki page; entries must stay under 2KB and declare `tier:` + `promoted_from:`. Beyond the mechanical checks, eyeball each entry against its source page: it must condense, not contradict or duplicate, the page.
+11. **Source-drift scan**: for any `.llmwiki/raw/` file carrying a `sha256:` frontmatter field, the body hash must still match; a mismatch means the immutable file was edited, or the source URL's content moved (re-ingest as a new dated snapshot, never overwrite). Files without `sha256:` are skipped (prospective-only).
+12. **Link-poverty scan**: an indexed page with zero typed cross-refs is invisible to graph traversal. Report-only: a genuinely standalone page (a domain's first page, a raw-citing leaf) can legitimately be ref-poor; the human decides.
 13. **Log-rotation due**: any `## YYYY-...` entry in `log.md` predating the current year → suggest migrating that year's block to a sibling `log-YYYY.md` (manual op, logged like any other event; convention: `${PLUGIN_ROOT}/references/wiki-conventions.md` § log.md discipline).
 
 ## Output format
 
-Produce the Markdown report per `references/output-schema.md` (schema + worked example). Report only — never auto-fix; the user reviews and triggers `/wiki:ingest-finding` for each remediation. After confirming with the user, persist it as a `## YYYY-MM-DD — <event-type> (lint-wiki)` block appended to the resolved root's `log.md` (never a separate `_audits/` directory).
+Produce the Markdown report per `references/output-schema.md` (schema + worked example). Report only, never auto-fix; the user reviews and triggers `/wiki:ingest-finding` for each remediation. After confirming with the user, persist it as a `## YYYY-MM-DD — <event-type> (lint-wiki)` block appended to the resolved root's `log.md` (never a separate `_audits/` directory).
 
 ## Multi-agent lint (large wikis)
 

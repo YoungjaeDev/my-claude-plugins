@@ -60,33 +60,7 @@ Vertical-slice sizing and the decision-forward issue template are adapted from m
      - User can add/remove/rename nodes and connections
      - Target: 10-20 nodes with branches and subgroups where logical
 
-   Example workflow (ASCII, shown to user in terminal):
-   ```
-   [Bot Loop] --> [scanChatList] --> <new request?>
-                                       |yes --> [Pipeline]
-                                       |         +--[parse]--[calculate]--[send]
-                                       |no  --> <customer reply?>
-                                                  |yes --> [AI Consultation]
-                                                  |         +--[FAQ match]--<resolved?>
-                                                  |                           |no --> [LLM escalation]
-                                                  |no  --> [Push System]
-                                                             +--[targets]--[filter]--[send push]
-   ```
-
-   Stored as Mermaid in state file (`architecture.mermaidSource`):
-   ```mermaid
-   flowchart TD
-       A[Bot Loop] --> B[scanChatList]
-       B --> C{new request?}
-       C -->|yes| D[Pipeline]
-       D --> D1[parse] --> D2[calculate] --> D3[send]
-       C -->|no| E{customer reply?}
-       E -->|yes| F[AI Consultation]
-       F --> F1[FAQ match] --> F2{resolved?}
-       F2 -->|no| F3[LLM escalation]
-       E -->|no| G[Push System]
-       G --> G1[targets] --> G2[filter] --> G3[send push]
-   ```
+   Example workflow (ASCII shown to the user, and the Mermaid stored in `architecture.mermaidSource`): `references/workflow-example.md`.
 
    #### Step B: Select Scope Nodes
 
@@ -300,37 +274,7 @@ Examples (vary by project, for reference only):
 - **Priority**: `priority: high`, `priority: medium`, `priority: low`
 
 ### Description
-<!-- TDD: enabled --> (Add this marker if TDD was selected in Step 3)
-
-**Purpose**: [Why this is needed]
-
-**Implementation Steps** (in order):
-1. [ ] Step 1 - description with specific details
-2. [ ] Step 2 - description with specific details
-3. [ ] Step 3 - description with specific details
-
-**결정 사항** (settled during decomposition, Decision 13; resolve-issue must not have to ask):
-- [Test seam, design decision, or scope boundary already decided, and what was decided]
-
-**테스트 seam** (only when TDD is enabled): the public interface / boundary the tests for this
-issue assert through. This is what `resolve-issue`'s TDD branch reads as the agreed seam.
-
-**Open questions**: anything genuinely still undecided that implementation must surface, not
-silently resolve on its own.
-
-**시작점 힌트** (starting-point hints, not a file-by-file change list):
-- `path/filename` - what area of the code this touches
-
-**Completion criteria** (user-facing acceptance criteria):
-- [ ] Acceptance criterion 1, stated as observable behaviour from the user's perspective
-- [ ] Acceptance criterion 2
-
-**Dependencies**:
-- [ ] None or prerequisite issue #number
-
-**References** (optional):
-- Add related PRs if available (e.g., PR #36 - brief description)
-- Omit this section if none
+Fill the body template in `references/issue-template.md`: TDD marker, Purpose, Implementation Steps, 결정 사항, 테스트 seam, Open questions, 시작점 힌트, Completion criteria, Dependencies, References.
 
 ---
 

@@ -770,11 +770,11 @@ is "description RL on success -> gate rate_limited (authority retained)" \
 rm -rf "$FSHIM"
 
 echo
-echo "SKILL.md snippet contracts (mirror SKILL.md prose blocks)"
+echo "SKILL.md snippet contracts (mirror SKILL.md and references/run-blocks.md blocks)"
 
 # Step 2 archive fallback: the EXIT trap archives the live state, so the next run
 # must read codex_processed_reviews from the newest archive or re-process Codex
-# reviews. Mirrors the SKILL.md Step 2 resolution. (issue #110 step 3)
+# reviews. Mirrors the Step 2 state-init block in references/run-blocks.md. (issue #110 step 3)
 AF=$(mktemp -d); mkdir -p "$AF/.claude/state/archive"
 echo '{"codex_processed_reviews":[111,222]}' > "$AF/.claude/state/archive/cr-fix-42-20260101-000000.json"
 echo '{"codex_processed_reviews":[333]}'     > "$AF/.claude/state/archive/cr-fix-42-20260102-000000.json"
@@ -804,7 +804,7 @@ rm -rf "$AF2"
 
 # Corrupt prior state must ABORT before the new state file is created — a
 # warn-and-continue reset re-judges already-processed Codex reviews and can
-# re-apply fixes onto already-fixed code. Mirrors the SKILL.md Step 2 branch.
+# re-apply fixes onto already-fixed code. Mirrors the Step 2 state-init block in references/run-blocks.md.
 AF3=$(mktemp -d); mkdir -p "$AF3/.claude/state/archive"
 echo 'not-json{' > "$AF3/.claude/state/cr-fix-44.json"
 crc=0; (cd "$AF3" && bash -c '
@@ -898,7 +898,7 @@ gcap2=$(bash -euo pipefail -c '
   printf "%s" "$grace_cap"')
 is "grace-cap codex_wait: pre-flight remaining wins" "$gcap2" 500
 
-# Step 13 convergence ladder. Mirrors the SKILL.md Step 13 block. The churn test
+# Step 13 convergence ladder. Mirrors the Step 13 block in references/run-blocks.md. The churn test
 # must be guarded by judged_this_cycle > 0, or an iteration with NO findings
 # (0 == 0) reports churn instead of clean and never files the follow-up issue.
 conv() {
@@ -911,7 +911,7 @@ conv() {
     elif [ "$APPLIED" = 0 ]; then echo user_declined
     else echo continue; fi'
 }
-# Step 15 cr_state allow-list. Mirrors the SKILL.md Step 15 block. It must be an
+# Step 15 cr_state allow-list. Mirrors the Step 15 block in references/run-blocks.md. It must be an
 # allow-list: a deny-list of failure|error lets `none` / `unknown` through, and those
 # mean CR was never observed on this SHA — merging there merges an unreviewed PR.
 merge_state() {

@@ -59,25 +59,10 @@ chosen mode which `assets/examples/*.md` to Read for grounding.
 ### Execution
 
 1. Run state scan:
-   ```bash
-   { test -f CLAUDE.md && wc -l CLAUDE.md; }
-   { test -f .claude/CLAUDE.md && wc -l .claude/CLAUDE.md; }
-   { test -d .claude/rules && ls .claude/rules/*.md 2>/dev/null | wc -l; }
-   test -f AGENTS.md && echo agents-md-present
-
-   # Content signals — scan root + rules for canonical tech-stack
-   # markers that map to a bundled example.
-   SCAN_FILES=$(ls CLAUDE.md .claude/CLAUDE.md .claude/rules/*.md 2>/dev/null)
-   [ -n "$SCAN_FILES" ] && {
-     grep -liE 'clean architecture|composition root|use ?case|repository pattern' $SCAN_FILES && echo signal:clean-arch
-     grep -liE 'next\.js|server component|server action|app router'              $SCAN_FILES && echo signal:nextjs-framework
-     grep -liE 'supabase|rls policy|row-level security'                          $SCAN_FILES && echo signal:supabase
-     grep -liE 'pricing tier|service spec|prd|target user'                       $SCAN_FILES && echo signal:service-spec
-   } 2>/dev/null
-   ```
-
-   Collect `signal:*` lines into `state.contentSignals`. Empty list
-   is fine: examples are then skipped.
+   Script: `references/detection-scan.md` (wc -l checks on CLAUDE.md /
+   .claude/rules, plus content-signal grep over tech-stack markers).
+   Collect `signal:*` lines into `state.contentSignals`. Empty list is
+   fine: examples are then skipped.
 
 2. Compute `mode` per the rules above.
 
@@ -136,11 +121,8 @@ Generate a fresh CLAUDE.md system from scratch.
    files that already exist).
 
 8. **Verify** (deterministic commands):
-   ```bash
-   wc -l CLAUDE.md                                     # expect ≤200
-   find .claude/rules -name '*.md' -exec wc -l {} +    # each ≤150
-   grep -c '^@\.claude/rules' CLAUDE.md                # expect 0
-   ```
+   `references/verify-commands.md` NEW/SPLIT/REORGANIZE block (`wc -l`
+   on CLAUDE.md ≤200 and each rule ≤150, `grep -c` for 0 `@import`).
 
 9. **Summarize**: file list with line counts + Post-generation Hints.
 
@@ -169,11 +151,8 @@ Patch the existing root CLAUDE.md in place: no new rules/ files.
    unless necessary.
 
 6. **Verify** (deterministic commands):
-   ```bash
-   wc -l CLAUDE.md                           # expect lower than before
-   git diff --stat CLAUDE.md                 # confirm scope is surgical
-   grep -c '^@\.claude/rules' CLAUDE.md      # expect 0
-   ```
+   `references/verify-commands.md` TIGHTEN block (`wc -l` lower than
+   before, `git diff --stat` surgical, `grep -c` for 0 `@import`).
    Cross-check: no new sections added that don't trace to user input.
 
 7. **Summarize**: changes applied + suggestion to consider SPLIT if
@@ -196,14 +175,7 @@ Extract sections from root CLAUDE.md into new `.claude/rules/*.md`.
 
 4. **Classify** each section by topic. Use the category vocabulary
    you just loaded. Heuristics:
-   - Headers containing "Architecture", "Design", "Structure" → `architecture.md`
-   - Headers containing "Framework", "Next.js", "React", "Vue" → `framework.md`
-   - Headers containing "Stack", "Tool", "Database", "Style" → `tech-stack.md`
-   - Headers containing "Test", "QA", "Verification" → `testing.md`
-   - Headers containing "Deploy", "Release", "CI" → `deployment.md`
-   - Headers containing "Security", "Auth", "Permission" → `security.md`
-   - Headers with dense bash command blocks ≥30 lines → `<purpose>.md`
-     (e.g., `experiments.md`, `vlm-serving.md`)
+   table in `references/lookup-tables.md` (header keyword → target filename).
 
 5. **Select** sections ≥ extraction threshold (default 10 lines, or
    adjusted via skill argument if provided).
@@ -223,13 +195,8 @@ Extract sections from root CLAUDE.md into new `.claude/rules/*.md`.
    No `@import` directives: `.claude/rules/*.md` auto-loads.
 
 9. **Verify** (deterministic commands):
-   ```bash
-   wc -l CLAUDE.md                                     # expect ≤200
-   find .claude/rules -name '*.md' -exec wc -l {} +    # each ≤150
-   grep -c '^@\.claude/rules' CLAUDE.md                # expect 0
-   ```
-   Cross-check: sum of extracted sections + reduced root ≈ original
-   root (no content silently dropped).
+   `references/verify-commands.md` NEW/SPLIT/REORGANIZE block,
+   including the extraction cross-check.
 
 10. **Summarize**: before/after line counts + new files + Post-generation Hints.
 
@@ -243,13 +210,8 @@ Cross-check existing root + rules/ structure.
    - `assets/templates/rule-categories.md`: category vocabulary and
      naming convention for any rename/split proposals.
    - For each tag in `state.contentSignals`, also **Read** the
-     matching example: `clean-arch` → `assets/examples/nextjs-clean-arch.md`,
-     `nextjs-framework` → `assets/examples/nextjs-framework.md`,
-     `supabase` → `assets/examples/tech-stack-supabase.md`,
-     `service-spec` → `assets/examples/saas-service-spec.md`. These
-     give canonical reference shapes for comparing against existing
-     rules: without them, "should this rule look different?" is a
-     guess instead of a diff.
+     matching example (mapping: `references/lookup-tables.md` Assets
+     Reference table): canonical shapes to diff existing rules against.
 
 2. **Read** root CLAUDE.md and all `.claude/rules/*.md`.
 
@@ -280,54 +242,12 @@ Cross-check existing root + rules/ structure.
    - Restructuring: Edit on target.
 
 6. **Verify** after each apply (deterministic commands):
-   ```bash
-   wc -l CLAUDE.md                                     # expect ≤200
-   find .claude/rules -name '*.md' -exec wc -l {} +    # each ≤150
-   grep -c '^@\.claude/rules' CLAUDE.md                # expect 0
-   ```
+   `references/verify-commands.md` NEW/SPLIT/REORGANIZE block.
 
 7. **Summarize**: items applied / declined + Post-generation Hints.
 
-## Worked Example: REORGANIZE + Clean Arch signal
-
-A short trace of how the pieces fit together when the audit lands on
-a Clean Architecture codebase. The point is to show what
-`contentSignals` actually changes: without it the audit is generic
-prose; with it the audit can cite a canonical reference.
-
-```
-Input state:
-  CLAUDE.md         (210 lines)
-  .claude/rules/architecture.md  (180 lines, prose-heavy)
-
-Scan:
-  state.claudeMdLines = 210
-  state.hasRulesDir   = true
-  state.contentSignals = ["clean-arch"]      ← grep hit on "Composition Root"
-  mode = REORGANIZE
-
-Read (step 1):
-  assets/templates/rule-file.md              ← target shape
-  assets/templates/rule-categories.md        ← naming/paths vocab
-  assets/examples/nextjs-clean-arch.md       ← canonical Clean Arch shape
-                                               (only because signal matched)
-
-Read (step 2):
-  CLAUDE.md, .claude/rules/architecture.md
-
-Audit findings (step 3):
-  - root size 210 > 200 → propose extracting "Build & Test" block
-  - architecture.md 180 > 150 → propose splitting by layer
-    (domain.md / application.md / infrastructure.md), with paths:
-    globs grounded in nextjs-clean-arch.md's layer map
-  - architecture.md is prose → propose restructure to
-    Role / Do / Don't using rule-file.md Variant A
-```
-
-Without `contentSignals`, step 3 still flags the size issues but the
-restructure proposal would be generic. The signal-driven Read of
-`nextjs-clean-arch.md` is what turns "this rule should be shorter"
-into "this rule should split along the layer seams the example uses".
+A worked trace of REORGANIZE + a `clean-arch` signal, showing what
+`contentSignals` changes end-to-end: `references/worked-example.md`.
 
 ## Output Conventions
 
@@ -364,37 +284,12 @@ into "this rule should split along the layer seams the example uses".
 - **Don't bundle file changes into one Write call** when separate
   files would be clearer. Multiple Write calls keep diffs reviewable.
 
-## Post-generation Hints
+## Post-generation Hints and Assets Reference
 
-After any mode completes, append these hints to the summary based on
-detected state. Each hint is informational only: no auto-modification.
-
-| Detected state | Hint shown to user |
-|---|---|
-| `AGENTS.md` exists | "Detected `AGENTS.md` ({LINES} lines). Consider adding `@AGENTS.md` as the first line of CLAUDE.md so Claude reads both without duplication. See `assets/references/claude-code-memory.md` AGENTS.md section." |
-| No `.gitignore` mentions `CLAUDE.local.md` | "Tip: 개인 프로젝트별 선호도는 `CLAUDE.local.md` 에 두고 `.gitignore` 에 추가하면 버전 제어 영향 없이 사용 가능." |
-| Root file is `./.claude/CLAUDE.md` (not `./CLAUDE.md`) | "Note: `./.claude/CLAUDE.md` 와 `./CLAUDE.md` 둘 다 유효 — 둘 다 있으면 둘 다 로드되니 하나만 유지 권장." |
-| Generated 3+ rules files | "참고: 자동 메모리는 `~/.claude/projects/<proj>/memory/` 에서 Claude 가 직접 관리. write-rules 가 만든 `.claude/rules/` 와 무관." |
-| `/compact` 워크플로우가 잦다고 사용자가 언급 | "주의: 하위 디렉토리의 CLAUDE.md 는 `/compact` 후 자동 재주입 안 됨. 핵심 지침은 root CLAUDE.md 에." |
-
-## Assets Reference
-
-Index of the files each mode's execution steps already cite. The
-single source of truth for *when* to Read each file is the numbered
-step list inside each Mode Execution section; this table is just
-a quick lookup.
-
-| Mode | Always Read | Read if `contentSignals` matches |
-|---|---|---|
-| NEW (interview) | `templates/root-claude-md.md`, `templates/rule-file.md`, `templates/rule-categories.md` | `examples/nextjs-clean-arch.md` (clean-arch), `examples/nextjs-framework.md` (nextjs-framework), `examples/tech-stack-supabase.md` (supabase), `examples/saas-service-spec.md` (service-spec) |
-| TIGHTEN | `templates/root-claude-md.md` | same example-tag mapping as above |
-| SPLIT | `templates/rule-categories.md`, `templates/rule-file.md` | same example-tag mapping as above |
-| REORGANIZE | `templates/rule-file.md`, `templates/rule-categories.md` | same example-tag mapping as above |
-| Any (when user asks "why this structure") | `references/claude-code-memory.md` | - |
-
-`contentSignals` are emitted by the Detection Logic bash scan
-(`grep -liE`). Tags: `clean-arch`, `nextjs-framework`, `supabase`,
-`service-spec`. Empty list = no example Read.
+After any mode completes, append detected-state hints to the summary
+(e.g. `AGENTS.md` present, `CLAUDE.local.md` not gitignored). Full
+hint table and the per-mode "always Read" / "signal Read" asset
+lookup table: `references/lookup-tables.md`.
 
 ## Invocation
 

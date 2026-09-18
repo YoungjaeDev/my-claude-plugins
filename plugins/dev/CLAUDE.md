@@ -10,11 +10,13 @@ GitHub workflow automation skills for Claude Code. All workflows are skills (no 
 | `/dev:decompose-issue` | Break down large issues into sub-tasks, define architecture mapping |
 | `/dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
 | `/dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
-| `/dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex review loop (multi-file skill at `skills/cr-fix/`): pre-flight detects which reviewers are engaged, then wait + fetch + judge + apply + push per iteration. Each finding is validated against local code and severity-reassessed before apply / defer / skip; CodeRabbit tiers are severity-first with the effort field as the second axis, Security is always gated, Nitpicks are skipped, Codex P1/P2 are gated. The loop stops on `clean`, a low-severity floor (`minor_floor`), churn (findings only on the previous iteration's lines or outside the PR diff), or the iteration cap, and files one follow-up issue (`tbd` label) for whatever it deferred. `--auto-merge` (default OFF) merges on `clean`, or on `minor_floor` / `churn` once the follow-up issue exists. `--cr-source` selects the review source; `auto` falls back to the local `coderabbit` CLI or Codex-only when the PR bot is rate-limited. Same-file generalization (default ON) patches sibling occurrences of a real, high-confidence, grep-able finding within the same file. The skill posts no PR comment except the `@coderabbitai rate limit` query; re-review is triggered by the push. |
+| `/dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex review loop (multi-file skill at `skills/cr-fix/`): pre-flight detects which reviewers are engaged, then wait + fetch + judge + apply + push per iteration. Each finding is validated against local code and severity-reassessed before apply / defer / skip; CodeRabbit tiers are severity-first with the effort field as the second axis, Security is always gated, Nitpicks are skipped, Codex P1/P2 are gated. The loop stops on `clean`, a low-severity floor (`minor_floor`), churn (findings only on the previous iteration's lines or outside the PR diff), or the iteration cap, and files one follow-up issue (`tbd` label) for whatever it deferred. `--auto-merge` (default OFF) merges on `clean`, or on `minor_floor` / `churn` once the follow-up issue exists. `--cr-source` selects the review source; `auto` falls back to the local `coderabbit` CLI or Codex-only when the PR bot is rate-limited. Same-file generalization (default ON) patches sibling occurrences of a real, high-confidence, grep-able finding within the same file. Before iter 1 it reads the PR comments for a reviewer's "will not review" signal (Codex usage limit, CodeRabbit auto-review disabled): one down drops that reviewer for the run, both down stops at `reviewers_unavailable` with no waiting and no auto-merge. A `CONFLICTING` PR gets `origin/<base>` merged and resolved hunk by hunk inside the loop. The skill posts no PR comment except the `@coderabbitai rate limit` query and, for a non-default base CodeRabbit will not auto-review (unless the repo set `auto_review.enabled: false`), at most one `@coderabbitai review` per head SHA (a re-run finds the earlier request in the PR comments and skips); otherwise re-review is triggered by the push. |
 | `/dev:release` | Bump the version manifests, tag, and create a GitHub release with auto-generated release notes (does not touch `CHANGELOG.md` — that is `post-merge` Step 9.5 + `docs:changelog`) |
 | `/dev:state-tracker` | spec/issue/PR work-pipeline aggregate over `.claude/state/spec.json` (absorbed from `spec-state`) |
 | `/dev:session-handoff` | End-of-session handoff summary (decisions, shipped changes, key files, running state, verification, deferrals) so a fresh agent continues from chat alone. Chat-only: writes no file, updates no memory |
-| `/dev:orchestrate` | Subagent orchestration discipline: one job card per slice (goal, scope, absolute paths, inputs, output shape, done criteria, preset), model x effort worker presets `dev:worker-fast/standard/deep/max` (haiku low / sonnet medium / opus high / opus xhigh), one writer per path, quality gate with bounded re-query (2x same agent, 1x next preset up, then the user), orchestrator runs the verification itself and reports a per-agent ledger. `Workflow` only on a manual `/dev:orchestrate` call; worktree isolation only for parallel writers, with a `git worktree list` baseline cleanup gate |
+| `/dev:orchestrate` | Subagent orchestration discipline: one job card per slice (goal, scope, absolute paths, inputs, output shape, done criteria, preset), model x effort worker presets `dev:worker-standard/deep/max` (sonnet medium / opus high / opus xhigh), one writer per path, quality gate with bounded re-query (2x same agent, 1x next preset up, then the user), orchestrator runs the verification itself and reports a per-agent ledger. `Workflow` only on a manual `/dev:orchestrate` call; worktree isolation only for parallel writers, with a `git worktree list` baseline cleanup gate |
+| `/dev:diagnose` | Bug-diagnosis discipline: capture one failing command that reproduces the exact symptom before touching code, minimize the repro, rank 3-5 falsifiable hypotheses, add tagged instrumentation, write a regression test at a real seam, then a cleanup checklist. Adapted from `mattpocock/skills` `diagnosing-bugs`; `dev:e2e-debug`'s hypothesis step points here |
+| `/dev:flow` | Short router over the dev flow (decompose-issue -> resolve-issue (-> diagnose for bugs) -> cr-fix -> post-merge) plus the worktree, non-default base, orchestrate hand-off, and E2E branches. Points, never acts; stays implicitly invocable. Format adapted from `mattpocock/skills` `ask-matt` |
 
 ## resolve-issue Flags
 
@@ -40,13 +42,13 @@ Use Claude Code's built-in worktree (`claude --worktree <name>`) for isolated PR
 claude --worktree feature-auth
 # inside the worktree
 /dev:resolve-issue 42       # creates branch + PR + drives cr-fix
-# after PR is merged on GitHub, exit and switch contexts:
-/exit                              # cleanup option for the worktree
-# in a fresh session at the main repo
-/dev:post-merge <PR>        # cleanup + integrate learnings
+/dev:post-merge <PR>        # after the PR merges on GitHub, still inside the worktree
+# post-merge works on the main repo and prints, as its last line:
+#   cd "<main repo>" && git worktree remove "<worktree>" && git branch -d "<branch>"
+# run that line after leaving the worktree session
 ```
 
-**Note:** `post-merge` aborts when run from a worktree (Step 3 checks out the base branch, which conflicts with the original repo's checkout). Exit the worktree first.
+**Note:** `post-merge` inside a worktree runs every git step against the main repo (`git -C "$MAIN_REPO"`), copies the worktree's cr-fix state into the main repo's `.claude/state/archive/`, and leaves the worktree and branch removal to the printed command. It never removes the worktree itself: on Windows a worktree removed from inside itself is only half deleted.
 
 ## Project Progress Tracking
 
@@ -118,7 +120,7 @@ Agent(
 | Implementation | `claude` | `sonnet` |
 | Complex refactoring | `claude` | `opus` |
 | Test writing | `claude` | `sonnet` |
-| Validation | `claude` | `haiku` |
+| Validation | `claude` | `sonnet` |
 
 ## state-tracker (흡수: spec-state)
 

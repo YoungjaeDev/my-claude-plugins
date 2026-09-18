@@ -14,6 +14,7 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 | `cr_inactive` | Step 8c engagement gate: `ITER == MAX_ITER` AND `cr_engagement == 0` (CR posted nothing on this push). | no | CR is unreachable, paused, or rate-limited. Use `--cr-source cli\|codex-only` to bypass. |
 | `rate_limited` | Step 7c detected a CR rate-limit or a permanent skip AND `--cr-source pr-bot` (user blocked auto-flip). | no | Wait for the CR reset window, or re-run with `--cr-source cli` / `--cr-source codex-only`. When the sniff reported `permanent: true` (`Review skipped: N files exceed the limit`) waiting never helps — the PR is too large for the PR-bot and only the CLI or Codex can review it. |
 | `cli_failed` | Step 7d `coderabbit review --agent` exited non-zero OR emitted `type: "error"` event OR exited without emitting `type: "complete"`. | no | Inspect the CLI log at the path in the spawn marker's `jsonl` field (random `mktemp` suffix, no extension — glob `/tmp/cr-cli-review-${PR_NUM}-iter${ITER}-*`) for error detail. No auto-fallback to PR-bot in V1. |
+| `reviewers_unavailable` | Step 2b found a "will not review" comment for every reviewer this run uses (Codex usage limit, CodeRabbit "Auto reviews are disabled"), or dropped CodeRabbit and Codex was not engaged. Stops before any wait. | no | Read the comment URLs in the report. Re-run with `--cr-source cli` for a local CodeRabbit review, or ask for one with `@coderabbitai review`, or wait for the Codex quota. |
 | `unknown` | Trap fired before any flow path set `final_state` (rare — e.g. SIGKILL, runtime error before Step 6). | no | Inspect archived state file in `.claude/state/archive/`. |
 
 ## Codex-specific failure cases (do NOT change final_state)
@@ -28,7 +29,7 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 
 | Case | Behavior |
 |------|----------|
-| `git push` rejected (non-fast-forward) | Surface error, exit loop. `final_state` reflects the most recent loop state; trap still emits JSON with that value. User resolves locally. |
+| `git push` rejected (non-fast-forward) | Surface error, set `final_state=failure`, exit loop (Step 12). No review request is posted for the unpushed head, and `failure` never auto-merges. User resolves locally. |
 | `gh pr merge --auto` fails (merge conflicts, missing required reviews after enroll) | Capture stderr, print, exit non-zero — loop already completed with `final_state=clean`. `merged=false` in JSON. |
 | Step 15 branch-protection probe gh api error | `protection_http: 0` — never merge on an unverified protection state; surface and leave the PR open. |
 | Step 14 `gh issue create` fails | `followup_issue` stays absent, so `auto-merge-gate.sh` reports `eligible: false` and `minor_floor` / `churn` do not merge. Surface the error; the deferred findings are still in the archived `auto_judge_log`. |

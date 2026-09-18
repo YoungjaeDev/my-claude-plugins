@@ -1,6 +1,6 @@
 ---
 name: e2e-debug
-description: Close the Playwright self-healing loop — diagnose and repair a failing or flaky E2E run using the trace and the official healer agent. Use when the user points at a failed CI run or PR, asks to fix a broken or flaky E2E test, debug a Playwright failure, or repair the suite. Downloads the CI trace artifact, inspects it headlessly via npx playwright trace (actions/requests/console/errors), then runs the healer agent to find the root cause and patch the test, bounded to 3 attempts before quarantining the test with test.skip plus a reason comment. Re-runs to verify green before reflecting the fix on the PR. Requires e2e-setup to have generated the agents. Run from the user's project root.
+description: Close the Playwright self-healing loop — diagnose and repair a failing or flaky E2E run using the trace and the official healer agent. Use when the user points at a failed CI run or PR, asks to fix a broken or flaky E2E test, debug a Playwright failure, repair the suite, "E2E 깨졌어", "E2E 테스트 실패", or "플레이라이트 디버그". Downloads the CI trace artifact, inspects it headlessly via npx playwright trace (actions/requests/console/errors), then runs the healer agent to find the root cause and patch the test, bounded to 3 attempts before quarantining the test with test.skip plus a reason comment. Re-runs to verify green before reflecting the fix on the PR. Requires e2e-setup to have run first (named agents on Claude Code Path A, the bundled role contracts on Codex Path B/C). Run from the user's project root.
 allowed-tools: Read Write Edit Bash Glob Grep Agent AskUserQuestion
 ---
 
@@ -65,7 +65,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
      npx playwright trace errors             # errors with stack traces
      npx playwright trace close              # clean up extracted data
      ```
-   - Form a hypothesis: is it a **real regression** (app changed), a **selector drift** (UI moved), an **environment/data** issue, or a **genuine flake** (timing/race)? The fix differs per class: heal selector/timing issues; escalate real regressions to the user.
+   - Form a hypothesis: is it a **real regression** (app changed), a **selector drift** (UI moved), an **environment/data** issue, or a **genuine flake** (timing/race)? The fix differs per class: heal selector/timing issues; escalate real regressions to the user. For the general ranked-hypothesis discipline behind this step, see `dev:diagnose`.
 
 3. **Heal (bounded loop)**. Dispatch the healer with the diagnosis via the Step 0 path:
    - **Path A**: `Agent(subagent_type="playwright-test-healer", prompt="Test <name> fails: <trace findings>. Replay the failing steps, find equivalent current elements, patch the test, and re-run until green.")`.

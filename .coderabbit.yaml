@@ -9,22 +9,29 @@
 # and .githooks/pre-commit. These warnings only surface advisories in the Walkthrough.
 #
 # Evaluate-only decision (Issue #121): CodeRabbit's autofix and custom review
-# recipes overlap the /github-dev:cr-fix apply loop, which already judges and
+# recipes overlap the /dev:cr-fix apply loop, which already judges and
 # applies each finding with repo-specific autonomy. Enabling CR-side autofix would
 # double-drive edits against the same diff. Decision: NOT adopted; no `cr-tune`
 # skill (YAGNI). Recorded here as a deliberate choice, not an oversight.
 reviews:
   auto_review:
+    # Auto-review is off while the review quota is exhausted; the GitHub
+    # integration stays connected, and a PR is reviewed only when someone
+    # comments `@coderabbitai review`. Remove this line to turn auto-review back on.
+    enabled: false
     # Explicit 0 = DISABLED. Omitting this key does NOT disable it — CodeRabbit
     # defaults to 5 (pause auto-review after 5 reviewed commits since the last
     # pause; "Set to 0 to disable" per docs.coderabbit.ai/reference/configuration).
-    # Auto-pause conflicts with this repo's core workflow: /github-dev:cr-fix pushes
+    # Auto-pause conflicts with this repo's core workflow: /dev:cr-fix pushes
     # one fix commit per iteration and relies on CodeRabbit auto-reviewing each push
     # to detect convergence; a pause (needing a manual `@coderabbitai review`) emits
     # no rate_limited signal, so cr-fix's Step 6 poll would time out with no review.
     # Review-consumption is instead bounded by cr-fix's MAX_ITER cap + minor-soft-stop
     # and the ignore_title_keywords / path_instructions levers below.
     auto_pause_after_reviewed_commits: 0
+    # Review PRs into any base, not only the default branch (regex list). This adds
+    # stacked and release-branch PRs; PRs into main are reviewed as before.
+    base_branches: [".*"]
     # Skip review entirely while a PR is still work-in-progress.
     ignore_title_keywords:
       - WIP
@@ -72,3 +79,16 @@ reviews:
           in `.claude/rules/` without a corresponding mirror block in `AGENTS.md`.
           Path-scoped mechanical rules (e.g. `plugin-versioning.md`, loaded only when
           its target files are touched) are exempt. Otherwise PASS.
+knowledge_base:
+  code_guidelines:
+    # **/AGENTS.md and **/CLAUDE.md are read by default. These files sit outside the
+    # default patterns, so they are registered here as guidelines scoped to the files
+    # they govern. Do not list them under path_instructions: that makes them review
+    # targets, not review criteria.
+    filePatterns:
+      - files: ".claude/rules/plugin-versioning.md"
+        applyTo: ".claude-plugin/marketplace.json,plugins/*/.claude-plugin/plugin.json"
+      - files: ".claude/rules/state-envelope.md"
+        applyTo: ".claude/state/**"
+      - files: "code_review.md"
+        applyTo: "**"

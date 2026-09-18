@@ -51,7 +51,7 @@ A file that survives a hard exclusion still has to pass the reference check belo
 Before proposing any candidate, confirm nothing else in the repo depends on it:
 
 ```bash
-git grep -l "$(basename "$path" | sed 's/\.[^.]*$//')"
+git -C "$MAIN_REPO" grep -l "$(basename "$path" | sed 's/\.[^.]*$//')"
 ```
 
 If any **other** tracked file imports or references the basename, the file is

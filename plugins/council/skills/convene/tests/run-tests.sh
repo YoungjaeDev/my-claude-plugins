@@ -19,7 +19,13 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILL="$HERE/../SKILL.md"
+# SKILL.md was split (issue #236): the runner contracts and registry bash this
+# suite checks now live under references/, with SKILL.md keeping only the
+# decision rule and a pointer. $SKILL is the concatenation of both, so every
+# has()/extract_bash_block_with() below still finds what it is looking for
+# regardless of which file the split put it in.
+SKILL="$(mktemp "${TMPDIR:-/tmp}/council-skill-combined-XXXXXX")"
+cat "$HERE/../SKILL.md" "$HERE/../references/"*.md > "$SKILL"
 pass=0; fail=0
 
 ok()  { pass=$((pass+1)); printf '  ok   %s\n' "$1"; }
@@ -166,7 +172,7 @@ case "$WRITER" in *'council-models/v1'*) ok "writer block extracted from SKILL.m
   *) bad "writer block extracted from SKILL.md" "block containing council-models/v1" "$(printf '%.60s' "$WRITER")" ;; esac
 
 T=$(mktemp -d "${TMPDIR:-/tmp}/council-tests-XXXXXX")
-trap 'rm -rf "$T"' EXIT
+trap 'rm -rf "$T"; rm -f "$SKILL"' EXIT
 mkdir -p "$T/home" "$T/cwd/.claude/state"
 REG="$T/home/.claude/council-models.json"
 PINS="$T/cwd/.claude/state/council-pins.json"

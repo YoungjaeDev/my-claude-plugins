@@ -232,6 +232,8 @@ is "churn, deferred but no issue -> ineligible" "$(DEFERRED_TOTAL=2 elig churn)"
 is "churn, append failed -> ineligible"       "$(FOLLOWUP_APPEND_FAILED=true elig churn 321)" false
 is "iteration_cap with issue -> still ineligible" "$(elig iteration_cap 321)" false
 is "user_declined -> ineligible"             "$(elig user_declined)" false
+# No reviewer looked at the PR: stopping is not convergence.
+is "reviewers_unavailable -> ineligible"     "$(elig reviewers_unavailable)" false
 is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false
 is "ineligible carries a reason"    "$(FINAL_STATE=churn PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null       | jq -r '.ineligible_reason | length > 0')" true
 rm -rf "$SHIMDIR"
@@ -768,11 +770,11 @@ is "description RL on success -> gate rate_limited (authority retained)" \
 rm -rf "$FSHIM"
 
 echo
-echo "SKILL.md snippet contracts (mirror SKILL.md prose blocks)"
+echo "SKILL.md snippet contracts (mirror SKILL.md and references/run-blocks.md blocks)"
 
 # Step 2 archive fallback: the EXIT trap archives the live state, so the next run
 # must read codex_processed_reviews from the newest archive or re-process Codex
-# reviews. Mirrors the SKILL.md Step 2 resolution. (issue #110 step 3)
+# reviews. Mirrors the Step 2 state-init block in references/run-blocks.md. (issue #110 step 3)
 AF=$(mktemp -d); mkdir -p "$AF/.claude/state/archive"
 echo '{"codex_processed_reviews":[111,222]}' > "$AF/.claude/state/archive/cr-fix-42-20260101-000000.json"
 echo '{"codex_processed_reviews":[333]}'     > "$AF/.claude/state/archive/cr-fix-42-20260102-000000.json"
@@ -802,7 +804,7 @@ rm -rf "$AF2"
 
 # Corrupt prior state must ABORT before the new state file is created — a
 # warn-and-continue reset re-judges already-processed Codex reviews and can
-# re-apply fixes onto already-fixed code. Mirrors the SKILL.md Step 2 branch.
+# re-apply fixes onto already-fixed code. Mirrors the Step 2 state-init block in references/run-blocks.md.
 AF3=$(mktemp -d); mkdir -p "$AF3/.claude/state/archive"
 echo 'not-json{' > "$AF3/.claude/state/cr-fix-44.json"
 crc=0; (cd "$AF3" && bash -c '
@@ -896,7 +898,7 @@ gcap2=$(bash -euo pipefail -c '
   printf "%s" "$grace_cap"')
 is "grace-cap codex_wait: pre-flight remaining wins" "$gcap2" 500
 
-# Step 13 convergence ladder. Mirrors the SKILL.md Step 13 block. The churn test
+# Step 13 convergence ladder. Mirrors the Step 13 block in references/run-blocks.md. The churn test
 # must be guarded by judged_this_cycle > 0, or an iteration with NO findings
 # (0 == 0) reports churn instead of clean and never files the follow-up issue.
 conv() {
@@ -909,7 +911,7 @@ conv() {
     elif [ "$APPLIED" = 0 ]; then echo user_declined
     else echo continue; fi'
 }
-# Step 15 cr_state allow-list. Mirrors the SKILL.md Step 15 block. It must be an
+# Step 15 cr_state allow-list. Mirrors the Step 15 block in references/run-blocks.md. It must be an
 # allow-list: a deny-list of failure|error lets `none` / `unknown` through, and those
 # mean CR was never observed on this SHA — merging there merges an unreviewed PR.
 merge_state() {
@@ -993,6 +995,115 @@ else
 fi
 # Nonexistent intermediate dir has no resolvable parent — reject, do not crash.
 is "unresolvable parent rejected"    "$(pt 'no/such/dir/f.md')"     1
+
+echo
+echo "cr-review-request.sh"
+
+# Non-default base: CodeRabbit auto-reviews only the default branch plus
+# reviews.auto_review.base_branches, so an unmatched base needs a manual
+# `@coderabbitai review` per push. No network: the config is a local file.
+RQ=$(mktemp -d)
+rq() { bash "$SCRIPTS/cr-review-request.sh" "$1" main "$2" 2>/dev/null; }
+printf 'reviews:\n  auto_review:\n    base_branches: ["release/.*", "develop"]\n' > "$RQ/flow.yaml"
+printf 'reviews:\n  auto_review:\n    enabled: true  # on\n    base_branches:\n      - %s\n' "'release/.*'" > "$RQ/block.yaml"
+printf 'reviews:\n  auto_review:\n    enabled: false\n    base_branches: []\n' > "$RQ/off.yaml"
+printf 'reviews:\n  path_instructions: []\n' > "$RQ/none.yaml"
+is "default base -> skip"                        "$(rq main "$RQ/flow.yaml")"          skip
+is "non-default base matched (flow list) -> skip" "$(rq release/1.2 "$RQ/flow.yaml")"  skip
+is "non-default base matched (block list) -> skip" "$(rq release/1.2 "$RQ/block.yaml")" skip
+is "non-default base unmatched -> request"       "$(rq feature/x "$RQ/flow.yaml")"     request
+is "non-default base, no base_branches -> request" "$(rq feature/x "$RQ/none.yaml")"   request
+is "no config file -> request"                   "$(rq feature/x "$RQ/missing.yaml")"  request
+# Decision 17: auto-review switched off to save quota wins over the manual request.
+is "auto_review.enabled false -> skip"           "$(rq feature/x "$RQ/off.yaml")"      skip
+printf 'reviews:\n  auto_review:\n    enabled: False\n' > "$RQ/off-cap.yaml"
+is "auto_review.enabled False -> skip"           "$(rq feature/x "$RQ/off-cap.yaml")"  skip
+is "default base, no config -> skip"             "$(rq main "$RQ/missing.yaml")"       skip
+# An empty list item is not a match-everything pattern.
+printf 'reviews:\n  auto_review:\n    base_branches:\n      -\n      - ""\n' > "$RQ/empty.yaml"
+is "empty base_branches items -> request"        "$(rq feature/x "$RQ/empty.yaml")"    request
+rm -rf "$RQ"
+
+echo
+echo "cr-review-posted.sh"
+
+# A re-run on the same head must not post a second `@coderabbitai review`. The PR's
+# comments are the record: any exact request at or after the head's push time counts,
+# whoever posted it (the requester is the user's own account).
+RP=$(mktemp -d)
+cat > "$RP/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/issues/"*"/comments"*) [ -n "${RP_FAIL:-}" ] && exit 1; cat "$RP_COMMENTS" ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$RP/gh"
+# Two pages, as --paginate emits them; the request sits on the second.
+printf '[{"user":null,"body":"x","created_at":"2026-01-01T00:00:00Z"}]\n[{"user":{"login":"YoungjaeDev"},"body":"  @coderabbitai review\\n","created_at":"2026-01-02T00:00:00Z"}]\n' > "$RP/after.json"
+printf '[{"user":{"login":"YoungjaeDev"},"body":"@coderabbitai review","created_at":"2025-12-31T00:00:00Z"}]\n' > "$RP/before.json"
+printf '[{"user":{"login":"YoungjaeDev"},"body":"@coderabbitai review please","created_at":"2026-01-02T00:00:00Z"},{"user":{"login":"coderabbitai[bot]"},"body":"summary","created_at":"2026-01-02T00:00:00Z"}]\n' > "$RP/none.json"
+rp() { RP_COMMENTS="$1" RP_FAIL="${2:-}" PATH="$RP:$PATH" \
+         bash "$SCRIPTS/cr-review-posted.sh" o r 42 2026-01-01T12:00:00Z 2>/dev/null; }
+is "requested after this push -> skip"    "$(rp "$RP/after.json")"  skip
+is "requested only before push -> post"   "$(rp "$RP/before.json")" post
+is "no exact request -> post"             "$(rp "$RP/none.json")"   post
+out=$(rp "$RP/after.json" 1); rc=$?
+is "API failure -> exit 1"                "$rc" 1
+is "API failure -> no decision printed"   "$out" ""
+rm -rf "$RP"
+
+echo
+echo "reviewer-availability.sh"
+
+# The two "will not review" comments observed on PR #237, seconds after the PR
+# opened. Without this probe the loop spent its whole grace and poll budget and
+# ended as `timeout`.
+AV=$(mktemp -d)
+cat > "$AV/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/issues/"*"/comments"*) cat "$AV_COMMENTS" ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$AV/gh"
+UNAV="$FIX/issue-comments-reviewers-unavailable.json"
+jq '[.[] | select(.user.login | startswith("chatgpt"))]' "$UNAV" > "$AV/codex-only.json"
+jq '[.[] | select(.user.login | startswith("coderabbit"))]' "$UNAV" > "$AV/cr-only.json"
+# Impostor: a registrable login that only prefixes the bot's name must not count.
+jq '[.[] | if (.user.login | startswith("coderabbit")) then .user.login = "coderabbitai-evil" else . end]' \
+  "$UNAV" > "$AV/impostor.json"
+jq '[.[] | .user.login |= sub("\\[bot\\]$"; "")]' "$UNAV" > "$AV/graphql-spelling.json"
+av() { AV_COMMENTS="$1" CR_SOURCE="${2:-auto}" NO_CODEX="${3:-false}" PATH="$AV:$PATH" \
+         bash "$SCRIPTS/reviewer-availability.sh" o r 42 2>/dev/null; }
+out=$(av "$UNAV")
+is "both unavailable -> stop"            "$(jq -r '.action' <<<"$out")" stop
+is "both unavailable -> codex url"       "$(jq -r '.codex_url' <<<"$out")" \
+   "https://github.com/YoungjaeDev/my-claude-plugins/pull/237#issuecomment-5723787512"
+is "both unavailable -> cr url"          "$(jq -r '.cr_url' <<<"$out")" \
+   "https://github.com/YoungjaeDev/my-claude-plugins/pull/237#issuecomment-5723787904"
+is "codex only unavailable -> drop_codex" "$(av "$AV/codex-only.json" | jq -r '.action')" drop_codex
+is "cr only unavailable -> drop_cr"      "$(av "$AV/cr-only.json" | jq -r '.action')" drop_cr
+is "impostor coderabbitai-evil ignored"  "$(av "$AV/impostor.json" | jq -r '.cr_unavailable')" false
+is "impostor + codex limit -> drop_codex" "$(av "$AV/impostor.json" | jq -r '.action')" drop_codex
+is "login without [bot] still matched"   "$(av "$AV/graphql-spelling.json" | jq -r '.action')" stop
+# The CLI is local: a PR-bot skip comment says nothing about it.
+is "cli source ignores the PR-bot skip"  "$(av "$UNAV" cli | jq -r '.action')" drop_codex
+is "codex-only source + codex limit -> stop" "$(av "$AV/codex-only.json" codex-only | jq -r '.action')" stop
+is "--no-codex + cr skip -> stop"        "$(av "$AV/cr-only.json" auto true | jq -r '.action')" stop
+is "no signal -> proceed"                "$(av "$FIX/issue-comments-rl.json" | jq -r '.action')" proceed
+# A signal older than this push belongs to an earlier one; the quota may be back.
+is "signals before SINCE ignored"        "$(SINCE=2030-01-01T00:00:00Z av "$UNAV" | jq -r '.action')" proceed
+is "signals after SINCE still count"     "$(SINCE=2020-01-01T00:00:00Z av "$UNAV" | jq -r '.action')" stop
+# A failed fetch is not "no signal": exit non-zero so the caller knows it did not look.
+cat > "$AV/gh" <<'SH'
+#!/usr/bin/env bash
+exit 1
+SH
+AV_COMMENTS=/dev/null PATH="$AV:$PATH" bash "$SCRIPTS/reviewer-availability.sh" o r 42 >/dev/null 2>&1; rc=$?
+is "gh failure -> non-zero exit"         "$rc" 1
+rm -rf "$AV"
 
 echo
 printf '%d passed, %d failed\n' "$pass" "$fail"

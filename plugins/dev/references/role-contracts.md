@@ -2,6 +2,8 @@
 
 Shared planner / generator / healer role contracts consumed by **all three execution paths** of `e2e-setup`, `e2e-author`, and `e2e-debug`:
 
+**Exploration tool split (Decision 15):** the planner and generator roles explore the live app through `playwright-cli` (`npx @playwright/cli` or a global `playwright-cli`), not the `playwright-test` MCP server. Per the `microsoft/playwright-cli` README: CLI invocations are more token-efficient for coding agents (no tool schema / accessibility tree loaded into context on every call), while MCP suits long-running agentic loops with persistent state, such as self-healing. The healer role keeps the `playwright-test` MCP server for exactly that reason.
+
 - **Path A — Claude generated agents.** `e2e-setup` runs `npx playwright init-agents --loop=claude`, which writes `.claude/agents/playwright-test-{planner,generator,healer}.md`. Those generated agent definitions are the canonical detail; `e2e-author` / `e2e-debug` dispatch them by name (`Agent(subagent_type="playwright-test-planner")` etc.). This file is not consulted on Path A.
 - **Path B — generic subagents (Codex).** Codex exposes these skills but cannot register `.claude/agents/*.md` as named subagents, so it dispatches one **generic** subagent per role, carrying that role's contract from this file inline (`Agent(prompt=...)`). This file is the portable condensation of the generated agents' behavior.
 - **Path C — sequential in-agent.** When no delegation channel is available, the skill executes each role itself, one at a time, following the contract below.
@@ -21,9 +23,13 @@ The runtime branch only changes *how* a role is executed, never *which* gates ap
 - **Skip-after-3 with reason** — if still red after 3 attempts, quarantine honestly (`test.skip` / `test.fixme`) with a comment stating the reason and a tracking link. Never leave the suite red or silently drop coverage.
 - **Never auto-pass a real regression** — if the app behavior genuinely changed, surface it to the user; the test may be correctly failing.
 
+## `playwright-cli` availability (planner / generator)
+
+The planner and generator roles need `playwright-cli` on the run: either a global `playwright-cli` binary, or `npx @playwright/cli` (works without a global install: `npx` fetches and runs the package on demand). `e2e-setup` checks this once at harness setup; if neither is available, note the degraded mode (planner/generator fall back to the `playwright-test` MCP server for exploration, same as the healer) rather than forcing a global install.
+
 ## `.mcp.json` `playwright-test` entry — merge, never clobber
 
-Both runtimes drive the browser through the `playwright-test` MCP server. On Path A, `init-agents --loop=claude` writes `.mcp.json` for you. On Path B/C (or any time `init-agents` did not generate it), create/merge the entry explicitly **without** overwriting unrelated servers or a conflicting `playwright-test` definition:
+The healer role drives the browser through the `playwright-test` MCP server (kept for its persistent-state, long-loop fit). On Path A, `init-agents --loop=claude` writes `.mcp.json` for you. On Path B/C (or any time `init-agents` did not generate it), create/merge the entry explicitly **without** overwriting unrelated servers or a conflicting `playwright-test` definition:
 
 ```bash
 PW_ENTRY='{"command":"npx","args":["playwright","run-test-mcp-server"]}'
@@ -59,19 +65,19 @@ Even when `--loop=codex` is advertised, Codex cannot register the generated `.cl
 
 ## Role contracts
 
-Each role drives the app through the approved `playwright-test` MCP server. A generic subagent (Path B) or the skill itself (Path C) must be handed the role's contract verbatim, because it lacks the native agent-definition context Path A relies on.
+The planner and generator drive the app through `playwright-cli` (`playwright-cli <command>` if installed globally, else `npx @playwright/cli <command>`); the healer drives it through the approved `playwright-test` MCP server. A generic subagent (Path B) or the skill itself (Path C) must be handed the role's contract verbatim, because it lacks the native agent-definition context Path A relies on.
 
 ### planner
 - **Role**: explore the live app for one CUF and write a Markdown test plan.
 - **Inputs**: the CUF description + any PRD/notes; the E2E SSOT doc conventions.
-- **Tool order**: run `seed.spec.ts` first to set up the environment → explore the app through the `playwright-test` MCP server → write `specs/<flow>.md`.
+- **Tool order**: run `seed.spec.ts` first to set up the environment → explore the app with `playwright-cli` (`open`/`goto`/`snapshot`/`find`/`click`, etc.) → write `specs/<flow>.md`.
 - **Output**: `specs/<flow>.md` — a human-readable plan, no code.
 - **Gate**: stop here for the mandatory user review gate. Do not proceed to generation until the plan is approved; fold edits back into `specs/<flow>.md`.
 
 ### generator
 - **Role**: turn an approved `specs/<flow>.md` into Playwright spec files.
 - **Inputs**: the approved plan; the SSOT conventions (step-name language, file layout, fixtures).
-- **Tool order**: read `specs/<flow>.md` → write specs under `e2e/` → verify every selector and assertion live against the running app as you go.
+- **Tool order**: read `specs/<flow>.md` → write specs under `e2e/` → verify every selector and assertion live against the running app with `playwright-cli` (`snapshot`/`find`/`click`/`eval`) as you go.
 - **Output**: `e2e/<flow>.spec.ts` using semantic `getByRole` / `getByLabel` / `getByText` locators; no CSS/XPath, no arbitrary `waitForTimeout` (web-first assertions only). Split long flows into `test.step("...")` blocks.
 - **Gate**: burn-in with `--repeat-each=3` before the spec is considered done; a single failing repeat blocks it.
 - **Independence**: when flows share a long common prefix, set the branch start state via a test API rather than replaying the prefix through the UI (distinct from `storageState`, which is auth only).

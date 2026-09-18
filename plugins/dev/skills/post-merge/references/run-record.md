@@ -16,12 +16,14 @@ Run once `PR_NUMBER` and `MERGE_SHA` are fixed.
 # Fail closed on an empty PR_NUMBER: an unset variable would silently write
 # .claude/state/post-merge-.json and label the run record `post-merge-`.
 : "${PR_NUMBER:?Step 1: set PR_NUMBER to the merged PR number before opening the record}"
-REC=".claude/state/post-merge-${PR_NUMBER}.json"
-mkdir -p .claude/state/archive
+# The main repo's state dir, also from inside a worktree (SKILL.md Guidelines, Worktree mode).
+MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+REC="$MAIN_REPO/.claude/state/post-merge-${PR_NUMBER}.json"
+mkdir -p "$MAIN_REPO/.claude/state/archive"
 # Archive a prior same-PR record before overwriting (mirrors cr-fix Step 2).
 # Fail closed: a failed archive must abort init, else the jq below clobbers the only live copy.
 if [ -f "$REC" ]; then
-  mv "$REC" ".claude/state/archive/post-merge-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$.json" \
+  mv "$REC" "$MAIN_REPO/.claude/state/archive/post-merge-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$.json" \
     || { echo "post-merge: archiving the prior run record failed — aborting to avoid clobbering it" >&2; exit 1; }
 fi
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -49,9 +51,9 @@ record_step 1 done
 ## Recording contract
 
 Append each top-level step's outcome as it closes. **Shell state does not persist across separate
-tool calls**: `REC` is the deterministic path `.claude/state/post-merge-<PR>.json`, so in the bash
-block that closes a later step, re-set `REC` and re-declare `record_step` (copy it from above)
-before calling it.
+tool calls**: `REC` is the deterministic path `$MAIN_REPO/.claude/state/post-merge-<PR>.json`, so in the
+bash block that closes a later step, re-derive `MAIN_REPO`, re-set `REC` and re-declare `record_step`
+(copy them from above) before calling it.
 
 Sub-steps fold into their parent entry: 1.5 into 1, 4.5 and 4.6 into 4, 6.5 into 6.
 
@@ -70,6 +72,8 @@ Sub-steps fold into their parent entry: 1.5 into 1, 4.5 and 4.6 into 4, 6.5 into
 | 9 | whenever the About check fired, README edit or not | `no README changes` only when the About check also could not run (no `gh` auth, no remote) |
 | 9.5 | CHANGELOG entry added | `no CHANGELOG` / `not changelog-worthy` |
 
+Step 11 only prints the worktree cleanup command after the record is finalized; it is not recorded.
+
 A skip reason must name **which** condition fired; collapsing two conditions into one reason loses
 why the step skipped.
 
@@ -82,7 +86,8 @@ Records the closing step and marks the envelope terminal. Step 10 is a fresh she
 # Step 10 runs in a fresh shell — neither PR_NUMBER nor record_step from Step 1 persist.
 # Re-set PR_NUMBER (the merged PR number) so REC points at the real record, not
 # .claude/state/post-merge-.json; the :? guard fails loud if it is empty.
-REC=".claude/state/post-merge-${PR_NUMBER:?Step 10: re-set PR_NUMBER to the merged PR number before finalizing}.json"
+MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+REC="$MAIN_REPO/.claude/state/post-merge-${PR_NUMBER:?Step 10: re-set PR_NUMBER to the merged PR number before finalizing}.json"
 tmp=$(mktemp)
 jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '.steps += [{step: 10, status: "done"}]

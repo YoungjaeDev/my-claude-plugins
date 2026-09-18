@@ -496,7 +496,9 @@ On BUILD or TEST failure: `verification_blocking=true`, surface the failing outp
 ## Step 12: Push
 
 ```bash
-git push 2>&1
+# A rejected push leaves the loop (references/failure-modes.md); nothing below may
+# run for a head the PR never received.
+git push 2>&1 || break
 : > "$TRACK_FILE"  # reset for next iter
 # Non-default base only (Step 2): this push will not be auto-reviewed.
 if [ "$CR_REVIEW_REQUEST" = request ] && { [ "$CR_SOURCE" = auto ] || [ "$CR_SOURCE" = pr-bot ]; }; then

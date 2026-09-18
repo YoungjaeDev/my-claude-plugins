@@ -26,9 +26,10 @@ Vertical-slice sizing and the decision-forward issue template are adapted from m
    - If test framework detected + code work → Ask: "Create issues with TDD approach?"
    - If no test framework → Inform: "TDD not required. (Reason: No test framework detected)"
    - If non-code work (docs/infra) → Inform: "TDD not required. (Reason: Non-code work)"
-   - If TDD selected: Add `<!-- TDD: enabled -->` marker to each issue body, and confirm the test
-     seam per issue now (see "Decide seams and open decisions before creating issues" below) so the
-     issue body carries an agreed seam instead of leaving it for `resolve-issue` to ask about.
+   - If TDD selected: record the TDD decision for these issues (the `<!-- TDD: enabled -->` marker
+     itself is inserted once, in Step 10) and confirm the test seam per issue now (see "Decide seams
+     and open decisions before creating issues" below) so the issue body carries an agreed seam
+     instead of leaving it for `resolve-issue` to ask about.
 
 3.5. **Check E2E applicability** (only when the work has a critical user flow: skip silently
    otherwise, do not ask on every issue):

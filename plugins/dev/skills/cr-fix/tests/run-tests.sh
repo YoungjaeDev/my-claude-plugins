@@ -1023,6 +1023,35 @@ is "empty base_branches items -> request"        "$(rq feature/x "$RQ/empty.yaml
 rm -rf "$RQ"
 
 echo
+echo "cr-review-posted.sh"
+
+# A re-run on the same head must not post a second `@coderabbitai review`. The PR's
+# comments are the record: any exact request at or after the head's push time counts,
+# whoever posted it (the requester is the user's own account).
+RP=$(mktemp -d)
+cat > "$RP/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/issues/"*"/comments"*) [ -n "${RP_FAIL:-}" ] && exit 1; cat "$RP_COMMENTS" ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$RP/gh"
+# Two pages, as --paginate emits them; the request sits on the second.
+printf '[{"user":null,"body":"x","created_at":"2026-01-01T00:00:00Z"}]\n[{"user":{"login":"YoungjaeDev"},"body":"  @coderabbitai review\\n","created_at":"2026-01-02T00:00:00Z"}]\n' > "$RP/after.json"
+printf '[{"user":{"login":"YoungjaeDev"},"body":"@coderabbitai review","created_at":"2025-12-31T00:00:00Z"}]\n' > "$RP/before.json"
+printf '[{"user":{"login":"YoungjaeDev"},"body":"@coderabbitai review please","created_at":"2026-01-02T00:00:00Z"},{"user":{"login":"coderabbitai[bot]"},"body":"summary","created_at":"2026-01-02T00:00:00Z"}]\n' > "$RP/none.json"
+rp() { RP_COMMENTS="$1" RP_FAIL="${2:-}" PATH="$RP:$PATH" \
+         bash "$SCRIPTS/cr-review-posted.sh" o r 42 2026-01-01T12:00:00Z 2>/dev/null; }
+is "requested after this push -> skip"    "$(rp "$RP/after.json")"  skip
+is "requested only before push -> post"   "$(rp "$RP/before.json")" post
+is "no exact request -> post"             "$(rp "$RP/none.json")"   post
+out=$(rp "$RP/after.json" 1); rc=$?
+is "API failure -> exit 1"                "$rc" 1
+is "API failure -> no decision printed"   "$out" ""
+rm -rf "$RP"
+
+echo
 echo "reviewer-availability.sh"
 
 # The two "will not review" comments observed on PR #237, seconds after the PR

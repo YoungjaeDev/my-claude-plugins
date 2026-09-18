@@ -101,7 +101,19 @@ DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.na
 CR_REVIEW_REQUEST=$(bash "$SKILL_DIR/scripts/cr-review-request.sh" "$BASE" "$DEFAULT_BRANCH" .coderabbit.yaml)
 ```
 
-**Non-default base.** With `CR_REVIEW_REQUEST=request` and `CR_SOURCE ∈ {auto, pr-bot}`, post `gh pr comment "$PR_NUM" --body "@coderabbitai review"` once before iter 1 (the PR's opening push was never auto-reviewed) and after every push this run makes (Step 5a, Step 12). An absent CodeRabbit review is never convergence here: Step 8c's `cr_engagement == 0` waits or ends at `cr_inactive`, never at `clean`. The CLI and codex-only sources never post it.
+**Non-default base.** With `CR_REVIEW_REQUEST=request` and `CR_SOURCE ∈ {auto, pr-bot}`, request a review once before iter 1 (the PR's opening push was never auto-reviewed) and after every push this run makes (Step 5a, Step 12), always through this block. It posts only when the head has no request yet, so a re-run on an unchanged head does not ask twice:
+
+```bash
+request_cr_review() {  # GitHub comments are the record; no state file
+  local since decision
+  since=$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "$(git rev-parse HEAD)")
+  # Exit 1 = comments unreadable: do not post blind (the script logs why).
+  decision=$(bash "$SKILL_DIR/scripts/cr-review-posted.sh" "$OWNER" "$REPO" "$PR_NUM" "$since") || return 0
+  [ "$decision" = post ] && gh pr comment "$PR_NUM" --body "@coderabbitai review"
+}
+```
+
+An absent CodeRabbit review is never convergence here: Step 8c's `cr_engagement == 0` waits or ends at `cr_inactive`, never at `clean`. The CLI and codex-only sources never post it.
 
 **Pre-flight per `--cr-source`** (source-mode availability check, separate from Step 5 review-state pre-flight):
 
@@ -502,7 +514,7 @@ git push 2>&1 || break
 : > "$TRACK_FILE"  # reset for next iter
 # Non-default base only (Step 2): this push will not be auto-reviewed.
 if [ "$CR_REVIEW_REQUEST" = request ] && { [ "$CR_SOURCE" = auto ] || [ "$CR_SOURCE" = pr-bot ]; }; then
-  gh pr comment "$PR_NUM" --body "@coderabbitai review"
+  request_cr_review  # Step 2: skips when this head already has a request
 fi
 ```
 
@@ -600,7 +612,7 @@ The run is done when all of these hold:
 - Every finding that reached Step 9c has a record in `auto_judge_log`, so `auto_judge_stats` sums to the number of non-skip, non-review items the Step 9a table rendered (9c-review items are displayed only and never judged).
 - Each iteration that applied anything produced exactly one commit and one push.
 - `final_state ∈ {churn, minor_floor, iteration_cap}` with anything deferred carries a `followup_issue`, or an explicit creation-failure message saying why auto-merge stayed blocked.
-- The PR carries no comment from this run other than a possible `@coderabbitai rate limit` query and, with `CR_REVIEW_REQUEST=request`, one `@coderabbitai review` per push.
+- The PR carries no comment from this run other than a possible `@coderabbitai rate limit` query and, with `CR_REVIEW_REQUEST=request`, at most one `@coderabbitai review` per head SHA, counting requests from earlier runs.
 
 ## Reference
 

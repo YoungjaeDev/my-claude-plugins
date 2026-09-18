@@ -101,7 +101,7 @@ cp "$SRC" ~/.codex/AGENTS.md       # Codex
 
 | 플러그인 | 분류 | 내용 |
 |---------|------|------|
-| `dev` | Development | GitHub 워크플로우 7 (commit-and-push, decompose-issue, resolve-issue, release, cr-fix, post-merge, state-tracker) + 세션 인수인계 1 (session-handoff) + 서브에이전트 오케스트레이션 1 (orchestrate, 워커 프리셋 3) + 프로젝트 셋업 2 (new, wiring) + Playwright E2E 하네스 3 (e2e-setup, e2e-author, e2e-debug) |
+| `dev` | Development | GitHub 워크플로우 7 (commit-and-push, decompose-issue, resolve-issue, release, cr-fix, post-merge, state-tracker) + 라우터 1 (flow) + 세션 인수인계 1 (session-handoff) + 서브에이전트 오케스트레이션 1 (orchestrate, 워커 프리셋 3) + 프로젝트 셋업 2 (new, wiring) + Playwright E2E 하네스 3 (e2e-setup, e2e-author, e2e-debug) |
 | `docs` | Documentation | 프로젝트 문서 커맨드 4 (readme, changelog, deploy-doc, moc) + 저작 스킬 (doc-guides, write-rules, interview-methodology, vp, skill-forge, skill-audit, skill-fleet-review) + 내보내기 (translate-web-article, gws-sync) |
 | `scout` | Research | research-orchestrator (github / hf / web / docs scout 에이전트 + synthesis), ask / generate-llmstxt (DeepWiki) |
 | `ml` | Development | ml-dev-principles, gradio-cv-app, cv-notebook, edit-notebook |
@@ -140,6 +140,7 @@ git clone git@github.com:YoungjaeDev/my-claude-plugins.git && cd my-claude-plugi
 | `/dev:session-handoff` | 컨텍스트를 비우기 전 세션 인수인계 요약 (결정, 변경, 핵심 파일, 실행 중 상태, 검증 명령, 보류·미해결 질문). 채팅 출력 전용, 파일·메모리 미기록 |
 | `/dev:orchestrate` | 메인 에이전트를 오케스트레이터로 운용. 슬라이스별 job card (목표·범위·절대 경로·입력·출력 형식·완료 기준·프리셋), 모델 x effort 워커 프리셋 `dev:worker-standard/deep/max`, 경로당 writer 하나, 품질 게이트 (같은 에이전트 재질의 2회 → 상위 프리셋 1회 → 사용자 질문), 오케스트레이터가 직접 검증 후 에이전트별 ledger 보고. `Workflow` 는 수동 호출 시에만, worktree 는 병렬 writer 에만 (베이스라인 대조 cleanup 필수) |
 | `/dev:diagnose` | 버그 진단 절차. 수정 전에 실패하는 명령부터 확보 → 재현 최소화 → 반증 가능한 가설 3-5개 순위화 → 태그 달린 계측 → seam 에 회귀 테스트 → 정리 체크리스트. `mattpocock/skills` `diagnosing-bugs` 를 각색 |
+| `/dev:flow` | dev 흐름 전체를 안내하는 짧은 라우터 (decompose-issue → resolve-issue(→ diagnose) → cr-fix → post-merge, worktree·non-default base·orchestrate 위임·E2E 분기). 직접 뭔가를 실행하지 않는다. `mattpocock/skills` `ask-matt` 형식을 각색 |
 
 **프로젝트 셋업**
 

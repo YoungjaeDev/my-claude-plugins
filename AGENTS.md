@@ -55,6 +55,7 @@
 - Codex 훅은 `codex plugin add` 만으로 실행되지 않는다. 수동 `~/.codex/hooks.json` 등록 후 `/hooks` 에서 trust 승인이 있어야 발화하고, 승인 전에는 아무 신호 없이 죽어 있다. `UserPromptSubmit`/`PostToolUse` 훅은 plain stdout 이 아니라 `hookSpecificOutput.additionalContext` JSON 을 내야 Codex 가 읽는다 (공유 스크립트는 `codex` 인자로 분기).
 - 사용자에게 되묻는 상호작용은 capability-aware 게이트로 쓴다: Claude 는 `AskUserQuestion`, Codex 는 `request_user_input` (노출된 경우), 없으면 틀린 가정의 비용이 큰 지점에서만 짧은 blocking 질문 하나를 던지고 그 외에는 문서화된 안전한 기본값으로 진행한다.
 - `AGENTS.md` 를 `CLAUDE.md` 로의 포인터로 축약하지 않는다. Codex 는 `@` 를 확장하지 않아 `@CLAUDE.md` 는 죽은 텍스트이고, Codex cloud reviewer 는 `## Code Review Rules` 를 시스템 프롬프트에 직접 로드하므로 산문 redirect 를 따라가지 않는다. 실패는 조용하다.
+- 부작용 있는 스킬(push, GitHub 쓰기, 태그, 릴리스, 저장소 생성, Drive 업로드)은 `agents/openai.yaml` 에 `policy.allow_implicit_invocation: false` 를 둬 Codex 자동 호출을 막는다. `disable-model-invocation` 은 Codex validator 가 거부하므로 쓰지 않는다.
 
 ## 플러그인 변경 규칙
 

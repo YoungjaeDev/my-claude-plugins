@@ -63,3 +63,8 @@
 - Write the final reply to the user in Korean unless told otherwise; internal workflows, subagents, and English skills do not override this.
 - When the working directory has `.llmwiki/insight/`, read it and then `.llmwiki/wiki/index.md` before reasoning about repository lore, and prefer the dated, sourced page over memory.
 - Change only the lines the request calls for, with no drive-by refactor or unrelated cleanup.
+
+## 7. Prefer a CLI and a script over reading and counting by eye
+
+- A tool schema and a long tool output both stay in the context, so use the CLI when a CLI and an MCP server do the same job.
+- Judge a quantitative result by writing a small script fitted to the domain and running it as a command, not by counting or comparing by eye.

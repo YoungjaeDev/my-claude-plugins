@@ -58,7 +58,8 @@ if [ "$IN_WT" = 1 ]; then
   done
   live="$WT_PATH/.claude/state/cr-fix-${PR_NUMBER}.json"
   if [ -f "$live" ]; then
-    cp -p "$live" "$ARC/cr-fix-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-wt.json" \
+    # $$ as in cr-fix's own archive names: a same-second rerun keeps both copies.
+    cp -p "$live" "$ARC/cr-fix-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$-wt.json" \
       || { echo "post-merge: copying $live failed" >&2; exit 1; }
   fi
 fi

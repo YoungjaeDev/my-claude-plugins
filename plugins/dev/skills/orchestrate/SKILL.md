@@ -100,9 +100,11 @@ Preset:        which dev:worker-* and the one-clause reason
    files inside it and none of the others, and turns a delete into a recursive one. Gitignored paths
    stay out of the baseline on purpose: they are build output and tool state, not deliverables, so
    pulling them in would make every `__pycache__` a violation and put files like
-   `.claude/state/*.json` on the delete path. Record `git diff` for the paths that baseline already
-   shows as dirty as well: that is the user's own work, and its content at dispatch time is the only
-   way to tell a later worker edit inside those files apart from what was there first. When any card
+   `.claude/state/*.json` on the delete path. Record the content of every path that baseline already
+   lists as well — `git diff` for a tracked one, `git hash-object` for an untracked one, which
+   `git diff` does not cover at all. That content is the user's own work, and what it was at dispatch
+   time is the only way to tell a later worker edit inside those files apart from what was there
+   first. When any card
    uses `isolation: worktree`, record `git worktree list` before the first dispatch as the baseline
    for step 7, and take the same two recordings inside each worktree. While agents run, the
    orchestrator prepares the verification of step 6 instead of doing a worker's job in parallel. Done
@@ -113,10 +115,15 @@ Preset:        which dev:worker-* and the one-clause reason
    for file content, command plus output for a run result, the path for a path), the
    result contradicts what the repository shows, the done criteria are not met, or an owned path list
    was exceeded. Two of these are decided by git, not by the worker's report. **Path violation:**
-   re-run the step 4 command after the result arrives and compare it with the baseline. A path that
-   belongs to no card's owned Paths is a violation when it is new against the baseline, and equally
-   when the baseline already listed it but its content moved since the step 4 `git diff` — an
-   already-dirty file is not a free pass for a worker to write into. **Content
+   re-run the step 4 command after the result arrives and compare it with the baseline. A path is a
+   violation when it falls outside the owned Paths of the card whose result is being gated — another
+   card owning it is no defence, because step 1 gave every path one writer, and a worker writing into
+   a sibling's path is the race that rule exists to prevent. It counts when the path is new against
+   the baseline, and equally when the baseline already listed it but its content moved from the step 4
+   snapshot: an already-dirty or already-untracked file is not a free pass to write into. Gate one
+   result at a time and roll the baseline forward to the post-gate state after each accepted one, so
+   the next comparison sees only the next worker's writes. Results that land together in a shared
+   checkout cannot be attributed this way — that is what `isolation: worktree` buys. **Content
    violation:** a diff inside an owned path that the card's Goal does not explain — an unrequested
    feature, a refactor nobody asked for, a bulk reformat. On rejection, re-query in this order and
    stop at the first pass:
@@ -128,7 +135,11 @@ Preset:        which dev:worker-* and the one-clause reason
    Done when every slice has an accepted result or an open question in front of the user.
 
    **Scope violations.** Revert a path violation path by path. A tracked file the baseline showed as
-   clean goes back with `git checkout -- <path>`; a file the baseline did not list at all is deleted.
+   clean goes back with `git restore --source=HEAD --staged --worktree -- <path>`, which resets the
+   index too: a bare `git checkout -- <path>` copies the index into the worktree, so a worker that ran
+   `git add` leaves its change staged and it rides into the user's next commit. A file the baseline
+   did not list at all is deleted. Re-run the step 4 command afterwards to confirm each reverted path
+   sits where the baseline had it.
    Never restore in bulk — no `git checkout .`, no `git stash`. A path the baseline already showed as
    dirty is never reverted: the user's own uncommitted work is mixed into that file, so surface it
    instead, with the step 4 diff beside the current one, and let the user decide. Keep whatever the

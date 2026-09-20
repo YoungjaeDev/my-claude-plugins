@@ -93,23 +93,25 @@ Preset:        which dev:worker-* and the one-clause reason
 3. **Pick preset and structure** from the two tables. Give every agent a `name` so a re-query can
    reach the same transcript. Done when each card names its preset and the run names its structure.
 4. **Dispatch.** Independent slices go out in one message, in the background. Dependent slices wait
-   for the result they consume. Before the first dispatch, record
-   `git status --porcelain -z --untracked-files=all` as the scope baseline for step 5. `-z` keeps a
-   path with a space or a non-ASCII byte parseable, and `--untracked-files=all` lists a new directory
+   for the result they consume. Slices that write go out with `isolation: worktree`, or one at a
+   time: two writers in one checkout cannot be told apart at the gate, and gating one against the
+   other's writes reverts work that was never out of scope. Before the first dispatch, record `git
+   status --porcelain -z --untracked-files=all` as the scope baseline for step 5. `-z` keeps a path
+   with a space or a non-ASCII byte parseable, and `--untracked-files=all` lists a new directory
    file by file — the default collapses it to one `?? dir/` entry, which hides that a card owns some
    files inside it and none of the others, and turns a delete into a recursive one. Gitignored paths
    stay out of the baseline on purpose: they are build output and tool state, not deliverables, so
    pulling them in would make every `__pycache__` a violation and put files like
    `.claude/state/*.json` on the delete path. Record the content of every path that baseline already
-   lists as well — `git diff` for a tracked one, `git hash-object` for an untracked one, which
-   `git diff` does not cover at all. That content is the user's own work, and what it was at dispatch
-   time is the only way to tell a later worker edit inside those files apart from what was there
-   first. When any card
-   uses `isolation: worktree`, record `git worktree list` before the first dispatch as the baseline
-   for step 7, and take the same two recordings inside each worktree. While agents run, the
-   orchestrator prepares the verification of step 6 instead of doing a worker's job in parallel. Done
-   when every card has been sent, the scope baseline is recorded, and, where worktrees are in play,
-   the worktree baseline is recorded.
+   lists as well — `git diff` *and* `git diff --cached` for a tracked one, since a staged change is
+   invisible to a bare `git diff`, and `git hash-object` for an untracked one, which `git diff` does
+   not cover at all. That content is the user's own work, and what it was at dispatch time is the
+   only way to tell a later worker edit inside those files apart from what was there first. When any
+   card uses `isolation: worktree`, record `git worktree list` before the first dispatch as the
+   baseline for step 7, and take the same two recordings inside each worktree. While agents run, the
+   orchestrator prepares the verification of step 6 instead of doing a worker's job in parallel.
+   Done when every card has been sent, the scope baseline is recorded, and, where worktrees are in
+   play, the worktree baseline is recorded.
 5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer is
    ambiguous or hedged where the card asked for a decision, a claim carries no evidence (`file:line`
    for file content, command plus output for a run result, the path for a path), the
@@ -122,9 +124,8 @@ Preset:        which dev:worker-* and the one-clause reason
    the baseline, and equally when the baseline already listed it but its content moved from the step 4
    snapshot: an already-dirty or already-untracked file is not a free pass to write into. Gate one
    result at a time and roll the baseline forward to the post-gate state after each accepted one, so
-   the next comparison sees only the next worker's writes. Results that land together in a shared
-   checkout cannot be attributed this way — that is what `isolation: worktree` buys. **Content
-   violation:** a diff inside an owned path that the card's Goal does not explain — an unrequested
+   the next comparison sees only the next worker's writes — which is why step 4 isolates or
+   serialises every writing slice. **Content violation:** a diff inside an owned path that the card's Goal does not explain — an unrequested
    feature, a refactor nobody asked for, a bulk reformat. On rejection, re-query in this order and
    stop at the first pass:
    1. `SendMessage` to the same agent, naming the failed criterion, at most twice.
@@ -136,17 +137,19 @@ Preset:        which dev:worker-* and the one-clause reason
 
    **Scope violations.** Revert a path violation path by path. A tracked file the baseline showed as
    clean goes back with `git restore --source=HEAD --staged --worktree -- <path>`, which resets the
-   index too: a bare `git checkout -- <path>` copies the index into the worktree, so a worker that ran
-   `git add` leaves its change staged and it rides into the user's next commit. A file the baseline
-   did not list at all is deleted. Re-run the step 4 command afterwards to confirm each reverted path
-   sits where the baseline had it.
-   Never restore in bulk — no `git checkout .`, no `git stash`. A path the baseline already showed as
-   dirty is never reverted: the user's own uncommitted work is mixed into that file, so surface it
-   instead, with the step 4 diff beside the current one, and let the user decide. Keep whatever the
-   worker produced inside its scope and carry on with the gate on that part, and write
-   `scope violation: <path>` in the agent's ledger row. Reach for `AskUserQuestion` when the reverted
-   work looks worth keeping, or when a dirty-baseline file needs that decision. A content violation
-   is not a revert: send it through the re-query ladder above.
+   index too: a bare `git checkout -- <path>` copies the index into the worktree, so a worker that
+   ran `git add` leaves its change staged and it rides into the user's next commit. A file the
+   baseline did not list at all is deleted, after `git restore --staged -- <path>` drops it from the
+   index: removing the file alone leaves the `A` entry a worker's `git add` created, which shows up
+   as `AD` and still rides into the next commit. Re-run the step 4 command afterwards to confirm
+   each reverted path sits where the baseline had it. Never restore in bulk — no `git checkout .`,
+   no `git stash`. A path the baseline already showed as dirty is never reverted: the user's own
+   uncommitted work is mixed into that file, so surface it instead, with the step 4 diff beside the
+   current one, and let the user decide. Keep whatever the worker produced inside its scope and
+   carry on with the gate on that part, and write `scope violation: <path>` in the agent's ledger
+   row. Reach for `AskUserQuestion` when the reverted work looks worth keeping, or when a
+   dirty-baseline file needs that decision. A content violation is not a revert: send it through the
+   re-query ladder above.
 
 6. **Integrate and verify.** Combine the accepted results and verify them directly: run the tests,
    lint, or build the repository defines, and `Read` the decisive `file:line` evidence. Worker

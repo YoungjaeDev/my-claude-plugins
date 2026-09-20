@@ -102,13 +102,15 @@ Preset:        which dev:worker-* and the one-clause reason
    files inside it and none of the others, and turns a delete into a recursive one. Gitignored paths
    stay out of the baseline on purpose: they are build output and tool state, not deliverables, so
    pulling them in would make every `__pycache__` a violation and put files like
-   `.claude/state/*.json` on the delete path. Record the content of every path that baseline already
+   `.claude/state/*.json` on the delete path. Record `git rev-parse HEAD` alongside it: a worker that
+   commits its work leaves `git status` clean on both sides of the run, so the status baseline on its
+   own sees nothing at all. Record the content of every path that baseline already
    lists as well — `git diff` *and* `git diff --cached` for a tracked one, since a staged change is
    invisible to a bare `git diff`, and `git hash-object` for an untracked one, which `git diff` does
    not cover at all. That content is the user's own work, and what it was at dispatch time is the
    only way to tell a later worker edit inside those files apart from what was there first. When any
    card uses `isolation: worktree`, record `git worktree list` before the first dispatch as the
-   baseline for step 7, and take the same two recordings inside each worktree. While agents run, the
+   baseline for step 7, and take the same recordings inside each worktree. While agents run, the
    orchestrator prepares the verification of step 6 instead of doing a worker's job in parallel.
    Done when every card has been sent, the scope baseline is recorded, and, where worktrees are in
    play, the worktree baseline is recorded.
@@ -117,8 +119,10 @@ Preset:        which dev:worker-* and the one-clause reason
    for file content, command plus output for a run result, the path for a path), the
    result contradicts what the repository shows, the done criteria are not met, or an owned path list
    was exceeded. Two of these are decided by git, not by the worker's report. **Path violation:**
-   re-run the step 4 command after the result arrives and compare it with the baseline. A path is a
-   violation when it falls outside the owned Paths of the card whose result is being gated — another
+   re-run the step 4 command after the result arrives and compare it with the baseline, then add what
+   the worker committed: `git diff --name-only <baseline HEAD>..HEAD` in the checkout it worked in,
+   which for a worktree slice is that worktree's own branch. Committing is not a way out of the gate.
+   A path is a violation when it falls outside the owned Paths of the card whose result is being gated — another
    card owning it is no defence, because step 1 gave every path one writer, and a worker writing into
    a sibling's path is the race that rule exists to prevent. It counts when the path is new against
    the baseline, and equally when the baseline already listed it but its content moved from the step 4
@@ -157,7 +161,9 @@ Preset:        which dev:worker-* and the one-clause reason
    becomes the smallest script that fails when the property breaks, and a qualitative check goes to a
    deep-preset review slice with its own card. Done when the verification commands have run in this
    session and their output is in hand.
-7. **Clean up and report.** When any agent ran with `isolation: worktree`, compare
+7. **Clean up and report.** A worktree's commits pass the step 5 path check before anything is
+   merged; a slice that committed out-of-scope files hands them to the merge otherwise. When any
+   agent ran with `isolation: worktree`, compare
    `git worktree list` with the baseline taken before dispatch, merge what is kept, then
    `git worktree remove <path>` and delete the `worktree-<name>` branch until the list matches the
    baseline. Report to the user with the outcome first, then a ledger:

@@ -93,21 +93,38 @@ Preset:        which dev:worker-* and the one-clause reason
 3. **Pick preset and structure** from the two tables. Give every agent a `name` so a re-query can
    reach the same transcript. Done when each card names its preset and the run names its structure.
 4. **Dispatch.** Independent slices go out in one message, in the background. Dependent slices wait
-   for the result they consume. When any card uses `isolation: worktree`, record `git worktree list`
-   before the first dispatch as the baseline for step 7. While agents run, the orchestrator prepares
-   the verification of step 6 instead of doing a worker's job in parallel. Done when every card has
-   been sent and, where worktrees are in play, the baseline is recorded.
+   for the result they consume. Before the first dispatch, record `git status --porcelain` as the
+   scope baseline for step 5; every path already listed there is the user's own work and is never
+   attributed to a worker. When any card uses `isolation: worktree`, record `git worktree list`
+   before the first dispatch as the baseline for step 7, and record `git status --porcelain` inside
+   each worktree as well. While agents run, the orchestrator prepares the verification of step 6
+   instead of doing a worker's job in parallel. Done when every card has been sent, the scope
+   baseline is recorded, and, where worktrees are in play, the worktree baseline is recorded.
 5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer is
    ambiguous or hedged where the card asked for a decision, a claim carries no evidence (`file:line`
    for file content, command plus output for a run result, the path for a path), the
    result contradicts what the repository shows, the done criteria are not met, or an owned path list
-   was exceeded. On rejection, re-query in this order and stop at the first pass:
+   was exceeded. Two of these are decided by git, not by the worker's report. **Path violation:** run
+   `git status --porcelain` after the result arrives and compare it with the step 4 baseline; a path
+   that is new against the baseline and belongs to no card's owned Paths is a violation. **Content
+   violation:** a diff inside an owned path that the card's Goal does not explain — an unrequested
+   feature, a refactor nobody asked for, a bulk reformat. On rejection, re-query in this order and
+   stop at the first pass:
    1. `SendMessage` to the same agent, naming the failed criterion, at most twice.
    2. Re-dispatch the card once on the next preset up, with the rejected answer attached as an input.
       A rejected `dev:worker-max` result has no next preset and goes straight to 3.
    3. `AskUserQuestion` with the rejected answers summarised; another vendor's agent is one of the
       options offered there, never a silent fallback.
    Done when every slice has an accepted result or an open question in front of the user.
+
+   **Scope violations.** Revert a path violation path by path. A tracked file the baseline showed as
+   clean goes back with `git checkout -- <path>`; a file the baseline did not list at all is deleted.
+   Never restore in bulk — no `git checkout .`, no `git stash` — and never touch a path that was
+   already in the baseline. Keep whatever the worker produced inside its scope and carry on with the
+   gate on that part, and write `scope violation: <path>` in the agent's ledger row. Reach for
+   `AskUserQuestion` only when the reverted work looks worth keeping. A content violation is not a
+   revert: send it through the re-query ladder above.
+
 6. **Integrate and verify.** Combine the accepted results and verify them directly: run the tests,
    lint, or build the repository defines, and `Read` the decisive `file:line` evidence. Worker
    self-reports do not count as verification. When a slice needs an evaluation, a quantitative check
@@ -135,11 +152,13 @@ Preset:        which dev:worker-* and the one-clause reason
 | the orchestrator ran out of context mid-run | it read the worker's files itself during step 4 instead of waiting for the card's output shape |
 | a worktree survived the session | `isolation: worktree` keeps a changed worktree until a periodic sweep; the baseline comparison in step 7 was skipped |
 | `Workflow` refused or surprised the user | the run was description-triggered; `Workflow` needs the user's own `/dev:orchestrate` call or "ultracode" |
+| a worker edited a file no card owned | step 4 recorded no `git status` baseline, so the gate had nothing but the worker's self-report to go on |
 | effort never changed between jobs | `model` was passed on the `Agent` call without a `dev:worker-*` type; effort lives in the preset definition |
 
 ## Verification
 
 The run is done when the slice list shows one writer per path, every dispatched agent has a ledger
-row with an accepted verdict or an open user question, the verification commands ran in this
+row with an accepted verdict or an open user question, every path that changed since the step 4
+scope baseline either has an owning card or was reverted, the verification commands ran in this
 session, `git worktree list` matches its pre-dispatch baseline, and the user's report leads with
 the outcome and marks anything unverified as such.

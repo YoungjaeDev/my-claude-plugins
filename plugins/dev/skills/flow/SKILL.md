@@ -5,7 +5,7 @@ description: "Router over the dev skills: which one to call next in the dev flow
 
 # dev flow
 
-Format borrowed from mattpocock/skills `ask-matt/SKILL.md` (commit 74ca5fe): a short router over the skills below, not a skill that does the work itself.
+A short router over the skills below, not a skill that does the work itself.
 
 ## The main flow
 

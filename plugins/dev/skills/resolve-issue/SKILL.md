@@ -8,8 +8,6 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion Agent
 
 Act as an expert developer who systematically analyzes and resolves GitHub issues. Receive a GitHub issue number as argument and resolve the issue. Follow project guidelines in `@CLAUDE.md`.
 
-The TDD seam-confirmation order below is adapted from mattpocock/skills `tdd/SKILL.md` (commit `74ca5fe`).
-
 ## Prerequisites
 
 Before starting the workflow:

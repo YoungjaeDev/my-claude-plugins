@@ -114,24 +114,29 @@ Preset:        which dev:worker-* and the one-clause reason
    orchestrator prepares the verification of step 6 instead of doing a worker's job in parallel.
    Done when every card has been sent, the scope baseline is recorded, and, where worktrees are in
    play, the worktree baseline is recorded.
-5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer is
-   ambiguous or hedged where the card asked for a decision, a claim carries no evidence (`file:line`
-   for file content, command plus output for a run result, the path for a path), the
-   result contradicts what the repository shows, the done criteria are not met, or an owned path list
-   was exceeded. Two of these are decided by git, not by the worker's report. **Path violation:**
-   re-run the step 4 command after the result arrives and compare it with the baseline, then add what
-   the worker committed: `git diff --name-only <baseline HEAD>..HEAD` in the checkout it worked in,
-   which for a worktree slice is that worktree's own branch. Committing is not a way out of the gate.
-   A path is a violation when it falls outside the owned Paths of the card whose result is being gated — another
-   card owning it is no defence, because step 1 gave every path one writer, and a worker writing into
-   a sibling's path is the race that rule exists to prevent. It counts when the path is new against
-   the baseline, and equally when the baseline already listed it but its content moved from the step 4
-   snapshot: an already-dirty or already-untracked file is not a free pass to write into. Gate one
-   result at a time and roll the baseline forward to the post-gate state after each accepted one, so
-   the next comparison sees only the next worker's writes — which is why step 4 isolates or
-   serialises every writing slice. **Content violation:** a diff inside an owned path that the card's Goal does not explain — an unrequested
-   feature, a refactor nobody asked for, a bulk reformat. On rejection, re-query in this order and
-   stop at the first pass:
+5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer
+   is ambiguous or hedged where the card asked for a decision, a claim carries no evidence
+   (`file:line` for file content, command plus output for a run result, the path for a path), the
+   result contradicts what the repository shows, the done criteria are not met, or an owned path
+   list was exceeded. Two of these are decided by git, not by the worker's report. **Path
+   violation:** re-run the step 4 command after the result arrives and compare it with the baseline,
+   then add what the worker committed: `git diff -z --name-only <baseline HEAD>..HEAD` in the
+   checkout it worked in, which for a worktree slice is that worktree's own branch. `-z` again, and
+   for the same reason: with default `core.quotePath` this prints a quoted, octal-escaped string for
+   a non-ASCII or newline path, which matches neither the card's absolute paths nor the `-z` status
+   baseline, so a legitimate owned file reads as a violation and the restore that follows misses.
+   Resolve each repo-relative path against the repo root before comparing it with the card.
+   Committing is not a way out of the gate. A path is a violation when it falls outside the owned
+   Paths of the card whose result is being gated — another card owning it is no defence, because
+   step 1 gave every path one writer, and a worker writing into a sibling's path is the race that
+   rule exists to prevent. It counts when the path is new against the baseline, and equally when the
+   baseline already listed it but its content moved from the step 4 snapshot: an already-dirty or
+   already-untracked file is not a free pass to write into. Gate one result at a time and roll the
+   baseline forward to the post-gate state after each accepted one, so the next comparison sees only
+   the next worker's writes — which is why step 4 isolates or serialises every writing slice.
+   **Content violation:** a diff inside an owned path that the card's Goal does not explain — an
+   unrequested feature, a refactor nobody asked for, a bulk reformat. On rejection, re-query in this
+   order and stop at the first pass:
    1. `SendMessage` to the same agent, naming the failed criterion, at most twice.
    2. Re-dispatch the card once on the next preset up, with the rejected answer attached as an input.
       A rejected `dev:worker-max` result has no next preset and goes straight to 3.
@@ -140,9 +145,14 @@ Preset:        which dev:worker-* and the one-clause reason
    Done when every slice has an accepted result or an open question in front of the user.
 
    **Scope violations.** Revert a path violation path by path. A tracked file the baseline showed as
-   clean goes back with `git restore --source=HEAD --staged --worktree -- <path>`, which resets the
-   index too: a bare `git checkout -- <path>` copies the index into the worktree, so a worker that
-   ran `git add` leaves its change staged and it rides into the user's next commit. A file the
+   clean goes back with `git restore --source=<baseline HEAD> --staged --worktree -- <path>` — the
+   HEAD step 4 recorded, never the current one, which holds the violation itself when the worker
+   committed it and would restore it verbatim. `--staged` resets the index too: a bare
+   `git checkout -- <path>` copies the index into the worktree, so a worker that ran `git add` leaves
+   its change staged and it rides into the user's next commit. A violation that reached a commit has
+   to leave that branch's history as well — amend or rebase the path out before step 7 merges the
+   branch, since a working-tree restore alone leaves the out-of-scope blob in the commits being
+   merged. A file the
    baseline did not list at all is deleted, after `git restore --staged -- <path>` drops it from the
    index: removing the file alone leaves the `A` entry a worker's `git add` created, which shows up
    as `AD` and still rides into the next commit. Re-run the step 4 command afterwards to confirm

@@ -8,8 +8,6 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 Break a large work item into manageable, independent GitHub issues, map them onto the project's architecture, and create them with a milestone. Follow project guidelines in `@CLAUDE.md`.
 
-Vertical-slice sizing and the decision-forward issue template are adapted from mattpocock/skills `to-tickets/SKILL.md` (commit `74ca5fe`).
-
 ## Guidelines
 
 - **Interactive input is capability-aware.** Every confirmation below runs through a gate, not one hardcoded tool; read each `AskUserQuestion` mention as this gate. Claude Code uses `AskUserQuestion`. Codex uses `request_user_input` when that tool is exposed; when it is not, ask ONE concise blocking question only where a wrong assumption would be costly (creating GitHub issues), otherwise proceed on a documented safe default and state the assumption. Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".

@@ -149,9 +149,13 @@ Preset:        which dev:worker-* and the one-clause reason
    octal-escaped, matching neither the card's paths nor anything on disk, so a legitimate owned file
    reads as a violation. Resolve each repo-relative path against the repo root before comparing. A
    path outside *this* card's owned Paths is a violation; another card owning it is no defence,
-   because step 1 gave every path one writer. **Content violation:** a diff inside an owned path
-   that the card's Goal does not explain — an unrequested feature, a refactor nobody asked for, a
-   bulk reformat. On rejection, re-query in this order and stop at the first pass:
+   because step 1 gave every path one writer. A branch that adds or retargets a symlink whose target
+   resolves outside the worktree root is a violation too, whatever paths it lists: the pre-dispatch
+   path check cannot see a link the worker creates mid-run, and writing through one leaves only the
+   link's own blob on the branch while the real edit lands in the user's checkout. **Content
+   violation:** a diff inside an owned path that the card's Goal does not explain — an unrequested
+   feature, a refactor nobody asked for, a bulk reformat. On rejection, re-query in this order and
+   stop at the first pass:
    1. `SendMessage` to the same agent, naming the failed criterion, at most twice — but never for a
       path violation. That agent keeps its own worktree and branch, so it commits its fix on top of
       the offending commit, which stays in `<base>..<branch>` however it is fixed: the gate can
@@ -210,6 +214,7 @@ Preset:        which dev:worker-* and the one-clause reason
 | an out-of-scope file reached history although the gate passed | the check used `git diff <base>...<branch>`, whose net tree hides a path the branch added and later deleted |
 | a worker edited the user's files and its branch stayed empty | the card went out with the main checkout's absolute paths instead of paths under that worker's worktree root |
 | a worker could not find a config or dependency that exists locally | it is untracked or ignored, so the worktree never had it; supply or regenerate those inputs at dispatch |
+| an out-of-scope file changed although the branch only added a symlink | the worker created the link mid-run and wrote through it; step 5 rejects a branch whose symlink targets leave the worktree |
 | a re-query failed the gate twice on a fix that looked right | it went back to the same agent, which keeps its branch; a path violation needs a newly dispatched agent from the recorded base |
 | effort never changed between jobs | `model` was passed on the `Agent` call without a `dev:worker-*` type; effort lives in the preset definition |
 

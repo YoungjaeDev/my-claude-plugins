@@ -24,7 +24,7 @@ Sixteen of seventeen review findings on the guard existed only because of the sh
 
 ## Isolation replaces forensics
 
-Give every writing slice `isolation: worktree` and the question stops being "who wrote this" and becomes "what is on this branch". A fresh worktree carries none of the main checkout's uncommitted, untracked or ignored files, so a worker cannot reach the user's work at all, and the branch is a per-worker record by construction. The check collapses to one command against the slice's recorded base, and each of its three flags closes a hole the obvious form leaves open:
+Give every writing slice `isolation: worktree` and the question stops being "who wrote this" and becomes "what is on this branch". A fresh worktree carries none of the main checkout's uncommitted, untracked or ignored files, so a worker has no path to the user's work except one it builds itself (see the limit below), and the branch is a per-worker record by construction. The check collapses to one command against the slice's recorded base, and each of its three flags closes a hole the obvious form leaves open:
 
 - `git log --no-renames -z --name-only --pretty=format: <base>..<branch>` — two dots and `git log`, **never** `git diff <base>...<branch>`. A diff compares end trees, so a worker that commits an out-of-scope file and deletes it later leaves a clean net diff while the content, a leaked secret included, still rides into history on merge.
 - `--no-renames`, because rename detection prints only a rename's destination, so `git mv outside/secret owned/secret` reads as a write inside the card.

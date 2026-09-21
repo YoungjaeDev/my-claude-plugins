@@ -8,6 +8,11 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-09-21 — CodeRabbit obeys the PR head's config, not the base's (post-merge #259)
+
+- guards/coderabbit-config-branch.md: new page — measured across two PRs while `main` kept `reviews.auto_review.enabled: false`: #254's head carried the key and CodeRabbit skipped, #259's head removed it and CodeRabbit auto-reviewed; a re-enable (and a disable) is therefore live inside its own PR, `cr-review-request.sh` reading the working tree agrees with that, and disabling auto-review drops cr-fix to a single reviewer with nothing in its final JSON recording the absence; sources: PR #254, PR #259
+- index.md: added the guards hook
+
 ## 2026-09-21 — worker scope is an isolation problem, not a git-forensics one (post-merge #254)
 
 - guards/worker-scope-attribution.md: new page — `git status --porcelain` records tree state and not the actor, so a shared checkout leaks worker attribution six ways (dirty / staged / untracked / ignored / committed / quoted paths); `isolation: worktree` makes the branch the per-worker record and the check one `git log --no-renames -z --name-only` against the recorded base (two dots, never `git diff ...`, merge commits rejected first); isolation costs the ignored inputs it protects; the git-level gate cannot see a write through a symlink created and removed within the run; sources: PR #254, its Codex review (16 of 17 findings held only under the shared-checkout premise), `orchestrate/SKILL.md` steps 4-5

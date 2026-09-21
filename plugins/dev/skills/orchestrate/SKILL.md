@@ -111,10 +111,14 @@ Preset:        which dev:worker-* and the one-clause reason
    dispatch, a dependent slice from the accepted branch of the slice it consumes, so its worker
    reads and tests against that work instead of an interface that no longer exists. Record `git
    worktree list` as the baseline for step 7. A slice that must write in the main checkout runs
-   alone, with no other writer in flight, and its results are surfaced rather than merged. While
-   agents run, the orchestrator prepares the verification of step 6 instead of doing a worker's job
-   in parallel. Done when the checkout was clean on every card's paths, every card has been sent
-   with worktree-rooted paths, and every slice's base plus the worktree baseline are recorded.
+   alone, with no other writer in flight, and only when the whole repository is clean — not merely
+   the card's paths: `git status` reports an already-dirty file as the same ` M <path>` before and
+   after a worker overwrites it, so any pre-existing edit anywhere is one such a slice could destroy
+   unseen. Its results are surfaced rather than merged. While agents run, the orchestrator prepares
+   the verification of step 6 instead of doing a worker's job in parallel. Done when the checkout
+   was clean on every card's paths — everywhere, when a main-checkout writer is in the plan — every
+   card has been sent with worktree-rooted paths, and every slice's base plus the worktree baseline
+   are recorded.
 5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer
    is ambiguous or hedged where the card asked for a decision, a claim carries no evidence
    (`file:line` for file content, command plus output for a run result, the path for a path), the
@@ -154,8 +158,9 @@ Preset:        which dev:worker-* and the one-clause reason
    keeping. A content violation goes the same way — the ladder, never a revert. The one slice that
    can touch the user's checkout is a main-checkout writer, and there the orchestrator reports
    rather than repairs: compare `git status --porcelain -z --untracked-files=all` with the reading
-   taken before that slice went out, show the user what moved outside the card, and let them decide.
-   Never `git checkout .` or `git stash` — the user's own uncommitted work is in that checkout too.
+   taken before that slice went out — trustworthy there precisely because step 4 required a clean
+   repository — show the user what moved outside the card, and let them decide. Never `git checkout
+   .` or `git stash` — the user's own uncommitted work is in that checkout too.
 
 6. **Integrate and verify.** Merge every accepted branch into one integration worktree and verify
    there — not in each worktree separately and not in the untouched main checkout, either of which

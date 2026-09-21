@@ -65,6 +65,7 @@ All wiki edits append one line to `log.md` (`## YYYY-MM-DD — <summary>` header
 
 - [bot-identity-matching](guards/bot-identity-matching.md) — a bot login has two spellings and one of them is forgeable; why `^<login>(\[bot\])?$` is the only matcher that closes both, and why anchoring it brings the silent zero back
 - [review-loop-churn](guards/review-loop-churn.md) — a round that finds defects in the loop's own fixes is churn, not convergence; measure against the whole loop, and know why a prose cap and a defer-keyed soft stop both fail open
+- [worker-scope-attribution](guards/worker-scope-attribution.md) — git reports tree state, never the actor, so a shared checkout cannot attribute a worker's writes; per-worker worktrees make the branch the record, and the gate stops at what git can see
 
 ## runtimes
 

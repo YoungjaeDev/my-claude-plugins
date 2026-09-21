@@ -8,6 +8,11 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-09-21 — worker scope is an isolation problem, not a git-forensics one (post-merge #254)
+
+- guards/worker-scope-attribution.md: new page — `git status --porcelain` records tree state and not the actor, so a shared checkout leaks worker attribution six ways (dirty / staged / untracked / ignored / committed / quoted paths); `isolation: worktree` makes the branch the per-worker record and the check one `git log --no-renames -z --name-only` against the recorded base (two dots, never `git diff ...`, merge commits rejected first); isolation costs the ignored inputs it protects; the git-level gate cannot see a write through a symlink created and removed within the run; sources: PR #254, its Codex review (16 of 17 findings held only under the shared-checkout premise), `orchestrate/SKILL.md` steps 4-5
+- index.md: added the guards hook
+
 ## 2026-09-17 — bot login matching: stem fixes the two spellings and opens spoofing (post-merge #228)
 
 - guards/bot-identity-matching.md: new page — two spellings per surface (GraphQL strips `[bot]`, REST keeps it), equality → silent zero, unanchored stem → registrable lookalike (`coderabbit-evil`) reaching a loop that edits code, `^<login>(\[bot\])?$` as the only closing form (`[`/`]` are illegal login characters), jq double-escape, `sort_by | last` turning a spoof into a wrong success, anchoring's silent-zero cost paid by regression tests; sources: PR #228, its CodeRabbit review

@@ -8,6 +8,11 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-09-21 — a closing keyword has four sources and two ways to be ignored (post-merge #262)
+
+- guards/issue-close-sources.md: new page — a merge leaves `Closes #N` open silently on a non-default base (keywords ignored, *no link created*) or with the repository's auto-close setting off; `closingIssuesReferences` is documented as issues that *may* close and includes manual links, so it is a candidate source and never closure evidence (read the issue's own `state`); the four non-overlapping sources are the PR body, the PR's commit messages, the merge commit's own message and the manual links, with a 100/250 ceiling on the commit source and all nine keywords rather than the three `-s` forms; `gh api` and `--repo owner/repo` both default to `github.com`, so a read-path-only host pin sends the close to the wrong server, and a close comment's `#<PR>` resolves in the *issue's* repository; sources: GitHub docs (linking, auto-close, GraphQL reference), PR #262
+- index.md: added the guards hook
+
 ## 2026-09-21 — narrowing a guarantee means finding every place it is claimed (post-merge #261)
 
 - guards/worker-scope-attribution.md: new `## Narrowing a guarantee means finding every place it is claimed` section — the change that scoped the worktree guarantee to writes through git edited the paragraph stating it and the pitfalls row, and both reviewers independently found a surviving "the symlink rules close that path" claim two hundred lines earlier; a document that admits a limit in one place and denies it in another reads as safe wherever the reader lands; grep every restatement (summary line, setup step, troubleshooting row, plugin CLAUDE.md), not the finding's own wording; `sources` 3 -> 4

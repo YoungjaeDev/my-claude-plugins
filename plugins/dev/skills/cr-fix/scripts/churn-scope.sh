@@ -11,6 +11,17 @@
 # PREV_SHA empty (first iteration, or no prior commit) disables the first test.
 # An empty/non-numeric LINE (file-level finding) is always `fresh`: there is no
 # position to compare, and defaulting to churn would silence real file-level work.
+#
+# The first test is position-as-authorship: a line the last commit produced is a
+# line the loop wrote, so a defect on it is the loop reviewing itself. That holds
+# for code, where a fix edits the lines it fixes. It does not hold for prose: an
+# iteration that rewrites a paragraph reproduces every line in it, so a genuinely
+# new defect class in the rewritten text reads as churn and stops the loop while
+# real findings are still arriving. Prose files therefore skip the first test and
+# are decided by the PR-diff test alone, which still catches the other half of
+# churn (a reviewer that has run out of pull request and reached outside it).
+# The iteration cap remains the backstop for a prose loop that will not converge;
+# `iteration_cap` files the same follow-up issue `churn` would have.
 set -uo pipefail
 
 PREV_SHA="${1:-}"; BASE_REF="${2:-}"; FPATH="${3:-}"; LINE="${4:-}"
@@ -40,8 +51,16 @@ diff_of() {
   git --no-pager -c core.quotePath=false diff --no-ext-diff -U0 "$1" -- "$FPATH" 2>/dev/null || true
 }
 
+# Prose: rewriting a paragraph reproduces its lines, so position says nothing
+# about who authored the defect. Extension-based on purpose — the alternative is
+# sniffing content, which mislabels a SKILL.md full of shell fences.
+case "$(printf '%s' "$FPATH" | tr '[:upper:]' '[:lower:]')" in
+  *.md|*.markdown|*.mdx|*.txt|*.rst|*.adoc) IS_PROSE=1 ;;
+  *) IS_PROSE=0 ;;
+esac
+
 prev_hit=""
-if [ -n "$PREV_SHA" ]; then
+if [ -n "$PREV_SHA" ] && [ "$IS_PROSE" = 0 ]; then
   prev_hit=$(diff_of "${PREV_SHA}..HEAD" | hunk_hit)
   [ "$prev_hit" = unparsable ] && { printf 'fresh\n'; exit 0; }
   [ -n "$prev_hit" ] && { printf 'churn\n'; exit 0; }

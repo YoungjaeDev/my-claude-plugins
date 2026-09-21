@@ -306,39 +306,53 @@ echo "churn-scope.sh"
 
 # A finding on lines the PREVIOUS iteration's own commit produced, or outside the
 # PR diff entirely, is churn: the reviewer has run out of pull request to review.
+# Code fixtures carry a code extension on purpose: the position test only applies
+# to code, so a .txt stand-in would exercise the prose path instead.
 CH=$(mktemp -d)
 (
   cd "$CH" && git init -q . && git config user.email t@t && git config user.name t \
     && git checkout -q -b main \
-    && printf 'a\nb\nc\nd\ne\n' > base.txt && git add -A && git commit -qm base \
+    && printf 'a\nb\nc\nd\ne\n' > base.sh && printf 'a\nb\nc\nd\ne\n' > doc.md \
+    && git add -A && git commit -qm base \
     && git checkout -q -b feat \
-    && printf 'a\nb\nNEW-PR\nd\ne\n' > base.txt && git add -A && git commit -qm pr-change \
-    && printf 'p\nq\n' > 'space file.txt' && printf 'p\nq\n' > '한글.txt' \
+    && printf 'a\nb\nNEW-PR\nd\ne\n' > base.sh && printf 'a\nb\nNEW-PR\nd\ne\n' > doc.md \
+    && git add -A && git commit -qm pr-change \
+    && printf 'p\nq\n' > 'space file.sh' && printf 'p\nq\n' > '한글.sh' \
     && git add -A && git commit -qm awkward-names \
-    && printf 'x\ny\n' > added-by-loop.txt && git add -A && git commit -qm iter-commit
+    && printf 'x\ny\n' > added-by-loop.sh && printf 'x\ny\n' > rewritten.md \
+    && git add -A && git commit -qm iter-commit
 ) >/dev/null 2>&1
 # PREV_SHA = HEAD~1, i.e. everything the last iteration committed.
 PREV=$(cd "$CH" && git rev-parse HEAD~1)
 ch() { (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "$PREV" main "$1" "$2"); }
-is "line added by the previous iteration -> churn" "$(ch added-by-loop.txt 1)" churn
-is "line the PR itself changed -> fresh"           "$(ch base.txt 3)" fresh
-is "line outside the PR diff -> churn"             "$(ch base.txt 5)" churn
-is "file not in the PR at all -> churn"            "$(ch untouched.txt 1)" churn
+is "line added by the previous iteration -> churn" "$(ch added-by-loop.sh 1)" churn
+is "line the PR itself changed -> fresh"           "$(ch base.sh 3)" fresh
+is "line outside the PR diff -> churn"             "$(ch base.sh 5)" churn
+is "file not in the PR at all -> churn"            "$(ch untouched.sh 1)" churn
+# Prose rewrites its own paragraphs every iteration, so a line the last commit
+# produced says nothing about who authored the defect on it. Charging that as
+# churn stopped a live loop at iter 3 while real findings were still arriving
+# (PR #254). The position test is skipped for prose; the PR-diff test is not.
+is "prose line the previous iteration rewrote -> fresh" "$(ch rewritten.md 1)" fresh
+is "prose line the PR itself changed -> fresh"          "$(ch doc.md 3)" fresh
+is "prose line outside the PR diff -> churn"            "$(ch doc.md 5)" churn
+is "prose file not in the PR at all -> churn"           "$(ch untouched.md 1)" churn
+is "prose extension match ignores case"                 "$(ch rewritten.MD 1)" churn
 # Iter 1 has no previous commit; the PR-diff test still applies.
 is "no PREV_SHA: PR line still fresh" \
-   "$( (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "" main base.txt 3) )" fresh
+   "$( (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "" main base.sh 3) )" fresh
 # A file-level finding has no position to compare. Defaulting it to churn would
 # silence real file-level work, so it stays fresh.
-is "file-level finding (no line) -> fresh"  "$(ch base.txt '')" fresh
-is "non-numeric line -> fresh"              "$(ch base.txt 'null')" fresh
+is "file-level finding (no line) -> fresh"  "$(ch base.sh '')" fresh
+is "non-numeric line -> fresh"              "$(ch base.sh 'null')" fresh
 # An unresolvable base must not manufacture churn out of a lookup failure.
 is "unresolvable base -> fresh" \
-   "$( (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "" no-such-ref base.txt 3) )" fresh
+   "$( (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "" no-such-ref base.sh 3) )" fresh
 # git pads the `+++` header with a tab and octal-escapes non-ASCII names. Comparing
 # the raw header text marked every finding in such a file as churn, which quietly
 # demoted real findings to cosmetic and let the loop stop early.
-is "path with a space -> fresh"             "$(ch 'space file.txt' 1)" fresh
-is "non-ASCII path -> fresh"                "$(ch '한글.txt' 1)" fresh
+is "path with a space -> fresh"             "$(ch 'space file.sh' 1)" fresh
+is "non-ASCII path -> fresh"                "$(ch '한글.sh' 1)" fresh
 rm -rf "$CH"
 
 echo

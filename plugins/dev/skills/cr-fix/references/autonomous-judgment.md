@@ -119,6 +119,8 @@ bash "$SKILL_DIR/scripts/churn-scope.sh" "$PREV_SHA" "origin/$BASE" "$path" "$li
 
 `churn` when the line falls inside a hunk the previous iteration's commit added or changed, or falls outside the PR diff entirely; `fresh` otherwise. From `ITER >= 2` only — the first iteration has no prior commit, and `PREV_SHA` empty disables the first test. A file-level finding with no line is always `fresh`.
 
+**Prose skips the first test.** The previous-iteration test reads position as authorship: a line the last commit produced is a line the loop wrote. That holds for code, where a fix edits the lines it fixes. It does not hold for prose (`.md`, `.markdown`, `.mdx`, `.txt`, `.rst`, `.adoc`), where an iteration rewrites a whole paragraph and reproduces every line in it, so a genuinely new defect class in the rewritten text reads as churn. On PR #254 that stopped a live loop at iter 3 on four findings, three of them real. A prose finding is decided by the PR-diff test alone — still catching the half of churn that matters most, a reviewer that has run out of pull request and reached outside it — and the iteration cap is the backstop for a prose loop that will not converge, filing the same follow-up issue `churn` would have.
+
 A `churn` finding has its `severity_reassess` forced to `cosmetic` and increments `churn_this_cycle`. It does not become unfixable — the matrix still applies — but it can no longer hold the loop open, which is the point: a reviewer that keeps finding material on its own review responses has run out of PR to review.
 
 ## Decision matrix
@@ -194,7 +196,7 @@ It is safe because Step 12 already pushed the applied fixes before Step 13 runs.
 
 ## Churn stop (`churn`)
 
-From `ITER >= 2`, when every finding this cycle came back `churn` on the `in_prev_diff` axis, the loop ends with `final_state=churn`. The reviewer is no longer reviewing the pull request; it is reviewing the loop's own commits and the code around them. More iterations produce more of the same.
+From `ITER >= 2`, when every finding this cycle came back `churn` on the `in_prev_diff` axis, the loop ends with `final_state=churn`. The reviewer is no longer reviewing the pull request; it is reviewing the loop's own commits and the code around them. More iterations produce more of the same. On a prose-only PR the stop fires only on the outside-the-diff half of the axis (above), so a loop that keeps finding new material in rewritten prose runs to `iteration_cap` instead.
 
 ## Merge eligibility
 

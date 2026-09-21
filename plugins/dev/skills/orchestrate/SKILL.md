@@ -15,8 +15,13 @@ is built on it, and the orchestrator alone verifies and answers the user. Model 
 chosen per job through the worker presets bundled in `plugins/dev/agents/`, because the `Agent`
 tool overrides `model` per call but reads effort only from the agent definition.
 
-Codex has no `Agent` tool. There the skill degrades to inline work that still uses the job card
-as its checklist.
+Codex has no `Agent` tool. There the skill degrades to inline work that still uses the job card as
+its checklist, and steps 4 to 7 read differently: with no worker to attribute, `isolation: worktree`
+and the branch check in step 5 do not apply. An inline run can still take the same isolation by hand
+— `git worktree add` per writing slice, then the identical step 5 command against that branch — and
+should when a slice is large enough that its scope is worth proving. Where it does not, the card's
+Paths bound the agent's own edits and the report names every path it wrote; that report is the
+completion criterion in place of the gate.
 
 ## When to use
 
@@ -147,10 +152,12 @@ Preset:        which dev:worker-* and the one-clause reason
    because step 1 gave every path one writer. **Content violation:** a diff inside an owned path
    that the card's Goal does not explain — an unrequested feature, a refactor nobody asked for, a
    bulk reformat. On rejection, re-query in this order and stop at the first pass:
-   1. `SendMessage` to the same agent, naming the failed criterion, at most twice. A path violation
-      also gets a fresh worktree from the recorded base: the offending commit stays in
-      `<base>..<branch>` history however the worker fixes it afterwards, so a re-query on the same
-      branch can never pass the gate and burns both retries on its way to the user.
+   1. `SendMessage` to the same agent, naming the failed criterion, at most twice — but never for a
+      path violation. That agent keeps its own worktree and branch, so it commits its fix on top of
+      the offending commit, which stays in `<base>..<branch>` however it is fixed: the gate can
+      never pass and both retries burn on the way to the user. A path violation instead goes
+      straight to a newly dispatched isolated agent from the recorded base, carrying the rejected
+      answer and the failed criterion as Inputs.
    2. Re-dispatch the card once on the next preset up, with the rejected answer attached as an input.
       A rejected `dev:worker-max` result has no next preset and goes straight to 3.
    3. `AskUserQuestion` with the rejected answers summarised; another vendor's agent is one of the
@@ -203,7 +210,7 @@ Preset:        which dev:worker-* and the one-clause reason
 | an out-of-scope file reached history although the gate passed | the check used `git diff <base>...<branch>`, whose net tree hides a path the branch added and later deleted |
 | a worker edited the user's files and its branch stayed empty | the card went out with the main checkout's absolute paths instead of paths under that worker's worktree root |
 | a worker could not find a config or dependency that exists locally | it is untracked or ignored, so the worktree never had it; supply or regenerate those inputs at dispatch |
-| a re-query failed the gate twice on a fix that looked right | it reused the branch that already carries the violating commit; a path violation restarts on a fresh worktree from the recorded base |
+| a re-query failed the gate twice on a fix that looked right | it went back to the same agent, which keeps its branch; a path violation needs a newly dispatched agent from the recorded base |
 | effort never changed between jobs | `model` was passed on the `Agent` call without a `dev:worker-*` type; effort lives in the preset definition |
 
 ## Verification

@@ -220,9 +220,11 @@ Preset:        which dev:worker-* and the one-clause reason
 
 ## Verification
 
-The run is done when the slice list shows one writer per path, every writing slice ran in its own
-worktree, every dispatched agent has a ledger row with an accepted
+The run is done when the slice list shows one writer per path, every writing slice on the `Agent`
+path ran in its own worktree, every dispatched agent has a ledger row with an accepted
 verdict or an open user question, every merged branch passed the step 5 path check, the verification
 commands ran against the integrated tree in this session, `git worktree list` matches its
 pre-dispatch baseline, and the user's report leads with the outcome and marks anything unverified as
-such.
+such. On a Codex inline run that took no worktree by hand, the Overview's substitute replaces the
+worktree, branch, and `git worktree list` conditions: the card's Paths bound every edit, the report
+names every path written, and the orchestrator verifies those paths directly.

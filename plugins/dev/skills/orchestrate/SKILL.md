@@ -98,20 +98,23 @@ Preset:        which dev:worker-* and the one-clause reason
    cannot reach the user's work at all, and its branch is a per-worker record of what it changed —
    which is the whole basis of the step 5 check. The card tells the worker to commit its work on
    that branch before returning; work left uncommitted in a worktree is invisible to the check and
-   never merges. A slice that must write in the main checkout runs alone, with no other writer in
-   flight, and its results are surfaced rather than merged. Record `git rev-parse HEAD` as the base
-   the workers branched from, and `git worktree list` as the baseline for step 7. While agents run,
-   the orchestrator prepares the verification of step 6 instead of doing a worker's job in parallel.
-   Done when every card has been sent and both baselines are recorded.
+   never merges. Record the base each worktree branched from, per slice: an independent slice
+   branches from the `git rev-parse HEAD` taken before the first dispatch, a dependent slice from
+   the accepted branch of the slice it consumes, so its worker reads and tests against that work
+   instead of an interface that no longer exists. Record `git worktree list` as the baseline for
+   step 7. A slice that must write in the main checkout runs alone, with no other writer in flight,
+   and its results are surfaced rather than merged. While agents run, the orchestrator prepares the
+   verification of step 6 instead of doing a worker's job in parallel. Done when every card has been
+   sent and every slice's base plus the worktree baseline are recorded.
 5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer
    is ambiguous or hedged where the card asked for a decision, a claim carries no evidence
    (`file:line` for file content, command plus output for a run result, the path for a path), the
    result contradicts what the repository shows, the done criteria are not met, or the card's owned
    Paths were exceeded. That last one is decided by git, not by the worker's report. **Path
-   violation:** list what the worker's branch changed with `git diff -z --name-only <recorded
-   HEAD>...<worker branch>` — three dots, so commits the base picked up meanwhile stay out of the
-   list — and resolve each repo-relative path against the repo root. `-z` is load-bearing: under
-   default `core.quotePath` a non-ASCII or newline path comes back quoted and octal-escaped,
+   violation:** list what the worker's branch changed with `git diff -z --name-only <that slice's
+   recorded base>...<worker branch>` — three dots, so commits the base picked up meanwhile stay out
+   of the list — and resolve each repo-relative path against the repo root. `-z` is load-bearing:
+   under default `core.quotePath` a non-ASCII or newline path comes back quoted and octal-escaped,
    matching neither the card's absolute paths nor anything on disk, so a legitimate owned file reads
    as a violation. A path outside *this* card's owned Paths is a violation; another card owning it
    is no defence, because step 1 gave every path one writer. **Content violation:** a diff inside an
@@ -134,16 +137,21 @@ Preset:        which dev:worker-* and the one-clause reason
    taken before that slice went out, show the user what moved outside the card, and let them decide.
    Never `git checkout .` or `git stash` — the user's own uncommitted work is in that checkout too.
 
-6. **Integrate and verify.** Combine the accepted results and verify them directly: run the tests,
-   lint, or build the repository defines, and `Read` the decisive `file:line` evidence. Worker
-   self-reports do not count as verification. When a slice needs an evaluation, a quantitative check
-   becomes the smallest script that fails when the property breaks, and a qualitative check goes to a
-   deep-preset review slice with its own card. Done when the verification commands have run in this
-   session and their output is in hand.
-7. **Clean up and report.** Merge only the branches that passed step 5; a branch that did not is
-   dropped, not cleaned up by hand. Then compare `git worktree list` with the baseline taken before
-   dispatch and run `git worktree remove <path>` plus a delete of the `worktree-<name>` branch until
-   the list matches. Report to the user with the outcome first, then a ledger:
+6. **Integrate and verify.** Merge every accepted branch into one integration worktree and verify
+   there — not in each worktree separately and not in the untouched main checkout, either of which
+   passes two branches whose APIs disagree. Run the tests, lint, or build the repository defines,
+   and `Read` the decisive `file:line` evidence. Worker self-reports do not count as verification.
+   When a slice needs an evaluation, a quantitative check becomes the smallest script that fails
+   when the property breaks, and a qualitative check goes to a deep-preset review slice with its own
+   card. Done when the verification commands have run against the integrated tree in this session
+   and their output is in hand.
+7. **Clean up and report.** Bring the verified integration result into the user's branch; a branch
+   that failed step 5 or step 6 is dropped, not repaired by hand. Then compare `git worktree list`
+   with the baseline taken before dispatch and remove each worktree until the list matches. A worker
+   that left untracked build output or an uncommitted edit behind makes a plain `git worktree
+   remove` fail with `contains modified or untracked files`; confirm its branch holds the commits
+   that were merged, report what is being discarded, and remove it with `--force`. Then delete the
+   `worktree-<name>` branch. Report to the user with the outcome first, then a ledger:
 
    | Agent | Preset | Retries | Verdict | Evidence |
    |---|---|---|---|---|
@@ -163,6 +171,8 @@ Preset:        which dev:worker-* and the one-clause reason
 | `Workflow` refused or surprised the user | the run was description-triggered; `Workflow` needs the user's own `/dev:orchestrate` call or "ultracode" |
 | a worker edited a file no card owned | the writing slice went out without `isolation: worktree`, so its writes landed in the shared checkout where no branch attributes them and the gate had only the worker's self-report |
 | a worker's branch diff came back empty | the card never told it to commit; uncommitted work in a worktree is invisible to the step 5 check and never merges |
+| a dependent slice built against an interface that no longer exists | its worktree branched from the pre-dispatch HEAD instead of the accepted branch it consumes |
+| integration broke only after the run ended | step 6 verified each worktree on its own instead of one tree with every accepted branch merged in |
 | effort never changed between jobs | `model` was passed on the `Agent` call without a `dev:worker-*` type; effort lives in the preset definition |
 
 ## Verification
@@ -170,5 +180,6 @@ Preset:        which dev:worker-* and the one-clause reason
 The run is done when the slice list shows one writer per path, every writing slice ran in its own
 worktree or alone in the main checkout, every dispatched agent has a ledger row with an accepted
 verdict or an open user question, every merged branch passed the step 5 path check, the verification
-commands ran in this session, `git worktree list` matches its pre-dispatch baseline, and the user's
-report leads with the outcome and marks anything unverified as such.
+commands ran against the integrated tree in this session, `git worktree list` matches its
+pre-dispatch baseline, and the user's report leads with the outcome and marks anything unverified as
+such.

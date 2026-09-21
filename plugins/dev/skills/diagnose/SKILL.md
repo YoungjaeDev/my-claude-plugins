@@ -7,8 +7,6 @@ description: "Diagnose a bug by capturing a failing command before touching code
 
 A discipline for bugs that resist a guess-and-check fix: get a failing command first, then falsify hypotheses against it instead of reading code and theorizing.
 
-Adapted from mattpocock/skills `diagnosing-bugs` (commit `74ca5fe`).
-
 ## Redact
 
 Every command, output, and captured artifact shown in this skill's steps gets secrets redacted first: replace a credential with `<REDACTED>` before it appears in chat, a log, or a commit message. Prefer reading credentials from env vars at run time over embedding them in a script.

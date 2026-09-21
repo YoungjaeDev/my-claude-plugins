@@ -2,8 +2,6 @@
 
 A PR whose base moved on can stop merging while cr-fix is still looping. GitHub then reports `mergeable: CONFLICTING`, the reviewers keep reviewing a diff that cannot land, and `--auto-merge` never fires. Step 5a resolves the conflict inside the loop instead of stopping.
 
-Adapted from `mattpocock/skills` at `74ca5fe`, `skills/engineering/resolving-merge-conflicts/SKILL.md`.
-
 ## Trigger
 
 ```bash

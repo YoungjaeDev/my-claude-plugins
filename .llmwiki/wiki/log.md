@@ -8,6 +8,30 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-09-21 — a closing keyword has four sources and two ways to be ignored (post-merge #262)
+
+- guards/issue-close-sources.md: new page — a merge leaves `Closes #N` open silently on a non-default base (keywords ignored, *no link created*) or with the repository's auto-close setting off; `closingIssuesReferences` is documented as issues that *may* close and includes manual links, so it is a candidate source and never closure evidence (read the issue's own `state`); the four non-overlapping sources are the PR body, the PR's commit messages, the merge commit's own message and the manual links, with a 100/250 ceiling on the commit source and all nine keywords rather than the three `-s` forms; `gh api` and `--repo owner/repo` both default to `github.com`, so a read-path-only host pin sends the close to the wrong server, and a close comment's `#<PR>` resolves in the *issue's* repository; sources: GitHub docs (linking, auto-close, GraphQL reference), PR #262
+- index.md: added the guards hook
+
+## 2026-09-21 — narrowing a guarantee means finding every place it is claimed (post-merge #261)
+
+- guards/worker-scope-attribution.md: new `## Narrowing a guarantee means finding every place it is claimed` section — the change that scoped the worktree guarantee to writes through git edited the paragraph stating it and the pitfalls row, and both reviewers independently found a surviving "the symlink rules close that path" claim two hundred lines earlier; a document that admits a limit in one place and denies it in another reads as safe wherever the reader lands; grep every restatement (summary line, setup step, troubleshooting row, plugin CLAUDE.md), not the finding's own wording; `sources` 3 -> 4
+
+## 2026-09-21 — the churn test reads position as authorship, which prose breaks (post-merge #260)
+
+- guards/review-loop-churn.md: added the position-as-authorship rule to `## Stopping it` (a prose iteration rewrites whole paragraphs and reproduces their lines, so a new defect class is charged as churn; judge prose by the outside-the-diff axis and let `iteration_cap` be the backstop), added the PR #254 measurement to `## Evidence` (stopped at iter 3 on four findings, three real, one of them the premise the change rested on), `last_verified` 2026-09-11 -> 2026-09-21, `sources` 4 -> 6
+- index.md: broadened the guards hook
+
+## 2026-09-21 — CodeRabbit obeys the PR head's config, not the base's (post-merge #259)
+
+- guards/coderabbit-config-branch.md: new page — measured across two PRs while `main` kept `reviews.auto_review.enabled: false`: #254's head carried the key and CodeRabbit skipped, #259's head removed it and CodeRabbit auto-reviewed; a re-enable (and a disable) is therefore live inside its own PR, `cr-review-request.sh` reading the working tree agrees with that, and disabling auto-review drops cr-fix to a single reviewer with nothing in its final JSON recording the absence; sources: PR #254, PR #259
+- index.md: added the guards hook
+
+## 2026-09-21 — worker scope is an isolation problem, not a git-forensics one (post-merge #254)
+
+- guards/worker-scope-attribution.md: new page — `git status --porcelain` records tree state and not the actor, so a shared checkout leaks worker attribution six ways (dirty / staged / untracked / ignored / committed / quoted paths); `isolation: worktree` makes the branch the per-worker record and the check one `git log --no-renames -z --name-only` against the recorded base (two dots, never `git diff ...`, merge commits rejected first); isolation costs the ignored inputs it protects; the git-level gate cannot see a write through a symlink created and removed within the run; sources: PR #254, its Codex review (16 of 17 findings held only under the shared-checkout premise), `orchestrate/SKILL.md` steps 4-5
+- index.md: added the guards hook
+
 ## 2026-09-17 — bot login matching: stem fixes the two spellings and opens spoofing (post-merge #228)
 
 - guards/bot-identity-matching.md: new page — two spellings per surface (GraphQL strips `[bot]`, REST keeps it), equality → silent zero, unanchored stem → registrable lookalike (`coderabbit-evil`) reaching a loop that edits code, `^<login>(\[bot\])?$` as the only closing form (`[`/`]` are illegal login characters), jq double-escape, `sort_by | last` turning a spoof into a wrong success, anchoring's silent-zero cost paid by regression tests; sources: PR #228, its CodeRabbit review

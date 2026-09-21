@@ -105,6 +105,7 @@ git add -A \
 - 사용자-facing 문서는 한국어 설명을 유지하고, 명령어와 경로는 코드 포맷으로 쓴다.
 - README 류는 실제 설치·사용 흐름을 우선하고, 플러그인 수·이름·명령어 예시는 매니페스트와 일치시킨다.
 - 스킬 본문과 플러그인 `CLAUDE.md` 는 영어로 쓴다 (두 런타임과 Codex cloud reviewer 가 한 언어를 읽는다). 도메인 콘텐츠와 `description:` 의 한국어 트리거 문구는 예외다.
+- 각색한 스킬의 출처 표기는 `README.md` 와 `.claude/spec/` 에만 둔다. 에이전트가 읽는 스킬 본문과 플러그인 `CLAUDE.md` 에는 넣지 않는다 — 지침 한가운데의 크레딧은 에이전트가 원본을 참고하러 가는 경로가 된다.
 
 ## Code Review Rules
 
@@ -134,4 +135,4 @@ CodeRabbit inline 헤더는 `_<카테고리>_ | _<심각도>_ | _<노력>_` (예
 | CR `📝 Nitpick` (리뷰 요약 `<details>` 전용) | `skip` |
 | Codex P1 (red), P2 (yellow) | `gated` |
 
-cr-fix 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지, `--no-minor-stop` 으로 비활성화. **churn stop** (opt-out 없음) — iter 2 부터 이번 사이클 finding 이 전부 직전 iter 커밋 위나 PR diff 밖이면 `final_state=churn` 으로 정지. **후속 이슈 1건** — `final_state` 가 `churn` / `minor_floor` / `iteration_cap` 이고 deferred 가 있으면 `gh issue create --label tbd` 로 1건 발행한다 (`dev:decompose-issue` 는 호출하지 않는다). **auto-merge** — `clean`, 또는 후속 이슈 발행에 성공한 `minor_floor` / `churn` 만 통과하고 이슈 발행 실패 시 머지를 차단한다. cr-fix 는 `@coderabbitai rate limit` 외에 어떤 PR 댓글도 올리지 않는다 (재리뷰는 push 가 트리거한다). **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 cr-fix state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.
+cr-fix 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지, `--no-minor-stop` 으로 비활성화. **churn stop** (opt-out 없음) — iter 2 부터 이번 사이클 finding 이 전부 직전 iter 커밋 위나 PR diff 밖이면 `final_state=churn` 으로 정지한다. 직전 커밋 위 축은 코드에만 적용된다 — 산문은 한 iteration 이 문단을 통째로 다시 쓰므로 위치가 작성자를 뜻하지 않고, PR diff 밖 축만으로 판정하며 수렴하지 않는 산문 루프는 `iteration_cap` 이 받는다. **후속 이슈 1건** — `final_state` 가 `churn` / `minor_floor` / `iteration_cap` 이고 deferred 가 있으면 `gh issue create --label tbd` 로 1건 발행한다 (`dev:decompose-issue` 는 호출하지 않는다). **auto-merge** — `clean`, 또는 후속 이슈 발행에 성공한 `minor_floor` / `churn` 만 통과하고 이슈 발행 실패 시 머지를 차단한다. cr-fix 는 `@coderabbitai rate limit` 외에 어떤 PR 댓글도 올리지 않는다 (재리뷰는 push 가 트리거한다). **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 cr-fix state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.

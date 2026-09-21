@@ -15,10 +15,12 @@
 # skill (YAGNI). Recorded here as a deliberate choice, not an oversight.
 reviews:
   auto_review:
-    # Auto-review is off while the review quota is exhausted; the GitHub
-    # integration stays connected, and a PR is reviewed only when someone
-    # comments `@coderabbitai review`. Remove this line to turn auto-review back on.
-    enabled: false
+    # Auto-review stays on. Turning it off (`enabled: false`) leaves the GitHub
+    # integration connected but reviews only what someone asks for by hand, which
+    # drops /dev:cr-fix to a single reviewer: the loop reads the config and will
+    # not post `@coderabbitai review` itself while auto-review is disabled
+    # (plugins/dev/skills/cr-fix/scripts/cr-review-request.sh). Consumption is
+    # bounded by the levers below, not by disabling the reviewer.
     # Explicit 0 = DISABLED. Omitting this key does NOT disable it — CodeRabbit
     # defaults to 5 (pause auto-review after 5 reviewed commits since the last
     # pause; "Set to 0 to disable" per docs.coderabbit.ai/reference/configuration).

@@ -104,29 +104,27 @@ Preset:        which dev:worker-* and the one-clause reason
    a worker's reach. Supply those inputs into the worktree with the user's approval, or regenerate
    them there with the repository's own setup step, and stop before dispatch when neither is
    possible rather than sending a worker to fail on a missing file. Resolve every rewritten path
-   with `realpath` and refuse one whose components leave the worktree root: a symlink out of the
-   tree turns a faithful write into an edit of the original checkout, and the link's own blob never
-   changes, so the branch log and the gate both come back empty. A fresh worktree carries none of
-   the main checkout's uncommitted, untracked or ignored files, so a worker cannot reach the user's
-   work at all, and its branch is a per-worker record of what it changed — which is the whole basis
-   of the step 5 check. Rewrite that card's owned and consulted Paths as absolute paths under the
-   worker's own worktree root before sending it: the card format asks for absolute paths, and the
-   main checkout's are the ones a worker will faithfully open, editing the user's files while its
-   branch stays empty and the gate sees nothing. The card also tells the worker to commit its work
-   on its branch before returning, and to make no merge commits; work left uncommitted in a worktree
-   is invisible to the check and never merges. Record the base each worktree branched from, per
-   slice: an independent slice branches from the `git rev-parse HEAD` taken before the first
+   against the worktree root and refuse one whose components leave it — resolving the nearest
+   existing ancestor and checking the rest as text, since a card may legitimately name a file under
+   a directory tree the worker has yet to create and `realpath` without the GNU-only `-m` exits 1
+   when any parent is missing (`cr-fix`'s `scripts/path-trust.sh` is the worked form): a symlink out
+   of the tree turns a faithful write into an edit of the original checkout, and the link's own blob
+   never changes, so the branch log and the gate both come back empty. A fresh worktree carries none
+   of the main checkout's uncommitted, untracked or ignored files, so a worker cannot reach the
+   user's work at all, and its branch is a per-worker record of what it changed — which is the whole
+   basis of the step 5 check. Rewrite that card's owned and consulted Paths as absolute paths under
+   the worker's own worktree root before sending it: the card format asks for absolute paths, and
+   the main checkout's are the ones a worker will faithfully open, editing the user's files while
+   its branch stays empty and the gate sees nothing. The card also tells the worker to commit its
+   work on its branch before returning, and to make no merge commits; work left uncommitted in a
+   worktree is invisible to the check and never merges. Record the base each worktree branched from,
+   per slice: an independent slice branches from the `git rev-parse HEAD` taken before the first
    dispatch, a dependent slice from the accepted branch of the slice it consumes, so its worker
    reads and tests against that work instead of an interface that no longer exists. Record `git
-   worktree list` as the baseline for step 7. A slice that must write in the main checkout runs
-   alone, with no other writer in flight, and only when the whole repository is clean — not merely
-   the card's paths: `git status` reports an already-dirty file as the same ` M <path>` before and
-   after a worker overwrites it, so any pre-existing edit anywhere is one such a slice could destroy
-   unseen. Its results are surfaced rather than merged. While agents run, the orchestrator prepares
-   the verification of step 6 instead of doing a worker's job in parallel. Done when the checkout
-   was clean on every card's paths — everywhere, when a main-checkout writer is in the plan — every
-   card has been sent with worktree-rooted paths, and every slice's base plus the worktree baseline
-   are recorded.
+   worktree list` as the baseline for step 7. While agents run, the orchestrator prepares the
+   verification of step 6 instead of doing a worker's job in parallel. Done when the checkout was
+   clean on every card's paths, every card has been sent with worktree-rooted paths, and every
+   slice's base plus the worktree baseline are recorded.
 5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer
    is ambiguous or hedged where the card asked for a decision, a claim carries no evidence
    (`file:line` for file content, command plus output for a run result, the path for a path), the
@@ -163,12 +161,8 @@ Preset:        which dev:worker-* and the one-clause reason
    simply not merged, so its writes never reach the user's checkout; send the card back down the
    re-query ladder naming the paths it left, and write `scope violation: <path>` in the agent's
    ledger row. Use `AskUserQuestion` before dropping a branch whose out-of-scope work looks worth
-   keeping. A content violation goes the same way — the ladder, never a revert. The one slice that
-   can touch the user's checkout is a main-checkout writer, and there the orchestrator reports
-   rather than repairs: compare `git status --porcelain -z --untracked-files=all` with the reading
-   taken before that slice went out — trustworthy there precisely because step 4 required a clean
-   repository — show the user what moved outside the card, and let them decide. Never `git checkout
-   .` or `git stash` — the user's own uncommitted work is in that checkout too.
+   keeping. A content violation goes the same way — the ladder, never a revert. No writer runs in
+   the user's checkout, so there is never a repair to make there.
 
 6. **Integrate and verify.** Merge every accepted branch into one integration worktree and verify
    there — not in each worktree separately and not in the untouched main checkout, either of which
@@ -215,7 +209,7 @@ Preset:        which dev:worker-* and the one-clause reason
 ## Verification
 
 The run is done when the slice list shows one writer per path, every writing slice ran in its own
-worktree or alone in the main checkout, every dispatched agent has a ledger row with an accepted
+worktree, every dispatched agent has a ledger row with an accepted
 verdict or an open user question, every merged branch passed the step 5 path check, the verification
 commands ran against the integrated tree in this session, `git worktree list` matches its
 pre-dispatch baseline, and the user's report leads with the outcome and marks anything unverified as

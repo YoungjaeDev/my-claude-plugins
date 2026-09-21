@@ -147,21 +147,20 @@ Preset:        which dev:worker-* and the one-clause reason
    **Scope violations.** Revert a path violation path by path. A tracked file the baseline showed as
    clean goes back with `git restore --source=<baseline HEAD> --staged --worktree -- <path>` — the
    HEAD step 4 recorded, never the current one, which holds the violation itself when the worker
-   committed it and would restore it verbatim. `--staged` resets the index too: a bare
-   `git checkout -- <path>` copies the index into the worktree, so a worker that ran `git add` leaves
-   its change staged and it rides into the user's next commit. A violation that reached a commit has
-   to leave that branch's history as well — amend or rebase the path out before step 7 merges the
-   branch, since a working-tree restore alone leaves the out-of-scope blob in the commits being
-   merged. A file the
-   baseline did not list at all is deleted, after `git restore --staged -- <path>` drops it from the
-   index: removing the file alone leaves the `A` entry a worker's `git add` created, which shows up
-   as `AD` and still rides into the next commit. Re-run the step 4 command afterwards to confirm
-   each reverted path sits where the baseline had it. Never restore in bulk — no `git checkout .`,
-   no `git stash`. A path the baseline already showed as dirty is never reverted: the user's own
-   uncommitted work is mixed into that file, so surface it instead, with the step 4 diff beside the
-   current one, and let the user decide. Keep whatever the worker produced inside its scope and
-   carry on with the gate on that part, and write `scope violation: <path>` in the agent's ledger
-   row. Reach for `AskUserQuestion` when the reverted work looks worth keeping, or when a
+   committed it and would restore it verbatim. `--staged` resets the index too: a bare `git checkout
+   -- <path>` copies the index into the worktree, so a worker that ran `git add` leaves its change
+   staged and it rides into the user's next commit. A violation that reached a commit has to leave
+   that branch's history as well — amend or rebase the path out before step 7 merges the branch,
+   since a working-tree restore alone leaves the out-of-scope blob in the commits being merged. A
+   file the baseline did not list at all is deleted, after `git restore --staged -- <path>` drops it
+   from the index: removing the file alone leaves the `A` entry a worker's `git add` created, which
+   shows up as `AD` and still rides into the next commit. Re-run the step 4 command afterwards to
+   confirm each reverted path sits where the baseline had it. Never restore in bulk — no `git
+   checkout .`, no `git stash`. A path the baseline already showed as dirty is never reverted: the
+   user's own uncommitted work is mixed into that file, so surface it instead, with the step 4 diff
+   beside the current one, and let the user decide. Keep whatever the worker produced inside its
+   scope and carry on with the gate on that part, and write `scope violation: <path>` in the agent's
+   ledger row. Reach for `AskUserQuestion` when the reverted work looks worth keeping, or when a
    dirty-baseline file needs that decision. A content violation is not a revert: send it through the
    re-query ladder above.
 

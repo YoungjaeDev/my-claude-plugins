@@ -116,9 +116,11 @@ Preset:        which dev:worker-* and the one-clause reason
    of the tree turns a faithful write into an edit of the original checkout, and the link's own blob
    never changes, so the branch log and the gate both come back empty. A fresh worktree carries none
    of the main checkout's uncommitted, untracked or ignored files, so a worker has no path to the
-   user's work except one it builds itself — which is what the symlink rules here and in step 5
-   exist to close — and its branch is a per-worker record of what it changed, which is the whole
-   basis of the step 5 check. Rewrite that card's owned and consulted Paths as absolute paths under
+   user's work except one it builds itself. The symlink rules here and in step 5 catch only such a
+   path that survives into a commit; a link created and removed inside the run leaves nothing for
+   either to see, and a worktree is not a filesystem boundary — the note under step 5's Scope
+   violations states that limit. The branch is a per-worker record of what it changed, which is the
+   whole basis of the step 5 check. Rewrite that card's owned and consulted Paths as absolute paths under
    the worker's own worktree root before sending it: the card format asks for absolute paths, and
    the main checkout's are the ones a worker will faithfully open, editing the user's files while
    its branch stays empty and the gate sees nothing. The card also tells the worker to commit its

@@ -98,10 +98,18 @@ Preset:        which dev:worker-* and the one-clause reason
    which leaves `HEAD` where it was, so every worktree branches from a base that still lacks the
    input. A worktree branches from a commit, so an edit that is not in one reaches neither the
    workers nor the integration tree, and the run would verify a combination the user does not have.
-   Every slice that writes goes out with `isolation: worktree`. A fresh worktree carries none of the
-   main checkout's uncommitted, untracked or ignored files, so a worker cannot reach the user's work
-   at all, and its branch is a per-worker record of what it changed — which is the whole basis of
-   the step 5 check. Rewrite that card's owned and consulted Paths as absolute paths under the
+   Every slice that writes goes out with `isolation: worktree`. Before sending a card, check whether
+   it consults anything git does not carry — a `.env`, a local fixture, an installed `node_modules`:
+   a fresh worktree has none of it, which is the same property that keeps the user's secrets out of
+   a worker's reach. Supply those inputs into the worktree with the user's approval, or regenerate
+   them there with the repository's own setup step, and stop before dispatch when neither is
+   possible rather than sending a worker to fail on a missing file. Resolve every rewritten path
+   with `realpath` and refuse one whose components leave the worktree root: a symlink out of the
+   tree turns a faithful write into an edit of the original checkout, and the link's own blob never
+   changes, so the branch log and the gate both come back empty. A fresh worktree carries none of
+   the main checkout's uncommitted, untracked or ignored files, so a worker cannot reach the user's
+   work at all, and its branch is a per-worker record of what it changed — which is the whole basis
+   of the step 5 check. Rewrite that card's owned and consulted Paths as absolute paths under the
    worker's own worktree root before sending it: the card format asks for absolute paths, and the
    main checkout's are the ones a worker will faithfully open, editing the user's files while its
    branch stays empty and the gate sees nothing. The card also tells the worker to commit its work
@@ -200,6 +208,7 @@ Preset:        which dev:worker-* and the one-clause reason
 | integration broke only after the run ended | step 6 verified each worktree on its own instead of one tree with every accepted branch merged in |
 | an out-of-scope file reached history although the gate passed | the check used `git diff <base>...<branch>`, whose net tree hides a path the branch added and later deleted |
 | a worker edited the user's files and its branch stayed empty | the card went out with the main checkout's absolute paths instead of paths under that worker's worktree root |
+| a worker could not find a config or dependency that exists locally | it is untracked or ignored, so the worktree never had it; supply or regenerate those inputs at dispatch |
 | a re-query failed the gate twice on a fix that looked right | it reused the branch that already carries the violating commit; a path violation restarts on a fresh worktree from the recorded base |
 | effort never changed between jobs | `model` was passed on the `Agent` call without a `dev:worker-*` type; effort lives in the preset definition |
 

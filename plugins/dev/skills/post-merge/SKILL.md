@@ -11,7 +11,7 @@ Local cleanup + knowledge integration after a PR is merged. One run takes a merg
 ## Guidelines
 
 - **Worktree mode.** post-merge runs from the main repo or from the PR's worktree. Every step works on the main repo: git calls run as `git -C "$MAIN_REPO"` and repo paths resolve under `$MAIN_REPO/`, in the steps below and in `references/`. `MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")` gives the same answer from either place, so re-derive it in any fresh shell. Inside a worktree (`IN_WT=1`) Step 1 copies the worktree's cr-fix state into the main repo's archive, Step 4 leaves the branch alone (the worktree still has it checked out), and Step 11 prints the one command that removes the worktree and the branch. post-merge never removes the worktree itself: on Windows a worktree removed from inside itself is only half deleted.
-- **Non-default base.** For a PR into a branch CodeRabbit does not auto-review, cr-fix on the `auto` / `pr-bot` source posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/cr-fix/SKILL.md` Step 2); Step 3 below checks out that base like any other.
+- **Non-default base.** For a PR into a branch CodeRabbit does not auto-review, cr-fix on the `auto` / `pr-bot` source posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/cr-fix/SKILL.md` Step 2); Step 3 below checks out that base like any other. It also changes what the merge did to the linked issues: GitHub honours a closing keyword only on a merge into the default branch, so a non-default base leaves every one of them open with no signal on the PR page — Step 5 is what catches that, and it runs on every PR.
 - **`gh pr view` is the authoritative merge signal.** Step 1's `gh pr view ... state=MERGED` is the single source of truth for "did this land". Later steps MUST NOT re-verify merge state by comparing git SHAs.
 - **Never use SHA-level merge comparison.** `git log <base>..<branch>`, `git cherry`, `git rev-list --left-right` all false-positive after squash merge (base gets one new SHA) and rebase merge (branch SHAs rewritten). If unsure content landed, diff content not SHAs (Step 4).
 - **No stamps, current-state only.** Normative docs hold current rules; provenance lives in git/PR/blame. No `(#N)` / `PR #N` / `이슈 #N` citations, no `## Post-Merge` headers. Full rules + the `<!-- history-allowed [max=N] -->` opt-out + language consistency + SSOT cross-file dedup + content-first: see `references/core-principle.md`.
@@ -171,11 +171,18 @@ Skip silently when: no marker is found, or the user selects skip-all.
    stages them); `git rm` already stages the deletion. Do NOT add it to
    `RUN_TOUCHED`. Report each.
 
-### 5. Update GitHub Project status (optional)
+### 5. Close the issues the merge left open (always runs)
+
+Not optional and not conditional on a GitHub Project existing — 5.1 below is the optional part. A closing keyword only closes on a merge into the **default branch**; for any other base GitHub ignores the keyword, creates no link at all, and the merge leaves every named issue open. That is silent: the PR body still reads `Closes #N`, so nothing on the PR page says the issue is still open.
 
 - Extract issue refs from the PR body (`Closes #N` / `Fixes #N` / `Resolves #N`).
-- Verify the links actually closed: `gh pr view <N> --json closingIssuesReferences`. Take every `#N` the body mentions, subtract the issues in that list, and what remains was named without a closing keyword, so the merge left it open. List those and confirm through the interactive-input gate which ones this PR resolved, then `gh issue close <N> --comment "Resolved by #<PR>"` for each confirmed one. Do not close an issue the user did not confirm.
+- Verify the links actually closed: `gh pr view <N> --json closingIssuesReferences`. Take every `#N` the body mentions and subtract the issues in that list. What remains was either named without a closing keyword, or named with one on a PR into a non-default base — `baseRefName` from Step 1 against `gh repo view --json defaultBranchRef` tells the two apart, and on a non-default base the list comes back empty, so **every** `#N` in the body is a candidate.
+- List what remains and confirm through the interactive-input gate which ones this PR resolved, then `gh issue close <N> --comment "Resolved by #<PR>"` for each confirmed one. Do not close an issue the user did not confirm.
+
+### 5.1. Update GitHub Project status (optional)
+
 - `gh project list --owner <owner> --format json`. If none, skip silently. Else `gh project item-list` → `gh project field-list` → `gh project item-edit` to set Status to "Done". Skip if the issue is not in the project.
+- A missing Project, or a `gh` token without the `read:project` scope, skips **this sub-step only**. Step 5 above already ran.
 
 ### 5.5. Sync milestone progress (if issues have milestones)
 

@@ -55,7 +55,7 @@ tool calls**: `REC` is the deterministic path `$MAIN_REPO/.claude/state/post-mer
 bash block that closes a later step, re-derive `MAIN_REPO`, re-set `REC` and re-declare `record_step`
 (copy them from above) before calling it.
 
-Sub-steps fold into their parent entry: 1.5 into 1, 4.5 and 4.6 into 4, 6.5 into 6.
+Sub-steps fold into their parent entry: 1.5 into 1, 4.5 and 4.6 into 4, 6.5 into 6. Step 5.1 does not fold into 5: a skipped Project sub-step must not read as a skipped issue-close check.
 
 | Step | `done` | `skipped "<reason>"` |
 |---|---|---|
@@ -63,7 +63,8 @@ Sub-steps fold into their parent entry: 1.5 into 1, 4.5 and 4.6 into 4, 6.5 into
 | 2 | always | — |
 | 3 | always | — |
 | 4 | always (folds 4.5, 4.6) | — |
-| 5 | Project status set | `no GitHub Project` / `issue not in the project` |
+| 5 | always — the issue-close check runs on every PR | — |
+| 5.1 | Project status set | `no GitHub Project` / `no read:project scope` / `issue not in the project` |
 | 5.5 | milestone table regenerated | `no milestone` |
 | 5.7 | `spec.json` entry moved | `no spec.json entry` |
 | 6 | always (folds 6.5) | — |

@@ -55,7 +55,7 @@ preset for one job; the preset's effort still applies.
 | independent slices, results come back as text | `Agent` with a `dev:worker-*` type, `name` set, background, all dispatched in one message |
 | the worker needs the conversation so far | `Agent` with `subagent_type: fork` |
 | slices must exchange results or run long | named agents plus `SendMessage`; `ListAgents` shows who is idle |
-| parallel writers own disjoint paths but each needs its own clean checkout (build, test, or generated files) | `isolation: worktree` on the `Agent` call, with the baseline in step 4 and the cleanup gate in step 7 |
+| a slice writes files | `isolation: worktree` on the `Agent` call — one branch per writer is what makes the step 5 scope check possible at all, and step 7 merges only the branches that passed it |
 | many-stage pipeline with no user judgment mid-way, or resume is needed, and the user typed `/dev:orchestrate` or "ultracode" | `Workflow`, after loading `workflow-authoring` |
 | another vendor's agent (codex-rescue, agy-rescue, sidekick) looks like a better fit | ask through `AskUserQuestion` first, every time |
 | one slice with a known location | inline, no delegation |
@@ -93,50 +93,30 @@ Preset:        which dev:worker-* and the one-clause reason
 3. **Pick preset and structure** from the two tables. Give every agent a `name` so a re-query can
    reach the same transcript. Done when each card names its preset and the run names its structure.
 4. **Dispatch.** Independent slices go out in one message, in the background. Dependent slices wait
-   for the result they consume. Slices that write go out with `isolation: worktree`, or one at a
-   time: two writers in one checkout cannot be told apart at the gate, and gating one against the
-   other's writes reverts work that was never out of scope. Before the first dispatch, record `git
-   status --porcelain -z --untracked-files=all` as the scope baseline for step 5. `-z` keeps a path
-   with a space or a non-ASCII byte parseable, and `--untracked-files=all` lists a new directory
-   file by file — the default collapses it to one `?? dir/` entry, which hides that a card owns some
-   files inside it and none of the others, and turns a delete into a recursive one. Gitignored paths
-   stay out of the baseline on purpose: they are build output and tool state, not deliverables, so
-   pulling them in would make every `__pycache__` a violation and put files like
-   `.claude/state/*.json` on the delete path. Record `git rev-parse HEAD` alongside it: a worker that
-   commits its work leaves `git status` clean on both sides of the run, so the status baseline on its
-   own sees nothing at all. Record the content of every path that baseline already
-   lists as well — `git diff` *and* `git diff --cached` for a tracked one, since a staged change is
-   invisible to a bare `git diff`, and `git hash-object` for an untracked one, which `git diff` does
-   not cover at all. That content is the user's own work, and what it was at dispatch time is the
-   only way to tell a later worker edit inside those files apart from what was there first. When any
-   card uses `isolation: worktree`, record `git worktree list` before the first dispatch as the
-   baseline for step 7, and take the same recordings inside each worktree. While agents run, the
-   orchestrator prepares the verification of step 6 instead of doing a worker's job in parallel.
-   Done when every card has been sent, the scope baseline is recorded, and, where worktrees are in
-   play, the worktree baseline is recorded.
+   for the result they consume. Every slice that writes goes out with `isolation: worktree`. A fresh
+   worktree carries none of the main checkout's uncommitted, untracked or ignored files, so a worker
+   cannot reach the user's work at all, and its branch is a per-worker record of what it changed —
+   which is the whole basis of the step 5 check. The card tells the worker to commit its work on
+   that branch before returning; work left uncommitted in a worktree is invisible to the check and
+   never merges. A slice that must write in the main checkout runs alone, with no other writer in
+   flight, and its results are surfaced rather than merged. Record `git rev-parse HEAD` as the base
+   the workers branched from, and `git worktree list` as the baseline for step 7. While agents run,
+   the orchestrator prepares the verification of step 6 instead of doing a worker's job in parallel.
+   Done when every card has been sent and both baselines are recorded.
 5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer
    is ambiguous or hedged where the card asked for a decision, a claim carries no evidence
    (`file:line` for file content, command plus output for a run result, the path for a path), the
-   result contradicts what the repository shows, the done criteria are not met, or an owned path
-   list was exceeded. Two of these are decided by git, not by the worker's report. **Path
-   violation:** re-run the step 4 command after the result arrives and compare it with the baseline,
-   then add what the worker committed: `git diff -z --name-only <baseline HEAD>..HEAD` in the
-   checkout it worked in, which for a worktree slice is that worktree's own branch. `-z` again, and
-   for the same reason: with default `core.quotePath` this prints a quoted, octal-escaped string for
-   a non-ASCII or newline path, which matches neither the card's absolute paths nor the `-z` status
-   baseline, so a legitimate owned file reads as a violation and the restore that follows misses.
-   Resolve each repo-relative path against the repo root before comparing it with the card.
-   Committing is not a way out of the gate. A path is a violation when it falls outside the owned
-   Paths of the card whose result is being gated — another card owning it is no defence, because
-   step 1 gave every path one writer, and a worker writing into a sibling's path is the race that
-   rule exists to prevent. It counts when the path is new against the baseline, and equally when the
-   baseline already listed it but its content moved from the step 4 snapshot: an already-dirty or
-   already-untracked file is not a free pass to write into. Gate one result at a time and roll the
-   baseline forward to the post-gate state after each accepted one, so the next comparison sees only
-   the next worker's writes — which is why step 4 isolates or serialises every writing slice.
-   **Content violation:** a diff inside an owned path that the card's Goal does not explain — an
-   unrequested feature, a refactor nobody asked for, a bulk reformat. On rejection, re-query in this
-   order and stop at the first pass:
+   result contradicts what the repository shows, the done criteria are not met, or the card's owned
+   Paths were exceeded. That last one is decided by git, not by the worker's report. **Path
+   violation:** list what the worker's branch changed with `git diff -z --name-only <recorded
+   HEAD>...<worker branch>` — three dots, so commits the base picked up meanwhile stay out of the
+   list — and resolve each repo-relative path against the repo root. `-z` is load-bearing: under
+   default `core.quotePath` a non-ASCII or newline path comes back quoted and octal-escaped,
+   matching neither the card's absolute paths nor anything on disk, so a legitimate owned file reads
+   as a violation. A path outside *this* card's owned Paths is a violation; another card owning it
+   is no defence, because step 1 gave every path one writer. **Content violation:** a diff inside an
+   owned path that the card's Goal does not explain — an unrequested feature, a refactor nobody
+   asked for, a bulk reformat. On rejection, re-query in this order and stop at the first pass:
    1. `SendMessage` to the same agent, naming the failed criterion, at most twice.
    2. Re-dispatch the card once on the next preset up, with the rejected answer attached as an input.
       A rejected `dev:worker-max` result has no next preset and goes straight to 3.
@@ -144,27 +124,15 @@ Preset:        which dev:worker-* and the one-clause reason
       options offered there, never a silent fallback.
    Done when every slice has an accepted result or an open question in front of the user.
 
-   **Scope violations.** Revert a path violation path by path. A tracked file the baseline showed as
-   clean goes back with `git restore --source=<baseline HEAD> --staged --worktree -- <path>` — the
-   HEAD step 4 recorded, never the current one, which holds the violation itself when the worker
-   committed it and would restore it verbatim. `--staged` resets the index too: a bare `git checkout
-   -- <path>` copies the index into the worktree, so a worker that ran `git add` leaves its change
-   staged and it rides into the user's next commit. A violation that reached a commit has to leave
-   that branch's history as well — amend or rebase the path out before step 7 merges the branch,
-   since a working-tree restore alone leaves the out-of-scope blob in the commits being merged. A
-   file the baseline did not list at all is deleted, after `git restore --staged -- <path>` drops it
-   from the index — but run that only when the index knows the path (`git ls-files
-   --error-unmatch`), because on a file the worker never `git add`ed it exits 1 with `pathspec ...
-   did not match any file(s) known to git` and takes the delete after it down too: removing the file
-   alone leaves the `A` entry a worker's `git add` created, which shows up as `AD` and still rides
-   into the next commit. Re-run the step 4 command afterwards to confirm each reverted path sits
-   where the baseline had it. Never restore in bulk — no `git checkout .`, no `git stash`. A path
-   the baseline already showed as dirty is never reverted: the user's own uncommitted work is mixed
-   into that file, so surface it instead, with the step 4 diff beside the current one, and let the
-   user decide. Keep whatever the worker produced inside its scope and carry on with the gate on
-   that part, and write `scope violation: <path>` in the agent's ledger row. Reach for
-   `AskUserQuestion` when the reverted work looks worth keeping, or when a dirty-baseline file needs
-   that decision. A content violation is not a revert: send it through the re-query ladder above.
+   **Scope violations.** The orchestrator does not revert anything. A branch that fails the check is
+   simply not merged, so its writes never reach the user's checkout; send the card back down the
+   re-query ladder naming the paths it left, and write `scope violation: <path>` in the agent's
+   ledger row. Use `AskUserQuestion` before dropping a branch whose out-of-scope work looks worth
+   keeping. A content violation goes the same way — the ladder, never a revert. The one slice that
+   can touch the user's checkout is a main-checkout writer, and there the orchestrator reports
+   rather than repairs: compare `git status --porcelain -z --untracked-files=all` with the reading
+   taken before that slice went out, show the user what moved outside the card, and let them decide.
+   Never `git checkout .` or `git stash` — the user's own uncommitted work is in that checkout too.
 
 6. **Integrate and verify.** Combine the accepted results and verify them directly: run the tests,
    lint, or build the repository defines, and `Read` the decisive `file:line` evidence. Worker
@@ -172,12 +140,10 @@ Preset:        which dev:worker-* and the one-clause reason
    becomes the smallest script that fails when the property breaks, and a qualitative check goes to a
    deep-preset review slice with its own card. Done when the verification commands have run in this
    session and their output is in hand.
-7. **Clean up and report.** A worktree's commits pass the step 5 path check before anything is
-   merged; a slice that committed out-of-scope files hands them to the merge otherwise. When any
-   agent ran with `isolation: worktree`, compare
-   `git worktree list` with the baseline taken before dispatch, merge what is kept, then
-   `git worktree remove <path>` and delete the `worktree-<name>` branch until the list matches the
-   baseline. Report to the user with the outcome first, then a ledger:
+7. **Clean up and report.** Merge only the branches that passed step 5; a branch that did not is
+   dropped, not cleaned up by hand. Then compare `git worktree list` with the baseline taken before
+   dispatch and run `git worktree remove <path>` plus a delete of the `worktree-<name>` branch until
+   the list matches. Report to the user with the outcome first, then a ledger:
 
    | Agent | Preset | Retries | Verdict | Evidence |
    |---|---|---|---|---|
@@ -195,14 +161,14 @@ Preset:        which dev:worker-* and the one-clause reason
 | the orchestrator ran out of context mid-run | it read the worker's files itself during step 4 instead of waiting for the card's output shape |
 | a worktree survived the session | `isolation: worktree` keeps a changed worktree until a periodic sweep; the baseline comparison in step 7 was skipped |
 | `Workflow` refused or surprised the user | the run was description-triggered; `Workflow` needs the user's own `/dev:orchestrate` call or "ultracode" |
-| a worker edited a file no card owned | step 4 recorded no `git status` baseline, so the gate had nothing but the worker's self-report to go on |
+| a worker edited a file no card owned | the writing slice went out without `isolation: worktree`, so its writes landed in the shared checkout where no branch attributes them and the gate had only the worker's self-report |
+| a worker's branch diff came back empty | the card never told it to commit; uncommitted work in a worktree is invisible to the step 5 check and never merges |
 | effort never changed between jobs | `model` was passed on the `Agent` call without a `dev:worker-*` type; effort lives in the preset definition |
 
 ## Verification
 
-The run is done when the slice list shows one writer per path, every dispatched agent has a ledger
-row with an accepted verdict or an open user question, every path that changed since the step 4
-scope baseline either has an owning card, was reverted, or was surfaced to the user as a
-dirty-baseline file the orchestrator must not revert, the verification commands ran in this
-session, `git worktree list` matches its pre-dispatch baseline, and the user's report leads with
-the outcome and marks anything unverified as such.
+The run is done when the slice list shows one writer per path, every writing slice ran in its own
+worktree or alone in the main checkout, every dispatched agent has a ledger row with an accepted
+verdict or an open user question, every merged branch passed the step 5 path check, the verification
+commands ran in this session, `git worktree list` matches its pre-dispatch baseline, and the user's
+report leads with the outcome and marks anything unverified as such.

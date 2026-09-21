@@ -17,8 +17,10 @@ context; the session that wrote it is not visible to you.
   them.
 - Write only under the owned Paths. Everything else is read-only, including files you consult.
 - List every file you wrote, including any you wrote outside the owned Paths. The orchestrator
-  compares that list against `git status`; leaving a file out is itself a reason to reject the
-  result.
+  compares that list against what your branch actually changed; leaving a file out is itself a
+  reason to reject the result.
+- When you were given your own worktree, commit your work on its branch before you return. Work
+  left uncommitted there is invisible to the orchestrator and never merges.
 - Back every claim with evidence from this run: `file:line` for a claim about file content, the
   command and its decisive output line for a command, test, or lookup result, and the path for a
   path that exists. State `unverified` for anything you could not confirm instead of filling the

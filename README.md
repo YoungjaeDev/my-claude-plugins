@@ -138,7 +138,7 @@ git clone git@github.com:YoungjaeDev/my-claude-plugins.git && cd my-claude-plugi
 | `/dev:release` | 버전 태그 + GitHub Release (릴리스 노트 자동 생성) |
 | `/dev:state-tracker` | `.claude/state/spec.json` (spec / issue / PR 파이프라인 집계) `read` / `init` / `start` / `complete` |
 | `/dev:session-handoff` | 컨텍스트를 비우기 전 세션 인수인계 요약 (결정, 변경, 핵심 파일, 실행 중 상태, 검증 명령, 보류·미해결 질문). 채팅 출력 전용, 파일·메모리 미기록 |
-| `/dev:orchestrate` | 메인 에이전트를 오케스트레이터로 운용. 슬라이스별 job card (목표·범위·절대 경로·입력·출력 형식·완료 기준·프리셋), 모델 x effort 워커 프리셋 `dev:worker-standard/deep/max`, 경로당 writer 하나, 품질 게이트 (같은 에이전트 재질의 2회 → 상위 프리셋 1회 → 사용자 질문), 오케스트레이터가 직접 검증 후 에이전트별 ledger 보고. `Workflow` 는 수동 호출 시에만, worktree 는 병렬 writer 에만 (베이스라인 대조 cleanup 필수). dispatch 전 `git status` 스코프 베이스라인을 남겨 워커가 카드 밖 경로를 건드리면 그 경로만 복원하고 ledger 에 기록 |
+| `/dev:orchestrate` | 메인 에이전트를 오케스트레이터로 운용. 슬라이스별 job card (목표·범위·절대 경로·입력·출력 형식·완료 기준·프리셋), 모델 x effort 워커 프리셋 `dev:worker-standard/deep/max`, 경로당 writer 하나, 품질 게이트 (같은 에이전트 재질의 2회 → 상위 프리셋 1회 → 사용자 질문), 오케스트레이터가 직접 검증 후 에이전트별 ledger 보고. `Workflow` 는 수동 호출 시에만. 쓰는 슬라이스는 전부 worktree 격리 — 워커 브랜치 diff 를 카드의 owned Paths 와 대조해 범위를 벗어난 브랜치는 merge 하지 않는다 (복원하지 않는다). `git worktree list` 베이스라인 대조 cleanup 필수 |
 | `/dev:diagnose` | 버그 진단 절차. 수정 전에 실패하는 명령부터 확보 → 재현 최소화 → 반증 가능한 가설 3-5개 순위화 → 태그 달린 계측 → seam 에 회귀 테스트 → 정리 체크리스트. `mattpocock/skills` `diagnosing-bugs` 를 각색 |
 | `/dev:flow` | dev 흐름 전체를 안내하는 짧은 라우터 (decompose-issue → resolve-issue(→ diagnose) → cr-fix → post-merge, worktree·non-default base·orchestrate 위임·E2E 분기). 직접 뭔가를 실행하지 않는다. `mattpocock/skills` `ask-matt` 형식을 각색 |
 

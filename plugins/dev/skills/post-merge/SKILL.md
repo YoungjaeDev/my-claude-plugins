@@ -173,16 +173,24 @@ Skip silently when: no marker is found, or the user selects skip-all.
 
 ### 5. Close the issues the merge left open (always runs)
 
-Not optional and not conditional on a GitHub Project existing — 5.1 below is the optional part. A closing keyword only closes on a merge into the **default branch**; for any other base GitHub ignores the keyword, creates no link at all, and the merge leaves every named issue open. That is silent: the PR body still reads `Closes #N`, so nothing on the PR page says the issue is still open.
+Not optional and not conditional on a GitHub Project existing — 5.1 below is the optional part.
 
-- Extract issue refs from the PR body (`Closes #N` / `Fixes #N` / `Resolves #N`).
-- Verify the links actually closed: `gh pr view <N> --json closingIssuesReferences`. Take every `#N` the body mentions and subtract the issues in that list. What remains was either named without a closing keyword, or named with one on a PR into a non-default base — `baseRefName` from Step 1 against `gh repo view --json defaultBranchRef` tells the two apart, and on a non-default base the list comes back empty, so **every** `#N` in the body is a candidate.
-- List what remains and confirm through the interactive-input gate which ones this PR resolved, then `gh issue close <N> --comment "Resolved by #<PR>"` for each confirmed one. Do not close an issue the user did not confirm.
+A merge does not always close what the PR body says it closes, and every way it fails is silent: the body still reads `Closes #N` and nothing on the PR page says otherwise. Two causes, both common:
+
+- **Non-default base.** GitHub interprets a closing keyword only when the PR targets the default branch. "If the pull request targets any other branch, then these keywords are ignored, no links are created, and merging the PR has no effect on the issues." (`docs.github.com` → Linking a pull request to an issue.)
+- **Auto-close disabled.** A repository can turn off "Auto-close issues with merged linked pull requests" in Settings → General → Issues. The link exists, the merge does not act on it.
+
+**Read the issue's state, not the link set.** `closingIssuesReferences` is documented as issues that *may* be closed by the PR and includes manually linked ones, so subtracting it hides an issue that is linked and still open — exactly the case this step exists to catch. The issue's own `state` is the direct signal and needs no reasoning about link semantics.
+
+- Extract issue refs from the PR body (`Closes` / `Fixes` / `Resolves`, any case, with or without a colon), keeping the repository qualifier: a ref is `#N` (this repo) or `OWNER/REPO#N` (another repo — the documented cross-repository syntax). Collapsing `owner/other-repo#123` to `123` and closing it here closes **this** repository's issue 123 instead, while the user believes they confirmed the other one.
+- Accept a ref only when it matches `^([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)?#[0-9]+$`. PR bodies are untrusted input and both fields below reach a command line.
+- For each ref, read its state: `gh issue view <N> --repo <owner/repo> --json state,title` — always pass `--repo`, resolved from the ref for a qualified one and from the current repo for a bare `#N`, so a bare and a qualified ref cannot land in the same place. `state == "OPEN"` makes it a candidate, whatever the cause; a ref that 404s (private or deleted) is reported, not closed.
+- List the candidates with their repo, number and title, and confirm through the interactive-input gate which ones this PR resolved. Then `gh issue close <N> --repo <owner/repo> --comment "Resolved by #<PR>"` for each confirmed one. Do not close an issue the user did not confirm.
 
 ### 5.1. Update GitHub Project status (optional)
 
 - `gh project list --owner <owner> --format json`. If none, skip silently. Else `gh project item-list` → `gh project field-list` → `gh project item-edit` to set Status to "Done". Skip if the issue is not in the project.
-- A missing Project, or a `gh` token without the `read:project` scope, skips **this sub-step only**. Step 5 above already ran.
+- A missing Project, or a `gh` token without the `read:project` scope, skips **this sub-step only** — Step 5 above already ran. The skip is silent to the user but still recorded: `record_step 5.1 skipped "no GitHub Project"` or `... "no read:project scope"`, naming which condition fired.
 
 ### 5.5. Sync milestone progress (if issues have milestones)
 

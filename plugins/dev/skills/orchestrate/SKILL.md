@@ -115,8 +115,9 @@ Preset:        which dev:worker-* and the one-clause reason
    when any parent is missing (`cr-fix`'s `scripts/path-trust.sh` is the worked form): a symlink out
    of the tree turns a faithful write into an edit of the original checkout, and the link's own blob
    never changes, so the branch log and the gate both come back empty. A fresh worktree carries none
-   of the main checkout's uncommitted, untracked or ignored files, so a worker cannot reach the
-   user's work at all, and its branch is a per-worker record of what it changed — which is the whole
+   of the main checkout's uncommitted, untracked or ignored files, so a worker has no path to the
+   user's work except one it builds itself — which is what the symlink rules here and in step 5
+   exist to close — and its branch is a per-worker record of what it changed, which is the whole
    basis of the step 5 check. Rewrite that card's owned and consulted Paths as absolute paths under
    the worker's own worktree root before sending it: the card format asks for absolute paths, and
    the main checkout's are the ones a worker will faithfully open, editing the user's files while
@@ -173,7 +174,12 @@ Preset:        which dev:worker-* and the one-clause reason
    re-query ladder naming the paths it left, and write `scope violation: <path>` in the agent's
    ledger row. Use `AskUserQuestion` before dropping a branch whose out-of-scope work looks worth
    keeping. A content violation goes the same way — the ladder, never a revert. No writer runs in
-   the user's checkout, so there is never a repair to make there.
+   the user's checkout, so there is never a repair to make there — for writes that go through git.
+   That is the whole of the guarantee: the gate reads branches, so a worker that creates a symlink
+   under an owned path, writes through it and removes the link before committing leaves a clean
+   branch and a clean tree while the file outside the worktree is modified. No git-level check can
+   see that, and this skill does not claim to; a filesystem boundary needs a sandbox, not a branch
+   check.
 
 6. **Integrate and verify.** Merge every accepted branch into one integration worktree and verify
    there — not in each worktree separately and not in the untouched main checkout, either of which
@@ -215,6 +221,7 @@ Preset:        which dev:worker-* and the one-clause reason
 | a worker edited the user's files and its branch stayed empty | the card went out with the main checkout's absolute paths instead of paths under that worker's worktree root |
 | a worker could not find a config or dependency that exists locally | it is untracked or ignored, so the worktree never had it; supply or regenerate those inputs at dispatch |
 | an out-of-scope file changed although the branch only added a symlink | the worker created the link mid-run and wrote through it; step 5 rejects a branch whose symlink targets leave the worktree |
+| an out-of-scope file changed and no branch shows it at all | the worker wrote through a symlink it removed before committing; the worktree guarantee covers writes through git only, and no git-level gate reaches this |
 | a re-query failed the gate twice on a fix that looked right | it went back to the same agent, which keeps its branch; a path violation needs a newly dispatched agent from the recorded base |
 | effort never changed between jobs | `model` was passed on the `Agent` call without a `dev:worker-*` type; effort lives in the preset definition |
 

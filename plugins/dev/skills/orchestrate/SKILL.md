@@ -123,19 +123,24 @@ Preset:        which dev:worker-* and the one-clause reason
    violation:** a branch carrying a merge commit is rejected outright — `git rev-list --merges <that
    slice's recorded base>..<worker branch>` must be empty, because `git log` prints no diff for a
    merge by default and a path introduced only in a conflict resolution appears in no parent, so it
-   would pass unseen. Otherwise list every path the branch's own commits touched, with `git log -z
-   --name-only --pretty=format: <that slice's recorded base>..<worker branch>`. Two dots and `git
-   log`, never `git diff <base>...<branch>`: a diff compares end trees, so a worker that commits an
-   out-of-scope file and deletes it in a later commit leaves a clean net diff while the content — a
-   leaked secret included — still rides into the repository's history on merge. `-z` is load-bearing
-   too: without it a non-ASCII or newline path comes back quoted and octal-escaped, matching neither
-   the card's paths nor anything on disk, so a legitimate owned file reads as a violation. Resolve
-   each repo-relative path against the repo root before comparing. A path outside *this* card's
-   owned Paths is a violation; another card owning it is no defence, because step 1 gave every path
-   one writer. **Content violation:** a diff inside an owned path that the card's Goal does not
-   explain — an unrequested feature, a refactor nobody asked for, a bulk reformat. On rejection,
-   re-query in this order and stop at the first pass:
-   1. `SendMessage` to the same agent, naming the failed criterion, at most twice.
+   would pass unseen. Otherwise list every path the branch's own commits touched, with `git log
+   --no-renames -z --name-only --pretty=format: <that slice's recorded base>..<worker branch>`.
+   Three flags, each covering a hole. Two dots and `git log`, never `git diff <base>...<branch>`: a
+   diff compares end trees, so a worker that commits an out-of-scope file and deletes it in a later
+   commit leaves a clean net diff while the content — a leaked secret included — still rides into
+   the repository's history on merge. `--no-renames`, because rename detection is on by default and
+   prints only a rename's destination, so `git mv outside/secret owned/secret` reads as a write
+   inside the card. `-z`, because without it a non-ASCII or newline path comes back quoted and
+   octal-escaped, matching neither the card's paths nor anything on disk, so a legitimate owned file
+   reads as a violation. Resolve each repo-relative path against the repo root before comparing. A
+   path outside *this* card's owned Paths is a violation; another card owning it is no defence,
+   because step 1 gave every path one writer. **Content violation:** a diff inside an owned path
+   that the card's Goal does not explain — an unrequested feature, a refactor nobody asked for, a
+   bulk reformat. On rejection, re-query in this order and stop at the first pass:
+   1. `SendMessage` to the same agent, naming the failed criterion, at most twice. A path violation
+      also gets a fresh worktree from the recorded base: the offending commit stays in
+      `<base>..<branch>` history however the worker fixes it afterwards, so a re-query on the same
+      branch can never pass the gate and burns both retries on its way to the user.
    2. Re-dispatch the card once on the next preset up, with the rejected answer attached as an input.
       A rejected `dev:worker-max` result has no next preset and goes straight to 3.
    3. `AskUserQuestion` with the rejected answers summarised; another vendor's agent is one of the
@@ -190,6 +195,7 @@ Preset:        which dev:worker-* and the one-clause reason
 | integration broke only after the run ended | step 6 verified each worktree on its own instead of one tree with every accepted branch merged in |
 | an out-of-scope file reached history although the gate passed | the check used `git diff <base>...<branch>`, whose net tree hides a path the branch added and later deleted |
 | a worker edited the user's files and its branch stayed empty | the card went out with the main checkout's absolute paths instead of paths under that worker's worktree root |
+| a re-query failed the gate twice on a fix that looked right | it reused the branch that already carries the violating commit; a path violation restarts on a fresh worktree from the recorded base |
 | effort never changed between jobs | `model` was passed on the `Agent` call without a `dev:worker-*` type; effort lives in the preset definition |
 
 ## Verification

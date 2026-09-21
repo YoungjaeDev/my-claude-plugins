@@ -93,33 +93,40 @@ Preset:        which dev:worker-* and the one-clause reason
 3. **Pick preset and structure** from the two tables. Give every agent a `name` so a re-query can
    reach the same transcript. Done when each card names its preset and the run names its structure.
 4. **Dispatch.** Independent slices go out in one message, in the background. Dependent slices wait
-   for the result they consume. Every slice that writes goes out with `isolation: worktree`. A fresh
-   worktree carries none of the main checkout's uncommitted, untracked or ignored files, so a worker
-   cannot reach the user's work at all, and its branch is a per-worker record of what it changed —
-   which is the whole basis of the step 5 check. The card tells the worker to commit its work on
-   that branch before returning; work left uncommitted in a worktree is invisible to the check and
-   never merges. Record the base each worktree branched from, per slice: an independent slice
-   branches from the `git rev-parse HEAD` taken before the first dispatch, a dependent slice from
-   the accepted branch of the slice it consumes, so its worker reads and tests against that work
-   instead of an interface that no longer exists. Record `git worktree list` as the baseline for
-   step 7. A slice that must write in the main checkout runs alone, with no other writer in flight,
-   and its results are surfaced rather than merged. While agents run, the orchestrator prepares the
-   verification of step 6 instead of doing a worker's job in parallel. Done when every card has been
-   sent and every slice's base plus the worktree baseline are recorded.
+   for the result they consume. Before dispatching anything, check the main checkout for uncommitted
+   changes on a path any card owns or consults: a worktree branches from a commit, so those edits
+   reach neither the workers nor the integration tree, and the run would verify a combination the
+   user does not have. Ask the user to commit or stash them and branch from the result. Every slice
+   that writes goes out with `isolation: worktree`. A fresh worktree carries none of the main
+   checkout's uncommitted, untracked or ignored files, so a worker cannot reach the user's work at
+   all, and its branch is a per-worker record of what it changed — which is the whole basis of the
+   step 5 check. The card tells the worker to commit its work on that branch before returning; work
+   left uncommitted in a worktree is invisible to the check and never merges. Record the base each
+   worktree branched from, per slice: an independent slice branches from the `git rev-parse HEAD`
+   taken before the first dispatch, a dependent slice from the accepted branch of the slice it
+   consumes, so its worker reads and tests against that work instead of an interface that no longer
+   exists. Record `git worktree list` as the baseline for step 7. A slice that must write in the
+   main checkout runs alone, with no other writer in flight, and its results are surfaced rather
+   than merged. While agents run, the orchestrator prepares the verification of step 6 instead of
+   doing a worker's job in parallel. Done when the checkout was clean on every card's paths, every
+   card has been sent, and every slice's base plus the worktree baseline are recorded.
 5. **Quality gate.** Read each result against its card. Reject when any of these holds: the answer
    is ambiguous or hedged where the card asked for a decision, a claim carries no evidence
    (`file:line` for file content, command plus output for a run result, the path for a path), the
    result contradicts what the repository shows, the done criteria are not met, or the card's owned
    Paths were exceeded. That last one is decided by git, not by the worker's report. **Path
-   violation:** list what the worker's branch changed with `git diff -z --name-only <that slice's
-   recorded base>...<worker branch>` — three dots, so commits the base picked up meanwhile stay out
-   of the list — and resolve each repo-relative path against the repo root. `-z` is load-bearing:
-   under default `core.quotePath` a non-ASCII or newline path comes back quoted and octal-escaped,
-   matching neither the card's absolute paths nor anything on disk, so a legitimate owned file reads
-   as a violation. A path outside *this* card's owned Paths is a violation; another card owning it
-   is no defence, because step 1 gave every path one writer. **Content violation:** a diff inside an
-   owned path that the card's Goal does not explain — an unrequested feature, a refactor nobody
-   asked for, a bulk reformat. On rejection, re-query in this order and stop at the first pass:
+   violation:** list every path the branch's own commits touched, with `git log -z --name-only
+   --pretty=format: <that slice's recorded base>..<worker branch>`. Two dots and `git log`, never
+   `git diff <base>...<branch>`: a diff compares end trees, so a worker that commits an out-of-scope
+   file and deletes it in a later commit leaves a clean net diff while the content — a leaked secret
+   included — still rides into the repository's history on merge. `-z` is load-bearing too: without
+   it a non-ASCII or newline path comes back quoted and octal-escaped, matching neither the card's
+   absolute paths nor anything on disk, so a legitimate owned file reads as a violation. Resolve
+   each repo-relative path against the repo root before comparing. A path outside *this* card's
+   owned Paths is a violation; another card owning it is no defence, because step 1 gave every path
+   one writer. **Content violation:** a diff inside an owned path that the card's Goal does not
+   explain — an unrequested feature, a refactor nobody asked for, a bulk reformat. On rejection,
+   re-query in this order and stop at the first pass:
    1. `SendMessage` to the same agent, naming the failed criterion, at most twice.
    2. Re-dispatch the card once on the next preset up, with the rejected answer attached as an input.
       A rejected `dev:worker-max` result has no next preset and goes straight to 3.
@@ -173,6 +180,7 @@ Preset:        which dev:worker-* and the one-clause reason
 | a worker's branch diff came back empty | the card never told it to commit; uncommitted work in a worktree is invisible to the step 5 check and never merges |
 | a dependent slice built against an interface that no longer exists | its worktree branched from the pre-dispatch HEAD instead of the accepted branch it consumes |
 | integration broke only after the run ended | step 6 verified each worktree on its own instead of one tree with every accepted branch merged in |
+| an out-of-scope file reached history although the gate passed | the check used `git diff <base>...<branch>`, whose net tree hides a path the branch added and later deleted |
 | effort never changed between jobs | `model` was passed on the `Agent` call without a `dev:worker-*` type; effort lives in the preset definition |
 
 ## Verification

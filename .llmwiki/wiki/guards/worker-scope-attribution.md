@@ -4,7 +4,7 @@ aliases: [orchestrate-scope-guard, worker-path-violation, git-status-baseline]
 last_verified: 2026-09-21
 status: active
 volatility: stable
-sources: 3
+sources: 4
 ---
 
 # git records state, not who produced it, so worker scope is an isolation problem
@@ -41,11 +41,18 @@ The same emptiness that keeps the user's secrets away from a worker also keeps i
 
 The gate reads branches, so it is blind to writes that never become blobs. A worker that creates a symlink under an owned path pointing at a file outside the worktree, writes through it, and removes the link before committing leaves a clean branch log and a clean final tree while the outside file is modified. Rejecting a branch that adds or retargets an escaping symlink closes the persisted case only. The honest statement of the guarantee is that a worktree protects the user's files **from writes that go through git**; a filesystem boundary needs a sandbox, not a branch check.
 
+## Narrowing a guarantee means finding every place it is claimed
+
+The change that scoped this guarantee edited the paragraph that stated it and added the limit to the pitfalls table. Two reviewers, independently, caught the same thing: a *different* section two hundred lines earlier still said the symlink rules "close" the path a worker builds for itself. A document that admits a limit in one place and denies it in another reads as safe wherever the reader happens to land, and the denial is the more reassuring sentence.
+
+The claim to grep for is not the word the finding used. It is every restatement of the guarantee — the summary line, the step that sets it up, the troubleshooting row, the plugin's own `CLAUDE.md` description — because each one was written to be read on its own.
+
 ## Sources
 
 - GitHub PR #254 (`dev` 3.6.0, 11 review rounds, 18 commits, design inverted mid-review)
 - Codex review on PR #254 (17 findings; 16 held only under the shared-checkout premise)
 - `plugins/dev/skills/orchestrate/SKILL.md` steps 4-5
+- GitHub PR #261 / issue #256 (the guarantee narrowed to writes through git; both reviewers caught a surviving closure claim in another section)
 
 > Evidence: https://github.com/YoungjaeDev/my-claude-plugins/pull/254
 > See-also: [[review-loop-churn]]

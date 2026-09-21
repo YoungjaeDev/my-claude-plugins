@@ -8,6 +8,10 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-09-21 — narrowing a guarantee means finding every place it is claimed (post-merge #261)
+
+- guards/worker-scope-attribution.md: new `## Narrowing a guarantee means finding every place it is claimed` section — the change that scoped the worktree guarantee to writes through git edited the paragraph stating it and the pitfalls row, and both reviewers independently found a surviving "the symlink rules close that path" claim two hundred lines earlier; a document that admits a limit in one place and denies it in another reads as safe wherever the reader lands; grep every restatement (summary line, setup step, troubleshooting row, plugin CLAUDE.md), not the finding's own wording; `sources` 3 -> 4
+
 ## 2026-09-21 — the churn test reads position as authorship, which prose breaks (post-merge #260)
 
 - guards/review-loop-churn.md: added the position-as-authorship rule to `## Stopping it` (a prose iteration rewrites whole paragraphs and reproduces their lines, so a new defect class is charged as churn; judge prose by the outside-the-diff axis and let `iteration_cap` be the backstop), added the PR #254 measurement to `## Evidence` (stopped at iter 3 on four findings, three real, one of them the premise the change rested on), `last_verified` 2026-09-11 -> 2026-09-21, `sources` 4 -> 6

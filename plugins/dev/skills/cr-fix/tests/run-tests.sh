@@ -320,6 +320,7 @@ CH=$(mktemp -d)
     && printf 'p\nq\n' > 'space file.sh' && printf 'p\nq\n' > '한글.sh' \
     && git add -A && git commit -qm awkward-names \
     && printf 'x\ny\n' > added-by-loop.sh && printf 'x\ny\n' > rewritten.md \
+    && printf 'x\ny\n' > notes.MD && printf 'x\ny\n' > LICENSE \
     && git add -A && git commit -qm iter-commit
 ) >/dev/null 2>&1
 # PREV_SHA = HEAD~1, i.e. everything the last iteration committed.
@@ -337,7 +338,12 @@ is "prose line the previous iteration rewrote -> fresh" "$(ch rewritten.md 1)" f
 is "prose line the PR itself changed -> fresh"          "$(ch doc.md 3)" fresh
 is "prose line outside the PR diff -> churn"            "$(ch doc.md 5)" churn
 is "prose file not in the PR at all -> churn"           "$(ch untouched.md 1)" churn
-is "prose extension match ignores case"                 "$(ch rewritten.MD 1)" churn
+# Both must sit on a file the previous iteration actually committed: a name that
+# is not in the repository returns churn through the outside-the-diff test, so the
+# assertion would pass with the prose match removed entirely.
+is "prose extension match ignores case"                 "$(ch notes.MD 1)" fresh
+# LICENSE / NOTICE / a bare README are prose with no extension to match on.
+is "extensionless prose basename -> fresh"              "$(ch LICENSE 1)" fresh
 # Iter 1 has no previous commit; the PR-diff test still applies.
 is "no PREV_SHA: PR line still fresh" \
    "$( (cd "$CH" && bash "$SCRIPTS/churn-scope.sh" "" main base.sh 3) )" fresh

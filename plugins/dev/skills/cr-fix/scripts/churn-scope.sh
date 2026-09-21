@@ -52,11 +52,17 @@ diff_of() {
 }
 
 # Prose: rewriting a paragraph reproduces its lines, so position says nothing
-# about who authored the defect. Extension-based on purpose — the alternative is
-# sniffing content, which mislabels a SKILL.md full of shell fences.
-case "$(printf '%s' "$FPATH" | tr '[:upper:]' '[:lower:]')" in
+# about who authored the defect. Name-based on purpose — the alternative is
+# sniffing content, which mislabels a SKILL.md full of shell fences. The
+# extensionless basenames are prose too: LICENSE, NOTICE and a bare README carry
+# no suffix and would otherwise fall through to the code path.
+_lower=$(printf '%s' "$FPATH" | tr '[:upper:]' '[:lower:]')
+case "$_lower" in
   *.md|*.markdown|*.mdx|*.txt|*.rst|*.adoc) IS_PROSE=1 ;;
-  *) IS_PROSE=0 ;;
+  *) case "${_lower##*/}" in
+       license|licence|notice|copying|readme|changelog|contributing|authors|codeowners) IS_PROSE=1 ;;
+       *) IS_PROSE=0 ;;
+     esac ;;
 esac
 
 prev_hit=""

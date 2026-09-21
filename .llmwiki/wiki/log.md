@@ -8,6 +8,11 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-09-21 — the churn test reads position as authorship, which prose breaks (post-merge #260)
+
+- guards/review-loop-churn.md: added the position-as-authorship rule to `## Stopping it` (a prose iteration rewrites whole paragraphs and reproduces their lines, so a new defect class is charged as churn; judge prose by the outside-the-diff axis and let `iteration_cap` be the backstop), added the PR #254 measurement to `## Evidence` (stopped at iter 3 on four findings, three real, one of them the premise the change rested on), `last_verified` 2026-09-11 -> 2026-09-21, `sources` 4 -> 6
+- index.md: broadened the guards hook
+
 ## 2026-09-21 — CodeRabbit obeys the PR head's config, not the base's (post-merge #259)
 
 - guards/coderabbit-config-branch.md: new page — measured across two PRs while `main` kept `reviews.auto_review.enabled: false`: #254's head carried the key and CodeRabbit skipped, #259's head removed it and CodeRabbit auto-reviewed; a re-enable (and a disable) is therefore live inside its own PR, `cr-review-request.sh` reading the working tree agrees with that, and disabling auto-review drops cr-fix to a single reviewer with nothing in its final JSON recording the absence; sources: PR #254, PR #259

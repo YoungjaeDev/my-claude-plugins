@@ -22,7 +22,7 @@ Patterns and best practices derived from awesome-readme examples.
 
 ### Quick Reference
 
-#### Universal Structure
+#### Universal Structure (open source)
 
 1. Header (Logo + Badges + Tagline)
 2. Quick Start (3 steps max)
@@ -33,6 +33,33 @@ Patterns and best practices derived from awesome-readme examples.
 7. API/Props
 8. Contributing
 9. License
+
+#### Internal Repo Variant
+
+For a repo that is not distributed (R&D, PoC, edge hardware, ML training), drop Contributing,
+License and social-proof badges, and use: banner, `# Name` + one-line summary, 3-4 static badges,
+Demo or Results, current status (dated measured table + next step), quick start, structure,
+verification commands, risks, docs map (or MOC link), owner. Static shields.io badges render
+without repo access; dynamic or Actions badges on a private repo are unverified.
+
+#### Banner
+
+- Default goal: corporate trust and one message. Pop style (one mascot, 2-3 saturated colors,
+  thick outlines) only when asked.
+- The image model draws a text-free visual. The headline (one sentence, 8 words or fewer, stating
+  the value or result) and an optional proof-number line are typeset deterministically (SVG/HTML
+  capture or Pillow) and composited.
+- One brand accent plus neutrals, wide negative space, no mascot or ornament.
+- 3:1 at about 2x display width (e.g. 2400x800), key elements in the vertical middle 50%, dark and
+  light files via `<picture>`, `alt` = headline. Banner or logo at the top, not both.
+- GitHub strips `style`; size with `width`/`height`. Codex's built-in tool fixes `size: "auto"`,
+  so measure the output and crop by script.
+
+#### Demo Placement
+
+- UI or demo material: `## Demo` (`## 데모` in a Korean README) directly under the badges, holding
+  the GIF or screenshots.
+- No UI (ML training, hardware): a result image or a dated measured table in the same slot.
 
 #### Essential Badges (Pick 3-5)
 
@@ -48,17 +75,20 @@ Patterns and best practices derived from awesome-readme examples.
 
 - 5-second test: What, Who, Why visible?
 - Quick start under 5 minutes
-- Visual demo for UI projects
+- Demo slot filled (see Demo Placement)
 - "You should see:" verification
 - Troubleshooting link nearby
 
 ### References
 
 For detailed patterns, see:
-- `../../references/README_PATTERNS.md` - Full pattern documentation
+- `../../references/README_PATTERNS.md` - Full patterns, incl. Internal Repo Structure, Banner
+  (rules + sources), Demo and Screenshots Placement
+- `../../references/README_SECTIONS.md` - readme.so section menu: when to include each section and
+  where it lands in the internal order
 - `../../references/TEMPLATES.md` - Copy-paste templates
-- `../../references/CRO_CHECKLIST.md` - Conversion optimization
-- `../../references/EXAMPLES_ANALYSIS.md` - Analyzed examples
+- `../../references/CRO_CHECKLIST.md` - Conversion optimization, Demo and Banner checks
+- `../../references/EXAMPLES_ANALYSIS.md` - Analyzed examples, measured banner examples
 
 ### Templates Available
 
@@ -70,6 +100,7 @@ For detailed patterns, see:
 | MCP Plugin | Claude Code plugins |
 | SaaS | Web applications |
 | Desktop | Electron/native apps |
+| Internal | Company R&D/PoC, edge hardware, ML training |
 
 ## CHANGELOG
 

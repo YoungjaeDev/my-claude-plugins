@@ -645,3 +645,81 @@ MIT
 
 Made by [Your Name](https://yoursite.com)
 ```
+
+---
+
+## Template 7: Internal Project (R&D / PoC / Edge Hardware / ML Training)
+
+For a repository that is not distributed. Section order and reasons: `README_PATTERNS.md`
+`## Internal Repo Structure`. Korean-default headings; use `## Demo`, `## Current Status`, and so on
+for an English README.
+
+```markdown
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.png">
+  <img alt="<배너 헤드라인 한 문장>" src="assets/banner-light.png">
+</picture>
+
+# project-name
+
+<무엇을, 어떤 하드웨어·데이터로 하는지 한 문장>
+
+![stage](https://img.shields.io/badge/stage-PoC-informational)
+![hardware](https://img.shields.io/badge/hardware-<board>-555555)
+![python](https://img.shields.io/badge/python-3.12-3776AB)
+<!-- 비공개 리포에서 Actions 상태 배지가 그려지는지는 확인 후 추가 -->
+
+## 데모
+
+![<화면 이름>](assets/demo.gif)
+
+<!-- UI가 없으면 같은 자리에 결과 이미지나 실측 표를 두고 제목을 ## 결과로 바꾼다 -->
+
+## 현재 상태 (YYYY-MM-DD)
+
+| 항목 | 값 | 조건 |
+|------|----|------|
+| <지표> | <실측값> | <모델·해상도·하드웨어·측정 시간> |
+
+다음 단계: <한 줄>
+
+## 빠른 시작
+
+```bash
+git clone <repo-url> && cd project-name
+<의존성 설치 명령>
+<실행 명령>
+```
+
+## 구조
+
+```
+project-name/
+├── <dir>/      # <한 줄 설명>
+├── docs/       # <한 줄 설명>
+└── tests/      # <한 줄 설명>
+```
+
+## 검증
+
+```bash
+<테스트 명령>
+<린트 명령>
+```
+
+## 리스크와 미확정
+
+- **<리스크 한 문장>** 근거: <문서 링크 또는 측정 기록>
+
+## 문서
+
+| 문서 | 답하는 질문 |
+|------|-------------|
+| [docs/MOC.md](docs/MOC.md) | 문서 전체 지도 |
+| [docs/<file>.md](docs/<file>.md) | <질문> |
+
+## 담당
+
+<팀 또는 이름>, <연락 채널>
+```

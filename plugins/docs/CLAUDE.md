@@ -29,9 +29,10 @@ Comprehensive reference documents in `references/`:
 
 | File | Content |
 |------|---------|
-| `README_PATTERNS.md` | Structure patterns from 9 awesome-readme examples |
+| `README_PATTERNS.md` | Structure patterns from 9 awesome-readme examples, internal repo structure, banner rules, demo placement |
+| `README_SECTIONS.md` | readme.so section menu mapped to when to include and the internal repo order |
 | `CHANGELOG_PATTERNS.md` | Keep a Changelog format and automation |
-| `TEMPLATES.md` | Copy-paste templates for 6 project types |
+| `TEMPLATES.md` | Copy-paste templates for 7 project types |
 | `CRO_CHECKLIST.md` | Conversion optimization checklist |
 | `EXAMPLES_ANALYSIS.md` | Detailed analysis of each example project |
 | `DEPLOY_DOC_PATTERNS.md` | Deployment-doc skeleton, filled example, anti-patterns (Korean-default output examples) |
@@ -62,6 +63,7 @@ Based on awesome-readme curated list:
 /docs:readme generate --type mcp-plugin
 /docs:readme generate --type saas
 /docs:readme generate --type desktop
+/docs:readme generate --type internal
 ```
 
 ### Analyze Existing README

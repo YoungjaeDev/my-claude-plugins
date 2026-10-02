@@ -138,15 +138,33 @@ First screen should contain:
 ### Visual Placement
 
 ```
-[Logo]
+[Banner or Logo]
+[Name + Tagline]
 [Badges]
-[Tagline]
 [Navigation links]
-[Hero GIF/Screenshot]  <- Immediately after header
+[## Demo: GIF/screenshot, or result image / measured table]  <- directly under the badges
 [Quick Start]
 [Features]
 ...
 ```
+
+### Demo Check
+
+- [ ] UI or demo material: `## Demo` (`## 데모`) sits directly under the badges, before Quick Start
+- [ ] No UI (ML training, hardware): a result image or a dated measured table fills the same slot
+- [ ] Screenshots folded into the one demo section, not a second visual block further down
+
+### Banner Check
+
+- [ ] The image carries no generated text; the headline is typeset onto it
+- [ ] Headline is one sentence of 8 words or fewer that states the value or the result
+- [ ] `alt` states the headline
+- [ ] 3:1 at about 2x display width; key elements inside the vertical middle 50%
+- [ ] Dark and light files swapped with `<picture>`; each file named for the theme it appears on
+- [ ] Sized with `width`/`height` attributes only (GitHub strips `style`)
+- [ ] One accent color plus neutrals; accent contrast checked by script on both backgrounds
+- [ ] Banner or logo at the top, not both stacked
+- [ ] Social preview, if set, is a separate 1280x640 file under 1 MB
 
 ---
 
@@ -282,7 +300,7 @@ If you have analytics on your repo/docs:
 
 ### Should Have (Important)
 
-- [ ] Visual demo (GIF/screenshot)
+- [ ] Visual demo (GIF/screenshot) directly under the badges, or a result image / measured table when there is no UI
 - [ ] "Used by" or social proof
 - [ ] Progressive disclosure
 - [ ] Platform-specific instructions

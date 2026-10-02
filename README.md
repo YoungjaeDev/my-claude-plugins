@@ -170,7 +170,7 @@ Codex 는 named agent 를 등록하지 못하므로 세 스킬은 번들 `refere
 
 | Command | Description |
 |---------|-------------|
-| `/docs:readme generate` / `analyze` | 템플릿 (CLI, Library, React Component, MCP Plugin, SaaS, Desktop) 에서 README 생성 또는 기존 README 분석 |
+| `/docs:readme generate` / `analyze` | 템플릿 (CLI, Library, React Component, MCP Plugin, SaaS, Desktop, Internal) 에서 README 생성 또는 기존 README 분석 |
 | `/docs:changelog init` | Keep a Changelog 형식 CHANGELOG |
 | `/docs:deploy-doc generate` | 배포 / 절차 문서 (요약 + 전제조건 + 번호 단계) |
 | `/docs:moc docs/` | 문서 폴더 MOC 인덱스 (경량 / `--strict`) |

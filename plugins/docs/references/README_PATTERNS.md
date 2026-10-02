@@ -66,7 +66,9 @@ spec that gives a banner its own slot). Section-by-section choices from the read
 
 **Badges on a private repo.** A static shields.io badge
 (`https://img.shields.io/badge/<label>-<message>-<color>`) encodes its text in the URL and renders
-without repository access. Whether shields.io dynamic badges or GitHub Actions status badges can
+without repository access. The label and message travel to shields.io in the image request, so put
+only values cleared for outside disclosure in a badge; show a private value as a repository-local
+image instead. Whether shields.io dynamic badges or GitHub Actions status badges can
 read a private repository's state is unverified; use static badges until that is checked.
 
 ---

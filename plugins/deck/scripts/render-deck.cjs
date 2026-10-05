@@ -461,7 +461,10 @@ async function main() {
 
     const renderProblems = [];
     const rendered = await readyPage(browser, url, { width: 1920, height: 1080 }, "reduce", renderProblems);
-    for (let index = 0; index < args.expectedSlides; index += 1) {
+    // A shell that failed to boot has no controller; record it instead of throwing so the report is still written.
+    const hasController = await rendered.page.evaluate(() => Boolean(window.presentation));
+    if (!hasController) renderProblems.push("deck-controller-missing");
+    for (let index = 0; hasController && index < args.expectedSlides; index += 1) {
       await rendered.page.evaluate(value => window.presentation.showSlide(value), index);
       await rendered.page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const file = path.join(previewDir, `slide-${String(index + 1).padStart(String(args.expectedSlides).length, "0")}.png`);

@@ -40,9 +40,12 @@ PY=$(command -v python3 || command -v python)
 
    ```bash
    # resolver block above goes here
-   "$PY" "$PLUGIN_ROOT/scripts/build.py" deck
-   "$PY" "$PLUGIN_ROOT/scripts/check_copy.py" deck
-   "$PY" "$PLUGIN_ROOT/scripts/kit.py" check .
+   # Run every check even after a failure, then fail the block if any of them failed.
+   rc=0
+   "$PY" "$PLUGIN_ROOT/scripts/build.py" deck || rc=1
+   "$PY" "$PLUGIN_ROOT/scripts/check_copy.py" deck || rc=1
+   "$PY" "$PLUGIN_ROOT/scripts/kit.py" check . || rc=1
+   [ "$rc" -eq 0 ]
    ```
 
    Observable results:
@@ -58,8 +61,10 @@ PY=$(command -v python3 || command -v python)
    # resolver block above goes here
    (cd "$PLUGIN_ROOT/scripts" && node -e 'require.resolve("playwright")') || echo "playwright missing: see Verification"
    OUT="deck/renders/$(date +%Y%m%d-%H%M%S)"
-   node "$PLUGIN_ROOT/scripts/render-deck.cjs" --input deck/index.html --output-dir "$OUT/render" --expected-slides N
-   node "$PLUGIN_ROOT/scripts/check-deck-interaction.cjs" --input deck/index.html --output-dir "$OUT/interaction" --expected-slides N
+   rc=0
+   node "$PLUGIN_ROOT/scripts/render-deck.cjs" --input deck/index.html --output-dir "$OUT/render" --expected-slides N || rc=1
+   node "$PLUGIN_ROOT/scripts/check-deck-interaction.cjs" --input deck/index.html --output-dir "$OUT/interaction" --expected-slides N || rc=1
+   [ "$rc" -eq 0 ]
    ```
 
    Replace `N` with the slide count from step 1. Chrome defaults to the platform's standard path; pass `--chrome PATH` or set `CHROME` otherwise. Each tool prints one JSON line (`"status":"verified"` or `"failed"`) and writes `render-report.json` / `interaction-report.json` with every failure (overflow, out-of-bounds, footer overlap, font fallback, slide state, hash, panel, motion).

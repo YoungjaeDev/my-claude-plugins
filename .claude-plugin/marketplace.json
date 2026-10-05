@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 8 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.50.0"
+    "version": "2.51.0"
   },
   "plugins": [
     {
@@ -47,7 +47,7 @@
       "name": "deck",
       "source": "./plugins/deck",
       "description": "House-format HTML lecture decks (deck/shell.html + deck/sections/*.html + GSAP motions, 1920x1080, RALPHDEV brand). Rule originals (korean-style, deck-copy, deck-authoring) live in this plugin and are copied into each deck repo's .claude/rules/ with a version stamp. Tools run from the plugin, never copied: build, dev server with in-browser edit, copy check, Playwright render and interaction checks, Vercel deploy. Skills: deck-new (scaffold), deck-author (writing sections), deck-assets (logos, icon sheets, mascot cuts), deck-check (build + QA + rule drift), deck-sync (refresh rule copies and vendor), deck-deploy (explicit request only). Generic one-off presentations belong to frontend-slides.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "documentation"
     },
     {

@@ -134,9 +134,9 @@ def cmd_new(repo: Path, v: str) -> int:
     text = shell.read_text(encoding="utf-8")
     shell.write_text(text.replace("<!DOCTYPE html>\n", "<!DOCTYPE html>\n" + SHELL_STAMP.format(v=v) + "\n", 1), encoding="utf-8")
     print(f"deck: scaffolded {deck} from templates/deck ({v})")
-    write_rules(repo, v, force=False)
+    blocked = write_rules(repo, v, force=False)
     prereq()
-    return 0
+    return 1 if blocked else 0
 
 
 def cmd_sync(repo: Path, v: str, force: bool) -> int:
@@ -172,6 +172,9 @@ def cmd_check(repo: Path, v: str, show_diff: bool) -> int:
         drift = vendor_drift(deck)
         print(f"vendor: {'ok' if not drift else 'differs: ' + ', '.join(drift) + ' -> run deck-sync'}")
         bad += bool(drift)
+    else:
+        print(f"vendor: no deck at {deck} -> run deck-new")
+        bad += 1
     if (deck / "shell.html").is_file():
         m = SHELL_STAMP_RE.search((deck / "shell.html").read_text(encoding="utf-8"))
         print(f"shell.html: base {m[1] if m else 'unknown'}, {'same as' if not shell_diff(deck) else 'differs from'} template {v} (info only)")

@@ -22,6 +22,7 @@ for d in fonts vendor motions; do if [ -d "$DECK/$d" ]; then cp -R "$DECK/$d" "$
 # Literal asset paths in index.html (sections, footer). Logos are also built at runtime from the
 # shell's SECTIONS array, so the whole logos/ and brand/ folders go up as well.
 grep -o 'assets/[A-Za-z0-9_./-]*' "$DECK/index.html" | sort -u | while read -r f; do
+  case "$f" in *..*) continue ;; esac  # never stage a path that climbs out of assets/
   if [ ! -f "$DECK/$f" ]; then continue; fi
   mkdir -p "$OUT/$(dirname "$f")"
   cp "$DECK/$f" "$OUT/$f"

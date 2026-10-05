@@ -18,6 +18,7 @@ BAD = [
     (re.compile(r"<\s*foreignObject", re.I), "<foreignObject>"),
     (re.compile(r"\son[a-z]+\s*=", re.I), "on* handler"),
     (re.compile(r"""(?:xlink:)?href\s*=\s*["']\s*(?!#)[^"']""", re.I), "external/non-fragment href"),
+    (re.compile(r"""url\(\s*["']?\s*(?!#)|@import""", re.I), "external/non-fragment CSS url()"),
 ]
 
 
@@ -60,16 +61,16 @@ def check(d):
 def self_test():
     with tempfile.TemporaryDirectory() as t:
         d = Path(t)
-        ok = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1z"/></svg>'
+        ok = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path fill="url(#g)" d="M0 0h1v1z"/></svg>'
         (d / "a.svg").write_bytes(ok)
         rec = dict(file="a.svg", name="A", source_url="https://x", official=True, license="x",
                    guidelines_url="https://x", variant="color", sha256=hashlib.sha256(ok).hexdigest(), retrieved="2026-10-05")
         (d / "sources.json").write_text(json.dumps([rec]))
         assert check(d) == [], check(d)
-        bad = b'<svg onload="x()"><script>1</script><image href="https://e/x.png"/></svg>'
+        bad = b'<svg onload="x()"><script>1</script><image href="https://e/x.png"/><style>rect{fill:url(https://e/a.svg)}</style></svg>'
         (d / "b.svg").write_bytes(bad)  # no record + unsafe
         e = "\n".join(check(d))
-        assert "b.svg: file without record" in e and "<script>" in e and "on* handler" in e and "href" in e, e
+        assert "b.svg: file without record" in e and "<script>" in e and "on* handler" in e and "href" in e and "CSS url()" in e, e
         (d / "b.svg").unlink()
         (d / "a.svg").write_bytes(ok + b" ")  # hash drift
         assert any("sha256 mismatch" in x for x in check(d))

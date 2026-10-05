@@ -24,6 +24,7 @@ const MIME = {
   ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml",
   ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
   ".txt": "text/plain; charset=utf-8",
 };
 

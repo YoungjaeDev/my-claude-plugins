@@ -24,6 +24,7 @@ if [ -z "$PLUGIN_ROOT" ]; then
 fi
 SCRIPTS="$PLUGIN_ROOT/skills/deck-assets/scripts"
 [ -d "$SCRIPTS" ] || { echo "deck-assets scripts not found; export PLUGIN_ROOT"; exit 1; }
+PY=$(command -v python3 || command -v python)
 ```
 
 Scripts need Python 3; the slicer needs Pillow (`uv run --with pillow python3 ...` if missing).
@@ -36,7 +37,7 @@ Read `deck/outline.md`. List:
 - concept slides that could carry one icon cell,
 - emotional beats that could carry one mascot cut (see `references/usage.md`).
 
-Write the draft to `deck/assets/manifest.json` (`logos`, `icons`, `mascot` arrays). Show the counts to the user and get confirmation before steps 3 and 5. Sheets hold 9/16/25 cells, so round the icon count to the nearest sheet.
+Write the draft to `deck/assets/manifest.json` (`logos`, `icons`, `mascot` arrays). Show the counts to the user and get confirmation before steps 3 and 5. Sheets hold 9/16/25 cells, so round the icon count up to the next sheet size, or ask the user which concepts to drop.
 
 ## 2. Official SVG logos
 
@@ -54,10 +55,10 @@ Save to `deck/assets/logos/<slug>[-mono].svg` unmodified. Never redraw, recolor 
 Then verify:
 
 ```bash
-python3 "$SCRIPTS/check-logos.py" deck/assets/logos
+"$PY" "$SCRIPTS/check-logos.py" deck/assets/logos
 ```
 
-It checks file/record parity, sha256, and that each SVG has no `<script>`, `on*=` handler, `<foreignObject>` or external `href`. Fix every failure before any slide references a logo. Self-test: `python3 "$SCRIPTS/check-logos.py" --self-test`.
+It checks file/record parity, sha256, and that each SVG has no `<script>`, `on*=` handler, `<foreignObject>`, external `href` or external CSS `url()`. Fix every failure before any slide references a logo. Self-test: `"$PY" "$SCRIPTS/check-logos.py" --self-test`.
 
 ## 3. Icon sheets (costs quota)
 
@@ -74,10 +75,10 @@ Fallback order when the first path hits quota or a safety refusal: agy, then cod
 ## 4. Slice
 
 ```bash
-python3 "$SCRIPTS/slice-sheet.py" SHEET.png ROWS COLS OUT_DIR PREFIX [--trim N]
+"$PY" "$SCRIPTS/slice-sheet.py" SHEET.png ROWS COLS OUT_DIR PREFIX [--trim N]
 ```
 
-Equal division, `--trim` px dropped from every cell edge (default 2, use 6 for 480 px cells with grid lines), output `OUT_DIR/PREFIX-r{row}c{col}.png` 1-based. Self-test: `python3 "$SCRIPTS/slice-sheet.py" --self-test`.
+Equal division, `--trim` px dropped from every cell edge (default 2, use 6 for 480 px cells with grid lines), output `OUT_DIR/PREFIX-r{row}c{col}.png` 1-based. Self-test: `"$PY" "$SCRIPTS/slice-sheet.py" --self-test`.
 
 SVG conversion is opt-in and not bundled. These sheets are pixel-style, not true pixel art, so a naive trace gives noisy paths. Only on request: snap to the pixel grid, quantize to the palette, merge rects.
 

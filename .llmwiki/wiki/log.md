@@ -8,6 +8,14 @@ Every `/ingest-finding` run and every `/dev:post-merge` run that executes the wi
 
 <!-- New entries go directly under this line -->
 
+## 2026-10-05 — a refusal is not a fallback case; zsh nomatch hides the other cache root (post-merge #269)
+
+Merge 9a74a07.
+
+- guards/provider-fallback-refusal.md: new page — a multi-provider generation chain falls through on capacity failures (quota, rate limit, outage) only; re-sending a safety refusal to the next provider turns the chain into a refusal bypass, so a refusal stops the chain and goes back to the user; the sidecar's recorded path makes a fallback auditable but does not make a refusal fallback acceptable; status: active, volatility: stable, sources: 2 (CodeRabbit Security & Privacy finding on `plugins/deck/skills/deck-assets/SKILL.md`, the fixed line in that file)
+- runtimes/codex-plugin-surfaces.md: added the zsh `nomatch` bullet on the `PLUGIN_ROOT` resolver — one `ls` over two globbed cache roots exits 1 with no output when either root has no match (the `no matches found` line comes from the shell and escapes `2>/dev/null`), so the deck resolver uses `find`; the single-root resolvers in dev/wiki/docs are not exposed because an empty result there is already the right answer; `last_verified` 2026-09-15 -> 2026-10-05, `sources` 4 -> 5
+- index.md: added the guards hook, broadened the runtimes hook
+
 ## 2026-09-21 — a closing keyword has four sources and two ways to be ignored (post-merge #262)
 
 - guards/issue-close-sources.md: new page — a merge leaves `Closes #N` open silently on a non-default base (keywords ignored, *no link created*) or with the repository's auto-close setting off; `closingIssuesReferences` is documented as issues that *may* close and includes manual links, so it is a candidate source and never closure evidence (read the issue's own `state`); the four non-overlapping sources are the PR body, the PR's commit messages, the merge commit's own message and the manual links, with a 100/250 ceiling on the commit source and all nine keywords rather than the three `-s` forms; `gh api` and `--repo owner/repo` both default to `github.com`, so a read-path-only host pin sends the close to the wrong server, and a close comment's `#<PR>` resolves in the *issue's* repository; sources: GitHub docs (linking, auto-close, GraphQL reference), PR #262

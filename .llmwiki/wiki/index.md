@@ -1,7 +1,7 @@
 ---
 id: wiki-moc
 aliases: [moc, table-of-contents, llms-txt]
-last_verified: 2026-09-04
+last_verified: 2026-10-05
 ---
 
 # Wiki Map of Content (MOC)
@@ -66,10 +66,11 @@ All wiki edits append one line to `log.md` (`## YYYY-MM-DD — <summary>` header
 - [bot-identity-matching](guards/bot-identity-matching.md) — a bot login has two spellings and one of them is forgeable; why `^<login>(\[bot\])?$` is the only matcher that closes both, and why anchoring it brings the silent zero back
 - [coderabbit-config-branch](guards/coderabbit-config-branch.md) — CodeRabbit reads `.coderabbit.yaml` from the PR head, not the base, so an auto-review toggle is live inside its own PR; disabling it silently drops cr-fix to one reviewer
 - [issue-close-sources](guards/issue-close-sources.md) — a merge ignores `Closes #N` on a non-default base or with auto-close off, silently; the claim has four sources (body, commits, merge commit, manual links), `closingIssuesReferences` is candidates and never closure, and every `gh` call needs its host stated
+- [provider-fallback-refusal](guards/provider-fallback-refusal.md) — a multi-provider generation chain falls through on quota, rate limit or outage only; re-sending a safety refusal to the next provider is a refusal bypass, so a refusal stops the chain and goes back to the user
 - [review-loop-churn](guards/review-loop-churn.md) — a round that finds defects in the loop's own fixes is churn, not convergence; measure against the whole loop, read position as authorship only in code, and know why a prose cap and a defer-keyed soft stop both fail open
 - [worker-scope-attribution](guards/worker-scope-attribution.md) — git reports tree state, never the actor, so a shared checkout cannot attribute a worker's writes; per-worker worktrees make the branch the record, and the gate stops at what git can see
 
 ## runtimes
 
 - [agent-definition-effort](runtimes/agent-definition-effort.md) — undocumented `effort:` frontmatter on agent definitions (`low`…`max`, silent downgrade); the `Agent` tool overrides `model` but not `effort`, so each tier needs its own preset file
-- [codex-plugin-surfaces](runtimes/codex-plugin-surfaces.md) — Codex registers only `skills/` from an installed plugin; hooks need manual `~/.codex/hooks.json` + `/hooks` trust, commands and agents are Claude-only
+- [codex-plugin-surfaces](runtimes/codex-plugin-surfaces.md) — Codex registers only `skills/` from an installed plugin; hooks need manual `~/.codex/hooks.json` + `/hooks` trust, commands and agents are Claude-only; why a `PLUGIN_ROOT` resolver must not glob two cache roots in one `ls` under zsh

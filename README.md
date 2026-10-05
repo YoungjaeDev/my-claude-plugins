@@ -8,9 +8,9 @@
 
 # my-claude-plugins
 
-Claude Code 를 위한 7개 플러그인 모음. GitHub 워크플로우, 리서치, 문서 저작, ML 개발, LLM-Wiki 메모리를 짧은 이름의 번들로 묶었다. Codex CLI 도 같은 소스 트리와 `.claude-plugin/` 매니페스트를 네이티브로 읽는다.
+Claude Code 를 위한 8개 플러그인 모음. GitHub 워크플로우, 리서치, 문서 저작, ML 개발, LLM-Wiki 메모리, 강의 덱 제작을 짧은 이름의 번들로 묶었다. Codex CLI 도 같은 소스 트리와 `.claude-plugin/` 매니페스트를 네이티브로 읽는다.
 
-[![Plugins](https://img.shields.io/badge/plugins-7-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
+[![Plugins](https://img.shields.io/badge/plugins-8-blue.svg)](https://github.com/YoungjaeDev/my-claude-plugins)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
 
@@ -106,6 +106,7 @@ cp "$SRC" ~/.codex/AGENTS.md       # Codex
 | `scout` | Research | research-orchestrator (github / hf / web / docs scout 에이전트 + synthesis), ask / generate-llmstxt (DeepWiki) |
 | `ml` | Development | ml-dev-principles, gradio-cv-app, cv-notebook, edit-notebook |
 | `wiki` | Memory & Lore | LLM-Wiki 3-layer (bootstrap-wiki, ingest-finding, lint-wiki, plaud-note-taking + hooks 5) + mem0 플릿 운영 (fleet-scan, cleanup) |
+| `deck` | Documentation | house 형식 HTML 강의 덱 (deck-ask, deck-new, deck-author, deck-assets, deck-check, deck-sync, deck-deploy). 규칙 원본과 도구를 플러그인에 두고 덱 저장소에는 버전 도장 찍은 규칙 사본만 둔다 |
 | `council` | AI Models | 이종 벤더 3인 심의 (`/council:convene`). Claude 전용 |
 | `codex-image` | AI Models | Claude → Codex 이미지 생성 브리지. Claude 전용 |
 
@@ -263,6 +264,30 @@ Cross-ref 는 typed 만 허용한다: `> Refines:` `> Contradicts:` `> Evidence:
 </details>
 
 <details>
+<summary><strong>deck</strong> - house 형식 HTML 강의 덱</summary>
+
+`deck/shell.html` + `deck/sections/*.html` 을 GSAP 모션과 함께 1920×1080 덱으로 조립한다. 규칙 원본(korean-style, deck-copy, deck-authoring)과 도구는 플러그인 한 곳에 두고, 덱 저장소에는 버전 도장이 찍힌 규칙 사본과 그 덱의 내용만 남긴다.
+
+| Skill | Description |
+|-------|-------------|
+| `/deck:deck-ask` | 지금 상황에 맞는 다음 덱 스킬을 제안한다. 실행하지 않고 알려 주기만 한다 |
+| `/deck:deck-new` | 빈 저장소에 `deck/` 스캐폴드와 규칙 사본을 만든다. `deck/` 가 있으면 거부 |
+| `/deck:deck-author` | 섹션 HTML 형식, 클래스 어휘, 패널·모션 계약 |
+| `/deck:deck-assets` | 공식 로고 수집, 아이콘 시트, 마스코트 컷 |
+| `/deck:deck-check` | 빌드, 문구 검사(`deck-copy.md` 금지 표기 표), 규칙 사본 어긋남, PNG·PDF 렌더와 상호작용 검사 |
+| `/deck:deck-sync` | 규칙 사본과 `vendor/` 갱신, `shell.html` 은 차이만 보여 준다 |
+| `/deck:deck-deploy` | 명시 요청 때만 Vercel 배포 (noindex 헤더 + robots.txt) |
+
+- 도구(`build.py`, `dev.py`, `check_copy.py`, `kit.py`, `render-deck.cjs`, `check-deck-interaction.cjs`, `deploy.sh`)는 덱에 복사하지 않고 플러그인에서 실행한다
+- 덱별 예외는 `.claude/rules/deck-local.md` 에 둔다. 동기화가 건드리지 않는다
+- 일반 발표 자료와 PPTX 변환은 `frontend-slides` 몫이다. 설치 여부는 경고로만 알린다
+- Codex 는 `.claude/rules/` 를 읽지 못하므로 규칙 사본은 Claude 에만 걸린다. 도구와 스킬은 두 런타임에서 돈다
+
+**Requirements:** Python 3, Node 20+, Chrome, `pdfinfo` (렌더 PDF 검사), 배포 시 Vercel 계정
+
+</details>
+
+<details>
 <summary><strong>council</strong> - 이종 벤더 3인 심의</summary>
 
 `/council:convene` 으로 하나의 질문을 codex (GPT), agy (Gemini), Claude Opus 좌석에 동시에 던지고, 서로의 답을 읽고 반박하게 한 뒤 합의와 끝내 갈린 것을 `.council/<날짜>-<슬러그>/consensus.md` 로 남긴다. Claude 서브에이전트를 여러 개 띄우면 가중치를 공유해 관점이 늘지 않는 문제를 겨냥한다.
@@ -363,6 +388,7 @@ git config core.hooksPath .githooks   # clone 당 1회
 │   ├── scout/                # 리서치 orchestrator + DeepWiki
 │   ├── ml/                   # ML / CV 개발
 │   ├── wiki/                 # LLM-Wiki 3-layer + hooks + mem0 플릿 운영
+│   ├── deck/                 # house 형식 HTML 강의 덱 (규칙 원본 + 도구 + 템플릿)
 │   ├── council/              # 이종 벤더 3인 심의 (Claude 전용)
 │   └── codex-image/          # Claude → Codex 이미지 생성 (Claude 전용)
 ├── scripts/                  # 가드 스크립트 (Node 18+, 의존성 없음)

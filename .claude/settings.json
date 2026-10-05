@@ -6,6 +6,7 @@
       "./plugins/scout",
       "./plugins/ml",
       "./plugins/wiki",
+      "./plugins/deck",
       "./plugins/council",
       "./plugins/codex-image"
     ]

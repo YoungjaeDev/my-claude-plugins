@@ -1,0 +1,8 @@
+{
+  "name": "deck-plugin-tools",
+  "private": true,
+  "description": "Runtime dependency of scripts/render-deck.cjs and scripts/check-deck-interaction.cjs. Browsers are not downloaded: the scripts drive the system Chrome.",
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

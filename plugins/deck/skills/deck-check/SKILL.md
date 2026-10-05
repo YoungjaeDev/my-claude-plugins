@@ -72,7 +72,10 @@ PY=$(command -v python3 || command -v python)
 
    ```bash
    # resolver block above goes here
-   "$PY" "$PLUGIN_ROOT/scripts/dev.py" deck --port 8765
+   # dev.py serves until killed: detach it so this block returns.
+   mkdir -p deck/renders
+   nohup "$PY" "$PLUGIN_ROOT/scripts/dev.py" deck --port 8765 >deck/renders/dev.log 2>&1 </dev/null &
+   echo "http://127.0.0.1:8765  stop: kill $!  log: deck/renders/dev.log"
    ```
 
    `E` toggles text edit mode and Cmd/Ctrl+S writes the section file back. Copy changed text into `deck/outline.md`, then rerun step 1. Only text can be edited; moving or resizing boxes is not supported yet.

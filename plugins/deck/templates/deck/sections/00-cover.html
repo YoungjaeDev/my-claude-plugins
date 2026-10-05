@@ -1,0 +1,31 @@
+<section class="slide cover" aria-label="00-01 덱 제목">
+  <header class="brandbar">
+    <img class="monogram" src="assets/brand/ralphdev-monogram.svg" alt="RALPHDEV">
+    <img class="wordmark" src="assets/brand/ralphdev-wordmark.svg" alt="RALPHDEV">
+  </header>
+  <h1>덱 제목은<br>두 줄 안에 쓴다</h1>
+  <p class="subtitle">부제는 이 덱에서 하는 일을 한 문장으로 쓴다</p>
+  <div class="cover-ralph"><img src="assets/ralph.png" alt="Ralph 캐릭터"></div>
+</section>
+
+<section class="slide" aria-label="00-02 목차">
+  <h2>목차</h2>
+  <ol class="agenda"></ol>
+</section>
+
+<section class="slide" data-section="S1" data-motion="convert" aria-label="S1-01 원고에서 배포본까지 만드는 순서">
+  <span class="kind">개념 · 덱 제작 순서</span>
+  <h2>원고에서 배포본까지 만드는 순서</h2>
+  <div class="body">
+    <div class="convert">
+      <div data-anim="row"><div class="from" data-anim="from"><code>outline.md</code></div><div class="arrow" data-anim="arrow"></div><p class="to" data-anim="to">장 ID와 제목과 본문을 원고에서 먼저 정한다</p></div>
+      <div data-anim="row"><div class="from" data-anim="from"><code>sections/*.html</code></div><div class="arrow" data-anim="arrow"></div><p class="to" data-anim="to">원고의 문구를 그대로 장표로 옮긴다</p></div>
+      <div data-anim="row"><div class="from" data-anim="from"><code>index.html</code></div><div class="arrow" data-anim="arrow"></div><p class="to" data-anim="to">빌드하고 검사한 뒤 렌더 PNG를 직접 본다</p></div>
+    </div>
+    <button class="reveal-btn" data-panel="p-s1-01" style="margin-top:48px">명령 보기</button>
+  </div>
+  <template class="panel" id="p-s1-01" data-kind="prompt" data-title="빌드와 검사 명령">
+    <p>저장소 루트에서 Claude Code에 이렇게 요청한다.</p>
+    <pre class="code" data-label="Claude Code">/deck:deck-check</pre>
+  </template>
+</section>

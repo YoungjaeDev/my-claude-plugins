@@ -127,7 +127,8 @@ async function preparePage(context, url, requestProblems) {
   await page.goto(url, { waitUntil: "load" });
   await page.evaluate(async () => {
     await document.fonts.ready;
-    await Promise.all([...document.images].map(image => image.decode()));
+    // A broken image must not abort the run: the local-image-decode check reports it.
+    await Promise.all([...document.images].map(image => image.decode().catch(() => {})));
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   });
   return page;

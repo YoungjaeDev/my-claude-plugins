@@ -106,7 +106,7 @@ cp "$SRC" ~/.codex/AGENTS.md       # Codex
 | `scout` | Research | research-orchestrator (github / hf / web / docs scout 에이전트 + synthesis), ask / generate-llmstxt (DeepWiki) |
 | `ml` | Development | ml-dev-principles, gradio-cv-app, cv-notebook, edit-notebook |
 | `wiki` | Memory & Lore | LLM-Wiki 3-layer (bootstrap-wiki, ingest-finding, lint-wiki, plaud-note-taking + hooks 5) + mem0 플릿 운영 (fleet-scan, cleanup) |
-| `deck` | Documentation | house 형식 HTML 강의 덱 (deck-new, deck-author, deck-assets, deck-check, deck-sync, deck-deploy). 규칙 원본과 도구를 플러그인에 두고 덱 저장소에는 버전 도장 찍은 규칙 사본만 둔다 |
+| `deck` | Documentation | house 형식 HTML 강의 덱 (deck-ask, deck-new, deck-author, deck-assets, deck-check, deck-sync, deck-deploy). 규칙 원본과 도구를 플러그인에 두고 덱 저장소에는 버전 도장 찍은 규칙 사본만 둔다 |
 | `council` | AI Models | 이종 벤더 3인 심의 (`/council:convene`). Claude 전용 |
 | `codex-image` | AI Models | Claude → Codex 이미지 생성 브리지. Claude 전용 |
 
@@ -270,6 +270,7 @@ Cross-ref 는 typed 만 허용한다: `> Refines:` `> Contradicts:` `> Evidence:
 
 | Skill | Description |
 |-------|-------------|
+| `/deck:deck-ask` | 지금 상황에 맞는 다음 덱 스킬을 제안한다. 실행하지 않고 알려 주기만 한다 |
 | `/deck:deck-new` | 빈 저장소에 `deck/` 스캐폴드와 규칙 사본을 만든다. `deck/` 가 있으면 거부 |
 | `/deck:deck-author` | 섹션 HTML 형식, 클래스 어휘, 패널·모션 계약 |
 | `/deck:deck-assets` | 공식 로고 수집, 아이콘 시트, 마스코트 컷 |

@@ -68,6 +68,15 @@ PY=$(command -v python3 || command -v python)
 
 4. Report to the user: slide count, copy violations, rule-copy statuses, render and interaction status with failure lines, what the PNGs showed, and the frontend-slides line.
 
+5. Local review, when the user wants to see the deck or fix wording in the browser. Start the dev server in the background and give the URL:
+
+   ```bash
+   # resolver block above goes here
+   "$PY" "$PLUGIN_ROOT/scripts/dev.py" deck --port 8765
+   ```
+
+   `E` toggles text edit mode and Cmd/Ctrl+S writes the section file back. Copy changed text into `deck/outline.md`, then rerun step 1. Only text can be edited; moving or resizing boxes is not supported yet.
+
 ## Verification
 
 - Pass means: `violations: 0`, every `rules:` line `ok`, `vendor: ok`, both render tools `"status":"verified"`, and the PNGs look right.

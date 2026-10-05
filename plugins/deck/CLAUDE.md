@@ -14,7 +14,7 @@ Generic presentations and PPTX conversion stay with `frontend-slides`.
 | Tools | `scripts/` | never; skills run them from the plugin root |
 | Playwright for the render tools | `package.json` + `package-lock.json` | no |
 
-Skills: `deck-new`, `deck-author`, `deck-assets`, `deck-check`, `deck-sync`, `deck-deploy`.
+Skills: `deck-ask`, `deck-new`, `deck-author`, `deck-assets`, `deck-check`, `deck-sync`, `deck-deploy`.
 `deck-new`, `deck-sync`, `deck-deploy` and `deck-assets` have side effects and carry
 `agents/openai.yaml` with `allow_implicit_invocation: false`.
 

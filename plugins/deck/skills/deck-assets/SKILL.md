@@ -70,7 +70,7 @@ Write `sheet-NN-<topic>.md` next to each image (template in `references/sidecar.
 
 Lost or failed copy: never re-run, a re-run bills again. Recover from `~/.codex/generated_images/<session>/` (`ls -t`, match by time) and copy it in.
 
-Fallback order when the first path hits quota or a safety refusal: agy, then codex-image, then Higgsfield (optional, only if connected). Record which path produced the file in the sidecar.
+codex-image is the default path. When it hits quota or a safety refusal, fall back to agy, then Higgsfield (optional, only if connected). Record which path produced the file in the sidecar.
 
 ## 4. Slice
 

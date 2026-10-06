@@ -13,7 +13,8 @@ The main agent conducts; it never becomes one of the workers. Three invariants h
 run: every delegation is a job card, every returned result passes a quality gate before anything
 is built on it, and the orchestrator alone verifies and answers the user. Model and effort are
 chosen per job through the worker presets bundled in `plugins/dev/agents/`, because the `Agent`
-tool overrides `model` per call but reads effort only from the agent definition.
+tool overrides `model` per call but reads effort only from the agent definition
+(<https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields>, `#choose-a-model`).
 
 Codex has no `Agent` tool. There the skill degrades to inline work that still uses the job card as
 its checklist, and steps 4 to 7 read differently: with no worker to attribute, `isolation: worktree`

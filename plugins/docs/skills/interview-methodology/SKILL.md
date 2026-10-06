@@ -1,6 +1,6 @@
 ---
 name: interview-methodology
-description: This skill should be used when conducting in-depth user interviews, "gathering requirements", "interview me", "ask me questions", "understand my needs before implementing", "spec-based development", when preparing comprehensive specifications before implementation, when relentlessly stress-testing an existing plan or decision ("grill me", "poke holes in this", "집요하게 캐물어"), or when the interview output should be a reusable prompt in Google's TCREI format ("TCREI", "structure this prompt", "make a prompt for next session", "rewrite as TCREI").
+description: This skill should be used to confirm the open points of a small, ambiguous request before implementing it ("interview me", "ask me questions", "gathering requirements", "understand my needs before implementing"), or when the interview output should be a reusable prompt in Google's TCREI format ("TCREI", "structure this prompt", "make a prompt for next session", "rewrite as TCREI"). Ends with an inline summary, never a spec file. Large multi-decision work goes to /grill-with-docs; pressing an existing plan hard goes to Matt grilling.
 version: 0.4.0
 ---
 
@@ -15,7 +15,7 @@ Every question below runs through a **capability-aware** interactive-input gate,
 
 Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 
-A comprehensive framework for conducting thorough requirement-gathering interviews that uncover hidden needs, constraints, and edge cases.
+A framework for confirming the open points of a request before implementing it, uncovering hidden needs, constraints, and edge cases. The result is an inline summary in the conversation, never a file. When the work turns out large (many interlocking decisions, or a spec worth persisting for review), stop and tell the user to run `/grill-with-docs` instead. To press an existing plan or decision hard, hand off to Matt `grilling`.
 
 ## Trigger Examples
 
@@ -40,16 +40,14 @@ Explicit interview request - direct trigger.
 ## Critical Rules
 
 These govern a full interview once you've decided one is warranted. They are
-explicitly relaxed by the two scoping sections that follow: **"When NOT to
-Interview"** (whether to interview at all) and the lightweight close in
-**"Interview Completion"** (how much to write). When those apply, they override
-rules 3-5 below.
+explicitly relaxed by **"When NOT to Interview"** (whether to interview at all).
+When it applies, it overrides rules 3-4 below.
 
 1. **Use the interactive-input gate** for all questions (Claude `AskUserQuestion`; see "Cross-runtime interactive input") - never just ask in plain text
 2. **Questions must NOT be obvious** - avoid basic questions the user has already answered
 3. **Don't stop a full interview early** - once committed to a full (breadth-first) interview, cover it; don't bail after 2-3 questions. (Doesn't apply when "When NOT to Interview" already capped the scope at 2-3 targeted questions.)
 4. **Probe deeper on substantive answers** - each response can spawn follow-ups; in depth-first mode this is the primary loop. (Not a mandate to follow up on every trivial confirmation.)
-5. **Write a spec file for substantial interviews** - large/multi-decision interviews persist a spec; small/focused ones use the lightweight close instead (see "Interview Completion").
+5. **Close inline, never with a file** - end with the summary in "Interview Completion"; work too large for that goes to `/grill-with-docs`.
 
 ## When NOT to Interview
 
@@ -66,8 +64,8 @@ task is already well-specified or low-stakes:
 
 When in doubt between "ask nothing" and "full interview", prefer the middle:
 2-3 targeted questions that resolve the decisions that actually change the
-implementation. A full multi-phase interview is for genuinely under-specified,
-multi-decision work, not a reflex for every request.
+implementation. A full multi-phase interview is for genuinely under-specified
+work, not a reflex for every request.
 
 ## Core Principle: Non-Obvious Questions
 
@@ -79,13 +77,13 @@ Bad-vs-good question examples and the 5-category question bank
 (Technical / UX / Edge Cases / Constraints / Business Context) used in
 Phase 2 below: `references/question-framework.md`.
 
-## Three Interview Modes
+## Two Interview Modes
 
 Pick the mode that fits the uncertainty, and say which you're using:
 
 ### Breadth-first (the 5-phase flow below)
 Systematically sweep every category. Best when the work is large, multi-decision,
-and you need full coverage before a comprehensive spec. Batch related questions
+and you need full coverage before implementation. Batch related questions
 (the Phase 2 "5-10 questions" cadence) so the user answers efficiently.
 
 ### Depth-first / Socratic (focused mode)
@@ -99,41 +97,6 @@ you are walking down the decision that matters.
 
 The two modes compose: open breadth-first to map the territory, then switch to
 focused mode when one answer opens a deep, consequential branch.
-
-### Relentless / stress-test mode (adversarial)
-
-Use when the user hands you an existing plan, design, or decision and wants it
-*pressed*, not gathered: triggers like "grill me", "stress-test this", "poke
-holes in this", "집요하게 캐물어". This mode **inverts the default posture**: the two
-modes above optimize for *not bothering* the user, but here the user has
-explicitly asked to be bothered, so **"When NOT to Interview" does not apply**:
-there is no 2-3 question cap and no early exit. Press every branch of the
-decision tree until you and the user reach a genuine shared understanding.
-
-Four rules separate this from a polite interview:
-
-1. **No escape hatches.** Do not offer to skip, defer, or "just proceed". The
-   session ends when the plan is sound, not when it is merely tolerable. This
-   constrains *your* offers, not the user's control: an explicit user request to
-   stop, cancel, or proceed anyway always overrides and ends the mode at once:
-   you simply never volunteer the shortcut yourself.
-2. **Hard act-gate.** Do not act on the plan (no implementation, no spec write,
-   no edits) until the user *explicitly confirms* you have reached shared
-   understanding. An agent that answers its own open questions and starts working
-   has broken this rule.
-3. **Walk the dependency frontier.** Ask the decisions whose prerequisites are
-   already settled first; a question whose answer depends on another still-open
-   question belongs to a *later* round. Early answers are allowed to reshape
-   later questions, which is exactly why you never batch a downstream question
-   ahead of its prerequisite.
-4. **Facts are yours, decisions are theirs.** Never ask the user anything the
-   repo or tools can answer: when a frontier question needs a fact, dispatch a
-   sub-agent or run the lookup yourself and keep pressing the rest of the
-   frontier while it resolves (a pending fact-find blocks only the questions
-   downstream of it). Fact-finding is **read-only**: it may read files, run
-   read-only queries, and search, and it must not write files, run mutating
-   commands, or send data, since that would slip work past the act-gate. Never
-   autonomously settle a judgment call that is the user's to make.
 
 ### Per-question scaffold
 
@@ -179,36 +142,21 @@ not just the choice: worked examples in `references/gate-examples.md`.
 
 ## Interview Completion
 
-Scale the output to the interview's weight: don't force a full spec file onto a
-two-question focused session:
+Close in the conversation, not in a file:
 
-- **Lightweight close (small / focused interviews):** summarize inline as
-  **Decisions made** + **Open questions** and proceed. No spec file. Use this when
-  the focused mode resolved one or two decisions and implementation can start
-  immediately.
-- **Full spec (large / multi-decision interviews):** write the comprehensive spec
-  file as below. Use this when breadth-first coverage produced enough requirements
-  that they need to persist for implementation and review.
+1. Summarize back as **Decisions made** + **Open questions**.
+2. Confirm through the interactive-input gate when a decision was a judgment
+   call the user has not yet seen stated plainly.
+3. Proceed with the work.
 
-When the interview warrants a full spec:
-1. Summarize all requirements back to the user
-2. Ask for confirmation through the interactive-input gate
-3. Write the comprehensive spec to `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`
-   - Date: Interview completion date (ISO format)
-   - Feature name: kebab-case (e.g., `dark-mode`, `user-authentication`)
-   - Create `.claude/spec/` directory if it doesn't exist
-4. The spec should be detailed enough for implementation without further questions
-
-## Spec Output Format
-
-File path pattern (`.claude/spec/{YYYY-MM-DD}-{feature-name}.md`) and
-the full markdown template (Overview / User Stories / Requirements
-P0-P2 / Technical Constraints / UI-UX / Edge Cases / Testing Decisions
-/ Out of Scope / Open Questions): `references/spec-template.md`.
+If the interview shows the work is larger than a small request (many
+interlocking decisions, or requirements that need to persist for
+implementation and review), stop and tell the user to run `/grill-with-docs`,
+which owns the spec path.
 
 ## Reusable Prompt Output
 
-When the interview's goal is a copy-paste-ready prompt for next-session reuse rather than a spec file, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/Iterate): see `references/tcrei-template.md` for the diagnosis table, output template, and domain-specific gap patterns.
+When the interview's goal is a copy-paste-ready prompt for next-session reuse rather than an inline summary, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/Iterate): see `references/tcrei-template.md` for the diagnosis table, output template, and domain-specific gap patterns.
 
 ## Interviewing Anti-Patterns to Avoid
 

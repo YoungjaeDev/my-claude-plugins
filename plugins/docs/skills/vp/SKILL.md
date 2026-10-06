@@ -1,6 +1,6 @@
 ---
 name: vp
-description: "Voice-prompt gate for a request dictated through speech-to-text: fix misheard terms against the project's .agents/voice-terms.md, restate the intent in one line and proceed when it is clear, or ask 2-3 targeted questions when it is ambiguous, inaccurate, or self-contradictory. Use when /docs:vp appears anywhere in the prompt (start, middle, or end), '음성 전사', '음성 프롬프트', '받아쓰기 프롬프트', 'voice prompt', 'dictated prompt'. For a full requirements interview or a grill-me stress test use docs:interview-methodology."
+description: "Voice-prompt gate for a request dictated through speech-to-text: fix misheard terms against the project's .agents/voice-terms.md, restate the intent in one line and proceed when it is clear, or ask 2-3 targeted questions when it is ambiguous, inaccurate, or self-contradictory. Use when /docs:vp appears anywhere in the prompt (start, middle, or end), '음성 전사', '음성 프롬프트', '받아쓰기 프롬프트', 'voice prompt', 'dictated prompt'. For a requirements interview use docs:interview-methodology; to press an existing plan hard use Matt `grilling`."
 ---
 
 # vp

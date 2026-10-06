@@ -1,12 +1,12 @@
 ---
 name: post-merge
-description: "Clean up after a PR merges: switch to base, delete the merged branch, sync GitHub Project/milestone and .claude/state/spec.json, integrate what merged into CLAUDE.md/AGENTS.md/.claude/rules, run the mandatory wiki-lore ingest, curate README and the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', 'integrate PR learnings', or right after a PR merges. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:cr-fix)."
+description: "Clean up after a PR merges: surface leftover review findings, switch to base, delete the merged branch, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', or right after a PR merges. Cleanup only: lessons belong to /retro in the building session, README and CHANGELOG edits to docs:readme and docs:changelog. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:cr-fix)."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
 # Post-Merge
 
-Local cleanup + knowledge integration after a PR is merged. One run takes a merged PR from branch cleanup → tracking sync → config/memory integration → **mandatory** wiki-lore ingest → README → commit. Follow project guidelines in `@CLAUDE.md` and `@AGENTS.md` throughout.
+Local cleanup after a PR is merged. One run takes a merged PR from leftover-review surface → branch cleanup → issue close → repo About check → commit. It records no lessons: those go to `/retro` in the session that built the change. Follow project guidelines in `@CLAUDE.md` and `@AGENTS.md` throughout.
 
 ## Guidelines
 
@@ -14,10 +14,8 @@ Local cleanup + knowledge integration after a PR is merged. One run takes a merg
 - **Non-default base.** For a PR into a branch CodeRabbit does not auto-review, cr-fix on the `auto` / `pr-bot` source posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/cr-fix/SKILL.md` Step 2); Step 3 below checks out that base like any other. It also changes what the merge did to the linked issues: GitHub honours a closing keyword only on a merge into the default branch, so a non-default base leaves every one of them open with no signal on the PR page — Step 5 is what catches that, and it runs on every PR.
 - **`gh pr view` is the authoritative merge signal.** Step 1's `gh pr view ... state=MERGED` is the single source of truth for "did this land". Later steps MUST NOT re-verify merge state by comparing git SHAs.
 - **Never use SHA-level merge comparison.** `git log <base>..<branch>`, `git cherry`, `git rev-list --left-right` all false-positive after squash merge (base gets one new SHA) and rebase merge (branch SHAs rewritten). If unsure content landed, diff content not SHAs (Step 4).
-- **No stamps, current-state only.** Normative docs hold current rules; provenance lives in git/PR/blame. No `(#N)` / `PR #N` / `이슈 #N` citations, no `## Post-Merge` headers. Full rules + the `<!-- history-allowed [max=N] -->` opt-out + language consistency + SSOT cross-file dedup + content-first: see `references/core-principle.md`.
-- **Knowledge routing (no double-recording).** Mechanical / tool-operation rules → `CLAUDE.md` / `AGENTS.md` / `.claude/rules/` / Serena memory (Steps 6-7). Cross-agent *lore* (provider quirks, design rationale, debugging stories) → `.llmwiki/` via the wiki step (Step 8). Each fact is recorded in exactly one home; the wiki step (run *after* config integration) dedups against what Steps 6-7 already absorbed. Cross-agent rules that graduate do so to `.llmwiki/insight/` via the wiki step, never to `.claude/rules/` (Codex can't read it).
-- **Leftover-review surface (Step 1.5) is informational.** The run reads cr-fix's state file (`.claude/state/cr-fix-<PR>.json`, else the latest `.claude/state/archive/` copy) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line (mirroring the Step 8 wiki checkpoint) so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
-- **Codex partial-execution.** The Serena (Step 7), `docs:write-rules` (Step 6.5), and `humanize-korean` / `docs:readme` (Step 9) sub-steps are Claude-only; under Codex, gracefully skip them and note the skip rather than failing. Every other step runs identically on both runtimes.
+- **Leftover-review surface (Step 1.5) is informational.** The run reads cr-fix's state file (`.claude/state/cr-fix-<PR>.json`, else the latest `.claude/state/archive/` copy) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
+- **Codex partial-execution.** `/docs:readme` and `/docs:changelog` (Steps 9, 9.5) are commands, which Codex does not load; under Codex do the same edit by hand from the `docs:doc-guides` skill and note it. Every other step runs identically on both runtimes.
 - **Interactive input is capability-aware.** Every prompt and confirmation below, each `AskUserQuestion` mention included, is a gate rather than a tool name: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (`git rm`, `gh repo edit`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 - **Run record.** Step 1 opens `.claude/state/post-merge-<PR>.json` and every step appends its outcome, so a silent skip becomes visible; Step 10 finalizes it. Mechanism, per-step skip reasons, and the finalize block: `references/run-record.md`.
 
@@ -43,7 +41,7 @@ fi
 - Use the PR number argument if given; else infer from context; else `gh pr list --state merged --limit 5` and prompt.
 - `gh pr view <PR_NUMBER> --json number,title,url,baseRefName,headRefName,body,state,files,mergeCommit`. `url` is what Step 5 puts in a close comment; a bare `#<PR>` is resolved in the *issue's* repository, so the comment must carry the PR's own URL rather than reconstruct one.
 - Verify `state` is `MERGED`. This result is the **authoritative merge signal** (see Guidelines); no later SHA comparison.
-- Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')`: this is **this PR's** merge commit, used to label the wiki log entry and read diff content. Step 8 derives the merged **file list** from `gh pr diff <N> --name-only` (PR-scoped, merge-method-agnostic, uncapped), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
+- Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')`: this is **this PR's** merge commit, the run record's anchor and one of Step 5's ref sources. Take the merged **file list** from `gh pr diff <N> --name-only` (PR-scoped, merge-method-agnostic, uncapped), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
 
 **Carry cr-fix state out of the worktree** (`IN_WT=1` only). cr-fix wrote its state under the worktree, which Step 11's command deletes; copy it to the main repo's archive first so Step 1.5 and later runs still find it. The archive name keeps the `cr-fix-<PR>-` prefix Step 1.5 globs for:
 
@@ -69,7 +67,7 @@ fi
 
 ### 1.5. Surface unresolved review items (informational)
 
-A merge can land while `cr-fix` still left findings unresolved: items it autonomously **deferred** (real + high-severity + too invasive for autopilot), or a loop that exited on a cap/timeout rather than converging clean. That signal sits in `cr-fix`'s state file and nobody reads it. This step surfaces it **once, right after the merge is confirmed**. It is **informational: it never blocks cleanup**; like the Step 8 wiki checkpoint it ALWAYS prints exactly one terminal status line so a skip can't pass unnoticed.
+A merge can land while `cr-fix` still left findings unresolved: items it autonomously **deferred** (real + high-severity + too invasive for autopilot), or a loop that exited on a cap/timeout rather than converging clean. That signal sits in `cr-fix`'s state file and nobody reads it. This step surfaces it **once, right after the merge is confirmed**. It is **informational: it never blocks cleanup**; it ALWAYS prints exactly one terminal status line so a skip can't pass unnoticed.
 
 **Primary signal: the cr-fix state file.** cr-fix archives its live state on exit (`emit-final-json.sh` persists the final `final_state` + `auto_judge_stats` into the file, then moves `.claude/state/cr-fix-<PR>.json` → `.claude/state/archive/cr-fix-<PR>-<ts>.json`), so the archived copy is the usual hit and is self-describing; check the live path first, then the latest archive:
 
@@ -85,7 +83,7 @@ Run the block in `references/leftover-reviews.md` ("Decide the checkpoint line")
 
 - **Leftover present**: after the `leftover-reviews: <N> deferred (final_state=<X>)` line, render the `$DEFERS` items as a table (`Path:Line · Severity · Reason`), and append the open-thread count when `OPEN_THREADS > 0`. Tell the user these were **not** auto-applied: review them on the PR page (`gh pr view <PR_NUMBER> --comments`) or in a follow-up; do not silently drop them.
 - **None**: print `leftover-reviews: none` when no cr-fix state file resolves, or it shows `defer == 0` with a non-trigger `final_state`.
-- **Recurring leftover**: before printing, grep the older archives (`.claude/state/archive/cr-fix-*.json`, excluding this PR) for the same finding. A leftover that surfaces a second time is a standing rule, not an incident — mark it `promotion-candidate` in the table and hand it to Step 8 so `wiki:ingest-finding` files it under `.llmwiki/insight/`. Do not promote it here.
+- **Recurring leftover**: before printing, grep the older archives (`.claude/state/archive/cr-fix-*.json`, excluding this PR) for the same finding. A leftover that surfaces a second time is a standing rule, not an incident — mark it `recurring` in the table and point the user at `/retro` in the building session, which turns a repeated mistake into an automated check. Do not write the rule here.
 
 ### 2. Check local changes
 
@@ -199,73 +197,20 @@ That demotes the field from evidence to **a source of candidates, which it still
 - `gh project list --owner <owner> --format json`. If none, skip silently. Else `gh project item-list` → `gh project field-list` → `gh project item-edit` to set Status to "Done". Skip if the issue is not in the project.
 - Two scopes, not one: listing and reading a Project needs `read:project`, and `gh project item-edit` writes, which needs `project`. A token with only the read scope gets through the listing and fails on the edit, so treat a permission error there as the skip condition it is, not as a run failure. A missing Project, or a token without either scope, skips **this sub-step only** — Step 5 above already ran. It gets no `steps[]` entry of its own: `state-envelope/v0` carries one entry per top-level step and folds sub-steps into the parent, and Step 5's own entry is now always `done`, so a skipped Project can no longer be misread as a skipped issue-close check. Report which condition fired in the run output; the envelope does not need it.
 
-### 5.5. Sync milestone progress (if issues have milestones)
+### 9. README + repo About
 
-For each related issue with a milestone, recompute module progress and regenerate the milestone table + Type M-2 diagrams. Full mechanics: `references/update-progress.md` ("Milestone Format" / "Type M-2"). Skip silently when no related issue carries a milestone.
+If the PR changed features, commands, install, usage or dependencies and a README exists, run `/docs:readme` on it, show the proposal, and add the README to `RUN_TOUCHED`; otherwise skip the README.
+Always compare `gh repo view --json description --jq .description` with the README's opening claim and this PR's changes; on drift propose a one-liner through the interactive-input gate and run `gh repo edit --description "<approved>"` only on approval, then print `repo-about: in sync` or `repo-about: updated`.
 
-### 5.7. Update `.claude/state/spec.json` (if present)
+### 9.5. CHANGELOG (if present)
 
-- If `.claude/state/spec.json` exists, move the `in_progress` entry whose `linked.pr` matches the merged PR (or `linked.issue`) to `completed` with `merge_sha` (first 7 chars) + `completed_at` (today, UTC `YYYY-MM-DD`), and set the spec file's frontmatter `status: merged`.
-- Mechanics are owned by `dev:state-tracker`: invoke `/dev:state-tracker complete <spec-path>` if installed; otherwise apply the direct JSON edit per `plugins/dev/skills/state-tracker/SKILL.md`.
-- Skip silently if no matching entry, or if `.claude/state/` does not exist.
-
-### 6. Integrate learnings into config files
-
-Read `gh pr diff <PR_NUMBER>` + the PR body, then weave each learning into the **appropriate existing section** of `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `.claude/rules/*.md`. **Never append a "Post-Merge Notes" section.**
-
-**6.1 Cross-file dedup gate (run before writing any learning).** For each fact, first grep the SSOT set (`CLAUDE.md`, `AGENTS.md`, the relevant `.claude/rules/*.md`) for an existing home. If one exists, **update that line in place**; do not add a parallel statement in a second file. A rule that must bind both runtimes lives once in `.claude/rules/<x>.md` (Claude) with a concise mirror block in `AGENTS.md` (Codex), tied by a one-line pointer in `CLAUDE.md` `## Modular Rules`: that pairing is the SSOT pattern, not duplication. When the same fact already appears in two files, collapse to one authoritative home + pointer rather than editing both copies. This is the config-side twin of the Step 8 wiki dedup gate; together they keep each fact in exactly one home.
-
-Full procedure: Pre-Audit (scrub existing stamps first), the classification/placement table, the integration process, modular-rule-file structure, the pre-presentation stamp self-check, History Rotation (6.4), and the Normative Doc Size Audit (6.5, `docs:write-rules` routing); this lives in **`references/learning-integration.md`**. Apply its Core Principle (`references/core-principle.md`) to every added/modified line; present a diff-style proposal before applying.
-
-### 7. Update Serena memory (Claude-only — Codex skips)
-
-If Serena MCP is available, integrate PR learnings into existing memory files as native content (no `post_merge_prN.md`, no `## Post-Merge` headers). Pre-Audit, the memory-file mapping table, and the self-check are in **`references/learning-integration.md`** ("Serena memory"). Skip if Serena is unavailable or under Codex.
-
-### 8. Wiki lore ingest (MANDATORY)
-
-Absorbs the former `post-merge-wiki` skill as a required step. Runs **after** Steps 6-7 so the config integration is already settled and the wiki step can dedup against it (knowledge routing).
-
-Resolve the wiki root (`.llmwiki/wiki/` → `.claude/wiki/` → `.codex/wiki/`); if none resolves, the step still runs to its checkpoint (below) but does no ingest. Otherwise derive ingest candidates **from the merged file list** (`gh pr diff <N> --name-only`), triage by autonomy boundary, and delegate the heavy lifting (diff-log, multi-page cross-update, insight graduation) to `wiki:ingest-finding`. Full procedure: candidate derivation, the autonomy-boundary triage table, the trivial-merge skip list, the `log.md` entry format, and the Step 6/7 routing-dedup rule; this lives in **`references/wiki-ingest.md`**.
-
-**Mandatory checkpoint (no silent skip).** This step must ALWAYS print exactly one terminal status line so a skip can never pass unnoticed (a silently-skipped Step 8 was the original failure mode: nobody could tell whether lore was integrated or just dropped):
-
-- `wiki-ingest: ingested <N>` (N pages created/updated, plus any insight graduations), OR
-- `wiki-ingest: no-lore (<reason>)`, where reason ∈ `no wiki root` | `ingest-finding not installed` | `trivial merge` | `no candidates after triage` | `disabled via WIKI_AUTOINGEST=0`.
-
-Set `WIKI_AUTOINGEST=0` to disable the ingest work for a run; the checkpoint line still prints (`no-lore (disabled via WIKI_AUTOINGEST=0)`), so disabling is visible, not silent.
-
-### 9. Update README.md + repo About (README edit is optional; the About check is not)
-
-If the PR changed features/commands/install/usage/deps and a README exists: draft the changes, then refine. If the README is Korean and the `humanize-korean` plugin is installed, apply `/humanize-korean:humanize-korean` to strip AI-writing tells; if it is not installed (it is a user-external plugin, not bundled here), do the equivalent pass by manual edit. Then apply `/docs:readme` guidelines. Both skill passes are Claude-only; under Codex skip them and keep the manual edit. Present for confirmation. Skip the README edit if no README-relevant changes.
-
-**Curate, don't append.** README is a normative doc and gets the same discipline Step 6 applies to config files: find the existing section that covers the topic and update it **in place**, collapse a fact that now appears twice into one home, and delete what this merge superseded (a removed command, a stale count, a workaround for a bug this PR fixed). A README that only grows across post-merge runs is the failure mode this step exists to prevent.
-
-**Repo About drift (runs even when the README needs no edit).** The remote About line is a separate surface nobody else in this skill touches, and it goes stale silently:
-
-```bash
-gh repo view --json description,repositoryTopics \
-  --jq '{description, topics: [.repositoryTopics[].name]}'
-```
-
-Compare `description` against the README's opening claim and against what this PR changed (a renamed or removed feature, a changed count, a new entry point). If it drifted, propose the new one-liner via `AskUserQuestion` and apply only on approval — `gh repo edit` writes to the remote and is never unattended work. Report topic drift in the same breath, but do not edit topics.
-
-```bash
-gh repo edit --description "<approved one-liner>"
-```
-
-Print one line either way so the check cannot pass unnoticed: `repo-about: in sync` or `repo-about: updated`.
-
-### 9.5. Update CHANGELOG (if present)
-
-If a `CHANGELOG.md` (or `CHANGELOG`) exists at the repo root **and** the merged PR is changelog-worthy (a user-visible feature / fix / breaking change, not a pure docs/test/chore merge), reflect the merge into it. Mirror Step 9's guide-driven approach: read the `docs:doc-guides` skill (`## CHANGELOG` section) + `plugins/docs/references/CHANGELOG_PATTERNS.md` and apply the patterns **manually** (Keep-a-Changelog grouping, the `Unreleased` section, semantic-version discipline, no per-PR stamp noise in normative entries). Derive the entry from `gh pr diff <PR_NUMBER>` + the PR body, place it under the right `Unreleased` heading (Added / Changed / Fixed / Removed), present a diff-style proposal before applying, and add the file to `RUN_TOUCHED` for Step 10.
-
-The `/docs:changelog` **command** is Claude-only (Codex emits no command surface); under Codex, skip the command and do the same edit manually from the `doc-guides` `## CHANGELOG` patterns. Skip silently when no CHANGELOG exists or the merge is not changelog-worthy.
+If a root `CHANGELOG.md` exists and the merge is user-visible (feature, fix, breaking change), run `/docs:changelog` and add the file to `RUN_TOUCHED`; otherwise skip silently.
 
 ### 10. Commit changes (optional)
 
-If **any** tracked files were modified by this run, including config (`CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`.claude/rules`), README, `CHANGELOG.md` (Step 9.5), Serena memory, **`.llmwiki/` from the Step 8 wiki ingest**, **or a Step 4.5 / Step 4.6 `git rm` deletion**, confirm with the user, then commit using Conventional Commits. Do not gate on config-only changes: a wiki-only post-merge (Step 8 touched `.llmwiki/` but no config learning landed), or a prune-only post-merge (Step 4.5 / 4.6 `git rm`'d a file but no config/wiki change landed), must still commit, or the change is left uncommitted in the working tree. The `git diff --cached --quiet` check below catches the staged deletion even though it is not in `RUN_TOUCHED`.
+If **any** tracked files were modified by this run (README from Step 9, `CHANGELOG.md` from Step 9.5, a Step 4.6 in-file `Edit`, **or a Step 4.5 / Step 4.6 `git rm` deletion**), confirm with the user, then commit using Conventional Commits. A prune-only run (Step 4.5 / 4.6 `git rm`'d a file and nothing else changed) must still commit, or the deletion is left uncommitted in the working tree. The `git diff --cached --quiet` check below catches the staged deletion even though it is not in `RUN_TOUCHED`.
 
-Stage **only the exact files this run created or modified**: collect them as you go through Steps 4.6-9.5 (each config file you edited, the `.claude/state/spec.json` + spec file from Step 5.7, README, `CHANGELOG.md` from Step 9.5, any Step 4.6 in-file deprecated-block `Edit`, Serena memory files, and the specific wiki pages `ingest-finding` created/updated). Build that explicit list as `RUN_TOUCHED` and add only those paths; **never `git add` a whole directory** (`.llmwiki/`, `.claude/spec/`, …): a pre-existing untracked draft (e.g. a user's `.llmwiki/wiki/draft.md`) would otherwise be swept into this commit, and Step 2 already decided to leave untracked files alone.
+Stage **only the exact files this run created or modified**: collect them as you go through Steps 4.6-9.5 and build that explicit list as `RUN_TOUCHED`; **never `git add` a whole directory**: a pre-existing untracked draft would otherwise be swept into this commit, and Step 2 already decided to leave untracked files alone.
 
 ```bash
 # RUN_TOUCHED = the exact paths this run wrote, gathered across Steps 4.6-9.5.
@@ -296,15 +241,9 @@ Print this one line, filled in, as the last line of the run, and do not run it. 
 
 ## References
 
-- **No-stamp Core Principle + knowledge-routing boundary**: `references/core-principle.md`
-- **Config + Serena learning integration** (Pre-Audit, classification, history rotation, size audit, memory mapping): `references/learning-integration.md`
 - **Unresolved review surface** (Step 1.5, cr-fix state-file defer list + `final_state`, open-thread proxy): reads `.claude/state/cr-fix-<PR>.json` / `.claude/state/archive/`; field schema in `plugins/dev/skills/cr-fix/assets/final-output.schema.json`.
 - **Leftover-review blocks** (Step 1.5 primary signal, secondary signal, checkpoint decision): `references/leftover-reviews.md`
 - **Run-record envelope** (Step 1 init + recording contract + per-step skip reasons + Step 10 finalize): `references/run-record.md`; convention + schema in `.claude/rules/state-envelope.md` (concept mirror in `AGENTS.md`).
-- **Mandatory wiki ingest** (absorbed post-merge-wiki, candidate derivation, autonomy triage, ingest-finding delegation, routing dedup): `references/wiki-ingest.md`
 - **Ephemeral artifact pruning** (Step 4.5, heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`
-- Milestone / Type M-2 diagram mechanics: `references/update-progress.md`
-- spec.json schema + ops: `plugins/dev/skills/state-tracker/SKILL.md`
-- CHANGELOG patterns (Step 9.5): `docs:doc-guides` skill (`## CHANGELOG`) + `plugins/docs/references/CHANGELOG_PATTERNS.md`
 
 > Follow ~/.claude/CLAUDE.md and the project CLAUDE.md.

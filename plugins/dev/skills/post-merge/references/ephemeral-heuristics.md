@@ -3,8 +3,8 @@
 After a PR merges, some of the files it added were scaffolding — one-off analysis
 scripts, scratch/debug output, root clutter — useful during the work but not meant
 to live in the repo. This step finds those, asks the user, and `git rm`s only what
-they confirm. It is the deletion counterpart to the wiki-ingest step: heuristic
-candidate derivation + autonomy-boundary triage, never autonomous deletion.
+they confirm: heuristic candidate derivation + user triage, never autonomous
+deletion.
 
 > A removed file here is a **tracked, committed** file on the base branch. `git rm`
 > stages a real repo change that Step 10 then commits — this is not local-junk
@@ -81,11 +81,10 @@ it before prompting.
   `[ -e "$p" ] && git add -- "$p"` — the `[ -e "$p" ]` existence test fails for a
   deleted file and `git add` cannot stage a deletion anyway. `git rm` already did it.
 - Step 10's commit gate is `git diff --cached --quiet`, which sees the staged
-  deletion and commits it alongside any config/wiki changes. A prune-only run (no
-  config learning, no wiki ingest) still commits because the deletion is staged.
+  deletion and commits it alongside any README / CHANGELOG change. A prune-only
+  run still commits because the deletion is staged.
 - post-merge commits locally and does not push (Step 10). The deletion commit stays
-  local; it reaches the remote when the user pushes the base branch — same as the
-  config-integration commit.
+  local; it reaches the remote when the user pushes the base branch.
 
 ## Anti-patterns
 

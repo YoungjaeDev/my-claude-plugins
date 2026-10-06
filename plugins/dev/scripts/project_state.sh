@@ -41,18 +41,6 @@ count_md() {
 }
 
 # YAML frontmatter (첫 줄이 ---) 가 없는 .md 개수
-count_no_frontmatter() {
-  local dir="$1" n=0 f
-  [ -d "$dir" ] || { echo 0; return; }
-  while IFS= read -r f; do
-    [ -n "$f" ] || continue
-    if [ "$(head -1 "$f" 2>/dev/null)" != "---" ]; then n=$((n + 1)); fi
-  done <<EOF
-$(find_or_empty "$dir" -maxdepth 1 -type f -name '*.md')
-EOF
-  echo "$n"
-}
-
 ignored() {
   # git repo 가 아니면 판정 불가 -> false
   [ "$GIT_INIT" = true ] || { echo false; return; }
@@ -159,10 +147,11 @@ for f in "${SETTINGS_CASCADE[@]}"; do
 done
 
 # --- spec ----------------------------------------------------------------
+# spec 은 이슈 트래커에 산다. docs/agents/issue-tracker.md 는 Matt setup 이 남기는
+# 트래커 선언이고, 로컬 spec 파일은 그 전의 기록일 뿐이다.
+SPEC_TRACKER_DOC=$(b test -f docs/agents/issue-tracker.md)
 SPEC_CLAUDE=$(count_md .claude/spec)
 SPEC_SUPERPOWERS=$(count_md docs/superpowers/specs)
-SPEC_STATE=$(b test -f .claude/state/spec.json)
-SPEC_NO_FM=$(( $(count_no_frontmatter .claude/spec) + $(count_no_frontmatter docs/superpowers/specs) ))
 
 # --- gws-sync ------------------------------------------------------------
 GWS_CLI=$(b command -v gws)
@@ -298,7 +287,7 @@ jq -nc \
   --argjson native_mem "$NATIVE_MEM" --argjson native_enabled "$NATIVE_ENABLED" \
   --argjson mem0_settings "$MEM0_SETTINGS" --argjson mem0_mapped "$MEM0_MAPPED" \
   --argjson spec_claude "$SPEC_CLAUDE" --argjson spec_sp "$SPEC_SUPERPOWERS" \
-  --argjson spec_state "$SPEC_STATE" --argjson spec_no_fm "$SPEC_NO_FM" \
+  --argjson spec_tracker "$SPEC_TRACKER_DOC" \
   --argjson gws_cli "$GWS_CLI" --argjson gws_config "$GWS_CONFIG" \
   --argjson tmp_dir "$TMP_DIR" --argjson tmp_ignored "$TMP_IGNORED" \
   --argjson tmp_stale "$TMP_STALE" --argjson stale_days "$STALE_DAYS" \
@@ -342,8 +331,8 @@ jq -nc \
       mem0_project_mapped: $mem0_mapped
     },
     spec: {
-      claude_spec: $spec_claude, superpowers_spec: $spec_sp,
-      state_json: $spec_state, missing_frontmatter: $spec_no_fm
+      issue_tracker_doc: $spec_tracker,
+      claude_spec: $spec_claude, superpowers_spec: $spec_sp
     },
     gws_sync: { cli: $gws_cli, config: $gws_config },
     tmp: { dir: $tmp_dir, gitignored: $tmp_ignored, stale_files: $tmp_stale, stale_days: $stale_days },

@@ -5,7 +5,7 @@ description: "Bring outside knowledge into the repo's .llmwiki: a source documen
 
 # wiki:ingest
 
-The wiki holds **outside knowledge**: facts about things the repository does not control (platforms, vendors, customers, the domain), whether they arrived as a document or were learned while working. This skill is the only writer of concept pages; `wiki:lint` checks them.
+The wiki holds **outside knowledge**: facts about things the repository does not control (platforms, vendors, customers, the domain), whether they arrived as a document or were learned while working. This skill is the only writer of concept pages; `/wiki:query` answers from them and `wiki:lint` checks them.
 
 ## Route first: is this outside knowledge?
 

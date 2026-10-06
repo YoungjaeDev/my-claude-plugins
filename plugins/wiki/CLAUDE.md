@@ -9,6 +9,7 @@ No hooks, no scripts. Every skill is plain prose that runs the same in Claude Co
 | Skill | Role |
 |-------|------|
 | `ingest` | The only writer. Saves originals to `raw/`, creates or updates concept pages, updates `index.md` and `log.md`, scaffolds the wiki if missing, routes decisions/terms/mistakes to their homes, converts old-format pages it edits. Owns the page format. |
+| `query` | Answers from the wiki with citations: `index.md` → pages → raw when needed. Names the source to ingest when no page covers the question. Saves a new synthesized answer only after user approval, through `ingest`. |
 | `lint` | Read-only health check: stale pages, broken links and Sources, orphans, index mismatch, old-format count. |
 | `plaud-note-taking` | Corrects a PLAUD transcript in `raw/transcripts/`, writes `derived/` corrected + digest files, hands reusable facts to `ingest`. |
 

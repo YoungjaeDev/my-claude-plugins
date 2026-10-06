@@ -55,7 +55,7 @@ tool calls**: `REC` is the deterministic path `$MAIN_REPO/.claude/state/post-mer
 bash block that closes a later step, re-derive `MAIN_REPO`, re-set `REC` and re-declare `record_step`
 (copy them from above) before calling it.
 
-Sub-steps fold into their parent entry: 1.5 into 1, 4.5 and 4.6 into 4, 5.1 into 5, 6.5 into 6. Step 5 is `always done` precisely so that folding 5.1 in cannot make a skipped Project read as a skipped issue-close check; which Project condition fired goes in the run output, not the envelope.
+Sub-steps fold into their parent entry: 1.5 into 1, 4.5 and 4.6 into 4, 5.1 into 5. Step 5 is `always done` precisely so that folding 5.1 in cannot make a skipped Project read as a skipped issue-close check; which Project condition fired goes in the run output, not the envelope.
 
 | Step | `done` | `skipped "<reason>"` |
 |---|---|---|
@@ -64,13 +64,8 @@ Sub-steps fold into their parent entry: 1.5 into 1, 4.5 and 4.6 into 4, 5.1 into
 | 3 | always | — |
 | 4 | always (folds 4.5, 4.6) | — |
 | 5 | always — the issue-close check runs on every PR (folds 5.1) | — |
-| 5.5 | milestone table regenerated | `no milestone` |
-| 5.7 | `spec.json` entry moved | `no spec.json entry` |
-| 6 | always (folds 6.5) | — |
-| 7 | Serena memory updated | `Serena unavailable` / `Codex — Serena unavailable` |
-| 8 | always — mandatory, records `done` even on the `no-lore` path | — |
 | 9 | whenever the About check fired, README edit or not | `no README changes` only when the About check also could not run (no `gh` auth, no remote) |
-| 9.5 | CHANGELOG entry added | `no CHANGELOG` / `not changelog-worthy` |
+| 9.5 | `/docs:changelog` ran | `no CHANGELOG` / `not changelog-worthy` |
 
 Step 11 only prints the worktree cleanup command after the record is finalized; it is not recorded.
 

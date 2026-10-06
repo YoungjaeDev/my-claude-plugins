@@ -3,6 +3,7 @@ name: worker-max
 description: "max worker preset for /dev:orchestrate (opus, effort xhigh). The orchestrator picks it when the user asked for maximum accuracy on a slice the orchestrator cannot verify cheaply. Receives a job card and returns evidence-backed results within its owned paths."
 model: opus
 effort: xhigh
+# effort values: https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields
 ---
 
 # worker-max

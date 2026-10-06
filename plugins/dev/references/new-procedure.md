@@ -6,7 +6,7 @@ Procedure body for the `new` skill (`/dev:new`), which resolves this file via `r
 
 ## Core principles
 
-- **Minimal seeding, explicit follow-ups**: seed only what Day 1 truly needs (the empty `.claude/` structure, a CLAUDE.md stub, AGENTS.md review guidelines, README/CHANGELOG, the gh repo). Tech-stack-based rule generation (`/docs:write-rules`) and the wiki-domain interview (`/wiki:bootstrap-wiki`) are **not invoked — only pointed to in Phase 7**. Generating generic content in an empty project imposes an overwrite cost on the user.
+- **Minimal seeding, explicit follow-ups**: seed only what Day 1 truly needs (the empty `.claude/` structure, a CLAUDE.md stub, AGENTS.md review guidelines, README/CHANGELOG, the gh repo). Tech-stack-based rule generation (`/docs:write-rules`) and wiki ingest (`/wiki:ingest`, which creates the wiki when the first outside source arrives) are **not invoked — only pointed to in Phase 7**. Generating generic content in an empty project imposes an overwrite cost on the user.
 - **Owner gate is mandatory**: since the user has a side-project context (personal + org repos), owner selection must not be automated — always ask in the Phase 1 interview.
 - **Codex GitHub reviewer surface**: the `## Code Review Rules` section of `AGENTS.md` is what the Codex GitHub cloud reviewer reads automatically. It must be seeded at repo-creation time to take effect from the first PR.
 
@@ -127,7 +127,7 @@ record_step() {
 record_step 0 done
 ```
 
-**Recording contract.** The `step` integer is the phase number. As each Phase 1-7 closes, append its outcome — `record_step <n> done`, or `record_step <n> skipped "<reason>"` when a phase legitimately skips (Phase 3/4 when the target file already exists, Phase 6 when an `origin` remote already exists). **Shell state does not persist across separate tool calls** — `REC` is the deterministic path `.claude/state/project-init-<slug>.json`, so in each later phase's bash block re-derive `SLUG`/`REC` (the two lines above) and re-declare `record_step` before calling it. After Phase 7 closes, finalize the envelope (Phase 7 below). This record is orthogonal to `.claude/state/spec.json` (owned by `dev:state-tracker`) — different file, different concern.
+**Recording contract.** The `step` integer is the phase number. As each Phase 1-7 closes, append its outcome — `record_step <n> done`, or `record_step <n> skipped "<reason>"` when a phase legitimately skips (Phase 3/4 when the target file already exists, Phase 6 when an `origin` remote already exists). **Shell state does not persist across separate tool calls** — `REC` is the deterministic path `.claude/state/project-init-<slug>.json`, so in each later phase's bash block re-derive `SLUG`/`REC` (the two lines above) and re-declare `record_step` before calling it. After Phase 7 closes, finalize the envelope (Phase 7 below).
 
 ## Phase 1 — Project Identity Interview
 
@@ -161,7 +161,7 @@ bash ${PLUGIN_ROOT}/scripts/idempotent-seed.sh ensure-claude-dirs
 # Creates: .claude/{spec,rules}/.gitkeep + .llmwiki/{raw,wiki}/.gitkeep
 ```
 
-Do not invoke `bootstrap-wiki` / `write-rules` — an empty project has no lore to record and no tech-stack signal.
+Do not invoke `/wiki:ingest` / `/docs:write-rules` — an empty project has no outside knowledge to record and no tech-stack signal.
 
 **Record.** `record_step 2 done` (re-derive `SLUG`/`REC` + re-declare `record_step`, Phase 0.5).
 
@@ -176,21 +176,21 @@ If an existing `CLAUDE.md` is present, skip with a notice. Otherwise write it in
 
 ## LLM Wiki (`.llmwiki/wiki/`)
 
-이 프로젝트는 Karpathy LLM-Wiki 3-layer 시스템 위에 동작한다. 도메인 lore (provider quirks, design rationale, debugging stories) 는 wiki 가 보관한다.
+wiki 는 밖에서 들어온 지식(회의록, 리서치, 고객·벤더 문서, 플랫폼 사실)만 보관한다. 결정은 `docs/adr/`, 용어는 `GLOSSARY.md` 에 둔다.
 
-- **진입점**: `.llmwiki/wiki/index.md` (Map of Content). 페이지 직접 grep 금지.
+- **진입점**: `.llmwiki/wiki/index.md` 부터 읽는다. index 가 페이지보다 늦을 수 있으므로 그다음 페이지 제목·`aliases:`·본문을 grep 해 index 가 놓친 페이지를 찾는다 (`/wiki:query` 절차).
 - **사용 순서**:
-  1. lore 가 필요할 때 → `.llmwiki/wiki/index.md` 를 먼저 읽는다
-  2. 새 발견 → `/wiki:ingest-finding`
-  3. PR merge 후 → `/dev:post-merge` 가 wiki 적재까지 내장 (별도 skill 불필요)
-- **현재 상태**: wiki 비어있음. 적극 채워라. 첫 도메인 lore 가 쌓이기 시작하면 `/wiki:bootstrap-wiki` 호출로 도메인 구조 인터뷰를 받는다.
+  1. 원본이 들어오면 → `/wiki:ingest` (원본은 `.llmwiki/raw/`, 개념 페이지는 `.llmwiki/wiki/<topic>/<concept>.md`)
+  2. 그 지식이 궁금하면 → `/wiki:query` (index 부터 읽고 출처를 달아 답한다)
+  3. 가끔 → `/wiki:lint` (오래된 페이지, 깨진 링크·Sources 점검)
+- **현재 상태**: wiki 비어있음. 첫 `/wiki:ingest` 가 index.md 와 log.md 를 만든다.
 
 ## Setup Status
 
 이 파일은 `/dev:new` 가 만든 minimal stub 이다. 코드가 어느 정도 쌓이면 다음을 호출해라:
 
 - `/docs:write-rules` — tech-stack 기반 CLAUDE.md + `.claude/rules/*.md` 재생성
-- `/wiki:bootstrap-wiki` — 첫 wiki 도메인 인터뷰 + 템플릿 시드
+- `/wiki:ingest` — 첫 외부 원본(회의록·리서치·고객 문서)이 들어올 때 wiki 생성 + 적재
 
 > 사용자의 global `~/.claude/CLAUDE.md` 가 항상 우선한다. 이 파일은 프로젝트 한정 규칙만 보관한다.
 ```
@@ -377,11 +377,11 @@ Next actions (call when ready):
   1. 코드가 쌓이면        → /docs:write-rules
      (tech-stack 기반 CLAUDE.md + .claude/rules/*.md 재생성)
 
-  2. 첫 도메인 lore 쌓이면 → /wiki:bootstrap-wiki
-     (도메인 인터뷰 + .llmwiki/wiki/<domain>/ 구조 시드)
+  2. 외부 원본이 들어오면  → /wiki:ingest
+     (첫 호출이 .llmwiki/wiki/ 의 index.md·log.md 를 만든다)
 
   3. 첫 PR merge 후        → /dev:post-merge
-     (wiki 적재까지 내장 — 별도 skill 불필요)
+     (브랜치·추적 정리. 교훈은 빌드한 세션에서 /retro)
 ```
 
 **Record + finalize.** `record_step 7 done`, then mark the envelope terminal (re-derive `SLUG`/`REC` first):
@@ -398,7 +398,7 @@ jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 
 | Step | Behavior on failure |
 |------|--------------|
-| Preflight hard guard | abort + notice (use `/docs:write-rules` or `/wiki:bootstrap-wiki` for non-empty dirs) |
+| Preflight hard guard | abort + notice (use `/docs:write-rules` or `/dev:wiring` for non-empty dirs) |
 | Phase 0 — gh auth | abort + notice (`gh auth login`) |
 | Phase 0 — idempotency guard user abort | stop immediately, preserve the partial seed |
 | Phase 6 — `gh repo create` | local changes/commits stay intact, only push fails. Advise the user of a manual retry command |

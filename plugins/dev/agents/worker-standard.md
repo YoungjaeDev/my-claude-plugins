@@ -3,6 +3,7 @@ name: worker-standard
 description: "standard worker preset for /dev:orchestrate (sonnet, effort medium). The orchestrator picks it when the slice is bounded implementation, tests, docs, or a module summary; the default for most slices. Receives a job card and returns evidence-backed results within its owned paths."
 model: sonnet
 effort: medium
+# effort values: https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields
 ---
 
 # worker-standard

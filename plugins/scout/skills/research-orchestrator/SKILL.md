@@ -16,7 +16,7 @@ Use when:
 - A single-axis quick lookup is fine: the orchestrator will detect that and fan out to just one scout
 
 Skip / use something else when:
-- The user wants a GitHub PR review → `dev:cr-fix` / `dev:resolve-issue`
+- The user wants a GitHub PR review → `dev:cr-fix`
 - The user wants to ask a single question about one repo → `scout:ask` directly
 - The user wants to read library API docs only → `context7` MCP directly
 - The user's query is **outside the code / ML domain** (politics, market, history, biographies, general policy) → `/deep-research` directly. Its 7-phase + adversarial verify + state-machine flow is tuned for generic topics; scout's axis routing is tuned for code/ML and would mis-route on those queries. Orchestrator does **not** delegate to `/deep-research`: the boundary is intentional.

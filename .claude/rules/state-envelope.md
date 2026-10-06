@@ -54,14 +54,6 @@ a later change.
   `reason` is required on `skipped`, omitted on `done`. Sub-steps fold into their parent
   top-level step's entry.
 
-## Orthogonality to spec-state
-
-A state-envelope run record is **not** `.claude/state/spec.json`. `spec.json` (owned by
-`dev:state-tracker`) is the cross-run aggregate of spec → issue → PR pipeline work.
-A run record is a **single skill run's own step log**. They are separate files with
-separate owners: a state-envelope record never reads or writes `spec.json`, and the
-spec aggregate never carries per-run step logs.
-
 ## Per-skill jq (no shared library)
 
 An adopting skill inlines these three moves directly in its body — there is no sourced
@@ -113,4 +105,3 @@ jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 
 - Never promote this into a shared library/script at v0 — a narrow per-skill convention is the point.
 - Never commit a run record — `.claude/state/` is gitignored; keep it out of any commit staging set.
-- Never overload `spec.json` with per-run step logs — that file is a different concern (see above).

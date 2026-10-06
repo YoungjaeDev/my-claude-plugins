@@ -3,6 +3,7 @@ name: worker-deep
 description: "deep worker preset for /dev:orchestrate (opus, effort high). The orchestrator picks it when the slice is root-cause debugging, a cross-module refactor, or a design or security review, where a wrong answer costs a rerun. Receives a job card and returns evidence-backed results within its owned paths."
 model: opus
 effort: high
+# effort values: https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields
 ---
 
 # worker-deep

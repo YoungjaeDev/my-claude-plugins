@@ -1,6 +1,6 @@
 {
   "name": "scout",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Research and search. research-orchestrator routes a query to scout agents (github / hf / web / docs) in parallel and synthesis-scout dedups, trust-ranks, and writes the report (exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4). ask and generate-llmstxt query a GitHub repository through the DeepWiki MCP.",
   "skills": [
     "./skills/research-orchestrator",

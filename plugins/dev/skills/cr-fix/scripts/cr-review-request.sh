@@ -3,7 +3,9 @@
 # Prints `request` when CodeRabbit will not auto-review a PR into BASE, so cr-fix
 # must post `@coderabbitai review` after each push; prints `skip` otherwise. The
 # reason goes to stderr. No network: CONFIG (default .coderabbit.yaml) is read
-# from disk.
+# from disk. Reading the checked-out PR head is correct: CodeRabbit reviews with
+# the config on the branch under review, not the base's
+# (https://docs.coderabbit.ai/getting-started/yaml-configuration).
 #
 #   BASE == DEFAULT_BRANCH                       -> skip (auto-review covers it)
 #   CONFIG missing or unreadable                 -> request (safe default)

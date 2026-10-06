@@ -45,7 +45,8 @@ while IFS= read -r f; do
     grep -rlF --include='*.md' "$(basename "$f")" "$W" \
       | grep -vxF -e "$f" -e "$W/index.md" -e "$W/log.md" | grep -q . || echo "orphan: $rel"
   fi
-  n=$(grep -cF "($rel)" "$W/index.md" || true)  # grep -c prints 0 and exits 1 on no match
+  # grep -c prints 0 and exits 1 on no match; 2 means index.md could not be read.
+  n=$(grep -cF "($rel)" "$W/index.md") || [ $? -eq 1 ] || { echo "error: cannot read $W/index.md" >&2; exit 2; }
   if [ "$n" -eq 0 ]; then echo "not in index: $rel"
   elif [ "$n" -gt 1 ]; then echo "duplicate in index: $rel ($n lines)"; fi
 done < <(find "$W" -name '*.md' ! -name index.md ! -name 'log*.md' | sort)

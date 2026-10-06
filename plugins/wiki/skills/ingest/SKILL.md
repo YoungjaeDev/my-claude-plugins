@@ -77,7 +77,7 @@ links, e.g. [rate limits](../vendor-x/rate-limits.md).>
 ## Steps
 
 1. **Route** the input with the table above.
-2. **Save originals.** A document that arrived from outside goes under `.llmwiki/raw/` as `YYYY-MM-DD-<slug>.<ext>`, unchanged. Skip for facts learned while working.
+2. **Save originals.** A document that arrived from outside goes under `.llmwiki/raw/` as `YYYY-MM-DD-<slug>.<ext>`, unchanged. If that name is taken, reuse it only when the bytes are identical (`cmp -s`); otherwise pick the next free `YYYY-MM-DD-<slug>-2.<ext>`, `-3`, and so on. Never overwrite a raw file: pages already cite it. Skip this step for facts learned while working.
 3. **Find the pages.** Search `index.md` and page bodies; list every page the input touches (usually one primary page, sometimes a few that link to it).
 4. **Log first.** Prepend to `log.md` (below its header) before editing pages, so one commit carries both and `git revert` undoes both:
 

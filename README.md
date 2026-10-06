@@ -151,10 +151,13 @@ dev 는 뒷단만 맡는다: PR 부터 리뷰 루프, 머지, 정리까지. 아�
 | `/dev:orchestrate` | 메인 에이전트를 오케스트레이터로 운용. 슬라이스별 job card (목표·범위·절대 경로·입력·출력 형식·완료 기준·프리셋), 모델 x effort 워커 프리셋 `dev:worker-standard/deep/max`, 경로당 writer 하나, 품질 게이트 (같은 에이전트 재질의 2회 → 상위 프리셋 1회 → 사용자 질문), 오케스트레이터가 직접 검증 후 에이전트별 ledger 보고. `Workflow` 는 수동 호출 시에만. 쓰는 슬라이스는 전부 worktree 격리 — 워커 브랜치 diff 를 카드의 owned Paths 와 대조해 범위를 벗어난 브랜치는 merge 하지 않는다 (복원하지 않는다). Codex 에는 `Agent` 도구가 없어 인라인으로 돌고, 수동 `git worktree add` 를 택하지 않으면 브랜치 게이트 대신 카드 Paths + 쓴 경로 자기보고가 완료 조건이다. `git worktree list` 베이스라인 대조 cleanup 필수 |
 | `/dev:flow` | 다음에 무엇을 부를지 안내하는 짧은 라우터. Matt 앞단(`/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement-spec`, 세부는 `/ask-matt`) 과 dev 뒷단(`/dev:cr-fix` → 머지 → `/dev:post-merge` → `/retro`) 을 한 흐름으로 보이고, 버그·PR 없음·즉석 병렬(`/dev:orchestrate`)·wiki·worktree·non-default base·E2E 갈래와 제품 repo 준비를 안내한다. 직접 뭔가를 실행하지 않는다. `mattpocock/skills` `ask-matt` 형식을 각색 |
 
-**제품 repo 준비 (repo 당 1회)** — Matt 스킬을 설치한 뒤 `/setup-matt-pocock-skills` 로 이슈 트래커·triage 라벨·도메인 문서 안내를 repo 에 연결하고, triage 라벨 5개를 만든다. 라벨이 없으면 첫 `/to-spec` 이 실패한다. `--force` 는 이미 있는 라벨을 갱신하므로 다시 돌려도 안전하다.
+**제품 repo 준비 (repo 당 1회)** — Matt 스킬을 설치한 뒤 `/setup-matt-pocock-skills` 로 이슈 트래커·triage 라벨·도메인 문서 안내를 repo 에 연결하고, triage 라벨 5개를 만든다. 라벨이 없으면 첫 `/to-spec` 이 실패한다. 없는 라벨만 만들므로 다시 돌려도 기존 라벨의 색상·설명은 그대로다 (`--force` 는 덮어쓴다).
 
 ```bash
-for l in needs-triage needs-info ready-for-agent ready-for-human wontfix; do gh label create "$l" --force; done
+( have=$(gh label list --limit 1000 --json name --jq '.[].name') || exit 1
+  for l in needs-triage needs-info ready-for-agent ready-for-human wontfix; do
+    printf '%s\n' "$have" | grep -qxF "$l" || gh label create "$l" || exit 1
+  done )
 ```
 
 **프로젝트 셋업**

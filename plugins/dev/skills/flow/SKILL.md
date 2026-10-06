@@ -37,10 +37,13 @@ A short router, not a skill that does the work itself. Matt's skills (`mattpococ
 2. Create the five triage labels, or the first `/to-spec` fails on a missing label. Hand the user this command to run; flow itself never runs it:
 
    ```bash
-   ( for l in needs-triage needs-info ready-for-agent ready-for-human wontfix; do gh label create "$l" --force || exit 1; done )
+   ( have=$(gh label list --limit 1000 --json name --jq '.[].name') || exit 1
+     for l in needs-triage needs-info ready-for-agent ready-for-human wontfix; do
+       printf '%s\n' "$have" | grep -qxF "$l" || gh label create "$l" || exit 1
+     done )
    ```
 
-   `--force` updates a label that already exists instead of failing, so a re-run is safe. The first failure stops the loop and the subshell exits non-zero, without closing the user's shell.
+   Only missing labels are created, so a re-run leaves the color and description of existing labels alone (`--force` would overwrite them). The first failure stops the loop and the subshell exits non-zero, without closing the user's shell.
 
 ## Standalone
 

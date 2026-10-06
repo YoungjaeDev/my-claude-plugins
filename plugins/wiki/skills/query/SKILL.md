@@ -7,7 +7,7 @@ description: "Answer a question from the repo's .llmwiki with citations: reads i
 
 Answers questions about **outside knowledge** (platforms, vendors, customers, the domain) from `.llmwiki/`, with every claim traced to a page. The page format is the one `wiki:ingest` writes; this skill reads it and never defines its own.
 
-If `.llmwiki/wiki/` does not exist, say so and stop: there is nothing to read, and `/wiki:ingest` creates the wiki on first use.
+If `.llmwiki/wiki/index.md` does not exist, say so and stop: there is nothing to read, and `/wiki:ingest` creates the wiki on first use. Check the file, not the directory: `/dev:new` seeds an empty `.llmwiki/wiki/` holding only a `.gitkeep`.
 
 ## Route first
 

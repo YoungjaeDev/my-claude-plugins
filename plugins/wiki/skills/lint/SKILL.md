@@ -7,7 +7,7 @@ description: "Health-check the repo's .llmwiki: stale concept pages, broken link
 
 Finds the ways a wiki quietly rots. Read-only: it reports, the user decides, and fixes go through `/wiki:ingest`. The page format it checks against is the one `wiki:ingest` writes (`.llmwiki/wiki/index.md`, `log.md`, `<topic>/<concept>.md` with `last_verified` frontmatter and a `## Sources` section).
 
-If `.llmwiki/wiki/` does not exist, say so and stop: there is nothing to lint, and `/wiki:ingest` creates the wiki on first use.
+If `.llmwiki/wiki/index.md` does not exist, say so and stop: there is nothing to lint, and `/wiki:ingest` creates the wiki on first use. Check the file, not the directory: `/dev:new` seeds an empty `.llmwiki/wiki/` holding only a `.gitkeep`.
 
 ## Checks
 

@@ -42,7 +42,7 @@ while IFS= read -r f; do
   else
     awk '/^## Sources/{s=1;next} /^## /{s=0} s' "$f" | grep -oE '\.llmwiki/[^][ )`>,]+' \
       | while IFS= read -r p; do [ -e "$p" ] || echo "broken source: $rel -> $p"; done
-    grep -rlF "$(basename "$f")" "$W" --include='*.md' \
+    grep -rlF --include='*.md' "$(basename "$f")" "$W" \
       | grep -vxF -e "$f" -e "$W/index.md" -e "$W/log.md" | grep -q . || echo "orphan: $rel"
   fi
   grep -qF "($rel)" "$W/index.md" || echo "not in index: $rel"

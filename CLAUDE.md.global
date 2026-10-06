@@ -61,7 +61,7 @@
 ## 6. Reply in Korean, and read the repository's memory before reasoning
 
 - Write the final reply to the user in Korean unless told otherwise; internal workflows, subagents, and English skills do not override this.
-- When the working directory has `.llmwiki/insight/`, read it and then `.llmwiki/wiki/index.md` before reasoning about repository lore, and prefer the dated, sourced page over memory.
+- When the working directory has `.llmwiki/wiki/index.md`, read it before answering a question about outside knowledge (platforms, vendors, customers, the domain), and prefer the dated, sourced page over memory. Decisions live in `docs/adr/`, terms in `GLOSSARY.md`. This pointer lives here because Codex carries a per-turn rule only through `AGENTS.md` or a hook, never a skill (<https://learn.chatgpt.com/docs/agent-configuration/agents-md>).
 - Change only the lines the request calls for, with no drive-by refactor or unrelated cleanup.
 
 ## 7. Prefer a CLI and a script over reading and counting by eye

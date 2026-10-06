@@ -9,7 +9,7 @@
 - 변경은 요청 범위에만 한정하고, 관련 없는 파일이나 기존 사용자 변경을 되돌리지 않는다.
 - 파일 탐색과 검색은 `rg`, `rg --files` 를 우선 쓴다.
 - 라이브러리·런타임·플랫폼 사실은 `docs/llm-doc-sources.md` 의 LLM 문서 소스로 먼저 확인한다.
-- lore 성 질문에 답하기 전에 `.llmwiki/wiki/index.md` 를 먼저 읽는다.
+- 설계 결정을 묻는 질문에는 `docs/adr/` 를, 용어는 `GLOSSARY.md` 를 먼저 읽는다. 이 저장소에는 `.llmwiki/` 가 없다 (바깥 지식이 없다).
 - 문서와 매니페스트가 함께 움직이는 저장소이므로 코드 변경 시 `README.md`, 이 문서, marketplace manifest 의 동기화 필요성을 항상 확인한다.
 
 플러그인 트리 하나를 Claude Code 와 Codex CLI 가 함께 읽는다 (one source, two runtimes). Codex 는 `.claude-plugin/marketplace.json` 과 `plugins/*/.claude-plugin/plugin.json` 을 네이티브 폴백으로 직접 읽으므로 생성 계층이 없다.
@@ -24,7 +24,7 @@
 | `docs` | Documentation | docs-forge, publish |
 | `scout` | Research & Search | code-scout, deepwiki, paper-search-tools |
 | `ml` | Development | ml-toolkit |
-| `wiki` | Memory & Lore | llm-wiki, mem0-ops |
+| `wiki` | Outside Knowledge | llm-wiki, mem0-ops |
 | `deck` | Documentation | (신규, 덱 저장소 3곳에 손으로 복사되던 규칙·도구) |
 | `council` | AI Models | (단독 유지, Claude 전용) |
 | `codex-image` | AI Models | (단독 유지, Claude 전용) |
@@ -43,16 +43,16 @@
 - `.claude/settings.json`: 로컬 플러그인 auto-load 목록. 플러그인을 추가하면 여기도 등록한다 (어떤 가드도 누락을 잡지 않는다).
 - `.claude-plugin/marketplace.json`: marketplace 레지스트리와 플러그인 버전. Codex 도 이 카탈로그를 읽는다.
 - `.claude/rules/`: 경로 스코프 상세 규칙 (Claude 전용, Codex 는 못 읽는다). `plugin-versioning.md` 는 매니페스트를 만질 때, `state-envelope.md` 는 `.claude/state/*.json` 을 만질 때만 로드된다. 포인터를 `@import` 로 바꾸면 스코핑이 죽으므로 백틱으로 둔다.
-- `plugins/<name>/`: 플러그인 원본. `.claude-plugin/plugin.json` 이 매니페스트이자 버전이며 두 런타임이 같은 파일을 읽는다. `hooks/codex-hooks.json` (wiki) 은 수동 `~/.codex/hooks.json` 등록의 문서화된 소스다.
+- `plugins/<name>/`: 플러그인 원본. `.claude-plugin/plugin.json` 이 매니페스트이자 버전이며 두 런타임이 같은 파일을 읽는다.
 - `scripts/`: 가드 스크립트. Node 18+ 내장 모듈만 쓰고 런타임 의존성을 추가하지 않는다.
-- `.llmwiki/`: 두 런타임이 공유하는 lore 루트. per-agent 로 fork 하지 않고, wiki lore 를 `.claude/rules/` 로 승격하지 않는다 (Codex 가 못 읽는다). cross-agent 규칙은 `.llmwiki/insight/` 로 graduate 하고, 전역 지침 (`CLAUDE.md.global`) 의 포인터가 두 런타임에서 이를 먼저 읽게 한다.
+- `docs/adr/`: 결정 기록. `GLOSSARY.md`: 용어집. 두 런타임이 같은 파일을 읽으므로 결정이나 용어를 `.claude/rules/` 로 옮기지 않는다 (Codex 가 못 읽는다). 지식 종류별 위치는 ADR 0003 이 정한다: 결정은 `docs/adr`, 용어는 `GLOSSARY.md`, 반복 실수는 `/retro` 가 만드는 자동 검사, 바깥 지식은 제품 repo 의 `.llmwiki/` (`wiki` 플러그인).
 
 ## Codex 통합
 
 - `commands` / `agents` 는 Claude 전용 표면이다. Codex 는 미지원 필드를 무시하고 `skills/` 만 읽으므로, skill 로직을 agent 정의로 옮기지 않는다 (Codex 에서 조용히 사라진다).
 - Skill `description` 은 1024자 미만으로 유지한다. Codex 는 초과 description 을 가진 skill 을 silent 하게 skip 하고 Claude 쪽에서는 위반이 보이지 않는다. `scripts/check-skill-contract.mjs` 가 검증한다.
 - `description` 에 콜론+공백(`: `) 이 들어가면 따옴표로 감싼다. 안 하면 YAML 이 nested mapping 으로 파싱돼 두 런타임 모두에서 skill 이 로드되지 않는다.
-- 번들 `scripts/` 를 부르는 skill 본문은 `${CLAUDE_PLUGIN_ROOT}` 를 그대로 쓰지 않는다. Codex 는 이 변수를 export 하지 않으므로 `CLAUDE_PLUGIN_ROOT` → 소스트리 `plugins/<name>` → Codex 캐시 순의 `PLUGIN_ROOT` resolver 블록을 본문에 둔다 (참조 구현: `dev:new`, `wiki:cleanup`).
+- 번들 `scripts/` 를 부르는 skill 본문은 `${CLAUDE_PLUGIN_ROOT}` 를 그대로 쓰지 않는다. Codex 는 이 변수를 export 하지 않으므로 `CLAUDE_PLUGIN_ROOT` → 소스트리 `plugins/<name>` → Codex 캐시 순의 `PLUGIN_ROOT` resolver 블록을 본문에 둔다 (참조 구현: `dev:new`).
 - Codex 훅은 `codex plugin add` 만으로 실행되지 않는다. 수동 `~/.codex/hooks.json` 등록 후 `/hooks` 에서 trust 승인이 있어야 발화하고, 승인 전에는 아무 신호 없이 죽어 있다. `UserPromptSubmit`/`PostToolUse` 훅은 plain stdout 이 아니라 `hookSpecificOutput.additionalContext` JSON 을 내야 Codex 가 읽는다 (공유 스크립트는 `codex` 인자로 분기).
 - 사용자에게 되묻는 상호작용은 capability-aware 게이트로 쓴다: Claude 는 `AskUserQuestion`, Codex 는 `request_user_input` (노출된 경우), 없으면 틀린 가정의 비용이 큰 지점에서만 짧은 blocking 질문 하나를 던지고 그 외에는 문서화된 안전한 기본값으로 진행한다.
 - `AGENTS.md` 를 `CLAUDE.md` 로의 포인터로 축약하지 않는다. Codex 는 `@` 를 확장하지 않아 `@CLAUDE.md` 는 죽은 텍스트이고, Codex cloud reviewer 는 `## Code Review Rules` 를 시스템 프롬프트에 직접 로드하므로 산문 redirect 를 따라가지 않는다. 실패는 조용하다.
@@ -78,13 +78,12 @@ git add -A \
   && node scripts/check-shell-portability.mjs \
   && node scripts/check-shell-portability.test.mjs \
   && node scripts/check-skill-contract.mjs \
-  && node scripts/windows-codex-hooks.test.mjs \
   && bash plugins/dev/skills/cr-fix/tests/run-tests.sh \
   && bash plugins/council/skills/convene/tests/run-tests.sh \
   && echo "verify: ok"
 ```
 
-- `git add -A` 가 먼저다: 가드는 git-tracked 파일만 스캔한다. `windows-codex-hooks.test.mjs` 는 Windows 밖에서는 skip 으로 통과한다.
+- `git add -A` 가 먼저다: 가드는 git-tracked 파일만 스캔한다.
 
 - `.githooks/pre-commit` 이 매 커밋마다 같은 가드를 돌린다. clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화한다.
 - `check-shell-portability.mjs` 는 GNU 전용 셸 구문이 폴백도 capability probe 도 없이 쓰인 경우만 잡는다. 증거는 코드여야 하고 주석은 인정하지 않는다. 예외는 `# portability-ok: <사유>` 로 표시한다. 상세는 `README.md` 의 "CI 가드가 지키는 것".
@@ -136,7 +135,7 @@ CodeRabbit inline 헤더는 `_<카테고리>_ | _<심각도>_ | _<노력>_` (예
 | CR `📝 Nitpick` (리뷰 요약 `<details>` 전용) | `skip` |
 | Codex P1 (red), P2 (yellow) | `gated` |
 
-cr-fix 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지, `--no-minor-stop` 으로 비활성화. **churn stop** (opt-out 없음) — iter 2 부터 이번 사이클 finding 이 전부 직전 iter 커밋 위나 PR diff 밖이면 `final_state=churn` 으로 정지한다. 직전 커밋 위 축은 코드에만 적용된다 — 산문은 한 iteration 이 문단을 통째로 다시 쓰므로 위치가 작성자를 뜻하지 않고, PR diff 밖 축만으로 판정하며 수렴하지 않는 산문 루프는 `iteration_cap` 이 받는다. **후속 이슈 1건** — `final_state` 가 `churn` / `minor_floor` / `iteration_cap` 이고 deferred 가 있으면 `gh issue create --label tbd` 로 1건 발행한다 (`dev:decompose-issue` 는 호출하지 않는다). **auto-merge** — `clean`, 또는 후속 이슈 발행에 성공한 `minor_floor` / `churn` 만 통과하고 이슈 발행 실패 시 머지를 차단한다. cr-fix 는 `@coderabbitai rate limit` 외에 어떤 PR 댓글도 올리지 않는다 (재리뷰는 push 가 트리거한다). **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 cr-fix state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.
+cr-fix 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지, `--no-minor-stop` 으로 비활성화. **churn stop** (opt-out 없음) — iter 2 부터 이번 사이클 finding 이 전부 직전 iter 커밋 위나 PR diff 밖이면 `final_state=churn` 으로 정지한다. 직전 커밋 위 축은 코드에만 적용된다 — 산문은 한 iteration 이 문단을 통째로 다시 쓰므로 위치가 작성자를 뜻하지 않고, PR diff 밖 축만으로 판정하며 수렴하지 않는 산문 루프는 `iteration_cap` 이 받는다. **후속 이슈 1건** — `final_state` 가 `churn` / `minor_floor` / `iteration_cap` 이고 deferred 가 있으면 `gh issue create --label tbd` 로 1건 발행한다. **auto-merge** — `clean`, 또는 후속 이슈 발행에 성공한 `minor_floor` / `churn` 만 통과하고 이슈 발행 실패 시 머지를 차단한다. cr-fix 는 `@coderabbitai rate limit` 외에 어떤 PR 댓글도 올리지 않는다 (재리뷰는 push 가 트리거한다). **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 cr-fix state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.
 
 ## Agent skills
 

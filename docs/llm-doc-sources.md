@@ -61,7 +61,7 @@ claude mcp add mcpdocs --scope user -- npx @hapus/mcp-cache uvx --from mcpdoc mc
 | `openrouter` | `https://openrouter.ai/docs/llms.txt` | OpenRouter 통합 LLM 게이트웨이 API |
 | `codex` | `https://developers.openai.com/codex/llms.txt` | OpenAI Codex CLI 문서 (멀티런타임 통합의 Codex 표면) |
 | `openai-api` | `https://developers.openai.com/api/docs/llms.txt` | OpenAI 플랫폼 API |
-| `mem0` | `https://docs.mem0.ai/llms.txt` | mem0 장기 메모리 API (wiki 플러그인) |
+| `mem0` | `https://docs.mem0.ai/llms.txt` | mem0 장기 메모리 API |
 
 ## 추가 대상 (mcpdocs 에 신규 등록)
 

@@ -62,7 +62,7 @@ A good question is directly answerable — one fact each.
 답변 대상: <name if known, else 답변 대상 미정>
 ```
 
-Resolve open questions by interviewing the user relentlessly (grill-me). Fold confirmed answers
+Resolve open questions by grilling the user (Matt's `grilling` skill), one fact per question. Fold confirmed answers
 back in as `[확인됨]` / `[정정]`; leave anything the user defers as `[확인 필요]`.
 
 ## Sensitive information

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +14,11 @@ if (process.platform !== 'win32') {
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const descriptorPath = join(root, 'plugins', 'wiki', 'hooks', 'codex-hooks.json');
+// The wiki plugin no longer ships hooks; nothing is left to test until this file is removed.
+if (!existsSync(descriptorPath)) {
+  console.log('skip: no Codex hook descriptor ships any more');
+  process.exit(0);
+}
 const descriptor = JSON.parse(readFileSync(descriptorPath, 'utf8'));
 const probeRoot = mkdtempSync(join(tmpdir(), 'wiki-codex-hooks-'));
 const probeScript = '#!/usr/bin/env bash\nprintf \'CODEX_HOOK_PROBE:%s\\n\' "$*"\n';

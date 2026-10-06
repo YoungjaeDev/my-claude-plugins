@@ -8,7 +8,7 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 |-------|-------------|
 | `doc-guides` | README/CHANGELOG/deploy-doc/MOC authoring reference cards, one per `/docs:*` document command (absorbed `readme-guide`, `changelog-guide`, `deploy-doc-guide`, `moc-guide`) |
 | `write-rules` | CLAUDE.md + `.claude/rules/` generation with auto mode detection (absorbed from `rules-forge`) |
-| `interview-methodology` | Confirm the open points of a small, ambiguous request: breadth-first / depth-first modes, inline-summary close (absorbed from `interview`); also carries the TCREI reusable-prompt template (absorbed from `tcrei-prompt`). Pressing an existing plan hard is Matt `grilling`; large work goes to `/grill-with-docs` |
+| `interview-methodology` | Confirm the open points of a small, ambiguous request: breadth-first sweep, inline-summary close (absorbed from `interview`); also carries the TCREI reusable-prompt template (absorbed from `tcrei-prompt`). Pressing an existing plan hard is Matt `grilling`; large work goes to `/grill-with-docs` |
 | `vp` | Voice-dictated prompt gate: normalize misheard terms against `.agents/voice-terms.md`, restate and proceed, or ask 2-3 questions when ambiguous |
 | `skill-forge` | Write or revise a skill: frontmatter schema, writing levers, structure, three-runtime packaging contract |
 | `skill-audit` | Diagnose one skill across seven axes, returning P0/P1/P2 findings with concrete edits |
@@ -264,14 +264,13 @@ Confirm the open points of a request (hidden needs, constraints, edge cases) bef
 - "gathering requirements"
 - Small feature requests with unresolved open points
 
-### Two Modes
+### Mode
 
-- **Breadth-first** (the 5-phase flow) - sweep every category when coverage matters.
-- **Depth-first / Socratic (focused)** - target the single biggest uncertainty, one question at a time; for one-or-two-decision work. The two compose (map breadth-first, then dive focused).
+- **Breadth-first** (the 5-phase flow) - sweep every category so no open point is missed. There is no depth-first mode: large multi-decision work goes to `/grill-with-docs`.
 
 Stress-testing an existing plan ("grill me") is not this skill: it belongs to Matt `grilling`.
 
-### Interview Phases (breadth-first mode)
+### Interview Phases (breadth-first)
 
 1. **Context Gathering** (2-3 questions) - Big picture
 2. **Deep Dive** (5-10 questions) - Technical, UX, edge cases

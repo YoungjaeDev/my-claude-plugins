@@ -316,41 +316,30 @@ export function checkSkillContracts(root) {
 //
 // Not judged, because they are records of the past rather than instructions:
 //   - the history folders and `.llmwiki` (HISTORY_PATH)
-//   - a markdown section whose heading says change log / migration / history, down to
-//     the next heading at the same or a shallower level
-//   - a line that itself records a removal or a rename (HISTORY_LINE)
 //   - `plugin:x/...`, which is a path or a source id, not a skill
+//   - a `Migrated from <plugin>:<skill>` provenance line (MIGRATED_FROM), kept only for the
+//     ml reference header that predates this guard; ml is outside the plugins this guard's
+//     spec rewrote
+// Everywhere else a history note names a deleted skill in prose, not as `<plugin>:<skill>`.
 // `plugin:prefix-*` is a glob and passes when any target starts with the prefix.
 
 const HISTORY_PATH = /^(docs\/(audit|prd|superpowers)|\.claude\/spec|\.llmwiki)\//;
-const HISTORY_HEADING = /change ?log|migration|history/i;
-// ponytail: keyword heuristic — a live line that happens to say "removed" is not judged;
-// switch to an explicit per-line marker if that ever hides a real stale reference.
-const HISTORY_LINE = /\b(remov\w*|former(ly)?|migrated from|renamed)\b/i;
+// ponytail: keyword match; replace with an explicit marker if ml's header is ever reworded.
+const MIGRATED_FROM = /\bmigrated from\b/i;
 
 export function staleSkillRefs(rel, content, plugins, targets) {
   if (HISTORY_PATH.test(rel) || !plugins.length) return [];
   const names = plugins.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   const re = new RegExp(`(?<![\\w.-])/?(${names}):([a-z0-9][a-z0-9-]*)([*/])?`, 'g');
-  const md = rel.endsWith('.md');
   const errors = [];
-  let fence = null;
-  let historyLevel = 0;
   content.split('\n').forEach((line, idx) => {
-    const f = line.match(/^\s*(`{3,}|~{3,})/);
-    if (f) fence = fence === null ? f[1][0] : f[1][0] === fence ? null : fence;
-    const h = md && fence === null && line.match(/^(#{1,6})\s+(.*)/);
-    if (h) {
-      if (historyLevel && h[1].length <= historyLevel) historyLevel = 0;
-      if (!historyLevel && HISTORY_HEADING.test(h[2])) historyLevel = h[1].length;
-    }
-    if (historyLevel || HISTORY_LINE.test(line)) return;
+    if (MIGRATED_FROM.test(line)) return;
     for (const [hit, plugin, skill, tail] of line.matchAll(re)) {
       if (tail === '/') continue;
       const ref = `${plugin}:${skill}`;
       const ok = tail === '*' ? [...targets].some((t) => t.startsWith(ref)) : targets.has(ref);
       if (!ok) {
-        errors.push(`${rel}:${idx + 1}: \`${hit}\` names no skill, command, or agent in plugins/${plugin}/ — update the reference, or move it under a change-log section if it is history`);
+        errors.push(`${rel}:${idx + 1}: \`${hit}\` names no skill, command, or agent in plugins/${plugin}/ — update the reference, or name a deleted skill in prose rather than as plugin:skill`);
       }
     }
   });
@@ -556,10 +545,9 @@ const REF_CASES = [
   { check: 'history folder', stale: false, rel: 'docs/audit/2026-01-01.md', content: 'demo:gone\n' },
   { check: 'history folder .claude/spec', stale: false, rel: '.claude/spec/x.md', content: 'demo:gone\n' },
   { check: 'history folder .llmwiki', stale: false, rel: '.llmwiki/wiki/x.md', content: 'demo:gone\n' },
-  { check: 'change-log section', stale: false, rel: 'plugins/demo/CLAUDE.md', content: '## Change log\n\n### 1.0\n| 1.0 | adds demo:gone |\n' },
-  { check: 'section after the change log is live again', stale: true, rel: 'plugins/demo/CLAUDE.md', content: '## Change log\n| 1.0 | demo:old |\n## Usage\nrun demo:gone\n' },
-  { check: 'line that records a removal', stale: false, rel: 'x.md', content: 'the former `demo:gone` skill, removed in 2.0\n' },
-  { check: 'heading inside a code fence is not a heading', stale: true, rel: 'x.md', content: '```bash\n# history\n```\ndemo:gone\n' },
+  { check: 'a removal keyword on the line does not exempt it', stale: true, rel: 'x.md', content: 'the former `demo:gone` skill, removed in 2.0\n' },
+  { check: 'a migrated-from provenance line', stale: false, rel: 'x.md', content: '<!-- Migrated from demo:gone (skill removed) -->\n' },
+  { check: 'a history heading does not exempt its section', stale: true, rel: 'plugins/demo/CLAUDE.md', content: '## Change log\n| 1.0 | adds demo:gone |\n' },
 ];
 
 export function runFixtures() {

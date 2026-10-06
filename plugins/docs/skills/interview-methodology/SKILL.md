@@ -46,7 +46,7 @@ When it applies, it overrides rules 3-4 below.
 1. **Use the interactive-input gate** for all questions (Claude `AskUserQuestion`; see "Cross-runtime interactive input") - never just ask in plain text
 2. **Questions must NOT be obvious** - avoid basic questions the user has already answered
 3. **Don't stop a full interview early** - once committed to a full (breadth-first) interview, cover it; don't bail after 2-3 questions. (Doesn't apply when "When NOT to Interview" already capped the scope at 2-3 targeted questions.)
-4. **Probe deeper on substantive answers** - each response can spawn follow-ups; in depth-first mode this is the primary loop. (Not a mandate to follow up on every trivial confirmation.)
+4. **Probe deeper on substantive answers** - each response can spawn follow-ups. (Not a mandate to follow up on every trivial confirmation.)
 5. **Close inline, never with a file** - end with the summary in "Interview Completion"; work too large for that goes to `/grill-with-docs`.
 
 ## When NOT to Interview
@@ -77,30 +77,15 @@ Bad-vs-good question examples and the 5-category question bank
 (Technical / UX / Edge Cases / Constraints / Business Context) used in
 Phase 2 below: `references/question-framework.md`.
 
-## Two Interview Modes
+## Breadth-first
 
-Pick the mode that fits the uncertainty, and say which you're using:
-
-### Breadth-first (the 5-phase flow below)
-Systematically sweep every category. Best when the work is large, multi-decision,
-and you need full coverage before implementation. Batch related questions
-(the Phase 2 "5-10 questions" cadence) so the user answers efficiently.
-
-### Depth-first / Socratic (focused mode)
-Target the **single biggest uncertainty** and resolve it before moving on: one
-question (or one tight interactive-input gate) at a time, each chosen by "what is the
-one unknown that most changes the implementation right now?". The user's answer
-determines the next question. Best when one or two decisions dominate the design,
-or when a broad questionnaire would feel like a wall of forms. This mode aligns
-with "narrow to 2-3 interpretations and confirm": you are not firing 10 questions,
-you are walking down the decision that matters.
-
-The two modes compose: open breadth-first to map the territory, then switch to
-focused mode when one answer opens a deep, consequential branch.
+The interview sweeps every category in the 5-phase flow below, so no open point
+of the request is missed. Batch related questions (the Phase 2 "5-10 questions"
+cadence) so the user answers efficiently.
 
 ### Per-question scaffold
 
-Whichever mode, frame a substantive question so the user can answer in one glance:
+Frame a substantive question so the user can answer in one glance:
 state your current understanding, name the decision, and offer a recommended
 default (so a low-stakes call can be a single confirmation, not an essay):
 

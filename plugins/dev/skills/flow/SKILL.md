@@ -34,13 +34,13 @@ A short router, not a skill that does the work itself. Matt's skills (`mattpococ
 ## Product repo setup (once per repo)
 
 1. `/setup-matt-pocock-skills` (Matt) wires the issue tracker, triage labels and domain docs into the repo's agent guidance.
-2. Create the five triage labels, or the first `/to-spec` fails on a missing label:
+2. Create the five triage labels, or the first `/to-spec` fails on a missing label. Hand the user this command to run; flow itself never runs it:
 
    ```bash
-   for l in needs-triage needs-info ready-for-agent ready-for-human wontfix; do gh label create "$l" --force; done
+   ( for l in needs-triage needs-info ready-for-agent ready-for-human wontfix; do gh label create "$l" --force || exit 1; done )
    ```
 
-   `--force` updates a label that already exists instead of failing, so a re-run is safe.
+   `--force` updates a label that already exists instead of failing, so a re-run is safe. The first failure stops the loop and the subshell exits non-zero, without closing the user's shell.
 
 ## Standalone
 

@@ -178,7 +178,7 @@ If an existing `CLAUDE.md` is present, skip with a notice. Otherwise write it in
 
 wiki 는 밖에서 들어온 지식(회의록, 리서치, 고객·벤더 문서, 플랫폼 사실)만 보관한다. 결정은 `docs/adr/`, 용어는 `GLOSSARY.md` 에 둔다.
 
-- **진입점**: `.llmwiki/wiki/index.md`. 페이지 직접 grep 금지.
+- **진입점**: `.llmwiki/wiki/index.md` 부터 읽는다. index 가 페이지보다 늦을 수 있으므로 그다음 페이지 제목·`aliases:`·본문을 grep 해 index 가 놓친 페이지를 찾는다 (`/wiki:query` 절차).
 - **사용 순서**:
   1. 원본이 들어오면 → `/wiki:ingest` (원본은 `.llmwiki/raw/`, 개념 페이지는 `.llmwiki/wiki/<topic>/<concept>.md`)
   2. 그 지식이 궁금하면 → `/wiki:query` (index 부터 읽고 출처를 달아 답한다)

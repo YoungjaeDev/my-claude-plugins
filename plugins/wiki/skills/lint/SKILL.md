@@ -16,9 +16,9 @@ If `.llmwiki/wiki/` does not exist, say so and stop: there is nothing to lint, a
 | **Stale** | `last_verified` older than 180 days, or missing. Re-check the page against its sources, then bump the date through `/wiki:ingest`. |
 | **Broken links** | A relative `.md` link (in a page or in `index.md`) whose target does not exist. |
 | **Broken Sources** | A `## Sources` entry naming a `.llmwiki/...` path that does not exist. PR, commit and measurement citations are not checked mechanically. |
-| **Orphans** | A page no other page links to. Report-only: a first page in a new topic is legitimately alone. Matched by file name, so a name shared across topics can hide an orphan. |
+| **Orphans** | A page no other page links to. Report-only: a first page in a new topic is legitimately alone. Matched by file name, so a name shared across topics can hide an orphan. Old-format pages are skipped (they link by `[[id]]`, not file name). |
 | **Index mismatch** | A page with no `index.md` line. (An index line pointing at a missing page shows up under broken links.) |
-| **Old format** | A page with relation lines (`> Word: [[id]]`, `> Evidence: <path>`) or no `## Sources`. Counted only, in one line. `/wiki:ingest` converts a page when it next edits it. Old-format pages are skipped by the Sources checks. |
+| **Old format** | A page with old frontmatter keys (`id`, `status`, `volatility`), an old relation line (`> Refines: [[id]]`, `> Evidence: <path>` and the rest of that set), an `[[id]]` link, or no `## Sources`. An ordinary callout such as `> Note: ...` does not count. Counted only, in one line. `/wiki:ingest` converts a page when it next edits it. Old-format pages are skipped by the Sources and orphan checks. |
 
 ## Run
 
@@ -33,15 +33,19 @@ while IFS= read -r f; do
   d=$(sed -n 's/^last_verified:[[:space:]]*\([0-9-]\{10\}\).*/\1/p' "$f" | head -1)
   if [ -z "$d" ]; then echo "stale (no last_verified): $rel"
   elif awk -v a="$d" -v b="$cutoff" 'BEGIN{exit !(a<b)}'; then echo "stale ($d): $rel"; fi
-  if grep -qE '^> [A-Za-z-]+: ' "$f" || ! grep -q '^## Sources' "$f"; then
+  if awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {fm=0}
+       fm && /^(id|status|volatility):/ {o=1}
+       /^> (Refines|Contradicts|Evidence|See-also|Supersedes|Superseded-by|Uses|Depends-on|Caused-by|Fixed-by): / {o=1}
+       /\[\[[a-z0-9-]+\]\]/ {o=1}
+       END {exit !o}' "$f" || ! grep -q '^## Sources' "$f"; then
     old=$((old + 1))
   else
     awk '/^## Sources/{s=1;next} /^## /{s=0} s' "$f" | grep -oE '\.llmwiki/[^][ )`>,]+' \
       | while IFS= read -r p; do [ -e "$p" ] || echo "broken source: $rel -> $p"; done
+    grep -rlF "$(basename "$f")" "$W" --include='*.md' \
+      | grep -vxF -e "$f" -e "$W/index.md" -e "$W/log.md" | grep -q . || echo "orphan: $rel"
   fi
   grep -qF "($rel)" "$W/index.md" || echo "not in index: $rel"
-  grep -rlF "$(basename "$f")" "$W" --include='*.md' \
-    | grep -vxF -e "$f" -e "$W/index.md" -e "$W/log.md" | grep -q . || echo "orphan: $rel"
 done < <(find "$W" -name '*.md' ! -name index.md ! -name 'log*.md' | sort)
 while IFS= read -r f; do
   dir=$(dirname "$f")
@@ -50,7 +54,7 @@ while IFS= read -r f; do
     [ -f "$dir/$l" ] || echo "broken link: ${f#"$W"/} -> $l"
   done
 done < <(find "$W" -name '*.md' ! -name 'log*.md' | sort)
-[ "$old" -gt 0 ] && echo "old format: $old pages (converted by /wiki:ingest when edited)"
+if [ "$old" -gt 0 ]; then echo "old format: $old pages (converted by /wiki:ingest when edited)"; fi
 ```
 
 ## Report

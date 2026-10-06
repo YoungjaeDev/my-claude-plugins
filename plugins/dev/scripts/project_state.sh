@@ -40,7 +40,7 @@ count_md() {
   count_files "$1" -maxdepth 1 -type f -name '*.md'
 }
 
-# YAML frontmatter (첫 줄이 ---) 가 없는 .md 개수
+# 경로가 git 에서 ignore 되는지 (true/false)
 ignored() {
   # git repo 가 아니면 판정 불가 -> false
   [ "$GIT_INIT" = true ] || { echo false; return; }

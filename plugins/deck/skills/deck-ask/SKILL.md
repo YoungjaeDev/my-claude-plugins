@@ -36,7 +36,7 @@ Suggest the next deck skill. Look, then answer in a few lines; the user or that 
 | The request was dictated by voice and reads garbled | `docs:vp` | fix terms before choosing |
 | No `deck/` yet, house format wanted | `deck-new` | scaffold + stamped rule copies |
 | Thesis, audience or section list unsettled | `docs:interview-methodology` | decide before outlining; answers go to the outline header |
-| Outline exists but needs stress-testing | Matt `grilling` | change `deck/outline.md` first |
+| Outline exists but needs stress-testing | `grilling` | Matt skill; change `deck/outline.md` first |
 | Outline names tools or concept slides without assets | `deck-assets` | official logos, icon sheets, mascot cuts; confirms counts before spending quota |
 | One image unrelated to the deck | `codex-image` | never for a brand logo |
 | Slides to write or change | `deck-author` | outline first, then only the asked slides |

@@ -32,7 +32,7 @@ Mixed input (a meeting that produced a decision and surfaced a vendor fact) is s
     └── <topic>/<concept>.md  concept pages, one level of topic folders, kebab-case names
 ```
 
-If `.llmwiki/wiki/` does not exist, create the skeleton first:
+If `.llmwiki/wiki/index.md` or `.llmwiki/wiki/log.md` is missing, create the skeleton first. Check the files, not the directory: `/dev:new` seeds an empty `.llmwiki/wiki/` holding only a `.gitkeep`. The block is idempotent:
 
 ```bash
 mkdir -p .llmwiki/raw .llmwiki/wiki

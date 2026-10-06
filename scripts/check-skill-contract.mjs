@@ -32,7 +32,8 @@
 //
 // Run: node scripts/check-skill-contract.mjs [--selftest]
 
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -346,13 +347,15 @@ export function staleSkillRefs(rel, content, plugins, targets) {
   return errors;
 }
 
-/** Every `<plugin>:<name>` that resolves: skill directories, command files, agent files. */
+/** Every `<plugin>:<name>` that resolves: skill directories holding a SKILL.md, command files, agent files. */
 function refTargets(root, plugins) {
   const targets = new Set();
   const list = (dir) => (existsSync(dir) ? readdirSync(dir, { withFileTypes: true }) : []);
   for (const p of plugins) {
     const base = join(root, 'plugins', p);
-    for (const e of list(join(base, 'skills'))) if (e.isDirectory()) targets.add(`${p}:${e.name}`);
+    for (const e of list(join(base, 'skills'))) {
+      if (e.isDirectory() && existsSync(join(base, 'skills', e.name, 'SKILL.md'))) targets.add(`${p}:${e.name}`);
+    }
     for (const kind of ['commands', 'agents']) {
       for (const e of list(join(base, kind))) {
         if (e.isFile() && e.name.endsWith('.md')) targets.add(`${p}:${e.name.slice(0, -3)}`);
@@ -567,6 +570,20 @@ export function runFixtures() {
     if (stale ? !errs.length : errs.length) {
       failures.push(`${stale ? 'RED' : 'GREEN'} ref "${check}" ${stale ? 'was not detected' : `was flagged: ${errs.join(' | ')}`}`);
     }
+  }
+  // A skill deleted down to its SKILL.md leaves a directory behind (tests/, references/);
+  // that directory must not count as a live skill.
+  const tmp = mkdtempSync(join(tmpdir(), 'skill-contract-'));
+  try {
+    for (const [dir, file] of [['live', 'SKILL.md'], ['dead/references', 'x.md']]) {
+      mkdirSync(join(tmp, 'plugins/demo/skills', dir), { recursive: true });
+      writeFileSync(join(tmp, 'plugins/demo/skills', dir, file), '');
+    }
+    const t = refTargets(tmp, ['demo']);
+    if (!t.has('demo:live')) failures.push('GREEN ref target "skill dir with SKILL.md" was not registered');
+    if (t.has('demo:dead')) failures.push('RED ref target "skill dir without SKILL.md" was registered as live');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
   }
   return failures;
 }

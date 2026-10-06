@@ -6,11 +6,10 @@
 # Activate once per clone:  git config core.hooksPath .githooks
 set -euo pipefail
 
-# Git exports GIT_DIR / GIT_INDEX_FILE to hooks (absolute paths in a linked
-# worktree). The test suites below `git init` throwaway repos, and inheriting
-# these made their fixtures write into this repo instead: the worktree index got
-# replaced and .git/config gained core.bare=true and user.name=t.
-unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
+# Git exports GIT_INDEX_FILE (and in some cases GIT_DIR) to hooks. Keep them: the
+# guards must read the commit's own index, a temporary one under
+# `git commit --only <path>`. The test suites that `git init` throwaway repos
+# clear these variables themselves.
 
 repo_root="$(git rev-parse --show-toplevel)"
 

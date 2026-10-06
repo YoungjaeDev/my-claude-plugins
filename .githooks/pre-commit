@@ -6,6 +6,12 @@
 # Activate once per clone:  git config core.hooksPath .githooks
 set -euo pipefail
 
+# Git exports GIT_DIR / GIT_INDEX_FILE to hooks (absolute paths in a linked
+# worktree). The test suites below `git init` throwaway repos, and inheriting
+# these made their fixtures write into this repo instead: the worktree index got
+# replaced and .git/config gained core.bare=true and user.name=t.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
+
 repo_root="$(git rev-parse --show-toplevel)"
 
 # node drives the consistency guards. Skip (not fail) when it is absent locally

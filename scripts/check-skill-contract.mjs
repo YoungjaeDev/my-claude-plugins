@@ -13,6 +13,10 @@
 //   6. `name` != skill directory name          → the skill's command identity and its
 //                                                on-disk identity stop matching
 //
+// Plus one repo-wide scan (section 7): a `<plugin>:<skill>` or `/<plugin>:<skill>`
+// reference in any live tracked file must name a skill, command, or agent that exists,
+// so deleting or renaming a skill cannot leave dead pointers behind.
+//
 // Not covered here, on purpose — each already has an owner:
 //   check-skill-prose.mjs            informational only: 500-line ceiling, references depth
 //   check-doc-consistency.mjs        blocking: README/AGENTS name-sets and count strings
@@ -29,6 +33,7 @@
 // Run: node scripts/check-skill-contract.mjs [--selftest]
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -302,6 +307,89 @@ export function checkSkillContracts(root) {
   return { errors, scanned: files.length };
 }
 
+// --- 7. stale `<plugin>:<skill>` references
+//
+// Deleting or renaming a skill leaves `<plugin>:<old>` / `/<plugin>:<old>` mentions behind,
+// and nothing at runtime notices: the agent reads the dead name and goes looking for a
+// skill that is not there. Only this marketplace's own plugin names are matched, so
+// external plugins (mattpocock:..., superpowers:...) are never judged.
+//
+// Not judged, because they are records of the past rather than instructions:
+//   - the history folders and `.llmwiki` (HISTORY_PATH)
+//   - a markdown section whose heading says change log / migration / history, down to
+//     the next heading at the same or a shallower level
+//   - a line that itself records a removal or a rename (HISTORY_LINE)
+//   - `plugin:x/...`, which is a path or a source id, not a skill
+// `plugin:prefix-*` is a glob and passes when any target starts with the prefix.
+
+const HISTORY_PATH = /^(docs\/(audit|prd|superpowers)|\.claude\/spec|\.llmwiki)\//;
+const HISTORY_HEADING = /change ?log|migration|history/i;
+// ponytail: keyword heuristic — a live line that happens to say "removed" is not judged;
+// switch to an explicit per-line marker if that ever hides a real stale reference.
+const HISTORY_LINE = /\b(remov\w*|former(ly)?|migrated from|renamed)\b/i;
+
+export function staleSkillRefs(rel, content, plugins, targets) {
+  if (HISTORY_PATH.test(rel) || !plugins.length) return [];
+  const names = plugins.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const re = new RegExp(`(?<![\\w.-])/?(${names}):([a-z0-9][a-z0-9-]*)([*/])?`, 'g');
+  const md = rel.endsWith('.md');
+  const errors = [];
+  let fence = null;
+  let historyLevel = 0;
+  content.split('\n').forEach((line, idx) => {
+    const f = line.match(/^\s*(`{3,}|~{3,})/);
+    if (f) fence = fence === null ? f[1][0] : f[1][0] === fence ? null : fence;
+    const h = md && fence === null && line.match(/^(#{1,6})\s+(.*)/);
+    if (h) {
+      if (historyLevel && h[1].length <= historyLevel) historyLevel = 0;
+      if (!historyLevel && HISTORY_HEADING.test(h[2])) historyLevel = h[1].length;
+    }
+    if (historyLevel || HISTORY_LINE.test(line)) return;
+    for (const [hit, plugin, skill, tail] of line.matchAll(re)) {
+      if (tail === '/') continue;
+      const ref = `${plugin}:${skill}`;
+      const ok = tail === '*' ? [...targets].some((t) => t.startsWith(ref)) : targets.has(ref);
+      if (!ok) {
+        errors.push(`${rel}:${idx + 1}: \`${hit}\` names no skill, command, or agent in plugins/${plugin}/ — update the reference, or move it under a change-log section if it is history`);
+      }
+    }
+  });
+  return errors;
+}
+
+/** Every `<plugin>:<name>` that resolves: skill directories, command files, agent files. */
+function refTargets(root, plugins) {
+  const targets = new Set();
+  const list = (dir) => (existsSync(dir) ? readdirSync(dir, { withFileTypes: true }) : []);
+  for (const p of plugins) {
+    const base = join(root, 'plugins', p);
+    for (const e of list(join(base, 'skills'))) if (e.isDirectory()) targets.add(`${p}:${e.name}`);
+    for (const kind of ['commands', 'agents']) {
+      for (const e of list(join(base, kind))) {
+        if (e.isFile() && e.name.endsWith('.md')) targets.add(`${p}:${e.name.slice(0, -3)}`);
+      }
+    }
+  }
+  return targets;
+}
+
+export function checkStaleRefs(root) {
+  const manifest = JSON.parse(readFileSync(join(root, '.claude-plugin/marketplace.json'), 'utf8'));
+  const plugins = manifest.plugins.map((p) => p.name);
+  const targets = refTargets(root, plugins);
+  // git-tracked files only, like the other guards (the verify chain runs `git add -A` first).
+  const files = execFileSync('git', ['-C', root, 'ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
+  const errors = [];
+  for (const rel of files) {
+    const abs = join(root, rel);
+    if (!existsSync(abs)) continue; // deleted in the worktree, not yet staged
+    const content = readFileSync(abs, 'utf8');
+    if (content.includes('\0')) continue; // binary
+    errors.push(...staleSkillRefs(rel, content, plugins, targets));
+  }
+  return errors;
+}
+
 // --- fixtures: one RED per check, plus a GREEN that must stay clean
 
 const GREEN = `---
@@ -454,6 +542,26 @@ const RED = [
   },
 ];
 
+// Stale-reference fixtures use a plugin name that is not in the marketplace, so the
+// fixture text in this file never trips the real scan.
+const REF_PLUGINS = ['demo'];
+const REF_TARGETS = new Set(['demo:real', 'demo:worker-a']);
+const REF_CASES = [
+  { check: 'missing skill', stale: true, rel: 'README.md', content: 'run `demo:gone` next\n' },
+  { check: 'missing skill, slash form', stale: true, rel: 'README.md', content: 'run `/demo:gone`\n' },
+  { check: 'existing skill, slash form', stale: false, rel: 'README.md', content: 'run `/demo:real` then demo:real\n' },
+  { check: 'glob over existing targets', stale: false, rel: 'README.md', content: 'any `demo:worker-*` preset\n' },
+  { check: 'glob over nothing', stale: true, rel: 'README.md', content: 'any `demo:nope-*` preset\n' },
+  { check: 'other plugin prefix is ignored', stale: false, rel: 'README.md', content: 'see `xdemo:gone` and mattpocock:gone\n' },
+  { check: 'history folder', stale: false, rel: 'docs/audit/2026-01-01.md', content: 'demo:gone\n' },
+  { check: 'history folder .claude/spec', stale: false, rel: '.claude/spec/x.md', content: 'demo:gone\n' },
+  { check: 'history folder .llmwiki', stale: false, rel: '.llmwiki/wiki/x.md', content: 'demo:gone\n' },
+  { check: 'change-log section', stale: false, rel: 'plugins/demo/CLAUDE.md', content: '## Change log\n\n### 1.0\n| 1.0 | adds demo:gone |\n' },
+  { check: 'section after the change log is live again', stale: true, rel: 'plugins/demo/CLAUDE.md', content: '## Change log\n| 1.0 | demo:old |\n## Usage\nrun demo:gone\n' },
+  { check: 'line that records a removal', stale: false, rel: 'x.md', content: 'the former `demo:gone` skill, removed in 2.0\n' },
+  { check: 'heading inside a code fence is not a heading', stale: true, rel: 'x.md', content: '```bash\n# history\n```\ndemo:gone\n' },
+];
+
 export function runFixtures() {
   const failures = [];
   for (const { check, expect, content, rel } of RED) {
@@ -466,6 +574,12 @@ export function runFixtures() {
   // exercised in its passing direction too, not only when it fires.
   const greenErrs = checkSkillContent('plugins/demo/skills/good-skill/SKILL.md', GREEN);
   if (greenErrs.length) failures.push(`GREEN fixture was flagged: ${greenErrs.join(' | ')}`);
+  for (const { check, rel, content, stale } of REF_CASES) {
+    const errs = staleSkillRefs(rel, content, REF_PLUGINS, REF_TARGETS);
+    if (stale ? !errs.length : errs.length) {
+      failures.push(`${stale ? 'RED' : 'GREEN'} ref "${check}" ${stale ? 'was not detected' : `was flagged: ${errs.join(' | ')}`}`);
+    }
+  }
   return failures;
 }
 
@@ -481,15 +595,22 @@ if (isMain) {
   }
 
   if (process.argv.includes('--selftest')) {
-    console.log(`skill-contract selftest OK — ${RED.length} RED cases detected, GREEN fixture clean.`);
+    console.log(`skill-contract selftest OK — ${RED.length} RED cases detected, GREEN fixture clean, ${REF_CASES.length} stale-ref cases.`);
   } else {
     const { errors, scanned } = checkSkillContracts(ROOT);
-    if (errors.length) {
-      console.error(`skill-contract violations (${errors.length}):`);
-      for (const e of errors) console.error(`  ${e}`);
-      console.error('\nsee plugins/docs/skills/skill-forge/references/runtime-contract.md for each failure mode.');
+    const stale = checkStaleRefs(ROOT);
+    if (errors.length || stale.length) {
+      if (errors.length) {
+        console.error(`skill-contract violations (${errors.length}):`);
+        for (const e of errors) console.error(`  ${e}`);
+        console.error('\nsee plugins/docs/skills/skill-forge/references/runtime-contract.md for each failure mode.');
+      }
+      if (stale.length) {
+        console.error(`stale skill references (${stale.length}):`);
+        for (const e of stale) console.error(`  ${e}`);
+      }
       process.exit(1);
     }
-    console.log(`skill-contract OK — ${scanned} skills scanned, 6 silent-failure checks, selftest ${RED.length} RED + 1 GREEN.`);
+    console.log(`skill-contract OK — ${scanned} skills scanned, 6 silent-failure checks + stale-ref scan, selftest ${RED.length} RED + 1 GREEN + ${REF_CASES.length} ref cases.`);
   }
 }

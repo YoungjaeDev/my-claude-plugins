@@ -102,7 +102,7 @@ Create a versioned GitHub release: detect the current version, update the versio
 
 6. **Validate (unless --skip-validation)**
 
-   Reuse the Verification Gates pattern from `resolve-issue`:
+   Detect the project type and run its build and test:
 
    | Detection File | Project Type | Build Command | Test Command |
    |----------------|--------------|---------------|--------------|

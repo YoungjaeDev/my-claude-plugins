@@ -1,6 +1,6 @@
 ---
 name: cr-fix
-description: Fetch CodeRabbit + Codex review state on the current PR, autonomously judge each finding (apply / defer / skip with reasoning), commit, push, and loop until the reviewers stop producing new material. Use when the user types /dev:cr-fix, says "auto-fix the review", "process CodeRabbit feedback", "리뷰 반영", or "loop until clean". Stops on convergence, on a low-severity-only cycle, or on churn (findings only on the previous iteration's own commit — code only, since a prose rewrite reproduces its own lines), filing one follow-up issue for whatever was left behind. Handles PR-bot rate limits with auto-fallback to the local CodeRabbit CLI or Codex-only, and supports --auto-merge with branch-protection gating. Not for post-merge cleanup (/dev:post-merge) or for breaking an issue into tasks (/dev:decompose-issue).
+description: Fetch CodeRabbit + Codex review state on the current PR, autonomously judge each finding (apply / defer / skip with reasoning), commit, push, and loop until the reviewers stop producing new material. Use when the user types /dev:cr-fix, says "auto-fix the review", "process CodeRabbit feedback", "리뷰 반영", or "loop until clean". Stops on convergence, on a low-severity-only cycle, or on churn (findings only on the previous iteration's own commit — code only, since a prose rewrite reproduces its own lines), filing one follow-up issue for whatever was left behind. Handles PR-bot rate limits with auto-fallback to the local CodeRabbit CLI or Codex-only, and supports --auto-merge with branch-protection gating. Not for post-merge cleanup (/dev:post-merge) or for breaking a spec into tickets (Matt /to-tickets).
 allowed-tools: Read Write Edit Bash Glob Grep Monitor AskUserQuestion
 ---
 
@@ -14,7 +14,7 @@ One turn drives the whole review-resolution loop on an open PR: detect what each
 
 An open PR on the current branch with reviewer work outstanding — `/dev:cr-fix`, "리뷰 반영", "process CodeRabbit feedback", "loop until clean".
 
-Not this skill: cleanup after a PR merges (`dev:post-merge`), splitting an issue into tasks (`dev:decompose-issue`), or reviewing code that has no PR yet.
+Not this skill: cleanup after a PR merges (`dev:post-merge`), splitting a spec into tickets (Matt `/to-tickets`), or reviewing code that has no PR yet.
 
 ## Hard constraints
 
@@ -258,7 +258,7 @@ Run the "Step 13: convergence ladder" block in `references/run-blocks.md` verbat
 
 Loop exited at `ITER == MAX_ITER` with threads still actionable → `final_state=iteration_cap`; surface the remaining thread count + `target_url`.
 
-Then, when `final_state ∈ {churn, minor_floor, iteration_cap}` AND `deferred_total > 0`, file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment, and do not call `dev:decompose-issue`, whose contract is explicit user invocation.
+Then, when `final_state ∈ {churn, minor_floor, iteration_cap}` AND `deferred_total > 0`, file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment.
 
 Build the body from `auto_judge_log`'s `defer` records — reviewer prose reaches it through a file, never the command line — then `gh issue create --label tbd`. The block is idempotent: a re-run on the same PR reuses `STATE_FILE.followup_issue` instead of opening a second issue. Shell block: `references/failure-modes.md`.
 

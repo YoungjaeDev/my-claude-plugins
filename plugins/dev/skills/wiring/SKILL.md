@@ -30,7 +30,7 @@ Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-e
 
 ## Answers file
 
-`ASK` answers live in `.claude/state/wiring.json` (gitignored, alongside `spec.json` and `cr-fix-*.json`). Values are machine-local — a Drive folder id is not the same on another clone — so they do not belong in a committed file. `CLAUDE.md` carries only a pointer to this path, never the values.
+`ASK` answers live in `.claude/state/wiring.json` (gitignored, alongside `cr-fix-*.json`). Values are machine-local — a Drive folder id is not the same on another clone — so they do not belong in a committed file. `CLAUDE.md` carries only a pointer to this path, never the values.
 
 ```json
 {
@@ -83,7 +83,7 @@ Map the JSON to verdicts. Suppress an `ASK` only when its key in `.answers` hold
 | memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md`; `mem0_project_mapped: false` | — | see "Memory posture" below |
 | mcp config | `.mcp` | `duplicates_drifted` non-empty | `duplicates` non-empty (identical copies); `unreadable` non-empty | — | collapse to one file (see below) |
 | codex | `.codex` | `agents_md_bytes + global_agents_md_bytes` > `project_doc_max_bytes` | same sum ≥ 80% of `project_doc_max_bytes` | **INFO** otherwise when `config: true` | over cap → trim `AGENTS.md` or raise `project_doc_max_bytes`; else visibility only |
-| spec | `.spec` | — | `missing_frontmatter > 0` | **INFO** `claude_spec > 0` **and** `superpowers_spec > 0` | `/dev:state-tracker init` |
+| spec | `.spec` | — | `issue_tracker_doc: false` | **INFO** `claude_spec > 0` **or** `superpowers_spec > 0` | `/setup-matt-pocock-skills` (Matt) |
 | gws-sync | `.gws_sync`, `.answers.gws_sync` | — | `config: true` but `cli: false` | **ASK** / **OK** / **SKIP** / **INFO** per the table in "gws-sync is a two-step ASK" | `/docs:gws-sync` |
 | .tmp | `.tmp` | — | `dir: true` and `gitignored: false`; `stale_files > 0` | — | mechanical fix (Step 4) |
 | gitignore | `.gitignore` | `env: false` | any of `claude_state` / `serena` / `llmwiki_staging` false | — | mechanical fix (Step 4) |
@@ -125,9 +125,9 @@ Never a defect — it is a question about what this project produces. The verdic
 
 Two ways this axis silently misbehaves, both closed by the table above. Treating `pending-install` as a decision means the user installs `gws`, re-runs `wiring`, and is never asked step 2 — the answer file swallows its own follow-up. Treating it as *unanswered* means asking the same question on every run before the install has happened. And a repo that already has `.gws-sync.json` must never be asked whether it wants Drive at all: a `not-for-this-repo` recorded on top of a live config puts the two in direct conflict.
 
-### spec is a preference, not a migration
+### spec lives in the issue tracker
 
-Two spec homes is `INFO`, not `WARN`: state which one this project prefers (`.claude/spec/` unless the project says otherwise) and leave the files where they are. Only `missing_frontmatter > 0` is a `WARN`, because a spec without `status:` frontmatter is invisible to `dev:state-tracker` regardless of which directory it sits in. Never move spec files as part of "apply all".
+A spec is an issue in the tracker that Matt `/to-spec` publishes to, and `docs/agents/issue-tracker.md` is where `/setup-matt-pocock-skills` records which tracker that is. Without that file `/to-spec` and `/to-tickets` have nowhere declared to write, so `issue_tracker_doc: false` is a `WARN`. Local spec files (`.claude/spec/`, `docs/superpowers/specs/`) are earlier records, not the current home: report their count as `INFO` and leave them where they are. Never move or convert spec files as part of "apply all".
 
 Some verdicts need an explanation the JSON cannot carry:
 
@@ -155,7 +155,7 @@ Print a fixed-width table, most severe first. Name the remediation on every non-
 [ASK ] git         no origin remote — create one?                    (unanswered)
 [INFO] codex       approval=never sandbox=danger-full-access -> /codex:rescue edits unprompted
 [INFO] codex       AGENTS.md 28,506 / 65,536 B (43%) of the doc budget
-[INFO] spec        .claude/spec 8 + docs/superpowers/specs 6 — this project prefers .claude/spec
+[INFO] spec        .claude/spec 8 + docs/superpowers/specs 6 local records — new specs go to the issue tracker
 [ OK ] wiki    post-2.4.0 layout (insight + raw buckets)
 [ OK ] serena      onboarded (1 memory)
 ```

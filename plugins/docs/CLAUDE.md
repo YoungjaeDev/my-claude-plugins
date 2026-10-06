@@ -8,7 +8,7 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 |-------|-------------|
 | `doc-guides` | README/CHANGELOG/deploy-doc/MOC authoring reference cards, one per `/docs:*` document command (absorbed `readme-guide`, `changelog-guide`, `deploy-doc-guide`, `moc-guide`) |
 | `write-rules` | CLAUDE.md + `.claude/rules/` generation with auto mode detection (absorbed from `rules-forge`) |
-| `interview-methodology` | Requirements interview: breadth-first / depth-first / relentless grill-me modes (absorbed from `interview`); also carries the TCREI reusable-prompt template (absorbed from `tcrei-prompt`) |
+| `interview-methodology` | Confirm the open points of a small, ambiguous request: breadth-first / depth-first modes, inline-summary close (absorbed from `interview`); also carries the TCREI reusable-prompt template (absorbed from `tcrei-prompt`). Pressing an existing plan hard is Matt `grilling`; large work goes to `/grill-with-docs` |
 | `vp` | Voice-dictated prompt gate: normalize misheard terms against `.agents/voice-terms.md`, restate and proceed, or ask 2-3 questions when ambiguous |
 | `skill-forge` | Write or revise a skill: frontmatter schema, writing levers, structure, three-runtime packaging contract |
 | `skill-audit` | Diagnose one skill across seven axes, returning P0/P1/P2 findings with concrete edits |
@@ -254,21 +254,22 @@ Structured requirements gathering before implementation.
 
 ### Purpose
 
-Conduct thorough interviews to uncover hidden needs, constraints, and edge cases before writing code.
+Confirm the open points of a request (hidden needs, constraints, edge cases) before writing code, and close with an inline summary.
 
 ### Triggers
 
 - "interview me"
 - "ask me questions"
 - "understand my needs before implementing"
-- "spec-based development"
-- Feature requests without detailed specs
+- "gathering requirements"
+- Small feature requests with unresolved open points
 
-### Three Modes
+### Two Modes
 
-- **Breadth-first** (the 5-phase flow) - sweep every category; for large, multi-decision work.
+- **Breadth-first** (the 5-phase flow) - sweep every category when coverage matters.
 - **Depth-first / Socratic (focused)** - target the single biggest uncertainty, one question at a time; for one-or-two-decision work. The two compose (map breadth-first, then dive focused).
-- **Relentless / stress-test (adversarial)** - for "grill me" / "poke holes in this": press an existing plan, inverting the default "don't bother the user" posture. "When NOT to Interview" does not apply; adds a hard act-gate (no action until the user confirms shared understanding), dependency-frontier ordering, and non-blocking fact-dispatch.
+
+Stress-testing an existing plan ("grill me") is not this skill: it belongs to Matt `grilling`.
 
 ### Interview Phases (breadth-first mode)
 
@@ -288,25 +289,12 @@ Conduct thorough interviews to uncover hidden needs, constraints, and edge cases
 
 ### Output
 
-Scale to weight: **lightweight close** (Decisions + Open questions inline, no file) for small/focused interviews; **full spec file** for large/multi-decision interviews.
-
-Full spec at `.claude/spec/{YYYY-MM-DD}-{feature-name}.md`:
-
-```markdown
-# Feature Specification: [Name]
-
-## Overview
-## User Stories
-## Requirements (P0/P1/P2)
-## Technical Constraints
-## Edge Cases
-## Out of Scope
-```
+An inline summary (**Decisions made** + **Open questions**), never a file. When the work turns out large enough to need a persisted spec, the skill tells the user to run `/grill-with-docs` instead.
 
 ### Reusable prompt output (absorbed: tcrei-prompt)
 
-When the interview's goal is a copy-paste-ready prompt for next-session reuse instead of a spec
-file, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/
+When the interview's goal is a copy-paste-ready prompt for next-session reuse instead of an
+inline summary, structure the output with Google's TCREI framework (Task/Context/References/Evaluate/
 Iterate): the diagnosis table, output template, and domain-specific gap patterns live in
 `skills/interview-methodology/references/tcrei-template.md`.
 

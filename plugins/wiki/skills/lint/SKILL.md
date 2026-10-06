@@ -17,7 +17,7 @@ If `.llmwiki/wiki/index.md` does not exist, say so and stop: there is nothing to
 | **Broken links** | A relative `.md` link (in a page or in `index.md`) whose target does not exist. |
 | **Broken Sources** | A `## Sources` entry naming a `.llmwiki/...` path that does not exist. PR, commit and measurement citations are not checked mechanically. |
 | **Orphans** | A page no other page links to. Report-only: a first page in a new topic is legitimately alone. Matched by file name, so a name shared across topics can hide an orphan. Old-format pages are skipped (they link by `[[id]]`, not file name). |
-| **Index mismatch** | A page with no `index.md` line. (An index line pointing at a missing page shows up under broken links.) |
+| **Index mismatch** | A page with no `index.md` line, or with more than one (the index holds one line per page). (An index line pointing at a missing page shows up under broken links.) |
 | **Old format** | A page with old frontmatter keys (`id`, `status`, `volatility`), an old relation line (`> Refines: [[id]]`, `> Evidence: <path>` and the rest of that set), an `[[id]]` link, or no `## Sources`. An ordinary callout such as `> Note: ...` does not count. Counted only, in one line. `/wiki:ingest` converts a page when it next edits it. Old-format pages are skipped by the Sources and orphan checks. |
 
 ## Run
@@ -45,7 +45,9 @@ while IFS= read -r f; do
     grep -rlF --include='*.md' "$(basename "$f")" "$W" \
       | grep -vxF -e "$f" -e "$W/index.md" -e "$W/log.md" | grep -q . || echo "orphan: $rel"
   fi
-  grep -qF "($rel)" "$W/index.md" || echo "not in index: $rel"
+  n=$(grep -cF "($rel)" "$W/index.md" || true)  # grep -c prints 0 and exits 1 on no match
+  if [ "$n" -eq 0 ]; then echo "not in index: $rel"
+  elif [ "$n" -gt 1 ]; then echo "duplicate in index: $rel ($n lines)"; fi
 done < <(find "$W" -name '*.md' ! -name index.md ! -name 'log*.md' | sort)
 while IFS= read -r f; do
   dir=$(dirname "$f")

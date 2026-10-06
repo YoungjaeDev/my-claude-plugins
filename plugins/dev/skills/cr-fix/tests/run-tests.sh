@@ -10,6 +10,12 @@
 # responses from CR_STATE_STATUSES_FILE / CR_STATE_CHECKRUNS_FILE when set.
 set -uo pipefail
 
+# The churn-scope cases `git init` throwaway repos. Inherited from a pre-commit hook
+# (absolute paths in a linked worktree), these variables sent the fixtures' writes
+# into the calling repo: its index was replaced and its .git/config gained
+# core.bare=true and user.name=t.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS="$HERE/../scripts"
 FIX="$HERE/fixtures"

@@ -45,8 +45,7 @@ ingested: {YYYY-MM-DD}
 
 ## Ordering
 
-0. `derived_from:` / `ingested:` frontmatter, with **no `sha256:` field** (that absence is what
-   lets `wiki:lint-wiki` leave a hand-edited derivative alone instead of reporting `DRIFT`)
+0. `derived_from:` / `ingested:` frontmatter
 1. 회의 식별 + 정정 기준
 2. 확인된 요약
 3. 정정한 전사 (인라인 태깅)

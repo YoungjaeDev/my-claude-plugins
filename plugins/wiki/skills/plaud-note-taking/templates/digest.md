@@ -39,7 +39,7 @@ ingested: YYYY-MM-DD
 | 결정된 것 | a claim the transcript confirms (`[확인됨]`); it may contain `[정정]` spans |
 | 액션 | a confirmed owner/deadline, `[정정]` spans allowed; unresolved ones stay `미정`, never guessed |
 | 논의만 됨 (미확정) | `[해석]`, and any proposal that never reached agreement |
-| 미해결 | `[확인 필요]` left open after the grill-me pass |
+| 미해결 | `[확인 필요]` left open after the grilling pass |
 
 **`[정정]` is a span, not a claim.** It marks a corrected stretch of wording, so it never carries a
 decision on its own and never earns a "결정된 것" line by itself. What admits a line into a confirmed
@@ -57,8 +57,6 @@ span or claim — those two tags mean *not established*.
   If a gap is obvious while writing, do not close it here; go back to the corrected file.
 - **`미정` is a real answer.** An owner or deadline nobody confirmed stays `미정`. Filling it in
   from context is the same failure the correction policy forbids for numbers and names.
-- **No frontmatter `sha256:`.** `wiki:lint-wiki` hashes only files that declare it, so a
-  derived file without it can be hand-edited without reporting as `DRIFT`.
 - **Provenance names the real file.** Step 5 reserves one suffix for the corrected/digest **pair**
   (the lowest `N` where both names are free). If it landed on `-v2`, this file is
   `<slug>.digest-v2.md` and `derived_from:` plus the 근거 line name `<slug>.corrected-v2.md`. Never

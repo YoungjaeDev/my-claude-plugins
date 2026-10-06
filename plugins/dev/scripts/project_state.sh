@@ -40,19 +40,7 @@ count_md() {
   count_files "$1" -maxdepth 1 -type f -name '*.md'
 }
 
-# YAML frontmatter (첫 줄이 ---) 가 없는 .md 개수
-count_no_frontmatter() {
-  local dir="$1" n=0 f
-  [ -d "$dir" ] || { echo 0; return; }
-  while IFS= read -r f; do
-    [ -n "$f" ] || continue
-    if [ "$(head -1 "$f" 2>/dev/null)" != "---" ]; then n=$((n + 1)); fi
-  done <<EOF
-$(find_or_empty "$dir" -maxdepth 1 -type f -name '*.md')
-EOF
-  echo "$n"
-}
-
+# 경로가 git 에서 ignore 되는지 (true/false)
 ignored() {
   # git repo 가 아니면 판정 불가 -> false
   [ "$GIT_INIT" = true ] || { echo false; return; }
@@ -107,7 +95,7 @@ CROSS_RUNTIME_GAP=false
 if [ "$RULES_COUNT" -gt 0 ] && [ "$S_AGENTS_MD" = false ]; then CROSS_RUNTIME_GAP=true; fi
 
 # --- wiki ------------------------------------------------------------
-# 루트 판정은 hooks/skills 와 동일한 규칙: index.md 또는 log.md 가 있어야 카운트.
+# 루트 판정은 wiki 스킬과 동일한 규칙: index.md 또는 log.md 가 있어야 카운트.
 wiki_root_at() { [ -f "$1/index.md" ] || [ -f "$1/log.md" ]; }
 WIKI_STATE=absent
 if wiki_root_at .llmwiki/wiki; then
@@ -115,14 +103,6 @@ if wiki_root_at .llmwiki/wiki; then
 elif wiki_root_at .claude/wiki || wiki_root_at .codex/wiki; then
   WIKI_STATE=legacy
 fi
-WIKI_INSIGHT=$(b test -f .llmwiki/insight/index.md)
-# post-2.4.0 신호: raw/ 가 source-type 버킷 구조
-WIKI_RAW_BUCKETS=false
-if [ -d .llmwiki/raw/external ] && [ -d .llmwiki/raw/research ] \
-  && [ -d .llmwiki/raw/transcripts ] && [ -d .llmwiki/raw/audits ]; then
-  WIKI_RAW_BUCKETS=true
-fi
-STAGING_PENDING=$(count_files .llmwiki/.staging -maxdepth 1 -name 'pending-*.md')
 
 # --- serena --------------------------------------------------------------
 SERENA_MEMS=$(count_files .serena/memories -maxdepth 1 -type f -name '*.md')
@@ -142,10 +122,6 @@ fi
 SLUG=$(printf '%s' "$CWD" | sed 's#/#-#g')
 NATIVE_MEM=$(b test -f "$HOME/.claude/projects/$SLUG/memory/MEMORY.md")
 MEM0_SETTINGS=$(b test -f "$HOME/.mem0/settings.json")
-MEM0_MAPPED=false
-if [ -f "$HOME/.mem0/project_map.json" ]; then
-  MEM0_MAPPED=$(b grep -qF "\"$CWD\"" "$HOME/.mem0/project_map.json")
-fi
 
 # 파일 존재는 기능 활성화의 프록시일 뿐이다. MEMORY.md 는 auto-memory 를 끈 뒤에도
 # 남으므로, 두 writer 가 정말 동시에 살아있는지는 설정을 직접 읽어야 안다.
@@ -159,10 +135,11 @@ for f in "${SETTINGS_CASCADE[@]}"; do
 done
 
 # --- spec ----------------------------------------------------------------
+# spec 은 이슈 트래커에 산다. docs/agents/issue-tracker.md 는 Matt setup 이 남기는
+# 트래커 선언이고, 로컬 spec 파일은 그 전의 기록일 뿐이다.
+SPEC_TRACKER_DOC=$(b test -f docs/agents/issue-tracker.md)
 SPEC_CLAUDE=$(count_md .claude/spec)
 SPEC_SUPERPOWERS=$(count_md docs/superpowers/specs)
-SPEC_STATE=$(b test -f .claude/state/spec.json)
-SPEC_NO_FM=$(( $(count_no_frontmatter .claude/spec) + $(count_no_frontmatter docs/superpowers/specs) ))
 
 # --- gws-sync ------------------------------------------------------------
 GWS_CLI=$(b command -v gws)
@@ -179,7 +156,6 @@ fi
 # --- .gitignore coverage -------------------------------------------------
 GI_STATE=$(ignored .claude/state/)
 GI_SERENA=$(ignored .serena/)
-GI_STAGING=$(ignored .llmwiki/.staging/)
 GI_ENV=$(ignored .env)
 
 # --- MCP 설정 중복 --------------------------------------------------------
@@ -291,18 +267,17 @@ jq -nc \
   --argjson s_agents_md "$S_AGENTS_MD" --argjson s_readme "$S_README" --argjson s_changelog "$S_CHANGELOG" \
   --arg code_signal "$CODE_SIGNAL" \
   --argjson rules_count "$RULES_COUNT" --argjson cross_gap "$CROSS_RUNTIME_GAP" \
-  --arg wiki_state "$WIKI_STATE" --argjson wiki_insight "$WIKI_INSIGHT" \
-  --argjson wiki_buckets "$WIKI_RAW_BUCKETS" --argjson staging "$STAGING_PENDING" \
+  --arg wiki_state "$WIKI_STATE" \
   --arg serena_state "$SERENA_STATE" --argjson serena_mems "$SERENA_MEMS" \
   --arg serena_name "$SERENA_NAME" --argjson serena_drift "$SERENA_DRIFT" \
   --argjson native_mem "$NATIVE_MEM" --argjson native_enabled "$NATIVE_ENABLED" \
-  --argjson mem0_settings "$MEM0_SETTINGS" --argjson mem0_mapped "$MEM0_MAPPED" \
+  --argjson mem0_settings "$MEM0_SETTINGS" \
   --argjson spec_claude "$SPEC_CLAUDE" --argjson spec_sp "$SPEC_SUPERPOWERS" \
-  --argjson spec_state "$SPEC_STATE" --argjson spec_no_fm "$SPEC_NO_FM" \
+  --argjson spec_tracker "$SPEC_TRACKER_DOC" \
   --argjson gws_cli "$GWS_CLI" --argjson gws_config "$GWS_CONFIG" \
   --argjson tmp_dir "$TMP_DIR" --argjson tmp_ignored "$TMP_IGNORED" \
   --argjson tmp_stale "$TMP_STALE" --argjson stale_days "$STALE_DAYS" \
-  --argjson gi_state "$GI_STATE" --argjson gi_serena "$GI_SERENA" --argjson gi_staging "$GI_STAGING" \
+  --argjson gi_state "$GI_STATE" --argjson gi_serena "$GI_SERENA" \
   --argjson gi_env "$GI_ENV" \
   --argjson mcp_user "$MCP_USER" --argjson mcp_settings "$MCP_SETTINGS" --argjson mcp_dupes "$MCP_DUPES" \
   --argjson mcp_drifted "$MCP_DRIFTED" --argjson mcp_unreadable "$MCP_UNREADABLE" \
@@ -326,10 +301,7 @@ jq -nc \
     },
     code_signal: $code_signal,
     guidance: { rules_count: $rules_count, cross_runtime_gap: $cross_gap },
-    llmwiki: {
-      state: $wiki_state, insight_layer: $wiki_insight,
-      raw_source_buckets: $wiki_buckets, staging_pending: $staging
-    },
+    llmwiki: { state: $wiki_state },
     serena: {
       state: $serena_state, memories: $serena_mems,
       project_name: (if $serena_name == "" then null else $serena_name end),
@@ -338,16 +310,15 @@ jq -nc \
     memory: {
       native_memory_md: $native_mem,
       native_auto_memory_enabled: $native_enabled,
-      mem0_settings: $mem0_settings,
-      mem0_project_mapped: $mem0_mapped
+      mem0_settings: $mem0_settings
     },
     spec: {
-      claude_spec: $spec_claude, superpowers_spec: $spec_sp,
-      state_json: $spec_state, missing_frontmatter: $spec_no_fm
+      issue_tracker_doc: $spec_tracker,
+      claude_spec: $spec_claude, superpowers_spec: $spec_sp
     },
     gws_sync: { cli: $gws_cli, config: $gws_config },
     tmp: { dir: $tmp_dir, gitignored: $tmp_ignored, stale_files: $tmp_stale, stale_days: $stale_days },
-    gitignore: { claude_state: $gi_state, serena: $gi_serena, llmwiki_staging: $gi_staging, tmp: $tmp_ignored, env: $gi_env },
+    gitignore: { claude_state: $gi_state, serena: $gi_serena, tmp: $tmp_ignored, env: $gi_env },
     mcp: { user_json: $mcp_user, settings_json: $mcp_settings, duplicates: $mcp_dupes, duplicates_drifted: $mcp_drifted, unreadable: $mcp_unreadable },
     rules_scoping: { paths_defeated_by_import: $rules_defeated },
     codex: {

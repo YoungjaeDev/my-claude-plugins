@@ -1,6 +1,6 @@
 ---
 name: wiring
-description: "Diagnose whether an EXISTING repository's agent-harness setup actually takes effect: 14 axes including core.hooksPath, an @import that defeats .claude/rules paths: scoping, MCP servers registered twice, and the Codex AGENTS.md byte budget. Use on /dev:wiring, '프로젝트 진단', '셋업 점검', '하네스 배선 확인', 'check my project wiring', 'diagnose my project setup'. Verdicts FAIL / WARN / ASK / INFO / SKIP / OK; read-only until approved. Not for empty directories (/dev:new), mem0 stores (/wiki:fleet-scan), or wiki health (/wiki:lint-wiki)."
+description: "Diagnose whether an EXISTING repository's agent-harness setup actually takes effect: 14 axes including core.hooksPath, an @import that defeats .claude/rules paths: scoping, MCP servers registered twice, and the Codex AGENTS.md byte budget. Use on /dev:wiring, '프로젝트 진단', '셋업 점검', '하네스 배선 확인', 'check my project wiring', 'diagnose my project setup'. Verdicts FAIL / WARN / ASK / INFO / SKIP / OK; read-only until approved. Not for empty directories (/dev:new) or wiki health (/wiki:lint)."
 ---
 
 # dev `wiring` skill
@@ -30,7 +30,7 @@ Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-e
 
 ## Answers file
 
-`ASK` answers live in `.claude/state/wiring.json` (gitignored, alongside `spec.json` and `cr-fix-*.json`). Values are machine-local — a Drive folder id is not the same on another clone — so they do not belong in a committed file. `CLAUDE.md` carries only a pointer to this path, never the values.
+`ASK` answers live in `.claude/state/wiring.json` (gitignored, alongside `cr-fix-*.json`). Values are machine-local — a Drive folder id is not the same on another clone — so they do not belong in a committed file. `CLAUDE.md` carries only a pointer to this path, never the values.
 
 ```json
 {
@@ -78,15 +78,15 @@ Map the JSON to verdicts. Suppress an `ASK` only when its key in `.answers` hold
 | hooksPath | `.git.hooks_path`, `.hooks_dir_present` | — | `hooks_dir_present: true` but `hooks_path: null` | — | `git config core.hooksPath .githooks` |
 | guidance | `.seeded.claude_md`, `.guidance` | `claude_md: false`; `cross_runtime_gap: true` | — | — | `/docs:write-rules` |
 | rules scoping | `.rules_scoping` | — | `paths_defeated_by_import` non-empty | — | drop the `@` (mechanical, Step 4) |
-| wiki | `.llmwiki` | `staging_pending > 0` | `state: absent`; `state: legacy`; `state: current` but `insight_layer: false` or `raw_source_buckets: false` | — | pending → `/wiki:ingest-finding`; absent → `/wiki:bootstrap-wiki`; legacy → manual migration per `/wiki:bootstrap-wiki` guidance |
+| wiki | `.llmwiki` | — | `state: legacy` | **SKIP** `state: absent` (the wiki is optional; `/wiki:ingest` creates it when the first original arrives) | legacy → move the pages under `.llmwiki/wiki/` by hand (old-format pages stay readable), then `/wiki:lint` |
 | serena | `.serena` | — | `state: not-registered` / `registered`; `name_drift: true` | — | onboard via Serena MCP `onboarding`; drift → edit `.serena/project.yml` |
-| memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md`; `mem0_project_mapped: false` | — | see "Memory posture" below |
+| memory | `.memory` | `native_auto_memory_enabled: true` **and** `mem0_settings: true` | orphan `MEMORY.md` | — | see "Memory posture" below |
 | mcp config | `.mcp` | `duplicates_drifted` non-empty | `duplicates` non-empty (identical copies); `unreadable` non-empty | — | collapse to one file (see below) |
 | codex | `.codex` | `agents_md_bytes + global_agents_md_bytes` > `project_doc_max_bytes` | same sum ≥ 80% of `project_doc_max_bytes` | **INFO** otherwise when `config: true` | over cap → trim `AGENTS.md` or raise `project_doc_max_bytes`; else visibility only |
-| spec | `.spec` | — | `missing_frontmatter > 0` | **INFO** `claude_spec > 0` **and** `superpowers_spec > 0` | `/dev:state-tracker init` |
+| spec | `.spec` | — | `issue_tracker_doc: false` | **INFO** `claude_spec > 0` **or** `superpowers_spec > 0` | `/setup-matt-pocock-skills` (Matt) |
 | gws-sync | `.gws_sync`, `.answers.gws_sync` | — | `config: true` but `cli: false` | **ASK** / **OK** / **SKIP** / **INFO** per the table in "gws-sync is a two-step ASK" | `/docs:gws-sync` |
 | .tmp | `.tmp` | — | `dir: true` and `gitignored: false`; `stale_files > 0` | — | mechanical fix (Step 4) |
-| gitignore | `.gitignore` | `env: false` | any of `claude_state` / `serena` / `llmwiki_staging` false | — | mechanical fix (Step 4) |
+| gitignore | `.gitignore` | `env: false` | any of `claude_state` / `serena` false | — | mechanical fix (Step 4) |
 | code_signal | `.code_signal` | — | — | **INFO** | — |
 
 ### The four efficacy axes
@@ -125,18 +125,17 @@ Never a defect — it is a question about what this project produces. The verdic
 
 Two ways this axis silently misbehaves, both closed by the table above. Treating `pending-install` as a decision means the user installs `gws`, re-runs `wiring`, and is never asked step 2 — the answer file swallows its own follow-up. Treating it as *unanswered* means asking the same question on every run before the install has happened. And a repo that already has `.gws-sync.json` must never be asked whether it wants Drive at all: a `not-for-this-repo` recorded on top of a live config puts the two in direct conflict.
 
-### spec is a preference, not a migration
+### spec lives in the issue tracker
 
-Two spec homes is `INFO`, not `WARN`: state which one this project prefers (`.claude/spec/` unless the project says otherwise) and leave the files where they are. Only `missing_frontmatter > 0` is a `WARN`, because a spec without `status:` frontmatter is invisible to `dev:state-tracker` regardless of which directory it sits in. Never move spec files as part of "apply all".
+A spec is an issue in the tracker that Matt `/to-spec` publishes to, and `docs/agents/issue-tracker.md` is where `/setup-matt-pocock-skills` records which tracker that is. Without that file `/to-spec` and `/to-tickets` have nowhere declared to write, so `issue_tracker_doc: false` is a `WARN`. Local spec files (`.claude/spec/`, `docs/superpowers/specs/`) are earlier records, not the current home: report their count as `INFO` and leave them where they are. Never move or convert spec files as part of "apply all".
 
 Some verdicts need an explanation the JSON cannot carry:
 
 - **`cross_runtime_gap: true` is FAIL, not WARN.** `.claude/rules/*.md` exist but `AGENTS.md` does not, so every Codex session runs with zero project guidance — silently, with no error on its side. One runtime losing its entire instruction surface is guidance loss, not degradation.
-- **`staging_pending > 0` is FAIL, not WARN.** The wiki Stop-hook captured session lore into `.llmwiki/.staging/`, and the SessionStart drain never curated it. That directory is gitignored, so the lore is one `rm` from being lost permanently.
 - **The memory FAIL keys on `native_auto_memory_enabled`, never on `native_memory_md`.** File presence is a proxy for a feature being on, and the two diverge the moment auto-memory is disabled: `MEMORY.md` survives the setting change. Keying the verdict on the file would keep reporting a conflict this skill already helped resolve. A leftover `MEMORY.md` with auto-memory off is a WARN (dead files), not a FAIL.
 - **`gitignore.env: false` is FAIL.** An untracked-but-uncovered `.env` is one `git add -A` from committing credentials. The other gitignore entries only leak local state.
 
-`wiki` layout note: there is no version stamp in `.llmwiki/`. `state: current` + `insight_layer: true` + `raw_source_buckets: true` together mean the post-2.4.0 layout. Any one of them false means a partial migration, not a plugin-version mismatch.
+`wiki` state note: `current` means `.llmwiki/wiki/` holds an `index.md` or `log.md`; `legacy` means only the pre-`.llmwiki` roots (`.claude/wiki/`, `.codex/wiki/`) do. Page layout and freshness belong to `/wiki:lint`.
 
 ## Step 3 — Report
 
@@ -145,8 +144,6 @@ Print a fixed-width table, most severe first. Name the remediation on every non-
 ```
 ## Project Wiring — <dir_name>
 
-[FAIL] wiki    .llmwiki/.staging: 2 pending captures uncurated
-                   -> /wiki:ingest-finding  (gitignored; lore is unrecoverable if cleaned)
 [WARN] rules       plugin-versioning.md has paths: scoping, but CLAUDE.md @imports it
                    -> scoping is dead; ~2k tokens loaded every session. mechanical fix
 [WARN] mcp         7 servers registered twice (~/.claude.json wins, settings.json copy inert)
@@ -155,15 +152,14 @@ Print a fixed-width table, most severe first. Name the remediation on every non-
 [ASK ] git         no origin remote — create one?                    (unanswered)
 [INFO] codex       approval=never sandbox=danger-full-access -> /codex:rescue edits unprompted
 [INFO] codex       AGENTS.md 28,506 / 65,536 B (43%) of the doc budget
-[INFO] spec        .claude/spec 8 + docs/superpowers/specs 6 — this project prefers .claude/spec
-[ OK ] wiki    post-2.4.0 layout (insight + raw buckets)
+[INFO] spec        .claude/spec 8 + docs/superpowers/specs 6 local records — new specs go to the issue tracker
+[ OK ] wiki        .llmwiki/wiki/index.md present
 [ OK ] serena      onboarded (1 memory)
 ```
 
 State the scan is filesystem-only. Things it deliberately does not check, to avoid duplicating their owners:
 
-- wiki page staleness / identity duplication → `/wiki:lint-wiki`
-- mem0 store contents and config posture → `/wiki:fleet-scan`
+- wiki page staleness, broken links and Sources → `/wiki:lint`
 - MCP servers left behind by deleted plugins, and which extensions go unused → the built-in `/doctor` (it reads usage history; this skill reads only the filesystem)
 
 ## Step 3.5 — Put the `ASK` axes to the user
@@ -184,7 +180,7 @@ Present ONE `AskUserQuestion` for the mechanical fixes (the `ASK` axes were alre
 
 | Fix | Edit |
 |---|---|
-| `.gitignore` coverage | append missing lines for `.env`, `.claude/state/`, `.serena/`, `.llmwiki/.staging/`, `.tmp/` |
+| `.gitignore` coverage | append missing lines for `.env`, `.claude/state/`, `.serena/`, `.tmp/` |
 | `.tmp/` convention | `mkdir -p .tmp && : > .tmp/.gitkeep` + the `.gitignore` line |
 | hooksPath | `git config core.hooksPath .githooks` |
 | serena name drift | rewrite the `project_name:` line in `.serena/project.yml` |
@@ -192,7 +188,7 @@ Present ONE `AskUserQuestion` for the mechanical fixes (the `ASK` axes were alre
 
 **Never fixed here** — delegate, and say so:
 
-`.staging` drain, wiki bootstrap/migrate, CLAUDE.md authoring, spec relocation, Serena onboarding, mem0 changes, MCP config collapse (it edits a user-scope file holding credentials). Each needs LLM judgment or touches a store this skill does not own.
+legacy wiki migration, CLAUDE.md authoring, spec relocation, Serena onboarding, mem0 changes, MCP config collapse (it edits a user-scope file holding credentials). Each needs LLM judgment or touches a store this skill does not own.
 
 Deleting stale `.tmp/` files is destructive: list them, confirm separately, and never widen the glob beyond `.tmp/`.
 
@@ -206,7 +202,7 @@ This axis checks **posture consistency** — which writers are live and whether 
 
 Four surfaces, one role each:
 
-- `.llmwiki/` — authoritative lore (git-tracked, dated, sourced).
+- `.llmwiki/` — outside knowledge (git-tracked, dated, sourced). Decisions live in `docs/adr/`, terms in `GLOSSARY.md`.
 - mem0 — recall assistance (cloud, ephemeral).
 - Serena memories — symbol/structure maps.
 - `.claude/rules/` — mechanical tool invariants only, never lore.

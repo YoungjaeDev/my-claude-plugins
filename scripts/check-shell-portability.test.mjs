@@ -22,6 +22,11 @@ import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+// Each case is a throwaway `git init` repo. Inherited from a pre-commit hook, these
+// variables point git at the calling repo instead, so the cases' `git config` and
+// `git add` rewrote its .git/config and index. Children inherit this cleared env.
+for (const k of ['GIT_DIR', 'GIT_INDEX_FILE', 'GIT_WORK_TREE']) delete process.env[k]
+
 const HERE = dirname(fileURLToPath(import.meta.url))
 const GUARD = join(HERE, 'check-shell-portability.mjs')
 let pass = 0, fail = 0

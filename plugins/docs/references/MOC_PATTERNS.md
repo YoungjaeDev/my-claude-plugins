@@ -57,10 +57,10 @@ Output 1 (per-file hook bullets) and output 2 (per-domain table) go in the same 
 
 ## wiki index.md mapping
 
-Strict mode mirrors the convention in `plugins/wiki/skills/bootstrap-wiki/assets/templates/wiki-skeleton/index.md`:
+Strict mode follows the earlier `wiki` plugin index convention:
 
 - `## <domain>` group sections plus `- [page-title](<domain>/<slug>.md) — 1-line hook` bullets.
 - 2-depth maximum, MOC-first entry rule.
 - When frontmatter has an `id`, prefer `[[id]]`, with typed cross-refs (`> Refines:` / `> Contradicts:` / `> Evidence:` / `> See-also:` and so on).
 
-The full frontmatter schema (`last_verified` / `status` / `volatility` / `sources`) and the staleness model, however, are **not enforced** — that model and the actual lore-wiki maintenance are delegated to the `wiki` plugin (`ingest-finding` / `lint-wiki`, etc.). The docs MOC is a generalized at-a-glance index over an arbitrary folder, not a lore system.
+That earlier convention's frontmatter schema (`last_verified` / `status` / `volatility` / `sources`) and its staleness model are **not enforced** here, and the current `wiki` plugin does not enforce them either: `wiki:ingest` defines a newer page format (`last_verified`, optional `aliases`, a `## Sources` section) and `wiki:lint` checks that format, treating the earlier `status` / `volatility` / `sources` frontmatter as old format. The docs MOC is a generalized at-a-glance index over an arbitrary folder, not a wiki maintenance tool.

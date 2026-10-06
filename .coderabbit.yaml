@@ -94,3 +94,7 @@ knowledge_base:
         applyTo: ".claude/state/**"
       - files: "code_review.md"
         applyTo: "**"
+      - files: "docs/adr/*.md"
+        applyTo: "**"
+      - files: "GLOSSARY.md"
+        applyTo: "**"

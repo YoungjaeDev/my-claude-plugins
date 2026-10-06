@@ -2,37 +2,23 @@
 
 GitHub workflow automation skills for Claude Code. All workflows are skills (no command surface), so `/dev:<name>` slash calls resolve to the skill and run under both Claude Code and Codex.
 
+dev owns the back half only: from a PR ready for review to merge and cleanup. The front half (idea → spec → tickets → implementation → PR) is Matt's skills (`mattpocock-skills`, `/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement-spec` or `/implement`); bug diagnosis is Matt's `/diagnosing-bugs`, and lessons go to `/retro` in the session that built the change. `/dev:flow` routes across both halves.
+
 ## Skills
 
 | Skill | Description |
 |---------|-------------|
 | `/dev:commit-and-push` | Analyze changes, commit with conventional message, push |
-| `/dev:decompose-issue` | Break down large issues into sub-tasks, define architecture mapping |
-| `/dev:post-merge` | Clean up branch, integrate PR learnings, sync milestone progress |
-| `/dev:resolve-issue` | Resolve GitHub issue end-to-end (enhanced with review, verification) |
+| `/dev:post-merge` | Cleanup only after a merge: surface leftover review findings, switch to base, delete the merged branch, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Records no lessons (`/retro` does); README / CHANGELOG edits are one-line pointers to `docs:readme` / `docs:changelog` |
 | `/dev:cr-fix` | Unified CodeRabbit + ChatGPT-Codex review loop (multi-file skill at `skills/cr-fix/`): pre-flight detects which reviewers are engaged, then wait + fetch + judge + apply + push per iteration. Each finding is validated against local code and severity-reassessed before apply / defer / skip; CodeRabbit tiers are severity-first with the effort field as the second axis, Security is always gated, Nitpicks are skipped, Codex P1/P2 are gated. The loop stops on `clean`, a low-severity floor (`minor_floor`), churn (findings only on the previous iteration's lines — code only, since a prose rewrite reproduces its own lines — or outside the PR diff), or the iteration cap, and files one follow-up issue (`tbd` label) for whatever it deferred. `--auto-merge` (default OFF) merges on `clean`, or on `minor_floor` / `churn` once the follow-up issue exists. `--cr-source` selects the review source; `auto` falls back to the local `coderabbit` CLI or Codex-only when the PR bot is rate-limited. Same-file generalization (default ON) patches sibling occurrences of a real, high-confidence, grep-able finding within the same file. Before iter 1 it reads the PR comments for a reviewer's "will not review" signal (Codex usage limit, CodeRabbit auto-review disabled): one down drops that reviewer for the run, both down stops at `reviewers_unavailable` with no waiting and no auto-merge. A `CONFLICTING` PR gets `origin/<base>` merged and resolved hunk by hunk inside the loop. The skill posts no PR comment except the `@coderabbitai rate limit` query and, for a non-default base CodeRabbit will not auto-review (unless the repo set `auto_review.enabled: false`), at most one `@coderabbitai review` per head SHA (a re-run finds the earlier request in the PR comments and skips); otherwise re-review is triggered by the push. |
 | `/dev:release` | Bump the version manifests, tag, and create a GitHub release with auto-generated release notes (does not touch `CHANGELOG.md` — that is `post-merge` Step 9.5 + `docs:changelog`) |
-| `/dev:state-tracker` | spec/issue/PR work-pipeline aggregate over `.claude/state/spec.json` (absorbed from `spec-state`) |
 | `/dev:session-handoff` | End-of-session handoff summary (decisions, shipped changes, key files, running state, verification, deferrals) so a fresh agent continues from chat alone. Chat-only: writes no file, updates no memory |
 | `/dev:orchestrate` | Subagent orchestration discipline: one job card per slice (goal, scope, absolute paths, inputs, output shape, done criteria, preset), model x effort worker presets `dev:worker-standard/deep/max` (sonnet medium / opus high / opus xhigh), one writer per path, quality gate with bounded re-query (2x same agent, 1x next preset up, then the user), orchestrator runs the verification itself and reports a per-agent ledger. `Workflow` only on a manual `/dev:orchestrate` call; every writing slice runs under `isolation: worktree`, so the scope check is one `git log --no-renames -z --name-only --pretty=format: <base>..<worker branch>` against that card's owned Paths and a branch that exceeds them is dropped rather than reverted; `git worktree list` baseline cleanup gate |
-| `/dev:diagnose` | Bug-diagnosis discipline: capture one failing command that reproduces the exact symptom before touching code, minimize the repro, rank 3-5 falsifiable hypotheses, add tagged instrumentation, write a regression test at a real seam, then a cleanup checklist; `dev:e2e-debug`'s hypothesis step points here |
-| `/dev:flow` | Short router over the dev flow (decompose-issue -> resolve-issue (-> diagnose for bugs) -> cr-fix -> post-merge) plus the worktree, non-default base, orchestrate hand-off, and E2E branches. Points, never acts; stays implicitly invocable |
+| `/dev:flow` | Short router over the whole flow: Matt front half (`/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement-spec` or `/implement`, detail via `/ask-matt`) then dev back half (`/dev:cr-fix` → merge → `/dev:post-merge` → `/retro`), plus the branches (bug → `/diagnosing-bugs`, no PR, ad-hoc parallel work → `/dev:orchestrate`, small ambiguous request, wiki ingest / query, worktree, non-default base, E2E) and the one-time product-repo setup (Matt setup + five triage labels). Points, never acts; stays implicitly invocable |
 
-## resolve-issue Flags
+## cr-fix Flags
 
-| Flag | Description |
-|------|-------------|
-| `--skip-review` | Skip 2-stage review (for trusted changes) |
-| `--strict` | Treat lint failures as blocking errors |
-| `--skip-cr-fix` | Skip the auto cr-fix loop after PR creation (default ON) |
-| `--cr-fix-max <n>` | Cap iterations on the auto cr-fix loop (default: 5) |
-| `--auto-merge` | Pass through to cr-fix; auto-merge after convergence (default OFF) |
-| `--codex-grace <sec>` | Pass through to cr-fix; Codex grace window after CR completes (default: 30) |
-| `--no-codex` | Pass through to cr-fix; force-disable Codex auto-detect for the run |
-| `--skip-minor` | Pass through to cr-fix; demote CR Minor (excluding `🔒 Security & Privacy`) + Codex P2 to skip |
-| `--no-minor-stop` | Pass through to cr-fix; disable the minor soft-stop (default ON — stop from iter 2 on a low-severity-only cycle, `final_state=minor_floor`) |
-| `--no-generalize` | Pass through to cr-fix; disable bounded same-file generalization (default ON — patch same-file siblings of a real + high-confidence + grep-able finding) |
-| `--cr-source <mode>` | Pass through to cr-fix; review source: `auto` (default, fall back to CLI/codex-only on PR-bot rate-limit), `pr-bot`, `cli`, `codex-only` |
+Full table: `skills/cr-fix/references/arguments.md` (`--auto-merge`, `--max-iterations`, `--codex-grace`, `--no-codex`, `--skip-minor`, `--no-minor-stop`, `--no-generalize`, `--cr-source`, ...).
 
 ## Worktree Workflow (PR-based)
 
@@ -40,8 +26,8 @@ Use Claude Code's built-in worktree (`claude --worktree <name>`) for isolated PR
 
 ```bash
 claude --worktree feature-auth
-# inside the worktree
-/dev:resolve-issue 42       # creates branch + PR + drives cr-fix
+# inside the worktree: build the change (Matt /implement) and open the PR
+/dev:cr-fix                 # drive the review loop on that PR
 /dev:post-merge <PR>        # after the PR merges on GitHub, still inside the worktree
 # post-merge works on the main repo and prints, as its last line:
 #   cd "<main repo>" && git worktree remove "<worktree>" && git branch -d "<branch>"
@@ -49,40 +35,6 @@ claude --worktree feature-auth
 ```
 
 **Note:** `post-merge` inside a worktree runs every git step against the main repo (`git -C "$MAIN_REPO"`), copies the worktree's cr-fix state into the main repo's `.claude/state/archive/`, and leaves the worktree and branch removal to the printed command. It never removes the worktree itself: on Windows a worktree removed from inside itself is only half deleted.
-
-## Project Progress Tracking
-
-Tracks milestone progress with architecture diagrams synced to GitHub.
-
-**State file**: `.claude/state/project-tracking-{slug}.json` -- created by `decompose-issue`, updated by `resolve-issue` and `post-merge`
-
-**Diagram types**:
-| Type | Format | Used In |
-|------|--------|---------|
-| Type M-1 | ASCII (workflow + task summary) | Terminal output |
-| Milestone | Markdown table (status + dependencies) | Milestone description |
-| Type M-2 | Mermaid (full workflow + issue context) | Individual issue/PR body |
-
-**Output format by medium**:
-| Output Medium | Format | Reason |
-|---------------|--------|--------|
-| GitHub Issue/PR body | Mermaid | GitHub markdown renderer supports it |
-| Milestone description | Markdown Table | GitHub milestones don't render Mermaid |
-| Terminal (session output) | ASCII diagram | Terminal can't render Mermaid |
-| State file (storage) | Mermaid source | Raw data for generating Issue/PR diagrams |
-
-**Architecture data**: `mermaidSource` (10-20 node workflow captured during decompose-issue) + `scopeNodes` (highlighted nodes for this milestone). Issues have `dependsOn` (execution order) and `architectureNode` (workflow position).
-
-**Trigger points**:
-| When | What happens |
-|------|-------------|
-| `decompose-issue` | Architecture interview, state file + initial diagram created |
-| `resolve-issue` | Local state updated (issue marked in_progress) |
-| `post-merge` | GitHub auto-sync (milestone desc + issue bodies updated); Step 5.5 mechanics live in `skills/post-merge/references/update-progress.md`, the only entry point |
-
-**Body markers**: `<!-- project-tracking-start -->` / `<!-- project-tracking-end -->` -- only the section between markers is replaced, preserving existing content.
-
-**Diagram colors**: `scope=#ddf4ff` (light blue bg), `done=#2da44e` (green), `active=#1f6feb` (blue), `pending=#6e7781` (gray), `here` (thick active border)
 
 ## Requirements
 
@@ -123,72 +75,6 @@ Agent(
 | Test writing | `claude` | `sonnet` |
 | Validation | `claude` | `sonnet` |
 
-## state-tracker (흡수: spec-state)
-
-Single-file aggregate cache for a repo's spec → issue → PR work pipeline. One `Read` on `.claude/state/spec.json` answers "what's currently in flight, and against which spec?" — no `find` over `.claude/spec/` plus per-file frontmatter parse.
-
-### What it ships
-
-| Component | Path | Purpose |
-|-----------|------|---------|
-| **state-tracker skill** | `skills/state-tracker/` | 4 ops on `.claude/state/spec.json`: read / init / start / complete |
-
-No hooks. Pure on-demand skill. Safe to install globally — operations only run when invoked.
-
-### SSOT relationship
-
-| Source | Authority | When it wins |
-|--------|-----------|--------------|
-| `.claude/spec/*.md` frontmatter (`status:`) | **SSOT** | Always — the spec file is the truth |
-| `.claude/state/spec.json` | **aggregate cache** | Faster lookup; if it conflicts with frontmatter, regenerate via `init` |
-
-Cache is regeneratable any time. Direct JSON edits are allowed but rare — prefer the 4 ops.
-
-### Schema (versioned JSON)
-
-```json
-{
-  "schema": 1,
-  "updated_at": "<ISO 8601>",
-  "in_progress": [
-    {
-      "spec": ".claude/spec/<YYYY-MM-DD>-<slug>.md",
-      "section": "<spec internal anchor, optional>",
-      "linked": { "issue": <number or null>, "pr": <number or null> },
-      "description": "<spec 'Goal' first line, or user-provided one-liner>"
-    }
-  ],
-  "completed": [
-    {
-      "spec": ".claude/spec/<YYYY-MM-DD>-<slug>.md",
-      "linked": { "issue": <number or null>, "pr": <number or null> },
-      "description": "<same as above>",
-      "completed_at": "<YYYY-MM-DD>",
-      "merge_sha": "<short SHA, 7 chars>"
-    }
-  ]
-}
-```
-
-### Relation to other plugins
-
-- `dev:post-merge` auto-calls `complete <spec-path>` after a merge to update the cache.
-- `wiki` is independent — wiki lore (`.llmwiki/wiki/log.md`) tracks knowledge events; `state-tracker` tracks the work pipeline.
-
-### Wiring status
-
-The write-side wiring is intentionally asymmetric:
-
-- **`complete` is auto-wired** — `dev:post-merge` Step 5.7 fires `complete <spec-path>` after a merge.
-- **`start` / `init` are NOT auto-wired** into `resolve-issue` / `decompose-issue`. They run manually, or as part of the `superpowers:writing-plans` chain.
-
-Consequence: `.claude/state/spec.json` stays absent until the first `start` / `init` in a repo. This dormancy is **by design**, not a bug: the cache materializes only once a tracked spec begins, and `dev:post-merge` Step 5.7 only fires `complete` when `.claude/state/` already exists, so the auto-call never hits a missing file.
-
-### Conditional behavior
-
-Safe to install in any repo. Skill operations no-op gracefully when `.claude/state/spec.json` (and `.claude/spec/`) are absent — `read` prints empty state, `init` requires user confirmation.
-
-
 ## project-init (흡수: project-init)
 
 Orchestrates a project's **agent-harness lifecycle**. The two directions are symmetric.
@@ -228,9 +114,9 @@ The Codex config location is `${CODEX_HOME:-$HOME/.codex}` (`codex --help`). Har
 ### Principles
 
 - **Preflight hard guard is non-negotiable**: the guard is embedded in Step 0 of `skills/new/SKILL.md`. The premise is that a description alone cannot block a wrong trigger — even if the model misreads the description, runtime blocks it. Removing the guard must be an explicit (high-friction, deliberate) user decision.
-- **wiring does not diagnose another owner's territory**: wiki-page health is owned by `/wiki:lint-wiki`, and mem0 store/config posture by `/wiki:fleet-scan`. wiring looks only at filesystem signals — "does a wiki exist / is the layout right / has mid-drain capture piled up". Overlap means the day comes when two diagnostics give different answers.
-- **Name the owning skill for each defect**: a verdict with no next action is noise. wiring directly fixes only mechanical, reversible edits (a `.gitignore` line, creating `.tmp/`, `core.hooksPath`, serena `project_name`); anything needing judgment (`.staging` curation, wiki bootstrap/migrate, CLAUDE.md authoring, spec migration, Serena onboarding, mem0 changes) is delegated.
-- **Minimal seeding, explicit follow-ups**: seed only what Day 1 needs. Tech-stack-based rule generation and the wiki-domain interview are **not invoked, only pointed to**. Generating generic content in an empty project imposes an overwrite cost on the user.
+- **wiring does not diagnose another owner's territory**: wiki-page health (staleness, broken links and Sources, orphans, index drift) is owned by `/wiki:lint`. wiring looks only at filesystem signals — "does a wiki exist / is it under the current `.llmwiki/` root". Overlap means the day comes when two diagnostics give different answers.
+- **Name the owning skill for each defect**: a verdict with no next action is noise. wiring directly fixes only mechanical, reversible edits (a `.gitignore` line, creating `.tmp/`, `core.hooksPath`, serena `project_name`); anything needing judgment (legacy wiki migration, CLAUDE.md authoring, spec relocation, Serena onboarding, mem0 changes) is delegated.
+- **Minimal seeding, explicit follow-ups**: seed only what Day 1 needs. Tech-stack-based rule generation and wiki ingest are **not invoked, only pointed to**. Generating generic content in an empty project imposes an overwrite cost on the user.
 - **Owner gate is mandatory**: since the user has a personal + multiple-org context, never auto-decide the owner. Require an explicit choice via `AskUserQuestion`.
 - **Codex GitHub reviewer surface**: the AGENTS.md `## Code Review Rules` section is what the Codex GitHub cloud reviewer reads automatically. It must be **seeded at repo-creation time** to take effect from the first PR.
 - **Idempotent re-runs**: on a second invocation in the same directory, preserve existing files + skip steps + print a notice. Never overwrite. (But since the hard guard aborts on the mere presence of `.git`/`.claude`, an idempotent re-run does not occur on the normal path — it only matters on the recovery path for a partial seed that bypassed the guard.)
@@ -280,7 +166,7 @@ fi
 
 - **Rejection rule**: anything in cwd that is not `.git/`, `.DS_Store`, `Thumbs.db`, or `desktop.ini` causes abort. `Dockerfile`, `Makefile`, `.env`, `docs/`, `src/app/main.py` — all of those trigger.
 - **Search depth**: 5 levels (`find -maxdepth 5`). Deep-nested source files do not slip past the guard.
-- **Abort message**: surfaces cwd + the first offending entry + a redirect to `/docs:write-rules` or `/wiki:bootstrap-wiki` for the "scaffold an existing project" case.
+- **Abort message**: surfaces cwd + the first offending entry + a redirect to `/docs:write-rules` or `/dev:wiring` for the "scaffold an existing project" case.
 - **Non-POSIX hosts**: PowerShell-default environments must invoke via `bash -c '<guard>'` (Git Bash / WSL / Cygwin). The intent of the check, not the literal shell, is what matters — equivalent PowerShell rewrites are acceptable as long as they refuse the same conditions.
 
 When modifying it, update both files at once. Changing only one makes the surfaces diverge in behavior.
@@ -349,4 +235,4 @@ The variant difference is the `### Domain-specific` section plus 1-2 domain-spec
 
 - Plugin versioning rules: `.claude/rules/plugin-versioning.md`
 - Codex GitHub integration: <https://learn.chatgpt.com/docs/third-party/github>
-- Related follow-ups: `/docs:write-rules`, `/wiki:bootstrap-wiki`
+- Related follow-ups: `/docs:write-rules`, `/wiki:ingest`

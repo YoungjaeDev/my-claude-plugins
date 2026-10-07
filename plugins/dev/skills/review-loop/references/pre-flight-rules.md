@@ -19,7 +19,7 @@ Two reviewers (CR + Codex) on different channels with different timings:
 | 2 | CR issue-comments | `repos/$O/$R/issues/$PR/comments` (`--paginate`) | `coderabbitai[bot]` bodies created OR updated after `PUSH_TIME` — catches in-place rate-limit edits |
 | 3 | Codex reviews | `repos/$O/$R/pulls/$PR/reviews` (`--paginate`) | `chatgpt-codex-connector*` reviews, `COMMENTED`/`CHANGES_REQUESTED`, sorted by `submitted_at`, filtered by `codex_processed_reviews` |
 | 4 | Codex emoji A | `repos/$O/$R/issues/$PR/reactions` | PR-level reactions left by `chatgpt-codex-connector*` (in_progress / clean / findings) |
-| 5 | Codex emoji B | `repos/$O/$R/commits/$SHA/check-runs` | Check-run names / summaries from the connector — sometimes carries the state icon |
+| 5 | Codex emoji B | `repos/$O/$R/commits/$SHA/check-runs` | Check-runs named like Codex — wait signal only (in_progress / findings), never clean |
 | 6 | Codex HEAD verdict | `scripts/codex-head-verdict.sh` -> `issues/$PR/comments` + `pulls/$PR/reviews` (`--paginate`) | Summary comment Running/Completed/Failed + SHA, and the `commit_id == HEAD` review; authoritative over channels 4/5 |
 
 Channel 4/5 (emoji) are best-effort: the GitHub API exposes **no reliable surfacing path** for the marker. If both return empty, fall back to **timeout-based** logic (`push_age vs codex_timeout_seconds`, default `600` = 10 min).

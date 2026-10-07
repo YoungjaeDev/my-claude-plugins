@@ -10,12 +10,10 @@
 # Channels (first non-unknown wins):
 #   A. issues/{pr}/reactions       — PR-level reactions, filtered to created_at > PUSH_TIME
 #                                    so stale prior-iter reactions never produce false-clean.
-#   B. commits/{sha}/check-runs    — Codex check-run name/conclusion/summary (SHA-scoped natively).
+#   B. commits/{sha}/check-runs    — Codex check-run name/status/conclusion (SHA-scoped natively).
+#                                    Never clean: the name match is forgeable (see the channel).
 #   C. pulls/{pr}/reviews/{rid}/reactions — usually 404, kept as opportunistic tier-3,
-#                                    also PUSH_TIME-filtered.
-#
-# When PUSH_TIME is absent the reaction channels still work but trust check-runs (B) more,
-# matching the codex-parsing-rules.md caveat about false-clean.
+#                                    reactor-filtered like A and PUSH_TIME-filtered.
 #
 # See references/codex-parsing-rules.md for the mapping tables and false-emoji caveats.
 set -euo pipefail
@@ -56,19 +54,15 @@ if cr_pages=$(gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/check-runs"
                      | sort_by(.completed_at // .started_at // "") | last // {}' <<<"$cr_pages")
   status=$(jq -r '.status // ""' <<<"$codex_run")
   conclusion=$(jq -r '.conclusion // ""' <<<"$codex_run")
-  summary=$(jq -r '.output.summary // ""' <<<"$codex_run")
+  # Selected by name, which any GitHub App can pick, and no Codex check-run app
+  # identity has been observed to anchor on. So this channel may only make the
+  # loop wait (in_progress / findings), never emit clean.
   if [ -n "$status" ]; then
     case "$status" in
       in_progress|queued) emit in_progress check-runs ;;
       completed)
         case "$conclusion" in
           failure|action_required) emit findings check-runs ;;
-          success|neutral)
-            if jq -nr --arg s "$summary" '$s | test("no issues|clean|all good"; "i")' \
-                 | grep -q true 2>/dev/null; then
-              emit clean check-runs
-            fi
-            ;;
         esac
         ;;
     esac
@@ -82,7 +76,8 @@ if rid=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/nul
                      | sort_by(.submitted_at) | last | .id // ""'); \
    [ -n "$rid" ] && [ "$rid" != "null" ]; then
   if rrxn=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews/$rid/reactions" 2>/dev/null); then
-    content=$(jq -r --arg t "$PUSH_TIME" 'map(select($t == "" or .created_at > $t))
+    content=$(jq -r --arg t "$PUSH_TIME" 'map(select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i")))
+                                          | map(select($t == "" or .created_at > $t))
                                           | sort_by(.created_at) | last | .content // ""' <<<"$rrxn" 2>/dev/null || echo "")
     case "$content" in
       "+1"|"hooray")        emit clean review-reactions ;;

@@ -40,25 +40,26 @@ Mapping (provisional, refine as signal-capture PRs land):
 
 ## Channel B: commit check-runs (`commits/$SHA/check-runs`)
 
-Codex registers check-runs whose `name` / `output.summary` may carry the state.
+Codex check-runs, if any, are picked by `name`. No Codex app identity (`.app.slug` / `.app.owner.login`) has been observed on check-runs to anchor on, and any GitHub App can name a check-run `codex-lint` and summarise it "clean". So this channel never yields `clean`: it can only make the loop wait.
 
 ```bash
 gh api --paginate "repos/$OWNER/$REPO/commits/$CUR_SHA/check-runs" 2>/dev/null \
   | jq -s 'add // [] | .[].check_runs[]?
            | select((.name // "") | test("codex|chatgpt"; "i"))
-           | {status, conclusion, name, summary: (.output.summary // "")}'
+           | {status, conclusion, name}'
 ```
 
 Mapping:
 
-| `status` | `conclusion` | `summary` regex | `emoji_state` |
-|---|---|---|---|
-| `in_progress` / `queued` | (any) | (any) | `in_progress` |
-| `completed` | `success` / `neutral` | `no issues` / `clean` (case-insensitive) | `clean` |
-| `completed` | `failure` / `action_required` | (any) | `findings` |
-| `completed` | (else) | (regex miss) | `unknown` |
+| `status` | `conclusion` | `emoji_state` |
+|---|---|---|
+| `in_progress` / `queued` | (any) | `in_progress` |
+| `completed` | `failure` / `action_required` | `findings` |
+| `completed` | (else) | `unknown` |
 
 ## Channel C: review-level reactions (`pulls/$PR/reviews/$RID/reactions`)
+
+Reactions are filtered by `.user.login` with Channel A's anchored regex: anyone who can see the PR can react to the Codex review. Same mapping as Channel A.
 
 Returns `404` in most cases observed. Try only when channels A + B both produced `unknown`. Cheap probe (1 call per Codex review id) — keep enabled to opportunistically catch unusual repo configurations.
 
@@ -73,7 +74,7 @@ The 10-minute default covers the upper end of Codex publish latency. Override vi
 
 ## False-emoji warning
 
-Channel B can report `conclusion=success` BEFORE the review submission is created: the connector occasionally posts the check-run minutes before the review payload lands. To avoid premature `proceed`:
+A reaction can report clean BEFORE the review submission is created. To avoid premature `proceed`:
 
 - A `clean` emoji_state alone (no review submission AND no past `processed` review) still gates on `push_age >= 60s` minimum. Pre-flight emits `gate=codex_wait` for the first minute even on `clean` emoji.
 - A `findings` emoji_state without a review submission falls through to `codex_wait` — never `proceed`. The review is mandatory for fetching the actual comments.

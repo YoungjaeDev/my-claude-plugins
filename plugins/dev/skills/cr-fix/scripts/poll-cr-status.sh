@@ -45,6 +45,18 @@ fetch_cr_state() {
   bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$SHA" 2>/dev/null || echo '{}'
 }
 
+# Terminal rate_limited line; the sniff only enriches it with a reset estimate.
+emit_rate_limited() {
+  local rl reset=null hits=null
+  if rl=$(bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
+    reset=$(jq -r '.reset_minutes_estimate // "null"' <<<"$rl")
+    hits=$(jq -r '.hits // "null"' <<<"$rl")
+  fi
+  printf '{"state":"rate_limited","sha":"%s","pr":%s,"reset_minutes_estimate":%s,"hits":%s,"source":"poll"}\n' \
+    "$SHA" "$PR_NUM" "$reset" "$hits"
+  exit 0
+}
+
 while true; do
   cr_obj=$(fetch_cr_state)
   # "none" (no CR row on either surface yet) and "pending" both mean "keep waiting";
@@ -72,17 +84,16 @@ while true; do
     now_ts=$(date +%s)
     : "${skip_first_ts:=$now_ts}"
     if [ "$((now_ts - skip_first_ts))" -ge "$CR_SKIP_GRACE" ]; then
-      reset=null; hits=null
-      if rl=$(bash "$SCRIPT_DIR/sniff-cr-rate-limit.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
-        reset=$(jq -r '.reset_minutes_estimate // "null"' <<<"$rl")
-        hits=$(jq -r '.hits // "null"' <<<"$rl")
-      fi
-      printf '{"state":"rate_limited","sha":"%s","pr":%s,"reset_minutes_estimate":%s,"hits":%s,"source":"poll"}\n' \
-        "$SHA" "$PR_NUM" "$reset" "$hits"
-      exit 0
+      emit_rate_limited
     fi
     sleep "$INTERVAL"
     continue
+  fi
+
+  # cr-commit-state.sh maps a success row carrying a rate-limit description
+  # ("Review rate limited" passes by design) to rate_limited: no review ran.
+  if [ "$s" = "rate_limited" ]; then
+    emit_rate_limited
   fi
 
   if [ "$s" = "success" ] || [ "$s" = "failure" ]; then
@@ -111,16 +122,9 @@ while true; do
       if [ "$fresh" = "success" ] && printf '%s' "$fresh_desc" | grep -qiE '^Review skipped: free tier disabled'; then
         sleep "$INTERVAL"; continue
       fi
-      # A fresh success whose description is itself a rate-limit marker
-      # ("Review limit reached", refill phrasing) is CR's quota-skip row for
-      # THIS SHA — the description channel is authoritative, so it must not be
-      # promoted to a completed review. Blank it so the rate_limited emit below
-      # stays the terminal state; only comment-only (stale-prone) hits are
-      # suppressed by a fresh terminal success.
-      if [ "$fresh" = "success" ] && printf '%s' "$fresh_desc" \
-           | grep -qiE 'rate limited by coderabbit\.ai|More reviews will be available in|Next review available in|Review limit reached'; then
-        fresh=""
-      fi
+      # A fresh success whose description is a rate-limit marker already reads
+      # `rate_limited` here (cr-commit-state.sh), so it falls through to the
+      # rate_limited emit below; only a genuine terminal state wins over the sniff.
       if [ "$fresh" = "success" ] || [ "$fresh" = "failure" ]; then
         target=$(jq -r '.target_url // ""' <<<"$fresh_obj")
         printf '{"state":"%s","sha":"%s","pr":%s,"target_url":"%s","source":"poll"}\n' "$fresh" "$SHA" "$PR_NUM" "$target"

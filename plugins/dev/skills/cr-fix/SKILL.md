@@ -171,7 +171,7 @@ Run the "Step 7b: rate-limit sniff" block in `references/run-blocks.md` verbatim
 
 Run the "Step 7d: CLI review spawn" block in `references/run-blocks.md` verbatim.
 
-If `exit != 0` OR `emitted_complete=false`: `final_state=cli_failed`, break. There is no auto-fallback from the CLI to the PR-bot; see `references/failure-modes.md`.
+If `exit != 0` OR `incomplete=true` (no `complete` event, or one with `outcome: "failed"` or `unreviewedFileCount > 0`; `completed_with_warnings` with nothing unreviewed is complete): `final_state=cli_failed`, break. There is no auto-fallback from the CLI to the PR-bot; see `references/failure-modes.md`.
 
 ## Step 8: Fetch CR threads (PR-bot path)
 
@@ -187,9 +187,10 @@ Run the "Step 8b: fetch Codex inline comments" block in `references/run-blocks.m
 
 Skip when `CR_SOURCE ∈ {cli, codex-only}`. Skip when pre-flight `gate=proceed` already verified CR actionability. Otherwise, if `(cr_records + codex_records) == 0`:
 Run the "Step 8c: engagement gate" block in `references/run-blocks.md` verbatim.
-- `cr_engagement > 0` → genuine convergence, `final_state=clean`, jump to Step 13.
-- `cr_engagement == 0` AND `ITER < MAX_ITER` → CR has not started reviewing this push yet, sleep `$INTERVAL`, continue.
-- `cr_engagement == 0` AND `ITER == MAX_ITER` → `final_state=cr_inactive`, break.
+CodeRabbit's result is its HEAD verdict (`cr-head-verdict.sh`: `findings` / `clean` / `none`), never the success status. A rate-limit or skip notice counts as neither engagement nor a verdict.
+- `cr_engagement > 0` AND `cr_verdict != none` → genuine convergence, `final_state=clean`, jump to Step 13.
+- otherwise AND `ITER < MAX_ITER` → CR has not reviewed this push yet, sleep `$INTERVAL`, continue.
+- otherwise AND `ITER == MAX_ITER` → `final_state=cr_inactive`, break.
 
 ## Step 8d: CLI JSONL → record (CLI path only)
 

@@ -218,7 +218,8 @@ permanent=$(jq -r '.permanent // false' <<<"$rl")
 # Bash(run_in_background=true, timeout=TIMEOUT*1000):
 #   BASE=$BASE PR_NUM=$PR_NUM ITER=$ITER CONFIG_FILES="CLAUDE.md AGENTS.md" \
 #     bash $SKILL_DIR/scripts/cr-cli-spawn.sh
-# Monitor returns one JSON line: {jsonl:"...", exit:N, emitted_complete:bool}
+# Monitor returns one JSON line: {jsonl:"...", exit:N, emitted_complete:bool, incomplete:bool}
+# incomplete=true: no `complete` event, or it carries outcome "failed" / unreviewedFileCount > 0
 cli_invocations=$((cli_invocations + 1))
 ```
 
@@ -239,6 +240,9 @@ codex_records=$(bash $SKILL_DIR/scripts/fetch-codex-comments.sh "$OWNER" "$REPO"
 
 ```bash
 cr_engagement=$(bash $SKILL_DIR/scripts/engagement-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME")
+# Exit non-zero = could not look, which is not "no verdict".
+cr_verdict=$(bash $SKILL_DIR/scripts/cr-head-verdict.sh "$OWNER" "$REPO" "$PR_NUM" "$CUR_SHA") \
+  || { final_state=failure; break; }
 ```
 
 ## Step 8d: CLI JSONL to records

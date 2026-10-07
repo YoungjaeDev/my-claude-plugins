@@ -46,7 +46,7 @@ claude mcp add mcpdocs --scope user -- npx @hapus/mcp-cache uvx --from mcpdoc mc
 
 | 이름 | URL | 용도 (한 줄) |
 |---|---|---|
-| `coderabbit` | `https://docs.coderabbit.ai/llms.txt` | CodeRabbit 코드리뷰 봇 설정·동작 문서 (cr-fix 스킬의 tier/severity 근거) |
+| `coderabbit` | `https://docs.coderabbit.ai/llms.txt` | CodeRabbit 코드리뷰 봇 설정·동작 문서 (review-loop 스킬의 tier/severity 근거) |
 | `LangGraph` | `https://langchain-ai.github.io/langgraph/llms.txt` | LangGraph 그래프 오케스트레이션 API |
 | `LangChain` | `https://python.langchain.com/llms.txt` | LangChain 파이썬 API |
 | `LangChain Python Wiki` | `https://raw.githubusercontent.com/teddynote-lab/mcp-langchain-docs/refs/heads/main/resources/langchain-wiki.md` | teddynote-lab 의 LangChain 한국어 실전 위키 |

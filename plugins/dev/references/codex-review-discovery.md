@@ -42,9 +42,9 @@ CodeRabbit does not read `AGENTS.md` — it uses its own `.coderabbit.yaml` or r
 
 - The review guidelines in AGENTS.md primarily target Codex.
 - CodeRabbit instructions (if needed) are managed separately with `.coderabbit.yaml` or `.github/CODEOWNERS`.
-- The `/dev:cr-fix` command processes both bots' results at once and cleans up noise with a tier policy.
+- The `/dev:review-loop` command processes both bots' results at once and cleans up noise with a tier policy.
 
-> See: `.claude/spec/2026-05-06-codex-review-integration.md` — details of `cr-fix`'s CR + Codex integration.
+> See: `.claude/spec/2026-05-06-codex-review-integration.md` — details of `review-loop`'s CR + Codex integration.
 
 ## When AGENTS.md already exists
 

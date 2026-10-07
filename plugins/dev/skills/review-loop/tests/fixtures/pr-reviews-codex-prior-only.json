@@ -1,0 +1,4 @@
+[
+  { "id": 5426830676, "user": { "login": "chatgpt-codex-connector[bot]" }, "state": "COMMENTED", "commit_id": "03a3e71000000000000000000000000000000000", "submitted_at": "2026-10-06T10:08:44Z" },
+  { "id": 5427999999, "user": { "login": "chatgpt-codex-connector-evil" }, "state": "COMMENTED", "commit_id": "95ab2f621c9add07df26af3770418786a29a62bb", "submitted_at": "2026-10-06T10:50:00Z" }
+]

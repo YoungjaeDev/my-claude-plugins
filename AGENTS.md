@@ -29,7 +29,7 @@
 | `council` | AI Models | (단독 유지, Claude 전용) |
 | `codex-image` | AI Models | (단독 유지, Claude 전용) |
 
-플러그인명을 짧게 둔 이유는 호출 길이와 가독성이다. 플러그인 스킬은 항상 `/plugin:skill` 로 노출된다. 슬래시 메뉴는 `:`·`-`·`_` 를 무시하고 이름 안의 단어 시작에서도 매칭하므로 (`/cr` 이 `/dev:cr-fix` 를 하이라이트, Claude Code 2.1.236 이상) 접두사 길이가 매칭을 막지는 않는다. 플러그인은 `.claude/settings.json` 에서 auto-load 된다. 사용법은 `README.md`.
+플러그인명을 짧게 둔 이유는 호출 길이와 가독성이다. 플러그인 스킬은 항상 `/plugin:skill` 로 노출된다. 슬래시 메뉴는 `:`·`-`·`_` 를 무시하고 이름 안의 단어 시작에서도 매칭하므로 (`/rev` 가 `/dev:review-loop` 를 하이라이트, Claude Code 2.1.236 이상) 접두사 길이가 매칭을 막지는 않는다. 플러그인은 `.claude/settings.json` 에서 auto-load 된다. 사용법은 `README.md`.
 
 ## 저장소 구조
 
@@ -78,7 +78,7 @@ git add -A \
   && node scripts/check-shell-portability.mjs \
   && node scripts/check-shell-portability.test.mjs \
   && node scripts/check-skill-contract.mjs \
-  && bash plugins/dev/skills/cr-fix/tests/run-tests.sh \
+  && bash plugins/dev/skills/review-loop/tests/run-tests.sh \
   && bash plugins/council/skills/convene/tests/run-tests.sh \
   && echo "verify: ok"
 ```
@@ -121,21 +121,27 @@ git add -A \
 
 ## CodeRabbit / Codex 조율
 
-이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:cr-fix` 스킬이 양쪽을 동시에 처리한다 (`plugins/dev/skills/cr-fix/SKILL.md` + `references/` + `scripts/`). PR-bot rate-limit 시 `--cr-source auto` 가 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback 한다.
+이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:review-loop` 스킬이 양쪽을 동시에 처리한다 (`plugins/dev/skills/review-loop/SKILL.md` + `references/` + `scripts/`). PR-bot rate-limit 시 `--cr-source auto` 가 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback 한다.
 
-CodeRabbit inline 헤더는 `_<카테고리>_ | _<심각도>_ | _<노력>_` (예: `_🎯 Functional Correctness_ | _🟠 Major_ | _⚡ Quick win_`) 이다. 첫 필드는 이슈 타입이 아니라 카테고리이므로 티어는 심각도 우선으로 정한다. Codex 는 GitHub 에서 P1/P2 만 표면화한다.
+CodeRabbit inline 헤더는 `<카테고리> | <심각도> | <노력>` 세 필드다 (예: `🎯 Functional Correctness | 🟠 Major | ⚡ Quick win`). 굵게·기울임·무서식이 PR 마다 달라지므로 서식이 아니라 이모지 배지로 읽는다 (`scripts/cr-header.jq`). 첫 필드는 이슈 타입이 아니라 카테고리이므로 티어는 심각도 우선으로 정한다. 리뷰 본문의 "Outside diff range comments" 블록에만 있는 diff 밖 지적도 같은 레코드로 수집해 같은 판정을 거친다. Codex 는 GitHub 에서 주로 P1/P2 를 표면화하고, 파서는 P0-P3 을 모두 읽는다.
+
+finding 은 티어와 무관하게 사용자에게 묻지 않고 로컬 코드에 대어 자율 판정한다 (apply / defer / skip, 사유를 `auto_judge_log` 에 남긴다). defer 는 후속 이슈로 간다.
 
 | Source | Tier 정책 |
 |--------|-----------|
 | CR 카테고리 `🔒 Security & Privacy` | `gated` — 심각도 무관 |
-| CR `🔴 Critical` / `🟠 Major` | `gated` — per-issue 확인 |
+| CR `🔴 Critical` / `🟠 Major` | `gated` — 자율 판정 |
 | CR `🟡 Minor` + `🏗️ Heavy lift` | `gated` |
 | CR `🟡 Minor` + `⚡ Quick win` (또는 effort 필드 없음) | `auto` — 자동 적용 |
-| CR `🟢 Trivial` / `🟢 Info` | `skip` |
+| CR `🔵 Trivial` / `⚪ Info` | `skip` |
 | CR `📝 Nitpick` (리뷰 요약 `<details>` 전용) | `skip` |
-| Codex P1 (red), P2 (yellow) | `gated` |
+| Codex P0, P1, 첫 라운드의 P2 | `gated` |
+| Codex P2, 두 번째 라운드부터 | `defer` — 판정 없이 후속 이슈로 (반영한 P2 가 다음 라운드의 재료가 되므로) |
+| 헤더를 못 읽은 CR / 배지 없는 Codex | `review` — 표시만 하고 `clean` 으로 치지 않는다 |
 
-cr-fix 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지, `--no-minor-stop` 으로 비활성화. **churn stop** (opt-out 없음) — iter 2 부터 이번 사이클 finding 이 전부 직전 iter 커밋 위나 PR diff 밖이면 `final_state=churn` 으로 정지한다. 직전 커밋 위 축은 코드에만 적용된다 — 산문은 한 iteration 이 문단을 통째로 다시 쓰므로 위치가 작성자를 뜻하지 않고, PR diff 밖 축만으로 판정하며 수렴하지 않는 산문 루프는 `iteration_cap` 이 받는다. **후속 이슈 1건** — `final_state` 가 `churn` / `minor_floor` / `iteration_cap` 이고 deferred 가 있으면 `gh issue create --label tbd` 로 1건 발행한다. **auto-merge** — `clean`, 또는 후속 이슈 발행에 성공한 `minor_floor` / `churn` 만 통과하고 이슈 발행 실패 시 머지를 차단한다. cr-fix 는 `@coderabbitai rate limit` 외에 어떤 PR 댓글도 올리지 않는다 (재리뷰는 push 가 트리거한다). **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 cr-fix state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.
+**HEAD 판정 대기** (ADR 0002) — 켜진 리뷰어 전원이 현재 HEAD 에 판정(지적 또는 clean)을 내기 전에는 다음 라운드를 가져오지도, push 하지도, 끝내지도, 머지하지도 않는다. 진행 중 표시, rate limit 안내, 자동 리뷰 일시정지는 판정이 아니다 (CodeRabbit 은 리뷰 중에 새 push 가 오면 그 리뷰를 버린다). push 직후에 도달한 정지(`minor_floor`, `churn`, `iteration_cap`)는 바로 끝내지 않고 보류(hold)한 뒤 다음 iteration 의 Step 7e, 마지막 iteration 이면 Step 14 에서 판정을 기다린다. 대기 중 새 gated 지적이 오면 상한이 허락하는 한 한 라운드 더 돌고, 라운드가 남지 않았으면 `iteration_cap` 으로 끝낸다. 대기는 기존 상한(`TIMEOUT`, Codex 대기 예산) 안에서만 하고, 상한을 넘기면 보류한 상태(없으면 `timeout`)로 끝내며 후속 이슈를 내고 auto-merge 를 끈다. Codex summary 댓글이 HEAD 에 Failed 를 내면 PR 에 아무 댓글도 남기지 않고 `final_state=codex_failed` 로 멈춰 알린다. draft PR 은 `gh pr ready` 안내와 함께 멈춘다.
+
+review-loop 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지, `--no-minor-stop` 으로 비활성화. 두 번째 라운드부터의 Codex P2 만 남은 사이클도 `minor_floor` 다. **churn stop** (opt-out 없음) — iter 2 부터 이번 사이클 finding 이 전부 직전 iter 커밋 위나 PR diff 밖이면 `final_state=churn` 으로 정지한다. 직전 커밋 위 축은 코드에만 적용된다 — 산문은 한 iteration 이 문단을 통째로 다시 쓰므로 위치가 작성자를 뜻하지 않고, PR diff 밖 축만으로 판정하며 수렴하지 않는 산문 루프는 `iteration_cap` 이 받는다. **push 전 검증** — build/test 기준선이 통과하는 저장소에서는 수정마다 build/test 를 돌리고 실패한 수정은 되돌려 `verification-failed` 로 defer 한다 (모든 수정이 실패한 사이클은 push 없이 `user_declined`). **후속 이슈 1건** — `final_state` 가 `churn` / `minor_floor` / `iteration_cap` / `user_declined` / `clean` / `timeout` 이고, 어느 사이클에서든 defer 가 있었거나 (뒤 사이클이 `clean` 이어도) HEAD 판정을 다 받지 못했으면 `gh issue create --label tbd` 로 1건 발행한다. 재실행은 같은 이슈에 댓글로 덧붙인다. **auto-merge** — 세 조건을 모두 확인한다: `final_state` 가 `clean` / `minor_floor` / `churn` 이고, defer 가 있었다면 후속 이슈 발행(재실행이면 덧붙이기)에 성공했고, 켜진 리뷰어 전원이 HEAD 에 판정을 냈다. 판정 없는 HEAD, rate limit 안내만 있는 HEAD, `codex_failed` 를 포함한 그 밖의 상태는 자격이 없다. `final_state` enum: `clean`, `user_declined`, `minor_floor`, `churn`, `iteration_cap`, `timeout`, `failure`, `cr_inactive`, `rate_limited`, `cli_failed`, `reviewers_unavailable`, `codex_failed`, `unknown` (트리거와 조치: `plugins/dev/skills/review-loop/references/failure-modes.md`). **PR 댓글** — review-loop 가 올리는 PR 댓글은 두 가지뿐이다: rate limit 안내에 reset 시각이 없을 때의 `@coderabbitai rate limit` 질의(실행당 1회)와, HEAD 당 최대 1회의 `@coderabbitai review` 요청(CodeRabbit 이 자동 리뷰하지 않는 non-default base 이거나, CodeRabbit 이 자동 리뷰를 일시정지했을 때 — `auto_pause_after_reviewed_commits`). 같은 HEAD 에 이미 요청이 있으면 다시 올리지 않는다. `@codex review` 와 진행·요약 댓글은 올리지 않으며, 재리뷰는 push 가 트리거한다. **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 review-loop state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.
 
 ## Agent skills
 

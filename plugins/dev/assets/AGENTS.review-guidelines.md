@@ -62,15 +62,18 @@ Owner: {{OWNER}}
 
 ## CodeRabbit / Codex 조율
 
-이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:cr-fix` 명령이 양쪽을 동시에 처리한다.
+이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:review-loop` 스킬이 양쪽을 동시에 처리하고, 켜진 리뷰어 전원이 HEAD 에 판정을 낸 뒤에만 끝내거나 머지한다.
+
+finding 은 티어와 무관하게 사용자에게 묻지 않고 로컬 코드에 대어 자율 판정한다 (apply / defer / skip). defer 는 후속 이슈 1건으로 간다.
 
 | Source | Tier 정책 |
 |--------|-----------|
-| CodeRabbit `🚨 Bug` / `⚠️ Potential issue` / `🔒 Security` / `🔴 Critical-High` / `🟠 Major` | `gated` — 사용자 per-issue 확인 |
-| CodeRabbit `🛠️ Refactor` (`🟡 Minor` / `🟢 Trivial` / `🟢 Info`) | `auto` — 자동 적용 |
-| CodeRabbit `📝 Nitpick` | `skip` — 노출 X |
-| Codex P1 (red), P2 (yellow) | `gated` |
-| Codex P3 (green) | `skip` |
+| CodeRabbit 카테고리 `🔒 Security & Privacy` | `gated` — 심각도 무관 |
+| CodeRabbit `🔴 Critical` / `🟠 Major`, `🟡 Minor` + `🏗️ Heavy lift` | `gated` — 자율 판정 |
+| CodeRabbit `🟡 Minor` + `⚡ Quick win` | `auto` — 자동 적용 |
+| CodeRabbit `🔵 Trivial` / `⚪ Info` / `📝 Nitpick` | `skip` |
+| Codex P0, P1, 첫 라운드의 P2 | `gated` |
+| Codex P2, 두 번째 라운드부터 | `defer` — 판정 없이 후속 이슈로 |
 
 리뷰는 한국어로 작성하되, CR / Codex 의 영어 코멘트는 그대로 받아 들인다.
 

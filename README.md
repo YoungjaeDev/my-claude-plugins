@@ -31,7 +31,7 @@ Claude Code 를 위한 8개 플러그인 모음. GitHub 워크플로우, 리서�
 /plugin install scout@my-claude-plugins
 ```
 
-설치 후 `/dev:cr-fix` 처럼 `/plugin:skill` 형태로 호출한다. 플러그인명을 짧게 둔 이유는 호출 길이와 가독성이다. 슬래시 메뉴는 `:`·`-`·`_` 를 무시하고 이름 안의 단어 시작에서도 매칭하므로 `/cr` 만 쳐도 `/dev:cr-fix` 가 하이라이트된다 (Claude Code 2.1.236 이상).
+설치 후 `/dev:review-loop` 처럼 `/plugin:skill` 형태로 호출한다. 플러그인명을 짧게 둔 이유는 호출 길이와 가독성이다. 슬래시 메뉴는 `:`·`-`·`_` 를 무시하고 이름 안의 단어 시작에서도 매칭하므로 `/rev` 만 쳐도 `/dev:review-loop` 가 하이라이트된다 (Claude Code 2.1.236 이상).
 
 ## 플러그인 업데이트
 
@@ -48,9 +48,15 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 /plugin marketplace update my-claude-plugins
 ```
 
+### 2.54.0 마이그레이션 (cr-fix → review-loop)
+
+- **리뷰 루프 스킬 이름이 `cr-fix` 에서 `/dev:review-loop` 로 바뀌었다** (dev 5.0.0). 옛 이름 "cr-fix" 나 '리뷰 반영' 으로 불러도 잡힌다. 플래그와 동작은 그대로다.
+- 상태 파일 접두사가 `.claude/state/review-loop-<PR>.json` 으로 바뀌었다. `/dev:post-merge` 의 남은 리뷰 표시와 worktree 상태 복사는 옛 `cr-fix-<PR>.json` 도 계속 읽는다. 이름 변경 전에 루프를 돌린 PR 에서 `/dev:review-loop` 를 다시 돌리면 옛 상태의 처리한 리뷰 목록과 follow-up 이슈를 이어받는다.
+- 위 "플러그인 업데이트" 절차(캐시 삭제 → marketplace update → 재시작)로 새 버전을 받는다.
+
 ### 2.52.0 마이그레이션 (앞단은 Matt, wiki 는 바깥 지식 전용)
 
-- **dev 앞단 스킬 4개 삭제.** 이슈 분해·이슈 해결·버그 진단·spec 상태 추적 스킬이 사라졌다. 아이디어부터 PR 까지는 Matt 스킬(`mattpocock/skills`)의 `/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement-spec` (또는 `/implement`) 이 맡고, 버그 진단은 `/diagnosing-bugs`, 'grill me' 는 `/grilling` 이 맡는다. dev 는 PR 부터 머지·정리까지(`/dev:cr-fix` → 머지 → `/dev:post-merge`)만 맡는다. 다음에 무엇을 부를지는 `/dev:flow` 가 안내한다.
+- **dev 앞단 스킬 4개 삭제.** 이슈 분해·이슈 해결·버그 진단·spec 상태 추적 스킬이 사라졌다. 아이디어부터 PR 까지는 Matt 스킬(`mattpocock/skills`)의 `/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement-spec` (또는 `/implement`) 이 맡고, 버그 진단은 `/diagnosing-bugs`, 'grill me' 는 `/grilling` 이 맡는다. dev 는 PR 부터 머지·정리까지(`/dev:review-loop` → 머지 → `/dev:post-merge`)만 맡는다. 다음에 무엇을 부를지는 `/dev:flow` 가 안내한다.
 - **post-merge 는 정리만 한다.** milestone·진행 추적 동기화와 교훈 반영(CLAUDE.md·AGENTS.md·rules·wiki 적재)이 빠졌다. 교훈은 빌드한 세션의 `/retro` 로 옮긴다.
 - **docs:interview-methodology** 는 작은 요청의 모호한 점 확인과 TCREI 출력만 하고 파일을 남기지 않는다. 큰 일은 `/grill-with-docs` 로 넘긴다.
 - **wiki 는 바깥 지식 전용.** 훅 5종, `insight/` 층, mem0 운영 스킬이 사라졌다. 옛 `ingest-finding`·`lint-wiki` 는 `/wiki:ingest`·`/wiki:lint` 로 이름이 바뀌었고 (옛 이름으로 불러도 잡힌다), `/wiki:query` 가 새로 생겼다. wiki 가 없는 repo 에서는 첫 `/wiki:ingest` 가 뼈대를 만든다. 결정은 `docs/adr/`, 용어는 `GLOSSARY.md` 에 둔다.
@@ -81,7 +87,7 @@ cp "$SRC" ~/.codex/AGENTS.md       # Codex
 | 옛 플러그인 | 새 번들 | 예시 |
 |---|---|---|
 | `core-config` | `core` | (hooks 전용, 2.31.0 에서 제거 — 아래 절) |
-| `github-dev`, `project-init`, `e2e-harness` | `dev` | `/github-dev:cr-fix` → `/dev:cr-fix`, `/project-init:new` → `/dev:new` |
+| `github-dev`, `project-init`, `e2e-harness` | `dev` | `/github-dev:commit-and-push` → `/dev:commit-and-push`, `/project-init:new` → `/dev:new` |
 | `docs-forge`, `publish` | `docs` | `/docs-forge:readme` → `/docs:readme`, `/publish:gws-sync` → `/docs:gws-sync` |
 | `code-scout`, `deepwiki`, `paper-search-tools` | `scout` | `/deepwiki:ask` → `/scout:ask`, `code-scout:github-scout` → `scout:github-scout` |
 | `ml-toolkit` | `ml` | `/ml-toolkit:cv-notebook` → `/ml:cv-notebook` |
@@ -111,7 +117,7 @@ cp "$SRC" ~/.codex/AGENTS.md       # Codex
 
 | 플러그인 | 분류 | 내용 |
 |---------|------|------|
-| `dev` | Development | PR 부터 머지·정리까지의 뒷단 4 (commit-and-push, cr-fix, post-merge, release) + 라우터 1 (flow, Matt 앞단 + dev 뒷단) + 세션 인수인계 1 (session-handoff) + 서브에이전트 오케스트레이션 1 (orchestrate, 워커 프리셋 3) + 프로젝트 셋업 2 (new, wiring) + Playwright E2E 하네스 3 (e2e-setup, e2e-author, e2e-debug) |
+| `dev` | Development | PR 부터 머지·정리까지의 뒷단 4 (commit-and-push, review-loop, post-merge, release) + 라우터 1 (flow, Matt 앞단 + dev 뒷단) + 세션 인수인계 1 (session-handoff) + 서브에이전트 오케스트레이션 1 (orchestrate, 워커 프리셋 3) + 프로젝트 셋업 2 (new, wiring) + Playwright E2E 하네스 3 (e2e-setup, e2e-author, e2e-debug) |
 | `docs` | Documentation | 프로젝트 문서 커맨드 4 (readme, changelog, deploy-doc, moc) + 저작 스킬 (doc-guides, write-rules, interview-methodology, vp, skill-forge, skill-audit, skill-fleet-review) + 내보내기 (translate-web-article, gws-sync) |
 | `scout` | Research | research-orchestrator (github / hf / web / docs scout 에이전트 + synthesis), ask / generate-llmstxt (DeepWiki) |
 | `ml` | Development | ml-dev-principles, gradio-cv-app, cv-notebook, edit-notebook |
@@ -144,12 +150,12 @@ dev 는 뒷단만 맡는다: PR 부터 리뷰 루프, 머지, 정리까지. 아�
 | Skill | Description |
 |-------|-------------|
 | `/dev:commit-and-push` | 변경 분석, Conventional Commits 메시지, 커밋, 푸시 |
-| `/dev:cr-fix` | CodeRabbit + Codex 리뷰를 pre-flight 로 감지해 finding 별로 apply / defer / skip 을 판단하고, 수렴·low-severity 바닥·churn 중 하나에서 정지하며 남은 지적은 후속 이슈 1건으로 넘긴다. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate-limit 시 로컬 CLI 또는 Codex-only 폴백) |
+| `/dev:review-loop` | CodeRabbit + Codex 리뷰를 pre-flight 로 감지해 finding 별로 apply / defer / skip 을 사용자에게 묻지 않고 판단하고, 수렴·low-severity 바닥·churn 중 하나에서 정지하며 남은 지적은 후속 이슈 1건으로 넘긴다. 켜진 리뷰어 전원이 HEAD 에 판정을 낸 뒤에만 다음 라운드를 push 하거나 끝내거나 머지하고, Codex 가 Failed 를 내면 `codex_failed` 로 멈춘다. PR 댓글은 `@coderabbitai rate limit` 질의와 HEAD 당 1회의 `@coderabbitai review` 요청(non-default base, 자동 리뷰 일시정지)뿐이다. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate-limit 시 로컬 CLI 또는 Codex-only 폴백) |
 | `/dev:post-merge` | 머지 후 정리만 한다: 남은 리뷰 지적 표시, base 전환, 머지된 브랜치 삭제, 남은 이슈 close, GitHub Project 상태 동기화, repo About(description) 불일치 점검, 커밋. README·CHANGELOG 는 `docs:readme`·`docs:changelog` 를 가리키기만 하고 교훈은 기록하지 않는다 (`/retro` 몫) |
 | `/dev:release` | 버전 태그 + GitHub Release (릴리스 노트 자동 생성) |
 | `/dev:session-handoff` | 컨텍스트를 비우기 전 세션 인수인계 요약 (결정, 변경, 핵심 파일, 실행 중 상태, 검증 명령, 보류·미해결 질문). 채팅 출력 전용, 파일·메모리 미기록 |
 | `/dev:orchestrate` | 메인 에이전트를 오케스트레이터로 운용. 슬라이스별 job card (목표·범위·절대 경로·입력·출력 형식·완료 기준·프리셋), 모델 x effort 워커 프리셋 `dev:worker-standard/deep/max`, 경로당 writer 하나, 품질 게이트 (같은 에이전트 재질의 2회 → 상위 프리셋 1회 → 사용자 질문), 오케스트레이터가 직접 검증 후 에이전트별 ledger 보고. `Workflow` 는 수동 호출 시에만. 쓰는 슬라이스는 전부 worktree 격리 — 워커 브랜치 diff 를 카드의 owned Paths 와 대조해 범위를 벗어난 브랜치는 merge 하지 않는다 (복원하지 않는다). Codex 에는 `Agent` 도구가 없어 인라인으로 돌고, 수동 `git worktree add` 를 택하지 않으면 브랜치 게이트 대신 카드 Paths + 쓴 경로 자기보고가 완료 조건이다. `git worktree list` 베이스라인 대조 cleanup 필수 |
-| `/dev:flow` | 다음에 무엇을 부를지 안내하는 짧은 라우터. Matt 앞단(`/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement-spec`, 세부는 `/ask-matt`) 과 dev 뒷단(`/dev:cr-fix` → 머지 → `/dev:post-merge` → `/retro`) 을 한 흐름으로 보이고, 버그·PR 없음·즉석 병렬(`/dev:orchestrate`)·wiki·worktree·non-default base·E2E 갈래와 제품 repo 준비를 안내한다. 직접 뭔가를 실행하지 않는다. `mattpocock/skills` `ask-matt` 형식을 각색 |
+| `/dev:flow` | 다음에 무엇을 부를지 안내하는 짧은 라우터. Matt 앞단(`/grill-with-docs` → `/to-spec` → `/to-tickets` → `/implement-spec`, 세부는 `/ask-matt`) 과 dev 뒷단(`/dev:review-loop` → 머지 → `/dev:post-merge` → `/retro`) 을 한 흐름으로 보이고, 버그·PR 없음·즉석 병렬(`/dev:orchestrate`)·wiki·worktree·non-default base·E2E 갈래와 제품 repo 준비를 안내한다. 직접 뭔가를 실행하지 않는다. `mattpocock/skills` `ask-matt` 형식을 각색 |
 
 **제품 repo 준비 (repo 당 1회)** — Matt 스킬을 설치한 뒤 `/setup-matt-pocock-skills` 로 이슈 트래커·triage 라벨·도메인 문서 안내를 repo 에 연결하고, triage 라벨 5개를 만든다. 라벨이 없으면 첫 `/to-spec` 이 실패한다. 없는 라벨만 만들므로 다시 돌려도 기존 라벨의 색상·설명은 그대로다 (`--force` 는 덮어쓴다).
 
@@ -363,7 +369,7 @@ git config core.hooksPath .githooks   # clone 당 1회
 - `check-skill-contract.mjs` — 한 런타임에서만 조용히 깨지는 스킬 위반 차단: `description` 1024자 초과, 인용 없는 `: `, resolver 없는 펜스 블록의 bare `${CLAUDE_PLUGIN_ROOT}`, 비-kebab `name`, byte 0 에서 시작하지 않는 frontmatter, `name` 과 디렉터리명 불일치. 여기에 stale 스킬 참조 가드: git 이 추적하는 live 파일에서 이 marketplace 플러그인 이름으로 시작하는 `<plugin>:<skill>` 참조(슬래시 형태 포함)가 없는 스킬을 가리키면 실패한다. 과거 기록 폴더(`docs/audit`·`docs/prd`·`docs/superpowers`·`.claude/spec`)와 `.llmwiki` 는 검사하지 않는다. 그 밖의 파일은 change log 안이라도 지운 스킬을 `<plugin>:<skill>` 형태가 아니라 산문으로 적는다 (예외는 ml 참조 문서 머리의 `Migrated from` 출처 줄 하나). 외부 플러그인(Matt 등) 이름은 대상이 아니다. 스캔 전에 RED/GREEN 픽스처를 먼저 돌린다.
 - `check-skill-prose.mjs` — 500줄 초과·깊은 참조 경로 정보성 경고 (비차단).
 
-픽스처 스위트 두 개가 같은 자리에서 돈다: `plugins/dev/skills/cr-fix/tests/run-tests.sh` (1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로) 와 `plugins/council/skills/convene/tests/run-tests.sh` (스킬 본문에만 존재하는 codex / agy 호출 계약). macOS CI 레그가 BSD 폴백이 실제로 실행되는 유일한 지점이며 `/bin/bash` 로 bash 3.2 를 강제한다. 가드는 소스를 자동 수정하지 않는다.
+픽스처 스위트 두 개가 같은 자리에서 돈다: `plugins/dev/skills/review-loop/tests/run-tests.sh` (1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로) 와 `plugins/council/skills/convene/tests/run-tests.sh` (스킬 본문에만 존재하는 codex / agy 호출 계약). macOS CI 레그가 BSD 폴백이 실제로 실행되는 유일한 지점이며 `/bin/bash` 로 bash 3.2 를 강제한다. 가드는 소스를 자동 수정하지 않는다.
 
 ## 요구사항
 

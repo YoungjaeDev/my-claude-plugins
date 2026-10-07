@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# Usage: [FINAL_STATE=clean] [FOLLOWUP_ISSUE=<number>] [DEFERRED_TOTAL=N] \
+#        [CR_ON=true|false] [CODEX_ON=auto|true|false] \
+#          bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
+# Returns JSON on stdout summarizing the gates:
+#   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N, "base_branch":"...",
+#    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null}
+# `eligible` covers two axes. Convergence: `clean`, `minor_floor` and `churn`
+# qualify once the follow-up issue carrying the run's deferred findings exists (or
+# nothing was deferred). HEAD verdicts: every reviewer that is on (CR_ON, CODEX_ON,
+# as scripts/head-verdicts.sh reads them) gave HEAD_SHA findings or clean; a HEAD
+# with no verdict, or only a rate-limit notice, does not qualify (ADR 0002). The
+# caller still enforces cr_state / blocking_checks / protection_http before merging.
+# Caller (SKILL.md Step 15) decides:
+#   - protection_http == 200 → `gh pr merge --auto --squash --delete-branch`
+#   - protection_http == 404 → AskUserQuestion (Merge now / Skip / Cancel)
+#   - protection_http == 0   → probe failed (network/auth/5xx) — no merge
+# This script does NOT call gh pr merge — separation of probe vs action.
+set -euo pipefail
+
+OWNER="${1:?}"; REPO="${2:?}"; PR_NUM="${3:?}"; HEAD_SHA="${4:?}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+: "${FINAL_STATE:=unknown}"; : "${FOLLOWUP_ISSUE:=}"
+
+# Convergence axis. A run that stopped at the low-severity floor or on churn has
+# real findings left behind; merging is allowed only once they are recorded in an
+# issue, so a failed `gh issue create` keeps the PR open by construction.
+case "$FINAL_STATE" in
+  # A clean last cycle does not record what an earlier cycle deferred.
+  clean)
+    eligible=true; reason=""
+    if [ "${DEFERRED_TOTAL:-0}" != 0 ]; then
+      case "$FOLLOWUP_ISSUE" in
+        ""|*[!0-9]*|0*) eligible=false; reason="clean with $DEFERRED_TOTAL deferred finding(s) from earlier cycles and no follow-up issue" ;;
+      esac
+    fi ;;
+  minor_floor|churn)
+    # Nothing deferred means nothing to record: no issue is required. Otherwise only a
+    # positive integer counts: a failed create can leave "null", "", or error text behind.
+    if [ "${DEFERRED_TOTAL:-}" = 0 ]; then FOLLOWUP_ISSUE="${FOLLOWUP_ISSUE:-0}"; [ "$FOLLOWUP_ISSUE" = 0 ] && FOLLOWUP_ISSUE=1; fi
+    case "$FOLLOWUP_ISSUE" in
+      ""|*[!0-9]*|0*) eligible=false; reason="$FINAL_STATE without a valid follow-up issue number" ;;
+      *) eligible=true; reason="" ;;
+    esac
+    if [ "$eligible" = true ]; then :
+    else eligible=false; reason="$FINAL_STATE without a follow-up issue"; fi ;;
+  # Codex reported Failed on HEAD: HEAD has no Codex verdict, and the loop never asks for one.
+  codex_failed)       eligible=false; reason="codex_failed: Codex reported Failed on HEAD, so HEAD has no Codex verdict" ;;
+  # Everything else, `reviewers_unavailable` included: no reviewer looked, so stopping is not convergence.
+  *)                  eligible=false; reason="final_state=$FINAL_STATE is not a merge-eligible convergence" ;;
+esac
+# A re-run that could not append its new defers to the inherited issue has findings
+# recorded nowhere a person will look; that blocks the merge like a failed create.
+if [ "${FOLLOWUP_APPEND_FAILED:-false}" = true ]; then eligible=false; reason="follow-up issue append failed"; fi
+
+# HEAD verdict axis: one look (CAP=0), never a wait — the loop already waited.
+if [ "$eligible" = true ]; then
+  hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$HEAD_SHA" CAP=0 \
+       CR_ON="${CR_ON:-true}" CODEX_ON="${CODEX_ON:-auto}" \
+       bash "$SCRIPT_DIR/head-verdicts.sh" 2>/dev/null || true)
+  hv_state=$(jq -r '.state // "error"' <<<"$hv" 2>/dev/null || echo error)
+  if [ "$hv_state" != ready ]; then
+    eligible=false
+    reason="HEAD verdict missing on $HEAD_SHA ($(jq -r '"cr=\(.cr // "?"), codex=\(.codex // "?")"' <<<"$hv" 2>/dev/null || echo unreadable))"
+  fi
+fi
+
+# CR state must come from the SAME dual-surface reader the rest of review-loop uses.
+# CodeRabbit reports through EITHER the commit-status API OR a check-run,
+# per install. This gate read /statuses only, so on a check-run repo it saw
+# no CR row and reported cr_state:"unknown" forever — Step 15 then never merged
+# on `--auto-merge` even though CR had completed. cr-commit-state.sh already
+# unifies both surfaces (14 fixture cases); delegate to it, don't re-derive.
+# (self-found on PR #122 merge verify — the missed sibling of the same
+# check-run trap fixed in pre-flight/poll-cr-status/sniff. Rationale:
+# docs/adr/0002-review-loop-waits-for-head-verdicts.md.)
+cr_state=$(bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$HEAD_SHA" 2>/dev/null \
+  | jq -r '.state // "unknown"' || echo "unknown")
+cr_state="${cr_state:-unknown}"
+
+# Pending checks are not blocking: `gh pr merge --auto` waits for them. Only a check
+# that has already failed, errored, or been cancelled blocks the merge.
+# `gh pr checks` exits 8 when checks are pending and 1 when some failed, printing the
+# count either way; `|| echo 0` would append a second value and break the jq below.
+blocking=$(gh pr checks "$PR_NUM" --json name,state \
+  --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT" or .state == "ACTION_REQUIRED")] | length' 2>/dev/null); rc=$?
+case "$rc" in
+  0|1|8) : ;;                       # counted normally, whatever the check outcome was
+  *)     blocking="" ;;             # the query itself failed — fall through to the guard
+esac
+# Anything that is not a plain integer means we could not measure: report 1 so the
+# caller refuses to merge on an unverified check state.
+case "$blocking" in ''|*[!0-9]*) blocking=1 ;; esac
+
+base=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
+
+# An unprotected base returns 404: gh api exits non-zero AND its `-i` status line
+# prints `404`. Piping straight into `... || echo 404` under `set -o pipefail`
+# then emitted BOTH (`404\n404`), which --argjson rejects as invalid JSON and the
+# whole gate died silently. Capture the status line in one step (so pipefail can't
+# double it), then parse — a single clean value for both 200 and 404.
+proto_line=$(gh api "repos/$OWNER/$REPO/branches/$base/protection" --silent -i 2>/dev/null | head -1 || true)
+http=$(awk '{print $2}' <<<"$proto_line")
+# Only 200 (protected) and 404 (unprotected) are trusted probe outcomes. An
+# empty or other status (network, auth, 5xx) must not masquerade as
+# "unprotected" — report 0 so Step 15 refuses to merge on an unverified state.
+case "$http" in 200|404) : ;; *) http=0 ;; esac
+
+jq -nc \
+  --arg cr "$cr_state" \
+  --argjson bc "$blocking" \
+  --arg base "$base" \
+  --argjson http "$http" \
+  --argjson eligible "$eligible" \
+  --arg reason "$reason" \
+  '{cr_state:$cr, blocking_checks:$bc, base_branch:$base, protection_http:$http,
+    eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end)}'

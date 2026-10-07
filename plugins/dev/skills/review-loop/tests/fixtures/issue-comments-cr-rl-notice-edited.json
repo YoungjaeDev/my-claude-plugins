@@ -1,0 +1,9 @@
+[
+  {
+    "id": 9101,
+    "user": { "login": "coderabbitai[bot]" },
+    "created_at": "2026-10-06T08:40:00Z",
+    "updated_at": "2026-10-06T09:12:05Z",
+    "body": "<!-- This is an auto-generated comment: rate limited by coderabbit.ai -->\n\n> [!WARNING]\n> ## Rate limit exceeded\n>\n> @YoungjaeDev has exceeded the limit for the number of commits that can be reviewed per hour. Please wait **41 minutes and 3 seconds** before requesting another review.\n>\n> **More reviews will be available in 41 minutes.**"
+  }
+]

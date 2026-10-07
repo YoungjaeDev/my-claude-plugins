@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# Usage: echo '<record json>' | SKIP_MINOR=true bash scripts/classify-item.sh
-# Reads one record on stdin, prints the same record + {"tier":"auto|gated|skip|review"} on stdout.
+# Usage: echo '<record json>' | ITER=N SKIP_MINOR=true bash scripts/classify-item.sh
+# Reads one record on stdin, prints the same record + {"tier":"auto|gated|skip|review|defer"} on stdout.
+# ITER (default 1) is the loop iteration: a Codex P2 from iteration 2 on is `defer` (decision 15).
 # See references/tier-classification.md and references/skip-minor-rules.md.
 set -euo pipefail
 
 : "${SKIP_MINOR:=false}"
+: "${ITER:=1}"
+case "$ITER" in ''|*[!0-9]*) echo "classify-item: ITER must be a non-negative integer, got '$ITER'" >&2; exit 2;; esac
 
-jq -c --argjson skip_minor "$( [ "$SKIP_MINOR" = "true" ] && echo true || echo false )" '
+jq -c --argjson skip_minor "$( [ "$SKIP_MINOR" = "true" ] && echo true || echo false )" \
+      --argjson iter "$ITER" '
   . as $r
   | (.source // "") as $src
   | (.category_emoji // "") as $cat
@@ -17,7 +21,11 @@ jq -c --argjson skip_minor "$( [ "$SKIP_MINOR" = "true" ] && echo true || echo f
       # Base tier. CR/CLI is severity-first: the header category names the defect
       # domain, not how bad it is, so only Security escalates on category alone.
       if $src == "codex" then
-        if $pb == "1" or $pb == "2" then "gated" else "review" end
+        # P2 is judged on iteration 1 only; a later one goes to the follow-up
+        # issue unjudged, because an applied P2 becomes material for the next round.
+        if $pb == "2" and $iter >= 2 then "defer"
+        elif $pb == "0" or $pb == "1" or $pb == "2" then "gated"
+        else "review" end
       else
         # cr or cli — same rules
         if ($cat | test("Security"; "i")) then "gated"

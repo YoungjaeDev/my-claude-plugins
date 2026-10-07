@@ -2,7 +2,7 @@
 # Usage: ITER=N APPLIED_TOTAL=N DEFERRED_TOTAL=N SKIPPED_TOTAL=N CODEX_STATE=... \
 #        FINAL_STATE=... MERGED=true|false PR_NUM=N LAST_SHA=... \
 #        CR_SOURCE=auto|pr-bot|cli|codex-only CLI_INVOCATIONS=N RATE_LIMIT_HITS=N \
-#        TRACK_FILE=/tmp/... STATE_FILE=.claude/state/... \
+#        TRACK_FILE=/tmp/... STATE_FILE=.claude/state/... VERIFICATION_GATE=on|... \
 #        bash scripts/emit-final-json.sh
 #
 # Idempotent: archives STATE_FILE if present, removes TRACK_FILE, prints one JSON line.
@@ -14,7 +14,7 @@ set -euo pipefail
 : "${PR_NUM:=0}"; : "${LAST_SHA:=}"
 : "${CR_SOURCE:=auto}"; : "${CLI_INVOCATIONS:=0}"; : "${RATE_LIMIT_HITS:=0}"
 : "${AUTO_JUDGE_APPLY:=0}"; : "${AUTO_JUDGE_DEFER:=0}"; : "${AUTO_JUDGE_SKIP:=0}"
-: "${TRACK_FILE:=}"; : "${STATE_FILE:=}"
+: "${TRACK_FILE:=}"; : "${STATE_FILE:=}"; : "${VERIFICATION_GATE:=unknown}"
 
 # Capture the LAST pre-flight decision before STATE_FILE is archived; the full
 # history remains in the archive copy for audit.
@@ -68,6 +68,7 @@ jq -nc \
   --argjson aj_skip   "$AUTO_JUDGE_SKIP" \
   --argjson pf_last   "$PRE_FLIGHT_LAST" \
   --argjson followup  "$FOLLOWUP_ISSUE" \
+  --arg     vgate     "$VERIFICATION_GATE" \
   '{
     iterations: $iters,
     applied_total: $applied,
@@ -83,5 +84,6 @@ jq -nc \
     rate_limit_hits: $rl_hits,
     auto_judge_stats: { apply: $aj_apply, defer: $aj_defer, skip: $aj_skip },
     followup_issue: $followup,
+    verification_gate: $vgate,
     pre_flight_last: $pf_last
   }'

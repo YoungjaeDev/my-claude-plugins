@@ -1661,10 +1661,10 @@ is "Step 10 staged -> one push"     "$(push_step staged:2)" "true:1"
 rm -rf "$P12"
 
 # Step 14: the last iteration's push is waited on, then one follow-up trigger.
-last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED -> final_state:HEAD_VERDICT:followup
-  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
+last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:HEAD_VERDICT:followup
+  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 RT=${6:-0} BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
     await_head_verdicts() { hv_state=$HVS; hv="{\"findings\":$FND}"; }
-    pushed_this_cycle=$PUSHED final_state=$FS deferred_total=$DT HEAD_VERDICT=""
+    pushed_this_cycle=$PUSHED final_state=$FS deferred_total=$DT review_total=$RT HEAD_VERDICT=""
     eval "$BLOCK"
     printf "%s:%s:%s" "$final_state" "$HEAD_VERDICT" "$followup_needed"'
 }
@@ -1679,6 +1679,9 @@ is "loop ran out after a push -> iteration_cap"   "$(last_push true "" ready fal
 is "clean after earlier defers -> follow-up issue" "$(last_push false clean ready false 2)" "clean::true"
 is "clean, nothing deferred -> no issue"           "$(last_push false clean ready false 0)" "clean::false"
 is "timeout with earlier defers -> follow-up issue" "$(last_push false timeout timeout false 1)" "timeout::true"
+# A finding nobody could read (`review` tier) is left behind too: user_declined on it
+# alone must still file the issue failure-modes.md points the user to.
+is "only unread review-tier items -> follow-up issue" "$(last_push false user_declined ready false 0 1)" "user_declined::true"
 
 # await_head_verdicts on a paused CodeRabbit: one request, then the same budget.
 AW=$(mktemp -d)

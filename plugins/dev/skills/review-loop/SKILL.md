@@ -280,7 +280,7 @@ A stop reached in a cycle that pushed is **held** (`HOLD_STATE`), not ended: the
 Loop exited at `ITER == MAX_ITER` with threads still actionable → `final_state=iteration_cap`; surface the remaining thread count + `target_url`.
 Run the "Step 14: last-push HEAD verdicts and follow-up trigger" block in `references/run-blocks.md` verbatim. When the last iteration pushed, it waits for that HEAD's verdicts first; findings on it have no round left, so the run ends at `iteration_cap` with `HEAD_VERDICT=unread`.
 
-Then, when the block set `followup_needed=true` (`final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` AND `deferred_total > 0` from any cycle or `HEAD_VERDICT` set), file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment.
+Then, when the block set `followup_needed=true` (`final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` AND `deferred_total > 0` from any cycle, `review_total > 0`, or `HEAD_VERDICT` set), file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment.
 
 Build the body from `auto_judge_log`'s `defer` records — reviewer prose reaches it through a file, never the command line — then `gh issue create --label tbd`. The block is idempotent: a re-run on the same PR reuses `STATE_FILE.followup_issue` instead of opening a second issue. Shell block: `references/failure-modes.md`.
 

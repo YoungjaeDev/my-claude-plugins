@@ -11,6 +11,7 @@ OWNER=$(gh repo view --json owner --jq '.owner.login')
 REPO=$(gh repo view --json name --jq '.name')
 PR_NUM=$(gh pr list --head "$(git branch --show-current)" --state open --json number --jq '.[0].number // empty')
 applied_total=0; deferred_total=0; skipped_total=0
+review_total=0  # `review`-tier findings nobody could read; Step 14 files them too
 verification_blocking=false; VERIFICATION_GATE=unknown
 codex_active=unknown; codex_review_id_to_process=""
 cli_invocations=0; rate_limit_hits=0
@@ -442,6 +443,7 @@ applied_total=$((applied_total + applied_this_cycle))
 # Late Codex P2s (tier defer) reach the follow-up issue through deferred_total but
 # never count as this cycle's deferrals: they are policy, not undecided findings.
 deferred_total=$((deferred_total + deferred_this_cycle + late_p2_this_cycle))
+review_total=$((review_total + review_this_cycle))
 stop=""
 # Churn stop: from iter 2 on, every finding this cycle sat on material the loop
 # itself produced, or outside the PR diff.
@@ -492,12 +494,14 @@ if [ "$pushed_this_cycle" = true ]; then
   esac
 fi
 # One follow-up issue for whatever the run leaves behind: deferred findings, from
-# this cycle or an earlier one (a later clean cycle records none of them), or a HEAD
-# without every verdict. Block: references/failure-modes.md.
+# this cycle or an earlier one (a later clean cycle records none of them), findings
+# nobody could read, or a HEAD without every verdict. Block: references/failure-modes.md.
 followup_needed=false
 case "$final_state" in
   churn|minor_floor|iteration_cap|user_declined|clean|timeout)
-    if [ "$deferred_total" -gt 0 ] || [ -n "$HEAD_VERDICT" ]; then followup_needed=true; fi ;;
+    if [ "$deferred_total" -gt 0 ] || [ "$review_total" -gt 0 ] || [ -n "$HEAD_VERDICT" ]; then
+      followup_needed=true
+    fi ;;
 esac
 ```
 

@@ -53,7 +53,7 @@ A stop reached right after a push (`minor_floor`, `churn` with fixes, `iteration
 
 ## Follow-up issue block (Step 14)
 
-Fires when the Step 14 block sets `followup_needed=true`: `final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` and either `deferred_total > 0` (from any cycle — a later clean cycle records nothing an earlier one deferred) or `HEAD_VERDICT` is set. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
+Fires when the Step 14 block sets `followup_needed=true`: `final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` and `deferred_total > 0` (from any cycle — a later clean cycle records nothing an earlier one deferred), `review_total > 0` (`review`-tier findings nobody could read, which never reach the defer rows), or `HEAD_VERDICT` set. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
 
 ```bash
 # Idempotent: a re-run on the same PR reuses the issue instead of opening a second one;
@@ -63,6 +63,7 @@ if [ -n "$existing" ]; then
   BODY=$(mktemp)
   {
     printf '%s\n\n' "Additional findings deferred by a later review-loop run (\`final_state=$final_state\`):"
+    [ "$review_total" -gt 0 ] && printf '%s\n\n' "$review_total finding(s) had no readable severity badge (\`review\` tier) and were not judged; read them on the PR."
     printf '| Reviewer | Severity | Location | Why deferred |\n|---|---|---|---|\n'
     jq -r '.auto_judge_log[]? | select(.action == "defer")
            | "| \(.src) | \(.badge_or_sev) | \(.path):\(.line // "-") | \(.reason) |"' "$STATE_FILE"
@@ -85,6 +86,7 @@ else
       timeout) printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` got no verdict from every reviewer within the wait budget; auto-merge stays off." ;;
       unread)  printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` drew reviewer findings after the last round; read them on the PR." ;;
     esac
+    [ "$review_total" -gt 0 ] && printf '%s\n\n' "$review_total finding(s) had no readable severity badge (\`review\` tier) and were not judged; read them on the PR."
     printf '| Reviewer | Severity | Location | Why deferred |\n|---|---|---|---|\n'
     jq -r '.auto_judge_log[]? | select(.action == "defer")
            | "| \(.src) | \(.badge_or_sev) | \(.path):\(.line // "-") | \(.reason) |"' "$STATE_FILE"

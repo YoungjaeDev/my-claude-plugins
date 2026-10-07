@@ -1,0 +1,11 @@
+[
+  {
+    "id": 6011115616,
+    "user": {
+      "login": "chatgpt-codex-connector[bot]"
+    },
+    "created_at": "2026-10-06T06:59:15Z",
+    "updated_at": "2026-10-06T10:46:14Z",
+    "body": "<!-- codex-pull-request-review-summary -->\n\n## Codex Review Summary\n\nReview state moved to a new layout. See the PR checks tab.\n"
+  }
+]

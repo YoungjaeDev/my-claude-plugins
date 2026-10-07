@@ -11,7 +11,7 @@ Two reviewers (CR + Codex) on different channels with different timings:
 - Mid-action re-reviews are real: one PR accumulates several distinct Codex reviews across iterations. Pre-flight has to surface the latest unprocessed review id, not just "any review existed".
 - PR timeline rendering can re-order arrivals (Codex emoji flip can push CR review visually first). Pre-flight sorts by `submitted_at` / `created_at` only — never by GitHub timeline body order.
 
-## Five-source fetch (parallel-safe)
+## Six-source fetch (parallel-safe)
 
 | # | Channel | Endpoint | Purpose |
 |---|---------|----------|---------|
@@ -20,6 +20,7 @@ Two reviewers (CR + Codex) on different channels with different timings:
 | 3 | Codex reviews | `repos/$O/$R/pulls/$PR/reviews` (`--paginate`) | `chatgpt-codex-connector*` reviews, `COMMENTED`/`CHANGES_REQUESTED`, sorted by `submitted_at`, filtered by `codex_processed_reviews` |
 | 4 | Codex emoji A | `repos/$O/$R/issues/$PR/reactions` | PR-level reactions left by `chatgpt-codex-connector*` (in_progress / clean / findings) |
 | 5 | Codex emoji B | `repos/$O/$R/commits/$SHA/check-runs` | Check-run names / summaries from the connector — sometimes carries the state icon |
+| 6 | Codex HEAD verdict | `scripts/codex-head-verdict.sh` -> `issues/$PR/comments` + `pulls/$PR/reviews` (`--paginate`) | Summary comment Running/Completed/Failed + SHA, and the `commit_id == HEAD` review; authoritative over channels 4/5 |
 
 Channel 4/5 (emoji) are best-effort: the GitHub API exposes **no reliable surfacing path** for the marker. If both return empty, fall back to **timeout-based** logic (`push_age vs codex_timeout_seconds`, default `600` = 10 min).
 
@@ -75,9 +76,22 @@ codex_latest_id=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" \
 
 If `codex_latest_id != ""` → Codex is actionable for this iter regardless of emoji state.
 
+## Codex HEAD verdict
+
+Pre-flight runs `scripts/codex-head-verdict.sh` (contract: `references/codex-state-machine.md` "HEAD verdict") and copies `verdict` to `codex_verdict` and `wait_seconds` to `codex_wait_seconds`. When no unprocessed review id makes Codex actionable, the verdict decides `codex_state` ahead of the emoji and timeout rows below:
+
+| `codex_verdict` | `codex_state` |
+|---|---|
+| `clean`, or `findings` whose review is already processed | `clean` |
+| `failed` | `unknown` (not a pass; callers stop on `codex_verdict=failed`) |
+| `in_progress`, `none`, `error`, or `unknown` with `summary_state=unparsed` | `arriving`, whatever `push_age` is |
+| `unknown` with `summary_state=absent` (no summary comment) | the emoji / timeout / engagement rows below |
+
+So a summary that says Codex is still Running on HEAD, or has not reached HEAD, holds `codex_wait` past `CODEX_PREFLIGHT_TIMEOUT`; Step 6b bounds the wait by `codex_wait_seconds`, which every gate reports with the same formula.
+
 ## Codex emoji read (best-effort, multi-channel)
 
-See `references/codex-parsing-rules.md` for full channel logic. The pre-flight aggregates whatever signal the helper script `scripts/probe-codex-state.sh` emits:
+Consulted only when Codex posts no summary comment. See `references/codex-parsing-rules.md` for full channel logic. The pre-flight aggregates whatever signal the helper script `scripts/probe-codex-state.sh` emits:
 
 ```text
 emoji_state ∈ {findings, clean, in_progress, unknown}
@@ -103,7 +117,7 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
 | `failure` | n/a | n/a | n/a | n/a | n/a | `failure` |
 | `error` | n/a | n/a | n/a | n/a | n/a | `cr_wait` (treat as transient, retry-by-polling) |
 
-`codex_timeout_seconds` defaults to `600`. Override per-run via env var `CODEX_PREFLIGHT_TIMEOUT` if a CI pattern shows Codex routinely lands later.
+The emoji and timeout rows apply only when the Codex HEAD verdict is `unknown` with no summary comment (see "Codex HEAD verdict" above). `codex_timeout_seconds` defaults to `600`. Override per-run via env var `CODEX_PREFLIGHT_TIMEOUT` if a CI pattern shows Codex routinely lands later.
 
 `CR_SKIP_GRACE` defaults to `300` (seconds). It bounds how long a transient `success` + `Review skipped: free tier disabled` row is held as `cr_wait` before being treated as a genuine disable (`rate_limited`). The grace clock (`cr_skip_age`) is anchored to the CR status row's own `created_at` — i.e. how long *that placeholder* has existed — so a bot that queues the row late (more than the grace after the push) still gets the full window to flip to `Review completed`; it falls back to `push_age` only when the status carries no parseable timestamp. The background `poll-cr-status.sh` anchors the same window to the first moment it *sees* the skip row — both measure placeholder age, not push age. Env-only, no `--flag` — mirrors `EARLY_CHECK_WINDOW`.
 
@@ -123,7 +137,9 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
   "gate": "proceed|cr_wait|codex_wait|rate_limited|failure",
   "codex_timeout_active": true,
   "push_age_seconds": 42,
-  "rate_limit_source": "comment|description|both|none"
+  "rate_limit_source": "comment|description|both|none",
+  "codex_verdict": "findings|clean|failed|in_progress|none|unknown|error|disabled",
+  "codex_wait_seconds": 224
 }
 ```
 

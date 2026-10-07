@@ -123,6 +123,9 @@ if [ -f "$STATE_FILE" ]; then
 fi
 codex_latest_id=""
 codex_emoji_state="unknown"
+codex_verdict="disabled"
+codex_summary_state="absent"
+codex_wait_seconds=0
 if [ "${NO_CODEX:-false}" != "true" ]; then
   if codex_pages=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null); then
     codex_latest_id=$(jq -rs --argjson p "$PROCESSED" 'add // []
@@ -134,8 +137,25 @@ if [ "${NO_CODEX:-false}" != "true" ]; then
   fi
   [ "$codex_latest_id" = "null" ] && codex_latest_id=""
 
+  # ── 3b. Codex HEAD verdict (summary comment + commit_id == HEAD review) ──
+  # Also the one source of the Codex wait budget, so every gate reports the same
+  # max(CODEX_GRACE, CODEX_TIMEOUT - push_age). rc 1 means verdict=error and
+  # still prints its line; no line at all also degrades to error, never clean.
+  hv=""
+  if ! hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" PUSH_TIME="$PUSH_TIME" \
+            CODEX_GRACE="${CODEX_GRACE:-30}" CODEX_PREFLIGHT_TIMEOUT="$CODEX_TIMEOUT" \
+            bash "$SCRIPT_DIR/codex-head-verdict.sh" 2>/dev/null); then
+    echo "warn: pre-flight: Codex HEAD verdict unavailable; treating Codex as arriving" >&2
+  fi
+  codex_verdict=$(jq -r '.verdict // "error"' <<<"$hv" 2>/dev/null) || codex_verdict=error
+  [ -n "$codex_verdict" ] || codex_verdict=error
+  codex_summary_state=$(jq -r '.summary_state // "absent"' <<<"$hv" 2>/dev/null) || codex_summary_state=absent
+  codex_wait_seconds=$(jq -r '.wait_seconds // 0' <<<"$hv" 2>/dev/null) || codex_wait_seconds=0
+  [ -n "$codex_wait_seconds" ] || codex_wait_seconds=0
+
   # ── 4. Codex emoji probe (best-effort, 3 channels) ────────────────────────
-  if [ -x "$SCRIPT_DIR/probe-codex-state.sh" ]; then
+  # A hint only where Codex posts no summary comment; the verdict wins otherwise.
+  if [ "$codex_summary_state" = "absent" ] && [ -x "$SCRIPT_DIR/probe-codex-state.sh" ]; then
     emoji_json=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" PUSH_TIME="$PUSH_TIME" \
                  bash "$SCRIPT_DIR/probe-codex-state.sh" 2>/dev/null || echo '{}')
     codex_emoji_state=$(jq -r '.emoji_state // "unknown"' <<<"$emoji_json")
@@ -197,6 +217,17 @@ if [ "${NO_CODEX:-false}" = "true" ]; then
   codex_state="disabled"
 elif [ "$codex_actionable" = "true" ]; then
   codex_state="actionable"
+elif [ "$codex_verdict" = "clean" ] || [ "$codex_verdict" = "findings" ]; then
+  # findings with no unprocessed review id: the HEAD review was already handled.
+  codex_state="clean"
+elif [ "$codex_verdict" = "failed" ]; then
+  # Not clean, and no review will arrive. Callers stop on codex_verdict=failed.
+  codex_state="unknown"
+elif [ "$codex_verdict" = "in_progress" ] || [ "$codex_verdict" = "none" ] \
+     || [ "$codex_verdict" = "error" ] || [ "$codex_summary_state" = "unparsed" ]; then
+  # Codex is engaged but has no readable HEAD verdict yet: never clean, timeout
+  # or not. Step 6b's wait is bounded by codex_wait_seconds.
+  codex_state="arriving"
 elif [ "$codex_emoji_state" = "clean" ] && [ "$push_age" -ge 60 ]; then
   # 60s minimum guard against the false-clean check-run race
   # (see references/codex-parsing-rules.md).
@@ -252,6 +283,8 @@ jq -nc \
   --argjson codex_timeout_active "$codex_timeout_active" \
   --argjson push_age "$push_age" \
   --arg rate_limit_source "$rate_limit_source" \
+  --arg codex_verdict "$codex_verdict" \
+  --argjson codex_wait_seconds "$codex_wait_seconds" \
   '{
     cr_state: $cr_state,
     cr_actionable: $cr_actionable,
@@ -263,5 +296,7 @@ jq -nc \
     gate: $gate,
     codex_timeout_active: $codex_timeout_active,
     push_age_seconds: $push_age,
-    rate_limit_source: $rate_limit_source
+    rate_limit_source: $rate_limit_source,
+    codex_verdict: $codex_verdict,
+    codex_wait_seconds: $codex_wait_seconds
   }'

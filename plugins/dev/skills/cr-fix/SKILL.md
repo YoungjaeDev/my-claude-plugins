@@ -298,7 +298,7 @@ Handled by the `trap ... EXIT` set in Step 2 → `scripts/emit-final-json.sh` al
 - `verification_gate`: Step 3's baseline result. Anything but `on` means the run's fixes were committed without the build/test gate.
 - `pre_flight_last` mirrors `STATE_FILE` for the LAST iteration; the copy in `.claude/state/archive/` preserves every iter.
 
-See `references/failure-modes.md` for the `final_state` enum.
+The `final_state` enum: `clean`, `user_declined`, `minor_floor`, `churn`, `iteration_cap`, `timeout`, `failure`, `cr_inactive`, `rate_limited`, `cli_failed`, `reviewers_unavailable`, `codex_failed`, `unknown`. Only `clean`, `minor_floor` and `churn` can auto-merge. Trigger and user action per value: `references/failure-modes.md`.
 
 ## Verification
 

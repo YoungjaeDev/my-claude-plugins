@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/check-plugin-cache.mjs\" 2>/dev/null || true",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/check-plugin-cache.mjs\" 2>/dev/null || echo '{\"systemMessage\":\"my-claude-plugins: plugin cache check did not run (node missing or the script failed); the installed plugin cache may lag the source tree.\"}'",
             "timeout": 10
           }
         ]

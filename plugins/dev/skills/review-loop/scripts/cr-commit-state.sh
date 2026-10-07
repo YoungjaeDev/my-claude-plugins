@@ -55,7 +55,7 @@ fetch_checkruns() {
 # auto-merge gate) sees the same `rate_limited` state. The transient
 # "Review skipped: free tier disabled" placeholder is deliberately NOT matched:
 # its CR_SKIP_GRACE hold lives in the callers.
-RL_DESC_RE='rate limited|Review limit reached|More reviews will be available in|Next (included )?review available in'
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cr-notices.sh"  # CR_STATUS_RL_RE
 RL_NORMALIZE='if .state == "success" and (.description | test($rl; "i")) then .state = "rate_limited" else . end'
 
 # ── Channel 1: commit-status (preferred — carries `description`) ─────────────
@@ -65,7 +65,7 @@ status_row=$(jq -s 'add // []
   | sort_by(.created_at) | reverse | .[0] // {}' <<<"$statuses_raw" 2>/dev/null || echo '{}')
 
 if [ "$(jq -r 'has("state")' <<<"$status_row" 2>/dev/null || echo false)" = "true" ]; then
-  jq -c --arg rl "$RL_DESC_RE" '{
+  jq -c --arg rl "$CR_STATUS_RL_RE" '{
     state: (.state // "none"),
     description: (.description // ""),
     target_url: (.target_url // ""),
@@ -94,7 +94,7 @@ check_row=$(jq -s '[ .[] | (.check_runs // []) ] | add // []
   | sort_by(.started_at // "9999-12-31T23:59:59Z") | reverse | .[0] // {}' <<<"$checkruns_raw" 2>/dev/null || echo '{}')
 
 if [ "$(jq -r 'has("status")' <<<"$check_row" 2>/dev/null || echo false)" = "true" ]; then
-  jq -c --arg rl "$RL_DESC_RE" '
+  jq -c --arg rl "$CR_STATUS_RL_RE" '
     (.status // "") as $st
     | (.conclusion // "") as $cc
     | {

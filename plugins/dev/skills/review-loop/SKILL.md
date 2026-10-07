@@ -81,8 +81,8 @@ Run the "Step 2: draft PR" block in `references/run-blocks.md` verbatim.
 Then resolve the base branch once — Step 5b, Step 7d and the Step 9c churn axis all need the PR's diff scope:
 Run the "Step 2: base branch and review request" block in `references/run-blocks.md` verbatim.
 
-**Non-default base.** With `CR_REVIEW_REQUEST=request` and `CR_SOURCE ∈ {auto, pr-bot}`, request a review once before iter 1 (the PR's opening push was never auto-reviewed) and after every push this run makes (Step 5a, Step 12), always through this block. It posts only when the head has no request yet, so a re-run on an unchanged head does not ask twice:
-Run the "Step 2: request_cr_review" block in `references/run-blocks.md` verbatim. It also defines `await_head_verdicts` (Step 7e, Step 14).
+**Non-default base.** With `CR_REVIEW_REQUEST=request` and `CR_SOURCE ∈ {auto, pr-bot}`, request a review once before iter 1 (the PR's opening push was never auto-reviewed) and after every push this run makes (Step 5a, Step 12), always through this block. `request_cr_review` checks both conditions itself (a pause, `request_cr_review paused`, needs only the PR-bot source), and posts only when the head has no request yet, so a re-run on an unchanged head does not ask twice:
+Run the "Step 2: request_cr_review" block in `references/run-blocks.md` verbatim. It also defines `await_head_verdicts` (Step 7e, Step 14) and `reviewers_on` (Step 15).
 
 An absent CodeRabbit review is never convergence here: Step 8c's `cr_engagement == 0` waits or ends at `cr_inactive`, never at `clean`. The CLI and codex-only sources never post it.
 
@@ -201,8 +201,9 @@ Run the "Step 8b: fetch Codex inline comments" block in `references/run-blocks.m
 
 ## Step 8c: Combined engagement gate (PR-bot path only)
 
-Skip when `CR_SOURCE ∈ {cli, codex-only}`. Skip when pre-flight `gate=proceed` already verified CR actionability (Step 7e has read the CodeRabbit HEAD verdict either way). Otherwise, if `(cr_records + codex_records) == 0`, a stop Step 13 held ends as held; else:
+Skip when `CR_SOURCE ∈ {cli, codex-only}`. Skip when pre-flight `gate=proceed` already verified CR actionability (Step 7e has read the CodeRabbit HEAD verdict either way). Otherwise:
 Run the "Step 8c: engagement gate" block in `references/run-blocks.md` verbatim.
+The block gates only a round with no records (`records_n == 0`): there a stop Step 13 held ends as held. With records it sets nothing, the bullets below do not apply, and Step 9a classifies them (resolving a held stop on them).
 CodeRabbit's result is its HEAD verdict (`cr-head-verdict.sh`: `findings` / `clean` / `none`), never the success status. A rate-limit or skip notice counts as neither engagement nor a verdict.
 - `cr_engagement > 0` AND `cr_verdict != none` → genuine convergence, `final_state=clean`, jump to Step 13.
 - otherwise AND `ITER < MAX_ITER` → CR has not reviewed this push yet, sleep `$INTERVAL`, continue.
@@ -258,7 +259,7 @@ Run the "Step 10: stage and commit" block in `references/run-blocks.md` verbatim
 
 ## Step 11: Verification gate
 
-Build and test already ran per fix in Step 9c.6, before this commit existed, so everything Step 10 committed passed them (or the gate is off, per Step 3). Only lint runs here: when the repo names a lint command, run it; a failure warns and proceeds. Step 10's `noop` — every fix this cycle reverted, or none applied — skips this step and Step 12, so a cycle of failed fixes pushes nothing.
+Build and test already ran per fix in Step 9c.6, before this commit existed, so everything Step 10 committed passed them (or the gate is off, per Step 3). Only lint runs here: when the repo names a lint command, run it; a failure warns and proceeds. Step 10's `noop` — every fix this cycle reverted, or none applied — skips this step, and the Step 12 block pushes nothing on it, so a cycle of failed fixes pushes nothing.
 
 ## Step 12: Push
 
@@ -279,7 +280,7 @@ A stop reached in a cycle that pushed is **held** (`HOLD_STATE`), not ended: the
 Loop exited at `ITER == MAX_ITER` with threads still actionable → `final_state=iteration_cap`; surface the remaining thread count + `target_url`.
 Run the "Step 14: last-push HEAD verdicts and follow-up trigger" block in `references/run-blocks.md` verbatim. When the last iteration pushed, it waits for that HEAD's verdicts first; findings on it have no round left, so the run ends at `iteration_cap` with `HEAD_VERDICT=unread`.
 
-Then, when the block set `followup_needed=true` (`final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` AND `deferred_total > 0` from any cycle or `HEAD_VERDICT` set), file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment.
+Then, when the block set `followup_needed=true` (`final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` AND `deferred_total > 0` from any cycle, `review_total > 0`, or `HEAD_VERDICT` set), file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment.
 
 Build the body from `auto_judge_log`'s `defer` records — reviewer prose reaches it through a file, never the command line — then `gh issue create --label tbd`. The block is idempotent: a re-run on the same PR reuses `STATE_FILE.followup_issue` instead of opening a second issue. Shell block: `references/failure-modes.md`.
 

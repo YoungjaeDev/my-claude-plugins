@@ -46,7 +46,7 @@ cr_budget=$(jq -n --arg t "$PUSH_TIME" --argjson to "$TIMEOUT" '
   | [0, $to - $age] | max')
 
 SECONDS=0
-request=null; cap=""
+request=""; cap=""
 while :; do
   cr=off
   if [ "$CR_ON" = true ]; then
@@ -86,9 +86,10 @@ while :; do
        && jq -s -e --arg m "$PAUSE_MARK" 'add // [] | any(.[];
             ((.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i"))
             and ((.body // "") | test($m; "i")))' <<<"$comments" >/dev/null 2>&1; then
-      # Exit 1 = comments unreadable: no request (the script logs why).
-      if d=$(bash "$HERE/cr-review-posted.sh" "$OWNER" "$REPO" "$PR_NUM" "${PUSH_TIME:-0}" 2>/dev/null); then
-        request="\"$d\""
+      # Exit 1 = comments unreadable, or no PUSH_TIME (this HEAD's request cannot be
+      # told from an older one): no request, the same as request_cr_review.
+      if d=$(bash "$HERE/cr-review-posted.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
+        request="$d"
         [ "$d" = post ] && state=paused
       fi
     fi
@@ -105,9 +106,9 @@ while :; do
   [ -z "$state" ] && [ "$SECONDS" -ge "${cap:-0}" ] && state=timeout
 
   if [ -n "$state" ]; then
-    jq -nc --arg s "$state" --arg cr "$cr" --arg cx "$codex" --argjson req "$request" --argjson w "$SECONDS" '
+    jq -nc --arg s "$state" --arg cr "$cr" --arg cx "$codex" --arg req "$request" --argjson w "$SECONDS" '
       {state:$s, cr:$cr, codex:$cx, findings:($cr == "findings" or $cx == "findings"),
-       cr_review_request:$req, waited:$w}'
+       cr_review_request:(if $req == "" then null else $req end), waited:$w}'
     exit 0
   fi
   sleep "$INTERVAL"

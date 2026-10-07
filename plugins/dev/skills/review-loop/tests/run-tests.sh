@@ -472,6 +472,18 @@ is "outside-diff: no reviews -> threads unchanged" "$(od "$OD/none.json" <<<"$th
 printf '#!/usr/bin/env bash\nexit 1\n' > "$OD/gh"; chmod +x "$OD/gh"
 PATH="$OD:$PATH" bash "$SCRIPTS/fetch-cr-outside-diff.sh" o r 42 '[]' <<<'[]' >/dev/null 2>&1; rc=$?
 is "outside-diff: gh failure -> non-zero exit" "$rc" 1
+# gh before 2.45 has no --slurp: the live path must work on raw --paginate output.
+cat > "$OD/gh" <<SH
+#!/usr/bin/env bash
+case " \$* " in *" --slurp "*) echo "unknown flag: --slurp" >&2; exit 1 ;; esac
+jq -c '.[]' "$ODF"
+SH
+out=$(PATH="$OD:$PATH" bash "$SCRIPTS/fetch-cr-outside-diff.sh" o r 42 '[]' <<<'[]' 2>/dev/null); rc=$?
+is "outside-diff: gh without --slurp -> findings read" "$rc:$(jq 'length' <<<"$out" 2>/dev/null)" "0:3"
+# A long PR's thread records outgrow ARG_MAX: they must not ride on the command line.
+jq -nc '[range(0; 20000) | {source:"cr", path:"big.sh", line:., body:("x" * 150)}]' > "$OD/big.json"
+out=$(od "$ODF" < "$OD/big.json" | jq 'length'); rc=$?
+is "outside-diff: thread records past ARG_MAX -> all kept" "$out" 20003
 rm -rf "$OD"
 
 echo
@@ -1111,6 +1123,10 @@ is "the script decides, it never posts" \
    "$(grep -cE -- '(-X|--method) *(POST|PATCH|PUT|DELETE)|(^| )(-f|-F|--field|--raw-field) |(pr|issue) comment' "$HW_LOG")" 0
 w=$(hw "$HW/r-none.json" "$HW/c-paused-requested.json")
 is "pause, already requested on this HEAD -> no second request" "$(hf .state):$(hf .cr_review_request)" timeout:skip
+# No push time: this HEAD's request cannot be told from an older one, so no request
+# is decided (request_cr_review, reading the same push time, would not post either).
+w=$(hw "$HW/r-none.json" "$HW/c-paused.json" PUSH_TIME=)
+is "pause, push time unknown -> no request decided" "$(hf .state):$(hf .cr_review_request)" timeout:null
 # Reviewers that are off do not hold the loop.
 echo '[]' > "$HW/empty.json"
 w=$(hw "$HW/cr-clean.json" "$HW/empty.json" CODEX_ON=auto)
@@ -1631,12 +1647,40 @@ is "held stop, nothing fetched -> ends as held" \
    "$(BLOCK="$(rb_block "Step 8c: engagement gate")" bash -c '
       HOLD_STATE=churn final_state=""; eval "for i in 1; do $BLOCK
       done"; printf %s "$final_state"')" churn
+# Step 8c then 9a, as one round runs them: a held stop whose new HEAD brought a gated
+# finding must reach the classifier, not end at 8c. gh fails: 8c may not look.
+H8=$(mktemp -d); printf '#!/usr/bin/env bash\nexit 1\n' > "$H8/gh"; chmod +x "$H8/gh"
+is "held stop, gated finding fetched -> 8c hands it to 9a, one more round" \
+   "$(REC=$major PATH="$H8:$PATH" SKILL_DIR="$HERE/.." B8="$(rb_block "Step 8c: engagement gate")" \
+      B9="$(rb_block "Step 9a: classify")" bash -c '
+      cr_records="[$REC]" codex_records="[]" ITER=3 SKIP_MINOR=false HOLD_STATE=minor_floor final_state="" round=""
+      eval "for i in 1; do $B8
+      $B9
+      round=yes; done"
+      printf "%s:%s:%s" "$final_state" "$HOLD_STATE" "$round"' 2>/dev/null)" "::yes"
+rm -rf "$H8"
+
+# Step 12: a noop Step 10 (every fix reverted, or none applied) pushes nothing.
+P12=$(mktemp -d); printf '#!/usr/bin/env bash\necho "$*" >> "%s/calls"\n' "$P12" > "$P12/git"; chmod +x "$P12/git"
+push_step() { # RES -> pushed_this_cycle:git-calls
+  local pushed
+  : > "$P12/calls"
+  pushed=$(RES=$1 PATH="$P12:$PATH" BLOCK="$(rb_block "Step 12: push")" bash -c '
+    request_cr_review() { :; }
+    res=$RES pushed_this_cycle=false TRACK_FILE=/dev/null final_state=""
+    eval "for i in 1; do $BLOCK
+    done"; printf "%s" "$pushed_this_cycle"' 2>/dev/null)
+  printf '%s:%s' "$pushed" "$(grep -c push "$P12/calls")"
+}
+is "Step 10 noop -> no push"        "$(push_step noop)" "false:0"
+is "Step 10 staged -> one push"     "$(push_step staged:2)" "true:1"
+rm -rf "$P12"
 
 # Step 14: the last iteration's push is waited on, then one follow-up trigger.
-last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED -> final_state:HEAD_VERDICT:followup
-  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
+last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:HEAD_VERDICT:followup
+  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 RT=${6:-0} BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
     await_head_verdicts() { hv_state=$HVS; hv="{\"findings\":$FND}"; }
-    pushed_this_cycle=$PUSHED final_state=$FS deferred_total=$DT HEAD_VERDICT=""
+    pushed_this_cycle=$PUSHED final_state=$FS deferred_total=$DT review_total=$RT HEAD_VERDICT=""
     eval "$BLOCK"
     printf "%s:%s:%s" "$final_state" "$HEAD_VERDICT" "$followup_needed"'
 }
@@ -1651,14 +1695,16 @@ is "loop ran out after a push -> iteration_cap"   "$(last_push true "" ready fal
 is "clean after earlier defers -> follow-up issue" "$(last_push false clean ready false 2)" "clean::true"
 is "clean, nothing deferred -> no issue"           "$(last_push false clean ready false 0)" "clean::false"
 is "timeout with earlier defers -> follow-up issue" "$(last_push false timeout timeout false 1)" "timeout::true"
+# A finding nobody could read (`review` tier) is left behind too: user_declined on it
+# alone must still file the issue failure-modes.md points the user to.
+is "only unread review-tier items -> follow-up issue" "$(last_push false user_declined ready false 0 1)" "user_declined::true"
 
 # await_head_verdicts on a paused CodeRabbit: one request, then the same budget.
 AW=$(mktemp -d)
 cat > "$AW/gh" <<SH
 #!/usr/bin/env bash
 case "\$*" in
-  *"/statuses"*) echo '[]' ;;
-  *"/commits/"*) echo '{}' ;;
+  *"/statuses"*) echo '[{"created_at":"2026-10-06T10:00:00Z"}]' ;;
   *"/pulls/"*"/reviews"*) cat "$FIX/pr-reviews-cr-older-commit.json" ;;
   *"/issues/"*"/comments"*) cat "$FIX/issue-comments-cr-review-paused.json" ;;
   *) echo "unknown gh args: \$*" >&2; exit 1 ;;
@@ -1675,6 +1721,35 @@ aw=$(cd "$HERE" && PATH="$AW:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step
 is "paused CodeRabbit -> one review request, wait resumes" "$aw" "timeout:1"
 rm -rf "$AW"
 
+# request_cr_review owns its guard: a PR-bot source and a base CodeRabbit will not
+# auto-review, or a pause, which needs the request on any base.
+RQ=$(mktemp -d)
+cat > "$RQ/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*) echo '[{"created_at":"2026-10-06T10:00:00Z"}]' ;;
+  *"/issues/"*"/comments"*) echo '[]' ;;
+  "pr comment"*) echo post >> "$RQ/posts" ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$RQ/gh"
+req() { # CR_SOURCE CR_REVIEW_REQUEST [ARG] -> posts
+  : > "$RQ/posts"
+  SRC=$1 CRR=$2 ARG=${3:-} PATH="$RQ:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 2: request_cr_review")" bash -c '
+    OWNER=o REPO=r PR_NUM=42 CR_SOURCE=$SRC CR_REVIEW_REQUEST=skip
+    git() { echo deadbeef; }
+    eval "$BLOCK"; CR_REVIEW_REQUEST=$CRR
+    request_cr_review $ARG' >/dev/null 2>&1
+  wc -l < "$RQ/posts" | tr -d ' '
+}
+is "request: default base -> no post"            "$(req auto skip)" 0
+is "request: non-default base, pr-bot -> post"   "$(req pr-bot request)" 1
+is "request: cli source -> no post"              "$(req cli request)" 0
+is "request: paused, default base -> post"       "$(req auto skip paused)" 1
+is "request: paused, codex-only -> no post"      "$(req codex-only skip paused)" 0
+rm -rf "$RQ"
+
 # Step 2: a draft PR stops with the `gh pr ready` hint.
 DR=$(mktemp -d)
 printf '#!/usr/bin/env bash\necho "$DRAFT"\n' > "$DR/gh"; chmod +x "$DR/gh"
@@ -1684,6 +1759,11 @@ is "draft PR -> stops"                    "$rc:$(grep -c went-on <<<"$out")" "1:
 is "draft PR -> says gh pr ready"         "$(grep -c 'gh pr ready 42' <<<"$out")" 1
 is "ready PR -> goes on"                  "$(draft false)" went-on
 rm -rf "$DR"
+
+# CodeRabbit's notice phrasings live in one file, or a new phrasing reaches only
+# some of the readers (four copies drifted apart once already).
+is "rate-limit phrasings defined only in scripts/cr-notices.sh" \
+   "$(grep -l "='[^']*Review limit reached" "$SCRIPTS"/* | grep -vc '/cr-notices\.sh$')" 0
 
 # The repo has no .llmwiki/ (ADR 0003); a pointer there leads nowhere.
 is "no review-loop script points at a deleted wiki page" \

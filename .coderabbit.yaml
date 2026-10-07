@@ -26,8 +26,9 @@ reviews:
     # pause; "Set to 0 to disable" per docs.coderabbit.ai/reference/configuration).
     # Auto-pause conflicts with this repo's core workflow: /dev:review-loop pushes
     # one fix commit per iteration and relies on CodeRabbit auto-reviewing each push
-    # to detect convergence; a pause (needing a manual `@coderabbitai review`) emits
-    # no rate_limited signal, so review-loop's Step 6 poll would time out with no review.
+    # to detect convergence. review-loop does detect a pause (scripts/head-verdicts.sh)
+    # and posts one `@coderabbitai review` per paused HEAD, but each such request is
+    # an extra comment and a wait, so the pause stays off here.
     # Review-consumption is instead bounded by review-loop's MAX_ITER cap + minor-soft-stop
     # and the ignore_title_keywords / path_instructions levers below.
     auto_pause_after_reviewed_commits: 0

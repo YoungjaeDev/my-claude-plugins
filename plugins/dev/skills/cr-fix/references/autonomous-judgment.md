@@ -47,7 +47,9 @@ Items 3-8 of the SKILL.md Step 9c list, in full. Items 1-2 (path-trust gate, san
 
 7. **Log entry** — append one record per decision to `STATE_FILE.auto_judge_log`: `iter`, `src` (`cr|cli|codex`), `path`, `line`, `badge_or_sev`, `judgment` (the six axes above with the values they took), `action`, `reason` (one line), and `generalized_to` (the sibling lines, only when 9c.6 fired). Full shape: `references/autonomous-judgment.md`.
 
-8. **9c-review tier** (CR finding with no parseable header / Codex with no P1-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor.
+8. **9c-review tier** (CR finding with no parseable header / Codex with no P0-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor or `clean`.
+
+9. **9c-defer tier** (Codex P2 at `ITER >= 2`, decision 15): no Read, no judgment, no edit. Log `action=defer`, `reason=codex-p2-after-iter1`, `judgment=null`; `auto_judge_defer=$((auto_judge_defer+1))`; `late_p2_this_cycle=$((late_p2_this_cycle+1))`. Not counted into `judged_this_cycle` or `deferred_this_cycle`: Step 13 adds it to `deferred_total`, so the Step 14 follow-up issue carries it, and a cycle with nothing else left ends at `minor_floor` rather than holding the loop open.
 
 ## Why no AskUserQuestion
 
@@ -181,8 +183,10 @@ The final JSON aggregates counts (`auto_judge_stats: {apply, defer, skip}`); the
 - `action=skip` → `auto_judge_skip++` only (the existing `skipped_total` continues to count tier=skip filtered-before-table items per `references/skip-minor-rules.md`)
 - `action ∈ {apply, defer}` AND `severity_reassess=="high"` → `high_sev_this_cycle++` (loop-local; feeds the Step 13 `minor_floor` soft-stop)
 - `in_prev_diff == "churn"` → `churn_this_cycle++` (loop-local; feeds the Step 13 `churn` stop)
+- tier `defer` (Codex P2 at `ITER >= 2`) → `late_p2_this_cycle++`, `auto_judge_defer++`; logged as `action=defer`, never judged
+- tier `review` → `review_this_cycle++` (blocks `minor_floor` and `clean`)
 
-This keeps the `applied==0 && deferred==0 → clean` convergence test intact while exposing the autonomous-skip counter as a separate dimension.
+This keeps the `applied==0 && deferred==0 && review==0 → clean` convergence test intact while exposing the autonomous-skip counter as a separate dimension.
 
 ## No new surfaces inside the loop
 

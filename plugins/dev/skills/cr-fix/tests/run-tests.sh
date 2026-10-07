@@ -288,6 +288,51 @@ is "skip-minor: CR Security+Minor stays gated" \
 is "skip-minor: Codex P2 -> skip" "$(cls "$(jq -nc '{source:"codex",p_badge:"2"}')" true)" skip
 is "skip-minor: Codex P1 stays gated" "$(cls "$(jq -nc '{source:"codex",p_badge:"1"}')" true)" gated
 
+# P0 is Codex's most severe badge. Before the parser read it, P0 fell to `review`
+# (surfaced, never judged): the worst finding was the one the loop never acted on.
+is "Codex P0 -> gated" "$(cls "$(jq -nc '{source:"codex",p_badge:"0"}')")" gated
+# Decision 15: a Codex P2 from iteration 2 on is deferred unjudged. An applied P2
+# becomes the next round's material (7 of 8 were applied before this rule).
+clsi() { printf '%s' "$1" | ITER="$2" bash "$SCRIPTS/classify-item.sh" | jq -r '.tier'; }
+is "iter 1 Codex P2 -> gated (judged)"   "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 1)" gated
+is "iter 2 Codex P2 -> defer"            "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 2)" defer
+is "iter 3 Codex P2 -> defer"            "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 3)" defer
+is "iter 2 Codex P1 stays gated"         "$(clsi "$(jq -nc '{source:"codex",p_badge:"1"}')" 2)" gated
+is "iter 2 Codex P0 stays gated"         "$(clsi "$(jq -nc '{source:"codex",p_badge:"0"}')" 2)" gated
+is "iter 2 CR Minor unaffected"          "$(clsi "$(cr '🎯 Functional Correctness' '🟡 Minor' '⚡ Quick win')" 2)" auto
+# --skip-minor already hides every P2; it keeps winning over the late-P2 defer.
+is "iter 2 skip-minor Codex P2 -> skip" \
+   "$(printf '%s' "$(jq -nc '{source:"codex",p_badge:"2"}')" | ITER=2 SKIP_MINOR=true bash "$SCRIPTS/classify-item.sh" | jq -r '.tier')" skip
+
+echo
+echo "fetch-codex-comments.sh"
+
+CXSHIM=$(mktemp -d)
+cat > "$CXSHIM/gh" <<SH
+#!/usr/bin/env bash
+cat "$FIX/pr-comments-codex-badges.json"
+SH
+chmod +x "$CXSHIM/gh"
+cx=$(PATH="$CXSHIM:$PATH" bash "$SCRIPTS/fetch-codex-comments.sh" o r 42 777 2>/dev/null); rc=$?
+is "codex fetch exits 0"                   "$rc" 0
+is "only the requested review id"          "$(jq 'length' <<<"$cx")" 2
+is "P0 badge parsed"                       "$(jq -r '.[0].p_badge' <<<"$cx")" 0
+is "P0 badge fixture -> gated"             "$(jq -c '.[0]' <<<"$cx" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier')" gated
+# A comment whose line left the current diff has line=null; the original line keeps
+# it locatable instead of reading as a file-level finding.
+is "null line falls back to original_line" "$(jq -r '.[1].line' <<<"$cx")" 40
+is "current line wins when present"        "$(jq -r '.[0].line' <<<"$cx")" 12
+# A failed fetch is not "no findings". `gh ... 2>/dev/null | jq -s 'add // []'` printed
+# [] for it, and the caller read that as a Codex review with nothing to say.
+cat > "$CXSHIM/gh" <<'SH'
+#!/usr/bin/env bash
+echo "gh: HTTP 502" >&2; exit 1
+SH
+cx=$(PATH="$CXSHIM:$PATH" bash "$SCRIPTS/fetch-codex-comments.sh" o r 42 777 2>/dev/null); rc=$?
+is "gh failure -> non-zero exit"           "$([ "$rc" -ne 0 ] && echo nonzero || echo zero)" nonzero
+is "gh failure -> no [] on stdout"         "$cx" ""
+rm -rf "$CXSHIM"
+
 echo
 echo "fetch-cr-threads.sh header fields"
 
@@ -928,12 +973,13 @@ is "grace-cap codex_wait: pre-flight remaining wins" "$gcap2" 500
 # must be guarded by judged_this_cycle > 0, or an iteration with NO findings
 # (0 == 0) reports churn instead of clean and never files the follow-up issue.
 conv() {
-  ITER=$1 JUDGED=$2 CHURN=$3 APPLIED=$4 DEFERRED=$5 HIGH=$6 MINOR_STOP=${7:-true} REVIEW=${8:-0} \
+  ITER=$1 JUDGED=$2 CHURN=$3 APPLIED=$4 DEFERRED=$5 HIGH=$6 MINOR_STOP=${7:-true} REVIEW=${8:-0} LATE=${9:-0} \
   bash -c '
     if [ "$ITER" -ge 2 ] && [ "$JUDGED" -gt 0 ] && [ "$CHURN" = "$JUDGED" ]; then echo churn
     elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$APPLIED" -gt 0 ] \
          && [ "$HIGH" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ]; then echo minor_floor
-    elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ]; then echo clean
+    elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ] && [ "$LATE" -gt 0 ]; then echo minor_floor
+    elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ]; then echo clean
     elif [ "$APPLIED" = 0 ]; then echo user_declined
     else echo continue; fi'
 }
@@ -973,6 +1019,16 @@ is "high severity blocks minor_floor"     "$(conv 2 2 0 2 0 1)" continue
 # that a floor would hand an unexamined finding to the auto-merge gate.
 is "unparsed review item blocks minor_floor" "$(conv 2 2 0 2 0 0 true 1)" continue
 is "deferred everything -> user_declined"  "$(conv 2 2 0 0 2 0)" user_declined
+# Nothing applied or deferred, but a finding nobody could read is still open: that
+# is not convergence, and `clean` is the state that auto-merges unconditionally.
+is "unparsed review item blocks clean"     "$(conv 2 0 0 0 0 0 true 1)" user_declined
+is "unparsed review item blocks clean (iter 1)" "$(conv 1 0 0 0 0 0 true 1)" user_declined
+# Late Codex P2s (iter >= 2, tier defer) are deferred unjudged into the follow-up issue.
+# They must not hold the loop open, and must not end it at `clean`, which files no issue.
+is "only late P2 -> minor_floor not clean" "$(conv 2 0 0 0 0 0 true 0 2)" minor_floor
+is "only late P2, --no-minor-stop -> minor_floor" "$(conv 2 0 0 0 0 0 false 0 2)" minor_floor
+is "late P2 does not block minor_floor"    "$(conv 2 2 0 2 0 0 true 0 1)" minor_floor
+is "late P2 + judged defer -> user_declined" "$(conv 2 1 0 0 1 0 true 0 1)" user_declined
 
 echo
 echo "path-trust.sh"

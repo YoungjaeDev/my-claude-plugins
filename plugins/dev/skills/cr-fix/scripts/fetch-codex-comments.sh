@@ -9,8 +9,12 @@ OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr requir
 
 if [ -z "$RID" ] || [ "$RID" = "null" ]; then printf '[]\n'; exit 0; fi
 
-gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/comments" --paginate 2>/dev/null \
-  | jq -s --argjson rid "$RID" '
+# A failed fetch must not read as "Codex said nothing": piped straight into
+# `jq -s 'add // []'`, a gh error printed [] and the loop could converge on it.
+pages=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/comments" --paginate) \
+  || { echo "fetch-codex-comments: gh api pulls/$PR_NUM/comments failed" >&2; exit 1; }
+
+jq -s --argjson rid "$RID" '
     add // []
     | [ .[]
         | select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
@@ -18,9 +22,10 @@ gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/comments" --paginate 2>/dev/null \
         | {
             source: "codex",
             path: .path,
-            line: .line,
+            # line is null once the commented line leaves the current diff.
+            line: (.line // .original_line),
             body: .body,
             comment_id: .id,
-            p_badge: ((.body | capture("!\\[P(?<p>[123]) Badge\\]").p) // "none")
+            p_badge: ((.body | capture("!\\[P(?<p>[0-3]) Badge\\]").p) // "none")
           }
-      ]'
+      ]' <<<"$pages"

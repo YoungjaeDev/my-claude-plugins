@@ -181,7 +181,7 @@ Run the "Step 8: fetch CR threads" block in `references/run-blocks.md` verbatim.
 ## Step 8b: Fetch Codex inline comments
 
 Skip when `codex_active != "active"` OR `codex_review_id_to_process=""`. Otherwise:
-Run the "Step 8b: fetch Codex inline comments" block in `references/run-blocks.md` verbatim.
+Run the "Step 8b: fetch Codex inline comments" block in `references/run-blocks.md` verbatim. A `gh` error ends the run at `final_state=failure`; it is never read as an empty review.
 
 ## Step 8c: Combined engagement gate (PR-bot path only)
 
@@ -210,7 +210,7 @@ CR/CLI tiers come from the inline header's three fields (`_<category>_ | _<sever
 
 ### 9c: Per-finding autonomous judgment
 
-For each non-skip finding, in severity order (CR/CLI Critical → High → Major → Minor, then Codex P1 → P2). Count every one into `judged_this_cycle` so Step 13 can tell "no findings" from "only churn", and count every `review`-tier item into `review_this_cycle` so Step 13 can tell "nothing left" from "nothing I could read":
+For each non-skip finding, in severity order (Codex P0, then CR/CLI Critical → High → Major → Minor, then Codex P1 → P2). Count every one into `judged_this_cycle` so Step 13 can tell "no findings" from "only churn", and count every `review`-tier item into `review_this_cycle` so Step 13 can tell "nothing left" from "nothing I could read":
 
 1. **Path-trust gate** (mandatory):
    Run the "Step 9c.1: path-trust gate" block in `references/run-blocks.md` verbatim.
@@ -224,7 +224,8 @@ For each non-skip finding, in severity order (CR/CLI Critical → High → Major
 5. **Decision matrix**: `over_engineering=yes` → skip, evaluated first and overriding `fix_size`; real + small-safe → apply; real + high + large-risky → defer; real + low/cosmetic + large-risky → skip; spurious or stylistic-only → skip; ambiguous → defer.
 6. **Apply / defer / skip**: apply only behind the stale-line guard (defer when an earlier edit this cycle moved the anchor out of reach), then run bounded same-file generalization (9c.6); every decision updates its counters, and an `apply` or `defer` at `severity_reassess=="high"` feeds `high_sev_this_cycle`.
 7. **Log entry**: one record per decision in `STATE_FILE.auto_judge_log`.
-8. **9c-review tier** (CR finding with no parseable header / Codex with no P1-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor.
+8. **9c-review tier** (CR finding with no parseable header / Codex with no P0-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor or `clean`.
+9. **9c-defer tier** (Codex P2 at `ITER >= 2`, decision 15): no Read, no judgment, no edit. Log `action=defer`, `reason=codex-p2-after-iter1`, `judgment=null`; `auto_judge_defer=$((auto_judge_defer+1))`; `late_p2_this_cycle=$((late_p2_this_cycle+1))`. It counts into neither `judged_this_cycle` nor `deferred_this_cycle`: Step 13 adds it to `deferred_total` so Step 14 carries it in the follow-up issue, and a cycle with nothing else left ends at `minor_floor`.
 
 Items 3-7 in full (axis values, the matrix with its reasons, the exact counter updates, the stale-line guard, 9c.6, the log shape): `references/autonomous-judgment.md` ("Per-finding procedure (Step 9c)"). Follow that section as written; the summary above does not replace it.
 

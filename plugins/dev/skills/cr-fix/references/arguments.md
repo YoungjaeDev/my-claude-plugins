@@ -9,7 +9,7 @@ All flags are positional after `/dev:cr-fix`; order does not matter.
 | `--interval <sec>` | `8` | Poll interval used by Step 6 / 6b / 8c fallback polls. Step 5 pre-flight absorbs the first round-trip, so the interval stays tight; tighten to 5 for faster wakeup or raise back to 30+ if your CR org rate-limits aggressively. |
 | `--auto-merge` | OFF | After convergence, gate-check branch protection. With protection: `gh pr merge --auto --squash --delete-branch`. Without protection: prompt user (Merge now / Skip / Cancel). |
 | `--paste <text>` | empty | Short-circuit: process pasted CR text once, then continue normal loop. Use when CR puts feedback in review summary instead of inline threads. |
-| `--no-build-check` | OFF | Skip BUILD/TEST verification gate after each apply cycle. |
+| `--no-build-check` | OFF | Skip the BUILD/TEST verification gate (baseline and per-fix checks); the final JSON reports `verification_gate=no_build_check`. |
 | `--codex-grace <sec>` | `30` | Floor of the Codex wait after CR completes: every gate waits `max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age)` for an unprocessed Codex review or a HEAD verdict. `0` disables grace polling (probe once, proceed). |
 | `--no-codex` | OFF | Force-disable Codex auto-detect for the run. Default is auto-detect: Codex enabled iff the PR has at least one Codex review in its lifetime. |
 | `--skip-minor` | OFF | Silently skip CR Minor/Trivial/Info (category ≠ `🔒 Security & Privacy`) and Codex P2 items. See `references/skip-minor-rules.md`. |

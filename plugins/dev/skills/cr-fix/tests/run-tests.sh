@@ -75,6 +75,18 @@ out=$(bash "$SCRIPTS/parse-cr-cli-jsonl.sh" "$FIX/cr-cli-malformed.jsonl" 2>/dev
 is "malformed exits 0"              "$rc" 0
 is "malformed keeps valid findings" "$(jq 'length' <<<"$out")" 2
 
+# Severity `none` is the CLI's informational level, not "unreadable": it must
+# skip like Info rather than fall through to `review`. Trivial/Info carry the
+# 🔵/⚪ badges CodeRabbit documents, and a bold comment header parses too.
+out=$(bash "$SCRIPTS/parse-cr-cli-jsonl.sh" "$FIX/cr-cli-severity-none.jsonl" 2>/dev/null)
+cli_tier() { jq -c ".[$1]" <<<"$out" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier'; }
+is "CLI severity none -> skip"      "$(cli_tier 0)" skip
+is "CLI trivial label is 🔵"        "$(jq -r '.[1].severity_emoji' <<<"$out")" "🔵 Trivial"
+is "CLI info label is ⚪"           "$(jq -r '.[2].severity_emoji' <<<"$out")" "⚪ Info"
+is "CLI bold comment header -> category" "$(jq -r '.[3].category_emoji' <<<"$out")" "🗄️ Data Integrity & Integration"
+is "CLI bold comment header -> effort"   "$(jq -r '.[3].effort_emoji' <<<"$out")" "🏗️ Heavy lift"
+is "CLI bold Minor+Heavy lift -> gated"  "$(cli_tier 3)" gated
+
 echo
 echo "cr-commit-state.sh"
 
@@ -260,12 +272,12 @@ is "CR Minor + Quick win -> auto" \
    "$(cls "$(cr '📐 Maintainability & Code Quality' '🟡 Minor' '⚡ Quick win')")" auto
 is "CR Minor + Heavy lift -> gated" \
    "$(cls "$(cr '📐 Maintainability & Code Quality' '🟡 Minor' '🏗️ Heavy lift')")" gated
-is "CR Trivial -> skip"  "$(cls "$(cr '📐 Maintainability & Code Quality' '🟢 Trivial' '⚡ Quick win')")" skip
+is "CR Trivial -> skip"  "$(cls "$(cr '📐 Maintainability & Code Quality' '🔵 Trivial' '⚡ Quick win')")" skip
 # Security escalates on category alone: a Minor-rated privacy leak is still a leak.
 is "CR Security + Minor -> gated" \
    "$(cls "$(cr '🔒 Security & Privacy' '🟡 Minor' '⚡ Quick win')")" gated
 is "CR Security + Trivial -> gated" \
-   "$(cls "$(cr '🔒 Security & Privacy' '🟢 Trivial' '⚡ Quick win')")" gated
+   "$(cls "$(cr '🔒 Security & Privacy' '🔵 Trivial' '⚡ Quick win')")" gated
 # Legacy two-field header: no effort field reads as Quick win, so Minor still
 # reaches `auto` rather than silently regressing to `review`.
 is "CR Minor, no effort field -> auto" \
@@ -288,6 +300,51 @@ is "skip-minor: CR Security+Minor stays gated" \
 is "skip-minor: Codex P2 -> skip" "$(cls "$(jq -nc '{source:"codex",p_badge:"2"}')" true)" skip
 is "skip-minor: Codex P1 stays gated" "$(cls "$(jq -nc '{source:"codex",p_badge:"1"}')" true)" gated
 
+# P0 is Codex's most severe badge. Before the parser read it, P0 fell to `review`
+# (surfaced, never judged): the worst finding was the one the loop never acted on.
+is "Codex P0 -> gated" "$(cls "$(jq -nc '{source:"codex",p_badge:"0"}')")" gated
+# Decision 15: a Codex P2 from iteration 2 on is deferred unjudged. An applied P2
+# becomes the next round's material (7 of 8 were applied before this rule).
+clsi() { printf '%s' "$1" | ITER="$2" bash "$SCRIPTS/classify-item.sh" | jq -r '.tier'; }
+is "iter 1 Codex P2 -> gated (judged)"   "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 1)" gated
+is "iter 2 Codex P2 -> defer"            "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 2)" defer
+is "iter 3 Codex P2 -> defer"            "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 3)" defer
+is "iter 2 Codex P1 stays gated"         "$(clsi "$(jq -nc '{source:"codex",p_badge:"1"}')" 2)" gated
+is "iter 2 Codex P0 stays gated"         "$(clsi "$(jq -nc '{source:"codex",p_badge:"0"}')" 2)" gated
+is "iter 2 CR Minor unaffected"          "$(clsi "$(cr '🎯 Functional Correctness' '🟡 Minor' '⚡ Quick win')" 2)" auto
+# --skip-minor already hides every P2; it keeps winning over the late-P2 defer.
+is "iter 2 skip-minor Codex P2 -> skip" \
+   "$(printf '%s' "$(jq -nc '{source:"codex",p_badge:"2"}')" | ITER=2 SKIP_MINOR=true bash "$SCRIPTS/classify-item.sh" | jq -r '.tier')" skip
+
+echo
+echo "fetch-codex-comments.sh"
+
+CXSHIM=$(mktemp -d)
+cat > "$CXSHIM/gh" <<SH
+#!/usr/bin/env bash
+cat "$FIX/pr-comments-codex-badges.json"
+SH
+chmod +x "$CXSHIM/gh"
+cx=$(PATH="$CXSHIM:$PATH" bash "$SCRIPTS/fetch-codex-comments.sh" o r 42 777 2>/dev/null); rc=$?
+is "codex fetch exits 0"                   "$rc" 0
+is "only the requested review id"          "$(jq 'length' <<<"$cx")" 2
+is "P0 badge parsed"                       "$(jq -r '.[0].p_badge' <<<"$cx")" 0
+is "P0 badge fixture -> gated"             "$(jq -c '.[0]' <<<"$cx" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier')" gated
+# A comment whose line left the current diff has line=null; the original line keeps
+# it locatable instead of reading as a file-level finding.
+is "null line falls back to original_line" "$(jq -r '.[1].line' <<<"$cx")" 40
+is "current line wins when present"        "$(jq -r '.[0].line' <<<"$cx")" 12
+# A failed fetch is not "no findings". `gh ... 2>/dev/null | jq -s 'add // []'` printed
+# [] for it, and the caller read that as a Codex review with nothing to say.
+cat > "$CXSHIM/gh" <<'SH'
+#!/usr/bin/env bash
+echo "gh: HTTP 502" >&2; exit 1
+SH
+cx=$(PATH="$CXSHIM:$PATH" bash "$SCRIPTS/fetch-codex-comments.sh" o r 42 777 2>/dev/null); rc=$?
+is "gh failure -> non-zero exit"           "$([ "$rc" -ne 0 ] && echo nonzero || echo zero)" nonzero
+is "gh failure -> no [] on stdout"         "$cx" ""
+rm -rf "$CXSHIM"
+
 echo
 echo "fetch-cr-threads.sh header fields"
 
@@ -306,6 +363,82 @@ is "legacy 2-field header -> severity"  "$(jq -r '.[2].severity_emoji' <<<"$th")
 is "legacy 2-field header -> null effort" "$(jq -r '.[2].effort_emoji' <<<"$th")" null
 is "headerless body -> record survives" "$(jq -r '.[3].path' <<<"$th")" "src/d.py"
 is "headerless body -> null category"   "$(jq -r '.[3].category_emoji' <<<"$th")" null
+
+# The header is read by its emoji badges, not its emphasis. PR #283 got bold
+# headers (`**…** | **…** | **…**`) and the old `_…_` regex either missed them
+# (tier `review`) or latched onto underscores in the body (`last_verified`).
+th=$(CR_THREADS_RESPONSE_FILE="$FIX/cr-threads-header-formats.json" \
+       bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null)
+fields() { jq -r ".[$1] | [.category_emoji, .severity_emoji, .effort_emoji] | join(\" / \")" <<<"$th"; }
+want="🎯 Functional Correctness / 🟡 Minor / ⚡ Quick win"
+is "bold header -> badge fields"    "$(fields 0)" "$want"
+is "italic header -> badge fields"  "$(fields 1)" "$want"
+is "plain header -> badge fields"   "$(fields 2)" "$want"
+is "underscores in body do not leak into header" "$(fields 4)" "$want"
+tier_at() { jq -c ".[$1]" <<<"$th" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier'; }
+is "PR #283 bold Minor+Quick win -> auto" "$(tier_at 0)" auto
+is "PR #283 bold Major -> gated"          "$(tier_at 3)" gated
+is "🔵 Trivial header -> skip"           "$(tier_at 5)" skip
+is "⚪ Info header -> skip"              "$(tier_at 6)" skip
+
+echo
+echo "fetch-cr-outside-diff.sh"
+
+# CodeRabbit puts findings outside the diff only in the review body, never in a
+# thread. The fixture is review 5427040251 on PR #283 (3 such findings), plus the
+# same body under the registrable impostor login `coderabbitai-evil`.
+od() { CR_REVIEWS_RESPONSE_FILE="$1" bash "$SCRIPTS/fetch-cr-outside-diff.sh" o r 42 "${2:-[]}" 2>/dev/null; }
+ODF="$FIX/cr-reviews-outside-diff.json"
+out=$(od "$ODF" <<<'[]'); rc=$?
+is "outside-diff: exits 0"               "$rc" 0
+is "outside-diff: 3 records, impostor ignored" "$(jq 'length' <<<"$out")" 3
+is "outside-diff: path"                  "$(jq -r '.[0].path' <<<"$out")" "plugins/wiki/skills/lint/SKILL.md"
+is "outside-diff: line range"            "$(jq -r '[.[] | "\(.startLine)-\(.line)"] | join(",")' <<<"$out")" "28-30,33-35,48-49"
+is "outside-diff: header fields on every record" \
+   "$(jq -r '[.[] | [.category_emoji, .severity_emoji, .effort_emoji] | join(" / ")] | unique | .[]' <<<"$out")" \
+   "🎯 Functional Correctness / 🟡 Minor / ⚡ Quick win"
+is "outside-diff: body carries the finding" \
+   "$(jq -r '.[1].body | test("frontmatter")' <<<"$out")" true
+is "outside-diff: marked with origin + review id" \
+   "$(jq -r '[.[] | "\(.source)/\(.origin)/\(.review_id)"] | unique | .[]' <<<"$out")" "cr/outside-diff/5427040251"
+is "outside-diff: Minor + Quick win -> auto" \
+   "$(jq -c '.[0]' <<<"$out" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier')" auto
+# A thread on the same path and line is the same finding: one record, which
+# carries the review id so the review is still recorded as processed.
+thr='[{"source":"cr","path":"plugins/wiki/skills/lint/SKILL.md","line":30,"startLine":28,"body":"t","databaseId":7}]'
+out=$(od "$ODF" <<<"$thr")
+is "outside-diff: same path+line as a thread -> merged" "$(jq 'length' <<<"$out")" 3
+is "outside-diff: merged record is the thread"   "$(jq -r '.[0].databaseId' <<<"$out")" 7
+is "outside-diff: merged thread keeps review id" "$(jq -r '.[0].review_id' <<<"$out")" 5427040251
+# A processed review is not judged again: Step 9c.7 records each review_id under
+# cr_processed_reviews, and the next round reads that list back.
+OD=$(mktemp -d)
+printf '{"codex_processed_reviews":[9]}\n' > "$OD/state.json"
+jq -r '[.[].review_id // empty] | unique | .[]' <<<"$out" \
+  | while IFS= read -r rid; do bash "$SCRIPTS/persist-codex-id.sh" "$OD/state.json" "$rid" cr_processed_reviews; done
+is "outside-diff: review id persisted under its own key" \
+   "$(jq -c '[.cr_processed_reviews, .codex_processed_reviews]' "$OD/state.json")" "[[5427040251],[9]]"
+out=$(od "$ODF" "$(jq -c '.cr_processed_reviews' "$OD/state.json")" <<<"$thr")
+is "outside-diff: processed review -> thread only" "$(jq 'length' <<<"$out")" 1
+# The path comes from an untrusted body: it reaches path-trust like a thread path.
+jq '.[0][0].body |= sub("`plugins/wiki/skills/lint/SKILL.md:28-30`"; "`../../../etc/passwd:28-30`")' "$ODF" > "$OD/escape.json"
+p=$(od "$OD/escape.json" <<<'[]' | jq -r '.[0].path')
+is "outside-diff: escaping path extracted as-is" "$p" "../../../etc/passwd"
+bash "$SCRIPTS/path-trust.sh" "$HERE" "$p" 2>/dev/null; rc=$?
+is "outside-diff: escaping path rejected by path-trust" "$rc" 1
+# A block whose findings cannot be read (the older per-file grouping) fails loud:
+# an empty result would read as "nothing outside the diff".
+out=$(od "$FIX/cr-reviews-outside-diff-grouped.json" <<<'[]'); rc=$?
+is "outside-diff: unreadable block -> non-zero exit" "$rc" 1
+is "outside-diff: unreadable block -> no records"    "$out" ""
+# No reviews at all is a real empty, not a failure.
+printf '[[]]' > "$OD/none.json"
+is "outside-diff: no reviews -> threads unchanged" "$(od "$OD/none.json" <<<"$thr" | jq 'length')" 1
+# Fetch failure is not "no findings".
+printf '#!/usr/bin/env bash\nexit 1\n' > "$OD/gh"; chmod +x "$OD/gh"
+PATH="$OD:$PATH" bash "$SCRIPTS/fetch-cr-outside-diff.sh" o r 42 '[]' <<<'[]' >/dev/null 2>&1; rc=$?
+is "outside-diff: gh failure -> non-zero exit" "$rc" 1
+rm -rf "$OD"
 
 echo
 echo "churn-scope.sh"
@@ -1105,12 +1238,13 @@ rm -rf "$GCSHIM"
 # must be guarded by judged_this_cycle > 0, or an iteration with NO findings
 # (0 == 0) reports churn instead of clean and never files the follow-up issue.
 conv() {
-  ITER=$1 JUDGED=$2 CHURN=$3 APPLIED=$4 DEFERRED=$5 HIGH=$6 MINOR_STOP=${7:-true} REVIEW=${8:-0} \
+  ITER=$1 JUDGED=$2 CHURN=$3 APPLIED=$4 DEFERRED=$5 HIGH=$6 MINOR_STOP=${7:-true} REVIEW=${8:-0} LATE=${9:-0} \
   bash -c '
     if [ "$ITER" -ge 2 ] && [ "$JUDGED" -gt 0 ] && [ "$CHURN" = "$JUDGED" ]; then echo churn
     elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$APPLIED" -gt 0 ] \
          && [ "$HIGH" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ]; then echo minor_floor
-    elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ]; then echo clean
+    elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ] && [ "$LATE" -gt 0 ]; then echo minor_floor
+    elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ]; then echo clean
     elif [ "$APPLIED" = 0 ]; then echo user_declined
     else echo continue; fi'
 }
@@ -1150,6 +1284,16 @@ is "high severity blocks minor_floor"     "$(conv 2 2 0 2 0 1)" continue
 # that a floor would hand an unexamined finding to the auto-merge gate.
 is "unparsed review item blocks minor_floor" "$(conv 2 2 0 2 0 0 true 1)" continue
 is "deferred everything -> user_declined"  "$(conv 2 2 0 0 2 0)" user_declined
+# Nothing applied or deferred, but a finding nobody could read is still open: that
+# is not convergence, and `clean` is the state that auto-merges unconditionally.
+is "unparsed review item blocks clean"     "$(conv 2 0 0 0 0 0 true 1)" user_declined
+is "unparsed review item blocks clean (iter 1)" "$(conv 1 0 0 0 0 0 true 1)" user_declined
+# Late Codex P2s (iter >= 2, tier defer) are deferred unjudged into the follow-up issue.
+# They must not hold the loop open, and must not end it at `clean`, which files no issue.
+is "only late P2 -> minor_floor not clean" "$(conv 2 0 0 0 0 0 true 0 2)" minor_floor
+is "only late P2, --no-minor-stop -> minor_floor" "$(conv 2 0 0 0 0 0 false 0 2)" minor_floor
+is "late P2 does not block minor_floor"    "$(conv 2 2 0 2 0 0 true 0 1)" minor_floor
+is "late P2 + judged defer -> user_declined" "$(conv 2 1 0 0 1 0 true 0 1)" user_declined
 
 echo
 echo "path-trust.sh"
@@ -1307,6 +1451,53 @@ SH
 AV_COMMENTS=/dev/null PATH="$AV:$PATH" bash "$SCRIPTS/reviewer-availability.sh" o r 42 >/dev/null 2>&1; rc=$?
 is "gh failure -> non-zero exit"         "$rc" 1
 rm -rf "$AV"
+
+echo
+echo "verify-fix.sh"
+
+# Verification runs before the commit, one fix at a time, so only fixes that pass
+# reach the push. A repository whose build or test already fails before the loop
+# touches it (GPU- or data-bound suites) is left out of the gate, and the final
+# output says so, instead of every fix being reverted for a failure it did not cause.
+vf() { bash "$SCRIPTS/verify-fix.sh" "$@" 2>/dev/null; }
+is "baseline fails from the start -> gate off"  "$(vf baseline 'exit 1')" baseline_failed
+is "baseline passes -> gate on"                 "$(vf baseline 'true')" on
+is "no build/test command -> gate off"          "$(vf baseline '')" no_command
+is "--no-build-check -> gate off, cmd not run"  "$(NO_BUILD=true vf baseline 'echo ran; exit 1')" no_build_check
+fo=$(VERIFICATION_GATE=baseline_failed bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output records the disabled gate"     "$(jq -r '.verification_gate' <<<"$fo")" baseline_failed
+is "schema lists the disabled gate" \
+   "$(jq -r '.properties.verification_gate.enum | index("baseline_failed") != null' "$HERE/../assets/final-output.schema.json")" true
+
+# Two fixes, the second breaks the test. The broken one is reverted (including a
+# file it created), the passing one survives, and only the survivor is committed.
+VF=$(mktemp -d)
+(
+  cd "$VF" && git init -q . && git config user.email t@t && git config user.name t \
+    && printf 'old\n' > a.sh && printf 'old\n' > b.sh && git add -A && git commit -qm base
+) >/dev/null 2>&1
+VCMD='! grep -q BROKEN a.sh b.sh'
+vfx() { (cd "$VF" && bash "$SCRIPTS/verify-fix.sh" "$@" 2>/dev/null); }
+TRK=$(mktemp)
+snap=$(vfx snapshot); printf 'fixed\n' > "$VF/a.sh"; printf '%s\0' a.sh >> "$TRK"
+is "passing fix -> pass"                        "$(vfx check "$snap" "$VCMD")" pass
+snap=$(vfx snapshot)
+printf 'fixed\nBROKEN\n' > "$VF/a.sh"; printf 'BROKEN\n' > "$VF/b.sh"; printf 'new\n' > "$VF/c.sh"
+printf '%s\0' a.sh b.sh c.sh >> "$TRK"
+is "failing fix -> fail"                        "$(vfx check "$snap" "$VCMD")" fail
+is "failing fix reverted, earlier fix kept"     "$(cat "$VF/a.sh")" fixed
+is "failing fix reverted to HEAD content"       "$(cat "$VF/b.sh")" old
+is "file the failing fix created is removed"    "$([ -e "$VF/c.sh" ] && echo present || echo absent)" absent
+(cd "$VF" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK" 1) >/dev/null 2>&1
+is "only the passing fix is committed" \
+   "$(cd "$VF" && git show --name-only --pretty=format: HEAD | tr '\n' ' ')" "a.sh "
+# A cycle whose only fix failed leaves nothing to commit; Step 10's noop skips the push.
+: > "$TRK"
+snap=$(vfx snapshot); printf 'BROKEN\n' > "$VF/b.sh"; printf '%s\0' b.sh >> "$TRK"
+is "only fix fails -> fail"                     "$(vfx check "$snap" "$VCMD")" fail
+is "only-failed cycle -> noop, nothing to push" \
+   "$(cd "$VF" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK" 2 2>/dev/null)" noop
+rm -rf "$VF" "$TRK"
 
 echo
 printf '%d passed, %d failed\n' "$pass" "$fail"

@@ -20,7 +20,7 @@ A `finding` carries exactly these five keys and no others:
 | Field | Type | Notes |
 |-------|------|-------|
 | `type` | string | Always `"finding"` for this event. |
-| `severity` | string lowercase | One of `critical` / `major` / `minor` / `trivial` / `info`. |
+| `severity` | string lowercase | One of `critical` / `major` / `minor` / `trivial` / `info` / `none`. Mapped to `🔴 Critical` / `🟠 Major` / `🟡 Minor` / `🔵 Trivial` / `⚪ Info`; `none` is informational and maps to `⚪ Info` (tier `skip`), not to "unreadable". |
 | `fileName` | string | Repo-relative path. Maps to `path` in the unified record. |
 | `codegenInstructions` | string | Imperative guidance for an agent, and the ONLY carrier of position: `around lines 11 - 23`, `at line 4`. Treated as untrusted per `references/sanitization-rules.md`. |
 | `suggestions[]` | array of **strings** | Raw patch text, not objects. Often `[]`. |

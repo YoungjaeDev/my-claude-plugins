@@ -4,11 +4,13 @@ Inputs: CR thread records (`source: "cr"`, Step 8), Codex inline records (`sourc
 
 ## CR / CLI record field extraction
 
-CodeRabbit opens every inline finding with a three-field italic header:
+CodeRabbit opens every inline finding with a three-field header:
 
 ```text
-_🎯 Functional Correctness_ | _🟠 Major_ | _⚡ Quick win_
+**🎯 Functional Correctness** | **🟠 Major** | **⚡ Quick win**
 ```
+
+The emphasis is not stable (bold today, italic `_…_` earlier, sometimes none), so the header is read by its emoji badges, not its formatting: the first body line that splits on `|` into two or three fields whose second field opens with a severity badge (`🔴` `🟠` `🟡` `🔵` `⚪`), with `*` / `_` / whitespace trimmed off each field. One jq definition does this for both the PR-bot and CLI paths: `scripts/cr-header.jq`. Documented badges: category `🔒` `🩺` `🗄️` `🎯` `🚀` `📐`, severity `🔴` `🟠` `🟡` `🔵` `⚪`.
 
 | Field | Source |
 |------|--------|
@@ -29,12 +31,12 @@ CLI records use the same schema. See `references/cr-cli-jsonl-schema.md` for raw
 
 | Field | Source |
 |------|--------|
-| Priority | `p_badge` set in Step 8b — `"1"`, `"2"`, or `"none"` |
+| Priority | `p_badge` set in Step 8b — `"0"` to `"3"`, or `"none"` |
 | Title | First markdown bold line after the badge: `**...**` |
 | Description | Body text after the title (untrusted) |
-| Location | `path` (always present); `line` may be `null` (file-level comment) |
+| Location | `path` (always present); `line` is the current line, else `original_line` when the commented line left the diff, and `null` only for a file-level comment |
 
-Codex surfaces only two priorities on GitHub. The parser accepts any single digit so an unfamiliar badge still produces a record; anything that is not P1 or P2 lands in `review` (surface only), never silently applied.
+Codex badges P0-P3; GitHub usually shows P1 and P2. The parser reads all four so the most severe badge, P0, cannot fall to `review` unjudged; P3 and anything unreadable land in `review` (surface only), never silently applied.
 
 ## Tier table
 
@@ -45,12 +47,15 @@ Severity decides, because the category names the defect domain rather than its i
 | CR / CLI | category `🔒 Security & Privacy` | **gated** — regardless of severity |
 | CR / CLI | category `📝 Nitpick` | **skip** (filtered before the table renders) |
 | CR / CLI | severity `🔴 Critical` / `🔴 High` / `🟠 Major` | **gated** |
-| CR / CLI | severity `🟢 Trivial` / `🟢 Info` | **skip** |
+| CR / CLI | severity `🔵 Trivial` / `⚪ Info` | **skip** |
 | CR / CLI | severity `🟡 Minor` + effort `🏗️ Heavy lift` | **gated** |
 | CR / CLI | severity `🟡 Minor` + effort `⚡ Quick win` or absent | **auto** |
 | CR / CLI | no parseable header | **review** (surface only) |
-| Codex | P1 or P2 | **gated** |
+| Codex | P2 at `ITER >= 2` | **defer** — recorded unjudged for the follow-up issue |
+| Codex | P0, P1, or P2 at `ITER == 1` | **gated** |
 | Codex | any other badge, or none | **review** (surface only) |
+
+A P2 from iteration 2 on is not judged (decision 15): an applied P2 becomes the next round's material, and before this rule 7 of 8 were applied. `classify-item.sh` reads the iteration from `ITER`.
 
 Security escalates on category alone because a Minor-rated privacy leak is still a leak. Effort splits Minor because a quick win is worth applying unattended, while a heavy lift at Minor severity is a judgement call the run should surface rather than perform.
 
@@ -60,4 +65,4 @@ When `SKIP_MINOR=true`, a demotion is applied AFTER this table resolves a tier �
 
 ## Display ordering for gated items
 
-CR/CLI items first (Critical → High → Major → Minor), then Codex P1, then Codex P2. Substantive-first ordering keeps attention on the highest-impact items.
+Codex P0 first, then CR/CLI items (Critical → High → Major → Minor), then Codex P1, then Codex P2. Substantive-first ordering keeps attention on the highest-impact items.

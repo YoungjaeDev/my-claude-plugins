@@ -11,7 +11,7 @@ OWNER=$(gh repo view --json owner --jq '.owner.login')
 REPO=$(gh repo view --json name --jq '.name')
 PR_NUM=$(gh pr list --head "$(git branch --show-current)" --state open --json number --jq '.[0].number // empty')
 applied_total=0; deferred_total=0; skipped_total=0
-verification_blocking=false
+verification_blocking=false; VERIFICATION_GATE=unknown
 codex_active=unknown; codex_review_id_to_process=""
 cli_invocations=0; rate_limit_hits=0
 auto_judge_apply=0; auto_judge_defer=0; auto_judge_skip=0
@@ -48,7 +48,7 @@ fi
 
 ```bash
 mkdir -p .claude/state/archive
-PRIOR_PROCESSED='[]'; PRIOR_ISSUE='null'
+PRIOR_PROCESSED='[]'; PRIOR_CR_PROCESSED='[]'; PRIOR_ISSUE='null'
 # Step 16's EXIT trap archives the live file, so on the next run the live path is
 # usually absent — fall back to the newest archive or the Codex dedupe resets.
 # `|| true`: a first run has no archive at all.
@@ -63,6 +63,11 @@ if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
     echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
     exit 1
   }
+  # Same for CodeRabbit reviews whose outside-diff findings were already judged.
+  PRIOR_CR_PROCESSED=$(jq -c '.cr_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null) || {
+    echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the CodeRabbit dedupe is reset" >&2
+    exit 1
+  }
   # Only the live file is archived; the $$ suffix keeps a same-second or parallel
   # run from clobbering an archive.
   if [ "$PRIOR_STATE" = ".claude/state/cr-fix-${PR_NUM}.json" ]; then
@@ -71,8 +76,9 @@ if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
   fi
 fi
 STATE_FILE=".claude/state/cr-fix-${PR_NUM}.json"
-jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --argjson issue "$PRIOR_ISSUE" --arg src "$CR_SOURCE" \
-  '{start_sha:$sha,iter:0,applied_total:0,deferred_total:0,codex_processed_reviews:$prior,followup_issue:$issue,cr_source:($src // "pending"),pre_flight_decisions:[],auto_judge_log:[]}' \
+jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --argjson crprior "$PRIOR_CR_PROCESSED" \
+  --argjson issue "$PRIOR_ISSUE" --arg src "$CR_SOURCE" \
+  '{start_sha:$sha,iter:0,applied_total:0,deferred_total:0,codex_processed_reviews:$prior,cr_processed_reviews:$crprior,followup_issue:$issue,cr_source:($src // "pending"),pre_flight_decisions:[],auto_judge_log:[]}' \
   > "$STATE_FILE"
 
 TRACK_FILE="/tmp/cr-fix-${PR_NUM}-modified.list"; : > "$TRACK_FILE"
@@ -86,7 +92,7 @@ trap 'ITER=${ITER:-0} APPLIED_TOTAL=$applied_total DEFERRED_TOTAL=$deferred_tota
   MERGED=${merged:-false} PR_NUM=$PR_NUM LAST_SHA=$(git rev-parse HEAD 2>/dev/null) \
   CR_SOURCE=$CR_SOURCE CLI_INVOCATIONS=$cli_invocations RATE_LIMIT_HITS=$rate_limit_hits \
   AUTO_JUDGE_APPLY=$auto_judge_apply AUTO_JUDGE_DEFER=$auto_judge_defer AUTO_JUDGE_SKIP=$auto_judge_skip \
-  TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE \
+  TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE VERIFICATION_GATE=$VERIFICATION_GATE \
   bash $SKILL_DIR/scripts/emit-final-json.sh' EXIT
 ```
 
@@ -112,6 +118,17 @@ else
 fi
 ```
 
+## Step 3: verification baseline
+
+```bash
+# VERIFY_CMD: the repo's build + test line, from AGENTS.md (Step 3) or the project's
+# own entry points; empty when the repo names none. Lint is not part of it.
+VERIFY_CMD="${VERIFY_CMD:-}"
+VERIFICATION_GATE=$(NO_BUILD="$NO_BUILD" bash "$SKILL_DIR/scripts/verify-fix.sh" baseline "$VERIFY_CMD")
+[ "$VERIFICATION_GATE" = on ] \
+  || echo "cr-fix: verification gate off ($VERIFICATION_GATE) — fixes will be committed unverified" >&2
+```
+
 ## Step 5: loop head and pre-flight
 
 Opens the per-iteration loop. Steps 5a to 13 run inside it; the Step 13 block closes it with `done`.
@@ -128,7 +145,7 @@ for ITER in $(seq 1 $MAX_ITER); do
   fi
   CUR_SHA=$(git rev-parse HEAD)
   applied_this_cycle=0; deferred_this_cycle=0; high_sev_this_cycle=0
-  churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0
+  churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0; late_p2_this_cycle=0
   # What the PREVIOUS iteration committed, for the Step 9c.4 in_prev_diff axis.
   # Empty on iter 1 or an empty diff both degrade to "no churn" — the safe side.
   PREV_SHA="${ITER_START_SHA:-}"; ITER_START_SHA="$CUR_SHA"
@@ -227,12 +244,19 @@ cli_invocations=$((cli_invocations + 1))
 ```bash
 cr_records=$(bash $SKILL_DIR/scripts/fetch-cr-threads.sh "$OWNER" "$REPO" "$PR_NUM") \
   || { final_state=failure; break; }
+# Outside-diff findings live only in review bodies; add them, merged with any
+# thread on the same path and line. An unreadable block fails the round.
+cr_processed=$(jq -c '.cr_processed_reviews // []' "$STATE_FILE") || { final_state=failure; break; }
+cr_records=$(bash $SKILL_DIR/scripts/fetch-cr-outside-diff.sh "$OWNER" "$REPO" "$PR_NUM" "$cr_processed" <<<"$cr_records") \
+  || { final_state=failure; break; }
 ```
 
 ## Step 8b: fetch Codex inline comments
 
 ```bash
-codex_records=$(bash $SKILL_DIR/scripts/fetch-codex-comments.sh "$OWNER" "$REPO" "$PR_NUM" "$codex_review_id_to_process")
+# A failed fetch is not "Codex said nothing": stop rather than judge a partial set.
+codex_records=$(bash $SKILL_DIR/scripts/fetch-codex-comments.sh "$OWNER" "$REPO" "$PR_NUM" "$codex_review_id_to_process") \
+  || { final_state=failure; break; }
 ```
 
 ## Step 8c: engagement gate
@@ -253,7 +277,7 @@ cr_records=$cli_records
 ```bash
 all=$(jq -c -s 'add' <(echo "$cr_records") <(echo "$codex_records"))
 classified=$(echo "$all" | jq -c '.[]' \
-  | while IFS= read -r rec; do printf '%s\n' "$rec" | SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
+  | while IFS= read -r rec; do printf '%s\n' "$rec" | ITER=$ITER SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
   | jq -s '.')
 ```
 
@@ -278,18 +302,38 @@ bash $SKILL_DIR/scripts/path-trust.sh "$REPO_ROOT" "$path" || {
 bash $SKILL_DIR/scripts/churn-scope.sh "$PREV_SHA" "origin/$BASE" "$path" "$line"
 ```
 
+## Step 9c.6: verify the fix
+
+Wraps each `apply`: `snap` before the first Edit of the finding, `check` after its 9c.6 generalization.
+
+```bash
+[ "$VERIFICATION_GATE" = on ] && snap=$(bash "$SKILL_DIR/scripts/verify-fix.sh" snapshot)
+# ... Edit the fix and its same-file siblings ...
+if [ "$VERIFICATION_GATE" = on ] \
+   && [ "$(bash "$SKILL_DIR/scripts/verify-fix.sh" check "$snap" "$VERIFY_CMD")" = fail ]; then
+  # Reverted to $snap. The apply becomes a defer, reason `verification-failed`.
+  applied_this_cycle=$((applied_this_cycle-1)); auto_judge_apply=$((auto_judge_apply-1))
+  deferred_this_cycle=$((deferred_this_cycle+1)); auto_judge_defer=$((auto_judge_defer+1))
+fi
+```
+
 ## Step 9c.7: persist Codex review id
 
 ```bash
 bash $SKILL_DIR/scripts/persist-codex-id.sh "$STATE_FILE" "$codex_review_id_to_process"
+# CodeRabbit reviews whose outside-diff findings this round judged.
+jq -r '[.[].review_id // empty] | unique | .[]' <<<"$cr_records" \
+  | while IFS= read -r rid; do
+      bash $SKILL_DIR/scripts/persist-codex-id.sh "$STATE_FILE" "$rid" cr_processed_reviews || exit 1
+    done || { final_state=failure; break; }
 ```
 
 ## Step 10: stage and commit
 
 ```bash
 res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER")
-# If res == "noop", skip Steps 11-12 and jump to Step 13
-if [ "$res" = "noop" ]; then : ; fi
+# noop: every fix this cycle was reverted or nothing was applied -> no commit, so
+# Steps 11-12 are skipped and nothing is pushed. Jump to Step 13.
 ```
 
 ## Step 12: push
@@ -311,7 +355,9 @@ Closes the per-iteration loop the Step 5 block opened.
 
 ```bash
 applied_total=$((applied_total + applied_this_cycle))
-deferred_total=$((deferred_total + deferred_this_cycle))
+# Late Codex P2s (tier defer) reach the follow-up issue through deferred_total but
+# never count as this cycle's deferrals: they are policy, not undecided findings.
+deferred_total=$((deferred_total + deferred_this_cycle + late_p2_this_cycle))
 # Churn stop: from iter 2 on, every finding this cycle sat on material the loop
 # itself produced, or outside the PR diff.
 if [ "$ITER" -ge 2 ] && [ "$judged_this_cycle" -gt 0 ] \
@@ -323,7 +369,13 @@ elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$applied_this_cycle" -g
    && [ "$high_sev_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
    && [ "$review_this_cycle" = 0 ]; then
   final_state=minor_floor; break
-elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ]; then final_state=clean; break
+# Only late Codex P2s left: a floor, not clean — clean files no follow-up issue.
+elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
+   && [ "$review_this_cycle" = 0 ] && [ "$late_p2_this_cycle" -gt 0 ]; then
+  final_state=minor_floor; break
+# clean also needs zero unread findings: a review-tier item is one nobody judged.
+elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
+   && [ "$review_this_cycle" = 0 ]; then final_state=clean; break
 elif [ "$applied_this_cycle" = 0 ]; then final_state=user_declined; break
 fi
 done  # end of for-iter

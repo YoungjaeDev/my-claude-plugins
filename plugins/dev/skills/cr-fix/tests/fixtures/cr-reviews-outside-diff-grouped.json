@@ -1,0 +1,14 @@
+[
+  [
+    {
+      "id": 5000000001,
+      "user": {
+        "login": "coderabbitai[bot]"
+      },
+      "state": "COMMENTED",
+      "commit_id": "0000000000000000000000000000000000000000",
+      "submitted_at": "2026-01-01T00:00:00Z",
+      "body": "> [!CAUTION]\n> Some comments are outside the diff and can’t be posted inline due to GitHub limitations.\n> \n> <details>\n> <summary>⚠️ Outside diff range comments (2)</summary><blockquote>\n> \n> <details>\n> <summary>plugins/wiki/skills/lint/SKILL.md (2)</summary><blockquote>\n> \n> `28-30`: **Check for `index.md` before the page loops.**\n> \n> When the directory is empty the run block does not report the missing index.\n> \n> ---\n> \n> `48-49`: **Count index lines instead of checking for a match.**\n> \n> `grep -qF` succeeds on the first match.\n> \n> </blockquote></details>\n> \n> </blockquote></details>\n\n---\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->"
+    }
+  ]
+]

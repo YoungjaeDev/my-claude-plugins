@@ -75,7 +75,7 @@ Domain: ML / data — 모델 학습, 평가, 추론, 데이터 처리 파이프�
 | Source | Tier 정책 |
 |--------|-----------|
 | CodeRabbit `🚨 Bug` / `⚠️ Potential issue` / `🔒 Security` / `🔴 Critical-High` / `🟠 Major` | `gated` — 사용자 per-issue 확인 |
-| CodeRabbit `🛠️ Refactor` (`🟡 Minor` / `🟢 Trivial` / `🟢 Info`) | `auto` — 자동 적용 |
+| CodeRabbit `🛠️ Refactor` (`🟡 Minor` / `🔵 Trivial` / `⚪ Info`) | `auto` — 자동 적용 |
 | CodeRabbit `📝 Nitpick` | `skip` |
 | Codex P1 (red), P2 (yellow) | `gated` |
 | Codex P3 (green) | `skip` |

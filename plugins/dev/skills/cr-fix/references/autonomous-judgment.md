@@ -41,13 +41,16 @@ Items 3-8 of the SKILL.md Step 9c list, in full. Items 1-2 (path-trust gate, san
 6. **Apply / defer / skip**:
    - **apply** → **Stale-line guard**: before editing, if `$path` already appears in `$TRACK_FILE` from an earlier finding this cycle, re-Read the target region (offset `max(1, line-20)`, limit `40`) and re-locate the finding's quoted context in it: an earlier edit may have shifted the line numbers this finding was anchored to. Edit only where the expected context still matches; if the anchor content cannot be re-found in the re-Read region, **defer** the finding instead of editing a guessed location. Then Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
      - **9c.6: Bounded same-file generalization**. After the flagged-line fix lands, when `GENERALIZE=true` AND `is_real=="real"` AND `confidence=="high"` AND the pattern is mechanically grep-able (a literal or regex-matchable construct, not a judgement call), grep the **same file** — or that symbol's body, when the finding is symbol-scoped — for sibling occurrences and apply the identical fix in the same commit. **Never cross-file.** Record the extra lines in `generalized_to`; the finding still counts as 1, so `applied_this_cycle` / `auto_judge_apply` are not re-incremented. Full contract: `references/autonomous-judgment.md`.
+     - **Verify before commit** (`VERIFICATION_GATE=on`): the whole apply, siblings included, runs inside the "Step 9c.6: verify the fix" block in `references/run-blocks.md`. On `fail` the files are back at the pre-fix snapshot and the counters move from apply to defer; log the finding as `action: "defer"`, `reason: "verification-failed"`.
    - **defer** → `deferred_this_cycle=$((deferred_this_cycle+1))`; `auto_judge_defer=$((auto_judge_defer+1))`; log judgment.
    - **High-severity accumulator (Step 13 soft-stop signal)**: for any `apply` or `defer` whose `severity_reassess=="high"`, `high_sev_this_cycle=$((high_sev_this_cycle+1))`. This feeds the Step 13 `minor_floor` soft-stop: a cycle that applied only low-severity fixes and deferred nothing can stop early.
    - **skip** → `auto_judge_skip=$((auto_judge_skip+1))`; log judgment. Does NOT touch `applied_this_cycle` or `deferred_this_cycle`.
 
 7. **Log entry** — append one record per decision to `STATE_FILE.auto_judge_log`: `iter`, `src` (`cr|cli|codex`), `path`, `line`, `badge_or_sev`, `judgment` (the six axes above with the values they took), `action`, `reason` (one line), and `generalized_to` (the sibling lines, only when 9c.6 fired). Full shape: `references/autonomous-judgment.md`.
 
-8. **9c-review tier** (CR finding with no parseable header / Codex with no P1-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor.
+8. **9c-review tier** (CR finding with no parseable header / Codex with no P0-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor or `clean`.
+
+9. **9c-defer tier** (Codex P2 at `ITER >= 2`, decision 15): no Read, no judgment, no edit. Log `action=defer`, `reason=codex-p2-after-iter1`, `judgment=null`; `auto_judge_defer=$((auto_judge_defer+1))`; `late_p2_this_cycle=$((late_p2_this_cycle+1))`. Not counted into `judged_this_cycle` or `deferred_this_cycle`: Step 13 adds it to `deferred_total`, so the Step 14 follow-up issue carries it, and a cycle with nothing else left ends at `minor_floor` rather than holding the loop open.
 
 ## Why no AskUserQuestion
 
@@ -181,8 +184,10 @@ The final JSON aggregates counts (`auto_judge_stats: {apply, defer, skip}`); the
 - `action=skip` → `auto_judge_skip++` only (the existing `skipped_total` continues to count tier=skip filtered-before-table items per `references/skip-minor-rules.md`)
 - `action ∈ {apply, defer}` AND `severity_reassess=="high"` → `high_sev_this_cycle++` (loop-local; feeds the Step 13 `minor_floor` soft-stop)
 - `in_prev_diff == "churn"` → `churn_this_cycle++` (loop-local; feeds the Step 13 `churn` stop)
+- tier `defer` (Codex P2 at `ITER >= 2`) → `late_p2_this_cycle++`, `auto_judge_defer++`; logged as `action=defer`, never judged
+- tier `review` → `review_this_cycle++` (blocks `minor_floor` and `clean`)
 
-This keeps the `applied==0 && deferred==0 → clean` convergence test intact while exposing the autonomous-skip counter as a separate dimension.
+This keeps the `applied==0 && deferred==0 && review==0 → clean` convergence test intact while exposing the autonomous-skip counter as a separate dimension.
 
 ## No new surfaces inside the loop
 

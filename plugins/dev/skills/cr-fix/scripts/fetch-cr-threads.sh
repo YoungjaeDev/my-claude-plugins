@@ -65,7 +65,7 @@ while :; do
 done
 
 # Filter + project into unified record. type/severity extracted from header.
-jq -c '
+jq -c -L "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" 'include "cr-header";
   [ .[]
     | select(.isResolved == false and .isOutdated == false)
     | .comments.nodes[0] as $c
@@ -79,16 +79,8 @@ jq -c '
         body: $c.body,
         databaseId: $c.databaseId
       }
-    # Inline header: `_<category>_ | _<severity>_ | _<effort>_`. The third field
-    # is optional so the two-field form still yields category + severity.
-    # capture() emits NOTHING on a non-match, and an empty value anywhere in an
-    # object constructor deletes the whole object — bind through a one-element
-    # array so "no header" becomes an honest null instead of a dropped finding.
-    + ( ( [ $c.body
-            | capture("_(?<c>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_(?:\\s*\\|\\s*_(?<e>[^_]+)_)?") ]
-          | .[0] ) as $h
-        | { category_emoji: ($h.c // null),
-            severity_emoji: ($h.s // null),
-            effort_emoji:   ($h.e // null) } )
+    # Header fields by emoji badge, whatever the emphasis (scripts/cr-header.jq).
+    # No header -> null fields, never a dropped finding.
+    + ($c.body | cr_header)
   ]
 ' <<<"$all"

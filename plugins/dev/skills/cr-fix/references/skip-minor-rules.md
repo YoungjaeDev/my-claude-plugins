@@ -4,7 +4,7 @@ Opt-in via `--skip-minor`. Applied AFTER `references/tier-classification.md` res
 
 ## Demotion rules
 
-- CR/CLI items with severity ∈ {`🟡 Minor`, `🟢 Trivial`, `🟢 Info`} AND category ≠ `🔒 Security & Privacy` → tier forced to **skip**.
+- CR/CLI items with severity ∈ {`🟡 Minor`, `🔵 Trivial`, `⚪ Info`} AND category ≠ `🔒 Security & Privacy` → tier forced to **skip**.
 - Codex items with `p_badge == "2"` → tier forced to **skip**.
 
 ## Safety net
@@ -20,7 +20,7 @@ The base tier table in `references/tier-classification.md` is the source of trut
 
 Sub-counters drive the footer disclosure only — the Step 16 final JSON keeps `skipped_total` for backward compatibility:
 
-- `skipped_trivial` — CR/CLI `🟢 Trivial` / `🟢 Info` (and any `📝 Nitpick` that reaches a record) filtered by base tier.
+- `skipped_trivial` — CR/CLI `🔵 Trivial` / `⚪ Info` (and any `📝 Nitpick` that reaches a record) filtered by base tier.
 - `skipped_minor` — added only when `--skip-minor` triggers (CR Minor severity + Codex P2).
 
 Invariant: `skipped_total = skipped_trivial + skipped_minor`.

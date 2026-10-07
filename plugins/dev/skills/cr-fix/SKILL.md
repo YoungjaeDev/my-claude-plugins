@@ -208,7 +208,7 @@ Filter `tier=="skip"` items BEFORE rendering: increment `skipped_total` and sub-
 
 Render the remaining items as a single table: `Source · Category/Badge · Severity · Effort · Path:Line · Tier`. Append the footer when `skipped_total > 0`.
 
-CR/CLI tiers come from the inline header's three fields (`_<category>_ | _<severity>_ | _<effort>_`), severity-first — see `references/tier-classification.md`. There is no AskUserQuestion gate between 9a and 9c: when `gated_count==0 && auto_count==0`, Step 8c already handled convergence; otherwise go straight to 9c in severity order.
+CR/CLI tiers come from the inline header's three fields (`<category> | <severity> | <effort>`, read by emoji badge whatever the emphasis — `scripts/cr-header.jq`), severity-first — see `references/tier-classification.md`. There is no AskUserQuestion gate between 9a and 9c: when `gated_count==0 && auto_count==0`, Step 8c already handled convergence; otherwise go straight to 9c in severity order.
 
 ### 9c: Per-finding autonomous judgment
 

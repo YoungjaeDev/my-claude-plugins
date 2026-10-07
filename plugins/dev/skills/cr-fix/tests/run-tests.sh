@@ -75,6 +75,18 @@ out=$(bash "$SCRIPTS/parse-cr-cli-jsonl.sh" "$FIX/cr-cli-malformed.jsonl" 2>/dev
 is "malformed exits 0"              "$rc" 0
 is "malformed keeps valid findings" "$(jq 'length' <<<"$out")" 2
 
+# Severity `none` is the CLI's informational level, not "unreadable": it must
+# skip like Info rather than fall through to `review`. Trivial/Info carry the
+# 🔵/⚪ badges CodeRabbit documents, and a bold comment header parses too.
+out=$(bash "$SCRIPTS/parse-cr-cli-jsonl.sh" "$FIX/cr-cli-severity-none.jsonl" 2>/dev/null)
+cli_tier() { jq -c ".[$1]" <<<"$out" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier'; }
+is "CLI severity none -> skip"      "$(cli_tier 0)" skip
+is "CLI trivial label is 🔵"        "$(jq -r '.[1].severity_emoji' <<<"$out")" "🔵 Trivial"
+is "CLI info label is ⚪"           "$(jq -r '.[2].severity_emoji' <<<"$out")" "⚪ Info"
+is "CLI bold comment header -> category" "$(jq -r '.[3].category_emoji' <<<"$out")" "🗄️ Data Integrity & Integration"
+is "CLI bold comment header -> effort"   "$(jq -r '.[3].effort_emoji' <<<"$out")" "🏗️ Heavy lift"
+is "CLI bold Minor+Heavy lift -> gated"  "$(cli_tier 3)" gated
+
 echo
 echo "cr-commit-state.sh"
 
@@ -260,12 +272,12 @@ is "CR Minor + Quick win -> auto" \
    "$(cls "$(cr '📐 Maintainability & Code Quality' '🟡 Minor' '⚡ Quick win')")" auto
 is "CR Minor + Heavy lift -> gated" \
    "$(cls "$(cr '📐 Maintainability & Code Quality' '🟡 Minor' '🏗️ Heavy lift')")" gated
-is "CR Trivial -> skip"  "$(cls "$(cr '📐 Maintainability & Code Quality' '🟢 Trivial' '⚡ Quick win')")" skip
+is "CR Trivial -> skip"  "$(cls "$(cr '📐 Maintainability & Code Quality' '🔵 Trivial' '⚡ Quick win')")" skip
 # Security escalates on category alone: a Minor-rated privacy leak is still a leak.
 is "CR Security + Minor -> gated" \
    "$(cls "$(cr '🔒 Security & Privacy' '🟡 Minor' '⚡ Quick win')")" gated
 is "CR Security + Trivial -> gated" \
-   "$(cls "$(cr '🔒 Security & Privacy' '🟢 Trivial' '⚡ Quick win')")" gated
+   "$(cls "$(cr '🔒 Security & Privacy' '🔵 Trivial' '⚡ Quick win')")" gated
 # Legacy two-field header: no effort field reads as Quick win, so Minor still
 # reaches `auto` rather than silently regressing to `review`.
 is "CR Minor, no effort field -> auto" \
@@ -306,6 +318,23 @@ is "legacy 2-field header -> severity"  "$(jq -r '.[2].severity_emoji' <<<"$th")
 is "legacy 2-field header -> null effort" "$(jq -r '.[2].effort_emoji' <<<"$th")" null
 is "headerless body -> record survives" "$(jq -r '.[3].path' <<<"$th")" "src/d.py"
 is "headerless body -> null category"   "$(jq -r '.[3].category_emoji' <<<"$th")" null
+
+# The header is read by its emoji badges, not its emphasis. PR #283 got bold
+# headers (`**…** | **…** | **…**`) and the old `_…_` regex either missed them
+# (tier `review`) or latched onto underscores in the body (`last_verified`).
+th=$(CR_THREADS_RESPONSE_FILE="$FIX/cr-threads-header-formats.json" \
+       bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null)
+fields() { jq -r ".[$1] | [.category_emoji, .severity_emoji, .effort_emoji] | join(\" / \")" <<<"$th"; }
+want="🎯 Functional Correctness / 🟡 Minor / ⚡ Quick win"
+is "bold header -> badge fields"    "$(fields 0)" "$want"
+is "italic header -> badge fields"  "$(fields 1)" "$want"
+is "plain header -> badge fields"   "$(fields 2)" "$want"
+is "underscores in body do not leak into header" "$(fields 4)" "$want"
+tier_at() { jq -c ".[$1]" <<<"$th" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier'; }
+is "PR #283 bold Minor+Quick win -> auto" "$(tier_at 0)" auto
+is "PR #283 bold Major -> gated"          "$(tier_at 3)" gated
+is "🔵 Trivial header -> skip"           "$(tier_at 5)" skip
+is "⚪ Info header -> skip"              "$(tier_at 6)" skip
 
 echo
 echo "churn-scope.sh"

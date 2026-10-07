@@ -4,11 +4,13 @@ Inputs: CR thread records (`source: "cr"`, Step 8), Codex inline records (`sourc
 
 ## CR / CLI record field extraction
 
-CodeRabbit opens every inline finding with a three-field italic header:
+CodeRabbit opens every inline finding with a three-field header:
 
 ```text
-_🎯 Functional Correctness_ | _🟠 Major_ | _⚡ Quick win_
+**🎯 Functional Correctness** | **🟠 Major** | **⚡ Quick win**
 ```
+
+The emphasis is not stable (bold today, italic `_…_` earlier, sometimes none), so the header is read by its emoji badges, not its formatting: the first body line that splits on `|` into two or three fields whose second field opens with a severity badge (`🔴` `🟠` `🟡` `🔵` `⚪`), with `*` / `_` / whitespace trimmed off each field. One jq definition does this for both the PR-bot and CLI paths: `scripts/cr-header.jq`. Documented badges: category `🔒` `🩺` `🗄️` `🎯` `🚀` `📐`, severity `🔴` `🟠` `🟡` `🔵` `⚪`.
 
 | Field | Source |
 |------|--------|
@@ -45,7 +47,7 @@ Severity decides, because the category names the defect domain rather than its i
 | CR / CLI | category `🔒 Security & Privacy` | **gated** — regardless of severity |
 | CR / CLI | category `📝 Nitpick` | **skip** (filtered before the table renders) |
 | CR / CLI | severity `🔴 Critical` / `🔴 High` / `🟠 Major` | **gated** |
-| CR / CLI | severity `🟢 Trivial` / `🟢 Info` | **skip** |
+| CR / CLI | severity `🔵 Trivial` / `⚪ Info` | **skip** |
 | CR / CLI | severity `🟡 Minor` + effort `🏗️ Heavy lift` | **gated** |
 | CR / CLI | severity `🟡 Minor` + effort `⚡ Quick win` or absent | **auto** |
 | CR / CLI | no parseable header | **review** (surface only) |

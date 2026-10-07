@@ -81,8 +81,8 @@ Run the "Step 2: draft PR" block in `references/run-blocks.md` verbatim.
 Then resolve the base branch once — Step 5b, Step 7d and the Step 9c churn axis all need the PR's diff scope:
 Run the "Step 2: base branch and review request" block in `references/run-blocks.md` verbatim.
 
-**Non-default base.** With `CR_REVIEW_REQUEST=request` and `CR_SOURCE ∈ {auto, pr-bot}`, request a review once before iter 1 (the PR's opening push was never auto-reviewed) and after every push this run makes (Step 5a, Step 12), always through this block. It posts only when the head has no request yet, so a re-run on an unchanged head does not ask twice:
-Run the "Step 2: request_cr_review" block in `references/run-blocks.md` verbatim. It also defines `await_head_verdicts` (Step 7e, Step 14).
+**Non-default base.** With `CR_REVIEW_REQUEST=request` and `CR_SOURCE ∈ {auto, pr-bot}`, request a review once before iter 1 (the PR's opening push was never auto-reviewed) and after every push this run makes (Step 5a, Step 12), always through this block. `request_cr_review` checks both conditions itself (a pause, `request_cr_review paused`, needs only the PR-bot source), and posts only when the head has no request yet, so a re-run on an unchanged head does not ask twice:
+Run the "Step 2: request_cr_review" block in `references/run-blocks.md` verbatim. It also defines `await_head_verdicts` (Step 7e, Step 14) and `reviewers_on` (Step 15).
 
 An absent CodeRabbit review is never convergence here: Step 8c's `cr_engagement == 0` waits or ends at `cr_inactive`, never at `clean`. The CLI and codex-only sources never post it.
 

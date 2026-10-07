@@ -1721,6 +1721,35 @@ aw=$(cd "$HERE" && PATH="$AW:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step
 is "paused CodeRabbit -> one review request, wait resumes" "$aw" "timeout:1"
 rm -rf "$AW"
 
+# request_cr_review owns its guard: a PR-bot source and a base CodeRabbit will not
+# auto-review, or a pause, which needs the request on any base.
+RQ=$(mktemp -d)
+cat > "$RQ/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*) echo '[{"created_at":"2026-10-06T10:00:00Z"}]' ;;
+  *"/issues/"*"/comments"*) echo '[]' ;;
+  "pr comment"*) echo post >> "$RQ/posts" ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$RQ/gh"
+req() { # CR_SOURCE CR_REVIEW_REQUEST [ARG] -> posts
+  : > "$RQ/posts"
+  SRC=$1 CRR=$2 ARG=${3:-} PATH="$RQ:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 2: request_cr_review")" bash -c '
+    OWNER=o REPO=r PR_NUM=42 CR_SOURCE=$SRC CR_REVIEW_REQUEST=skip
+    git() { echo deadbeef; }
+    eval "$BLOCK"; CR_REVIEW_REQUEST=$CRR
+    request_cr_review $ARG' >/dev/null 2>&1
+  wc -l < "$RQ/posts" | tr -d ' '
+}
+is "request: default base -> no post"            "$(req auto skip)" 0
+is "request: non-default base, pr-bot -> post"   "$(req pr-bot request)" 1
+is "request: cli source -> no post"              "$(req cli request)" 0
+is "request: paused, default base -> post"       "$(req auto skip paused)" 1
+is "request: paused, codex-only -> no post"      "$(req codex-only skip paused)" 0
+rm -rf "$RQ"
+
 # Step 2: a draft PR stops with the `gh pr ready` hint.
 DR=$(mktemp -d)
 printf '#!/usr/bin/env bash\necho "$DRAFT"\n' > "$DR/gh"; chmod +x "$DR/gh"

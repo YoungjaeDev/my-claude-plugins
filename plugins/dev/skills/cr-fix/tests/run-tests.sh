@@ -1132,5 +1132,52 @@ is "gh failure -> non-zero exit"         "$rc" 1
 rm -rf "$AV"
 
 echo
+echo "verify-fix.sh"
+
+# Verification runs before the commit, one fix at a time, so only fixes that pass
+# reach the push. A repository whose build or test already fails before the loop
+# touches it (GPU- or data-bound suites) is left out of the gate, and the final
+# output says so, instead of every fix being reverted for a failure it did not cause.
+vf() { bash "$SCRIPTS/verify-fix.sh" "$@" 2>/dev/null; }
+is "baseline fails from the start -> gate off"  "$(vf baseline 'exit 1')" baseline_failed
+is "baseline passes -> gate on"                 "$(vf baseline 'true')" on
+is "no build/test command -> gate off"          "$(vf baseline '')" no_command
+is "--no-build-check -> gate off, cmd not run"  "$(NO_BUILD=true vf baseline 'echo ran; exit 1')" no_build_check
+fo=$(VERIFICATION_GATE=baseline_failed bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output records the disabled gate"     "$(jq -r '.verification_gate' <<<"$fo")" baseline_failed
+is "schema lists the disabled gate" \
+   "$(jq -r '.properties.verification_gate.enum | index("baseline_failed") != null' "$HERE/../assets/final-output.schema.json")" true
+
+# Two fixes, the second breaks the test. The broken one is reverted (including a
+# file it created), the passing one survives, and only the survivor is committed.
+VF=$(mktemp -d)
+(
+  cd "$VF" && git init -q . && git config user.email t@t && git config user.name t \
+    && printf 'old\n' > a.sh && printf 'old\n' > b.sh && git add -A && git commit -qm base
+) >/dev/null 2>&1
+VCMD='! grep -q BROKEN a.sh b.sh'
+vfx() { (cd "$VF" && bash "$SCRIPTS/verify-fix.sh" "$@" 2>/dev/null); }
+TRK=$(mktemp)
+snap=$(vfx snapshot); printf 'fixed\n' > "$VF/a.sh"; printf '%s\0' a.sh >> "$TRK"
+is "passing fix -> pass"                        "$(vfx check "$snap" "$VCMD")" pass
+snap=$(vfx snapshot)
+printf 'fixed\nBROKEN\n' > "$VF/a.sh"; printf 'BROKEN\n' > "$VF/b.sh"; printf 'new\n' > "$VF/c.sh"
+printf '%s\0' a.sh b.sh c.sh >> "$TRK"
+is "failing fix -> fail"                        "$(vfx check "$snap" "$VCMD")" fail
+is "failing fix reverted, earlier fix kept"     "$(cat "$VF/a.sh")" fixed
+is "failing fix reverted to HEAD content"       "$(cat "$VF/b.sh")" old
+is "file the failing fix created is removed"    "$([ -e "$VF/c.sh" ] && echo present || echo absent)" absent
+(cd "$VF" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK" 1) >/dev/null 2>&1
+is "only the passing fix is committed" \
+   "$(cd "$VF" && git show --name-only --pretty=format: HEAD | tr '\n' ' ')" "a.sh "
+# A cycle whose only fix failed leaves nothing to commit; Step 10's noop skips the push.
+: > "$TRK"
+snap=$(vfx snapshot); printf 'BROKEN\n' > "$VF/b.sh"; printf '%s\0' b.sh >> "$TRK"
+is "only fix fails -> fail"                     "$(vfx check "$snap" "$VCMD")" fail
+is "only-failed cycle -> noop, nothing to push" \
+   "$(cd "$VF" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK" 2 2>/dev/null)" noop
+rm -rf "$VF" "$TRK"
+
+echo
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

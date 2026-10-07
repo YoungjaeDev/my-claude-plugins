@@ -58,6 +58,11 @@
         }
       ]
     },
+    "verification_gate": {
+      "type": "string",
+      "enum": ["on", "baseline_failed", "no_build_check", "no_command", "unknown"],
+      "description": "Step 3 baseline result for the pre-commit build/test gate (scripts/verify-fix.sh). Anything but `on` means fixes were committed unverified: the repo failed before the loop touched it, --no-build-check was passed, or the repo names no build/test command."
+    },
     "pre_flight_last": {
       "description": "v2 Step 5 pre-flight decision blob from the LAST iteration (the archived state file preserves all iters). Null when CR_SOURCE bypassed pre-flight (cli / codex-only).",
       "oneOf": [

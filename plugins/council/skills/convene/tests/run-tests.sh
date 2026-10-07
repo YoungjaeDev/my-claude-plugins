@@ -7,15 +7,16 @@
 #
 #   1. Runner contracts (grep the document). Dropping `< /dev/null` from the agy
 #      call makes it block forever on a TTY that never arrives, and
-#      `--print-timeout` does not bound it. Parsing codex stdout instead of its
-#      `-o` file picks up hook lines and token counts as if they were the answer.
+#      `--print-timeout` does not bound it. codex's answer is read from its `-o`
+#      file, the documented carrier of the final message.
 #      Neither failure is caught by check-shell-portability.
 #   2. Registry behavior (execute it). The blocks are EXTRACTED FROM SKILL.md and
 #      run against a throwaway HOME — never re-typed here. A copy would let a
 #      regression in the real Step 0 block leave this suite green, which is the
 #      one outcome that makes the suite worse than having none.
 #
-# No network and no CLI calls.
+# No network and no real CLI calls: the stale-pin check runs against stub
+# `codex` / `agy` binaries that print recorded output formats.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -87,7 +88,7 @@ has "agy call closes stdin with < /dev/null" '--print "$AGY_PROMPT" < /dev/null'
 # Go's flag parser eats the next token as the prompt, so --print must come last.
 has "--print is the last flag before the prompt" '--model "$AGY_MODEL" --print'
 
-# codex stdout interleaves hook lines and a token count; -o carries the answer.
+# -o (--output-last-message) is the documented carrier of the final answer.
 has "codex captures its answer with -o"     '-o "$DIR/r1-codex.md"'
 # `-` reads the prompt from stdin, so no user text is ever re-parsed by the shell.
 has "codex takes its prompt on stdin"       '- < "$DIR/r1-prompt.md"'
@@ -131,7 +132,7 @@ has "probe carries the service tier"        '-c service_tier="\"$CODEX_TIER\"" \
 # The Claude seat has no CLI list — its candidate set is the Agent tool's enum.
 has "claude pin is checked against the enum" 'sonnet|opus|haiku|fable) ;;'
 # A read failure must not masquerade as a retired model.
-has "unread lists are reported separately" 'LIST_UNREAD=codex reason=cache-unparseable'
+has "unread lists are reported separately" 'LIST_UNREAD=codex reason=catalog-unparseable'
 # A user's deliberate `false` must not gain a duplicate key above it.
 has "an existing non-true setting is preserved" 'leaving it untouched'
 # The writer requires service_tier, so freshness must require it too.
@@ -270,6 +271,65 @@ is "every enum value is accepted"     "$(for m in sonnet opus haiku fable; do
       try_pins '{"codex":{"model":"m","effort":"xhigh","service_tier":"fast"},"agy":{"model":"a"},"claude":{"model":"'"$m"'"}}'
     done | sort -u | tr -d '\n')" 0
 seed_pins                           # restore good pins for any later case
+
+echo
+echo "stale-pin check — recorded CLI output formats (extracted, executed)"
+
+STALE=$(extract_bash_block_with 'STALE_PIN=agy')
+case "$STALE" in *'STALE_PIN=codex'*) ok "stale-pin block extracted from SKILL.md" ;;
+  *) bad "stale-pin block extracted from SKILL.md" "block containing STALE_PIN=codex" "$(printf '%.60s' "$STALE")" ;; esac
+
+write_registry                      # pins: codex gpt-5.6-sol, agy gemini-3.6-flash-high
+# Stub binaries read their output and exit status from files, so each case states
+# exactly what the CLI printed. PATH holds only the stubs, jq, and the base system,
+# so a real codex or agy on the machine can never answer for a stub.
+SB="$T/stubbin"; mkdir -p "$SB"
+ln -s "$(command -v jq)" "$SB/jq"
+cat > "$SB/agy" <<'STUB'
+#!/bin/sh
+[ "$1" = models ] || exit 2
+cat "$STUB_DIR/agy.out"; exit "$(cat "$STUB_DIR/agy.rc")"
+STUB
+cat > "$SB/codex" <<'STUB'
+#!/bin/sh
+[ "$1 $2" = "debug models" ] || exit 2
+cat "$STUB_DIR/codex.out"; exit "$(cat "$STUB_DIR/codex.rc")"
+STUB
+chmod +x "$SB/agy" "$SB/codex"
+SD="$T/stubdata"; mkdir -p "$SD"
+CATALOG='{"models":[{"slug":"gpt-6-sol","visibility":"list"},{"slug":"gpt-5.6-sol","visibility":"list"}]}'
+stale_run() {  # $1 agy stdout, $2 agy rc, $3 codex stdout, $4 codex rc; prints verdict lines
+  printf '%s' "$1" > "$SD/agy.out";   echo "$2" > "$SD/agy.rc"
+  printf '%s' "$3" > "$SD/codex.out"; echo "$4" > "$SD/codex.rc"
+  ( HOME="$T/home" CODEX_HOME="$T/no-codex-home" STUB_DIR="$SD" PATH="$SB:/usr/bin:/bin" \
+      bash -c "$STALE" ) 2>/dev/null | tr '\n' ' ' | sed 's/ $//'
+}
+TAB=$(printf '\t')
+# agy 1.2.9 prints `slug<TAB>Display Name`; a full-line match against that
+# never equals the pin, so every fresh registry got a false STALE_PIN.
+is "agy slug<TAB>name listing keeps a live pin" \
+   "$(stale_run "gemini-3.8-flash-high${TAB}Gemini 3.8 Flash (High)
+gemini-3.6-flash-high${TAB}Gemini 3.6 Flash (High)
+" 0 "$CATALOG" 0)" ""
+is "agy bare-slug listing keeps a live pin" \
+   "$(stale_run "gemini-3.6-flash-high
+" 0 "$CATALOG" 0)" ""
+is "agy pin missing from the listing is stale" \
+   "$(stale_run "gemini-3.8-flash-high${TAB}Gemini 3.8 Flash (High)
+" 0 "$CATALOG" 0)" "STALE_PIN=agy:gemini-3.6-flash-high"
+is "agy listing failure is unread, not stale" \
+   "$(stale_run "" 1 "$CATALOG" 0)" "LIST_UNREAD=agy reason=listing-failed"
+is "codex pin missing from the catalog is stale" \
+   "$(stale_run "gemini-3.6-flash-high
+" 0 '{"models":[{"slug":"gpt-6-sol"}]}' 0)" "STALE_PIN=codex:gpt-5.6-sol"
+is "codex catalog failure with no cache is unread" \
+   "$(stale_run "gemini-3.6-flash-high
+" 0 "" 1)" "LIST_UNREAD=codex reason=catalog-absent"
+mkdir -p "$T/no-codex-home"; printf '%s\n' "$CATALOG" > "$T/no-codex-home/models_cache.json"
+is "older codex falls back to the cache file" \
+   "$(stale_run "gemini-3.6-flash-high
+" 0 "" 1)" ""
+rm -f "$T/no-codex-home/models_cache.json"
 
 echo
 echo "codex config block — TOML scope (extracted from SKILL.md, executed)"

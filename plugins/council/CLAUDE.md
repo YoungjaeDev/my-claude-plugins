@@ -22,10 +22,10 @@ else. Nothing discovers that another model is on PATH or executes the delegation
 
 Three seats, plus a chair that is not a seat:
 
-| Seat | Runner | Pinned by default |
+| Seat | Runner | First-run proposal |
 |---|---|---|
-| codex | `codex exec` | `gpt-5.6-sol`, effort `xhigh`, service tier `fast` |
-| agy | `agy --print` | `gemini-3.6-flash-high` |
+| codex | `codex exec` | first entry of `codex debug models`, its default effort, its first speed tier |
+| agy | `agy --print` | first slug of `agy models` |
 | claude | `Agent` tool with a `model` override | `opus` |
 | chair | the main session | whatever the user is running |
 
@@ -45,7 +45,7 @@ Three seats, plus a chair that is not a seat:
   paths are passed as paths. What gets packed into the prompt is what a path cannot carry:
   mem0 memories, Serena symbol graphs, scout research.
 - **Claude-only.** Running this under Codex would summon codex as its own seat, and Codex has
-  no `Agent` tool for the Claude seat. Same reasoning that excludes `codex-image`.
+  no access to Claude's `Agent` tool for the Claude seat. Same reasoning that excludes `codex-image`.
 - **Autonomous agent-team debate was deliberately deferred.** It works technically, but
   teammates cannot question the user, which breaks the re-question gate. The full finding is
   in the spec's "보류된 갈래" section.
@@ -53,7 +53,7 @@ Three seats, plus a chair that is not a seat:
 ## Runner contracts that bite
 
 - **codex** takes its prompt on stdin via `codex exec ... -` and returns the final message with
-  `-o <file>`. Do not parse stdout: hook lines and token counts are mixed into it.
+  `-o <file>` (`--output-last-message`, the documented carrier of the final message).
 - **agy** takes its prompt as a shell argument, so `--print` must be the last flag and the
   command must end with `< /dev/null`. Without that redirect it blocks forever waiting on a TTY
   and `--print-timeout` does not bound it. Its answer is also read from a file rather than

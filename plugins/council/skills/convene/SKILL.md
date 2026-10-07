@@ -62,8 +62,8 @@ valid. Registry writes also maintain `~/.codex/config.toml`'s `check_for_update_
 (insert only when the key is absent; never touch a user's own `false`), and a final preflight
 call re-reads the pins and probes the installed `codex` CLI before Step 1 relies on them.
 
-Defaults on first run: codex `gpt-5.6-sol` / `xhigh` / `fast`, agy `gemini-3.6-flash-high`,
-claude `opus`.
+Defaults on first run are proposed from the candidate lists the CLIs print (first codex entry
+with its default effort, first agy slug) plus claude `opus`; no model name is fixed here.
 
 See `references/registry.md` for the TTL check, the candidate-list read, the pin write and its
 charset/enum validation, the `config.toml` maintenance, and the preflight probe, each with the
@@ -111,12 +111,14 @@ Compose `$DIR/r1-prompt.md` from the brief plus these instructions to every seat
 The Claude seat additionally gets the adversarial role described in Step 4.
 
 Run the three seats: they must not see each other's answers in this round. codex takes its
-prompt on stdin and writes its answer to a file with `-o`; never parse its stdout, which
-interleaves hook lines and token counts. agy takes its prompt as a shell argument, so `--print`
+prompt on stdin and writes its answer to a file with `-o` (`--output-last-message`; see the
+non-interactive mode page under <https://developers.openai.com/codex/llms.txt>). agy takes its prompt as a shell argument, so `--print`
 must be the last flag and the call must end with `< /dev/null`, or it blocks forever waiting on
 a TTY that `--print-timeout` does not bound. The Claude seat runs through the `Agent` tool with
-`model` set to `seats.claude.model` from the registry (`opus` by default; the tool accepts
-`sonnet`, `opus`, `haiku`, `fable`), writing its answer to `$DIR/r1-claude.md`.
+`model` set to `seats.claude.model` from the registry (`opus` by default; the allowed aliases are
+`sonnet`, `opus`, `haiku`, `fable`, a policy subset of
+<https://code.claude.com/docs/en/sub-agents#choose-a-model>), writing its answer to
+`$DIR/r1-claude.md`.
 
 Verify each file exists and is non-empty before moving on. A missing file is a failure, not an
 empty opinion; see the failure policy.

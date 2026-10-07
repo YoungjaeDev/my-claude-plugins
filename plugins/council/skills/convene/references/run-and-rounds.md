@@ -142,7 +142,8 @@ CODEX_EFFORT=$(jq -r '.seats.codex.effort' "$REG")
 CODEX_TIER=$(jq -r '.seats.codex.service_tier' "$REG")
 
 # codex — prompt on stdin (no shell quoting of user text), answer to a file.
-# Do NOT parse stdout: hook lines and token counts are interleaved into it.
+# -o (--output-last-message) writes the final message to a file; read that file, per
+# the Codex non-interactive mode doc, not stdout.
 codex exec -s read-only --skip-git-repo-check \
   -m "$CODEX_MODEL" \
   -c model_reasoning_effort="\"$CODEX_EFFORT\"" \
@@ -170,7 +171,8 @@ agy --dangerously-skip-permissions --add-dir "$PWD/$DIR" --print-timeout 10m0s \
 ```
 
 The Claude seat runs through the `Agent` tool with `model` set to `seats.claude.model` read from
-the registry (`opus` by default; the tool accepts `sonnet`, `opus`, `haiku`, `fable`). Have it
+the registry (`opus` by default; allowed aliases `sonnet`, `opus`, `haiku`, `fable`, a policy
+subset of <https://code.claude.com/docs/en/sub-agents#choose-a-model>). Have it
 write its answer to `$DIR/r1-claude.md`.
 
 Verify each file exists and is non-empty before moving on. A missing file is a failure, not an

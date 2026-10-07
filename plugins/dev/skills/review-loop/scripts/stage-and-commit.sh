@@ -14,7 +14,8 @@ files=()
 while IFS= read -r -d '' f; do
   [ -z "$f" ] && continue
   if git diff --name-only -z -- "$f" >/dev/null 2>&1; then
-    if [ -n "$(git diff --name-only -- "$f")" ] || [ -n "$(git ls-files --others --exclude-standard -- "$f")" ]; then
+    # Against HEAD, not the index: a VERIFY_CMD that stages (`git add -A`) leaves the fix there.
+    if [ -n "$(git diff HEAD --name-only -- "$f")" ] || [ -n "$(git ls-files --others --exclude-standard -- "$f")" ]; then
       files+=("$f")
     fi
   fi

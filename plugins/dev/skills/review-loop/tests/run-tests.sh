@@ -1660,6 +1660,38 @@ is "held stop, gated finding fetched -> 8c hands it to 9a, one more round" \
       printf "%s:%s:%s" "$final_state" "$HOLD_STATE" "$round"' 2>/dev/null)" "::yes"
 rm -rf "$H8"
 
+# Step 9c.6: a check that dies before printing (its revert failed under set -e) is not
+# a pass. Only `pass` keeps the apply; anything else turns it into a defer.
+V96=$(mktemp -d); mkdir -p "$V96/scripts"
+verify_step() { # CHECK_STDOUT CHECK_RC -> applied:deferred
+  printf '#!/usr/bin/env bash\n[ "$1" = check ] || { echo snap; exit 0; }\nprintf %%s "%s"\nexit %s\n' "$1" "$2" \
+    > "$V96/scripts/verify-fix.sh"
+  SKILL_DIR="$V96" BLOCK="$(rb_block "Step 9c.6: verify the fix")" bash -c '
+    VERIFICATION_GATE=on VERIFY_CMD=true applied_this_cycle=1 auto_judge_apply=1
+    deferred_this_cycle=0 auto_judge_defer=0
+    eval "$BLOCK"; printf "%s:%s" "$applied_this_cycle" "$deferred_this_cycle"' 2>/dev/null
+}
+is "9c.6 pass keeps the apply"                       "$(verify_step pass 0)" "1:0"
+is "9c.6 fail turns the apply into a defer"          "$(verify_step fail 0)" "0:1"
+is "9c.6 check died with no output -> defer, not pass" "$(verify_step "" 1)" "0:1"
+rm -rf "$V96"
+
+# Step 15: findings nobody could read need the follow-up issue as much as deferred
+# ones, so the gate sees them in DEFERRED_TOTAL (and the append flag with them).
+G15=$(mktemp -d); mkdir -p "$G15/scripts"
+printf '#!/usr/bin/env bash\njq -nc --arg d "$DEFERRED_TOTAL" --arg a "$FOLLOWUP_APPEND_FAILED" '"'"'{eligible:false,ineligible_reason:("D=\\($d) A=\\($a)")}'"'"'\n' \
+  > "$G15/scripts/auto-merge-gate.sh"
+echo '{"followup_issue":{"number":7,"append_failed":true}}' > "$G15/state.json"
+gate_env() { # DEFERRED REVIEW -> the env the gate saw
+  DT=$1 RT=$2 SKILL_DIR="$G15" STATE_FILE="$G15/state.json" BLOCK="$(rb_block "Step 15: auto-merge gate")" bash -c '
+    reviewers_on() { cr_on=true; codex_on=auto; }
+    final_state=clean deferred_total=$DT review_total=$RT OWNER=o REPO=r PR_NUM=1
+    eval "$BLOCK"' 2>&1 >/dev/null | sed -n 's/^auto-merge: //p'
+}
+is "Step 15 gate counts unread findings as left behind" "$(gate_env 0 2)" "D=2 A=true"
+is "Step 15 gate with nothing left behind"              "$(gate_env 0 0)" "D=0 A=false"
+rm -rf "$G15"
+
 # Step 12: a noop Step 10 (every fix reverted, or none applied) pushes nothing.
 P12=$(mktemp -d); printf '#!/usr/bin/env bash\necho "$*" >> "%s/calls"\n' "$P12" > "$P12/git"; chmod +x "$P12/git"
 push_step() { # RES -> pushed_this_cycle:git-calls
@@ -1971,6 +2003,13 @@ snap=$(vfx snapshot); printf 'BROKEN\n' > "$VF/b.sh"; printf '%s\0' b.sh >> "$TR
 is "only fix fails -> fail"                     "$(vfx check "$snap" "$VCMD")" fail
 is "only-failed cycle -> noop, nothing to push" \
    "$(cd "$VF" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK" 2 2>/dev/null)" noop
+# A VERIFY_CMD that stages (this repo's chain opens with `git add -A`) leaves the fix
+# in the index: it still differs from HEAD and must be committed, not read as noop.
+: > "$TRK"
+snap=$(vfx snapshot); printf 'staged fix\n' > "$VF/a.sh"; printf '%s\0' a.sh >> "$TRK"
+is "fix staged by the verify command -> pass" "$(vfx check "$snap" 'git add -A')" pass
+is "fix already in the index is still committed" \
+   "$(cd "$VF" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK" 3 2>/dev/null | tail -1)" staged:1
 rm -rf "$VF" "$TRK"
 
 echo

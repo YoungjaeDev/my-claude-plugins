@@ -395,9 +395,10 @@ Wraps each `apply`: `snap` before the first Edit of the finding, `check` after i
 ```bash
 [ "$VERIFICATION_GATE" = on ] && snap=$(bash "$SKILL_DIR/scripts/verify-fix.sh" snapshot)
 # ... Edit the fix and its same-file siblings ...
+# Anything but `pass` fails: a check that died mid-revert prints nothing.
 if [ "$VERIFICATION_GATE" = on ] \
-   && [ "$(bash "$SKILL_DIR/scripts/verify-fix.sh" check "$snap" "$VERIFY_CMD")" = fail ]; then
-  # Reverted to $snap. The apply becomes a defer, reason `verification-failed`.
+   && [ "$(bash "$SKILL_DIR/scripts/verify-fix.sh" check "$snap" "$VERIFY_CMD")" != pass ]; then
+  # Reverted to $snap (or partly, if the check died). The apply becomes a defer, reason `verification-failed`.
   applied_this_cycle=$((applied_this_cycle-1)); auto_judge_apply=$((auto_judge_apply-1))
   deferred_this_cycle=$((deferred_this_cycle+1)); auto_judge_defer=$((auto_judge_defer+1))
 fi
@@ -514,9 +515,11 @@ esac
 HEAD_SHA=$(git rev-parse HEAD)
 # The gate re-reads every HEAD verdict (one look, no wait: Steps 7e and 14 waited).
 reviewers_on
+# Unread (`review`-tier) findings need the follow-up issue as much as deferred ones.
+left_behind=$((deferred_total + ${review_total:-0}))
 gate=$(FINAL_STATE="$final_state" CR_ON="$cr_on" CODEX_ON="$codex_on" \
-       FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$deferred_total" \
-       FOLLOWUP_APPEND_FAILED="$([ "$deferred_total" -gt 0 ] && jq -r '.followup_issue.append_failed // false' "$STATE_FILE" || echo false)" \
+       FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$left_behind" \
+       FOLLOWUP_APPEND_FAILED="$([ "$left_behind" -gt 0 ] && jq -r '.followup_issue.append_failed // false' "$STATE_FILE" || echo false)" \
        bash $SKILL_DIR/scripts/auto-merge-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$HEAD_SHA")
 eligible=$(jq -r '.eligible' <<<"$gate")
 cr_state=$(jq -r '.cr_state' <<<"$gate")

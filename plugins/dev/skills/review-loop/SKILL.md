@@ -288,7 +288,7 @@ Creation failure is **not** fatal to the run, but it does block Step 15: the def
 
 ## Step 15: Auto-merge gate
 
-Run only when `--auto-merge` is set and `verification_blocking=false`. The gate script owns two axes. Convergence: `clean`, `minor_floor` and `churn` qualify once Step 14's follow-up issue exists or when the run deferred nothing, and everything else (`codex_failed` included) is ineligible — so a failed `gh issue create` leaves the PR open by construction. HEAD verdicts: every reviewer that is on must have given HEAD findings or clean; a HEAD with no verdict, or only a rate-limit notice, is ineligible.
+Run only when `--auto-merge` is set and `verification_blocking=false`. The gate script owns two axes. Convergence: `clean`, `minor_floor` and `churn` qualify once Step 14's follow-up issue exists or when the run deferred nothing and left no finding unread, and everything else (`codex_failed` included) is ineligible — so a failed `gh issue create` leaves the PR open by construction. HEAD verdicts: every reviewer that is on must have given HEAD findings or clean; a HEAD with no verdict, or only a rate-limit notice, is ineligible.
 Run the "Step 15: auto-merge gate" block in `references/run-blocks.md` verbatim.
 
 ## Step 16: Cleanup + final JSON

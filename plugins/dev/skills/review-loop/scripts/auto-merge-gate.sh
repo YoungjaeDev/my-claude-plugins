@@ -80,8 +80,9 @@ cr_state="${cr_state:-unknown}"
 
 # Pending checks are not blocking: `gh pr merge --auto` waits for them. Only a check
 # that has already failed, errored, or been cancelled blocks the merge.
-# `gh pr checks` exits 8 when checks are pending and 1 when some failed, printing the
-# count either way; `|| echo 0` would append a second value and break the jq below.
+# With --json, `gh pr checks` exits 0 whatever the checks say (it returns before the
+# pending-8 / failed-1 exit codes, cli/cli pkg/cmd/pr/checks). rc is still classified
+# below so a gh failure reads as unmeasured; `|| echo 0` would append a second value.
 blocking=$(gh pr checks "$PR_NUM" --json name,state \
   --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT" or .state == "ACTION_REQUIRED")] | length' 2>/dev/null); rc=$?
 case "$rc" in

@@ -52,7 +52,7 @@
 
 - `gh api --paginate` + `--jq` 조합에 `--slurp` 누락. 단 `gh`는 둘의 동시 사용을 거부하므로 `gh api --paginate ENDPOINT | jq -s 'add'` 패턴을 쓴다.
 - `gh api ... || echo "[]"`는 네트워크·rate-limit·권한 에러를 "결과 없음"으로 삼킨다. 실패는 명시적 exit 또는 stderr 통보로 구분한다.
-- 출력과 종료 상태가 독립인 `gh` 하위 명령에 `|| <기본값>`을 붙이지 않는다. `gh pr checks`는 pending에서 8, 실패에서 1로 끝나면서도 필터 결과를 정상 출력하므로 `$(gh pr checks … || echo 0)`은 `0\n0`이 되어 뒤의 `jq --argjson`이 깨진다. stdout과 rc를 따로 받아 rc를 분류하고, 값이 정수인지 확인한다.
+- 출력과 종료 상태가 독립인 `gh` 하위 명령에 `|| <기본값>`을 붙이지 않는다. `gh pr checks`는 `--json` 없이 돌리면 pending에서 8, 실패에서 1로 끝나면서도 필터 결과를 정상 출력하므로 (`--json` 을 주면 종료 코드 판정 전에 반환해 항상 0 이다. 그러니 `--json` 호출의 errexit 지적은 오탐이다) `$(gh pr checks … || echo 0)`은 `0\n0`이 되어 뒤의 `jq --argjson`이 깨진다. stdout과 rc를 따로 받아 rc를 분류하고, 값이 정수인지 확인한다.
 - 읽기 실패 삼킴의 write 쌍도 잡는다: 변환 결과를 검사 없이 `gh issue/pr edit --body "$NEW"`로 내보내면 변환 실패가 원격 본문을 공백으로 파괴한다. 원격 write 앞에는 빈 값 가드.
 - `sed` replacement의 사용자 입력은 정화한다: `&`는 매치 전체로 확장되고 `\`와 구분자도 escape가 필요하다 (`sed 's/[\\&|]/\\&/g'`). `AskUserQuestion` 라벨을 그대로 경로/플래그 토큰으로 쓰지 않는다 — case-match로 도메인 토큰을 추출한다.
 
@@ -67,4 +67,5 @@
 - **플러그인 제거 PR**: `git grep -niE '<name>'`로 저장소 전체(다른 플러그인 skill 본문, `docs/` 포함)에서 살아남은 참조를 제거한다. count 파일만으로는 부족하다. 제거된 플러그인이 생성하던 tracked 산출물도 같은 PR에서 지운다.
 - **`metadata.version`은 릴리스 카운터다.** semver가 아니므로 플러그인 제거 같은 breaking 변경도 MINOR로 올린다. semver 규칙은 per-plugin `version`에만 적용된다. "breaking → MAJOR" 지적은 오탐.
 - **도입-버전 마커는 bump하지 않는다.** `스킬 3종 (0.7.0)`, `0.7.0부터 ...` 같은 표기는 기능이 언제 들어왔는지의 이력이다. 현재 버전을 추적하는 것은 per-plugin `version`, `metadata.version`, description 카운트 문자열뿐이다.
+- **run-block 테스트는 상태를 넘겨받는 블록을 이어서 돌린다.** `references/run-blocks.md` 의 블록이 앞 블록이 세운 변수(`HOLD_STATE`, `records_n`, `res` 같은)로 분기하면, 그 분기의 테스트는 두 블록을 한 셸에서 순서대로 실행해야 한다. 블록 하나만 떼어 돌리는 테스트는 앞 블록의 `break`·`continue` 가 뒤 블록을 건너뛰는 버그를 통과시킨다 (Step 8c 의 무조건 break 가 9a 분류를 막은 사례).
 - **캐시 안내 유지.** version bump만으로 사용자 캐시가 갱신되지 않는다 ([#17361](https://github.com/anthropics/claude-code/issues/17361), [#19197](https://github.com/anthropics/claude-code/issues/19197)). 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차를 유지한다.

@@ -2,7 +2,7 @@
 # Usage: bash scripts/cr-commit-state.sh OWNER REPO SHA
 #
 # Emits exactly one JSON line describing CodeRabbit's reported state for SHA:
-#   {"state":"success|failure|pending|rate_limited|none","description":"...","target_url":"...",
+#   {"state":"success|failure|pending|rate_limited|none|error","description":"...","target_url":"...",
 #    "created_at":"...","channel":"status|check_run|none"}
 #
 # WHY THIS EXISTS
@@ -35,7 +35,9 @@ error_state() { printf '{"state":"error","description":"%s","target_url":"","cre
 # row": the old `|| echo '[]'` masked auth/network/rate-limit as an empty result
 # that mapped to state:"none", indistinguishable from a repo where CodeRabbit
 # simply hasn't reported. Propagate the failure so the caller can route it to a
-# real error channel. Rationale: docs/adr/0002-review-loop-waits-for-head-verdicts.md.
+# real error channel. A page that arrives but does not parse is the same: falling
+# back to `{}` read as "no CR row" and ended at state:"none" (issue #297).
+# Rationale: docs/adr/0002-review-loop-waits-for-head-verdicts.md.
 fetch_statuses() {
   if [ "${CR_STATE_STATUSES_FILE:-}" = "__FAIL__" ]; then return 1; fi
   if [ -n "${CR_STATE_STATUSES_FILE:-}" ]; then cat "$CR_STATE_STATUSES_FILE"; return 0; fi
@@ -62,7 +64,8 @@ RL_NORMALIZE='if .state == "success" and (.description | test($rl; "i")) then .s
 if ! statuses_raw=$(fetch_statuses); then error_state "fetch failed: commit statuses" "status"; exit 0; fi
 status_row=$(jq -s 'add // []
   | [ .[] | select(.context // "" | test("CodeRabbit"; "i")) ]
-  | sort_by(.created_at) | reverse | .[0] // {}' <<<"$statuses_raw" 2>/dev/null || echo '{}')
+  | sort_by(.created_at) | reverse | .[0] // {}' <<<"$statuses_raw" 2>/dev/null) \
+  || { error_state "parse failed: commit statuses" "status"; exit 0; }
 
 if [ "$(jq -r 'has("state")' <<<"$status_row" 2>/dev/null || echo false)" = "true" ]; then
   jq -c --arg rl "$CR_STATUS_RL_RE" '{
@@ -91,7 +94,8 @@ fi
 if ! checkruns_raw=$(fetch_checkruns); then error_state "fetch failed: check runs" "check_run"; exit 0; fi
 check_row=$(jq -s '[ .[] | (.check_runs // []) ] | add // []
   | [ .[] | select(.name // "" | test("CodeRabbit"; "i")) ]
-  | sort_by(.started_at // "9999-12-31T23:59:59Z") | reverse | .[0] // {}' <<<"$checkruns_raw" 2>/dev/null || echo '{}')
+  | sort_by(.started_at // "9999-12-31T23:59:59Z") | reverse | .[0] // {}' <<<"$checkruns_raw" 2>/dev/null) \
+  || { error_state "parse failed: check runs" "check_run"; exit 0; }
 
 if [ "$(jq -r 'has("status")' <<<"$check_row" 2>/dev/null || echo false)" = "true" ]; then
   jq -c --arg rl "$CR_STATUS_RL_RE" '

@@ -66,7 +66,8 @@ reviewers_on() {
 # until every reviewer this run has on gave HEAD a verdict. Sets hv (one JSON line,
 # scripts/head-verdicts.sh) and hv_state: ready | timeout | codex_failed. A paused
 # CodeRabbit (auto_pause_after_reviewed_commits) gets one `@coderabbitai review` for
-# this HEAD, then the wait resumes on the same push-anchored budget.
+# this HEAD, then the wait resumes with the CodeRabbit budget counted from that
+# request (the newer of push and request time).
 await_head_verdicts() {
   local sha pt round cr_on codex_on
   sha=$(git rev-parse HEAD)
@@ -315,8 +316,9 @@ esac
 ```bash
 cr_records=$(bash $SKILL_DIR/scripts/fetch-cr-threads.sh "$OWNER" "$REPO" "$PR_NUM") \
   || { final_state=failure; break; }
-# Outside-diff findings live only in review bodies; add them, merged with any
-# thread on the same path and line. An unreadable block fails the round.
+# Outside-diff findings live only in review bodies; add them, merged only into a
+# thread that is a confirmed copy (same path, line, header and title). An
+# unreadable block fails the round.
 cr_processed=$(jq -c '.cr_processed_reviews // []' "$STATE_FILE") || { final_state=failure; break; }
 cr_records=$(bash $SKILL_DIR/scripts/fetch-cr-outside-diff.sh "$OWNER" "$REPO" "$PR_NUM" "$cr_processed" <<<"$cr_records") \
   || { final_state=failure; break; }

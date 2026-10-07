@@ -21,9 +21,11 @@
 #                 The caller posts it; this script never writes to the PR.
 #   timeout       the budget ran out first
 #
-# Budget: the existing caps, anchored to the push so waiting again on the same
-# HEAD never extends them. CR: TIMEOUT - push_age. Codex: codex-head-verdict.sh
-# wait_seconds, max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age). The cap is the
+# Budget: the existing caps, anchored so waiting again on the same HEAD never
+# extends them. CR: TIMEOUT - age of the newer of the push and the latest
+# `@coderabbitai review` comment (CodeRabbit starts on either). Codex:
+# codex-head-verdict.sh wait_seconds, max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT -
+# push_age). The cap is the
 # larger budget among reviewers still pending on the first look. CAP overrides it
 # (CAP=0 is a single look, which the auto-merge gate uses).
 #
@@ -40,9 +42,27 @@ CAP="${CAP:-}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PAUSE_MARK='auto-generated comment: review paused by coderabbit\.ai'
 
-# Same age rule as codex-head-verdict.sh: unparseable or absent counts as 0.
-cr_budget=$(jq -n --arg t "$PUSH_TIME" --argjson to "$TIMEOUT" '
-  ((try (now - ($t | fromdateiso8601)) catch 0) | floor | if . < 0 then 0 else . end) as $age
+# CodeRabbit starts on the push, or on a `@coderabbitai review` posted after it
+# (non-default base, paused reviews), so its budget runs from the newer of the
+# push and the request comment's server time (created_at). Same age rule as
+# codex-head-verdict.sh: an unparseable or absent PUSH_TIME counts as age 0, and
+# so do comments that cannot be read (the anchor is unknown, not the push).
+req_times='[]'; anchor_known=true
+if [ "$CR_ON" = true ]; then
+  if ! req_times=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2>/dev/null \
+       | jq -cs '[add // [] | .[]
+           | select(((.body // "") | gsub("^\\s+|\\s+$"; "")) == "@coderabbitai review")
+           | .created_at // empty]' 2>/dev/null); then
+    echo "warn: head-verdicts: PR comments unreadable; CodeRabbit budget is the full TIMEOUT" >&2
+    req_times='[]'; anchor_known=false
+  fi
+fi
+cr_budget=$(jq -n --arg t "$PUSH_TIME" --argjson req "$req_times" --argjson known "$anchor_known" \
+  --argjson to "$TIMEOUT" '
+  (try ($t | fromdateiso8601) catch null) as $push
+  | (if $push == null or ($known | not) then 0
+     else ([$push, ($req[] | try fromdateiso8601 catch empty)] | max) as $from
+       | now - $from | floor | if . < 0 then 0 else . end end) as $age
   | [0, $to - $age] | max')
 
 SECONDS=0

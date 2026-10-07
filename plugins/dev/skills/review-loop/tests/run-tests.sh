@@ -140,6 +140,12 @@ s=$(CR_STATE_STATUSES_FILE="$FIX/statuses-empty.json" CR_STATE_CHECKRUNS_FILE=__
       bash "$SCRIPTS/cr-commit-state.sh" o r sha 2>/dev/null)
 is "checkruns fetch failure -> error" "$(jq -r '.state' <<<"$s")" error
 is "checkruns fetch failure -> channel check_run" "$(jq -r '.channel' <<<"$s")" check_run
+# A page that arrives but does not parse is no answer either: falling back to {}
+# read as "no CR row" and ended at state:none (issue #297).
+s=$(state not-json.txt checkruns-empty.json)
+is "unparseable statuses page -> error, not none" "$(jq -r '[.state, .channel] | join("/")' <<<"$s")" error/status
+s=$(state statuses-empty.json not-json.txt)
+is "unparseable check-runs page -> error, not none" "$(jq -r '[.state, .channel] | join("/")' <<<"$s")" error/check_run
 
 # A completed check-run reports completion via completed_at; started_at is older
 # and made CR_SKIP_GRACE misfire. created_at must prefer completed_at. (step 4)
@@ -437,13 +443,26 @@ is "outside-diff: marked with origin + review id" \
    "$(jq -r '[.[] | "\(.source)/\(.origin)/\(.review_id)"] | unique | .[]' <<<"$out")" "cr/outside-diff/5427040251"
 is "outside-diff: Minor + Quick win -> auto" \
    "$(jq -c '.[0]' <<<"$out" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier')" auto
-# A thread on the same path and line is the same finding: one record, which
-# carries the review id so the review is still recorded as processed.
-thr='[{"source":"cr","path":"plugins/wiki/skills/lint/SKILL.md","line":30,"startLine":28,"body":"t","databaseId":7}]'
+# A thread that is a confirmed copy of the finding (same path, line, header and
+# title; the header emphasis may differ) is one record, which carries the review
+# id so the review is still recorded as processed.
+thr_body() { jq -Rs --arg sev "$1" --arg title "$2" \
+  '"_🎯 Functional Correctness_ | _\($sev)_ | _⚡ Quick win_\n\n**\($title)**\n\nbody"' </dev/null; }
+thr=$(jq -nc --argjson b "$(thr_body '🟡 Minor' 'Check for `index.md` before the page loops.')" \
+  '[{"source":"cr","path":"plugins/wiki/skills/lint/SKILL.md","line":30,"startLine":28,"body":$b,"databaseId":7}]')
 out=$(od "$ODF" <<<"$thr")
-is "outside-diff: same path+line as a thread -> merged" "$(jq 'length' <<<"$out")" 3
+is "outside-diff: confirmed copy of a thread -> merged" "$(jq 'length' <<<"$out")" 3
 is "outside-diff: merged record is the thread"   "$(jq -r '.[0].databaseId' <<<"$out")" 7
 is "outside-diff: merged thread keeps review id" "$(jq -r '.[0].review_id' <<<"$out")" 5427040251
+# A different finding on the same path and line is not a copy: both are judged
+# (issue #297). Same header, other title; and a thread with no header at all.
+thr2=$(jq -nc --argjson b "$(thr_body '🟡 Minor' 'Quote `$W` in the find call.')" \
+  '[{"source":"cr","path":"plugins/wiki/skills/lint/SKILL.md","line":30,"startLine":28,"body":$b,"databaseId":8},
+    {"source":"cr","path":"plugins/wiki/skills/lint/SKILL.md","line":35,"startLine":33,"body":"t","databaseId":9}]')
+out2=$(od "$ODF" <<<"$thr2")
+is "outside-diff: distinct finding on a thread line -> both kept" "$(jq 'length' <<<"$out2")" 5
+is "outside-diff: distinct finding -> thread gains no review id" \
+   "$(jq -r '[.[0].review_id, .[1].review_id] | map(tostring) | join(",")' <<<"$out2")" "null,null"
 # A processed review is not judged again: Step 9c.7 records each review_id under
 # cr_processed_reviews, and the next round reads that list back.
 OD=$(mktemp -d)
@@ -852,6 +871,11 @@ v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-onl
 is "Running on HEAD -> in_progress"                     "$(vf .verdict)" in_progress
 v=$(verdict issue-comments-codex-summary-failed.json pr-reviews-codex-prior-only.json)
 is "Failed on HEAD -> failed"                           "$(vf .verdict)" failed
+# A Failed row and a later Completed row (a re-run) for the same HEAD: only the
+# newest row, by its relative-time, speaks for HEAD, wherever it sits in the
+# table (issue #297). The newer row is listed first here.
+v=$(verdict issue-comments-codex-summary-failed-then-completed.json pr-reviews-codex-prior-only.json)
+is "Failed then a later Completed on HEAD -> clean"     "$(vf .verdict):$(vf .summary_state)" clean:completed
 
 # Completed, but for the previous commit: Codex has not judged HEAD yet.
 v=$(verdict issue-comments-codex-summary-stale-sha.json pr-reviews-codex-prior-only.json)
@@ -1112,6 +1136,22 @@ w=$(run_capped 8 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-clean.json" HW_COMMENTS=
       bash "$SCRIPTS/head-verdicts.sh" 2>/dev/null); rc=$?
 is "budget spent -> timeout line, not a hang"       "$rc:$(hf .state)" 0:timeout
 is "budget is max(CR, Codex) caps from push time"   "$(hf '.waited >= 2 and .waited <= 4')" true
+# A `@coderabbitai review` posted long after the push starts CodeRabbit's work
+# then: its budget runs from the newer of the push and the request comment's
+# server time, or an old push leaves it nothing to wait with (issue #297).
+jq -n --arg t "$(jq -nr 'now - 100 | strftime("%Y-%m-%dT%H:%M:%SZ")')" \
+  '[{"user":{"login":"YoungjaeDev"},"body":" @coderabbitai review\n","created_at":$t}]' > "$HW/req-recent.json"
+mix "$FIX/issue-comments-codex-summary-completed.json" "$HW/req-recent.json" > "$HW/c-requested-late.json"
+w=$(run_capped 3 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-none.json" HW_COMMENTS="$HW/c-requested-late.json" \
+      PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME=2020-01-01T00:00:00Z \
+      TIMEOUT=1800 INTERVAL=1 bash "$SCRIPTS/head-verdicts.sh" 2>/dev/null); rc=$?
+is "old push, request 100s ago -> CR budget from the request (keeps waiting)" "$rc:$w" "143:"
+# Comments that cannot be read hide any request: the anchor is unknown, so the
+# budget is the full TIMEOUT, never a spent one read off the old push.
+w=$(run_capped 3 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-none.json" HW_COMMENTS="$HW/missing.json" \
+      PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME=2020-01-01T00:00:00Z \
+      CODEX_ON=false TIMEOUT=1800 INTERVAL=1 bash "$SCRIPTS/head-verdicts.sh" 2>/dev/null); rc=$?
+is "old push, comments unreadable -> full CR budget (keeps waiting)" "$rc:$w" "143:"
 w=$(hw "$HW/r-clean.json" "$FIX/issue-comments-codex-summary-failed.json")
 is "Codex Failed on HEAD -> codex_failed"           "$(hf .state)" codex_failed
 # No CR review on HEAD (the success status alone is no verdict), or only a

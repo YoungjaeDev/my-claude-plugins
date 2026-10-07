@@ -17,6 +17,7 @@ set -euo pipefail
 
 JSONL="${1:?jsonl path required}"
 [ -f "$JSONL" ] || { echo "error: $JSONL not found" >&2; exit 1; }
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"  # cr-header.jq lives beside this script
 
 # One projection, used by both the slurp path and the per-line fallback, so the
 # two can never disagree about a field again.
@@ -52,25 +53,21 @@ def suggestion_line:
   body: (.comment // .codegenInstructions // ""),
   guidance: (.codegenInstructions // ""),
   comment_id: null,
+  # `none` is the CLI's informational level, not "unreadable": it skips like Info.
   severity_emoji: (
     { "critical": "🔴 Critical", "major": "🟠 Major", "minor": "🟡 Minor",
-      "trivial": "🟢 Trivial", "info": "🟢 Info" }[((.severity // "") | ascii_downcase)] // null
+      "trivial": "🔵 Trivial", "info": "⚪ Info",
+      "none": "⚪ Info" }[((.severity // "") | ascii_downcase)] // null
   ),
-  # The `_<category>_ | _<severity>_ | _<effort>_` header only exists in PR-bot
-  # comment bodies. When the CLI omits `comment` both stay null and
-  # classify-item.sh falls through to its severity-only branch.
-  category_emoji: (
-    first_or_null((.comment // "") | capture("_(?<c>[^_]+)_\\s*\\|\\s*_(?<s>[^_]+)_").c)
-    // (.category // null)
-  ),
-  effort_emoji: (
-    first_or_null((.comment // "")
-      | capture("_[^_]+_\\s*\\|\\s*_[^_]+_\\s*\\|\\s*_(?<e>[^_]+)_").e)
-  )
+  # The `<category> | <severity> | <effort>` header only exists in PR-bot style
+  # comment bodies (scripts/cr-header.jq). When the CLI omits `comment` both
+  # stay null and classify-item.sh falls through to its severity-only branch.
+  category_emoji: (((.comment // "") | cr_header.category_emoji) // (.category // null)),
+  effort_emoji: ((.comment // "") | cr_header.effort_emoji)
 }
 JQ
 
-if out=$(jq -c -s "[ .[] | select(.type == \"finding\") | $PROJECT ]" "$JSONL" 2>/dev/null); then
+if out=$(jq -c -s -L "$HERE" "include \"cr-header\"; [ .[] | select(.type == \"finding\") | $PROJECT ]" "$JSONL" 2>/dev/null); then
   printf '%s\n' "$out"
   exit 0
 fi
@@ -81,4 +78,4 @@ fi
 # errors of any kind and sent readers looking for corruption that was not there.
 echo "warn: parse-cr-cli-jsonl: $JSONL is not uniformly valid JSON; skipping unparseable lines" >&2
 jq -c -R '. as $l | try (fromjson | select(.type == "finding")) catch empty' "$JSONL" \
-  | jq -c -s "[ .[] | $PROJECT ]"
+  | jq -c -s -L "$HERE" "include \"cr-header\"; [ .[] | $PROJECT ]"

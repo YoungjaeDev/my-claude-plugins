@@ -24,7 +24,7 @@ Three seats, plus a chair that is not a seat:
 
 | Seat | Runner | First-run proposal |
 |---|---|---|
-| codex | `codex exec` | first entry of `codex debug models`, its default effort, its first speed tier |
+| codex | `codex exec` | first visible (`visibility != "hide"`) entry of `codex debug models`, effort `xhigh` if listed else its highest, its first speed tier |
 | agy | `agy --print` | first slug of `agy models` |
 | claude | `Agent` tool with a `model` override | `opus` |
 | chair | the main session | whatever the user is running |

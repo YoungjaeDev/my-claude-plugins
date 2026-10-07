@@ -62,8 +62,9 @@ valid. Registry writes also maintain `~/.codex/config.toml`'s `check_for_update_
 (insert only when the key is absent; never touch a user's own `false`), and a final preflight
 call re-reads the pins and probes the installed `codex` CLI before Step 1 relies on them.
 
-Defaults on first run are proposed from the candidate lists the CLIs print (first codex entry
-with its default effort, first agy slug) plus claude `opus`; no model name is fixed here.
+Defaults on first run are proposed from the candidate lists the CLIs print (first visible codex
+entry at effort `xhigh`, or its highest listed level; first agy slug) plus claude `opus`, a policy
+default rather than a CLI fact.
 
 See `references/registry.md` for the TTL check, the candidate-list read, the pin write and its
 charset/enum validation, the `config.toml` maintenance, and the preflight probe, each with the

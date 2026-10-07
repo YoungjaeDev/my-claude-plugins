@@ -142,8 +142,7 @@ logic would silently vanish for it.
 
 ### 5. Tier
 
-Per the tiers in `../skill-forge/references/axes.md`: **P0** silent failure on a runtime (name it),
-**P1** structure / completion criteria / sibling pointer collision, **P2** pruning and phrasing.
+Per the tiers in `../skill-forge/references/axes.md`. Name the runtime a P0 breaks.
 
 ### 6. Emit the report
 

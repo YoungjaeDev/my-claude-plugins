@@ -40,21 +40,25 @@ Do not use it to:
 | why a line stays or goes; how to phrase triggers and completion criteria | `references/writing-levers.md` |
 | section order, length targets, `scripts` vs `references` vs `assets`, naming | `references/structure.md` |
 | the silent failures, the resolver block, version bumps, manifest regeneration | `references/runtime-contract.md` |
-| where to send the agent for a flag, field, version, or model name instead of copying it | `references/live-lookup.md` |
+| where to send the agent for a platform fact instead of copying it, and what stays encoded | `references/live-lookup.md` |
 
 Read a reference when you reach the step that needs it, not up front.
 
 ## Look it up live
 
-A skill that depends on a platform fact the vendor's docs or the tool's own `--help` carry
-(frontmatter fields, hook or settings schema, CLI flags and values, model names, versions) tells
-the agent where to read it at run time instead of carrying a copy. Lookup order: the docs MCP if
-the session has one, else the vendor's `llms.txt` or doc URL fetched directly, else the installed
-tool's `--help` / `--version`. When every lookup fails, the agent reports which ones it tried and
-stops rather than guessing. Encode only what no lookup returns (owner policy, undocumented
-behavior, silent failures), and put those in a script or check rather than prose alone. The same
-rule binds the author while writing: check the doc, then point at it. Examples and starting
-URLs are in `references/live-lookup.md`.
+A skill that depends on a platform fact (defined in `references/live-lookup.md`) tells the agent
+where to read it at run time instead of carrying a copy. Lookup order depends on the kind of fact:
+
+- **What an installed tool accepts or lists** (flags, values, subcommands, model names, versions):
+  the installed tool first (`--help`, a listing command, a file it ships with), since only it is
+  pinned to the version on the machine; then the vendor docs.
+- **A schema no tool prints** (frontmatter fields, hook or settings schema): the docs MCP if the
+  session has one, else the vendor's `llms.txt` or doc URL fetched directly.
+
+When every lookup fails, the agent reports which ones it tried, then takes the skill's documented
+safe default if it has one (omit an optional field, keep an encoded check), and otherwise stops
+rather than guessing a value. What stays encoded instead of looked up, and the starting URLs, are
+in `references/live-lookup.md`.
 
 ## Procedure
 
@@ -100,9 +104,9 @@ Three checks while drafting, the first two from `references/writing-levers.md`:
 - **Completion criteria**: each step ends in something observable. "Review the config" does not
   distinguish done from not-done; "list every key the config sets and mark the ones this change
   touches" does.
-- **Live lookup**: every flag, field, version, or model name in the draft is either a pointer to
-  where the agent reads it at run time, or owner policy / undocumented behavior that no lookup
-  returns (see "Look it up live" above).
+- **Live lookup**: list every platform fact in the draft (`references/live-lookup.md`) and mark
+  each with the command or URL you checked it against this session and the pointer the body now
+  carries, or with why it stays encoded (owner policy, undocumented behavior, silent failure).
 
 ### 4. Split the bundle
 
@@ -195,4 +199,5 @@ same trigger branch. That one is judgment; no guard covers it.
 
 The skill is done when: the guard commands in step 8 pass, the measurement row shows nothing
 out of band, the description reads as trigger conditions rather than a summary, every step ends in
-an observable result, and the version bump is in the same change.
+an observable result, every platform fact in the draft is on the step 3 live-lookup list with its
+checked source or its encoded reason, and the version bump is in the same change.

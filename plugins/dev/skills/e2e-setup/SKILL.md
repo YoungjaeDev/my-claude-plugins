@@ -56,7 +56,9 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
      # A resolution failure (offline, registry down) falls through to `missing`.
      if command -v playwright-cli >/dev/null 2>&1 && playwright-cli --version >/dev/null 2>&1; then
        PW_CLI_MODE=global
-     elif npx --no-install playwright cli --help >/dev/null 2>&1; then
+     # `cli --help` exits 0 even where `cli` is not a subcommand (the top-level
+     # help comes back), so match the playwright-cli banner instead of the status.
+     elif npx --no-install playwright cli --help 2>/dev/null | grep -q '^playwright-cli'; then
        PW_CLI_MODE=local
      elif npx --yes @playwright/cli@latest --version >/dev/null 2>&1; then
        PW_CLI_MODE=npx
@@ -65,7 +67,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
      fi
      echo "playwright-cli: $PW_CLI_MODE"
      ```
-     - `global`, `local`, or `npx`: report the mode found; `e2e-author` / `e2e-debug` will use `playwright-cli <cmd>`, `npx playwright cli <cmd>`, or `npx @playwright/cli <cmd>` accordingly. Read the command set from `<that invocation> --help`; `playwright-cli install --skills` installs Playwright's own agent skill for it.
+     - `global`, `local`, or `npx`: report the mode found; `e2e-author` / `e2e-debug` will use `playwright-cli <cmd>`, `npx playwright cli <cmd>`, or `npx @playwright/cli <cmd>` accordingly. Read the command set from `<that invocation> --help`. `<that invocation> install --skills` installs Playwright's own agent skill for it into `.claude/skills/` by default; on Codex pass `--skills=agents` (values listed in `install --help`).
      - `missing`: do **not** force `npm install -g @playwright/cli`. Print the install command (`npm install -g @playwright/cli@latest`) and continue in degraded mode: the planner/generator fall back to the `playwright-test` MCP server (same as the healer) until `playwright-cli` becomes available.
 
 2. **Set up the roles: runtime branch** (planner / generator / healer). Pick the path **once** by capability; the same gates apply on every path (`${PLUGIN_ROOT}/references/role-contracts.md`, "Gates that hold on every path"). Tell the user which path you took in one sentence.
@@ -75,12 +77,11 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    | **A: Claude generated agents** | Running under Claude Code (init-agents can generate registerable `.claude/agents/*.md`). | `init-agents --loop=claude` + verify the generated files. Default on Claude Code. |
    | **B/C: Codex bundled contracts** | Running under Codex (or any runtime that cannot register generated agent files as named subagents). | Do **not** generate/rely on named agents. Ensure the `.mcp.json` `playwright-test` entry and point `e2e-author` / `e2e-debug` at the bundled role contracts. |
 
-   **Path A (Claude Code):**
+   **Path A (Claude Code):** first confirm the loop value is still offered (`npx playwright init-agents --help | grep -qw claude`); if it is not, stop and report the `--loop` values the help lists.
    ```bash
    npx playwright init-agents --loop=claude
    ```
-   - Read the accepted `--loop` values from `npx playwright init-agents --help`; use `claude` on Claude Code.
-   - **Verify the actual output**: list what init-agents wrote (`git status --porcelain`, plus `git status --porcelain --ignored` if nothing shows) and use those paths from here on. Expect, by role rather than by filename:
+   - **Verify the actual output**: list what init-agents wrote (it prints one path per line; or `git status --porcelain -uall`, plus `--ignored` if nothing shows) and use those paths from here on. Expect, by role rather than by filename:
      - the planner / generator / healer agent definitions (under `.claude/agents/` for the claude loop); `e2e-author` / `e2e-debug` dispatch them by the names init-agents gave them.
      - `.mcp.json`: MCP config for the `playwright-test` server. **Confirm it exists**; if it is missing, merge it with the recipe below.
      - the environment seed the planner runs first (`seed.spec.ts`, wherever init-agents put it) and the test-plan directory (`specs/`).

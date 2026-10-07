@@ -15,14 +15,15 @@ command or opening a page, it is a platform fact.
 
 The order itself is in SKILL.md's "Look it up live". What each step needs to get right:
 
-- **Docs MCP**: an `llms.txt` source, `deepwiki` for a repository with no `llms.txt`, or `context7`.
-  Check the domain behind a source before trusting it: only the vendor's own docs count, and a
-  third-party catalog registered under a similar name is not the spec.
+- **Installed tool**: `<tool> --help`, `<tool> <sub> --help`, `<tool> --version`, a listing command,
+  or a file the tool ships with (a bundled skill, a schema). Check what the command printed, not
+  only its exit status: some CLIs answer an unknown subcommand's `--help` with the top-level help
+  and exit 0.
+- **Docs MCP**: an `llms.txt` source whose domain is the vendor's own. A third-party catalog
+  registered under a similar name is not the spec. `deepwiki` and `context7` are third-party
+  summaries: use them as a lead when the vendor has no docs, and confirm any value they give
+  against the installed tool or the vendor's docs before a skill relies on it.
 - **Direct fetch**: the vendor's `llms.txt` index first, then the page it lists.
-- **Installed tool**: `<tool> --help`, `<tool> <sub> --help`, `<tool> --version`, or a file the tool
-  ships with (a bundled skill, a schema). It is the only source pinned to the version actually on
-  the machine, so prefer it when the docs track an unreleased branch.
-- **All failed**: name every source tried. A guessed flag is worse than a reported gap.
 
 ## How a skill says it
 

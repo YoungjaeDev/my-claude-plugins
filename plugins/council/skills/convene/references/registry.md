@@ -123,7 +123,7 @@ Gather the real candidate lists first so the question carries evidence rather th
 # login or an unparseable cache would be reported as "not installed", and the
 # pin question would then be asked with no real candidate list behind it.
 
-# codex: slugs, default effort, the reasoning levels each one accepts, speed tiers.
+# codex: slugs, the reasoning levels each one accepts, speed tiers.
 # Source is `codex debug models`; the cache file is the fallback for an older CLI.
 # Resolve the cache through CODEX_HOME — on a machine that sets it, `$HOME/.codex`
 # is a directory the running CLI never reads (plugins/dev/scripts/project_state.sh).
@@ -138,7 +138,7 @@ if [ -z "$codex_json" ]; then
   echo "(codex model catalog absent)"
 elif ! printf '%s\n' "$codex_json" | jq -r '
   .models[] | select(.visibility != "hide")
-  | "\(.slug)  default=\(.default_reasoning_level // "-")  efforts=\([.supported_reasoning_levels[].effort] | join(","))  speed=\(.additional_speed_tiers // [] | join(","))"
+  | "\(.slug)  efforts=\([.supported_reasoning_levels[].effort] | join(","))  speed=\(.additional_speed_tiers // [] | join(","))"
 '; then
   echo "(codex model catalog unreadable — present but unparseable)" >&2
 fi
@@ -231,7 +231,9 @@ a failing `jq` would destroy a perfectly good set of pins and silently send the 
 first-run defaults.
 
 Defaults on first run come from the candidate lists, not from this file: propose the first codex
-entry with its `default` effort and its first speed tier, the first agy slug, and claude `opus`.
+entry of the visible list above (`visibility != "hide"`) with effort `xhigh` when that model lists
+it, else the highest level it lists (deliberation policy, not the model's `default`), and its first
+speed tier; the first agy slug; and claude `opus`.
 The user's confirmation still decides. When the user asks for a Claude value outside the enum,
 re-read <https://code.claude.com/docs/en/sub-agents#choose-a-model> before answering; widening
 the enum is a policy change to this skill, not a per-run choice.

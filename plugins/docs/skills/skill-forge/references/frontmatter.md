@@ -44,7 +44,7 @@ doc states: the policy this repo applies.
 |---|---|
 | `allowed-tools` | allowed; see the portability note below |
 | `disable-model-invocation` | not in a Codex-eligible plugin |
-| `argument-hint` | allowed, low value |
+| `argument-hint` | not in a Codex-eligible plugin; allowed, low value, in `codex-image` and `council` |
 | `version` | do not add; `plugin.json` owns versions |
 | `license` | no-op here |
 | any other documented field | add only when you can state its runtime effect from the doc, and record that evidence |
@@ -82,9 +82,10 @@ The Agent Skills standard distribution paths — claude.ai skill upload, the Ski
 `package_skill.py` — accept only the fields in <https://agentskills.io/specification.md> and reject
 anything else with a hard error.
 
-So: fine on Claude Code, fatal if a skill is ever packaged for the standard paths. Find the current
-uses with `rg -l '^argument-hint:' plugins/*/skills/*/SKILL.md`; a use on neither path is not a
-defect.
+So the policy matches `disable-model-invocation`: keep it out of a Codex-eligible plugin, because
+Codex's validator rejects it; it is fine in a Claude-only plugin (`codex-image`, `council`) that is
+never packaged for the standard paths. Find the current uses with
+`rg -l '^argument-hint:' plugins/*/skills/*/SKILL.md`.
 
 ### `version` and `license`
 

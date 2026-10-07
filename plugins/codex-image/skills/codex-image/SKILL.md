@@ -61,8 +61,8 @@ Before generating:
 5. Validate size:
    - `auto` is valid.
    - For `WIDTHxHEIGHT`, both dimensions must be positive integers.
-   - Read the size rules in `${CODEX_HOME:-~/.codex}/skills/.system/imagegen/SKILL.md` for the installed Codex and note which mode they apply to (the built-in `image_gen` tool this bridge uses, or the CLI fallback). Apply only rules stated for the built-in tool; if none are, pass the size through and let Codex report a rejection.
-   - If the requested size fails a rule that applies, ask for a valid size instead of silently changing it.
+   - Both edges multiples of 16, max edge <= 3840, aspect ratio <= 3:1, and total pixels from 655360 to 8294400. These are the `gpt-image-2` constraints in the "gpt-image-2 guidance for CLI fallback" section of `${CODEX_HOME:-~/.codex}/skills/.system/imagegen/SKILL.md`; the built-in tool states none, and size reaches it only as prompt text, so nothing downstream rejects a bad size. Keep this check as the guard; when that file lists different constraints, follow the file.
+   - If the requested size fails these constraints, ask for a valid size instead of silently changing it.
 6. Validate quality and count. Do not silently downgrade quality or reduce count.
 7. Validate the passthrough overrides before they reach the shell; each is interpolated into the `codex exec` command line:
    - `--model`: must match `^[A-Za-z0-9._:-]+$`. Refuse any other value (a model id with shell metacharacters could be parsed as a separate command).
@@ -195,5 +195,5 @@ After `codex exec` finishes:
 
    Never re-run generation because a copy failed. The image already exists; a second run bills a second generation.
 3. `Read` each file for review.
-4. Report saved path(s), size and quality requested, count requested versus produced, and any tool limitation Codex mentioned.
+4. Report saved path(s), size requested versus produced (read each file's pixel size: `sips -g pixelWidth -g pixelHeight <file>` on macOS, `file <file>` elsewhere), quality requested, count requested versus produced, and any tool limitation Codex mentioned.
 5. If generation itself failed, report the Codex CLI version, the error text, and the next concrete command for the user (`codex login`, a Codex update, or a retry at lower quality). Do not fabricate images or write placeholder files.

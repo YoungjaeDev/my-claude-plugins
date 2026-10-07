@@ -7,7 +7,7 @@
 Claude Code 와 Codex CLI 에서 같이 쓰는 8개 플러그인 모음.
 
 [![Plugins](https://img.shields.io/badge/plugins-8-blue.svg)](#플러그인-목록)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://code.claude.com/docs/en/overview)
 [![Codex CLI](https://img.shields.io/badge/Codex%20CLI-native-black.svg)](#codex-cli)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -37,7 +37,7 @@ PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 만들기처럼 손이 �
 /dev:flow
 ```
 
-**You should see:** 슬래시 메뉴에 `/dev:` 로 시작하는 스킬이 뜨고 `/dev:flow` 가 지금 단계에서 부를 스킬을 알려 준다. 메뉴에 없으면 Claude Code 를 재시작한다.
+**You should see:** 슬래시 메뉴에 `/dev:` 로 시작하는 스킬이 뜨고 `/dev:flow` 가 지금 단계에서 부를 스킬을 알려 준다. 메뉴에 없으면 Claude Code 를 재시작하고, 그래도 옛 버전이 뜨면 [업데이트](#업데이트)의 캐시 삭제 절차를 따른다.
 
 ## 플러그인 목록
 
@@ -287,7 +287,7 @@ cp "$SRC" ~/.codex/AGENTS.md       # Codex
 
 | 도구 | 용도 | 필요한 경우 |
 |------|------|------|
-| [Claude Code](https://docs.anthropic.com/claude-code) | 기본 CLI | 항상 |
+| [Claude Code](https://code.claude.com/docs/en/overview) | 기본 CLI | 항상 |
 | `gh` | GitHub 워크플로우 | dev |
 | `jq` | 상태 파일, council | dev, council |
 | Codex CLI | 네이티브 로드, council 좌석, codex-image | Codex 사용자, council, codex-image |

@@ -259,7 +259,7 @@ Run the "Step 10: stage and commit" block in `references/run-blocks.md` verbatim
 
 ## Step 11: Verification gate
 
-Build and test already ran per fix in Step 9c.6, before this commit existed, so everything Step 10 committed passed them (or the gate is off, per Step 3). Only lint runs here: when the repo names a lint command, run it; a failure warns and proceeds. Step 10's `noop` — every fix this cycle reverted, or none applied — skips this step and Step 12, so a cycle of failed fixes pushes nothing.
+Build and test already ran per fix in Step 9c.6, before this commit existed, so everything Step 10 committed passed them (or the gate is off, per Step 3). Only lint runs here: when the repo names a lint command, run it; a failure warns and proceeds. Step 10's `noop` — every fix this cycle reverted, or none applied — skips this step, and the Step 12 block pushes nothing on it, so a cycle of failed fixes pushes nothing.
 
 ## Step 12: Push
 

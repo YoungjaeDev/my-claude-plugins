@@ -413,20 +413,23 @@ jq -r '[.[].review_id // empty] | unique | .[]' <<<"$cr_records" \
 ```bash
 res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER")
 # noop: every fix this cycle was reverted or nothing was applied -> no commit, so
-# Steps 11-12 are skipped and nothing is pushed. Jump to Step 13.
+# Step 11 is skipped and the Step 12 block pushes nothing.
 ```
 
 ## Step 12: push
 
 ```bash
-# A rejected push leaves the loop (references/failure-modes.md); nothing below may
-# run for a head the PR never received.
-git push 2>&1 || { final_state=failure; break; }
-pushed_this_cycle=true
-: > "$TRACK_FILE"  # reset for next iter
-# Non-default base only (Step 2): this push will not be auto-reviewed.
-if [ "$CR_REVIEW_REQUEST" = request ] && { [ "$CR_SOURCE" = auto ] || [ "$CR_SOURCE" = pr-bot ]; }; then
-  request_cr_review  # Step 2: skips when this head already has a request
+# Step 10 noop: no commit this cycle, so nothing to push (a cycle of failed fixes).
+if [ "$res" != noop ]; then
+  # A rejected push leaves the loop (references/failure-modes.md); nothing below may
+  # run for a head the PR never received.
+  git push 2>&1 || { final_state=failure; break; }
+  pushed_this_cycle=true
+  : > "$TRACK_FILE"  # reset for next iter
+  # Non-default base only (Step 2): this push will not be auto-reviewed.
+  if [ "$CR_REVIEW_REQUEST" = request ] && { [ "$CR_SOURCE" = auto ] || [ "$CR_SOURCE" = pr-bot ]; }; then
+    request_cr_review  # Step 2: skips when this head already has a request
+  fi
 fi
 ```
 

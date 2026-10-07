@@ -1644,6 +1644,22 @@ is "held stop, gated finding fetched -> 8c hands it to 9a, one more round" \
       printf "%s:%s:%s" "$final_state" "$HOLD_STATE" "$round"' 2>/dev/null)" "::yes"
 rm -rf "$H8"
 
+# Step 12: a noop Step 10 (every fix reverted, or none applied) pushes nothing.
+P12=$(mktemp -d); printf '#!/usr/bin/env bash\necho "$*" >> "%s/calls"\n' "$P12" > "$P12/git"; chmod +x "$P12/git"
+push_step() { # RES -> pushed_this_cycle:git-calls
+  local pushed
+  : > "$P12/calls"
+  pushed=$(RES=$1 PATH="$P12:$PATH" BLOCK="$(rb_block "Step 12: push")" bash -c '
+    request_cr_review() { :; }
+    res=$RES pushed_this_cycle=false TRACK_FILE=/dev/null final_state=""
+    eval "for i in 1; do $BLOCK
+    done"; printf "%s" "$pushed_this_cycle"' 2>/dev/null)
+  printf '%s:%s' "$pushed" "$(grep -c push "$P12/calls")"
+}
+is "Step 10 noop -> no push"        "$(push_step noop)" "false:0"
+is "Step 10 staged -> one push"     "$(push_step staged:2)" "true:1"
+rm -rf "$P12"
+
 # Step 14: the last iteration's push is waited on, then one follow-up trigger.
 last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED -> final_state:HEAD_VERDICT:followup
   PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '

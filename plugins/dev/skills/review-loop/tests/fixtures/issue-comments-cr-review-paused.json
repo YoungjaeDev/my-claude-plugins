@@ -1,0 +1,11 @@
+[
+  {
+    "id": 9101,
+    "user": {
+      "login": "coderabbitai[bot]"
+    },
+    "created_at": "2026-07-10T02:28:12Z",
+    "updated_at": "2026-07-12T12:19:29Z",
+    "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- This is an auto-generated comment: review paused by coderabbit.ai -->\n\n> [!NOTE]\n> ## Reviews paused\n> \n> It looks like this branch is under active development. To avoid overwhelming you with review comments due to an influx of new commits, CodeRabbit has automatically paused this review. You can configure this behavior by changing the `reviews.auto_review.auto_pause_after_reviewed_commits` setting.\n> \n> Use the following commands to manage reviews:\n> - `@coderabbitai resume` to resume automatic reviews.\n> - `@coderabbitai review` to trigger a single review.\n\n<!-- end of auto-generated comment: review paused by coderabbit.ai -->\n<!-- walkthrough_start -->\n\n## Walkthrough\n\n<!-- walkthrough_end -->"
+  }
+]

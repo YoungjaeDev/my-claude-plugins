@@ -1,0 +1,4 @@
+{"type":"finding","fileName":"src/a.py","severity":"none","codegenInstructions":"at line 4: note only","suggestions":[]}
+{"type":"finding","fileName":"src/b.py","severity":"trivial","codegenInstructions":"at line 5","suggestions":[]}
+{"type":"finding","fileName":"src/c.py","severity":"info","codegenInstructions":"at line 6","suggestions":[]}
+{"type":"finding","fileName":"src/d.py","severity":"minor","comment":"**🗄️ Data Integrity & Integration** | **🟡 Minor** | **🏗️ Heavy lift**\n\nbold header, `snake_case` body","codegenInstructions":"at line 7","suggestions":[]}

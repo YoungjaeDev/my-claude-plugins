@@ -20,7 +20,7 @@ Run once `PR_NUMBER` and `MERGE_SHA` are fixed.
 MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 REC="$MAIN_REPO/.claude/state/post-merge-${PR_NUMBER}.json"
 mkdir -p "$MAIN_REPO/.claude/state/archive"
-# Archive a prior same-PR record before overwriting (mirrors cr-fix Step 2).
+# Archive a prior same-PR record before overwriting (mirrors review-loop Step 2).
 # Fail closed: a failed archive must abort init, else the jq below clobbers the only live copy.
 if [ -f "$REC" ]; then
   mv "$REC" "$MAIN_REPO/.claude/state/archive/post-merge-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$.json" \

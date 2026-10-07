@@ -1,0 +1,29 @@
+[
+  {
+    "id": 9001,
+    "pull_request_review_id": 777,
+    "user": { "login": "chatgpt-codex-connector[bot]" },
+    "path": "scripts/deploy.sh",
+    "line": 12,
+    "original_line": 12,
+    "body": "**<sub><sub>![P0 Badge](https://img.shields.io/badge/P0-red?style=flat)</sub></sub>  Secret written to world-readable log**\n\nThe token is echoed before redaction."
+  },
+  {
+    "id": 9002,
+    "pull_request_review_id": 777,
+    "user": { "login": "chatgpt-codex-connector[bot]" },
+    "path": "src/app.py",
+    "line": null,
+    "original_line": 40,
+    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Off-by-one in pagination**\n\nThe last page is dropped."
+  },
+  {
+    "id": 9003,
+    "pull_request_review_id": 555,
+    "user": { "login": "chatgpt-codex-connector[bot]" },
+    "path": "src/old.py",
+    "line": 3,
+    "original_line": 3,
+    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  From an earlier review**"
+  }
+]

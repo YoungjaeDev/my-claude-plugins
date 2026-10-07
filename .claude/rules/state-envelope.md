@@ -21,10 +21,10 @@ a later change.
 ## Location & rotation
 
 - Live file: `.claude/state/<pipeline>-<key>.json` — e.g. `.claude/state/post-merge-114.json`,
-  mirroring the existing `.claude/state/cr-fix-<PR>.json` naming.
+  mirroring the existing `.claude/state/review-loop-<PR>.json` naming.
 - On a re-run for the same key, archive the prior live file to
   `.claude/state/archive/<pipeline>-<key>-<timestamp>-$$.json` before writing a fresh
-  one (mirrors `cr-fix` Step 2 — the timestamp + `$$` suffix keeps a same-second or
+  one (mirrors `review-loop` Step 2 — the timestamp + `$$` suffix keeps a same-second or
   parallel run from clobbering an archived copy).
 - `.claude/state/` is **gitignored and machine-local**. A run record is never staged,
   committed, or added to a skill's `RUN_TOUCHED` staging set.

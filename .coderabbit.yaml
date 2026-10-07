@@ -9,7 +9,7 @@
 # and .githooks/pre-commit. These warnings only surface advisories in the Walkthrough.
 #
 # Evaluate-only decision (Issue #121): CodeRabbit's autofix and custom review
-# recipes overlap the /dev:cr-fix apply loop, which already judges and
+# recipes overlap the /dev:review-loop apply loop, which already judges and
 # applies each finding with repo-specific autonomy. Enabling CR-side autofix would
 # double-drive edits against the same diff. Decision: NOT adopted; no `cr-tune`
 # skill (YAGNI). Recorded here as a deliberate choice, not an oversight.
@@ -17,18 +17,19 @@ reviews:
   auto_review:
     # Auto-review stays on. Turning it off (`enabled: false`) leaves the GitHub
     # integration connected but reviews only what someone asks for by hand, which
-    # drops /dev:cr-fix to a single reviewer: the loop reads the config and will
+    # drops /dev:review-loop to a single reviewer: the loop reads the config and will
     # not post `@coderabbitai review` itself while auto-review is disabled
-    # (plugins/dev/skills/cr-fix/scripts/cr-review-request.sh). Consumption is
+    # (plugins/dev/skills/review-loop/scripts/cr-review-request.sh). Consumption is
     # bounded by the levers below, not by disabling the reviewer.
     # Explicit 0 = DISABLED. Omitting this key does NOT disable it — CodeRabbit
     # defaults to 5 (pause auto-review after 5 reviewed commits since the last
     # pause; "Set to 0 to disable" per docs.coderabbit.ai/reference/configuration).
-    # Auto-pause conflicts with this repo's core workflow: /dev:cr-fix pushes
+    # Auto-pause conflicts with this repo's core workflow: /dev:review-loop pushes
     # one fix commit per iteration and relies on CodeRabbit auto-reviewing each push
-    # to detect convergence; a pause (needing a manual `@coderabbitai review`) emits
-    # no rate_limited signal, so cr-fix's Step 6 poll would time out with no review.
-    # Review-consumption is instead bounded by cr-fix's MAX_ITER cap + minor-soft-stop
+    # to detect convergence. review-loop does detect a pause (scripts/head-verdicts.sh)
+    # and posts one `@coderabbitai review` per paused HEAD, but each such request is
+    # an extra comment and a wait, so the pause stays off here.
+    # Review-consumption is instead bounded by review-loop's MAX_ITER cap + minor-soft-stop
     # and the ignore_title_keywords / path_instructions levers below.
     auto_pause_after_reviewed_commits: 0
     # Review PRs into any base, not only the default branch (regex list). This adds

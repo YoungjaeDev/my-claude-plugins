@@ -113,7 +113,7 @@ Preset:        which dev:worker-* and the one-clause reason
    against the worktree root and refuse one whose components leave it — resolving the nearest
    existing ancestor and checking the rest as text, since a card may legitimately name a file under
    a directory tree the worker has yet to create and `realpath` without the GNU-only `-m` exits 1
-   when any parent is missing (`cr-fix`'s `scripts/path-trust.sh` is the worked form): a symlink out
+   when any parent is missing (`review-loop`'s `scripts/path-trust.sh` is the worked form): a symlink out
    of the tree turns a faithful write into an edit of the original checkout, and the link's own blob
    never changes, so the branch log and the gate both come back empty. A fresh worktree carries none
    of the main checkout's uncommitted, untracked or ignored files, so a worker has no path to the

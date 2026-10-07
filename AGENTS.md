@@ -29,7 +29,7 @@
 | `council` | AI Models | (단독 유지, Claude 전용) |
 | `codex-image` | AI Models | (단독 유지, Claude 전용) |
 
-플러그인명을 짧게 둔 이유는 호출 길이와 가독성이다. 플러그인 스킬은 항상 `/plugin:skill` 로 노출된다. 슬래시 메뉴는 `:`·`-`·`_` 를 무시하고 이름 안의 단어 시작에서도 매칭하므로 (`/cr` 이 `/dev:cr-fix` 를 하이라이트, Claude Code 2.1.236 이상) 접두사 길이가 매칭을 막지는 않는다. 플러그인은 `.claude/settings.json` 에서 auto-load 된다. 사용법은 `README.md`.
+플러그인명을 짧게 둔 이유는 호출 길이와 가독성이다. 플러그인 스킬은 항상 `/plugin:skill` 로 노출된다. 슬래시 메뉴는 `:`·`-`·`_` 를 무시하고 이름 안의 단어 시작에서도 매칭하므로 (`/rev` 가 `/dev:review-loop` 를 하이라이트, Claude Code 2.1.236 이상) 접두사 길이가 매칭을 막지는 않는다. 플러그인은 `.claude/settings.json` 에서 auto-load 된다. 사용법은 `README.md`.
 
 ## 저장소 구조
 
@@ -40,7 +40,7 @@
 - `CLAUDE.md.global`: 사용자 전역 지침의 저장소 정본 (Claude 와 Codex 공통). 고친 뒤 `cp CLAUDE.md.global ~/.claude/CLAUDE.md` 와 `cp CLAUDE.md.global ~/.codex/AGENTS.md` 로 두 런타임의 설치 사본을 갱신한다. 사본을 이 워킹트리로의 심볼릭 링크로 걸지 않는다 (브랜치 전환과 커밋 안 된 편집이 즉시 전역 지침으로 발효된다). 동기화 안내는 이 저장소에만 두고, 모든 프로젝트에서 로드되는 전역 파일에는 규칙 외의 줄을 넣지 않는다.
 - `README.md`: 사용자용 설치·마이그레이션·플러그인 문서.
 - `code_review.md`: Codex cloud reviewer 용 상세 리뷰 룰 (아래 `## Code Review Rules` 가 참조).
-- `.claude/settings.json`: 로컬 플러그인 auto-load 목록. 플러그인을 추가하면 여기도 등록한다 (어떤 가드도 누락을 잡지 않는다).
+- `.claude/settings.json`: 로컬 플러그인 auto-load 목록. 플러그인을 추가하면 여기도 등록한다 (어떤 가드도 누락을 잡지 않는다). SessionStart 훅이 `scripts/check-plugin-cache.mjs` 로 설치 캐시가 소스 버전보다 뒤처졌는지 보고 경고한다. 경고가 뜨면 Skill 도구가 부르는 스킬은 옛 버전이니, 캐시를 갱신하기 전까지 `plugins/<name>/skills/<skill>/SKILL.md` 를 직접 읽는다.
 - `.claude-plugin/marketplace.json`: marketplace 레지스트리와 플러그인 버전. Codex 도 이 카탈로그를 읽는다.
 - `.claude/rules/`: 경로 스코프 상세 규칙 (Claude 전용, Codex 는 못 읽는다). `plugin-versioning.md` 는 매니페스트를 만질 때, `state-envelope.md` 는 `.claude/state/*.json` 을 만질 때만 로드된다. 포인터를 `@import` 로 바꾸면 스코핑이 죽으므로 백틱으로 둔다.
 - `plugins/<name>/`: 플러그인 원본. `.claude-plugin/plugin.json` 이 매니페스트이자 버전이며 두 런타임이 같은 파일을 읽는다.
@@ -78,7 +78,7 @@ git add -A \
   && node scripts/check-shell-portability.mjs \
   && node scripts/check-shell-portability.test.mjs \
   && node scripts/check-skill-contract.mjs \
-  && bash plugins/dev/skills/cr-fix/tests/run-tests.sh \
+  && bash plugins/dev/skills/review-loop/tests/run-tests.sh \
   && bash plugins/council/skills/convene/tests/run-tests.sh \
   && echo "verify: ok"
 ```
@@ -87,7 +87,8 @@ git add -A \
 
 - `.githooks/pre-commit` 이 매 커밋마다 같은 가드를 돌린다. clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화한다.
 - `check-shell-portability.mjs` 는 GNU 전용 셸 구문이 폴백도 capability probe 도 없이 쓰인 경우만 잡는다. 증거는 코드여야 하고 주석은 인정하지 않는다. 예외는 `# portability-ok: <사유>` 로 표시한다. 상세는 `README.md` 의 "CI 가드가 지키는 것".
-- macOS CI 레그(`validate-codex.yml` 의 `macos` job)가 BSD 폴백이 실제로 실행되는 유일한 지점이다. `/bin/bash` 로 돌려 bash 3.2 를 강제한다.
+- CI(`validate-codex.yml`)는 릴리스 태그 `vX.Y.Z` push 와 수동 실행(`workflow_dispatch`)에서만 돈다. push·PR 마다 돌지 않으므로 평소 게이트는 pre-commit 훅이고, 훅은 Node 가 없으면 커밋을 거부한다. CI 는 릴리스를 막지 않는다: `/dev:release` 는 이 run 을 기다리지 않고 `gh release create` 를 하므로, 결과는 릴리스 뒤 Actions 탭에서 확인한다.
+- macOS CI 레그(`validate-codex.yml` 의 `macos` job)가 BSD 폴백이 CI 에서 실행되는 유일한 지점이다. `/bin/bash` 로 돌려 bash 3.2 를 강제한다. 릴리스 사이에는 Mac 에서 `/bin/bash plugins/dev/skills/review-loop/tests/run-tests.sh` 로 같은 확인을 한다.
 - Codex 카탈로그 확인은 일회용 `CODEX_HOME` 에서 돌린다 (8 entries). 실제 홈에서 `marketplace add` 하면 기존 등록과 소스가 달라 실패하고, 이어지는 `marketplace remove` 는 레시피가 만든 것이 아니라 원래 등록을 지운다. 정리는 `trap` 이 맡으므로 검증 명령의 종료 상태가 그대로 남는다.
 
   ```bash
@@ -115,27 +116,33 @@ git add -A \
 
 ### 핵심 최소본 (전문은 `code_review.md`)
 - **P0 (must-block)** — secret/token 노출, 사용자 확인 없는 destructive `gh` 명령 (`gh pr merge` / `gh repo create` / `gh api`), shell injection (사용자 입력 unquoted).
-- **P1 (should-block)** — 모든 should-block 규칙은 하드 유지한다 (soft-follow 미검증이므로 code_review.md 로 demote 하지 않는다): plugin version/count drift (`plugin.json` ↔ `marketplace.json` ↔ AGENTS 플러그인 목록·README 트리·배지·`metadata.version`), idempotency 회귀 (재실행 시 사용자 파일 덮어쓰기·`nothing to commit` abort·`origin` 충돌), cross-platform shell 가정 (`sed -i`·`realpath -m`·`md5sum`·`date -d`·`stat -c`·`timeout` GNU-only / `git diff` 의 `+++` 헤더는 비ASCII 경로를 octal escape 하고 공백 있는 경로 뒤에 탭을 덧붙이므로 경로를 텍스트 비교하려면 `-c core.quotePath=false` + 탭 절단이 필요하다 / `${VAR,,}` Bash 4+ / zsh 는 인용 없는 파라미터를 단어 분리하지 않아 `cmd $MULTI_VALUE` 가 한 인자로 넘어감, `set -o shwordsplit 2>/dev/null || true` 로 요청 / 이식성 수정은 양방향 — `python`→`python3` 는 macOS 를 고치고 Windows 를 깬다, 인터프리터는 이름 고정이 아니라 탐지), `gh api --paginate`+`--jq` 에 `--slurp` 누락, 봇 신원 매처의 앵커 누락 (`test("coderabbit"; "i")` 같은 어간·prefix 매칭은 부분 문자열 매칭이고 `coderabbit-evil` 은 등록 가능한 GitHub 로그인이라 외부 계정이 리뷰 루프에 지시문을 주입한다 — `test("^coderabbitai(\\[bot\\])?$"; "i")` 로 양끝을 고정한다. `[`·`]` 는 로그인 불가 문자라 `(\\[bot\\])?$` 는 위조 불가이고 REST·GraphQL 두 철자를 함께 덮는다. 대신 로그인 고정은 봇 개명 시 silent-zero 를 되살리므로 회귀 테스트가 같이 있어야 한다), sed 치환 안전성 (`&`·구분자·`\` escape, 사용자 입력 정화), API 실패를 빈 결과로 삼키는 패턴 (`gh api ... || echo "[]"`) 과 출력과 종료 상태가 독립인 명령에 붙인 `|| <기본값>` (`gh pr checks` 는 pending 8 / 실패 1 로 끝나면서 개수를 출력하므로 값이 두 개가 되어 뒤의 파서가 깨진다 — stdout 과 rc 를 따로 받는다) 과 그 write 쪽 쌍 (변환 실패 결과를 검사 없이 `gh issue/pr edit --body` 로 내보내 원격 본문을 공백으로 파괴), 종료 상태가 사라지는 자리 (파이프라인 중간 명령은 `set -e` 를 발동시키지 못한다 / 상태 자체가 검사 신호인 자리의 `|| true` / `cmd -v X && X … || true` 는 "X 없음"만이 아니라 "X 실행 실패"까지 삼키므로 `if …; then …; fi` 로 흡수 범위를 한정), skill/command frontmatter `name`/`description` 누락·오류, `Read`/`Edit` 영역을 `Bash cat`/`sed` 로 우회, 새 dependency·GitHub Actions·CI/CD 권한 변경 (최소 권한·lockfile·supply-chain).
+- **P1 (should-block)** — 모든 should-block 규칙은 하드 유지한다 (soft-follow 미검증이므로 code_review.md 로 demote 하지 않는다): plugin version/count drift (`plugin.json` ↔ `marketplace.json` ↔ AGENTS 플러그인 목록·README 트리·배지·`metadata.version`), idempotency 회귀 (재실행 시 사용자 파일 덮어쓰기·`nothing to commit` abort·`origin` 충돌), cross-platform shell 가정 (`sed -i`·`realpath -m`·`md5sum`·`date -d`·`stat -c`·`timeout` GNU-only / `git diff` 의 `+++` 헤더는 비ASCII 경로를 octal escape 하고 공백 있는 경로 뒤에 탭을 덧붙이므로 경로를 텍스트 비교하려면 `-c core.quotePath=false` + 탭 절단이 필요하다 / `${VAR,,}` Bash 4+ / zsh 는 인용 없는 파라미터를 단어 분리하지 않아 `cmd $MULTI_VALUE` 가 한 인자로 넘어감, `set -o shwordsplit 2>/dev/null || true` 로 요청 / 이식성 수정은 양방향 — `python`→`python3` 는 macOS 를 고치고 Windows 를 깬다, 인터프리터는 이름 고정이 아니라 탐지), `gh api --paginate`+`--jq` 에 `--slurp` 누락, 봇 신원 매처의 앵커 누락 (`test("coderabbit"; "i")` 같은 어간·prefix 매칭은 부분 문자열 매칭이고 `coderabbit-evil` 은 등록 가능한 GitHub 로그인이라 외부 계정이 리뷰 루프에 지시문을 주입한다 — `test("^coderabbitai(\\[bot\\])?$"; "i")` 로 양끝을 고정한다. `[`·`]` 는 로그인 불가 문자라 `(\\[bot\\])?$` 는 위조 불가이고 REST·GraphQL 두 철자를 함께 덮는다. 대신 로그인 고정은 봇 개명 시 silent-zero 를 되살리므로 회귀 테스트가 같이 있어야 한다), sed 치환 안전성 (`&`·구분자·`\` escape, 사용자 입력 정화), API 실패를 빈 결과로 삼키는 패턴 (`gh api ... || echo "[]"`) 과 출력과 종료 상태가 독립인 명령에 붙인 `|| <기본값>` (`gh pr checks` 는 `--json` 없이 돌리면 pending 8 / 실패 1 로 끝나면서 개수를 출력하므로 (`--json` 이면 체크 상태로는 0 이지만 네트워크·인증·API 오류는 여전히 1) 값이 두 개가 되어 뒤의 파서가 깨진다 — stdout 과 rc 를 따로 받는다) 과 그 write 쪽 쌍 (변환 실패 결과를 검사 없이 `gh issue/pr edit --body` 로 내보내 원격 본문을 공백으로 파괴), 종료 상태가 사라지는 자리 (파이프라인 중간 명령은 `set -e` 를 발동시키지 못한다 / 상태 자체가 검사 신호인 자리의 `|| true` / `cmd -v X && X … || true` 는 "X 없음"만이 아니라 "X 실행 실패"까지 삼키므로 `if …; then …; fi` 로 흡수 범위를 한정), skill/command frontmatter `name`/`description` 누락·오류, `Read`/`Edit` 영역을 `Bash cat`/`sed` 로 우회, 새 dependency·GitHub Actions·CI/CD 권한 변경 (최소 권한·lockfile·supply-chain).
 - **Do not flag** — 포매터 영역 (들여쓰기·따옴표·trailing whitespace), import 순서, 단순 typo, 루트 `CLAUDE.md` 가 `@AGENTS.md` 한 줄 포인터인 것 ("CLAUDE.md 가 없다/내용 없다" 지적은 오탐 — 역방향도 오탐으로, 이 규칙은 루트 한정이라 `plugins/<name>/CLAUDE.md` 가 내용을 갖는 것은 정상이다).
 - 위 P0/P1/Do-not-flag 은 하드 최소본이다. **elaboration 만 soft** — 발견사항 제시 순서, Domain-specific 플러그인 추가/제거·skill 추가 문서 동기화 상세 체크리스트, 도입-버전 마커 오탐 예외, plugin-cache refresh 등 **전문은 [`code_review.md`](code_review.md)**.
 
 ## CodeRabbit / Codex 조율
 
-이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:cr-fix` 스킬이 양쪽을 동시에 처리한다 (`plugins/dev/skills/cr-fix/SKILL.md` + `references/` + `scripts/`). PR-bot rate-limit 시 `--cr-source auto` 가 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback 한다.
+이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:review-loop` 스킬이 양쪽을 동시에 처리한다 (`plugins/dev/skills/review-loop/SKILL.md` + `references/` + `scripts/`). PR-bot rate-limit 시 `--cr-source auto` 가 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback 한다.
 
-CodeRabbit inline 헤더는 `_<카테고리>_ | _<심각도>_ | _<노력>_` (예: `_🎯 Functional Correctness_ | _🟠 Major_ | _⚡ Quick win_`) 이다. 첫 필드는 이슈 타입이 아니라 카테고리이므로 티어는 심각도 우선으로 정한다. Codex 는 GitHub 에서 P1/P2 만 표면화한다.
+CodeRabbit inline 헤더는 `<카테고리> | <심각도> | <노력>` 세 필드다 (예: `🎯 Functional Correctness | 🟠 Major | ⚡ Quick win`). 굵게·기울임·무서식이 PR 마다 달라지므로 서식이 아니라 이모지 배지로 읽는다 (`scripts/cr-header.jq`). 첫 필드는 이슈 타입이 아니라 카테고리이므로 티어는 심각도 우선으로 정한다. 리뷰 본문의 "Outside diff range comments" 블록에만 있는 diff 밖 지적도 같은 레코드로 수집해 같은 판정을 거친다. Codex 는 GitHub 에서 주로 P1/P2 를 표면화하고, 파서는 P0-P3 을 모두 읽는다.
+
+finding 은 티어와 무관하게 사용자에게 묻지 않고 로컬 코드에 대어 자율 판정한다 (apply / defer / skip, 사유를 `auto_judge_log` 에 남긴다). defer 는 후속 이슈로 간다.
 
 | Source | Tier 정책 |
 |--------|-----------|
 | CR 카테고리 `🔒 Security & Privacy` | `gated` — 심각도 무관 |
-| CR `🔴 Critical` / `🟠 Major` | `gated` — per-issue 확인 |
+| CR `🔴 Critical` / `🟠 Major` | `gated` — 자율 판정 |
 | CR `🟡 Minor` + `🏗️ Heavy lift` | `gated` |
 | CR `🟡 Minor` + `⚡ Quick win` (또는 effort 필드 없음) | `auto` — 자동 적용 |
-| CR `🟢 Trivial` / `🟢 Info` | `skip` |
+| CR `🔵 Trivial` / `⚪ Info` | `skip` |
 | CR `📝 Nitpick` (리뷰 요약 `<details>` 전용) | `skip` |
-| Codex P1 (red), P2 (yellow) | `gated` |
+| Codex P0, P1, 첫 라운드의 P2 | `gated` |
+| Codex P2, 두 번째 라운드부터 | `defer` — 판정 없이 후속 이슈로 (반영한 P2 가 다음 라운드의 재료가 되므로) |
+| 헤더를 못 읽은 CR / 배지 없는 Codex | `review` — 표시만 하고 `clean` 으로 치지 않는다 |
 
-cr-fix 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지, `--no-minor-stop` 으로 비활성화. **churn stop** (opt-out 없음) — iter 2 부터 이번 사이클 finding 이 전부 직전 iter 커밋 위나 PR diff 밖이면 `final_state=churn` 으로 정지한다. 직전 커밋 위 축은 코드에만 적용된다 — 산문은 한 iteration 이 문단을 통째로 다시 쓰므로 위치가 작성자를 뜻하지 않고, PR diff 밖 축만으로 판정하며 수렴하지 않는 산문 루프는 `iteration_cap` 이 받는다. **후속 이슈 1건** — `final_state` 가 `churn` / `minor_floor` / `iteration_cap` 이고 deferred 가 있으면 `gh issue create --label tbd` 로 1건 발행한다. **auto-merge** — `clean`, 또는 후속 이슈 발행에 성공한 `minor_floor` / `churn` 만 통과하고 이슈 발행 실패 시 머지를 차단한다. cr-fix 는 `@coderabbitai rate limit` 외에 어떤 PR 댓글도 올리지 않는다 (재리뷰는 push 가 트리거한다). **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 cr-fix state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.
+**HEAD 판정 대기** (ADR 0002) — 켜진 리뷰어 전원이 현재 HEAD 에 판정(지적 또는 clean)을 내기 전에는 다음 라운드를 가져오지도, push 하지도, 끝내지도, 머지하지도 않는다. 진행 중 표시, rate limit 안내, 자동 리뷰 일시정지는 판정이 아니다 (CodeRabbit 은 리뷰 중에 새 push 가 오면 그 리뷰를 버린다). push 직후에 도달한 정지(`minor_floor`, `churn`, `iteration_cap`)는 바로 끝내지 않고 보류(hold)한 뒤 다음 iteration 의 Step 7e, 마지막 iteration 이면 Step 14 에서 판정을 기다린다. 대기 중 새 gated 지적이 오면 상한이 허락하는 한 한 라운드 더 돌고, 라운드가 남지 않았으면 `iteration_cap` 으로 끝낸다. 대기는 기존 상한(`TIMEOUT`, Codex 대기 예산) 안에서만 하고, 상한을 넘기면 보류한 상태(없으면 `timeout`)로 끝내며 후속 이슈를 내고 auto-merge 를 끈다. Codex summary 댓글이 HEAD 에 Failed 를 내면 PR 에 아무 댓글도 남기지 않고 `final_state=codex_failed` 로 멈춰 알린다. draft PR 은 `gh pr ready` 안내와 함께 멈춘다.
+
+review-loop 기본 동작 (둘 다 default ON, opt-out flag): **minor soft-stop** — iter 2 부터 low-severity-only 사이클(deferred 0)이면 `final_state=minor_floor` 로 조기 정지, `--no-minor-stop` 으로 비활성화. 두 번째 라운드부터의 Codex P2 만 남은 사이클도 `minor_floor` 다. **churn stop** (opt-out 없음) — iter 2 부터 이번 사이클 finding 이 전부 직전 iter 커밋 위나 PR diff 밖이면 `final_state=churn` 으로 정지한다. 직전 커밋 위 축은 코드에만 적용된다 — 산문은 한 iteration 이 문단을 통째로 다시 쓰므로 위치가 작성자를 뜻하지 않고, PR diff 밖 축만으로 판정하며 수렴하지 않는 산문 루프는 `iteration_cap` 이 받는다. **push 전 검증** — build/test 기준선이 통과하는 저장소에서는 수정마다 build/test 를 돌리고 실패한 수정은 되돌려 `verification-failed` 로 defer 한다 (모든 수정이 실패한 사이클은 push 없이 `user_declined`). **후속 이슈 1건** — `final_state` 가 `churn` / `minor_floor` / `iteration_cap` / `user_declined` / `clean` / `timeout` 이고, 어느 사이클에서든 defer 가 있었거나 (뒤 사이클이 `clean` 이어도) HEAD 판정을 다 받지 못했으면 `gh issue create --label tbd` 로 1건 발행한다. 재실행은 같은 이슈에 댓글로 덧붙인다. **auto-merge** — 세 조건을 모두 확인한다: `final_state` 가 `clean` / `minor_floor` / `churn` 이고, defer 가 있었다면 후속 이슈 발행(재실행이면 덧붙이기)에 성공했고, 켜진 리뷰어 전원이 HEAD 에 판정을 냈다. 판정 없는 HEAD, rate limit 안내만 있는 HEAD, `codex_failed` 를 포함한 그 밖의 상태는 자격이 없다. `final_state` enum: `clean`, `user_declined`, `minor_floor`, `churn`, `iteration_cap`, `timeout`, `failure`, `cr_inactive`, `rate_limited`, `cli_failed`, `reviewers_unavailable`, `codex_failed`, `unknown` (트리거와 조치: `plugins/dev/skills/review-loop/references/failure-modes.md`). **PR 댓글** — review-loop 가 올리는 PR 댓글은 두 가지뿐이다: rate limit 안내에 reset 시각이 없을 때의 `@coderabbitai rate limit` 질의(실행당 1회)와, HEAD 당 최대 1회의 `@coderabbitai review` 요청(CodeRabbit 이 자동 리뷰하지 않는 non-default base 이거나, CodeRabbit 이 자동 리뷰를 일시정지했을 때 — `auto_pause_after_reviewed_commits`). 같은 HEAD 에 이미 요청이 있으면 다시 올리지 않는다. `@codex review` 와 진행·요약 댓글은 올리지 않으며, 재리뷰는 push 가 트리거한다. **same-file generalization** — `real` + high-confidence + grep 가능한 finding 은 같은 파일 내 동일 패턴 형제 위치도 같은 커밋에 수정 (cross-file 금지, `generalized_to` audit log), `--no-generalize` 으로 비활성화. `/dev:post-merge` 는 머지 후 review-loop state 파일의 deferred/cap-stopped 항목을 `leftover-reviews:` 체크포인트 한 줄로 surface 한다.
 
 ## Agent skills
 

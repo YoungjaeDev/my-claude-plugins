@@ -38,7 +38,7 @@ Any of these forces deep fan-out:
 8. "리액트 상태관리 라이브러리 비교" — comparison
 
 **Should NOT trigger (route elsewhere):**
-1. "단순 GitHub PR 검색 / merge" → `gh` directly, or `dev:cr-fix` for an open PR's review
+1. "단순 GitHub PR 검색 / merge" → `gh` directly, or `dev:review-loop` for an open PR's review
 2. "Ask a single question about pytorch/serve repo" → `scout:ask` directly
 3. "Resolve library ID for langchain" → `context7` MCP directly
 4. "한국 대선 정책 리서치" / "tesla market share history" / "general policy / biography / market trend" — anything **outside the code/ML domain** → `/deep-research` directly. Its 7-phase + adversarial verify + state machine is built for generic topics; scout's routes are tuned for code/ML and would mis-route. **Orchestrator does NOT delegate to /deep-research** — boundary is intentional, user invokes it themselves.

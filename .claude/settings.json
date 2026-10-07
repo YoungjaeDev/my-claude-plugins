@@ -10,5 +10,21 @@
       "./plugins/council",
       "./plugins/codex-image"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/scripts/check-plugin-cache.mjs"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }

@@ -121,6 +121,16 @@ is "status description preserved"     "$(jq -r '.description' <<<"$s")" "Review 
 s=$(state statuses-empty.json checkruns-empty.json)
 is "neither surface -> none"          "$(jq -r '.state' <<<"$s")" none
 
+# CodeRabbit marks a rate-limited push with a PASSING "Review rate limited" check
+# by design (docs management/rate-limits), so the success row is no review at all.
+# PR #283 merged on exactly this row. Both surfaces must read it as rate_limited.
+s=$(state statuses-cr-review-rate-limited.json checkruns-empty.json)
+is "success 'Review rate limited' status -> rate_limited" "$(jq -r '.state' <<<"$s")" rate_limited
+s=$(state statuses-empty.json checkruns-cr-review-rate-limited.json)
+is "success 'Review rate limited' check-run -> rate_limited" "$(jq -r '.state' <<<"$s")" rate_limited
+s=$(state statuses-cr-ratelimited.json checkruns-empty.json)
+is "success 'Review limit reached' -> rate_limited" "$(jq -r '.state' <<<"$s")" rate_limited
+
 # Fetch failure must be its own state, not masked as "none" (== "no CR row").
 # __FAIL__ sentinel simulates auth/network/rate-limit. (issue #110 step 4)
 s=$(CR_STATE_STATUSES_FILE=__FAIL__ bash "$SCRIPTS/cr-commit-state.sh" o r sha 2>/dev/null)
@@ -559,13 +569,31 @@ se=$(PATH="$CRSHIM:$PATH" BASE=main PR_NUM=990001 ITER=1 bash "$SCRIPTS/cr-cli-s
 is "0 completes -> marker valid JSON"  "$(jq -e . <<<"$so" >/dev/null 2>&1 && echo yes || echo no)" yes
 is "0 completes -> no integer-expr err" "$(printf '%s' "$se" | grep -c 'integer expression')" 0
 is "0 completes -> emitted_complete false" "$(jq -r '.emitted_complete' <<<"$so")" false
+is "0 completes -> incomplete"             "$(jq -r '.incomplete' <<<"$so")" true
 cat > "$CRSHIM/coderabbit" <<'SH'
 #!/usr/bin/env bash
 printf '{"type":"finding"}\n{"type":"complete"}\n'
 SH
 so=$(PATH="$CRSHIM:$PATH" BASE=main PR_NUM=990002 ITER=1 bash "$SCRIPTS/cr-cli-spawn.sh" 2>/dev/null)
 is "complete present -> emitted_complete true" "$(jq -r '.emitted_complete' <<<"$so")" true
-rm -rf "$CRSHIM" /tmp/cr-cli-review-990001-iter1-* /tmp/cr-cli-review-990002-iter1-*
+is "bare complete -> not incomplete" "$(jq -r '.incomplete' <<<"$so")" false
+
+# A `complete` event alone does not mean the review finished: `outcome: "failed"`
+# or a positive `unreviewedFileCount` marks a partial run (docs cli/agent-mode),
+# and findings may already have been emitted. The shim exits 0 on purpose: the
+# marker must say incomplete even where the exit code does not (CLI < 0.7.7).
+cli_incomplete() {
+  printf '{"type":"finding"}\n%s\n' "$1" > "$CRSHIM/events.jsonl"
+  printf '#!/usr/bin/env bash\ncat "%s"\n' "$CRSHIM/events.jsonl" > "$CRSHIM/coderabbit"
+  PATH="$CRSHIM:$PATH" BASE=main PR_NUM=990003 ITER=1 bash "$SCRIPTS/cr-cli-spawn.sh" 2>/dev/null | jq -r '.incomplete'
+}
+is "complete outcome failed -> incomplete" \
+   "$(cli_incomplete '{"type":"complete","status":"review_completed","outcome":"failed","findings":1}')" true
+is "complete unreviewedFileCount > 0 -> incomplete" \
+   "$(cli_incomplete '{"type":"complete","status":"review_completed","unreviewedFileCount":3}')" true
+is "completed_with_warnings, nothing unreviewed -> complete" \
+   "$(cli_incomplete '{"type":"complete","status":"review_completed","outcome":"completed_with_warnings","unreviewedFileCount":0}')" false
+rm -rf "$CRSHIM" /tmp/cr-cli-review-990001-iter1-* /tmp/cr-cli-review-990002-iter1-* /tmp/cr-cli-review-990003-iter1-*
 
 echo
 echo "query-cr-rate-limit.sh (parse seam)"
@@ -785,6 +813,22 @@ e2=$(PATH="$ESHIM2:$PATH" bash "$SCRIPTS/engagement-gate.sh" o r 42 "2026-07-27T
 is "comment untouched since before the push is not engagement" "$e2" 0
 rm -rf "$ESHIM2"
 
+# CodeRabbit edits its rate-limit notice in place on every limited push. The
+# updated_at anchor above then counted that edit as "CR reviewed this push"
+# (PR #223's false clean). A notice is the authoritative "no review ran" signal.
+ESHIM4=$(mktemp -d)
+cat > "$ESHIM4/gh" <<SH
+#!/usr/bin/env bash
+case "\$3" in
+  *pulls*reviews) echo '[]';;
+  *) cat "$FIX/issue-comments-cr-rl-notice-edited.json";;
+esac
+SH
+chmod +x "$ESHIM4/gh"
+e4=$(PATH="$ESHIM4:$PATH" bash "$SCRIPTS/engagement-gate.sh" o r 42 "2026-10-06T09:00:00Z" 2>/dev/null) || true
+is "rate-limit notice edited after push is not engagement" "$e4" 0
+rm -rf "$ESHIM4"
+
 # Same anchoring contract on the CodeRabbit side, where the stem is only 10
 # chars (`coderabbit`) and the canonical login is `coderabbitai` — so
 # `coderabbitfake` slipped through and counted as a convergence signal, letting
@@ -802,6 +846,50 @@ chmod +x "$ESHIM3/gh"
 e3g=$(PATH="$ESHIM3:$PATH" bash "$SCRIPTS/engagement-gate.sh" o r 42 "2026-07-27T14:20:43Z" 2>/dev/null) || true
 is "spoofed coderabbit-lookalike login is not engagement" "$e3g" 0
 rm -rf "$ESHIM3"
+
+echo
+echo "cr-head-verdict.sh"
+
+# CodeRabbit's verdict is the review attached to HEAD, not its success status:
+# a success row can stand on a push CR never reviewed. HV_REVIEWS / HV_COMMENTS
+# are what the shimmed gh serves for the two PR listings.
+HEAD_SHA=3e5ee3e4d477b7345ca5737210a2e76cc8ea4dfe
+HV=$(mktemp -d)
+cat > "$HV/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/statuses"*) echo '[{"context":"CodeRabbit","state":"success","description":"Review completed","created_at":"2026-10-06T09:15:00Z"}]' ;;
+  *"/pulls/"*"/reviews"*) cat "$HV_REVIEWS" ;;
+  *"/issues/"*"/comments"*) cat "$HV_COMMENTS" ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$HV/gh"
+echo '[]' > "$HV/none.json"
+hv() { HV_REVIEWS="$1" HV_COMMENTS="${2:-$HV/none.json}" PATH="$HV:$PATH" \
+         bash "$SCRIPTS/cr-head-verdict.sh" o r 42 "${3:-$HEAD_SHA}" 2>/dev/null; }
+is "success status, CR review only on an older commit -> none" \
+   "$(hv "$FIX/pr-reviews-cr-older-commit.json")" none
+jq --arg h "$HEAD_SHA" '.[0].commit_id = $h' "$FIX/pr-reviews-cr-older-commit.json" > "$HV/head-findings.json"
+is "CR review on HEAD with actionable comments -> findings" "$(hv "$HV/head-findings.json")" findings
+jq --arg h "$HEAD_SHA" '.[0].commit_id = $h | .[0].body = "**Actionable comments posted: 0**"' \
+  "$FIX/pr-reviews-cr-older-commit.json" > "$HV/head-zero.json"
+is "CR review on HEAD with 0 actionable -> clean" "$(hv "$HV/head-zero.json")" clean
+# A clean re-review posts no review; CR edits the walkthrough to name the new head.
+is "walkthrough 'No actionable comments' naming HEAD -> clean" \
+   "$(hv "$FIX/pr-reviews-cr-older-commit.json" "$FIX/issue-comments-cr-edited-in-place.json")" clean
+# The walkthrough names its range as "between <base> and <head>"; HEAD appearing
+# as the BASE of that range is an older review, not one of HEAD.
+is "walkthrough with HEAD only as range base -> none" \
+   "$(hv "$HV/none.json" "$FIX/issue-comments-cr-edited-in-place.json" 86b604f13062715e11801304d6b58a0b6c90c84e)" none
+jq --arg h "$HEAD_SHA" '.[0].commit_id = $h | .[0].body = "<!-- This is an auto-generated comment: rate limited by coderabbit.ai -->\nReview rate limited"' \
+  "$FIX/pr-reviews-cr-older-commit.json" > "$HV/head-rl.json"
+is "rate-limit notice on HEAD is not a verdict -> none" "$(hv "$HV/head-rl.json")" none
+# Could not look is not "no verdict": exit non-zero with nothing on stdout.
+out=$(HV_REVIEWS=/nonexistent PATH="$HV:$PATH" bash "$SCRIPTS/cr-head-verdict.sh" o r 42 "$HEAD_SHA" 2>/dev/null); rc=$?
+is "reviews fetch failure -> non-zero exit" "$([ "$rc" -ne 0 ] && echo yes || echo no)" yes
+is "reviews fetch failure -> no verdict printed" "$out" ""
+rm -rf "$HV"
 
 echo
 echo "poll-cr-status.sh"
@@ -926,6 +1014,33 @@ pfd=$(PATH="$FSHIM:$PATH" NO_CODEX=true OWNER=o REPO=r PR_NUM=42 CUR_SHA=s \
   bash "$SCRIPTS/pre-flight.sh" 2>/dev/null)
 is "description RL on success -> gate rate_limited (authority retained)" \
    "$(jq -r '.gate' <<<"$pfd" 2>/dev/null)" rate_limited
+
+# The documented "Review rate limited" passing check (PR #283) carries none of the
+# sniffer's comment phrasings, so the gate must come from the state itself.
+cat > "$FSHIM/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*) cat "$FIX/statuses-cr-review-rate-limited.json" ;;
+  *"/check-runs"*) echo '{"check_runs":[]}' ;;
+  *"/issues/"*"/comments"*) echo '[]' ;;
+  *"/pulls/"*"/reviews"*) echo '[]' ;;
+  *"/pulls/"*) echo '{"head":{"sha":"deadbeef"}}' ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+pfr=$(PATH="$FSHIM:$PATH" NO_CODEX=true OWNER=o REPO=r PR_NUM=42 CUR_SHA=s \
+  PUSH_TIME=2020-01-01T00:00:00Z STATE_FILE="$FST" \
+  bash "$SCRIPTS/pre-flight.sh" 2>/dev/null)
+is "'Review rate limited' success -> gate rate_limited" "$(jq -r '.gate' <<<"$pfr" 2>/dev/null)" rate_limited
+is "'Review rate limited' success -> cr_state rate_limited" "$(jq -r '.cr_state' <<<"$pfr" 2>/dev/null)" rate_limited
+is "'Review rate limited' success -> not actionable" "$(jq -r '.cr_actionable' <<<"$pfr" 2>/dev/null)" false
+
+# Same row on the background poller: it emitted `success` straight from the
+# terminal branch, which Step 6b read as a finished review.
+rlp=$(PATH="$FSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 \
+  EARLY_CHECK_WINDOW=0 PUSH_TIME=2020-01-01T00:00:00Z \
+  run_capped 10 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
+is "poll: 'Review rate limited' success -> rate_limited" "$(jq -r '.state' <<<"$rlp" 2>/dev/null)" rate_limited
 rm -rf "$FSHIM"
 
 echo

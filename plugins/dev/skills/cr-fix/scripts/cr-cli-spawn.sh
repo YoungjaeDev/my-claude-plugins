@@ -28,4 +28,16 @@ set -e
 emitted_complete=$(grep -c '"type":"complete"' "$OUT" 2>/dev/null) || emitted_complete=0
 [ "$emitted_complete" -gt 0 ] && ec=true || ec=false
 
-printf '{"jsonl":"%s","exit":%d,"emitted_complete":%s}\n' "$OUT" "$rc" "$ec"
+# A `complete` event is not a finished review: `outcome: "failed"` or a positive
+# `unreviewedFileCount` marks a partial run even when findings were emitted, and
+# CLIs before 0.7.7 still exit 0 on it (docs.coderabbit.ai cli/agent-mode).
+# `outcome: "completed_with_warnings"` with nothing unreviewed is complete. No
+# `complete` event at all is incomplete. OUT mixes stderr in, so non-JSON lines
+# are skipped; a jq failure leaves the default `true` — unknown is not complete.
+incomplete=$(jq -R -n '[ inputs | fromjson? | select(type == "object" and .type == "complete") ] | last
+  | if . == null then true
+    else (.outcome == "failed") or (((.unreviewedFileCount // 0) | tonumber? // 1) > 0) end' "$OUT" 2>/dev/null) \
+  || incomplete=true
+case "$incomplete" in true|false) : ;; *) incomplete=true ;; esac
+
+printf '{"jsonl":"%s","exit":%d,"emitted_complete":%s,"incomplete":%s}\n' "$OUT" "$rc" "$ec" "$incomplete"

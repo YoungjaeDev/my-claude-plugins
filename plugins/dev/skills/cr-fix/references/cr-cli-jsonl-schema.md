@@ -10,7 +10,7 @@
 | `status` | Progress markers (e.g. "analyzing X.py"). | Ignore. |
 | `heartbeat` | Keep-alive. | Ignore (used by Monitor). |
 | `finding` | Single actionable review item. | Project to record (see below). |
-| `complete` | Final summary, exit imminent. | Terminate JSONL reader. |
+| `complete` | Final summary, exit imminent. Carries `status`, `findings`, and when present `outcome` (`failed` / `completed_with_warnings`), `message`, `unreviewedFileCount`. | Terminate JSONL reader. `outcome: "failed"` or `unreviewedFileCount > 0` is an incomplete review → `cli_failed` (`cr-cli-spawn.sh` marker `incomplete: true`). |
 | `error` | CLI-level failure. | Set `final_state="cli_failed"`; do NOT auto-fall-back to PR-bot. |
 
 ## finding event fields

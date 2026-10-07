@@ -91,9 +91,9 @@ if [ "$cr_state" = "success" ] && [ "$cr_desc" != "" ] \
         | grep -q true 2>/dev/null; then
   cr_free_tier_skip=true
 fi
-if [ "$cr_state" = "success" ] && [ "$cr_desc" != "" ] \
-   && jq -nr --arg d "$cr_desc" '$d | test("Review limit reached|rate limited"; "i")' \
-        | grep -q true 2>/dev/null; then
+# cr-commit-state.sh already turned a success row with a rate-limit description
+# ("Review rate limited", "Review limit reached", ...) into `rate_limited`.
+if [ "$cr_state" = "rate_limited" ]; then
   rate_limit_source="description"
 fi
 # Free-tier transient that has outlived its grace window → genuine disable.
@@ -164,7 +164,7 @@ case "$cr_state" in
     gate="failure"
     cr_actionable=true
     ;;
-  pending|error|"")
+  pending|error|rate_limited|"")
     # No terminal state yet → fall through to cr_wait (Step 6 polling).
     ;;
 esac

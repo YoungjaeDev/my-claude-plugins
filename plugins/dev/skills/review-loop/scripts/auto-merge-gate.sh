@@ -80,12 +80,14 @@ cr_state="${cr_state:-unknown}"
 
 # Pending checks are not blocking: `gh pr merge --auto` waits for them. Only a check
 # that has already failed, errored, or been cancelled blocks the merge.
-# `gh pr checks` exits 8 when checks are pending and 1 when some failed, printing the
-# count either way; `|| echo 0` would append a second value and break the jq below.
+# With --json, `gh pr checks` exits 0 whatever the checks say (it returns before the
+# pending-8 / failed-1 exit codes, cli/cli pkg/cmd/pr/checks), but a network/auth/API
+# failure still exits 1, which under `set -e` would end the gate before the guard
+# below. `&& rc=0 || rc=$?` keeps that rc; `|| echo 0` would append a second value.
 blocking=$(gh pr checks "$PR_NUM" --json name,state \
-  --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT" or .state == "ACTION_REQUIRED")] | length' 2>/dev/null); rc=$?
+  --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT" or .state == "ACTION_REQUIRED")] | length' 2>/dev/null) && rc=0 || rc=$?
 case "$rc" in
-  0|1|8) : ;;                       # counted normally, whatever the check outcome was
+  0) : ;;                           # counted normally
   *)     blocking="" ;;             # the query itself failed — fall through to the guard
 esac
 # Anything that is not a plain integer means we could not measure: report 1 so the

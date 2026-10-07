@@ -229,6 +229,23 @@ SH
 g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "probe failure -> protection_http 0" "$(jq -r '.protection_http' <<<"$g" 2>/dev/null)" 0
 
+# `gh pr checks` itself failing (network/auth/API, exit 1 even with --json) must not
+# kill the gate under `set -e` before the guard runs: the gate still prints its
+# JSON and counts the unmeasured checks as blocking. (codex P1, PR #300)
+cat > "$SHIMDIR/gh" <<'SH'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "api --paginate"*) echo '[]';;
+  "pr checks") echo "HTTP 502" >&2; exit 1;;
+  "pr view") echo "main";;
+  "api repos"*) echo "HTTP/2.0 404 Not Found"; exit 1;;
+  *) echo "unknown gh args: $*" >&2; exit 1;;
+esac
+SH
+g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
+is "gh pr checks failure -> gate still emits JSON" "$(jq -e . <<<"$g" >/dev/null 2>&1 && echo yes || echo no)" yes
+is "gh pr checks failure -> blocking_checks 1" "$(jq -r '.blocking_checks' <<<"$g" 2>/dev/null)" 1
+
 # Check-run-only CR repo: CR posts 0 commit statuses and 1 check-run. The old
 # status-only cr_state read saw nothing -> "unknown" -> Step 15 never merged on
 # --auto-merge. Now it delegates to cr-commit-state.sh (dual-surface), so a

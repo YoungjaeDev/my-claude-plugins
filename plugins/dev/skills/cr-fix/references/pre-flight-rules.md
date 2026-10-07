@@ -86,7 +86,7 @@ Pre-flight runs `scripts/codex-head-verdict.sh` (contract: `references/codex-sta
 | `codex_verdict` | `codex_state` |
 |---|---|
 | `clean`, or `findings` whose review is already processed | `clean` |
-| `failed` | `unknown` (not a pass; callers stop on `codex_verdict=failed`) |
+| `failed` | `unknown` (not a pass; the Step 5 block stops at `final_state=codex_failed` on `codex_verdict=failed`) |
 | `in_progress`, `none`, `error`, or `unknown` with `summary_state=unparsed` | `arriving`, whatever `push_age` is |
 | `unknown` with `summary_state=absent` (no summary comment) | the emoji / timeout / engagement rows below |
 

@@ -99,8 +99,10 @@ if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
     #     bash $SKILL_DIR/scripts/poll-codex-grace.sh
     # Monitor returns one JSON line, or grace timeout (no line):
     #   {codex_review_id:N, pr:N}                         -> codex_review_id_to_process=N
-    #   {codex_review_id:null, pr:N, verdict:clean|failed} -> no review is coming; proceed with none
-    #     (codex_review_id_to_process stays ""; verdict=failed is not a pass).
+    #   {codex_review_id:null, pr:N, verdict:clean}  -> no review is coming; proceed with none
+    #     (codex_review_id_to_process stays "").
+    #   {codex_review_id:null, pr:N, verdict:failed} -> final_state=codex_failed, break
+    #     (not a pass; no PR comment, no `@codex` request).
   fi
 fi
 ```

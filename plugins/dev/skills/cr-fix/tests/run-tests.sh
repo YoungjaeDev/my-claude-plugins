@@ -1226,6 +1226,56 @@ pf=$(pfv success issue-comments-codex-summary-completed.json pr-reviews-codex-no
 is "pre-flight: proceed gate carries the same Codex wait budget" \
    "$(pg '.gate + ":" + (.codex_wait_seconds >= 495 and .codex_wait_seconds <= 500 | tostring)')" "proceed:true"
 
+# Codex Failed on HEAD (decision 16): no review is coming, and the loop never asks
+# for one, so it stops at codex_failed without writing to the PR. Every gh call on
+# the path is logged; none may be a write.
+CFD=$(mktemp -d); GH_LOG="$CFD/gh.log"; : > "$GH_LOG"
+pf=$(GH_LOG="$GH_LOG" pfv success issue-comments-codex-summary-failed.json pr-reviews-codex-prior-only.json)
+is "pre-flight: Failed on HEAD -> codex_verdict failed" "$(pg .codex_verdict)" failed
+# Step 5 codex_failed stop. Mirrors the Step 5 block in references/run-blocks.md.
+cf_stop() {
+  PF="$1" bash -c 'for ITER in 1 2; do pf=$PF; final_state=""
+    codex_verdict_pf=$(jq -r ".codex_verdict // empty" <<<"$pf")
+    if [ "$codex_verdict_pf" = failed ]; then final_state=codex_failed; break; fi
+    final_state=looped; done; printf %s "$final_state"'
+}
+cf_final=$(cf_stop "$pf")
+is "loop: Failed on HEAD -> final_state codex_failed" "$cf_final" codex_failed
+is "loop: Running on HEAD -> keeps going" \
+   "$(cf_stop "$(pfv success issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json)")" looped
+# Minimal draft-07 check of what the schema states: required keys, no extra keys, enums.
+schema_ok() {
+  jq -n --argjson o "$1" --slurpfile s "$HERE/../assets/final-output.schema.json" '$s[0] as $s
+    | (($s.required - ($o | keys)) == [])
+      and ((($o | keys) - ($s.properties | keys)) == [])
+      and all($s.properties | to_entries[]; .key as $k | (.value.enum // null) as $e
+              | $e == null or ($o | has($k) | not) or ($e | index($o[$k])) != null)'
+}
+fo=$(FINAL_STATE="$cf_final" PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: codex_failed passes the schema" "$(schema_ok "$fo")" true
+is "final output: final_state codex_failed"       "$(jq -r '.final_state' <<<"$fo")" codex_failed
+is "schema check rejects an unlisted final_state" "$(schema_ok "$(jq -c '.final_state="bogus"' <<<"$fo")")" false
+cat > "$CFD/gh" <<SH
+#!/usr/bin/env bash
+echo "\$*" >> "$GH_LOG"
+case "\$*" in
+  *"/check-runs"*) echo '{"check_runs":[{"name":"CodeRabbit","status":"completed","conclusion":"success","started_at":"2025-01-01T00:00:00Z"}]}';;
+  *"/statuses"*)   echo '[]';;
+  "pr checks"*)    echo '0';;
+  "pr view"*)      echo "main";;
+  *"/protection"*) echo "HTTP/2.0 200 OK";;
+  *) echo "unknown gh args: \$*" >&2; exit 1;;
+esac
+SH
+chmod +x "$CFD/gh"
+g=$(FINAL_STATE="$cf_final" PATH="$CFD:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 "$CHEAD" 2>/dev/null)
+is "auto-merge: codex_failed -> ineligible"       "$(jq -r '.eligible' <<<"$g")" false
+is "auto-merge: codex_failed reason names Codex"  "$(jq -r '.ineligible_reason | test("Codex.*Failed")' <<<"$g")" true
+is "codex_failed path: gh was called"             "$([ -s "$GH_LOG" ] && echo yes)" yes
+is "codex_failed path: no PR write" \
+   "$(grep -cE -- '(-X|--method) *(POST|PATCH|PUT|DELETE)|(^| )(-f|-F|--field|--raw-field) |(pr|issue) (comment|review|edit)' "$GH_LOG")" 0
+rm -rf "$CFD"; unset GH_LOG
+
 echo
 echo "SKILL.md snippet contracts (mirror SKILL.md and references/run-blocks.md blocks)"
 

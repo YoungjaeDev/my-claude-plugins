@@ -160,10 +160,16 @@ for ITER in $(seq 1 $MAX_ITER); do
     codex_state_pf=$(jq -r '.codex_state' <<<"$pf")
     codex_latest_id_pf=$(jq -r '.codex_latest_id // empty' <<<"$pf")
     rate_limit_source=$(jq -r '.rate_limit_source' <<<"$pf")
+    codex_verdict_pf=$(jq -r '.codex_verdict // empty' <<<"$pf")
 
     # Persist pre-flight decision into STATE_FILE for diagnostics.
     tmp=$(mktemp); jq --argjson pf "$pf" --argjson iter "$ITER" \
       '.pre_flight_decisions += [($pf + {iter:$iter})]' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+
+    # Codex reported Failed on HEAD: no review is coming, and the loop never asks
+    # for one (no `@codex` comment). Stop without writing to the PR; the final
+    # report tells the user.
+    if [ "$codex_verdict_pf" = failed ]; then final_state=codex_failed; break; fi
 
     case "$gate" in
       proceed)

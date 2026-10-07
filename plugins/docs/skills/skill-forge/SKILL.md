@@ -40,8 +40,25 @@ Do not use it to:
 | why a line stays or goes; how to phrase triggers and completion criteria | `references/writing-levers.md` |
 | section order, length targets, `scripts` vs `references` vs `assets`, naming | `references/structure.md` |
 | the silent failures, the resolver block, version bumps, manifest regeneration | `references/runtime-contract.md` |
+| where to send the agent for a platform fact instead of copying it, and what stays encoded | `references/live-lookup.md` |
 
 Read a reference when you reach the step that needs it, not up front.
+
+## Look it up live
+
+A skill that depends on a platform fact (defined in `references/live-lookup.md`) tells the agent
+where to read it at run time instead of carrying a copy. Lookup order depends on the kind of fact:
+
+- **What an installed tool accepts or lists** (flags, values, subcommands, model names, versions):
+  the installed tool first (`--help`, a listing command, a file it ships with), since only it is
+  pinned to the version on the machine; then the vendor docs.
+- **A schema no tool prints** (frontmatter fields, hook or settings schema): the docs MCP if the
+  session has one, else the vendor's `llms.txt` or doc URL fetched directly.
+
+When every lookup fails, the agent reports which ones it tried, then takes the skill's documented
+safe default if it has one (omit an optional field, keep an encoded check), and otherwise stops
+rather than guessing a value. What stays encoded instead of looked up, and the starting URLs, are
+in `references/live-lookup.md`.
 
 ## Procedure
 
@@ -80,13 +97,16 @@ synonym lists cost more than they return.
 Follow the order in `references/structure.md` and drop every section with nothing to say. Targets:
 about 100 lines simple, about 200 complex, 300 as the ceiling here.
 
-Two checks while drafting, both from `references/writing-levers.md`:
+Three checks while drafting, the first two from `references/writing-levers.md`:
 
 - **Branch test**: content every run needs goes inline; content only some branches reach goes
   behind a pointer to a bundled reference.
 - **Completion criteria**: each step ends in something observable. "Review the config" does not
   distinguish done from not-done; "list every key the config sets and mark the ones this change
   touches" does.
+- **Live lookup**: list every platform fact in the draft (`references/live-lookup.md`) and mark
+  each with the command or URL you checked it against this session and the pointer the body now
+  carries, or with why it stays encoded (owner policy, undocumented behavior, silent failure).
 
 ### 4. Split the bundle
 
@@ -167,15 +187,17 @@ same trigger branch. That one is judgment; no guard covers it.
 
 | Symptom | Cause |
 |---|---|
-| skill works in Claude Code, absent in Codex | description over 1024 characters, or `disable-model-invocation: true` |
+| skill works in Claude Code, absent in Codex | description over 1024 characters, or `disable-model-invocation: true` (the latter `unverified` on current Codex; see `references/frontmatter.md`) |
 | skill has no description anywhere and never triggers | unquoted `: ` in the description, or frontmatter not starting at byte 0 |
 | bundled script "not found" on Codex | bare `${CLAUDE_PLUGIN_ROOT}` instead of the resolver |
 | users report the old behavior after a fix | version bump missing; their plugin cache never refreshed |
 | two skills fight over the same requests | overlapping trigger branches in sibling descriptions |
 | body grew past 300 lines | one skill covering two invocation moments, or an inlined reference |
+| skill passes flags or values the installed tool no longer accepts | a platform fact copied into the body instead of a pointer to `--help` or the docs |
 
 ## Verification
 
 The skill is done when: the guard commands in step 8 pass, the measurement row shows nothing
 out of band, the description reads as trigger conditions rather than a summary, every step ends in
-an observable result, and the version bump is in the same change.
+an observable result, every platform fact in the draft is on the step 3 live-lookup list with its
+checked source or its encoded reason, and the version bump is in the same change.

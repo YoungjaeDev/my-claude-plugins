@@ -9,16 +9,16 @@ What decides each axis when judging a skill. `docs:skill-audit` applies all seve
 | Structure | section order and completeness; length against the 100/200/300 targets and the 500-line hard ceiling; `references` depth exactly 1; deterministic logic left as prose instead of a script |
 | Completion criteria | per step: can done be told from not-done (clarity); does the demand pull real work, or accept a glance |
 | Information hierarchy | branch test — inlined content only some branches reach, or a pointer to content every run needs; co-location, and whether a split concept is duplication or scattering |
-| Pruning | no-op prose, sediment, prose caching what a file or command already shows, prohibition where a positive instruction would steer better |
+| Pruning | no-op prose, sediment, prose caching what a file or command already shows, prohibition where a positive instruction would steer better; a platform fact (`live-lookup.md`) copied in with no instruction to look it up live. For each one, run the lookup it should point at once and compare; the result is the evidence, and a lookup that cannot run makes the finding `unverified` |
 | Runtime contract | every silent failure in `runtime-contract.md` — bare `${CLAUDE_PLUGIN_ROOT}`, an interaction gate hardcoded to one runtime's tool — plus logic that exists only on the Claude surface, and a body describing a plugin or path it no longer lives in |
 
 An axis with nothing to say is passed, not padded.
 
 ## Tiers
 
-- **P0** — silent failure on some runtime: does not load, does not trigger, dies at step one. Always name the runtime it breaks.
-- **P1** — structure, completion criteria, or a pointer collision between siblings.
-- **P2** — pruning and phrasing.
+- **P0** — silent failure on some runtime: does not load, does not trigger, dies at step one. Always name the runtime it breaks. Includes a copied platform fact that no longer matches its lookup when the mismatch fails silently.
+- **P1** — structure, completion criteria, or a pointer collision between siblings. Includes a copied platform fact that no longer matches its lookup and fails loudly.
+- **P2** — pruning and phrasing. Includes a copied platform fact that still matches its lookup.
 
 ## Two thresholds that are not in conflict
 

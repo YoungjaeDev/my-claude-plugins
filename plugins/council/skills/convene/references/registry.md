@@ -62,31 +62,51 @@ seat as absent, which reads as "the seat failed" rather than "your pin is gone".
 local and cheap:
 
 **Read the list first, then test membership against what you read.** Folding both steps into one
-negated command makes a truncated cache or a failed `agy` call indistinguishable from a retired
+negated command makes a truncated catalog or a failed `agy` call indistinguishable from a retired
 model, and the user gets sent to pick a replacement with no trustworthy list in front of them.
-Each list is fetched exactly once, into a variable, and only a *successful* read is allowed to
-accuse a pin:
+Each list is fetched exactly once, into a variable, and only a *successful, non-empty* read is
+allowed to accuse a pin.
+
+Neither list's output format is encoded beyond what the check needs. codex's catalog comes from
+`codex debug models` (JSON, `.models[].slug`; see `codex debug --help`), with the internal
+`models_cache.json` only as the fallback for a CLI that predates the subcommand. For agy only the
+first tab-separated field of each line is read: that is the slug whether `agy models` prints bare
+slugs or `slug<TAB>Display Name`. When a pin you just saw in the listing still comes back as
+`STALE_PIN`, run `agy models` (or `codex debug models`) once and look at the format before asking
+the user anything.
 
 ```bash
 CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"   # codex honors CODEX_HOME; see project_state.sh
 REG="$HOME/.claude/council-models.json"
 CM=$(jq -r '.seats.codex.model' "$REG"); AM=$(jq -r '.seats.agy.model' "$REG")
 
-# codex — one read; a parse failure is a read failure, never a retirement.
-if [ ! -f "$CODEX_DIR/models_cache.json" ]; then
-  echo "LIST_UNREAD=codex reason=cache-absent"
-elif ! codex_slugs=$(jq -r '.models[].slug' "$CODEX_DIR/models_cache.json" 2>/dev/null); then
-  echo "LIST_UNREAD=codex reason=cache-unparseable"
+# codex — the CLI's own catalog first; the cache file only when the subcommand
+# is missing or fails. A parse failure or an empty list is a read failure, never
+# a retirement.
+codex_json=""
+if command -v codex >/dev/null 2>&1 && codex_json=$(codex debug models 2>/dev/null); then
+  :
+elif [ -f "$CODEX_DIR/models_cache.json" ]; then
+  codex_json=$(cat "$CODEX_DIR/models_cache.json")
+fi
+if [ -z "$codex_json" ]; then
+  echo "LIST_UNREAD=codex reason=catalog-absent"
+elif ! codex_slugs=$(printf '%s\n' "$codex_json" | jq -r '.models[].slug' 2>/dev/null) \
+     || [ -z "$codex_slugs" ]; then
+  echo "LIST_UNREAD=codex reason=catalog-unparseable"
 elif ! printf '%s\n' "$codex_slugs" | grep -qxF "$CM"; then
   echo "STALE_PIN=codex:$CM"
 fi
 
 # agy — one invocation, captured; the earlier version called `agy models` twice
-# and let the second call's failure read as a missing pin.
+# and let the second call's failure read as a missing pin. Only field 1 is the slug:
+# agy 1.2.9 separates it with a tab, the headless docs show aligned spaces.
 if ! command -v agy >/dev/null 2>&1; then
   echo "LIST_UNREAD=agy reason=binary-absent"
-elif ! agy_slugs=$(agy models 2>/dev/null); then
+elif ! agy_out=$(agy models 2>/dev/null); then
   echo "LIST_UNREAD=agy reason=listing-failed"
+elif agy_slugs=$(printf '%s\n' "$agy_out" | awk 'NF {print $1}') && [ -z "$agy_slugs" ]; then
+  echo "LIST_UNREAD=agy reason=listing-empty"
 elif ! printf '%s\n' "$agy_slugs" | grep -qxF "$AM"; then
   echo "STALE_PIN=agy:$AM"
 fi
@@ -104,21 +124,27 @@ Gather the real candidate lists first so the question carries evidence rather th
 # login or an unparseable cache would be reported as "not installed", and the
 # pin question would then be asked with no real candidate list behind it.
 
-# codex: slugs plus the reasoning levels each one accepts.
-# Resolve through CODEX_HOME — codex layers `$CODEX_HOME/<name>.config.toml`, so on a
-# machine that sets it, `$HOME/.codex` is a directory the running CLI never reads.
-# Same rule the repo's own detector applies (plugins/dev/scripts/project_state.sh).
+# codex: slugs, the reasoning levels each one accepts, speed tiers.
+# Source is `codex debug models`; the cache file is the fallback for an older CLI.
+# Resolve the cache through CODEX_HOME — on a machine that sets it, `$HOME/.codex`
+# is a directory the running CLI never reads (plugins/dev/scripts/project_state.sh).
 CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
-if [ ! -f "$CODEX_DIR/models_cache.json" ]; then
-  echo "(codex model cache absent)"
-elif ! jq -r '
+codex_json=""
+if command -v codex >/dev/null 2>&1 && codex_json=$(codex debug models 2>/dev/null); then
+  :
+elif [ -f "$CODEX_DIR/models_cache.json" ]; then
+  codex_json=$(cat "$CODEX_DIR/models_cache.json")
+fi
+if [ -z "$codex_json" ]; then
+  echo "(codex model catalog absent)"
+elif ! printf '%s\n' "$codex_json" | jq -r '
   .models[] | select(.visibility != "hide")
   | "\(.slug)  efforts=\([.supported_reasoning_levels[].effort] | join(","))  speed=\(.additional_speed_tiers // [] | join(","))"
-' "$CODEX_DIR/models_cache.json"; then
-  echo "(codex model cache unreadable — present but unparseable)" >&2
+'; then
+  echo "(codex model catalog unreadable — present but unparseable)" >&2
 fi
 
-# agy: one slug per line, effort already folded into the slug
+# agy: the slug is the first tab-separated field; the rest is a display name
 if ! command -v agy >/dev/null 2>&1; then
   echo "(agy absent)"
 elif ! agy models; then
@@ -147,8 +173,8 @@ user typed can become a command:
 
 ```json
 {
-  "codex":  {"model": "gpt-5.6-sol", "effort": "xhigh", "service_tier": "fast"},
-  "agy":    {"model": "gemini-3.6-flash-high"},
+  "codex":  {"model": "<codex slug>", "effort": "<one of its efforts>", "service_tier": "<one of its speed tiers>"},
+  "agy":    {"model": "<agy slug>"},
   "claude": {"model": "opus"}
 }
 ```
@@ -170,9 +196,11 @@ for k in codex.model codex.effort codex.service_tier agy.model claude.model; do
   esac
 done
 
-# The Claude seat has no CLI to query, so its candidate list is a fixed enum — the
-# four values the Agent tool accepts. Without this, a plausible-looking answer like
-# "claude-opus-4" is charset-clean, gets written, and only fails when the seat launches.
+# The Claude seat has no CLI to query, so its candidate list is a fixed policy enum of
+# model aliases (the Agent tool also takes full model IDs and `inherit`; see
+# https://code.claude.com/docs/en/sub-agents#choose-a-model). Without this, a
+# plausible-looking answer like "claude-opus-4" is charset-clean, gets written, and
+# only fails when the seat launches.
 case "$(jq -r '.claude.model' "$PINS")" in
   sonnet|opus|haiku|fable) ;;
   *) echo "council: claude pin must be one of sonnet|opus|haiku|fable" >&2; exit 1 ;;
@@ -203,8 +231,13 @@ Write it through the temp file, as above. A bare `>` truncates the registry befo
 a failing `jq` would destroy a perfectly good set of pins and silently send the next run back to
 first-run defaults.
 
-Defaults on first run: codex `gpt-5.6-sol` / `xhigh` / `fast`, agy `gemini-3.6-flash-high`,
-claude `opus`.
+Defaults on first run come from the candidate lists, not from this file: propose the first codex
+entry of the visible list above (`visibility != "hide"`) with effort `xhigh` when that model lists
+it, else the highest level it lists (deliberation policy, not the model's `default`), and its first
+speed tier; the first agy slug; and claude `opus`.
+The user's confirmation still decides. When the user asks for a Claude value outside the enum,
+re-read <https://code.claude.com/docs/en/sub-agents#choose-a-model> before answering; widening
+the enum is a policy change to this skill, not a per-run choice.
 
 ### codex update setting
 

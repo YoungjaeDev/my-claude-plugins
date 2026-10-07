@@ -5,21 +5,21 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 8 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.58.0"
+    "version": "2.59.0"
   },
   "plugins": [
     {
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Back half of the development flow, from a PR ready for review to merge and cleanup; the front half (idea -> spec -> tickets -> PR) belongs to Matt's skills (mattpocock-skills). GitHub workflow: commit-and-push, release, review-loop (unified CodeRabbit + ChatGPT-Codex review loop with autonomous apply/defer/skip judgment and rate-limit fallback), post-merge (cleanup only: leftover reviews, branch, issues, project status, About line; lessons go to /retro), session-handoff (chat-only end-of-session summary for a fresh agent), orchestrate (subagent orchestration: job cards, model x effort worker presets, disjoint file ownership, bounded re-query, orchestrator-owned verification), flow (router over Matt's front half and dev's back half plus product-repo setup, no side effects of its own). Project setup: new (first-day bootstrap: interview, .claude/ scaffold, CLAUDE.md + AGENTS.md with Codex reviewer guidelines, gh repo create) and wiring (14-axis harness diagnostic for an existing repo, read-only until approved). Playwright E2E harness: e2e-setup, e2e-author, e2e-debug wrap Playwright's planner/generator/healer agents (planner/generator explore via playwright-cli, healer via the playwright-test MCP server); never overwrite an existing playwright.config and degrade gracefully without Playwright.",
-      "version": "5.0.4",
+      "version": "5.0.5",
       "category": "development"
     },
     {
       "name": "docs",
       "source": "./plugins/docs",
       "description": "Documents people and agents read, plus publishing them elsewhere. Project docs — readme / changelog / deploy-doc / moc commands backed by the doc-guides reference cards. Agent-facing authoring — write-rules (CLAUDE.md + .claude/rules), interview-methodology (open points of a small ambiguous request, inline summary, TCREI reusable-prompt output), vp (voice-dictated prompt gate with a shared .agents/voice-terms.md dictionary), and the skill-forge family (skill-forge authoring, skill-audit single-skill diagnosis, skill-fleet-review repository-wide sweep). Publishing — translate-web-article (web page to Korean markdown) and gws-sync (one-way local to Google Drive sync behind an approval gate).",
-      "version": "2.0.1",
+      "version": "2.1.0",
       "category": "documentation"
     },
     {
@@ -54,7 +54,7 @@
       "name": "council",
       "source": "./plugins/council",
       "description": "Claude-only (do not install into Codex). Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync.",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "category": "ai-models",
       "policy": {
         "installation": "NOT_AVAILABLE"
@@ -64,7 +64,7 @@
       "name": "codex-image",
       "source": "./plugins/codex-image",
       "description": "Claude-only (do not install into Codex). Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "category": "ai-models",
       "policy": {
         "installation": "NOT_AVAILABLE"

@@ -10,7 +10,7 @@ The third leg of the harness. A CI failure is a sensor reading; this skill turns
 
 Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `playwright-test-healer` that `e2e-setup` generated (**Path A**); on **Codex** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
 
-> **Verified against Playwright 1.61.0.** The headless `npx playwright trace` CLI was introduced in 1.59; the subcommand set below is confirmed on 1.61. The GUI viewer `npx playwright show-trace <trace.zip>` is also available if a human wants to look.
+> The headless `npx playwright trace` CLI needs Playwright >= 1.59. On Path A, `npx playwright trace install-skill` installs Playwright's own agent skill for it (it writes to `.claude/skills/` only, so it does nothing for Codex). The GUI viewer `npx playwright show-trace <trace.zip>` is also available if a human wants to look.
 
 ## Precondition check
 
@@ -54,7 +54,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
      ```bash
      gh run download <run-id> -n playwright-report-<run-id> -D ./_e2e-artifacts
      ```
-   - Inspect the trace from the command line (no GUI needed; this is the agent-friendly path):
+   - Inspect the trace from the command line (no GUI needed; this is the agent-friendly path). Run `npx playwright trace --help` first; if a subcommand below is not listed, use the listed equivalent and say which one you substituted:
      ```bash
      TRACE=$(find ./_e2e-artifacts -name trace.zip | head -1)
      npx playwright trace open "$TRACE"      # extract for inspection

@@ -5,6 +5,6 @@
 ## Consequences
 
 - wiki 는 훅 없이 ingest·query·lint 로만 쓴다. 세션 끝 자동 수집은 약 200건이 처리되지 않은 채 쌓이기만 해서 지운다.
-- 이 repo 의 바깥 지식은 플랫폼 사실뿐이고 그 출처는 `docs/llm-doc-sources.md` 가 가리키므로, 이 repo 에는 `.llmwiki` 를 두지 않는다. 플랫폼 사실에 기대는 코드 자리에는 벤더 문서 링크를 단다.
+- 이 repo 의 바깥 지식은 플랫폼 사실뿐이고 그 출처는 벤더 공식 문서이고 실행 시점에 조회하므로, 이 repo 에는 `.llmwiki` 를 두지 않는다. 플랫폼 사실에 기대는 코드 자리에는 벤더 문서 링크를 단다.
 
 출처: `.claude/spec/2026-10-06-matt-front-dev-back.md` 결정 7·19·21·22

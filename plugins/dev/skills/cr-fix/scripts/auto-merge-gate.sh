@@ -34,6 +34,8 @@ case "$FINAL_STATE" in
     esac
     if [ "$eligible" = true ]; then :
     else eligible=false; reason="$FINAL_STATE without a follow-up issue"; fi ;;
+  # Codex reported Failed on HEAD: HEAD has no Codex verdict, and the loop never asks for one.
+  codex_failed)       eligible=false; reason="codex_failed: Codex reported Failed on HEAD, so HEAD has no Codex verdict" ;;
   # Everything else, `reviewers_unavailable` included: no reviewer looked, so stopping is not convergence.
   *)                  eligible=false; reason="final_state=$FINAL_STATE is not a merge-eligible convergence" ;;
 esac

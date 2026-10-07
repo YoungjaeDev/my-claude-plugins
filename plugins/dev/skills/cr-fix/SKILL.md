@@ -118,6 +118,8 @@ Run at the top of every iteration BEFORE any wait/polling. Skip entirely when `C
 **Step 5a: merge conflict (every source, first thing in the iteration).** When `gh pr view "$PR_NUM" --json mergeable --jq '.mergeable'` prints `CONFLICTING`, merge `origin/$BASE`, resolve hunk by hunk on both sides' original intent, re-run the checks, commit and push. That merge commit is this iteration's one commit: `continue` to the next iteration, which reviews the new `HEAD`. Never `git merge --abort`. `UNKNOWN` proceeds. Procedure: `references/merge-conflicts.md`.
 Run the "Step 5: loop head and pre-flight" block in `references/run-blocks.md` verbatim. It opens the per-iteration loop: Steps 5a-13 run inside it, and the Step 13 block closes it.
 
+**Codex Failed on HEAD.** When pre-flight reports `codex_verdict=failed`, the run stops at `final_state=codex_failed` and tells the user: no Codex review of HEAD is coming, and the skill never asks for one (no `@codex review`, no PR comment). It never auto-merges.
+
 See `references/pre-flight-rules.md` for the full decision matrix + JSON contract, and `references/codex-parsing-rules.md` for the 3-channel emoji probe details.
 
 ### Step 5b: Small-diff codex-only heuristic (iter 1 only)
@@ -144,7 +146,7 @@ Run the "Step 6: CR status poll" block in `references/run-blocks.md` verbatim.
 
 ## Step 6b: Codex review-id discovery (grace polling)
 
-Skip if `codex_active != "active"`, or if pre-flight already populated `codex_review_id_to_process` (the `gate=proceed` path). Otherwise query `pulls/$PR_NUM/reviews` for the newest `chatgpt-codex-connector*` review not already in `codex_processed_reviews`; when none is found and `CODEX_GRACE > 0`, poll `scripts/poll-codex-grace.sh` under `grace_cap` and take the `codex_review_id` it prints, or proceed with none when it reports a HEAD verdict of `clean` / `failed` (`codex_review_id: null`) or the cap expires. `grace_cap` is the same on every gate: `max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age)`, from `scripts/codex-head-verdict.sh`.
+Skip if `codex_active != "active"`, or if pre-flight already populated `codex_review_id_to_process` (the `gate=proceed` path). Otherwise query `pulls/$PR_NUM/reviews` for the newest `chatgpt-codex-connector*` review not already in `codex_processed_reviews`; when none is found and `CODEX_GRACE > 0`, poll `scripts/poll-codex-grace.sh` under `grace_cap` and take the `codex_review_id` it prints, or proceed with none when it reports a HEAD verdict of `clean` (`codex_review_id: null`) or the cap expires. A `failed` verdict stops the run at `final_state=codex_failed`, as in Step 5. `grace_cap` is the same on every gate: `max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age)`, from `scripts/codex-head-verdict.sh`.
 
 Discovery query, `grace_cap` block, the Codex HEAD verdict contract and the `pull_request_review_id` filter rationale: `references/codex-state-machine.md`.
 
@@ -270,7 +272,7 @@ Creation failure is **not** fatal to the run, but it does block Step 15: the def
 
 ## Step 15: Auto-merge gate
 
-Run only when `--auto-merge` is set and `verification_blocking=false`. The gate script owns the convergence axis: `clean` always qualifies, `minor_floor` and `churn` qualify once Step 14's follow-up issue exists or when the run deferred nothing, and everything else is ineligible — so a failed `gh issue create` leaves the PR open by construction.
+Run only when `--auto-merge` is set and `verification_blocking=false`. The gate script owns the convergence axis: `clean` always qualifies, `minor_floor` and `churn` qualify once Step 14's follow-up issue exists or when the run deferred nothing, and everything else (`codex_failed` included) is ineligible — so a failed `gh issue create` leaves the PR open by construction.
 Run the "Step 15: auto-merge gate" block in `references/run-blocks.md` verbatim.
 
 ## Step 16: Cleanup + final JSON

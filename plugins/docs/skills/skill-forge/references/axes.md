@@ -9,7 +9,7 @@ What decides each axis when judging a skill. `docs:skill-audit` applies all seve
 | Structure | section order and completeness; length against the 100/200/300 targets and the 500-line hard ceiling; `references` depth exactly 1; deterministic logic left as prose instead of a script |
 | Completion criteria | per step: can done be told from not-done (clarity); does the demand pull real work, or accept a glance |
 | Information hierarchy | branch test — inlined content only some branches reach, or a pointer to content every run needs; co-location, and whether a split concept is duplication or scattering |
-| Pruning | no-op prose, sediment, prose caching what a file or command already shows, prohibition where a positive instruction would steer better |
+| Pruning | no-op prose, sediment, prose caching what a file or command already shows, prohibition where a positive instruction would steer better; a doc-available, version-sensitive platform fact (flag, field, accepted value, model name, version, output format) copied in with no instruction to look it up live (`live-lookup.md`) |
 | Runtime contract | every silent failure in `runtime-contract.md` — bare `${CLAUDE_PLUGIN_ROOT}`, an interaction gate hardcoded to one runtime's tool — plus logic that exists only on the Claude surface, and a body describing a plugin or path it no longer lives in |
 
 An axis with nothing to say is passed, not padded.
@@ -18,7 +18,9 @@ An axis with nothing to say is passed, not padded.
 
 - **P0** — silent failure on some runtime: does not load, does not trigger, dies at step one. Always name the runtime it breaks.
 - **P1** — structure, completion criteria, or a pointer collision between siblings.
-- **P2** — pruning and phrasing.
+- **P2** — pruning and phrasing. A copied platform fact with no live lookup is P2 while it still
+  matches the docs and the installed tool; once it has rotted, it takes the tier of what it breaks
+  (P0 if a runtime now fails silently, otherwise P1).
 
 ## Two thresholds that are not in conflict
 

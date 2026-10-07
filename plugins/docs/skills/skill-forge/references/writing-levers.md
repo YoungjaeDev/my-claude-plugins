@@ -88,7 +88,8 @@ Apply in order; the first failure decides.
 1. **Single source of truth** — is this stated authoritatively elsewhere? Point at that instead.
 2. **Cache** — the environment is itself a source of truth. Prose that restates what a file or
    command already shows is a cache entry, and it goes stale silently. Cache only lookups expensive
-   enough to be worth the staleness risk.
+   enough to be worth the staleness risk. A platform fact the docs or `--help` carry is the common
+   case; `live-lookup.md` shows how to point at it instead.
 3. **Relevance** — does anyone reaching this point need it?
 4. **No-op** — does this line change behavior relative to the default? "Be careful" and "write good
    code" do not. This is a judgment relative to the model, not an absolute one; when it is close,

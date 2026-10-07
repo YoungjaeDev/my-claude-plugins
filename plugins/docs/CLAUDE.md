@@ -100,7 +100,7 @@ Based on awesome-readme curated list:
 Three skills that write, diagnose, and sweep skills. Split because they are called at different
 moments; merging them would put the fleet-sweep procedure on the single-skill authoring path.
 
-`skill-forge` owns the rules, in `skills/skill-forge/references/{frontmatter,writing-levers,structure,runtime-contract}.md`,
+`skill-forge` owns the rules, in `skills/skill-forge/references/{frontmatter,writing-levers,structure,runtime-contract,live-lookup,axes}.md`,
 and the other two apply them. The bundled `skills/skill-forge/scripts/measure-skills.mjs` produces
 the per-skill numbers (lines, body tokens, description length, sections, references depth, bundled
 scripts, frontmatter keys) plus a fleet-wide frontmatter key inventory.

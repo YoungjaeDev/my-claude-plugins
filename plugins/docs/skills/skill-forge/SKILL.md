@@ -40,8 +40,21 @@ Do not use it to:
 | why a line stays or goes; how to phrase triggers and completion criteria | `references/writing-levers.md` |
 | section order, length targets, `scripts` vs `references` vs `assets`, naming | `references/structure.md` |
 | the silent failures, the resolver block, version bumps, manifest regeneration | `references/runtime-contract.md` |
+| where to send the agent for a flag, field, version, or model name instead of copying it | `references/live-lookup.md` |
 
 Read a reference when you reach the step that needs it, not up front.
+
+## Look it up live
+
+A skill that depends on a platform fact the vendor's docs or the tool's own `--help` carry
+(frontmatter fields, hook or settings schema, CLI flags and values, model names, versions) tells
+the agent where to read it at run time instead of carrying a copy. Lookup order: the docs MCP if
+the session has one, else the vendor's `llms.txt` or doc URL fetched directly, else the installed
+tool's `--help` / `--version`. When every lookup fails, the agent reports which ones it tried and
+stops rather than guessing. Encode only what no lookup returns (owner policy, undocumented
+behavior, silent failures), and put those in a script or check rather than prose alone. The same
+rule binds the author while writing: check the doc, then point at it. Examples and starting
+URLs are in `references/live-lookup.md`.
 
 ## Procedure
 
@@ -80,13 +93,16 @@ synonym lists cost more than they return.
 Follow the order in `references/structure.md` and drop every section with nothing to say. Targets:
 about 100 lines simple, about 200 complex, 300 as the ceiling here.
 
-Two checks while drafting, both from `references/writing-levers.md`:
+Three checks while drafting, the first two from `references/writing-levers.md`:
 
 - **Branch test**: content every run needs goes inline; content only some branches reach goes
   behind a pointer to a bundled reference.
 - **Completion criteria**: each step ends in something observable. "Review the config" does not
   distinguish done from not-done; "list every key the config sets and mark the ones this change
   touches" does.
+- **Live lookup**: every flag, field, version, or model name in the draft is either a pointer to
+  where the agent reads it at run time, or owner policy / undocumented behavior that no lookup
+  returns (see "Look it up live" above).
 
 ### 4. Split the bundle
 
@@ -167,12 +183,13 @@ same trigger branch. That one is judgment; no guard covers it.
 
 | Symptom | Cause |
 |---|---|
-| skill works in Claude Code, absent in Codex | description over 1024 characters, or `disable-model-invocation: true` |
+| skill works in Claude Code, absent in Codex | description over 1024 characters, or `disable-model-invocation: true` (the latter `unverified` on current Codex; see `references/frontmatter.md`) |
 | skill has no description anywhere and never triggers | unquoted `: ` in the description, or frontmatter not starting at byte 0 |
 | bundled script "not found" on Codex | bare `${CLAUDE_PLUGIN_ROOT}` instead of the resolver |
 | users report the old behavior after a fix | version bump missing; their plugin cache never refreshed |
 | two skills fight over the same requests | overlapping trigger branches in sibling descriptions |
 | body grew past 300 lines | one skill covering two invocation moments, or an inlined reference |
+| skill passes flags or values the installed tool no longer accepts | a platform fact copied into the body instead of a pointer to `--help` or the docs |
 
 ## Verification
 

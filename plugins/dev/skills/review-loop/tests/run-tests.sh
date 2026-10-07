@@ -1760,6 +1760,11 @@ is "draft PR -> says gh pr ready"         "$(grep -c 'gh pr ready 42' <<<"$out")
 is "ready PR -> goes on"                  "$(draft false)" went-on
 rm -rf "$DR"
 
+# CodeRabbit's notice phrasings live in one file, or a new phrasing reaches only
+# some of the readers (four copies drifted apart once already).
+is "rate-limit phrasings defined only in scripts/cr-notices.sh" \
+   "$(grep -l "='[^']*Review limit reached" "$SCRIPTS"/* | grep -vc '/cr-notices\.sh$')" 0
+
 # The repo has no .llmwiki/ (ADR 0003); a pointer there leads nowhere.
 is "no review-loop script points at a deleted wiki page" \
    "$(grep -l '\.llmwiki' "$SCRIPTS"/* 2>/dev/null | wc -l | tr -d ' ')" 0

@@ -18,8 +18,7 @@ set -uo pipefail
 OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr required}"; HEAD_SHA="${4:?head sha required}"
 case "$HEAD_SHA" in *[!0-9a-f]*) echo "cr-head-verdict: HEAD_SHA is not a hex sha" >&2; exit 2 ;; esac
 
-# Same phrasings as engagement-gate.sh NOTICE_RE.
-NOTICE_RE='auto-generated comment: rate limited by coderabbit\.ai|Review rate limited|More reviews will be available in|Next (included )?review available in|Review limit reached|Review skipped: free tier disabled|Review skipped: [0-9]+ files exceed the limit'
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cr-notices.sh"  # CR_NOTICE_RE
 
 reviews=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null) \
   || { echo "cr-head-verdict: could not list PR #$PR_NUM reviews" >&2; exit 1; }
@@ -28,7 +27,7 @@ comments=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2>/dev
 
 # Listings go through stdin, not --argjson: a long PR's walkthroughs outgrow ARG_MAX.
 { jq -cs 'add // []' <<<"$reviews" && jq -cs 'add // []' <<<"$comments"; } \
-| jq -rs --arg h "$HEAD_SHA" --arg n "$NOTICE_RE" '
+| jq -rs --arg h "$HEAD_SHA" --arg n "$CR_NOTICE_RE" '
   .[0] as $reviews | .[1] as $comments
   | def cr: (.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i");
   def not_notice: (.body // "") | test($n; "i") | not;

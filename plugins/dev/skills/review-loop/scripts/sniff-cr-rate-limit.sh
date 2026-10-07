@@ -52,10 +52,10 @@ if pr_obj=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM" 2>/dev/null); then
   fi
 fi
 
-# Refill phrasings must be listed even though they carry no rate-limit noun of
-# their own: they appear alone in Fair-Usage comments, and without them `hits`
-# stays 0 and RESET_RE below never runs.
-pattern='auto-generated comment: rate limited by coderabbit\.ai|More reviews will be available in|Next (included )?review available in|Review limit reached|Review skipped: free tier disabled|Review skipped: [0-9]+ files exceed the limit'
+# CR_RATE_LIMIT_RE includes the refill phrasings: without them `hits` stays 0 on a
+# Fair-Usage comment and RESET_RE below never runs.
+. "$SCRIPT_DIR/cr-notices.sh"
+pattern=$CR_RATE_LIMIT_RE
 # Skips that no reset window clears. Waiting, re-pushing and re-running all
 # produce the same skip, so the caller routes them to a source fallback.
 permanent_pattern='Review skipped: [0-9]+ files exceed the limit'

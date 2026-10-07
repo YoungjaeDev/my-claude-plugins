@@ -7,9 +7,11 @@
 #
 # Each finding becomes a record shaped like a thread record (scripts/fetch-cr-threads.sh)
 # plus origin:"outside-diff" and review_id. PROCESSED_JSON is the state file's
-# cr_processed_reviews array: those reviews are skipped. A finding on the same
-# path and line as a thread is the same finding: the thread record is kept and
-# gains the review_id, so the review still gets recorded as processed.
+# cr_processed_reviews array: those reviews are skipped. A finding that is a
+# confirmed copy of a thread (same path, line, header badges and title; see
+# cr_header / cr_title) is the same finding: the thread record is kept and gains
+# the review_id, so the review still gets recorded as processed. Anything less
+# (another finding on the same line, a thread with no header) keeps both.
 #
 # The block format is undocumented (observed on PR #283, review 5427040251). A
 # block whose finding count does not match its "(N)" fails loud (exit 1): an
@@ -71,13 +73,20 @@ fi
           else . end
       end;
 
+  # Identity beyond path+line: header badges and title. null = cannot confirm.
+  def ident: (.body | cr_title) as $t
+    | if $t == null then null
+      else [(.body | cr_header | .category_emoji, .severity_emoji, .effort_emoji), $t] end;
+  def copy_of($o): .path == $o.path and .line == $o.line
+    and (ident as $i | $i != null and $i == ($o | ident));
+
   .[0] as $threads | .[1] as $pages
   | [ ($pages | add // [])[]
     | select((.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i"))
     | select(.id as $id | $processed | any(. == $id) | not)
     | outside_diff[] ] as $od
   | ($threads | map(. as $t
-      | ([$od[] | select(.path == $t.path and .line == $t.line)][0].review_id // null) as $rid
+      | ([$od[] | select(. as $o | $t | copy_of($o))][0].review_id // null) as $rid
       | if $rid != null and $t.review_id == null then . + {review_id: $rid} else . end))
-  + [ $od[] | . as $o | select([$threads[] | select(.path == $o.path and .line == $o.line)] | length == 0) ]
+  + [ $od[] | . as $o | select([$threads[] | select(copy_of($o))] | length == 0) ]
 ' || { echo "error: outside-diff findings could not be read" >&2; exit 1; }

@@ -44,7 +44,7 @@ Codex states its own triggers as PR open, draft marked ready, and a `@codex revi
 
 Codex's result for the commit the PR points at now (`GLOSSARY.md` "HEAD 판정", ADR 0002). Two sources:
 
-- **Summary comment.** Codex keeps one `<!-- codex-pull-request-review-summary -->` issue comment and edits it in place: a table row per review with `**Running**` / `**Completed**` / `**Failed**` and a backticked short SHA. The newest such comment by `updated_at` from the anchored Codex login wins; a lookalike login is ignored.
+- **Summary comment.** Codex keeps one `<!-- codex-pull-request-review-summary -->` issue comment and edits it in place: a table row per review with `**Running**` / `**Completed**` / `**Failed**`, a `<relative-time datetime>` and a backticked short SHA. Only the newest row for HEAD (by that datetime, wherever it sits in the table; a tie takes the later row) decides, so a re-run's Completed row overrides an earlier Failed one. The newest such comment by `updated_at` from the anchored Codex login wins; a lookalike login is ignored.
 - **HEAD review.** A Codex review with `commit_id == CUR_SHA`. Codex submits one only when it has findings, a few seconds before it flips the summary to Completed.
 
 Interface: env `OWNER REPO PR_NUM CUR_SHA [PUSH_TIME] [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=600]`, one JSON line on stdout, exit 0 (exit 1 only with `verdict=error`).
@@ -56,7 +56,7 @@ Interface: env `OWNER REPO PR_NUM CUR_SHA [PUSH_TIME] [CODEX_GRACE=30] [CODEX_PR
  "fallback":"review_id_poll|null", "wait_seconds":224}
 ```
 
-| Summary on HEAD | HEAD review | `verdict` |
+| Newest summary row on HEAD | HEAD review | `verdict` |
 |---|---|---|
 | Running | any | `in_progress` |
 | Failed | any | `failed` |

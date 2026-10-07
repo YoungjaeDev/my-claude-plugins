@@ -42,6 +42,7 @@ cr_desc=$(jq -r '.description // ""' <<<"$cr_status")
 | `completed` + `failure` \| `timed_out` \| `cancelled` \| `action_required` \| `stale` | `failure` |
 | `queued` \| `in_progress` | `pending` |
 | no CodeRabbit row on either surface | `none` |
+| a surface that fails to fetch, or returns a page that does not parse | `error` (with that `channel`), never `none` |
 | `success` whose description / title is a rate-limit marker (`Review rate limited`, `Review limit reached`, `rate limited`, refill phrasing) | `rate_limited` |
 
 The last row is applied on both surfaces. On a rate-limited push CodeRabbit posts a passing `Review rate limited` check by design so it never blocks a protected branch (docs.coderabbit.ai `management/rate-limits`); no review ran, and PR #283 merged on exactly this row. The transient `Review skipped: free tier disabled` is not matched (see below). A success status is still not CodeRabbit's verdict: that is the review attached to HEAD (`scripts/cr-head-verdict.sh`, GLOSSARY "HEAD 판정").
@@ -152,7 +153,7 @@ After pre-flight runs, the SKILL.md writes `pre_flight_decision: {cr_state, code
 
 ## Behavior when pre-flight itself fails
 
-Any `gh api` returning a non-2xx propagates as `error` for that channel only — pre-flight emits `gate: cr_wait` and lets the legacy Step 6 polling cover the gap. The skill never aborts on pre-flight failure; it degrades to v1 behavior.
+Any `gh api` returning a non-2xx, or a page that does not parse, propagates as `error` for that channel only — pre-flight emits `gate: cr_wait` and lets the legacy Step 6 polling cover the gap. The skill never aborts on pre-flight failure; it degrades to v1 behavior.
 
 ## Polling-interval coupling
 

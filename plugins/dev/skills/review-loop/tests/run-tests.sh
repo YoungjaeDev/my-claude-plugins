@@ -1681,6 +1681,22 @@ is "9c.6 fail turns the apply into a defer"          "$(verify_step fail 0)" "0:
 is "9c.6 check died with no output -> defer, not pass" "$(verify_step "" 1)" "0:1"
 rm -rf "$V96"
 
+# Step 2 state init on a PR the loop already ran on before the cr-fix -> review-loop
+# rename: the old state carries the dedupe lists and the follow-up issue.
+si_inherit() { # SETUP -> codex_processed_reviews|followup_issue.number of the new state
+  local d; d=$(mktemp -d); mkdir -p "$d/.claude/state/archive"; (cd "$d" && eval "$1")
+  (cd "$d" && PR_NUM=46 START_SHA=abc CR_SOURCE=auto BLOCK="$(rb_block "Step 2: state init")" bash -c 'eval "$BLOCK"' >/dev/null 2>&1
+   jq -r '"\(.codex_processed_reviews)|\(.followup_issue.number)"' .claude/state/review-loop-46.json 2>/dev/null)
+  rm -rf "$d"
+}
+is "state init inherits a pre-rename live cr-fix state" \
+   "$(si_inherit "echo '{\"codex_processed_reviews\":[9],\"followup_issue\":{\"number\":5}}' > .claude/state/cr-fix-46.json")" "[9]|5"
+is "state init inherits a pre-rename cr-fix archive" \
+   "$(si_inherit "echo '{\"codex_processed_reviews\":[8]}' > .claude/state/archive/cr-fix-46-20260101-000000-1.json")" "[8]|null"
+is "state init: a review-loop state wins over a cr-fix one" \
+   "$(si_inherit "echo '{\"codex_processed_reviews\":[1]}' > .claude/state/archive/review-loop-46-20260102-000000-1.json; echo '{\"codex_processed_reviews\":[9]}' > .claude/state/cr-fix-46.json")" "[1]|null"
+rm -f /tmp/review-loop-46-modified.list
+
 # Step 15: findings nobody could read need the follow-up issue as much as deferred
 # ones, so the gate sees them in DEFERRED_TOTAL (and the append flag with them).
 G15=$(mktemp -d); mkdir -p "$G15/scripts"
@@ -1735,6 +1751,18 @@ push_step() { # RES -> pushed_this_cycle:git-calls
 }
 is "Step 10 noop -> no push"        "$(push_step noop)" "false:0"
 is "Step 10 staged -> one push"     "$(push_step staged:2)" "true:1"
+# A failed commit (a pre-commit hook refusing it) leaves the fixes staged and HEAD
+# unchanged: the run stops before Step 12 can mark a push or clear the track file.
+mkdir -p "$P12/skill/scripts"; printf '#!/usr/bin/env bash\necho "[hook] refused" >&2\nexit 1\n' > "$P12/skill/scripts/stage-and-commit.sh"
+: > "$P12/calls"
+is "Step 10 commit failure -> failure, no push" \
+   "$(PATH="$P12:$PATH" SKILL_DIR="$P12/skill" B10="$(rb_block "Step 10: stage and commit")" \
+      B12="$(rb_block "Step 12: push")" bash -c '
+      request_cr_review() { :; }
+      pushed_this_cycle=false TRACK_FILE=/dev/null ITER=1 final_state=""
+      eval "for i in 1; do $B10
+      $B12
+      done"; printf "%s:%s" "$final_state" "$pushed_this_cycle"' 2>/dev/null):$(grep -c push "$P12/calls")" "failure:false:0"
 rm -rf "$P12"
 
 # Step 14: the last iteration's push is waited on, then one follow-up trigger.

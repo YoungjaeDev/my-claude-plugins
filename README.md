@@ -51,7 +51,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 ### 2.54.0 마이그레이션 (cr-fix → review-loop)
 
 - **리뷰 루프 스킬 이름이 `cr-fix` 에서 `/dev:review-loop` 로 바뀌었다** (dev 5.0.0). 옛 이름 "cr-fix" 나 '리뷰 반영' 으로 불러도 잡힌다. 플래그와 동작은 그대로다.
-- 상태 파일 접두사가 `.claude/state/review-loop-<PR>.json` 으로 바뀌었다. `/dev:post-merge` 의 남은 리뷰 표시와 worktree 상태 복사는 옛 `cr-fix-<PR>.json` 도 계속 읽는다.
+- 상태 파일 접두사가 `.claude/state/review-loop-<PR>.json` 으로 바뀌었다. `/dev:post-merge` 의 남은 리뷰 표시와 worktree 상태 복사는 옛 `cr-fix-<PR>.json` 도 계속 읽는다. 이름 변경 전에 루프를 돌린 PR 에서 `/dev:review-loop` 를 다시 돌리면 옛 상태의 처리한 리뷰 목록과 follow-up 이슈를 이어받는다.
 - 위 "플러그인 업데이트" 절차(캐시 삭제 → marketplace update → 재시작)로 새 버전을 받는다.
 
 ### 2.52.0 마이그레이션 (앞단은 Matt, wiki 는 바깥 지식 전용)

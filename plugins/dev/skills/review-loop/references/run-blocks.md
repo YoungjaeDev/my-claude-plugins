@@ -98,6 +98,11 @@ PRIOR_PROCESSED='[]'; PRIOR_CR_PROCESSED='[]'; PRIOR_ISSUE='null'
 # `|| true`: a first run has no archive at all.
 PRIOR_STATE=".claude/state/review-loop-${PR_NUM}.json"
 [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/review-loop-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
+# A PR the loop ran on before the cr-fix -> review-loop rename: read (never move) its old state.
+if [ -z "$PRIOR_STATE" ]; then
+  PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
+  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
+fi
 if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
   # Fail loud before creating a new state file: a silently reset dedupe re-judges
   # every already-processed Codex review.
@@ -418,7 +423,9 @@ jq -r '[.[].review_id // empty] | unique | .[]' <<<"$cr_records" \
 ## Step 10: stage and commit
 
 ```bash
-res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER")
+# A failed commit (a hook refused it) leaves the fixes staged and HEAD unchanged: stop
+# here, before Step 12 marks a push or clears the track file.
+res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER") || { final_state=failure; break; }
 # noop: every fix this cycle was reverted or nothing was applied -> no commit, so
 # Step 11 is skipped and the Step 12 block pushes nothing.
 ```

@@ -139,7 +139,7 @@ for ITER in $(seq 1 $MAX_ITER); do
   fi
   CUR_SHA=$(git rev-parse HEAD)
   applied_this_cycle=0; deferred_this_cycle=0; high_sev_this_cycle=0
-  churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0
+  churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0; late_p2_this_cycle=0
   # What the PREVIOUS iteration committed, for the Step 9c.4 in_prev_diff axis.
   # Empty on iter 1 or an empty diff both degrade to "no churn" — the safe side.
   PREV_SHA="${ITER_START_SHA:-}"; ITER_START_SHA="$CUR_SHA"
@@ -243,7 +243,9 @@ cr_records=$(bash $SKILL_DIR/scripts/fetch-cr-threads.sh "$OWNER" "$REPO" "$PR_N
 ## Step 8b: fetch Codex inline comments
 
 ```bash
-codex_records=$(bash $SKILL_DIR/scripts/fetch-codex-comments.sh "$OWNER" "$REPO" "$PR_NUM" "$codex_review_id_to_process")
+# A failed fetch is not "Codex said nothing": stop rather than judge a partial set.
+codex_records=$(bash $SKILL_DIR/scripts/fetch-codex-comments.sh "$OWNER" "$REPO" "$PR_NUM" "$codex_review_id_to_process") \
+  || { final_state=failure; break; }
 ```
 
 ## Step 8c: engagement gate
@@ -264,7 +266,7 @@ cr_records=$cli_records
 ```bash
 all=$(jq -c -s 'add' <(echo "$cr_records") <(echo "$codex_records"))
 classified=$(echo "$all" | jq -c '.[]' \
-  | while IFS= read -r rec; do printf '%s\n' "$rec" | SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
+  | while IFS= read -r rec; do printf '%s\n' "$rec" | ITER=$ITER SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
   | jq -s '.')
 ```
 
@@ -337,7 +339,9 @@ Closes the per-iteration loop the Step 5 block opened.
 
 ```bash
 applied_total=$((applied_total + applied_this_cycle))
-deferred_total=$((deferred_total + deferred_this_cycle))
+# Late Codex P2s (tier defer) reach the follow-up issue through deferred_total but
+# never count as this cycle's deferrals: they are policy, not undecided findings.
+deferred_total=$((deferred_total + deferred_this_cycle + late_p2_this_cycle))
 # Churn stop: from iter 2 on, every finding this cycle sat on material the loop
 # itself produced, or outside the PR diff.
 if [ "$ITER" -ge 2 ] && [ "$judged_this_cycle" -gt 0 ] \
@@ -349,7 +353,13 @@ elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$applied_this_cycle" -g
    && [ "$high_sev_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
    && [ "$review_this_cycle" = 0 ]; then
   final_state=minor_floor; break
-elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ]; then final_state=clean; break
+# Only late Codex P2s left: a floor, not clean — clean files no follow-up issue.
+elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
+   && [ "$review_this_cycle" = 0 ] && [ "$late_p2_this_cycle" -gt 0 ]; then
+  final_state=minor_floor; break
+# clean also needs zero unread findings: a review-tier item is one nobody judged.
+elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
+   && [ "$review_this_cycle" = 0 ]; then final_state=clean; break
 elif [ "$applied_this_cycle" = 0 ]; then final_state=user_declined; break
 fi
 done  # end of for-iter

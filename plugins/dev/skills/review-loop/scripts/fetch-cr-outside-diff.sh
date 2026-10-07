@@ -22,15 +22,17 @@ OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr requir
 PROCESSED="${4:-[]}"
 threads=$(cat)
 
-# TEST SEAM: CR_REVIEWS_RESPONSE_FILE replaces the REST call with captured
-# `--paginate --slurp` output (an array of pages).
+# TEST SEAM: CR_REVIEWS_RESPONSE_FILE replaces the REST call with an array of pages.
+# `jq -s`, not `gh --slurp`: --slurp needs gh 2.45+.
 if [ -n "${CR_REVIEWS_RESPONSE_FILE:-}" ]; then pages=$(cat "$CR_REVIEWS_RESPONSE_FILE"); else
-  pages=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews?per_page=100" --paginate --slurp) \
+  pages=$(gh api "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews?per_page=100" --paginate | jq -cs '.') \
     || { echo "error: reviews fetch failed" >&2; exit 1; }
 fi
 
-jq -c -L "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" \
-   --argjson threads "$threads" --argjson processed "$PROCESSED" 'include "cr-header";
+# Thread records and pages go through stdin, not --argjson: a long PR outgrows ARG_MAX.
+{ printf '%s\n' "$threads"; printf '%s\n' "$pages"; } \
+| jq -cs -L "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" \
+   --argjson processed "$PROCESSED" 'include "cr-header";
   # One review -> its outside-diff records. The block is the run of `>`-quoted
   # lines starting at the heading; each finding inside it is
   # `<summary>…</summary><blockquote>` + `path:start-end` + header + body,
@@ -69,7 +71,8 @@ jq -c -L "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" \
           else . end
       end;
 
-  [ (add // [])[]
+  .[0] as $threads | .[1] as $pages
+  | [ ($pages | add // [])[]
     | select((.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i"))
     | select(.id as $id | $processed | any(. == $id) | not)
     | outside_diff[] ] as $od
@@ -77,4 +80,4 @@ jq -c -L "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" \
       | ([$od[] | select(.path == $t.path and .line == $t.line)][0].review_id // null) as $rid
       | if $rid != null and $t.review_id == null then . + {review_id: $rid} else . end))
   + [ $od[] | . as $o | select([$threads[] | select(.path == $o.path and .line == $o.line)] | length == 0) ]
-' <<<"$pages" || { echo "error: outside-diff findings could not be read" >&2; exit 1; }
+' || { echo "error: outside-diff findings could not be read" >&2; exit 1; }

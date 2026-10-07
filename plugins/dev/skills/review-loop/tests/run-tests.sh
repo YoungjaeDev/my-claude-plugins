@@ -472,6 +472,18 @@ is "outside-diff: no reviews -> threads unchanged" "$(od "$OD/none.json" <<<"$th
 printf '#!/usr/bin/env bash\nexit 1\n' > "$OD/gh"; chmod +x "$OD/gh"
 PATH="$OD:$PATH" bash "$SCRIPTS/fetch-cr-outside-diff.sh" o r 42 '[]' <<<'[]' >/dev/null 2>&1; rc=$?
 is "outside-diff: gh failure -> non-zero exit" "$rc" 1
+# gh before 2.45 has no --slurp: the live path must work on raw --paginate output.
+cat > "$OD/gh" <<SH
+#!/usr/bin/env bash
+case " \$* " in *" --slurp "*) echo "unknown flag: --slurp" >&2; exit 1 ;; esac
+jq -c '.[]' "$ODF"
+SH
+out=$(PATH="$OD:$PATH" bash "$SCRIPTS/fetch-cr-outside-diff.sh" o r 42 '[]' <<<'[]' 2>/dev/null); rc=$?
+is "outside-diff: gh without --slurp -> findings read" "$rc:$(jq 'length' <<<"$out" 2>/dev/null)" "0:3"
+# A long PR's thread records outgrow ARG_MAX: they must not ride on the command line.
+jq -nc '[range(0; 20000) | {source:"cr", path:"big.sh", line:., body:("x" * 150)}]' > "$OD/big.json"
+out=$(od "$ODF" < "$OD/big.json" | jq 'length'); rc=$?
+is "outside-diff: thread records past ARG_MAX -> all kept" "$out" 20003
 rm -rf "$OD"
 
 echo

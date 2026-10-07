@@ -1631,6 +1631,18 @@ is "held stop, nothing fetched -> ends as held" \
    "$(BLOCK="$(rb_block "Step 8c: engagement gate")" bash -c '
       HOLD_STATE=churn final_state=""; eval "for i in 1; do $BLOCK
       done"; printf %s "$final_state"')" churn
+# Step 8c then 9a, as one round runs them: a held stop whose new HEAD brought a gated
+# finding must reach the classifier, not end at 8c. gh fails: 8c may not look.
+H8=$(mktemp -d); printf '#!/usr/bin/env bash\nexit 1\n' > "$H8/gh"; chmod +x "$H8/gh"
+is "held stop, gated finding fetched -> 8c hands it to 9a, one more round" \
+   "$(REC=$major PATH="$H8:$PATH" SKILL_DIR="$HERE/.." B8="$(rb_block "Step 8c: engagement gate")" \
+      B9="$(rb_block "Step 9a: classify")" bash -c '
+      cr_records="[$REC]" codex_records="[]" ITER=3 SKIP_MINOR=false HOLD_STATE=minor_floor final_state="" round=""
+      eval "for i in 1; do $B8
+      $B9
+      round=yes; done"
+      printf "%s:%s:%s" "$final_state" "$HOLD_STATE" "$round"' 2>/dev/null)" "::yes"
+rm -rf "$H8"
 
 # Step 14: the last iteration's push is waited on, then one follow-up trigger.
 last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED -> final_state:HEAD_VERDICT:followup

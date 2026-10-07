@@ -201,8 +201,9 @@ Run the "Step 8b: fetch Codex inline comments" block in `references/run-blocks.m
 
 ## Step 8c: Combined engagement gate (PR-bot path only)
 
-Skip when `CR_SOURCE ∈ {cli, codex-only}`. Skip when pre-flight `gate=proceed` already verified CR actionability (Step 7e has read the CodeRabbit HEAD verdict either way). Otherwise, if `(cr_records + codex_records) == 0`, a stop Step 13 held ends as held; else:
+Skip when `CR_SOURCE ∈ {cli, codex-only}`. Skip when pre-flight `gate=proceed` already verified CR actionability (Step 7e has read the CodeRabbit HEAD verdict either way). Otherwise:
 Run the "Step 8c: engagement gate" block in `references/run-blocks.md` verbatim.
+The block gates only a round with no records (`records_n == 0`): there a stop Step 13 held ends as held. With records it sets nothing, the bullets below do not apply, and Step 9a classifies them (resolving a held stop on them).
 CodeRabbit's result is its HEAD verdict (`cr-head-verdict.sh`: `findings` / `clean` / `none`), never the success status. A rate-limit or skip notice counts as neither engagement nor a verdict.
 - `cr_engagement > 0` AND `cr_verdict != none` → genuine convergence, `final_state=clean`, jump to Step 13.
 - otherwise AND `ITER < MAX_ITER` → CR has not reviewed this push yet, sleep `$INTERVAL`, continue.

@@ -322,12 +322,19 @@ codex_records=$(bash $SKILL_DIR/scripts/fetch-codex-comments.sh "$OWNER" "$REPO"
 ## Step 8c: engagement gate
 
 ```bash
-# A held stop whose new HEAD brought nothing to fetch ends as held.
-if [ -n "$HOLD_STATE" ]; then final_state="$HOLD_STATE"; break; fi
-cr_engagement=$(bash $SKILL_DIR/scripts/engagement-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME")
-# Exit non-zero = could not look, which is not "no verdict".
-cr_verdict=$(bash $SKILL_DIR/scripts/cr-head-verdict.sh "$OWNER" "$REPO" "$PR_NUM" "$CUR_SHA") \
+# Only a round with no records at all is gated here; records go on to Step 9a, which
+# also resolves a held stop on them.
+records_n=$(jq -s 'add | length' <(echo "${cr_records:-[]}") <(echo "${codex_records:-[]}")) \
   || { final_state=failure; break; }
+cr_engagement=""; cr_verdict=""
+if [ "$records_n" = 0 ]; then
+  # A held stop whose new HEAD brought nothing to fetch ends as held.
+  if [ -n "$HOLD_STATE" ]; then final_state="$HOLD_STATE"; break; fi
+  cr_engagement=$(bash $SKILL_DIR/scripts/engagement-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME")
+  # Exit non-zero = could not look, which is not "no verdict".
+  cr_verdict=$(bash $SKILL_DIR/scripts/cr-head-verdict.sh "$OWNER" "$REPO" "$PR_NUM" "$CUR_SHA") \
+    || { final_state=failure; break; }
+fi
 ```
 
 ## Step 8d: CLI JSONL to records

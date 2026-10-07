@@ -7,7 +7,7 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 | `clean` | Loop exits with `applied_this_cycle == 0`, `deferred_this_cycle == 0`, `review_this_cycle == 0` (no finding left unread) and no late Codex P2, AND Step 8c engagement gate passed, AND Step 7e saw every reviewer's verdict on HEAD. | yes (if `--auto-merge`), once Step 14 filed the follow-up issue when an earlier cycle deferred something | None — merge proceeds or remains manual. |
 | `user_declined` | Loop exits because `applied_this_cycle == 0` but `deferred_this_cycle > 0` or `review_this_cycle > 0`. The run deferred everything in some iter, including a cycle whose every fix failed verification (`verification-failed`), or left findings it could not read. | no | Read the Step 14 follow-up issue, decide on the deferred and unread (`review`-tier) items manually, re-run, or merge as-is via GitHub UI. |
 | `minor_floor` | Minor soft-stop. `MINOR_STOP=true` (default; `--no-minor-stop` off) AND `ITER >= 2` AND this cycle applied only low-severity fixes (`high_sev_this_cycle == 0`) with nothing deferred (`deferred_this_cycle == 0`) and nothing unread (`review_this_cycle == 0`). Stops the low-value minor tail instead of looping to the `applied==0 && deferred==0` floor. Also, with or without `MINOR_STOP`: a cycle whose only findings are Codex P2s at `ITER >= 2` (deferred unjudged, decision 15). | yes, once Step 14 filed the follow-up issue | Read the follow-up issue for what was left behind. Pass `--no-minor-stop` to keep looping instead. |
-| `churn` | Churn stop. `ITER >= 2` AND every finding this cycle was `in_prev_diff` — on lines the previous iteration's own commit produced, or outside the PR diff entirely. The reviewer has exhausted the diff and is now reviewing the loop's own output. | yes, once Step 14 filed the follow-up issue | Read the follow-up issue. Re-running cr-fix on the same PR reproduces churn; the remaining findings belong to their own change. |
+| `churn` | Churn stop. `ITER >= 2` AND every finding this cycle was `in_prev_diff` — on lines the previous iteration's own commit produced, or outside the PR diff entirely. The reviewer has exhausted the diff and is now reviewing the loop's own output. | yes, once Step 14 filed the follow-up issue | Read the follow-up issue. Re-running review-loop on the same PR reproduces churn; the remaining findings belong to their own change. |
 | `iteration_cap` | `ITER == MAX_ITER` and threads still actionable, or the last iteration's push drew findings on the new HEAD that no round is left to judge (Step 14, `HEAD_VERDICT=unread`). | no | Step 14 still files the follow-up issue; inspect remaining threads via `target_url`, or re-run with a higher `--max-iterations`. |
 | `timeout` | Step 6 CR-status poll exited 124 (TIMEOUT exceeded) without seeing `success` / `failure`, or Step 7e: a reviewer that is on gave HEAD no verdict within the wait budget and no stop was held (`HEAD_VERDICT=timeout`). | no | Re-run with larger `--timeout`, or use `--cr-source cli\|codex-only` to bypass PR-bot. |
 | `failure` | CR commit-status reported `failure`, OR Step 8 GraphQL fetch errored, OR Step 8b Codex comment fetch errored, OR `gh api` returned `errors` payload. | no | Inspect CR dashboard via `target_url` for the failure case; check `gh auth status` and network for the fetch case. |
@@ -62,7 +62,7 @@ existing=$(jq -r '.followup_issue.number // empty' "$STATE_FILE")
 if [ -n "$existing" ]; then
   BODY=$(mktemp)
   {
-    printf '%s\n\n' "Additional findings deferred by a later cr-fix run (\`final_state=$final_state\`):"
+    printf '%s\n\n' "Additional findings deferred by a later review-loop run (\`final_state=$final_state\`):"
     printf '| Reviewer | Severity | Location | Why deferred |\n|---|---|---|---|\n'
     jq -r '.auto_judge_log[]? | select(.action == "defer")
            | "| \(.src) | \(.badge_or_sev) | \(.path):\(.line // "-") | \(.reason) |"' "$STATE_FILE"
@@ -73,14 +73,14 @@ if [ -n "$existing" ]; then
     tmp=$(mktemp); jq '.followup_issue.append_failed = false' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
   else
     tmp=$(mktemp); jq '.followup_issue.append_failed = true' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
-    echo "cr-fix: could not append to issue #$existing — auto-merge stays blocked" >&2
+    echo "review-loop: could not append to issue #$existing — auto-merge stays blocked" >&2
   fi
   rm -f "$BODY"
 else
   # Reviewer prose reaches the body through a file, never through the command line.
   BODY=$(mktemp)
   {
-    printf '%s\n\n' "cr-fix stopped at \`final_state=$final_state\` on PR #$PR_NUM. Findings below were deferred or left unapplied."
+    printf '%s\n\n' "review-loop stopped at \`final_state=$final_state\` on PR #$PR_NUM. Findings below were deferred or left unapplied."
     case "$HEAD_VERDICT" in
       timeout) printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` got no verdict from every reviewer within the wait budget; auto-merge stays off." ;;
       unread)  printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` drew reviewer findings after the last round; read them on the PR." ;;
@@ -104,7 +104,7 @@ else
     tmp=$(mktemp); jq --argjson n "$issue_num" --arg u "$issue_url" \
       '.followup_issue = {number:$n, url:$u}' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
   else
-    echo "cr-fix: follow-up issue creation failed — auto-merge stays blocked" >&2
+    echo "review-loop: follow-up issue creation failed — auto-merge stays blocked" >&2
   fi
 fi
 ```

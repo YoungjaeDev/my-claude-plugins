@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: bash scripts/cr-review-request.sh BASE DEFAULT_BRANCH [CONFIG]
-# Prints `request` when CodeRabbit will not auto-review a PR into BASE, so cr-fix
+# Prints `request` when CodeRabbit will not auto-review a PR into BASE, so review-loop
 # must post `@coderabbitai review` after each push; prints `skip` otherwise. The
 # reason goes to stderr. No network: CONFIG (default .coderabbit.yaml) is read
 # from disk. Reading the checked-out PR head is correct: CodeRabbit reviews with

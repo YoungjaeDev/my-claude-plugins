@@ -42,7 +42,7 @@ if ! post_url=$(gh pr comment "$PR_NUM" --repo "$OWNER/$REPO" --body "@coderabbi
   exit 1
 fi
 # Anchor on OUR post's own comment id, parsed from the URL gh prints on success
-# (…#issuecomment-<id>). Every cr-fix run posts the identical body, so re-finding
+# (…#issuecomment-<id>). Every review-loop run posts the identical body, so re-finding
 # the post by body-match `last` is ambiguous across runs: while the new post is
 # not yet visible in the list API, a previous run's post anchors the filter and
 # its old reply is returned as fresh (stale reset_minutes). Ids are monotonic,

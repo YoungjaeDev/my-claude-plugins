@@ -24,5 +24,5 @@ if [ "${#files[@]}" -eq 0 ]; then printf 'noop\n'; exit 0; fi
 
 git add -- "${files[@]}"
 # Reviewer-neutral: an iteration can carry CodeRabbit findings, Codex findings, or both.
-git commit -m "fix: apply review findings (cr-fix iter $ITER)"
+git commit -m "fix: apply review findings (review-loop iter $ITER)"
 printf 'staged:%d\n' "${#files[@]}"

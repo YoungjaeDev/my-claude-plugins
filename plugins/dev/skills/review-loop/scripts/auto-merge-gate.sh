@@ -65,7 +65,7 @@ if [ "$eligible" = true ]; then
   fi
 fi
 
-# CR state must come from the SAME dual-surface reader the rest of cr-fix uses.
+# CR state must come from the SAME dual-surface reader the rest of review-loop uses.
 # CodeRabbit reports through EITHER the commit-status API OR a check-run,
 # per install. This gate read /statuses only, so on a check-run repo it saw
 # no CR row and reported cr_state:"unknown" forever — Step 15 then never merged

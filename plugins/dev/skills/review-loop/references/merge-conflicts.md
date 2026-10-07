@@ -1,6 +1,6 @@
 # Merge Conflicts (Step 5a)
 
-A PR whose base moved on can stop merging while cr-fix is still looping. GitHub then reports `mergeable: CONFLICTING`, the reviewers keep reviewing a diff that cannot land, and `--auto-merge` never fires. Step 5a resolves the conflict inside the loop instead of stopping.
+A PR whose base moved on can stop merging while review-loop is still looping. GitHub then reports `mergeable: CONFLICTING`, the reviewers keep reviewing a diff that cannot land, and `--auto-merge` never fires. Step 5a resolves the conflict inside the loop instead of stopping.
 
 ## Trigger
 

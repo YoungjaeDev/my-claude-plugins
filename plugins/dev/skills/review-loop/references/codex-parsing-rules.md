@@ -1,6 +1,6 @@
 # Codex Parsing Rules
 
-How cr-fix v2 reads Codex review state without relying on PR timeline body order. Used by Step 5 pre-flight and Step 6b grace polling.
+How review-loop reads Codex review state without relying on PR timeline body order. Used by Step 5 pre-flight and Step 6b grace polling.
 
 ## Background
 

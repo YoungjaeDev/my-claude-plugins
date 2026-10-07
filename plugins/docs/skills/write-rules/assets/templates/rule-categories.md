@@ -77,7 +77,7 @@ conventions, mock policy.
 `tests/fixtures/**`.
 
 **Inspiration**: No bundled example — adapt from this repo's own
-`plugins/dev/skills/cr-fix/tests/` fixture suite (fixture-driven,
+`plugins/dev/skills/review-loop/tests/` fixture suite (fixture-driven,
 no network, run in `.githooks/pre-commit` + CI).
 
 **Do/Don't seeds**:

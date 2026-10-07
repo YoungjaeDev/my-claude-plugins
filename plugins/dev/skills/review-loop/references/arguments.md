@@ -1,6 +1,6 @@
-# cr-fix Arguments
+# review-loop Arguments
 
-All flags are positional after `/dev:cr-fix`; order does not matter.
+All flags are positional after `/dev:review-loop`; order does not matter.
 
 | Flag | Default | Notes |
 |------|---------|-------|
@@ -23,6 +23,6 @@ All flags are positional after `/dev:cr-fix`; order does not matter.
 
 ## Behavioral notes (no flag changes)
 
-- Step 9 is **autonomous**. No `AskUserQuestion` per finding; the model judges real-vs-spurious, severity, fix size, over-engineering and churn, then applies / defers / skips. Reasoning is logged to `STATE_FILE.auto_judge_log` and summarised in the final JSON `auto_judge_stats`. To audit, inspect `.claude/state/archive/cr-fix-<PR>-<timestamp>.json` after the run.
+- Step 9 is **autonomous**. No `AskUserQuestion` per finding; the model judges real-vs-spurious, severity, fix size, over-engineering and churn, then applies / defers / skips. Reasoning is logged to `STATE_FILE.auto_judge_log` and summarised in the final JSON `auto_judge_stats`. To audit, inspect `.claude/state/archive/review-loop-<PR>-<timestamp>.json` after the run.
 - Step 5 pre-flight runs at the top of every iter. When CR + Codex have both already arrived, Step 6 / 6b polling is **skipped entirely**. Set `CODEX_PREFLIGHT_TIMEOUT` (seconds, default 600) to change the Codex wait budget `max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age)` that pre-flight and Step 6b share (`scripts/codex-head-verdict.sh`).
 - `--cr-source pr-bot` is strict: pre-flight never silently flips away from a user-explicit source.

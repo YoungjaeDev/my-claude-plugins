@@ -110,7 +110,7 @@ Does the *suggestion itself* demand unrequested complexity? This judges the **fi
 | `yes` | The suggestion adds speculative abstraction, defensive flexibility against hypotheticals, premature generalization, or unrequested configurability — complexity nobody asked for. A senior engineer would call it overcomplicated. |
 | `no` | The suggestion does not add unrequested complexity (it may even remove some, or be a pure correctness/clarity fix). |
 
-The distinction that matters: a complex *surrounding file* is not `yes`. Only a suggestion that *adds* complexity to satisfy a hypothetical is. This keeps cr-fix from importing a reviewer's speculative-generality habit into the codebase under cover of a "valid" finding.
+The distinction that matters: a complex *surrounding file* is not `yes`. Only a suggestion that *adds* complexity to satisfy a hypothetical is. This keeps review-loop from importing a reviewer's speculative-generality habit into the codebase under cover of a "valid" finding.
 
 ### 6. `in_prev_diff`
 
@@ -141,7 +141,7 @@ A `churn` finding has its `severity_reassess` forced to `cosmetic` and increment
 
 **`over_engineering=yes` is checked first and overrides `fix_size`.** A real finding whose *suggestion* is pure over-engineering is skipped even at `small-safe` — the surgical-diff / senior-engineer test (no unrequested abstraction, no configurability for a value that never changes, three lines of duplication over a premature helper) outranks "the change is tiny." A reviewer's speculative-generality suggestion is cheap to apply and expensive to live with, so diff size is the wrong gate; the right gate is whether the codebase wanted that complexity at all.
 
-**Why cr-fix only refuses, never deletes.** This axis makes cr-fix *decline to add* over-engineering a reviewer proposes. It does **not** hunt for and remove over-engineering already in the code — that is `ponytail-review`'s job (an optional, separately-installed skill focused exclusively on what to delete). cr-fix's surface is reviewer findings; pairing the two covers both directions — refuse new complexity here, delete existing complexity there — without overloading either.
+**Why review-loop only refuses, never deletes.** This axis makes review-loop *decline to add* over-engineering a reviewer proposes. It does **not** hunt for and remove over-engineering already in the code — that is `ponytail-review`'s job (an optional, separately-installed skill focused exclusively on what to delete). review-loop's surface is reviewer findings; pairing the two covers both directions — refuse new complexity here, delete existing complexity there — without overloading either.
 
 ## Pre-condition gates
 
@@ -227,6 +227,6 @@ Default-on (disable with `--no-generalize`). A reviewer flags one line, but the 
 
 The skill does NOT re-prompt for any finding, even ambiguous ones — defer is the escape. If the user wants to revisit a deferred item, they can:
 
-1. Inspect `.claude/state/archive/cr-fix-<PR>-<timestamp>.json` for the reasoning.
+1. Inspect `.claude/state/archive/review-loop-<PR>-<timestamp>.json` for the reasoning.
 2. Pick up the finding on the PR page (`gh pr view --comments`).
-3. Manually edit, push, and re-run cr-fix; the new iter will see the change.
+3. Manually edit, push, and re-run review-loop; the new iter will see the change.

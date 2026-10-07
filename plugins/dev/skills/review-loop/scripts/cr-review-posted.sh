@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: bash scripts/cr-review-posted.sh OWNER REPO PR_NUM SINCE
-# Decides whether cr-fix may post `@coderabbitai review` for the current head.
+# Decides whether review-loop may post `@coderabbitai review` for the current head.
 # Prints `skip` when the PR already has a comment whose body is exactly
 # `@coderabbitai review` (whitespace trimmed) created at or after SINCE (the head
 # SHA's push time), so a re-run on an unchanged head does not request twice.

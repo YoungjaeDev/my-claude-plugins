@@ -1,6 +1,6 @@
 ---
-name: cr-fix
-description: Fetch CodeRabbit + Codex review state on the current PR, autonomously judge each finding (apply / defer / skip with reasoning), commit, push, and loop until the reviewers stop producing new material. Use when the user types /dev:cr-fix, says "auto-fix the review", "process CodeRabbit feedback", "리뷰 반영", or "loop until clean". Stops on convergence, on a low-severity-only cycle, or on churn (findings only on the previous iteration's own commit — code only, since a prose rewrite reproduces its own lines), filing one follow-up issue for whatever was left behind. Handles PR-bot rate limits with auto-fallback to the local CodeRabbit CLI or Codex-only, and supports --auto-merge with branch-protection gating. Not for post-merge cleanup (/dev:post-merge) or for breaking a spec into tickets (Matt /to-tickets).
+name: review-loop
+description: Fetch CodeRabbit + Codex review state on the current PR, autonomously judge each finding (apply / defer / skip with reasoning), commit, push, and loop until the reviewers stop producing new material. Use when the user types /dev:review-loop or the old name "cr-fix", says "auto-fix the review", "리뷰 루프", "process CodeRabbit feedback", "리뷰 반영", or "loop until clean". Stops on convergence, on a low-severity-only cycle, or on churn (findings only on the previous iteration's own commit — code only, since a prose rewrite reproduces its own lines), filing one follow-up issue for whatever was left behind. Handles PR-bot rate limits with auto-fallback to the local CodeRabbit CLI or Codex-only, and supports --auto-merge with branch-protection gating. Not for post-merge cleanup (/dev:post-merge) or for breaking a spec into tickets (Matt /to-tickets).
 allowed-tools: Read Write Edit Bash Glob Grep Monitor AskUserQuestion
 ---
 
@@ -12,7 +12,7 @@ One turn drives the whole review-resolution loop on an open PR: detect what each
 
 ## When to use
 
-An open PR on the current branch with reviewer work outstanding — `/dev:cr-fix`, "리뷰 반영", "process CodeRabbit feedback", "loop until clean".
+An open PR on the current branch with reviewer work outstanding — `/dev:review-loop` (old name "cr-fix"), "리뷰 반영", "process CodeRabbit feedback", "loop until clean".
 
 Not this skill: cleanup after a PR merges (`dev:post-merge`), splitting a spec into tickets (Matt `/to-tickets`), or reviewing code that has no PR yet.
 
@@ -29,7 +29,7 @@ These are not defaults to weigh — they hold on every path.
 
 ## Guidelines
 
-- **YAGNI / senior-engineer lens.** A finding can be *real* and still demand over-engineering; that is `skip`, not `apply`, however small the change (Step 9c.4 `over_engineering`). cr-fix refuses *added* complexity only — deleting existing over-engineering is `ponytail-review`'s job.
+- **YAGNI / senior-engineer lens.** A finding can be *real* and still demand over-engineering; that is `skip`, not `apply`, however small the change (Step 9c.4 `over_engineering`). review-loop refuses *added* complexity only — deleting existing over-engineering is `ponytail-review`'s job.
 - **Project guidelines first.** Follow `AGENTS.md` (loaded in Step 3) and `CLAUDE.md` throughout.
 - **One commit per iteration.**
 - **Resolution is implicit.** CR auto-resolves threads when its re-review detects the fix on a new push.
@@ -55,14 +55,14 @@ fi
 
 # Validate the script the next line executes, not just the directory: a bare -d
 # check accepts an incomplete cache version and dies later inside eval.
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "$CLAUDE_PLUGIN_ROOT/skills/cr-fix/scripts/parse-args.sh" ]; then
-  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
-elif [ -f "plugins/dev/skills/cr-fix/scripts/parse-args.sh" ]; then
-  SKILL_DIR="plugins/dev/skills/cr-fix"
-elif [ -n "$CODEX_CAND" ] && [ -f "$CODEX_CAND/skills/cr-fix/scripts/parse-args.sh" ]; then
-  SKILL_DIR="$CODEX_CAND/skills/cr-fix"
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "$CLAUDE_PLUGIN_ROOT/skills/review-loop/scripts/parse-args.sh" ]; then
+  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/review-loop"
+elif [ -f "plugins/dev/skills/review-loop/scripts/parse-args.sh" ]; then
+  SKILL_DIR="plugins/dev/skills/review-loop"
+elif [ -n "$CODEX_CAND" ] && [ -f "$CODEX_CAND/skills/review-loop/scripts/parse-args.sh" ]; then
+  SKILL_DIR="$CODEX_CAND/skills/review-loop"
 else
-  echo "cr-fix: SKILL_DIR unresolved — no parse-args.sh under CLAUDE_PLUGIN_ROOT, the source tree, or the Codex plugin cache. Install dev or run from the plugin source tree." >&2
+  echo "review-loop: SKILL_DIR unresolved — no parse-args.sh under CLAUDE_PLUGIN_ROOT, the source tree, or the Codex plugin cache. Install dev or run from the plugin source tree." >&2
   exit 1
 fi
 
@@ -75,7 +75,7 @@ Sets: `SKILL_DIR, MAX_ITER, TIMEOUT, INTERVAL, AUTO_MERGE, PASTE, NO_BUILD, CODE
 
 Run the "Step 2: repo, PR and counters" block in `references/run-blocks.md` verbatim.
 
-Abort if `PR_NUM` empty: `No open PR for current branch — push first and open a PR before running cr-fix.` A draft PR stops here with a `gh pr ready <PR>` hint, since CodeRabbit skips drafts by default:
+Abort if `PR_NUM` empty: `No open PR for current branch — push first and open a PR before running review-loop.` A draft PR stops here with a `gh pr ready <PR>` hint, since CodeRabbit skips drafts by default:
 Run the "Step 2: draft PR" block in `references/run-blocks.md` verbatim.
 
 Then resolve the base branch once — Step 5b, Step 7d and the Step 9c churn axis all need the PR's diff scope:

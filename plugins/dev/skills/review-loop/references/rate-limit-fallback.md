@@ -66,7 +66,7 @@ Earlier notes tied it to "CR Pro = 5 reviews/hour"; the measured tier is actuall
 **Pro+ at 10 PR-reviews/hour on a rolling window**, layered with a **Fair-Usage
 adaptive decay** — sustained heavy use (roughly 90+ reviews over 7 days) throttles
 the effective rate down toward ~1/hour ([Fair Usage Limits Policy](https://docs.coderabbit.ai/management/plans#fair-usage-limits-policy)).
-Because cr-fix pushes a burst (one review consumed per iter), the ceiling that
+Because review-loop pushes a burst (one review consumed per iter), the ceiling that
 bites is the adaptive-decayed rate, not the nominal 10/hr. Default 5 stays
 **conservative under adaptive throttle**: it fits inside the decayed budget for a
 developer who is not already near the 7-day cap, while still leaving headroom

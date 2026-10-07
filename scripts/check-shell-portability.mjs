@@ -47,7 +47,7 @@ const CMD_RULES = [
   { id: 'sha256sum',   cmd: 'sha256sum', bare: true, bsd: ['shasum'],
     alt: '`sha256sum || shasum -a 256`' },
   { id: 'timeout',     cmd: 'timeout',  bare: true,
-    alt: 'a bash watchdog (see cr-fix tests run_capped) -- stock macOS has no timeout(1)' },
+    alt: 'a bash watchdog (see review-loop tests run_capped) -- stock macOS has no timeout(1)' },
   { id: 'tac',         cmd: 'tac',      bare: true, bsd: ['tail'],
     alt: 'tail -r' },
   { id: 'nproc',       cmd: 'nproc',    bare: true, bsd: ['sysctl'],
@@ -63,7 +63,7 @@ const CMD_RULES = [
   { id: 'stat -c',     cmd: 'stat', short: 'c', long: ['--format', '--printf'], bsd: ['-f'],
     alt: '`stat -c … || stat -f …`' },
   { id: 'realpath -m', cmd: 'realpath', short: 'm', long: ['--canonicalize-missing'],
-    alt: 'cd + pwd -P on the parent, then re-append the basename (see cr-fix path-trust.sh)' },
+    alt: 'cd + pwd -P on the parent, then re-append the basename (see review-loop path-trust.sh)' },
   { id: 'readlink -f', cmd: 'readlink', short: 'f', long: ['--canonicalize'],
     alt: 'a readlink loop, or guard on macOS >= 12.3' },
 ]

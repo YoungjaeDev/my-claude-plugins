@@ -75,7 +75,7 @@ Domain: Web / fullstack — frontend + backend API 통합 프로젝트.
 
 ## CodeRabbit / Codex 조율
 
-이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:cr-fix` 스킬이 양쪽을 동시에 처리하고, 켜진 리뷰어 전원이 HEAD 에 판정을 낸 뒤에만 끝내거나 머지한다.
+이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:review-loop` 스킬이 양쪽을 동시에 처리하고, 켜진 리뷰어 전원이 HEAD 에 판정을 낸 뒤에만 끝내거나 머지한다.
 
 finding 은 티어와 무관하게 사용자에게 묻지 않고 로컬 코드에 대어 자율 판정한다 (apply / defer / skip). defer 는 후속 이슈 1건으로 간다.
 

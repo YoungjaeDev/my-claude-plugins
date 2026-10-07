@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/YoungjaeDev/my-claude-plugins/plugins/dev/skills/cr-fix/assets/state.schema.json",
-  "title": "cr-fix per-run state file",
-  "description": "Lives at .claude/state/cr-fix-${PR_NUM}.json. Single-run informational record. Archived on Step 16 exit. Inherits codex_processed_reviews from prior session.",
+  "$id": "https://github.com/YoungjaeDev/my-claude-plugins/plugins/dev/skills/review-loop/assets/state.schema.json",
+  "title": "review-loop per-run state file",
+  "description": "Lives at .claude/state/review-loop-${PR_NUM}.json. Single-run informational record. Archived on Step 16 exit. Inherits codex_processed_reviews from prior session.",
   "type": "object",
   "required": ["start_sha", "iter", "applied_total", "deferred_total", "codex_processed_reviews"],
   "properties": {

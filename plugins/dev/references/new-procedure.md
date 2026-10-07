@@ -36,7 +36,7 @@ if [ -z "$PLUGIN_ROOT" ]; then
   # sort (10.13+), but the probe stays for userlands that predate it; the fallback
   # is a numeric dotted-field sort, because plain lexicographic ranks 0.6.0 above
   # 0.10.0 and would resolve to an older cached version. Same form as
-  # plugins/dev/skills/cr-fix/SKILL.md, whose regression test guards it.
+  # plugins/dev/skills/review-loop/SKILL.md, whose regression test guards it.
   if sort -V </dev/null >/dev/null 2>&1; then
     candidate=$(ls -1d "$cache_root"/*/dev/* 2>/dev/null \
       | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2-)

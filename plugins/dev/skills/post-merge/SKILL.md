@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: "Clean up after a PR merges: surface leftover review findings, switch to base, delete the merged branch, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', or right after a PR merges. Cleanup only: lessons belong to /retro in the building session, README and CHANGELOG edits to docs:readme and docs:changelog. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:cr-fix)."
+description: "Clean up after a PR merges: surface leftover review findings, switch to base, delete the merged branch, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', or right after a PR merges. Cleanup only: lessons belong to /retro in the building session, README and CHANGELOG edits to docs:readme and docs:changelog. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:review-loop)."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -10,11 +10,11 @@ Local cleanup after a PR is merged. One run takes a merged PR from leftover-revi
 
 ## Guidelines
 
-- **Worktree mode.** post-merge runs from the main repo or from the PR's worktree. Every step works on the main repo: git calls run as `git -C "$MAIN_REPO"` and repo paths resolve under `$MAIN_REPO/`, in the steps below and in `references/`. `MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")` gives the same answer from either place, so re-derive it in any fresh shell. Inside a worktree (`IN_WT=1`) Step 1 copies the worktree's cr-fix state into the main repo's archive, Step 4 leaves the branch alone (the worktree still has it checked out), and Step 11 prints the one command that removes the worktree and the branch. post-merge never removes the worktree itself: on Windows a worktree removed from inside itself is only half deleted.
-- **Non-default base.** For a PR into a branch CodeRabbit does not auto-review, cr-fix on the `auto` / `pr-bot` source posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/cr-fix/SKILL.md` Step 2); Step 3 below checks out that base like any other. It also changes what the merge did to the linked issues: GitHub honours a closing keyword only on a merge into the default branch, so a non-default base leaves every one of them open with no signal on the PR page — Step 5 is what catches that, and it runs on every PR.
+- **Worktree mode.** post-merge runs from the main repo or from the PR's worktree. Every step works on the main repo: git calls run as `git -C "$MAIN_REPO"` and repo paths resolve under `$MAIN_REPO/`, in the steps below and in `references/`. `MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")` gives the same answer from either place, so re-derive it in any fresh shell. Inside a worktree (`IN_WT=1`) Step 1 copies the worktree's review-loop state into the main repo's archive, Step 4 leaves the branch alone (the worktree still has it checked out), and Step 11 prints the one command that removes the worktree and the branch. post-merge never removes the worktree itself: on Windows a worktree removed from inside itself is only half deleted.
+- **Non-default base.** For a PR into a branch CodeRabbit does not auto-review, review-loop on the `auto` / `pr-bot` source posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/review-loop/SKILL.md` Step 2); Step 3 below checks out that base like any other. It also changes what the merge did to the linked issues: GitHub honours a closing keyword only on a merge into the default branch, so a non-default base leaves every one of them open with no signal on the PR page — Step 5 is what catches that, and it runs on every PR.
 - **`gh pr view` is the authoritative merge signal.** Step 1's `gh pr view ... state=MERGED` is the single source of truth for "did this land". Later steps MUST NOT re-verify merge state by comparing git SHAs.
 - **Never use SHA-level merge comparison.** `git log <base>..<branch>`, `git cherry`, `git rev-list --left-right` all false-positive after squash merge (base gets one new SHA) and rebase merge (branch SHAs rewritten). If unsure content landed, diff content not SHAs (Step 4).
-- **Leftover-review surface (Step 1.5) is informational.** The run reads cr-fix's state file (`.claude/state/cr-fix-<PR>.json`, else the latest `.claude/state/archive/` copy) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
+- **Leftover-review surface (Step 1.5) is informational.** The run reads review-loop's state file (`.claude/state/review-loop-<PR>.json`, else the latest `.claude/state/archive/` copy, else the same under the pre-rename `cr-fix-` prefix) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
 - **Codex partial-execution.** `/docs:readme` and `/docs:changelog` (Steps 9, 9.5) are commands, which Codex does not load; under Codex do the same edit by hand from the `docs:doc-guides` skill and note it. Every other step runs identically on both runtimes.
 - **Interactive input is capability-aware.** Every prompt and confirmation below, each `AskUserQuestion` mention included, is a gate rather than a tool name: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (`git rm`, `gh repo edit`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 - **Run record.** Step 1 opens `.claude/state/post-merge-<PR>.json` and every step appends its outcome, so a silent skip becomes visible; Step 10 finalizes it. Mechanism, per-step skip reasons, and the finalize block: `references/run-record.md`.
@@ -43,23 +43,25 @@ fi
 - Verify `state` is `MERGED`. This result is the **authoritative merge signal** (see Guidelines); no later SHA comparison.
 - Capture `MERGE_SHA=$(gh pr view <PR_NUMBER> --json mergeCommit --jq '.mergeCommit.oid')`: this is **this PR's** merge commit, the run record's anchor and one of Step 5's ref sources. Take the merged **file list** from `gh pr diff <N> --name-only` (PR-scoped, merge-method-agnostic, uncapped), not from `MERGE_SHA` (a `--no-ff` merge commit shows an empty combined diff; a multi-commit rebase merge's SHA only points at the last replayed commit).
 
-**Carry cr-fix state out of the worktree** (`IN_WT=1` only). cr-fix wrote its state under the worktree, which Step 11's command deletes; copy it to the main repo's archive first so Step 1.5 and later runs still find it. The archive name keeps the `cr-fix-<PR>-` prefix Step 1.5 globs for:
+**Carry review-loop state out of the worktree** (`IN_WT=1` only). review-loop wrote its state under the worktree, which Step 11's command deletes; copy it to the main repo's archive first so Step 1.5 and later runs still find it. Each copy keeps its own prefix, `review-loop-<PR>-` or the pre-rename `cr-fix-<PR>-`, both of which Step 1.5 reads:
 
 ```bash
 if [ "$IN_WT" = 1 ]; then
   # Fail loud: Step 11's command deletes the worktree, so a silent failed copy loses the state.
   ARC="$MAIN_REPO/.claude/state/archive"
   mkdir -p "$ARC" || { echo "post-merge: cannot create $ARC" >&2; exit 1; }
-  for f in "$WT_PATH/.claude/state/archive/cr-fix-${PR_NUMBER}-"*.json; do
-    [ -f "$f" ] || continue
-    cp -p "$f" "$ARC/" || { echo "post-merge: copying $f failed" >&2; exit 1; }
+  for p in review-loop cr-fix; do
+    for f in "$WT_PATH/.claude/state/archive/$p-${PR_NUMBER}-"*.json; do
+      [ -f "$f" ] || continue
+      cp -p "$f" "$ARC/" || { echo "post-merge: copying $f failed" >&2; exit 1; }
+    done
+    live="$WT_PATH/.claude/state/$p-${PR_NUMBER}.json"
+    if [ -f "$live" ]; then
+      # $$ as in review-loop's own archive names: a same-second rerun keeps both copies.
+      cp -p "$live" "$ARC/$p-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$-wt.json" \
+        || { echo "post-merge: copying $live failed" >&2; exit 1; }
+    fi
   done
-  live="$WT_PATH/.claude/state/cr-fix-${PR_NUMBER}.json"
-  if [ -f "$live" ]; then
-    # $$ as in cr-fix's own archive names: a same-second rerun keeps both copies.
-    cp -p "$live" "$ARC/cr-fix-${PR_NUMBER}-$(date +%Y%m%d-%H%M%S)-$$-wt.json" \
-      || { echo "post-merge: copying $live failed" >&2; exit 1; }
-  fi
 fi
 ```
 
@@ -67,9 +69,9 @@ fi
 
 ### 1.5. Surface unresolved review items (informational)
 
-A merge can land while `cr-fix` still left findings unresolved: items it autonomously **deferred** (real + high-severity + too invasive for autopilot), or a loop that exited on a cap/timeout rather than converging clean. That signal sits in `cr-fix`'s state file and nobody reads it. This step surfaces it **once, right after the merge is confirmed**. It is **informational: it never blocks cleanup**; it ALWAYS prints exactly one terminal status line so a skip can't pass unnoticed.
+A merge can land while `review-loop` still left findings unresolved: items it autonomously **deferred** (real + high-severity + too invasive for autopilot), or a loop that exited on a cap/timeout rather than converging clean. That signal sits in `review-loop`'s state file and nobody reads it. This step surfaces it **once, right after the merge is confirmed**. It is **informational: it never blocks cleanup**; it ALWAYS prints exactly one terminal status line so a skip can't pass unnoticed.
 
-**Primary signal: the cr-fix state file.** cr-fix archives its live state on exit (`emit-final-json.sh` persists the final `final_state` + `auto_judge_stats` into the file, then moves `.claude/state/cr-fix-<PR>.json` → `.claude/state/archive/cr-fix-<PR>-<ts>.json`), so the archived copy is the usual hit and is self-describing; check the live path first, then the latest archive:
+**Primary signal: the review-loop state file.** review-loop archives its live state on exit (`emit-final-json.sh` persists the final `final_state` + `auto_judge_stats` into the file, then moves `.claude/state/review-loop-<PR>.json` → `.claude/state/archive/review-loop-<PR>-<ts>.json`), so the archived copy is the usual hit and is self-describing; check the live path first, then the latest archive:
 
 Run the block in `references/leftover-reviews.md` ("Primary signal") verbatim.
 
@@ -82,8 +84,8 @@ Run the block in `references/leftover-reviews.md` ("Secondary signal") verbatim.
 Run the block in `references/leftover-reviews.md` ("Decide the checkpoint line") verbatim.
 
 - **Leftover present**: after the `leftover-reviews: <N> deferred (final_state=<X>)` line, render the `$DEFERS` items as a table (`Path:Line · Severity · Reason`), and append the open-thread count when `OPEN_THREADS > 0`. Tell the user these were **not** auto-applied: review them on the PR page (`gh pr view <PR_NUMBER> --comments`) or in a follow-up; do not silently drop them.
-- **None**: print `leftover-reviews: none` when no cr-fix state file resolves, or it shows `defer == 0` with a non-trigger `final_state`.
-- **Recurring leftover**: before printing, grep the older archives (`.claude/state/archive/cr-fix-*.json`, excluding this PR) for the same finding. A leftover that surfaces a second time is a standing rule, not an incident — mark it `recurring` in the table and point the user at `/retro` in the building session, which turns a repeated mistake into an automated check. Do not write the rule here.
+- **None**: print `leftover-reviews: none` when no review-loop state file resolves, or it shows `defer == 0` with a non-trigger `final_state`.
+- **Recurring leftover**: before printing, grep the older archives (`.claude/state/archive/review-loop-*.json` and the pre-rename `cr-fix-*.json`, excluding this PR) for the same finding. A leftover that surfaces a second time is a standing rule, not an incident — mark it `recurring` in the table and point the user at `/retro` in the building session, which turns a repeated mistake into an automated check. Do not write the rule here.
 
 ### 2. Check local changes
 
@@ -241,7 +243,7 @@ Print this one line, filled in, as the last line of the run, and do not run it. 
 
 ## References
 
-- **Unresolved review surface** (Step 1.5, cr-fix state-file defer list + `final_state`, open-thread proxy): reads `.claude/state/cr-fix-<PR>.json` / `.claude/state/archive/`; field schema in `plugins/dev/skills/cr-fix/assets/final-output.schema.json`.
+- **Unresolved review surface** (Step 1.5, review-loop state-file defer list + `final_state`, open-thread proxy): reads `.claude/state/review-loop-<PR>.json` / `.claude/state/archive/`; field schema in `plugins/dev/skills/review-loop/assets/final-output.schema.json`.
 - **Leftover-review blocks** (Step 1.5 primary signal, secondary signal, checkpoint decision): `references/leftover-reviews.md`
 - **Run-record envelope** (Step 1 init + recording contract + per-step skip reasons + Step 10 finalize): `references/run-record.md`; convention + schema in `.claude/rules/state-envelope.md` (concept mirror in `AGENTS.md`).
 - **Ephemeral artifact pruning** (Step 4.5, heuristics, exclusions, git rm/commit interaction): `references/ephemeral-heuristics.md`

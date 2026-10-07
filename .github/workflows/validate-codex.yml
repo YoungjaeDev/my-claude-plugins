@@ -1,9 +1,11 @@
 name: validate-codex
 
 # Catch README/AGENTS doc-consistency drift, silent skill-contract violations,
-# and GNU-only shell regressions before a release ships. Day to day the local
+# and GNU-only shell regressions on each release tag. Day to day the local
 # .githooks pre-commit hook runs the same guards on every commit; CI runs only on
-# a release tag (`/dev:release` pushes `vX.Y.Z` before `gh release create`) or by hand.
+# a release tag (`/dev:release` pushes `vX.Y.Z`) or by hand. It does not gate the
+# release: `/dev:release` runs `gh release create` without waiting for this run,
+# so read its result before announcing the release.
 on:
   push:
     tags: ['v*.*.*']

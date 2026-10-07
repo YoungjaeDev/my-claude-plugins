@@ -8,7 +8,7 @@
 - 사용자가 한국어로 요청하면 한국어로 응답한다.
 - 변경은 요청 범위에만 한정하고, 관련 없는 파일이나 기존 사용자 변경을 되돌리지 않는다.
 - 파일 탐색과 검색은 `rg`, `rg --files` 를 우선 쓴다.
-- 라이브러리·런타임·플랫폼 사실은 `docs/llm-doc-sources.md` 의 LLM 문서 소스로 먼저 확인한다.
+- 라이브러리·런타임·플랫폼 사실은 기억이나 사본이 아니라 실행 시점에 확인한다: 벤더 공식 문서(`https://code.claude.com/docs/llms.txt`, `https://developers.openai.com/codex/llms.txt` 등)와 설치된 도구의 `--help`. 조회 순서와 실패 시 동작은 `plugins/docs/skills/skill-forge/references/live-lookup.md`.
 - 설계 결정을 묻는 질문에는 `docs/adr/` 를, 용어는 `GLOSSARY.md` 를 먼저 읽는다. 이 저장소에는 `.llmwiki/` 가 없다 (바깥 지식이 없다).
 - 문서와 매니페스트가 함께 움직이는 저장소이므로 코드 변경 시 `README.md`, 이 문서, marketplace manifest 의 동기화 필요성을 항상 확인한다.
 

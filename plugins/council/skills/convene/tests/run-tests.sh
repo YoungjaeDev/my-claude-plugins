@@ -311,6 +311,11 @@ is "agy slug<TAB>name listing keeps a live pin" \
    "$(stale_run "gemini-3.8-flash-high${TAB}Gemini 3.8 Flash (High)
 gemini-3.6-flash-high${TAB}Gemini 3.6 Flash (High)
 " 0 "$CATALOG" 0)" ""
+# The headless docs show space-aligned columns (`slug     Display Name`); cut -f1
+# returns that whole line, so only a whitespace split keeps the pin live.
+is "agy space-aligned listing keeps a live pin" \
+   "$(stale_run "gemini-3.6-flash-high     Gemini 3.6 Flash (High)
+" 0 "$CATALOG" 0)" ""
 is "agy bare-slug listing keeps a live pin" \
    "$(stale_run "gemini-3.6-flash-high
 " 0 "$CATALOG" 0)" ""

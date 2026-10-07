@@ -61,7 +61,7 @@ Before generating:
 5. Validate size:
    - `auto` is valid.
    - For `WIDTHxHEIGHT`, both dimensions must be positive integers.
-   - Both edges multiples of 16, max edge <= 3840, aspect ratio <= 3:1, and total pixels from 655360 to 8294400. These are the `gpt-image-2` constraints in the "gpt-image-2 guidance for CLI fallback" section of `${CODEX_HOME:-~/.codex}/skills/.system/imagegen/SKILL.md`; the built-in tool states none, and size reaches it only as prompt text, so nothing downstream rejects a bad size. Keep this check as the guard; when that file lists different constraints, follow the file.
+   - Both edges multiples of 16, max edge <= 3840, aspect ratio <= 3:1, and total pixels from 655360 to 8294400. These are the `gpt-image-2` constraints in the "gpt-image-2 guidance for CLI fallback" section of `${CODEX_HOME:-$HOME/.codex}/skills/.system/imagegen/SKILL.md`; the built-in tool states none, and size reaches it only as prompt text, so nothing downstream rejects a bad size. Keep this check as the guard; when that file lists different constraints, follow the file.
    - If the requested size fails these constraints, ask for a valid size instead of silently changing it.
 6. Validate quality and count. Do not silently downgrade quality or reduce count.
 7. Validate the passthrough overrides before they reach the shell; each is interpolated into the `codex exec` command line:
@@ -130,7 +130,7 @@ Attach `--edit` / `--ref` images with Codex CLI's `-i` option. It is a generic a
 codex exec - -i "<edit-or-ref-image-path>" -C "<project-root>" -s workspace-write ...
 ```
 
-`use case` is optional. When the request maps cleanly onto Codex's own imagegen taxonomy, naming the slug lets Codex apply its per-use-case tips. Pick the slug from the "Use-case taxonomy" section of `${CODEX_HOME:-~/.codex}/skills/.system/imagegen/SKILL.md`, which ships with the installed Codex; omit `use case` if that file is not readable.
+`use case` is optional. When the request maps cleanly onto Codex's own imagegen taxonomy, naming the slug lets Codex apply its per-use-case tips. Pick the slug from the "Use-case taxonomy" section of `${CODEX_HOME:-$HOME/.codex}/skills/.system/imagegen/SKILL.md`, which ships with the installed Codex; omit `use case` if that file is not readable.
 
 ## Prompt Quality
 
@@ -178,7 +178,7 @@ A `codex exec` turn keeps nothing. To revise the last result, pass its output pa
 
 ## Result Handling
 
-The built-in image tool always writes first to `${CODEX_HOME:-~/.codex}/generated_images/<session-id>/`. Copying the file into the requested output directory is an extra step the Codex session performs on instruction, and it can fail to happen on any platform — one known trigger is the Windows `codex exec` sandbox blocking shell spawns. Treat recovery as the normal path, not an error branch.
+The built-in image tool always writes first to `${CODEX_HOME:-$HOME/.codex}/generated_images/<session-id>/`. Copying the file into the requested output directory is an extra step the Codex session performs on instruction, and it can fail to happen on any platform — one known trigger is the Windows `codex exec` sandbox blocking shell spawns. Treat recovery as the normal path, not an error branch.
 
 After `codex exec` finishes:
 

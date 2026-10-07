@@ -99,12 +99,13 @@ elif ! printf '%s\n' "$codex_slugs" | grep -qxF "$CM"; then
 fi
 
 # agy — one invocation, captured; the earlier version called `agy models` twice
-# and let the second call's failure read as a missing pin. Only field 1 is the slug.
+# and let the second call's failure read as a missing pin. Only field 1 is the slug:
+# agy 1.2.9 separates it with a tab, the headless docs show aligned spaces.
 if ! command -v agy >/dev/null 2>&1; then
   echo "LIST_UNREAD=agy reason=binary-absent"
 elif ! agy_out=$(agy models 2>/dev/null); then
   echo "LIST_UNREAD=agy reason=listing-failed"
-elif agy_slugs=$(printf '%s\n' "$agy_out" | cut -f1) && [ -z "$agy_slugs" ]; then
+elif agy_slugs=$(printf '%s\n' "$agy_out" | awk 'NF {print $1}') && [ -z "$agy_slugs" ]; then
   echo "LIST_UNREAD=agy reason=listing-empty"
 elif ! printf '%s\n' "$agy_slugs" | grep -qxF "$AM"; then
   echo "STALE_PIN=agy:$AM"

@@ -20,7 +20,7 @@ call, no API key, no runner, no bundled scripts.
 | Transport | `codex exec -` with the prompt on stdin, `-i` for attachments |
 | Codex-side tool | built-in `image_gen`, plus `view_image` to load an attachment |
 | Default output | `assets/generated/codex-image/` under the project root |
-| Where Codex writes first | `${CODEX_HOME:-~/.codex}/generated_images/<session-id>/` |
+| Where Codex writes first | `${CODEX_HOME:-$HOME/.codex}/generated_images/<session-id>/` |
 
 ## Flags
 

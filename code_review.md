@@ -52,7 +52,7 @@
 
 - `gh api --paginate` + `--jq` 조합에 `--slurp` 누락. 단 `gh`는 둘의 동시 사용을 거부하므로 `gh api --paginate ENDPOINT | jq -s 'add'` 패턴을 쓴다.
 - `gh api ... || echo "[]"`는 네트워크·rate-limit·권한 에러를 "결과 없음"으로 삼킨다. 실패는 명시적 exit 또는 stderr 통보로 구분한다.
-- 출력과 종료 상태가 독립인 `gh` 하위 명령에 `|| <기본값>`을 붙이지 않는다. `gh pr checks`는 `--json` 없이 돌리면 pending에서 8, 실패에서 1로 끝나면서도 필터 결과를 정상 출력하므로 (`--json` 을 주면 종료 코드 판정 전에 반환해 항상 0 이다. 그러니 `--json` 호출의 errexit 지적은 오탐이다) `$(gh pr checks … || echo 0)`은 `0\n0`이 되어 뒤의 `jq --argjson`이 깨진다. stdout과 rc를 따로 받아 rc를 분류하고, 값이 정수인지 확인한다.
+- 출력과 종료 상태가 독립인 `gh` 하위 명령에 `|| <기본값>`을 붙이지 않는다. `gh pr checks`는 `--json` 없이 돌리면 pending에서 8, 실패에서 1로 끝나면서도 필터 결과를 정상 출력하므로 (`--json` 을 주면 체크 상태로 인한 8·1 은 나오지 않는다. 그러니 체크 결과 상태를 이유로 든 `--json` 호출의 errexit 지적은 오탐이다. 단 네트워크·인증·API 오류는 `--json` 이어도 1 이므로, `set -e` 아래 command substitution 이 그 실패로 스크립트를 끝내는 지적은 유효하다) `$(gh pr checks … || echo 0)`은 `0\n0`이 되어 뒤의 `jq --argjson`이 깨진다. stdout과 rc를 따로 받아 rc를 분류하고, 값이 정수인지 확인한다.
 - 읽기 실패 삼킴의 write 쌍도 잡는다: 변환 결과를 검사 없이 `gh issue/pr edit --body "$NEW"`로 내보내면 변환 실패가 원격 본문을 공백으로 파괴한다. 원격 write 앞에는 빈 값 가드.
 - `sed` replacement의 사용자 입력은 정화한다: `&`는 매치 전체로 확장되고 `\`와 구분자도 escape가 필요하다 (`sed 's/[\\&|]/\\&/g'`). `AskUserQuestion` 라벨을 그대로 경로/플래그 토큰으로 쓰지 않는다 — case-match로 도메인 토큰을 추출한다.
 

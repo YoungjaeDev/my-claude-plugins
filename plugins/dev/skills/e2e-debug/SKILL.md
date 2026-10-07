@@ -71,7 +71,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
    - **Path A**: `Agent(subagent_type="playwright-test-healer", prompt="Test <name> fails: <trace findings>. Replay the failing steps, find equivalent current elements, patch the test, and re-run until green.")`.
    - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright healer role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'healer'): test <name> fails: <trace findings>. Replay the failing steps via the playwright-test MCP server, find equivalent current elements, patch the test, re-run until green then burn-in --repeat-each=3. Bounded to 3 attempts; do not auto-pass a suspected real regression.")`. Paste the `healer` contract inline.
    - **Path C**: run the healer role yourself per the contract.
-   - **Bounded to 3 attempts** (all paths, the cr-fix MAX_ITER pattern): after 3 healer attempts that do not produce a green run, **stop**. Do not loop indefinitely on a stubborn test.
+   - **Bounded to 3 attempts** (all paths, the review-loop MAX_ITER pattern): after 3 healer attempts that do not produce a green run, **stop**. Do not loop indefinitely on a stubborn test.
    - If a real regression is suspected (the app behavior genuinely changed, not the test), do **not** auto-patch the test to pass. Surface it to the user; the test may be correctly failing.
 
 4. **Verify**:

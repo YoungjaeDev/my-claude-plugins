@@ -20,11 +20,11 @@ Two related state caches live alongside the iteration loop: `codex_active` (per-
 
 ## codex_processed_reviews
 
-A JSON array of Codex review ids (numbers) that have been **surfaced to the user** in some prior iter / run on this PR. Persisted in `.claude/state/cr-fix-${PR_NUM}.json`. Inherited from the prior session's archived state at Step 2.
+A JSON array of Codex review ids (numbers) that have been **surfaced to the user** in some prior iter / run on this PR. Persisted in `.claude/state/review-loop-${PR_NUM}.json`. Inherited from the prior session's archived state at Step 2.
 
 ### What "processed" means
 
-The semantic is "this review has been surfaced to the user this iter", NOT "we wrote code for it". Step 9c.7 appends the id regardless of whether the user applied, deferred, or skipped each item under that review. Without this, the next iter / next cr-fix run would re-discover the same review via Step 6b and re-prompt for items the user already decided on.
+The semantic is "this review has been surfaced to the user this iter", NOT "we wrote code for it". Step 9c.7 appends the id regardless of whether the user applied, deferred, or skipped each item under that review. Without this, the next iter / next review-loop run would re-discover the same review via Step 6b and re-prompt for items the user already decided on.
 
 ### Why filter by review id, not by commit_id
 

@@ -30,7 +30,7 @@ Sibling of `new`: `new` bootstraps an empty directory and hard-aborts on a non-e
 
 ## Answers file
 
-`ASK` answers live in `.claude/state/wiring.json` (gitignored, alongside `cr-fix-*.json`). Values are machine-local — a Drive folder id is not the same on another clone — so they do not belong in a committed file. `CLAUDE.md` carries only a pointer to this path, never the values.
+`ASK` answers live in `.claude/state/wiring.json` (gitignored, alongside `review-loop-*.json`). Values are machine-local — a Drive folder id is not the same on another clone — so they do not belong in a committed file. `CLAUDE.md` carries only a pointer to this path, never the values.
 
 ```json
 {

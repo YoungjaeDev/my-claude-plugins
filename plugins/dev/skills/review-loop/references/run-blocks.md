@@ -1,4 +1,4 @@
-# cr-fix run blocks
+# review-loop run blocks
 
 The shell each step of `SKILL.md` runs, in run order. SKILL.md keeps the step sequence and each step's decision rule; each section below is named in the step that runs it and is run verbatim, in the one shell session the whole run shares (variables set in one block are read by later ones). Every `scripts/` path resolves against `SKILL_DIR` from Step 1.
 
@@ -25,7 +25,7 @@ HOLD_STATE=""; HEAD_VERDICT=""; pushed_this_cycle=false
 ```bash
 # CodeRabbit skips draft PRs unless `drafts: true`, so a draft only waits out the caps.
 if [ "$(gh pr view "$PR_NUM" --json isDraft --jq '.isDraft')" = true ]; then
-  echo "cr-fix: PR #$PR_NUM is a draft and CodeRabbit does not review drafts. Run \`gh pr ready $PR_NUM\`, then re-run cr-fix." >&2
+  echo "review-loop: PR #$PR_NUM is a draft and CodeRabbit does not review drafts. Run \`gh pr ready $PR_NUM\`, then re-run review-loop." >&2
   exit 1
 fi
 ```
@@ -88,36 +88,36 @@ PRIOR_PROCESSED='[]'; PRIOR_CR_PROCESSED='[]'; PRIOR_ISSUE='null'
 # Step 16's EXIT trap archives the live file, so on the next run the live path is
 # usually absent — fall back to the newest archive or the Codex dedupe resets.
 # `|| true`: a first run has no archive at all.
-PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
-[ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
+PRIOR_STATE=".claude/state/review-loop-${PR_NUM}.json"
+[ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/review-loop-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
 if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
   # Fail loud before creating a new state file: a silently reset dedupe re-judges
   # every already-processed Codex review.
   # The follow-up issue is inherited too, or every re-run on the same PR opens another one.
   PRIOR_ISSUE=$(jq -c '.followup_issue // null' "$PRIOR_STATE" 2>/dev/null) || PRIOR_ISSUE='null'
   PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null) || {
-    echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
+    echo "review-loop: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
     exit 1
   }
   # Same for CodeRabbit reviews whose outside-diff findings were already judged.
   PRIOR_CR_PROCESSED=$(jq -c '.cr_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null) || {
-    echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the CodeRabbit dedupe is reset" >&2
+    echo "review-loop: prior state $PRIOR_STATE unparseable — aborting before the CodeRabbit dedupe is reset" >&2
     exit 1
   }
   # Only the live file is archived; the $$ suffix keeps a same-second or parallel
   # run from clobbering an archive.
-  if [ "$PRIOR_STATE" = ".claude/state/cr-fix-${PR_NUM}.json" ]; then
-    mv "$PRIOR_STATE" ".claude/state/archive/cr-fix-${PR_NUM}-$(date +%Y%m%d-%H%M%S)-$$.json" \
-      || { echo "cr-fix: failed to archive prior state" >&2; exit 1; }
+  if [ "$PRIOR_STATE" = ".claude/state/review-loop-${PR_NUM}.json" ]; then
+    mv "$PRIOR_STATE" ".claude/state/archive/review-loop-${PR_NUM}-$(date +%Y%m%d-%H%M%S)-$$.json" \
+      || { echo "review-loop: failed to archive prior state" >&2; exit 1; }
   fi
 fi
-STATE_FILE=".claude/state/cr-fix-${PR_NUM}.json"
+STATE_FILE=".claude/state/review-loop-${PR_NUM}.json"
 jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --argjson crprior "$PRIOR_CR_PROCESSED" \
   --argjson issue "$PRIOR_ISSUE" --arg src "$CR_SOURCE" \
   '{start_sha:$sha,iter:0,applied_total:0,deferred_total:0,codex_processed_reviews:$prior,cr_processed_reviews:$crprior,followup_issue:$issue,cr_source:($src // "pending"),pre_flight_decisions:[],auto_judge_log:[]}' \
   > "$STATE_FILE"
 
-TRACK_FILE="/tmp/cr-fix-${PR_NUM}-modified.list"; : > "$TRACK_FILE"
+TRACK_FILE="/tmp/review-loop-${PR_NUM}-modified.list"; : > "$TRACK_FILE"
 ```
 
 ## Step 2: final-JSON trap
@@ -150,7 +150,7 @@ if ru=$(CR_SOURCE="$CR_SOURCE" NO_CODEX="$NO_CODEX" SINCE="$SINCE" \
     stop) final_state=reviewers_unavailable ;;
   esac
 else
-  echo "cr-fix: reviewer availability not checked (comment fetch failed); keeping the normal wait path" >&2
+  echo "review-loop: reviewer availability not checked (comment fetch failed); keeping the normal wait path" >&2
 fi
 ```
 
@@ -162,7 +162,7 @@ fi
 VERIFY_CMD="${VERIFY_CMD:-}"
 VERIFICATION_GATE=$(NO_BUILD="$NO_BUILD" bash "$SKILL_DIR/scripts/verify-fix.sh" baseline "$VERIFY_CMD")
 [ "$VERIFICATION_GATE" = on ] \
-  || echo "cr-fix: verification gate off ($VERIFICATION_GATE) — fixes will be committed unverified" >&2
+  || echo "review-loop: verification gate off ($VERIFICATION_GATE) — fixes will be committed unverified" >&2
 ```
 
 ## Step 5: loop head and pre-flight

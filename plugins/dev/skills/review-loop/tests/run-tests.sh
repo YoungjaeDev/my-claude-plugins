@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Usage: bash plugins/dev/skills/cr-fix/tests/run-tests.sh
+# Usage: bash plugins/dev/skills/review-loop/tests/run-tests.sh
 #
-# Fixture-driven checks for the two cr-fix paths that only execute when the
+# Fixture-driven checks for the two review-loop paths that only execute when the
 # primary path has already failed, and which therefore had nothing exercising
 # them (issue #105): the CodeRabbit CLI JSONL parser, and the commit-state
 # reader that decides whether a review has finished.
@@ -738,7 +738,7 @@ rm -rf "$GSHIM3"
 # Matching the login as a bare stem (`test("chatgpt-codex-connector"; "i")`) is
 # a SUBSTRING match, and `chatgpt-codex-connector-evil` is a registrable GitHub
 # login (28 chars, alnum+hyphen) that any account can use to review a public PR.
-# cr-fix feeds Codex review bodies back into code edits, so a matcher an
+# review-loop feeds Codex review bodies back into code edits, so a matcher an
 # outsider can satisfy is an injection path into that loop. The anchored form
 # `^chatgpt-codex-connector(\[bot\])?$` is forgery-proof because `[` and `]`
 # are not legal login characters. The spoof review is the NEWEST here, so the
@@ -1393,14 +1393,14 @@ echo "SKILL.md snippet contracts (mirror SKILL.md and references/run-blocks.md b
 # must read codex_processed_reviews from the newest archive or re-process Codex
 # reviews. Mirrors the Step 2 state-init block in references/run-blocks.md. (issue #110 step 3)
 AF=$(mktemp -d); mkdir -p "$AF/.claude/state/archive"
-echo '{"codex_processed_reviews":[111,222]}' > "$AF/.claude/state/archive/cr-fix-42-20260101-000000.json"
-echo '{"codex_processed_reviews":[333]}'     > "$AF/.claude/state/archive/cr-fix-42-20260102-000000.json"
+echo '{"codex_processed_reviews":[111,222]}' > "$AF/.claude/state/archive/review-loop-42-20260101-000000.json"
+echo '{"codex_processed_reviews":[333]}'     > "$AF/.claude/state/archive/review-loop-42-20260102-000000.json"
 # touch -t (POSIX) — `-d` is GNU-only and breaks the suite on macOS/BSD.
-touch -t 202601010000 "$AF/.claude/state/archive/cr-fix-42-20260101-000000.json"
-touch -t 202601020000 "$AF/.claude/state/archive/cr-fix-42-20260102-000000.json"
+touch -t 202601010000 "$AF/.claude/state/archive/review-loop-42-20260101-000000.json"
+touch -t 202601020000 "$AF/.claude/state/archive/review-loop-42-20260102-000000.json"
 af_got=$(cd "$AF" && PR_NUM=42
-  PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
-  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1)
+  PRIOR_STATE=".claude/state/review-loop-${PR_NUM}.json"
+  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/review-loop-${PR_NUM}-"*.json 2>/dev/null | head -1)
   PRIOR_PROCESSED='[]'
   [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ] && PRIOR_PROCESSED=$(jq -c '.codex_processed_reviews // []' "$PRIOR_STATE")
   printf '%s' "$PRIOR_PROCESSED")
@@ -1413,8 +1413,8 @@ rm -rf "$AF"
 AF2=$(mktemp -d); mkdir -p "$AF2/.claude/state/archive"
 arc=0; (cd "$AF2" && bash -euo pipefail -c '
   PR_NUM=43
-  PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
-  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
+  PRIOR_STATE=".claude/state/review-loop-${PR_NUM}.json"
+  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/review-loop-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
 ') || arc=$?
 is "archive fallback: no archive survives errexit" "$arc" 0
 rm -rf "$AF2"
@@ -1423,14 +1423,14 @@ rm -rf "$AF2"
 # warn-and-continue reset re-judges already-processed Codex reviews and can
 # re-apply fixes onto already-fixed code. Mirrors the Step 2 state-init block in references/run-blocks.md.
 AF3=$(mktemp -d); mkdir -p "$AF3/.claude/state/archive"
-echo 'not-json{' > "$AF3/.claude/state/cr-fix-44.json"
+echo 'not-json{' > "$AF3/.claude/state/review-loop-44.json"
 crc=0; (cd "$AF3" && bash -c '
   PR_NUM=44
-  PRIOR_STATE=".claude/state/cr-fix-${PR_NUM}.json"
-  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/cr-fix-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
+  PRIOR_STATE=".claude/state/review-loop-${PR_NUM}.json"
+  [ -f "$PRIOR_STATE" ] || PRIOR_STATE=$(ls -1t ".claude/state/archive/review-loop-${PR_NUM}-"*.json 2>/dev/null | head -1 || true)
   if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
     PRIOR_PROCESSED=$(jq -c ".codex_processed_reviews // []" "$PRIOR_STATE" 2>/dev/null) || {
-      echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
+      echo "review-loop: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
       exit 1
     }
   fi' 2>/dev/null) || crc=$?
@@ -1440,7 +1440,7 @@ rm -rf "$AF3"
 # Step 1 SKILL_DIR resolver: CLAUDE_PLUGIN_ROOT wins, and the Codex cache is the
 # fallback outside the source tree. Mirrors the SKILL.md Step 1 resolver. (step 7)
 RS=$(mktemp -d)
-mkdir -p "$RS/pluginroot/skills/cr-fix" "$RS/cache/marketplace/dev/2.8.0/skills/cr-fix"
+mkdir -p "$RS/pluginroot/skills/review-loop" "$RS/cache/marketplace/dev/2.8.0/skills/review-loop"
 cat > "$RS/resolver.sh" <<'SH'
 CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
 if sort -V </dev/null >/dev/null 2>&1; then
@@ -1450,25 +1450,25 @@ else
   CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/dev/* 2>/dev/null \
     | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
 fi
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/cr-fix" ]; then SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/cr-fix"
-elif [ -d "plugins/dev/skills/cr-fix" ]; then SKILL_DIR="plugins/dev/skills/cr-fix"
-elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/cr-fix" ]; then SKILL_DIR="$CODEX_CAND/skills/cr-fix"
-else SKILL_DIR="plugins/dev/skills/cr-fix"; fi
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -d "$CLAUDE_PLUGIN_ROOT/skills/review-loop" ]; then SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/review-loop"
+elif [ -d "plugins/dev/skills/review-loop" ]; then SKILL_DIR="plugins/dev/skills/review-loop"
+elif [ -n "$CODEX_CAND" ] && [ -d "$CODEX_CAND/skills/review-loop" ]; then SKILL_DIR="$CODEX_CAND/skills/review-loop"
+else SKILL_DIR="plugins/dev/skills/review-loop"; fi
 printf '%s' "$SKILL_DIR"
 SH
 # From a non-source-tree cwd so the source-tree branch cannot win.
 got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="$RS/pluginroot" CODEX_PLUGIN_CACHE="$RS/cache" bash resolver.sh)
-is "resolver: CLAUDE_PLUGIN_ROOT wins" "$got" "$RS/pluginroot/skills/cr-fix"
+is "resolver: CLAUDE_PLUGIN_ROOT wins" "$got" "$RS/pluginroot/skills/review-loop"
 got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache" bash resolver.sh)
-is "resolver: Codex cache fallback"    "$got" "$RS/cache/marketplace/dev/2.8.0/skills/cr-fix"
+is "resolver: Codex cache fallback"    "$got" "$RS/cache/marketplace/dev/2.8.0/skills/review-loop"
 
 # Multi-marketplace cache: the VERSION must win, not the marketplace dir name.
 # The old full-path sort -V let zeta/dev/2.10.0 outrank
 # alpha/dev/3.0.0. (CR Major, SKILL.md:66)
-mkdir -p "$RS/cache2/zeta/dev/2.10.0/skills/cr-fix" \
-         "$RS/cache2/alpha/dev/3.0.0/skills/cr-fix"
+mkdir -p "$RS/cache2/zeta/dev/2.10.0/skills/review-loop" \
+         "$RS/cache2/alpha/dev/3.0.0/skills/review-loop"
 got=$(cd "$RS" && CLAUDE_PLUGIN_ROOT="" CODEX_PLUGIN_CACHE="$RS/cache2" bash resolver.sh)
-is "resolver: version outranks marketplace name" "$got" "$RS/cache2/alpha/dev/3.0.0/skills/cr-fix"
+is "resolver: version outranks marketplace name" "$got" "$RS/cache2/alpha/dev/3.0.0/skills/review-loop"
 
 # Fresh env (no cache at all) must not kill an errexit caller — the unguarded
 # CODEX_CAND ls substitution died rc=2 under set -euo pipefail. (counsel P1)
@@ -1892,6 +1892,28 @@ is "only fix fails -> fail"                     "$(vfx check "$snap" "$VCMD")" f
 is "only-failed cycle -> noop, nothing to push" \
    "$(cd "$VF" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK" 2 2>/dev/null)" noop
 rm -rf "$VF" "$TRK"
+
+echo
+echo "post-merge leftover surface: reads review-loop- and the pre-rename cr-fix- state"
+# The skill was renamed cr-fix -> review-loop; a repo whose only state file was
+# written before the rename must still surface its deferred findings.
+LR="$HERE/../../post-merge/references/leftover-reviews.md"
+lr_primary() { # MAIN_REPO -> "DEFER_N:final_state"
+  MAIN_REPO=$1 PR_NUMBER=42 BLOCK="$(awk '/^## Primary signal/ {f=1; next} f && /^## / {exit}
+    f && /^```bash$/ {c=1; next} c && /^```$/ {c=0; next} c {print}' "$LR")" bash -c '
+    eval "$BLOCK"; printf "%s:%s" "$DEFER_N" "$CRF_FINAL"'
+}
+LF=$(mktemp -d); mkdir -p "$LF/old/.claude/state" "$LF/arc/.claude/state/archive" "$LF/new/.claude/state"
+defer_state() { printf '{"final_state":"%s","auto_judge_log":[{"action":"defer","path":"a.sh","line":3,"badge_or_sev":"major","reason":"r"}]}' "$1"; }
+defer_state iteration_cap > "$LF/old/.claude/state/cr-fix-42.json"
+is "old cr-fix-<PR>.json only -> deferred item found" "$(lr_primary "$LF/old")" "1:iteration_cap"
+defer_state churn > "$LF/arc/.claude/state/archive/cr-fix-42-20260101-000000-1.json"
+is "old cr-fix archive only -> deferred item found"   "$(lr_primary "$LF/arc")" "1:churn"
+defer_state timeout > "$LF/new/.claude/state/review-loop-42.json"
+echo '{"final_state":"clean"}' > "$LF/new/.claude/state/cr-fix-42.json"
+is "review-loop-<PR>.json wins over the old prefix"   "$(lr_primary "$LF/new")" "1:timeout"
+is "no state file -> none"                           "$(lr_primary "$LF")" "0:"
+rm -rf "$LF"
 
 echo
 echo "final_state enum: one set across the schema and every doc that lists it"

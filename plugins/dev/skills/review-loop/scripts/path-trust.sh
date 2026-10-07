@@ -18,7 +18,7 @@ esac
 
 # `realpath -m` is GNU-only (BSD/macOS realpath rejects it), and bare `realpath`
 # is no substitute: both GNU and BSD error on a path that does not exist yet,
-# which cr-fix needs to validate for files a fix is about to create.
+# which review-loop needs to validate for files a fix is about to create.
 #
 # Resolving only the parent is NOT enough: if the final component is itself a
 # symlink pointing outside the repo, the reconstructed path still looks in-repo

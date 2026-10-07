@@ -2,20 +2,24 @@
 
 The three blocks Step 1.5 of `SKILL.md` runs, in order. The decision rules around them stay in the skill body.
 
-## Primary signal: the cr-fix state file
+## Primary signal: the review-loop state file
 
-Check the live path first, then the latest archive:
+Check the live path first, then the latest archive. The `cr-fix-` prefix is state written before the skill was renamed `review-loop`; it is read only when no `review-loop-` file exists:
 
 ```bash
-CRF="$MAIN_REPO/.claude/state/cr-fix-${PR_NUMBER}.json"
-[ -f "$CRF" ] || CRF=$(ls -1t "$MAIN_REPO/.claude/state/archive/cr-fix-${PR_NUMBER}-"*.json 2>/dev/null | head -1)
+CRF=""
+for p in review-loop cr-fix; do
+  [ -n "$CRF" ] && break
+  CRF="$MAIN_REPO/.claude/state/$p-${PR_NUMBER}.json"
+  [ -f "$CRF" ] || CRF=$(ls -1t "$MAIN_REPO/.claude/state/archive/$p-${PR_NUMBER}-"*.json 2>/dev/null | head -1)
+done
 if [ -n "${CRF:-}" ] && [ -f "$CRF" ]; then
   CRF_FINAL=$(jq -r '.final_state // "unknown"' "$CRF")
   # deferred findings, audit detail: path:line + severity + reason
   DEFERS=$(jq -c '[.auto_judge_log[]? | select(.action=="defer")
     | {path, line, sev: .badge_or_sev, reason}]' "$CRF")
   # prefer the persisted stat; fall back to counting defer entries in the log for
-  # archives written before cr-fix persisted final fields (auto_judge_stats absent).
+  # archives written before review-loop persisted final fields (auto_judge_stats absent).
   DEFER_N=$(jq -r '.auto_judge_stats.defer // ([.auto_judge_log[]? | select(.action=="defer")] | length)' "$CRF")
 else
   CRF_FINAL=""; DEFER_N=0; DEFERS='[]'

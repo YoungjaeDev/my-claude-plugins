@@ -48,7 +48,7 @@ fi
 
 ```bash
 mkdir -p .claude/state/archive
-PRIOR_PROCESSED='[]'; PRIOR_ISSUE='null'
+PRIOR_PROCESSED='[]'; PRIOR_CR_PROCESSED='[]'; PRIOR_ISSUE='null'
 # Step 16's EXIT trap archives the live file, so on the next run the live path is
 # usually absent — fall back to the newest archive or the Codex dedupe resets.
 # `|| true`: a first run has no archive at all.
@@ -63,6 +63,11 @@ if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
     echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the Codex dedupe is reset" >&2
     exit 1
   }
+  # Same for CodeRabbit reviews whose outside-diff findings were already judged.
+  PRIOR_CR_PROCESSED=$(jq -c '.cr_processed_reviews // []' "$PRIOR_STATE" 2>/dev/null) || {
+    echo "cr-fix: prior state $PRIOR_STATE unparseable — aborting before the CodeRabbit dedupe is reset" >&2
+    exit 1
+  }
   # Only the live file is archived; the $$ suffix keeps a same-second or parallel
   # run from clobbering an archive.
   if [ "$PRIOR_STATE" = ".claude/state/cr-fix-${PR_NUM}.json" ]; then
@@ -71,8 +76,9 @@ if [ -n "$PRIOR_STATE" ] && [ -f "$PRIOR_STATE" ]; then
   fi
 fi
 STATE_FILE=".claude/state/cr-fix-${PR_NUM}.json"
-jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --argjson issue "$PRIOR_ISSUE" --arg src "$CR_SOURCE" \
-  '{start_sha:$sha,iter:0,applied_total:0,deferred_total:0,codex_processed_reviews:$prior,followup_issue:$issue,cr_source:($src // "pending"),pre_flight_decisions:[],auto_judge_log:[]}' \
+jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --argjson crprior "$PRIOR_CR_PROCESSED" \
+  --argjson issue "$PRIOR_ISSUE" --arg src "$CR_SOURCE" \
+  '{start_sha:$sha,iter:0,applied_total:0,deferred_total:0,codex_processed_reviews:$prior,cr_processed_reviews:$crprior,followup_issue:$issue,cr_source:($src // "pending"),pre_flight_decisions:[],auto_judge_log:[]}' \
   > "$STATE_FILE"
 
 TRACK_FILE="/tmp/cr-fix-${PR_NUM}-modified.list"; : > "$TRACK_FILE"
@@ -227,6 +233,11 @@ cli_invocations=$((cli_invocations + 1))
 ```bash
 cr_records=$(bash $SKILL_DIR/scripts/fetch-cr-threads.sh "$OWNER" "$REPO" "$PR_NUM") \
   || { final_state=failure; break; }
+# Outside-diff findings live only in review bodies; add them, merged with any
+# thread on the same path and line. An unreadable block fails the round.
+cr_processed=$(jq -c '.cr_processed_reviews // []' "$STATE_FILE") || { final_state=failure; break; }
+cr_records=$(bash $SKILL_DIR/scripts/fetch-cr-outside-diff.sh "$OWNER" "$REPO" "$PR_NUM" "$cr_processed" <<<"$cr_records") \
+  || { final_state=failure; break; }
 ```
 
 ## Step 8b: fetch Codex inline comments
@@ -282,6 +293,11 @@ bash $SKILL_DIR/scripts/churn-scope.sh "$PREV_SHA" "origin/$BASE" "$path" "$line
 
 ```bash
 bash $SKILL_DIR/scripts/persist-codex-id.sh "$STATE_FILE" "$codex_review_id_to_process"
+# CodeRabbit reviews whose outside-diff findings this round judged.
+jq -r '[.[].review_id // empty] | unique | .[]' <<<"$cr_records" \
+  | while IFS= read -r rid; do
+      bash $SKILL_DIR/scripts/persist-codex-id.sh "$STATE_FILE" "$rid" cr_processed_reviews || exit 1
+    done || { final_state=failure; break; }
 ```
 
 ## Step 10: stage and commit

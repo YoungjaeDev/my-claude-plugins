@@ -178,6 +178,8 @@ If `exit != 0` OR `emitted_complete=false`: `final_state=cli_failed`, break. The
 Skip when `CR_SOURCE ∈ {cli, codex-only}`. Otherwise:
 Run the "Step 8: fetch CR threads" block in `references/run-blocks.md` verbatim.
 
+The block also adds CodeRabbit's outside-diff findings, which live only in a review body's "Outside diff range comments" block (`scripts/fetch-cr-outside-diff.sh`). Each becomes a thread-shaped record (`origin: "outside-diff"`, `review_id`) and goes through the same Step 9 classify and judgment. Its `path` is parsed from the body, so the Step 9c path-trust gate is what makes it safe. A finding on the same path and line as a thread merges into that thread's record. Reviews listed in `cr_processed_reviews` are skipped. A block the parser cannot read in full fails the round (`final_state=failure`) instead of reading as zero findings.
+
 ## Step 8b: Fetch Codex inline comments
 
 Skip when `codex_active != "active"` OR `codex_review_id_to_process=""`. Otherwise:
@@ -230,7 +232,7 @@ Items 3-7 in full (axis values, the matrix with its reasons, the exact counter u
 
 ### 9c.7: Persist Codex review id (always runs if discovered)
 
-Run the "Step 9c.7: persist Codex review id" block in `references/run-blocks.md` verbatim.
+Run the "Step 9c.7: persist Codex review id" block in `references/run-blocks.md` verbatim. It also records each CodeRabbit `review_id` from this round's records in `cr_processed_reviews`, so those outside-diff findings are not judged again.
 
 ## Step 10: Stage + commit
 

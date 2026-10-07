@@ -16,6 +16,12 @@
       "uniqueItems": true,
       "description": "Cross-iter / cross-run dedupe of surfaced Codex reviews. See references/codex-state-machine.md."
     },
+    "cr_processed_reviews": {
+      "type": "array",
+      "items":   { "type": "integer", "description": "CodeRabbit review id whose outside-diff findings were judged." },
+      "uniqueItems": true,
+      "description": "Cross-iter / cross-run dedupe of CodeRabbit review-body (outside-diff) findings, inherited like codex_processed_reviews. See scripts/fetch-cr-outside-diff.sh."
+    },
     "cr_source": {
       "type": "string",
       "enum": ["pending", "pr-bot", "cli", "codex-only"],

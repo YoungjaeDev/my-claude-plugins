@@ -337,6 +337,65 @@ is "🔵 Trivial header -> skip"           "$(tier_at 5)" skip
 is "⚪ Info header -> skip"              "$(tier_at 6)" skip
 
 echo
+echo "fetch-cr-outside-diff.sh"
+
+# CodeRabbit puts findings outside the diff only in the review body, never in a
+# thread. The fixture is review 5427040251 on PR #283 (3 such findings), plus the
+# same body under the registrable impostor login `coderabbitai-evil`.
+od() { CR_REVIEWS_RESPONSE_FILE="$1" bash "$SCRIPTS/fetch-cr-outside-diff.sh" o r 42 "${2:-[]}" 2>/dev/null; }
+ODF="$FIX/cr-reviews-outside-diff.json"
+out=$(od "$ODF" <<<'[]'); rc=$?
+is "outside-diff: exits 0"               "$rc" 0
+is "outside-diff: 3 records, impostor ignored" "$(jq 'length' <<<"$out")" 3
+is "outside-diff: path"                  "$(jq -r '.[0].path' <<<"$out")" "plugins/wiki/skills/lint/SKILL.md"
+is "outside-diff: line range"            "$(jq -r '[.[] | "\(.startLine)-\(.line)"] | join(",")' <<<"$out")" "28-30,33-35,48-49"
+is "outside-diff: header fields on every record" \
+   "$(jq -r '[.[] | [.category_emoji, .severity_emoji, .effort_emoji] | join(" / ")] | unique | .[]' <<<"$out")" \
+   "🎯 Functional Correctness / 🟡 Minor / ⚡ Quick win"
+is "outside-diff: body carries the finding" \
+   "$(jq -r '.[1].body | test("frontmatter")' <<<"$out")" true
+is "outside-diff: marked with origin + review id" \
+   "$(jq -r '[.[] | "\(.source)/\(.origin)/\(.review_id)"] | unique | .[]' <<<"$out")" "cr/outside-diff/5427040251"
+is "outside-diff: Minor + Quick win -> auto" \
+   "$(jq -c '.[0]' <<<"$out" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier')" auto
+# A thread on the same path and line is the same finding: one record, which
+# carries the review id so the review is still recorded as processed.
+thr='[{"source":"cr","path":"plugins/wiki/skills/lint/SKILL.md","line":30,"startLine":28,"body":"t","databaseId":7}]'
+out=$(od "$ODF" <<<"$thr")
+is "outside-diff: same path+line as a thread -> merged" "$(jq 'length' <<<"$out")" 3
+is "outside-diff: merged record is the thread"   "$(jq -r '.[0].databaseId' <<<"$out")" 7
+is "outside-diff: merged thread keeps review id" "$(jq -r '.[0].review_id' <<<"$out")" 5427040251
+# A processed review is not judged again: Step 9c.7 records each review_id under
+# cr_processed_reviews, and the next round reads that list back.
+OD=$(mktemp -d)
+printf '{"codex_processed_reviews":[9]}\n' > "$OD/state.json"
+jq -r '[.[].review_id // empty] | unique | .[]' <<<"$out" \
+  | while IFS= read -r rid; do bash "$SCRIPTS/persist-codex-id.sh" "$OD/state.json" "$rid" cr_processed_reviews; done
+is "outside-diff: review id persisted under its own key" \
+   "$(jq -c '[.cr_processed_reviews, .codex_processed_reviews]' "$OD/state.json")" "[[5427040251],[9]]"
+out=$(od "$ODF" "$(jq -c '.cr_processed_reviews' "$OD/state.json")" <<<"$thr")
+is "outside-diff: processed review -> thread only" "$(jq 'length' <<<"$out")" 1
+# The path comes from an untrusted body: it reaches path-trust like a thread path.
+jq '.[0][0].body |= sub("`plugins/wiki/skills/lint/SKILL.md:28-30`"; "`../../../etc/passwd:28-30`")' "$ODF" > "$OD/escape.json"
+p=$(od "$OD/escape.json" <<<'[]' | jq -r '.[0].path')
+is "outside-diff: escaping path extracted as-is" "$p" "../../../etc/passwd"
+bash "$SCRIPTS/path-trust.sh" "$HERE" "$p" 2>/dev/null; rc=$?
+is "outside-diff: escaping path rejected by path-trust" "$rc" 1
+# A block whose findings cannot be read (the older per-file grouping) fails loud:
+# an empty result would read as "nothing outside the diff".
+out=$(od "$FIX/cr-reviews-outside-diff-grouped.json" <<<'[]'); rc=$?
+is "outside-diff: unreadable block -> non-zero exit" "$rc" 1
+is "outside-diff: unreadable block -> no records"    "$out" ""
+# No reviews at all is a real empty, not a failure.
+printf '[[]]' > "$OD/none.json"
+is "outside-diff: no reviews -> threads unchanged" "$(od "$OD/none.json" <<<"$thr" | jq 'length')" 1
+# Fetch failure is not "no findings".
+printf '#!/usr/bin/env bash\nexit 1\n' > "$OD/gh"; chmod +x "$OD/gh"
+PATH="$OD:$PATH" bash "$SCRIPTS/fetch-cr-outside-diff.sh" o r 42 '[]' <<<'[]' >/dev/null 2>&1; rc=$?
+is "outside-diff: gh failure -> non-zero exit" "$rc" 1
+rm -rf "$OD"
+
+echo
 echo "churn-scope.sh"
 
 # A finding on lines the PREVIOUS iteration's own commit produced, or outside the

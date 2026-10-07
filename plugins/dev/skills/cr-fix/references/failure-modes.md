@@ -5,7 +5,7 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 | `final_state` | Trigger | Auto-merge eligible? | User action |
 |---------------|---------|----------------------|-------------|
 | `clean` | Loop exits with `applied_this_cycle == 0` and `deferred_this_cycle == 0` AND Step 8c engagement gate passed. | yes (if `--auto-merge`) | None — merge proceeds or remains manual. |
-| `user_declined` | Loop exits because `applied_this_cycle == 0` but `deferred_this_cycle > 0`. User deferred everything in some iter. | no | Decide on the deferred items manually, re-run, or merge as-is via GitHub UI. |
+| `user_declined` | Loop exits because `applied_this_cycle == 0` but `deferred_this_cycle > 0`. The run deferred everything in some iter, including a cycle whose every fix failed verification (`verification-failed`). | no | Read the Step 14 follow-up issue, decide on the deferred items manually, re-run, or merge as-is via GitHub UI. |
 | `minor_floor` | Minor soft-stop. `MINOR_STOP=true` (default; `--no-minor-stop` off) AND `ITER >= 2` AND this cycle applied only low-severity fixes (`high_sev_this_cycle == 0`) with nothing deferred (`deferred_this_cycle == 0`). Stops the low-value minor tail instead of looping to the `applied==0 && deferred==0` floor. | yes, once Step 14 filed the follow-up issue | Read the follow-up issue for what was left behind. Pass `--no-minor-stop` to keep looping instead. |
 | `churn` | Churn stop. `ITER >= 2` AND every finding this cycle was `in_prev_diff` — on lines the previous iteration's own commit produced, or outside the PR diff entirely. The reviewer has exhausted the diff and is now reviewing the loop's own output. | yes, once Step 14 filed the follow-up issue | Read the follow-up issue. Re-running cr-fix on the same PR reproduces churn; the remaining findings belong to their own change. |
 | `iteration_cap` | `ITER == MAX_ITER` and threads still actionable. | no | Step 14 still files the follow-up issue; inspect remaining threads via `target_url`, or re-run with a higher `--max-iterations`. |
@@ -34,13 +34,13 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 | Step 15 branch-protection probe gh api error | `protection_http: 0` — never merge on an unverified protection state; surface and leave the PR open. |
 | Step 14 `gh issue create` fails | `followup_issue` stays absent, so `auto-merge-gate.sh` reports `eligible: false` and `minor_floor` / `churn` do not merge. Surface the error; the deferred findings are still in the archived `auto_judge_log`. |
 
-## Build / verification failure (Step 11)
+## Build / verification failure (Steps 3, 9c.6)
 
-Does NOT change `final_state` directly. Sets `verification_blocking=true` which disables auto-merge for the run. The push still happens so CR re-review sees the new code. The user can intervene before merge.
+Does NOT change `final_state` directly. Build and test run before the commit, per fix: a fix that fails is reverted and becomes a `defer` with reason `verification-failed`, so only passing fixes are committed and pushed, and a cycle whose every fix failed commits and pushes nothing (it then ends at `user_declined`, which files the follow-up issue). A repo whose baseline already fails at Step 3 skips the gate (`verification_gate=baseline_failed` in the final JSON). `verification_blocking=true` now comes only from a merge-conflict resolution that breaks the checks (`references/merge-conflicts.md`); it disables auto-merge for the run.
 
 ## Follow-up issue block (Step 14)
 
-Fires when `final_state ∈ {churn, minor_floor, iteration_cap}` and `deferred_total > 0`. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
+Fires when `final_state ∈ {churn, minor_floor, iteration_cap, user_declined}` and `deferred_total > 0`. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
 
 ```bash
 # Idempotent: a re-run on the same PR reuses the issue instead of opening a second one;

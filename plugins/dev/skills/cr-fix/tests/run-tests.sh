@@ -233,12 +233,19 @@ cat > "$SHIMDIR/gh" <<'SH'
 case "$*" in
   *"/check-runs"*) echo '{"check_runs":[{"name":"CodeRabbit","status":"completed","conclusion":"success","started_at":"2025-01-01T00:00:00Z"}]}';;
   *"/statuses"*)   echo '[]';;
+  *"/pulls/"*"/reviews"*)   cat "$AMG_REVIEWS";;
+  *"/issues/"*"/comments"*) cat "$AMG_COMMENTS";;
   "pr checks"*)    echo '0';;
   "pr view"*)      echo "main";;
   *"/protection"*) echo "HTTP/2.0 404 Not Found"; exit 1;;
   *) echo "unknown gh args: $*" >&2; exit 1;;
 esac
 SH
+# HEAD deadbeef carries both verdicts unless a case swaps a listing out.
+jq '[.[0] | .commit_id = "deadbeef" | .body = "**Actionable comments posted: 0**"]' \
+  "$FIX/pr-reviews-cr-older-commit.json" > "$SHIMDIR/reviews.json"
+sed 's/95ab2f6/deadbee/' "$FIX/issue-comments-codex-summary-completed.json" > "$SHIMDIR/comments.json"
+export AMG_REVIEWS="$SHIMDIR/reviews.json" AMG_COMMENTS="$SHIMDIR/comments.json"
 chmod +x "$SHIMDIR/gh"
 g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "check-run-only CR -> cr_state success" "$(jq -r '.cr_state' <<<"$g" 2>/dev/null)" success
@@ -264,6 +271,23 @@ is "user_declined -> ineligible"             "$(elig user_declined)" false
 is "reviewers_unavailable -> ineligible"     "$(elig reviewers_unavailable)" false
 is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false
 is "ineligible carries a reason"    "$(FINAL_STATE=churn PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null       | jq -r '.ineligible_reason | length > 0')" true
+# A defer from an earlier cycle is still unrecorded when a later one ends clean.
+is "clean, earlier defers, no issue -> ineligible" "$(DEFERRED_TOTAL=2 elig clean)" false
+is "clean, earlier defers, issue filed -> eligible" "$(DEFERRED_TOTAL=2 elig clean 321)" true
+# Every reviewer that is on must have given HEAD a verdict (ADR 0002).
+jq '.[0].commit_id = "0ldc0mm1t"' "$SHIMDIR/reviews.json" > "$SHIMDIR/reviews-none.json"
+jq '.[0].body = "<!-- This is an auto-generated comment: rate limited by coderabbit.ai -->\nReview rate limited"' \
+  "$SHIMDIR/reviews.json" > "$SHIMDIR/reviews-rl.json"
+sed 's/Completed/Running/' "$SHIMDIR/comments.json" > "$SHIMDIR/comments-running.json"
+amg() { FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null; }
+g=$(AMG_REVIEWS="$SHIMDIR/reviews-none.json" amg)
+is "no CodeRabbit verdict on HEAD -> ineligible"   "$(jq -r '.eligible' <<<"$g")" false
+is "no-verdict reason names the HEAD verdict"     "$(jq -r '.ineligible_reason | test("HEAD verdict")' <<<"$g")" true
+is "rate-limit notice only on HEAD -> ineligible" "$(AMG_REVIEWS="$SHIMDIR/reviews-rl.json" amg | jq -r '.eligible')" false
+is "Codex still Running on HEAD -> ineligible"    "$(AMG_COMMENTS="$SHIMDIR/comments-running.json" amg | jq -r '.eligible')" false
+is "Codex off for the run -> CR verdict suffices" \
+   "$(AMG_COMMENTS="$SHIMDIR/comments-running.json" CODEX_ON=false amg | jq -r '.eligible')" true
+unset AMG_REVIEWS AMG_COMMENTS
 rm -rf "$SHIMDIR"
 
 echo
@@ -1012,6 +1036,92 @@ is "reviews fetch failure -> no verdict printed" "$out" ""
 rm -rf "$HV"
 
 echo
+echo "head-verdicts.sh"
+
+# The loop ends or merges only once every reviewer it has on gave HEAD a verdict
+# (ADR 0002). A progress mark, a rate-limit notice or a review pause is not one.
+# HW_REVIEWS / HW_COMMENTS are what the shimmed gh serves; every call is logged.
+HW=$(mktemp -d); HW_LOG="$HW/gh.log"
+cat > "$HW/gh" <<'SH'
+#!/usr/bin/env bash
+echo "$*" >> "$HW_LOG"
+case "$*" in
+  *"/pulls/"*"/reviews"*) cat "$HW_REVIEWS" ;;
+  *"/issues/"*"/comments"*) cat "$HW_COMMENTS" ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$HW/gh"
+jq --arg h "$CHEAD" '[.[0] | .commit_id = $h | .body = "**Actionable comments posted: 0**"]' \
+  "$FIX/pr-reviews-cr-older-commit.json" > "$HW/cr-clean.json"
+jq --arg h "$CHEAD" '[.[0] | .commit_id = $h]' "$FIX/pr-reviews-cr-older-commit.json" > "$HW/cr-findings.json"
+jq --arg h "$CHEAD" '[.[0] | .commit_id = $h | .body = "<!-- This is an auto-generated comment: rate limited by coderabbit.ai -->\nReview rate limited"]' \
+  "$FIX/pr-reviews-cr-older-commit.json" > "$HW/cr-rl.json"
+mix() { jq -s 'add' "$@"; }
+mix "$HW/cr-clean.json" "$FIX/pr-reviews-codex-prior-only.json" > "$HW/r-clean.json"
+mix "$HW/cr-findings.json" "$FIX/pr-reviews-codex-prior-only.json" > "$HW/r-findings.json"
+mix "$HW/cr-rl.json" "$FIX/pr-reviews-codex-prior-only.json" > "$HW/r-rl.json"
+mix "$FIX/pr-reviews-cr-older-commit.json" "$FIX/pr-reviews-codex-prior-only.json" > "$HW/r-none.json"
+mix "$FIX/issue-comments-cr-review-paused.json" "$FIX/issue-comments-codex-summary-completed.json" > "$HW/c-paused.json"
+printf '[{"user":{"login":"YoungjaeDev"},"body":"@coderabbitai review","created_at":"2026-10-06T11:00:00Z"}]\n' > "$HW/req.json"
+mix "$HW/c-paused.json" "$HW/req.json" > "$HW/c-paused-requested.json"
+hw() { # REVIEWS COMMENTS [VAR=value ...]; one-shot unless CAP is given
+  local r="$1" c="$2"; shift 2
+  env HW_LOG="$HW_LOG" HW_REVIEWS="$r" HW_COMMENTS="$c" PATH="$HW:$PATH" \
+    OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME=2026-10-06T10:00:00Z CAP=0 INTERVAL=1 "$@" \
+    bash "$SCRIPTS/head-verdicts.sh" 2>/dev/null
+}
+hf() { jq -r "$1" <<<"$w" 2>/dev/null; }
+w=$(hw "$HW/r-clean.json" "$FIX/issue-comments-codex-summary-completed.json")
+is "both reviewers passed HEAD -> ready"            "$(hf .state)" ready
+is "both passed -> no findings on HEAD"             "$(hf .findings)" false
+w=$(hw "$HW/r-findings.json" "$FIX/issue-comments-codex-summary-completed.json")
+is "CR findings on HEAD is a verdict -> ready"      "$(hf .state)" ready
+is "CR findings on HEAD -> findings true"           "$(hf .findings)" true
+# The minor_floor case: CR is done, Codex still Running on HEAD. Not ready, and
+# with a budget left the wait keeps going (watchdog kill = 143).
+w=$(hw "$HW/r-clean.json" "$FIX/issue-comments-codex-summary-running.json")
+is "Codex Running on HEAD -> not ready (cap 0: timeout)" "$(hf .state)" timeout
+is "Codex Running on HEAD -> codex in_progress"     "$(hf .codex)" in_progress
+w=$(run_capped 3 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-clean.json" HW_COMMENTS="$FIX/issue-comments-codex-summary-running.json" \
+      PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" CAP=60 INTERVAL=1 \
+      bash "$SCRIPTS/head-verdicts.sh" 2>/dev/null); rc=$?
+is "Codex Running on HEAD with budget left -> keeps waiting" "$rc:$w" "143:"
+# The wait stays inside the existing caps: an old push leaves the CR budget
+# (TIMEOUT - age) at 0 and the Codex budget at CODEX_GRACE.
+w=$(run_capped 8 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-clean.json" HW_COMMENTS="$FIX/issue-comments-codex-summary-running.json" \
+      PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME=2020-01-01T00:00:00Z \
+      TIMEOUT=1800 CODEX_GRACE=2 CODEX_PREFLIGHT_TIMEOUT=600 INTERVAL=1 \
+      bash "$SCRIPTS/head-verdicts.sh" 2>/dev/null); rc=$?
+is "budget spent -> timeout line, not a hang"       "$rc:$(hf .state)" 0:timeout
+is "budget is max(CR, Codex) caps from push time"   "$(hf '.waited >= 2 and .waited <= 4')" true
+w=$(hw "$HW/r-clean.json" "$FIX/issue-comments-codex-summary-failed.json")
+is "Codex Failed on HEAD -> codex_failed"           "$(hf .state)" codex_failed
+# No CR review on HEAD (the success status alone is no verdict), or only a
+# rate-limit notice on it: not ready.
+w=$(hw "$HW/r-none.json" "$FIX/issue-comments-codex-summary-completed.json")
+is "no CR review on HEAD -> not ready"              "$(hf .state):$(hf .cr)" timeout:none
+w=$(hw "$HW/r-rl.json" "$FIX/issue-comments-codex-summary-completed.json")
+is "rate-limit notice only on HEAD -> not ready"    "$(hf .state):$(hf .cr)" timeout:none
+# CodeRabbit paused automatic reviews (auto_pause_after_reviewed_commits): ask once per HEAD.
+: > "$HW_LOG"
+w=$(hw "$HW/r-none.json" "$HW/c-paused.json")
+is "review pause notice -> paused, request decided" "$(hf .state):$(hf .cr_review_request)" paused:post
+is "the script decides, it never posts" \
+   "$(grep -cE -- '(-X|--method) *(POST|PATCH|PUT|DELETE)|(^| )(-f|-F|--field|--raw-field) |(pr|issue) comment' "$HW_LOG")" 0
+w=$(hw "$HW/r-none.json" "$HW/c-paused-requested.json")
+is "pause, already requested on this HEAD -> no second request" "$(hf .state):$(hf .cr_review_request)" timeout:skip
+# Reviewers that are off do not hold the loop.
+echo '[]' > "$HW/empty.json"
+w=$(hw "$HW/cr-clean.json" "$HW/empty.json" CODEX_ON=auto)
+is "Codex never engaged on the PR -> off, CR clean -> ready" "$(hf .state):$(hf .codex)" ready:off
+w=$(hw "$HW/r-clean.json" "$FIX/issue-comments-codex-summary-running.json" CODEX_ON=false)
+is "CODEX_ON=false -> Codex not waited for"         "$(hf .state):$(hf .codex)" ready:off
+w=$(hw "$HW/r-none.json" "$FIX/issue-comments-codex-summary-completed.json" CR_ON=false)
+is "CR_ON=false (cli / codex-only) -> CR not waited for" "$(hf .state):$(hf .cr)" ready:off
+rm -rf "$HW"
+
+echo
 echo "poll-cr-status.sh"
 
 # A persistent fetch error (state:"error" from cr-commit-state.sh) must become
@@ -1459,6 +1569,125 @@ is "only late P2 -> minor_floor not clean" "$(conv 2 0 0 0 0 0 true 0 2)" minor_
 is "only late P2, --no-minor-stop -> minor_floor" "$(conv 2 0 0 0 0 0 false 0 2)" minor_floor
 is "late P2 does not block minor_floor"    "$(conv 2 2 0 2 0 0 true 0 1)" minor_floor
 is "late P2 + judged defer -> user_declined" "$(conv 2 1 0 0 1 0 true 0 1)" user_declined
+
+echo
+echo "run-blocks: HEAD verdict wait (blocks executed from references/run-blocks.md)"
+
+# These run the blocks as written, extracted by heading, so a drift between the
+# reference and the test cannot hide. Waits and posts are stubbed where noted.
+RB="$HERE/../references/run-blocks.md"
+rb_block() { awk -v h="## $1" '$0 == h {f=1; next} f && /^## / {exit}
+  f && /^```bash$/ {c=1; next} c && /^```$/ {c=0; next} c {print}' "$RB"; }
+for b in "Step 2: draft PR" "Step 2: request_cr_review" "Step 7e: HEAD verdict wait" \
+         "Step 8c: engagement gate" "Step 9a: classify" "Step 13: convergence ladder" \
+         "Step 14: last-push HEAD verdicts and follow-up trigger"; do
+  [ -n "$(rb_block "$b")" ] || bad "run-blocks.md has a '$b' block" present missing
+done
+
+# Step 13: a stop right after a push is held for the new HEAD's verdicts.
+ladder() { # PUSHED ITER MAX_ITER APPLIED DEFERRED -> final_state:HOLD_STATE
+  PUSHED=$1 IT=$2 MAX=$3 AP=$4 DF=$5 BLOCK="$(rb_block "Step 13: convergence ladder")" bash -c '
+    applied_total=0 deferred_total=0 MINOR_STOP=true MAX_ITER=$MAX HOLD_STATE="" final_state=""
+    pushed_this_cycle=$PUSHED applied_this_cycle=$AP deferred_this_cycle=$DF late_p2_this_cycle=0
+    judged_this_cycle=$((AP+DF)) churn_this_cycle=0 high_sev_this_cycle=0 review_this_cycle=0
+    eval "for ITER in $IT; do $BLOCK"
+    printf "%s:%s" "$final_state" "$HOLD_STATE"'
+}
+is "minor_floor right after a push -> held, loop not ended" "$(ladder true 2 5 2 0)" ":minor_floor"
+is "minor_floor with no push this cycle -> ends"            "$(ladder false 2 5 2 0)" "minor_floor:"
+is "minor_floor pushed on the last iteration -> ends (Step 14 waits)" "$(ladder true 5 5 2 0)" "minor_floor:"
+is "clean (nothing pushed) -> ends"                          "$(ladder false 3 5 0 0)" "clean:"
+
+# Step 7e: no round goes past this block, so nothing is pushed, before every
+# verdict is in. await_head_verdicts is stubbed to the state under test.
+verdict_gate() { # HV_STATE HOLD_STATE -> final_state:HEAD_VERDICT:pushes
+  HVS=$1 HOLD=$2 BLOCK="$(rb_block "Step 7e: HEAD verdict wait")" bash -c '
+    await_head_verdicts() { hv_state=$HVS; }
+    HOLD_STATE=$HOLD HEAD_VERDICT="" final_state="" pushes=0
+    eval "for ITER in 1 2; do $BLOCK
+      pushes=\$((pushes+1)); done"
+    printf "%s:%s:%s" "$final_state" "$HEAD_VERDICT" "$pushes"'
+}
+is "verdicts in -> the rounds go on and push"            "$(verdict_gate ready "")" "::2"
+is "no verdict before the budget -> no push, timeout"    "$(verdict_gate timeout "")" "timeout:timeout:0"
+is "held minor_floor, budget spent -> minor_floor, HEAD unverified" \
+   "$(verdict_gate timeout minor_floor)" "minor_floor:timeout:0"
+is "Codex Failed while waiting -> codex_failed, no push" "$(verdict_gate codex_failed minor_floor)" "codex_failed::0"
+
+# Step 9a: a held stop resolves on the new HEAD's findings. Real classify-item.sh.
+hold_round() { # CR_RECORD_JSON -> final_state:HOLD_STATE:round
+  REC=$1 SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 9a: classify")" bash -c '
+    cr_records="[$REC]" codex_records="[]" ITER=3 SKIP_MINOR=false HOLD_STATE=minor_floor final_state="" round=""
+    eval "for i in 1; do $BLOCK
+      round=yes; done"
+    printf "%s:%s:%s" "$final_state" "$HOLD_STATE" "$round"'
+}
+major='{"source":"cr","path":"a.sh","line":3,"category_emoji":"🎯 Functional Correctness","severity_emoji":"🟠 Major","effort_emoji":"⚡ Quick win"}'
+minor='{"source":"cr","path":"a.sh","line":3,"category_emoji":"🎯 Functional Correctness","severity_emoji":"🟡 Minor","effort_emoji":"⚡ Quick win"}'
+is "new gated finding on the held HEAD -> one more round" "$(hold_round "$major")" "::yes"
+is "only a quick-win Minor on the held HEAD -> ends as held" "$(hold_round "$minor")" "minor_floor:minor_floor:"
+# Step 8c: nothing at all to fetch on the held HEAD -> ends as held, not clean.
+is "held stop, nothing fetched -> ends as held" \
+   "$(BLOCK="$(rb_block "Step 8c: engagement gate")" bash -c '
+      HOLD_STATE=churn final_state=""; eval "for i in 1; do $BLOCK
+      done"; printf %s "$final_state"')" churn
+
+# Step 14: the last iteration's push is waited on, then one follow-up trigger.
+last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED -> final_state:HEAD_VERDICT:followup
+  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
+    await_head_verdicts() { hv_state=$HVS; hv="{\"findings\":$FND}"; }
+    pushed_this_cycle=$PUSHED final_state=$FS deferred_total=$DT HEAD_VERDICT=""
+    eval "$BLOCK"
+    printf "%s:%s:%s" "$final_state" "$HEAD_VERDICT" "$followup_needed"'
+}
+is "last push, findings on HEAD, no round left -> iteration_cap + issue" \
+   "$(last_push true minor_floor ready true 0)" "iteration_cap:unread:true"
+is "last push, HEAD passed -> state kept, nothing to file" \
+   "$(last_push true minor_floor ready false 0)" "minor_floor::false"
+is "last push, budget spent -> issue, HEAD unverified" \
+   "$(last_push true churn timeout false 0)" "churn:timeout:true"
+is "loop ran out after a push -> iteration_cap"   "$(last_push true "" ready false 1)" "iteration_cap::true"
+# The earlier gap: a defer from cycle 1 and a clean cycle 2 filed nothing.
+is "clean after earlier defers -> follow-up issue" "$(last_push false clean ready false 2)" "clean::true"
+is "clean, nothing deferred -> no issue"           "$(last_push false clean ready false 0)" "clean::false"
+is "timeout with earlier defers -> follow-up issue" "$(last_push false timeout timeout false 1)" "timeout::true"
+
+# await_head_verdicts on a paused CodeRabbit: one request, then the same budget.
+AW=$(mktemp -d)
+cat > "$AW/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*) echo '[]' ;;
+  *"/commits/"*) echo '{}' ;;
+  *"/pulls/"*"/reviews"*) cat "$FIX/pr-reviews-cr-older-commit.json" ;;
+  *"/issues/"*"/comments"*) cat "$FIX/issue-comments-cr-review-paused.json" ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$AW/gh"
+aw=$(cd "$HERE" && PATH="$AW:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 2: request_cr_review")" bash -c '
+  OWNER=o REPO=r PR_NUM=42 CR_SOURCE=auto CR_REVIEW_REQUEST=skip NO_CODEX=false codex_active=unknown
+  TIMEOUT=0 INTERVAL=1 CODEX_GRACE=0
+  eval "$BLOCK"
+  requests=0; request_cr_review() { requests=$((requests+1)); }
+  await_head_verdicts
+  printf "%s:%s" "$hv_state" "$requests"' 2>/dev/null)
+is "paused CodeRabbit -> one review request, wait resumes" "$aw" "timeout:1"
+rm -rf "$AW"
+
+# Step 2: a draft PR stops with the `gh pr ready` hint.
+DR=$(mktemp -d)
+printf '#!/usr/bin/env bash\necho "$DRAFT"\n' > "$DR/gh"; chmod +x "$DR/gh"
+draft() { DRAFT=$1 PATH="$DR:$PATH" BLOCK="$(rb_block "Step 2: draft PR")" bash -c 'PR_NUM=42; eval "$BLOCK"; echo went-on' 2>&1; }
+out=$(draft true); rc=$?
+is "draft PR -> stops"                    "$rc:$(grep -c went-on <<<"$out")" "1:0"
+is "draft PR -> says gh pr ready"         "$(grep -c 'gh pr ready 42' <<<"$out")" 1
+is "ready PR -> goes on"                  "$(draft false)" went-on
+rm -rf "$DR"
+
+# The repo has no .llmwiki/ (ADR 0003); a pointer there leads nowhere.
+is "no review-loop script points at a deleted wiki page" \
+   "$(grep -l '\.llmwiki' "$SCRIPTS"/* 2>/dev/null | wc -l | tr -d ' ')" 0
 
 echo
 echo "path-trust.sh"

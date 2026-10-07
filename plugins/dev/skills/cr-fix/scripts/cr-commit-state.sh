@@ -35,7 +35,7 @@ error_state() { printf '{"state":"error","description":"%s","target_url":"","cre
 # row": the old `|| echo '[]'` masked auth/network/rate-limit as an empty result
 # that mapped to state:"none", indistinguishable from a repo where CodeRabbit
 # simply hasn't reported. Propagate the failure so the caller can route it to a
-# real error channel. See .llmwiki detector-cannot-look-vs-nothing-wrong.
+# real error channel. Rationale: docs/adr/0002-review-loop-waits-for-head-verdicts.md.
 fetch_statuses() {
   if [ "${CR_STATE_STATUSES_FILE:-}" = "__FAIL__" ]; then return 1; fi
   if [ -n "${CR_STATE_STATUSES_FILE:-}" ]; then cat "$CR_STATE_STATUSES_FILE"; return 0; fi

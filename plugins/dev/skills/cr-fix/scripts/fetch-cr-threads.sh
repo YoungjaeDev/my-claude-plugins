@@ -45,7 +45,7 @@ while :; do
   # silently truncates multi-page threads, and a cursorless hasNextPage
   # re-reads the first page forever.
   # `null // empty | not` produced empty (exit 4), which the old `if jq -e` read
-  # as "no error" and skipped this branch. See .llmwiki jq-capture-yields-empty.
+  # as "no error" and skipped this branch. Rationale: docs/adr/0002-review-loop-waits-for-head-verdicts.md.
   if ! jq -e '(.errors == null or ((.errors | type) == "array" and (.errors | length) == 0))
               and ((.data.repository.pullRequest.reviewThreads.nodes // null) | type == "array")
               and (.data.repository.pullRequest.reviewThreads.pageInfo as $pi

@@ -131,7 +131,7 @@ CodeRabbit inline 헤더는 `_<카테고리>_ | _<심각도>_ | _<노력>_` (예
 | CR `🔴 Critical` / `🟠 Major` | `gated` — per-issue 확인 |
 | CR `🟡 Minor` + `🏗️ Heavy lift` | `gated` |
 | CR `🟡 Minor` + `⚡ Quick win` (또는 effort 필드 없음) | `auto` — 자동 적용 |
-| CR `🟢 Trivial` / `🟢 Info` | `skip` |
+| CR `🔵 Trivial` / `⚪ Info` | `skip` |
 | CR `📝 Nitpick` (리뷰 요약 `<details>` 전용) | `skip` |
 | Codex P1 (red), P2 (yellow) | `gated` |
 

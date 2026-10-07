@@ -143,7 +143,7 @@ Run the "Step 6: CR status poll" block in `references/run-blocks.md` verbatim.
 `poll-cr-status.sh` self-escapes on an early rate-limit body only while the commit-status is still non-terminal (`references/rate-limit-fallback.md`). Termination branches:
 - `state="success"` → Step 6b
 - `state="failure"` → `final_state=failure`, break
-- `state="error"` → `final_state=failure`, break: cr-commit-state.sh's error channel (auth/network/secondary rate limit) turned terminal after `ERROR_STREAK_MAX` (default 3) consecutive rounds; surface the JSON's `channel` field to the user instead of spinning to TIMEOUT
+- `state="error"` → `final_state=failure`, break: cr-commit-state.sh's error channel (auth/network/secondary rate limit, or a statuses/check-runs page that does not parse) turned terminal after `ERROR_STREAK_MAX` (default 3) consecutive rounds; surface the JSON's `channel` field to the user instead of spinning to TIMEOUT
 - `state="rate_limited"` → `rate_limit_hits=$((rate_limit_hits+1))`, jump to Step 7c
 - timeout (no JSON, exit 124) → `final_state=timeout`, break
 
@@ -185,14 +185,14 @@ If `exit != 0` OR `incomplete=true` (no `complete` event, or one with `outcome: 
 Every iteration, before anything is fetched, judged or pushed, wait until every reviewer the run has on has given the current HEAD a verdict (findings or clean; ADR `docs/adr/0002-review-loop-waits-for-head-verdicts.md`). CodeRabbit is on for the PR-bot sources (`auto`, `pr-bot`); Codex is on unless `--no-codex`, dropped, or never engaged on the PR. A progress mark, a rate-limit notice or a review pause is not a verdict, and CodeRabbit drops a review in progress when a new push lands, so no round pushes ahead of it.
 Run the "Step 7e: HEAD verdict wait" block in `references/run-blocks.md` verbatim.
 
-The wait (`scripts/head-verdicts.sh`) runs under the existing caps, anchored to the push: `TIMEOUT - push_age` for CodeRabbit, the Codex wait budget for Codex. A paused CodeRabbit gets one `@coderabbitai review` for this HEAD, then the wait resumes. Budget spent: the run ends at the stop Step 13 held, else `timeout`, with `HEAD_VERDICT=timeout`, which files the follow-up issue and leaves auto-merge off. Codex Failed: `codex_failed`.
+The wait (`scripts/head-verdicts.sh`) runs under the existing caps: `TIMEOUT` for CodeRabbit, counted from the newer of the push and the latest `@coderabbitai review` comment (its server `created_at`), and the Codex wait budget for Codex, counted from the push. A paused CodeRabbit gets one `@coderabbitai review` for this HEAD, then the wait resumes from that request. Budget spent: the run ends at the stop Step 13 held, else `timeout`, with `HEAD_VERDICT=timeout`, which files the follow-up issue and leaves auto-merge off. Codex Failed: `codex_failed`.
 
 ## Step 8: Fetch CR threads (PR-bot path)
 
 Skip when `CR_SOURCE ∈ {cli, codex-only}`. Otherwise:
 Run the "Step 8: fetch CR threads" block in `references/run-blocks.md` verbatim.
 
-The block also adds CodeRabbit's outside-diff findings, which live only in a review body's "Outside diff range comments" block (`scripts/fetch-cr-outside-diff.sh`). Each becomes a thread-shaped record (`origin: "outside-diff"`, `review_id`) and goes through the same Step 9 classify and judgment. Its `path` is parsed from the body, so the Step 9c path-trust gate is what makes it safe. A finding on the same path and line as a thread merges into that thread's record. Reviews listed in `cr_processed_reviews` are skipped. A block the parser cannot read in full fails the round (`final_state=failure`) instead of reading as zero findings.
+The block also adds CodeRabbit's outside-diff findings, which live only in a review body's "Outside diff range comments" block (`scripts/fetch-cr-outside-diff.sh`). Each becomes a thread-shaped record (`origin: "outside-diff"`, `review_id`) and goes through the same Step 9 classify and judgment. Its `path` is parsed from the body, so the Step 9c path-trust gate is what makes it safe. A finding merges into a thread's record only when it is a confirmed copy (same path, line, header badges and title); another finding on the same line, or a thread without a header, keeps both records. Reviews listed in `cr_processed_reviews` are skipped. A block the parser cannot read in full fails the round (`final_state=failure`) instead of reading as zero findings.
 
 ## Step 8b: Fetch Codex inline comments
 

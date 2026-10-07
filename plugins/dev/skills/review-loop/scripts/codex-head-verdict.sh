@@ -13,7 +13,8 @@
 # Sources (references/codex-state-machine.md "HEAD verdict"):
 #   - the `<!-- codex-pull-request-review-summary -->` issue comment Codex edits in
 #     place: one table row per review, Status `**Running|Completed|Failed**` and a
-#     backticked short SHA. The newest such comment by updated_at wins.
+#     backticked short SHA. The newest such comment by updated_at wins, and in it
+#     the newest row for HEAD (by its relative-time) is the one judged.
 #   - a Codex review whose commit_id == CUR_SHA (Codex posts one only with findings).
 # wait_seconds is the one Codex wait budget every gate uses:
 #   max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age).
@@ -51,17 +52,24 @@ jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" \
     | sort_by(.updated_at) | last) as $summary
   # Data rows: a **Status** cell and a backticked hex SHA. Header and separator
   # rows carry neither. A row with an unknown status word poisons the parse.
+  # `at` is the <relative-time datetime> of the row, "" when it has none.
   | ( if $summary == null then null else
         [ $summary.body | split("\n")[]
           | select(startswith("|"))
+          | ((capture("datetime=\"(?<t>[^\"]+)\"") | .t) // "") as $at
           | (capture("\\*\\*(?<st>[A-Za-z ]+)\\*\\*[^|]*\\|\\s*`(?<sha>[0-9a-fA-F]{7,40})`") // empty)
-          | {st: (.st | ascii_downcase), sha: (.sha | ascii_downcase)} ]
+          | {st: (.st | ascii_downcase), sha: (.sha | ascii_downcase), at: $at} ]
       end ) as $rows
   | ( if $summary == null then "absent"
       elif ($rows | length) == 0 then "unparsed"
       elif any($rows[]; .st | IN("running", "completed", "failed") | not) then "unparsed"
       else null end ) as $bad
-  | [ ($rows // [])[] | select(. as $x | $sha | ascii_downcase | startswith($x.sha)) ] as $head
+  # Only the newest row for HEAD speaks for it: a Failed row followed by a
+  # Completed row from a re-run is a pass. Newest by `at`, wherever the row sits;
+  # a tie (or no times) keeps table order and takes the later row. $head holds at
+  # most that one row.
+  | [ ($rows // [])[] | select(. as $x | $sha | ascii_downcase | startswith($x.sha)) ]
+    | sort_by(.at) | .[-1:] as $head
   | ( if $bad != null then (if $hrid != null then "findings" else "unknown" end)
       elif ($head | length) == 0 then (if $hrid != null then "findings" else "none" end)
       elif any($head[]; .st == "running") then "in_progress"

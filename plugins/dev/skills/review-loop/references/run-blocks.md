@@ -1,6 +1,6 @@
 # review-loop run blocks
 
-The shell each step of `SKILL.md` runs, in run order. SKILL.md keeps the step sequence and each step's decision rule; each section below is named in the step that runs it and is run verbatim. Later blocks read variables earlier ones set, so the run needs one shell: a runtime whose shell calls do not share state (Claude Code's Bash tool, a zsh default) runs each block under `bash` and carries the variables in a file it sources at the top of every call, and still runs every step in order — skipping Step 5 pre-flight on a later iteration hides a rate limit until the Step 7e wait has spent its whole budget. Every `scripts/` path resolves against `SKILL_DIR` from Step 1.
+The shell each step of `SKILL.md` runs, in run order. SKILL.md keeps the step sequence and each step's decision rule; each section below is named in the step that runs it and is run verbatim. Later blocks read variables earlier ones set, so the run needs one shell: a runtime whose shell calls do not share state (Claude Code's Bash tool, a zsh default) runs each block under `bash` and carries the variables in a file: it sources the file at the top of every call and writes back every variable the block set before the call ends (sourcing alone saves nothing), and still runs every step in order — skipping Step 5 pre-flight on a later iteration hides a rate limit until the Step 7e wait has spent its whole budget. Every `scripts/` path resolves against `SKILL_DIR` from Step 1.
 
 ## Step 2: repo, PR and counters
 

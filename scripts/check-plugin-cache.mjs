@@ -13,8 +13,10 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const cache = process.env.PLUGIN_CACHE_DIR
-  || join(homedir(), '.claude', 'plugins', 'cache', 'my-claude-plugins');
+// CLAUDE_CODE_PLUGIN_CACHE_DIR is Claude Code's plugins root (the cache lives under
+// it, despite the name); PLUGIN_CACHE_DIR overrides the full cache path.
+const pluginRoot = process.env.CLAUDE_CODE_PLUGIN_CACHE_DIR || join(homedir(), '.claude', 'plugins');
+const cache = process.env.PLUGIN_CACHE_DIR || join(pluginRoot, 'cache', 'my-claude-plugins');
 
 const stale = [];
 let unreadable = '';

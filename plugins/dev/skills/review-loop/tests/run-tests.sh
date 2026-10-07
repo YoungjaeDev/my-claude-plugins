@@ -1695,7 +1695,31 @@ gate_env() { # DEFERRED REVIEW -> the env the gate saw
 }
 is "Step 15 gate counts unread findings as left behind" "$(gate_env 0 2)" "D=2 A=true"
 is "Step 15 gate with nothing left behind"              "$(gate_env 0 0)" "D=0 A=false"
+# The cr_state allow-list speaks for CodeRabbit only: a run that dropped it (codex-only,
+# cli) must not be refused on its rate-limited status. Blocking checks stop the merge.
+printf '#!/usr/bin/env bash\njq -nc %s\n' "'{eligible:true,cr_state:\"rate_limited\",blocking_checks:1,protection_http:200,base_branch:\"main\"}'" \
+  > "$G15/scripts/auto-merge-gate.sh"
+cr_gate() { # CR_ON -> the Step 15 refusal line, if any
+  CRON=$1 SKILL_DIR="$G15" STATE_FILE="$G15/state.json" BLOCK="$(rb_block "Step 15: auto-merge gate")" bash -c '
+    reviewers_on() { cr_on=$CRON; codex_on=auto; }
+    final_state=clean deferred_total=0 review_total=0 OWNER=o REPO=r PR_NUM=1
+    eval "$BLOCK"' 2>&1 >/dev/null | sed -n 's/^auto-merge: //p'
+}
+is "Step 15: CodeRabbit on, rate-limited -> refused" "$(cr_gate true)" "cr_state=rate_limited is not a merge-approved state"
+is "Step 15: CodeRabbit off -> its status is not read" "$(cr_gate false)" ""
 rm -rf "$G15"
+
+# Step 14 follow-up issue (failure-modes.md): a re-run that appends to the inherited
+# issue says why HEAD is unverified, as a new issue does.
+FM=$(mktemp -d); printf '#!/usr/bin/env bash\n[ "$1 $2" = "issue comment" ] && cp "$5" "%s/body"\nexit 0\n' "$FM" > "$FM/gh"; chmod +x "$FM/gh"
+echo '{"followup_issue":{"number":7},"auto_judge_log":[]}' > "$FM/state.json"
+FM_BLOCK=$(awk '/^Fires when the Step 14 block/ {f=1; next} f && /^```bash$/ {c=1; next} c && /^```$/ {exit} c {print}' \
+  "$HERE/../references/failure-modes.md")
+PATH="$FM:$PATH" STATE_FILE="$FM/state.json" BLOCK="$FM_BLOCK" bash -c '
+  final_state=iteration_cap review_total=0 deferred_total=0 PR_NUM=1 HEAD_VERDICT=unread
+  eval "$BLOCK"' >/dev/null 2>&1
+is "appended follow-up names an unread HEAD" "$(grep -c 'drew reviewer findings after the last round' "$FM/body" 2>/dev/null)" 1
+rm -rf "$FM"
 
 # Step 12: a noop Step 10 (every fix reverted, or none applied) pushes nothing.
 P12=$(mktemp -d); printf '#!/usr/bin/env bash\necho "$*" >> "%s/calls"\n' "$P12" > "$P12/git"; chmod +x "$P12/git"

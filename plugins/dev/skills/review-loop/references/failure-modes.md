@@ -59,10 +59,18 @@ Fires when the Step 14 block sets `followup_needed=true`: `final_state ∈ {chur
 # Idempotent: a re-run on the same PR reuses the issue instead of opening a second one;
 # this run's new defers are appended to it as a comment so they are not lost in the archive.
 existing=$(jq -r '.followup_issue.number // empty' "$STATE_FILE")
+# Why the last HEAD is unverified, for the new issue and an appended comment alike.
+head_note() {
+  case "$HEAD_VERDICT" in
+    timeout) printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` got no verdict from every reviewer within the wait budget; auto-merge stays off." ;;
+    unread)  printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` drew reviewer findings after the last round; read them on the PR." ;;
+  esac
+}
 if [ -n "$existing" ]; then
   BODY=$(mktemp)
   {
     printf '%s\n\n' "Additional findings deferred by a later review-loop run (\`final_state=$final_state\`):"
+    head_note
     [ "$review_total" -gt 0 ] && printf '%s\n\n' "$review_total finding(s) had no readable severity badge (\`review\` tier) and were not judged; read them on the PR."
     printf '| Reviewer | Severity | Location | Why deferred |\n|---|---|---|---|\n'
     jq -r '.auto_judge_log[]? | select(.action == "defer")
@@ -82,10 +90,7 @@ else
   BODY=$(mktemp)
   {
     printf '%s\n\n' "review-loop stopped at \`final_state=$final_state\` on PR #$PR_NUM. Findings below were deferred or left unapplied."
-    case "$HEAD_VERDICT" in
-      timeout) printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` got no verdict from every reviewer within the wait budget; auto-merge stays off." ;;
-      unread)  printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` drew reviewer findings after the last round; read them on the PR." ;;
-    esac
+    head_note
     [ "$review_total" -gt 0 ] && printf '%s\n\n' "$review_total finding(s) had no readable severity badge (\`review\` tier) and were not judged; read them on the PR."
     printf '| Reviewer | Severity | Location | Why deferred |\n|---|---|---|---|\n'
     jq -r '.auto_judge_log[]? | select(.action == "defer")

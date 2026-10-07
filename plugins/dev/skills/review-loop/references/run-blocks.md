@@ -531,8 +531,11 @@ if [ "$eligible" != "true" ]; then
 fi
 # Allow-list. A push this cycle leaves CR pending and `--auto` waits for it, so `pending`
 # qualifies — but `none` / `unknown` mean CR was never observed on this SHA, which must
-# never merge, and a deny-list would let them through.
-case "$cr_state" in success|pending) : ;; *) echo "auto-merge: cr_state=$cr_state is not a merge-approved state" >&2; exit 0;; esac
+# never merge, and a deny-list would let them through. A run that dropped CodeRabbit
+# (codex-only, cli) does not read its status: the HEAD verdict axis judged without it.
+if [ "$cr_on" = true ]; then
+  case "$cr_state" in success|pending) : ;; *) echo "auto-merge: cr_state=$cr_state is not a merge-approved state" >&2; exit 0;; esac
+fi
 [ "$blocking" = 0 ] || exit 0
 if [ "$proto" = 200 ]; then
   gh pr merge "$PR_NUM" --auto --squash --delete-branch && merged=true

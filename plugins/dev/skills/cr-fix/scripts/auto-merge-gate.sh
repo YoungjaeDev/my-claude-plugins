@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# Usage: [FINAL_STATE=clean] [FOLLOWUP_ISSUE=<number>] \
+# Usage: [FINAL_STATE=clean] [FOLLOWUP_ISSUE=<number>] [DEFERRED_TOTAL=N] \
+#        [CR_ON=true|false] [CODEX_ON=auto|true|false] \
 #          bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
 # Returns JSON on stdout summarizing the gates:
 #   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N, "base_branch":"...",
 #    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null}
-# `eligible` covers the convergence axis only — `clean` always qualifies, and
-# `minor_floor`/`churn` qualify once the follow-up issue carrying the deferred
-# findings exists. The caller still enforces cr_state / blocking_checks /
-# protection_http before merging.
+# `eligible` covers two axes. Convergence: `clean`, `minor_floor` and `churn`
+# qualify once the follow-up issue carrying the run's deferred findings exists (or
+# nothing was deferred). HEAD verdicts: every reviewer that is on (CR_ON, CODEX_ON,
+# as scripts/head-verdicts.sh reads them) gave HEAD_SHA findings or clean; a HEAD
+# with no verdict, or only a rate-limit notice, does not qualify (ADR 0002). The
+# caller still enforces cr_state / blocking_checks / protection_http before merging.
 # Caller (SKILL.md Step 15) decides:
 #   - protection_http == 200 → `gh pr merge --auto --squash --delete-branch`
 #   - protection_http == 404 → AskUserQuestion (Merge now / Skip / Cancel)
@@ -23,7 +26,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # real findings left behind; merging is allowed only once they are recorded in an
 # issue, so a failed `gh issue create` keeps the PR open by construction.
 case "$FINAL_STATE" in
-  clean)              eligible=true;  reason="" ;;
+  # A clean last cycle does not record what an earlier cycle deferred.
+  clean)
+    eligible=true; reason=""
+    if [ "${DEFERRED_TOTAL:-0}" != 0 ]; then
+      case "$FOLLOWUP_ISSUE" in
+        ""|*[!0-9]*|0*) eligible=false; reason="clean with $DEFERRED_TOTAL deferred finding(s) from earlier cycles and no follow-up issue" ;;
+      esac
+    fi ;;
   minor_floor|churn)
     # Nothing deferred means nothing to record: no issue is required. Otherwise only a
     # positive integer counts: a failed create can leave "null", "", or error text behind.
@@ -43,6 +53,18 @@ esac
 # recorded nowhere a person will look; that blocks the merge like a failed create.
 if [ "${FOLLOWUP_APPEND_FAILED:-false}" = true ]; then eligible=false; reason="follow-up issue append failed"; fi
 
+# HEAD verdict axis: one look (CAP=0), never a wait — the loop already waited.
+if [ "$eligible" = true ]; then
+  hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$HEAD_SHA" CAP=0 \
+       CR_ON="${CR_ON:-true}" CODEX_ON="${CODEX_ON:-auto}" \
+       bash "$SCRIPT_DIR/head-verdicts.sh" 2>/dev/null || true)
+  hv_state=$(jq -r '.state // "error"' <<<"$hv" 2>/dev/null || echo error)
+  if [ "$hv_state" != ready ]; then
+    eligible=false
+    reason="HEAD verdict missing on $HEAD_SHA ($(jq -r '"cr=\(.cr // "?"), codex=\(.codex // "?")"' <<<"$hv" 2>/dev/null || echo unreadable))"
+  fi
+fi
+
 # CR state must come from the SAME dual-surface reader the rest of cr-fix uses.
 # CodeRabbit reports through EITHER the commit-status API OR a check-run,
 # per install. This gate read /statuses only, so on a check-run repo it saw
@@ -50,8 +72,8 @@ if [ "${FOLLOWUP_APPEND_FAILED:-false}" = true ]; then eligible=false; reason="f
 # on `--auto-merge` even though CR had completed. cr-commit-state.sh already
 # unifies both surfaces (14 fixture cases); delegate to it, don't re-derive.
 # (self-found on PR #122 merge verify — the missed sibling of the same
-# check-run trap fixed in pre-flight/poll-cr-status/sniff. See .llmwiki
-# detector-cannot-look-vs-nothing-wrong.)
+# check-run trap fixed in pre-flight/poll-cr-status/sniff. Rationale:
+# docs/adr/0002-review-loop-waits-for-head-verdicts.md.)
 cr_state=$(bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$HEAD_SHA" 2>/dev/null \
   | jq -r '.state // "unknown"' || echo "unknown")
 cr_state="${cr_state:-unknown}"

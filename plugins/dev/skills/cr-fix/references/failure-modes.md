@@ -4,12 +4,12 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 
 | `final_state` | Trigger | Auto-merge eligible? | User action |
 |---------------|---------|----------------------|-------------|
-| `clean` | Loop exits with `applied_this_cycle == 0`, `deferred_this_cycle == 0`, `review_this_cycle == 0` (no finding left unread) and no late Codex P2, AND Step 8c engagement gate passed. | yes (if `--auto-merge`) | None — merge proceeds or remains manual. |
+| `clean` | Loop exits with `applied_this_cycle == 0`, `deferred_this_cycle == 0`, `review_this_cycle == 0` (no finding left unread) and no late Codex P2, AND Step 8c engagement gate passed, AND Step 7e saw every reviewer's verdict on HEAD. | yes (if `--auto-merge`), once Step 14 filed the follow-up issue when an earlier cycle deferred something | None — merge proceeds or remains manual. |
 | `user_declined` | Loop exits because `applied_this_cycle == 0` but `deferred_this_cycle > 0` or `review_this_cycle > 0`. The run deferred everything in some iter, including a cycle whose every fix failed verification (`verification-failed`), or left findings it could not read. | no | Read the Step 14 follow-up issue, decide on the deferred and unread (`review`-tier) items manually, re-run, or merge as-is via GitHub UI. |
 | `minor_floor` | Minor soft-stop. `MINOR_STOP=true` (default; `--no-minor-stop` off) AND `ITER >= 2` AND this cycle applied only low-severity fixes (`high_sev_this_cycle == 0`) with nothing deferred (`deferred_this_cycle == 0`) and nothing unread (`review_this_cycle == 0`). Stops the low-value minor tail instead of looping to the `applied==0 && deferred==0` floor. Also, with or without `MINOR_STOP`: a cycle whose only findings are Codex P2s at `ITER >= 2` (deferred unjudged, decision 15). | yes, once Step 14 filed the follow-up issue | Read the follow-up issue for what was left behind. Pass `--no-minor-stop` to keep looping instead. |
 | `churn` | Churn stop. `ITER >= 2` AND every finding this cycle was `in_prev_diff` — on lines the previous iteration's own commit produced, or outside the PR diff entirely. The reviewer has exhausted the diff and is now reviewing the loop's own output. | yes, once Step 14 filed the follow-up issue | Read the follow-up issue. Re-running cr-fix on the same PR reproduces churn; the remaining findings belong to their own change. |
-| `iteration_cap` | `ITER == MAX_ITER` and threads still actionable. | no | Step 14 still files the follow-up issue; inspect remaining threads via `target_url`, or re-run with a higher `--max-iterations`. |
-| `timeout` | Step 6 CR-status poll exited 124 (TIMEOUT exceeded) without seeing `success` / `failure`. | no | Re-run with larger `--timeout`, or use `--cr-source cli\|codex-only` to bypass PR-bot. |
+| `iteration_cap` | `ITER == MAX_ITER` and threads still actionable, or the last iteration's push drew findings on the new HEAD that no round is left to judge (Step 14, `HEAD_VERDICT=unread`). | no | Step 14 still files the follow-up issue; inspect remaining threads via `target_url`, or re-run with a higher `--max-iterations`. |
+| `timeout` | Step 6 CR-status poll exited 124 (TIMEOUT exceeded) without seeing `success` / `failure`, or Step 7e: a reviewer that is on gave HEAD no verdict within the wait budget and no stop was held (`HEAD_VERDICT=timeout`). | no | Re-run with larger `--timeout`, or use `--cr-source cli\|codex-only` to bypass PR-bot. |
 | `failure` | CR commit-status reported `failure`, OR Step 8 GraphQL fetch errored, OR Step 8b Codex comment fetch errored, OR `gh api` returned `errors` payload. | no | Inspect CR dashboard via `target_url` for the failure case; check `gh auth status` and network for the fetch case. |
 | `cr_inactive` | Step 8c engagement gate: `ITER == MAX_ITER` AND `cr_engagement == 0` (CR posted nothing on this push). | no | CR is unreachable, paused, or rate-limited. Use `--cr-source cli\|codex-only` to bypass. |
 | `rate_limited` | Step 7c detected a CR rate-limit or a permanent skip AND `--cr-source pr-bot` (user blocked auto-flip). | no | Wait for the CR reset window, or re-run with `--cr-source cli` / `--cr-source codex-only`. When the sniff reported `permanent: true` (`Review skipped: N files exceed the limit`) waiting never helps — the PR is too large for the PR-bot and only the CLI or Codex can review it. |
@@ -39,9 +39,21 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 
 Does NOT change `final_state` directly. Build and test run before the commit, per fix: a fix that fails is reverted and becomes a `defer` with reason `verification-failed`, so only passing fixes are committed and pushed, and a cycle whose every fix failed commits and pushes nothing (it then ends at `user_declined`, which files the follow-up issue). A repo whose baseline already fails at Step 3 skips the gate (`verification_gate=baseline_failed` in the final JSON). `verification_blocking=true` now comes only from a merge-conflict resolution that breaks the checks (`references/merge-conflicts.md`); it disables auto-merge for the run.
 
+## HEAD verdict wait (Steps 7e, 13, 14)
+
+A stop reached right after a push (`minor_floor`, `churn` with fixes, `iteration_cap`) has not seen the new HEAD's verdicts. Step 13 holds it (`HOLD_STATE`) and the next iteration's Step 7e waits; on the last iteration Step 14 waits. The wait is `scripts/head-verdicts.sh`, bounded by the existing caps anchored to the push: `TIMEOUT - push_age` for CodeRabbit, the Codex wait budget for Codex. Outcomes:
+
+| Outcome | Behavior |
+|---------|----------|
+| Every reviewer that is on gave findings or clean, nothing new needs a decision | The held state stands. |
+| A new gated, late-P2 or unreadable finding on the held HEAD | One more round (Step 9a clears `HOLD_STATE`). On the last iteration there is no round: `final_state=iteration_cap`, `HEAD_VERDICT=unread`. |
+| Budget spent | The held state stands (or `timeout` with none held), `HEAD_VERDICT=timeout`: Step 14 files the follow-up issue and the Step 15 gate finds no verdict on HEAD, so nothing merges. |
+| CodeRabbit paused automatic reviews | One `@coderabbitai review` for this HEAD (`cr-review-posted.sh` dedupes), then the wait resumes on the same budget. |
+| Codex Failed on HEAD | `final_state=codex_failed`. |
+
 ## Follow-up issue block (Step 14)
 
-Fires when `final_state ∈ {churn, minor_floor, iteration_cap, user_declined}` and `deferred_total > 0`. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
+Fires when the Step 14 block sets `followup_needed=true`: `final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` and either `deferred_total > 0` (from any cycle — a later clean cycle records nothing an earlier one deferred) or `HEAD_VERDICT` is set. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
 
 ```bash
 # Idempotent: a re-run on the same PR reuses the issue instead of opening a second one;
@@ -69,6 +81,10 @@ else
   BODY=$(mktemp)
   {
     printf '%s\n\n' "cr-fix stopped at \`final_state=$final_state\` on PR #$PR_NUM. Findings below were deferred or left unapplied."
+    case "$HEAD_VERDICT" in
+      timeout) printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` got no verdict from every reviewer within the wait budget; auto-merge stays off." ;;
+      unread)  printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` drew reviewer findings after the last round; read them on the PR." ;;
+    esac
     printf '| Reviewer | Severity | Location | Why deferred |\n|---|---|---|---|\n'
     jq -r '.auto_judge_log[]? | select(.action == "defer")
            | "| \(.src) | \(.badge_or_sev) | \(.path):\(.line // "-") | \(.reason) |"' "$STATE_FILE"

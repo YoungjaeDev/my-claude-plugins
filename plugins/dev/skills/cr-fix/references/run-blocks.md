@@ -15,6 +15,19 @@ verification_blocking=false; VERIFICATION_GATE=unknown
 codex_active=unknown; codex_review_id_to_process=""
 cli_invocations=0; rate_limit_hits=0
 auto_judge_apply=0; auto_judge_defer=0; auto_judge_skip=0
+# HOLD_STATE: a Step 13 stop waiting on the pushed HEAD's verdicts. HEAD_VERDICT:
+# empty, or why the last HEAD was left unverified (timeout | unread) for Step 14.
+HOLD_STATE=""; HEAD_VERDICT=""; pushed_this_cycle=false
+```
+
+## Step 2: draft PR
+
+```bash
+# CodeRabbit skips draft PRs unless `drafts: true`, so a draft only waits out the caps.
+if [ "$(gh pr view "$PR_NUM" --json isDraft --jq '.isDraft')" = true ]; then
+  echo "cr-fix: PR #$PR_NUM is a draft and CodeRabbit does not review drafts. Run \`gh pr ready $PR_NUM\`, then re-run cr-fix." >&2
+  exit 1
+fi
 ```
 
 ## Step 2: base branch and review request
@@ -37,6 +50,29 @@ request_cr_review() {  # GitHub comments are the record; no state file
   # Exit 1 = comments unreadable: do not post blind (the script logs why).
   decision=$(bash "$SKILL_DIR/scripts/cr-review-posted.sh" "$OWNER" "$REPO" "$PR_NUM" "$since") || return 0
   [ "$decision" = post ] && gh pr comment "$PR_NUM" --body "@coderabbitai review"
+}
+# Waits, inside the existing caps (TIMEOUT for CodeRabbit, the Codex wait budget),
+# until every reviewer this run has on gave HEAD a verdict. Sets hv (one JSON line,
+# scripts/head-verdicts.sh) and hv_state: ready | timeout | codex_failed. A paused
+# CodeRabbit (auto_pause_after_reviewed_commits) gets one `@coderabbitai review` for
+# this HEAD, then the wait resumes on the same push-anchored budget.
+await_head_verdicts() {
+  local sha pt round cr_on=false codex_on=auto
+  sha=$(git rev-parse HEAD)
+  pt=$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "$sha")
+  case "$CR_SOURCE" in auto|pr-bot) cr_on=true ;; esac
+  if [ "$NO_CODEX" = true ] || [ "$codex_active" = disabled ]; then codex_on=false; fi
+  for round in 1 2; do
+    # Bash(run_in_background=true, timeout=(TIMEOUT+CODEX_GRACE)*1000) + Monitor: one JSON line.
+    hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$sha" PUSH_TIME="$pt" \
+         CR_ON="$cr_on" CODEX_ON="$codex_on" TIMEOUT="$TIMEOUT" INTERVAL="$INTERVAL" \
+         CODEX_GRACE="$CODEX_GRACE" bash "$SKILL_DIR/scripts/head-verdicts.sh")
+    hv_state=$(jq -r '.state // empty' <<<"$hv" 2>/dev/null) || hv_state=""
+    [ -n "$hv_state" ] || hv_state=timeout  # no line: the wait was cut off
+    [ "$hv_state" = paused ] || return 0
+    if [ "$round" = 1 ]; then request_cr_review; fi  # posts only when this HEAD has no request yet
+  done
+  hv_state=timeout  # still paused: the request did not land
 }
 # Before iter 1: the PR's opening push was never auto-reviewed.
 if [ "$CR_REVIEW_REQUEST" = request ] && { [ "$CR_SOURCE" = auto ] || [ "$CR_SOURCE" = pr-bot ]; }; then
@@ -144,6 +180,7 @@ for ITER in $(seq 1 $MAX_ITER); do
     continue  # the merge commit is this iteration's one commit
   fi
   CUR_SHA=$(git rev-parse HEAD)
+  pushed_this_cycle=false
   applied_this_cycle=0; deferred_this_cycle=0; high_sev_this_cycle=0
   churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0; late_p2_this_cycle=0
   # What the PREVIOUS iteration committed, for the Step 9c.4 in_prev_diff axis.
@@ -246,6 +283,22 @@ permanent=$(jq -r '.permanent // false' <<<"$rl")
 cli_invocations=$((cli_invocations + 1))
 ```
 
+## Step 7e: HEAD verdict wait
+
+```bash
+# No round fetches, judges or pushes before every reviewer this run has on judged
+# HEAD: CodeRabbit drops a review in progress when a new push lands. Also where a
+# stop Step 13 held after its push sees the new HEAD's verdicts.
+await_head_verdicts
+case "$hv_state" in
+  ready) : ;;
+  codex_failed) final_state=codex_failed; break ;;
+  # Budget spent. A held stop keeps its state; Step 14 files the follow-up issue and
+  # the Step 15 gate finds no verdict on HEAD, so the PR is not merged.
+  *) HEAD_VERDICT=timeout; final_state="${HOLD_STATE:-timeout}"; break ;;
+esac
+```
+
 ## Step 8: fetch CR threads
 
 ```bash
@@ -269,6 +322,8 @@ codex_records=$(bash $SKILL_DIR/scripts/fetch-codex-comments.sh "$OWNER" "$REPO"
 ## Step 8c: engagement gate
 
 ```bash
+# A held stop whose new HEAD brought nothing to fetch ends as held.
+if [ -n "$HOLD_STATE" ]; then final_state="$HOLD_STATE"; break; fi
 cr_engagement=$(bash $SKILL_DIR/scripts/engagement-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME")
 # Exit non-zero = could not look, which is not "no verdict".
 cr_verdict=$(bash $SKILL_DIR/scripts/cr-head-verdict.sh "$OWNER" "$REPO" "$PR_NUM" "$CUR_SHA") \
@@ -289,6 +344,14 @@ all=$(jq -c -s 'add' <(echo "$cr_records") <(echo "$codex_records"))
 classified=$(echo "$all" | jq -c '.[]' \
   | while IFS= read -r rec; do printf '%s\n' "$rec" | ITER=$ITER SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
   | jq -s '.')
+# A stop Step 13 held resolves here, on the new HEAD's findings: only one that needs
+# a decision (gated, a late-P2 defer, or unreadable) earns the extra round.
+if [ -n "$HOLD_STATE" ]; then
+  if [ "$(jq '[.[] | select(.tier == "gated" or .tier == "defer" or .tier == "review")] | length' <<<"$classified")" = 0 ]; then
+    final_state="$HOLD_STATE"; break
+  fi
+  HOLD_STATE=""
+fi
 ```
 
 ## Step 9c.1: path-trust gate
@@ -352,6 +415,7 @@ res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER")
 # A rejected push leaves the loop (references/failure-modes.md); nothing below may
 # run for a head the PR never received.
 git push 2>&1 || { final_state=failure; break; }
+pushed_this_cycle=true
 : > "$TRACK_FILE"  # reset for next iter
 # Non-default base only (Step 2): this push will not be auto-reviewed.
 if [ "$CR_REVIEW_REQUEST" = request ] && { [ "$CR_SOURCE" = auto ] || [ "$CR_SOURCE" = pr-bot ]; }; then
@@ -368,34 +432,73 @@ applied_total=$((applied_total + applied_this_cycle))
 # Late Codex P2s (tier defer) reach the follow-up issue through deferred_total but
 # never count as this cycle's deferrals: they are policy, not undecided findings.
 deferred_total=$((deferred_total + deferred_this_cycle + late_p2_this_cycle))
+stop=""
 # Churn stop: from iter 2 on, every finding this cycle sat on material the loop
 # itself produced, or outside the PR diff.
 if [ "$ITER" -ge 2 ] && [ "$judged_this_cycle" -gt 0 ] \
    && [ "$churn_this_cycle" = "$judged_this_cycle" ]; then
-  final_state=churn; break
+  stop=churn
 # Minor soft-stop: from iter 2 on, only low-severity fixes applied, none
-# reassessed high, none deferred. Safe: Step 12 already pushed them.
+# reassessed high, none deferred.
 elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$applied_this_cycle" -gt 0 ] \
    && [ "$high_sev_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
    && [ "$review_this_cycle" = 0 ]; then
-  final_state=minor_floor; break
+  stop=minor_floor
 # Only late Codex P2s left: a floor, not clean — clean files no follow-up issue.
 elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
    && [ "$review_this_cycle" = 0 ] && [ "$late_p2_this_cycle" -gt 0 ]; then
-  final_state=minor_floor; break
+  stop=minor_floor
 # clean also needs zero unread findings: a review-tier item is one nobody judged.
 elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
-   && [ "$review_this_cycle" = 0 ]; then final_state=clean; break
-elif [ "$applied_this_cycle" = 0 ]; then final_state=user_declined; break
+   && [ "$review_this_cycle" = 0 ]; then stop=clean
+elif [ "$applied_this_cycle" = 0 ]; then stop=user_declined
+fi
+if [ -n "$stop" ]; then
+  # A stop right after this cycle's push has not seen the new HEAD's verdicts: hold
+  # it. The next iteration's Step 7e waits for them and ends the run as held unless
+  # a new finding that needs a decision arrives (Step 9a).
+  if [ "$pushed_this_cycle" = true ] && [ "$ITER" -lt "$MAX_ITER" ]; then HOLD_STATE="$stop"; continue; fi
+  final_state="$stop"; break
 fi
 done  # end of for-iter
+```
+
+## Step 14: last-push HEAD verdicts and follow-up trigger
+
+```bash
+[ -n "${final_state:-}" ] || final_state=iteration_cap
+# The last iteration pushed: its HEAD has not been judged. Wait here (Step 2). The
+# loop has no round left for findings on it, so they go to the follow-up issue and
+# the run ends at iteration_cap, which never merges.
+if [ "$pushed_this_cycle" = true ]; then
+  case "$final_state" in
+    minor_floor|churn|iteration_cap)
+      await_head_verdicts
+      case "$hv_state" in
+        ready) if [ "$(jq -r '.findings' <<<"$hv")" = true ]; then HEAD_VERDICT=unread; final_state=iteration_cap; fi ;;
+        codex_failed) final_state=codex_failed ;;
+        *) HEAD_VERDICT=timeout ;;
+      esac ;;
+  esac
+fi
+# One follow-up issue for whatever the run leaves behind: deferred findings, from
+# this cycle or an earlier one (a later clean cycle records none of them), or a HEAD
+# without every verdict. Block: references/failure-modes.md.
+followup_needed=false
+case "$final_state" in
+  churn|minor_floor|iteration_cap|user_declined|clean|timeout)
+    if [ "$deferred_total" -gt 0 ] || [ -n "$HEAD_VERDICT" ]; then followup_needed=true; fi ;;
+esac
 ```
 
 ## Step 15: auto-merge gate
 
 ```bash
 HEAD_SHA=$(git rev-parse HEAD)
-gate=$(FINAL_STATE="$final_state" \
+# The gate re-reads every HEAD verdict (one look, no wait: Steps 7e and 14 waited).
+cr_on=false; case "$CR_SOURCE" in auto|pr-bot) cr_on=true ;; esac
+codex_on=auto; if [ "$NO_CODEX" = true ] || [ "$codex_active" = disabled ]; then codex_on=false; fi
+gate=$(FINAL_STATE="$final_state" CR_ON="$cr_on" CODEX_ON="$codex_on" \
        FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$deferred_total" \
        FOLLOWUP_APPEND_FAILED="$([ "$deferred_total" -gt 0 ] && jq -r '.followup_issue.append_failed // false' "$STATE_FILE" || echo false)" \
        bash $SKILL_DIR/scripts/auto-merge-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$HEAD_SHA")

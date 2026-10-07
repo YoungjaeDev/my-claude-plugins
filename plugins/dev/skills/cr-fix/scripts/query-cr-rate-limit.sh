@@ -20,7 +20,7 @@ set -euo pipefail
 
 # jq capture() yields NO OUTPUT on a non-match (it neither throws nor returns
 # null), so `capture(...).x // empty` collapses to empty and the var stays unset
-# -> normalized to null below. See .llmwiki jq-capture-yields-empty.
+# -> normalized to null below. Rationale: docs/adr/0002-review-loop-waits-for-head-verdicts.md.
 parse_rate_limit_reply() {
   local body="$1" remaining reset
   remaining=$(jq -rn --arg b "$body" \

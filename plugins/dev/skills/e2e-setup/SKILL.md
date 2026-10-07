@@ -14,7 +14,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
 
 > Bundled templates live at `<plugin-root>/assets/`. Resolve `<plugin-root>` with the cross-runtime block in Step 0 (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache). Codex does not export `CLAUDE_PLUGIN_ROOT`, so a bare `${CLAUDE_PLUGIN_ROOT}/assets/...` copy fails there. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
 >
-> **Verified against Playwright 1.61.0** (init-agents introduced in 1.56; trace CLI in 1.59). Filenames/output below are current-version facts: Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.
+> **Check the installed Playwright, not this file.** Floors: `init-agents` needs >= 1.56, the headless trace CLI >= 1.59. Run `npx playwright --version` and read `npx playwright init-agents --help` before relying on any flag value or output filename below; those change between releases, and Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.
 
 ## Preconditions / graceful degrade
 
@@ -50,20 +50,22 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    - If the user declines installation, stop here: the rest of the harness needs Playwright.
    - **Check `playwright-cli` availability** (Decision 15: the planner/generator roles explore the app with `playwright-cli` instead of the `playwright-test` MCP server; the healer keeps the MCP server regardless):
      ```bash
-     # Pinned to the version this skill verified (0.1.20); bump PW_CLI_VER when
-     # re-verifying a newer release. A resolution failure (offline, registry
-     # down) correctly falls through to `missing` instead of assuming npx works.
-     PW_CLI_VER=0.1.20
-     if command -v playwright-cli >/dev/null 2>&1; then
+     # Order from the microsoft/playwright-cli README: global binary, then the
+     # project's local `npx playwright cli`, then the published package. No
+     # version is pinned here; `--help` on whichever resolves is the reference.
+     # A resolution failure (offline, registry down) falls through to `missing`.
+     if command -v playwright-cli >/dev/null 2>&1 && playwright-cli --version >/dev/null 2>&1; then
        PW_CLI_MODE=global
-     elif npx --yes "@playwright/cli@${PW_CLI_VER}" --version >/dev/null 2>&1; then
+     elif npx --no-install playwright cli --help >/dev/null 2>&1; then
+       PW_CLI_MODE=local
+     elif npx --yes @playwright/cli@latest --version >/dev/null 2>&1; then
        PW_CLI_MODE=npx
      else
        PW_CLI_MODE=missing
      fi
      echo "playwright-cli: $PW_CLI_MODE"
      ```
-     - `global` or `npx`: report the mode found; `e2e-author` / `e2e-debug` will use `playwright-cli <cmd>` or `npx @playwright/cli <cmd>` accordingly.
+     - `global`, `local`, or `npx`: report the mode found; `e2e-author` / `e2e-debug` will use `playwright-cli <cmd>`, `npx playwright cli <cmd>`, or `npx @playwright/cli <cmd>` accordingly. Read the command set from `<that invocation> --help`; `playwright-cli install --skills` installs Playwright's own agent skill for it.
      - `missing`: do **not** force `npm install -g @playwright/cli`. Print the install command (`npm install -g @playwright/cli@latest`) and continue in degraded mode: the planner/generator fall back to the `playwright-test` MCP server (same as the healer) until `playwright-cli` becomes available.
 
 2. **Set up the roles: runtime branch** (planner / generator / healer). Pick the path **once** by capability; the same gates apply on every path (`${PLUGIN_ROOT}/references/role-contracts.md`, "Gates that hold on every path"). Tell the user which path you took in one sentence.
@@ -77,18 +79,16 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    ```bash
    npx playwright init-agents --loop=claude
    ```
-   - `--loop` accepts `vscode | claude | codex | opencode`. Use `claude` for Claude Code. (There is no `copilot` value.)
-   - **Verify the actual output** (1.61 generates, at the project root):
-     - `.claude/agents/playwright-test-planner.md`
-     - `.claude/agents/playwright-test-generator.md`
-     - `.claude/agents/playwright-test-healer.md`
-     - `.mcp.json`: MCP config for the `playwright-test` server (`npx playwright run-test-mcp-server`). **Confirm this file exists**; init-agents creates it for the claude loop. If it is missing (older Playwright), merge it with the recipe below.
-     - `seed.spec.ts` at the **repo root** (default environment seed the planner runs first) and `specs/README.md` (test-plan directory).
+   - Read the accepted `--loop` values from `npx playwright init-agents --help`; use `claude` on Claude Code.
+   - **Verify the actual output**: list what init-agents wrote (`git status --porcelain`, plus `git status --porcelain --ignored` if nothing shows) and use those paths from here on. Expect, by role rather than by filename:
+     - the planner / generator / healer agent definitions (under `.claude/agents/` for the claude loop); `e2e-author` / `e2e-debug` dispatch them by the names init-agents gave them.
+     - `.mcp.json`: MCP config for the `playwright-test` server. **Confirm it exists**; if it is missing, merge it with the recipe below.
+     - the environment seed the planner runs first (`seed.spec.ts`, wherever init-agents put it) and the test-plan directory (`specs/`).
 
    **Path B/C (Codex, no registerable named agents):**
    - Do not invent an unsupported loop. Feature-detect `--loop=codex` rather than version-guessing (`npx playwright init-agents --help | grep -qw codex`). Even when it is advertised, Codex cannot register the generated agent files as named subagents, so `e2e-author` / `e2e-debug` will dispatch **generic** subagents carrying the bundled contracts (or run the roles sequentially). Running `--loop=codex` is at most an optional scaffold for `.mcp.json` / `seed.spec.ts` / `specs/`; skip agent generation when it is not advertised.
    - The runtime-neutral planner/generator/healer contracts ship at `${PLUGIN_ROOT}/references/role-contracts.md` (PLUGIN_ROOT from Step 0, same root that holds `assets/`). `e2e-author` / `e2e-debug` read them via their own Step 0 resolver; no per-project copy is needed.
-   - **Seed the environment scaffold**: Path A gets `seed.spec.ts` + `specs/README.md` from `init-agents`, but Path B/C skip agent generation, so create the equivalents yourself (the planner runs `seed.spec.ts` first on every path, and `e2e-author` requires it: without this, Codex setup leaves authoring blocked). Skip either file if it already exists. Write `seed.spec.ts` at the repo root:
+   - **Seed the environment scaffold**: Path A gets the seed and `specs/` from `init-agents`, but Path B/C skip agent generation, so create the equivalents yourself (the planner runs `seed.spec.ts` first on every path, and `e2e-author` requires it: without this, Codex setup leaves authoring blocked). Skip either file if it already exists. Write `seed.spec.ts` where the project's `testDir` expects it (the repo root when there is no config yet):
      ```ts
      // Default environment seed the planner runs first (Path B/C stand-in for the
      // init-agents output). Establishes baseline app state; expand per your app.

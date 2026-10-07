@@ -13,33 +13,33 @@ set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
 
-# node drives the consistency guards. Skip (not fail) when it is absent locally
-# so a machine without node can still commit; CI installs node and enforces all
-# of these on the PR.
-if command -v node >/dev/null 2>&1; then
-  node "$repo_root/scripts/check-doc-consistency.mjs"
-  # GNU-only shell constructs shipped without a BSD fallback. code_review.md P1
-  # has forbidden these for a while with nothing enforcing it, which is how
-  # md5sum reached translator and broke image downloads on macOS (issue #172).
-  node "$repo_root/scripts/check-shell-portability.mjs"
-  # The portability guard is a detector, and this repo's own lore says a
-  # detector without coverage reports "nothing wrong" when it means "could
-  # not look". Nine holes across three review rounds, each found by hand;
-  # these cases are that verification kept.
-  node "$repo_root/scripts/check-shell-portability.test.mjs"
-  # The frontmatter/body violations that make a skill fail SILENTLY on at least
-  # one runtime — description over the Codex 1024 cap, unquoted `: ` collapsing the
-  # YAML, bare ${CLAUDE_PLUGIN_ROOT} in a shell block, non-kebab name, frontmatter not
-  # at byte 0. All are invisible from the Claude Code side. Also fails a live
-  # `<plugin>:<skill>` reference to a skill that no longer exists. Runs its own RED/GREEN
-  # fixtures first, so a detector that stopped detecting fails here too.
-  node "$repo_root/scripts/check-skill-contract.mjs"
-  # Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
-  # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
-  node "$repo_root/scripts/check-skill-prose.mjs" || true
-else
-  echo "pre-commit: node not found — skipping doc/skill guards (CI still enforces them)" >&2
+# node drives the consistency guards. CI runs only on release tags, so this hook is
+# the everyday gate: without node it refuses the commit rather than skip the guards.
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node not found — the doc/skill guards cannot run, and CI only runs on release tags." >&2
+  echo "pre-commit: install Node 18+, or commit with --no-verify knowing the guards were skipped." >&2
+  exit 1
 fi
+node "$repo_root/scripts/check-doc-consistency.mjs"
+# GNU-only shell constructs shipped without a BSD fallback. code_review.md P1
+# has forbidden these for a while with nothing enforcing it, which is how
+# md5sum reached translator and broke image downloads on macOS (issue #172).
+node "$repo_root/scripts/check-shell-portability.mjs"
+# The portability guard is a detector, and this repo's own lore says a
+# detector without coverage reports "nothing wrong" when it means "could
+# not look". Nine holes across three review rounds, each found by hand;
+# these cases are that verification kept.
+node "$repo_root/scripts/check-shell-portability.test.mjs"
+# The frontmatter/body violations that make a skill fail SILENTLY on at least
+# one runtime — description over the Codex 1024 cap, unquoted `: ` collapsing the
+# YAML, bare ${CLAUDE_PLUGIN_ROOT} in a shell block, non-kebab name, frontmatter not
+# at byte 0. All are invisible from the Claude Code side. Also fails a live
+# `<plugin>:<skill>` reference to a skill that no longer exists. Runs its own RED/GREEN
+# fixtures first, so a detector that stopped detecting fails here too.
+node "$repo_root/scripts/check-skill-contract.mjs"
+# Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
+# regardless, but the `|| true` keeps it non-blocking even if node itself errors.
+node "$repo_root/scripts/check-skill-prose.mjs" || true
 
 # review-loop's CLI-fallback and CR-state paths only execute after the primary path
 # fails, so nothing exercised them until they broke in production (issue #105).

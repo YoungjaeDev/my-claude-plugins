@@ -360,7 +360,7 @@ codex plugin add dev@my-claude-plugins
 git config core.hooksPath .githooks   # clone 당 1회
 ```
 
-`.githooks/pre-commit` 과 `.github/workflows/validate-codex.yml` 이 같은 가드를 돌린다.
+`.githooks/pre-commit` 과 `.github/workflows/validate-codex.yml` 이 같은 가드를 돌린다. 평소에는 pre-commit 훅이 커밋마다 돌리고, CI 는 릴리스 태그(`vX.Y.Z`, `/dev:release` 가 push 한다)가 올라갈 때나 Actions 탭에서 손으로 실행할 때만 돈다. 훅은 Node 가 없으면 커밋을 거부한다 (`--no-verify` 로 우회하면 가드가 돌지 않은 것이다). CI 는 릴리스를 막지 않으므로, 릴리스 뒤 Actions 탭에서 결과를 확인한다.
 
 ### CI 가드가 지키는 것
 

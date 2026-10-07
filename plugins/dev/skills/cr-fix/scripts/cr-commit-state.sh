@@ -2,7 +2,7 @@
 # Usage: bash scripts/cr-commit-state.sh OWNER REPO SHA
 #
 # Emits exactly one JSON line describing CodeRabbit's reported state for SHA:
-#   {"state":"success|failure|pending|none","description":"...","target_url":"...",
+#   {"state":"success|failure|pending|rate_limited|none","description":"...","target_url":"...",
 #    "created_at":"...","channel":"status|check_run|none"}
 #
 # WHY THIS EXISTS
@@ -47,6 +47,17 @@ fetch_checkruns() {
   gh api --paginate "repos/$OWNER/$REPO/commits/$SHA/check-runs" 2>/dev/null
 }
 
+# A success row whose description is a rate-limit marker is NOT a review: on a
+# rate-limited push CodeRabbit posts a passing "Review rate limited" check by
+# design so it never blocks a protected branch (docs.coderabbit.ai
+# management/rate-limits). Reading it as success merged PR #283 with no verdict
+# on its last push. Normalized here, once, so every caller (pre-flight, poll,
+# auto-merge gate) sees the same `rate_limited` state. The transient
+# "Review skipped: free tier disabled" placeholder is deliberately NOT matched:
+# its CR_SKIP_GRACE hold lives in the callers.
+RL_DESC_RE='rate limited|Review limit reached|More reviews will be available in|Next (included )?review available in'
+RL_NORMALIZE='if .state == "success" and (.description | test($rl; "i")) then .state = "rate_limited" else . end'
+
 # ── Channel 1: commit-status (preferred — carries `description`) ─────────────
 if ! statuses_raw=$(fetch_statuses); then error_state "fetch failed: commit statuses" "status"; exit 0; fi
 status_row=$(jq -s 'add // []
@@ -54,13 +65,13 @@ status_row=$(jq -s 'add // []
   | sort_by(.created_at) | reverse | .[0] // {}' <<<"$statuses_raw" 2>/dev/null || echo '{}')
 
 if [ "$(jq -r 'has("state")' <<<"$status_row" 2>/dev/null || echo false)" = "true" ]; then
-  jq -c '{
+  jq -c --arg rl "$RL_DESC_RE" '{
     state: (.state // "none"),
     description: (.description // ""),
     target_url: (.target_url // ""),
     created_at: (.created_at // ""),
     channel: "status"
-  }' <<<"$status_row"
+  } | '"$RL_NORMALIZE" <<<"$status_row"
   exit 0
 fi
 
@@ -83,7 +94,7 @@ check_row=$(jq -s '[ .[] | (.check_runs // []) ] | add // []
   | sort_by(.started_at // "9999-12-31T23:59:59Z") | reverse | .[0] // {}' <<<"$checkruns_raw" 2>/dev/null || echo '{}')
 
 if [ "$(jq -r 'has("status")' <<<"$check_row" 2>/dev/null || echo false)" = "true" ]; then
-  jq -c '
+  jq -c --arg rl "$RL_DESC_RE" '
     (.status // "") as $st
     | (.conclusion // "") as $cc
     | {
@@ -101,7 +112,7 @@ if [ "$(jq -r 'has("status")' <<<"$check_row" 2>/dev/null || echo false)" = "tru
         # had long since finished. Fall back to started_at for queued/in-progress.
         created_at: (.completed_at // .started_at // ""),
         channel: "check_run"
-      }' <<<"$check_row"
+      } | '"$RL_NORMALIZE" <<<"$check_row"
   exit 0
 fi
 

@@ -1,0 +1,18 @@
+[
+  {
+    "id": 7001,
+    "user": { "login": "coderabbitai[bot]" },
+    "state": "COMMENTED",
+    "commit_id": "86b604f13062715e11801304d6b58a0b6c90c84e",
+    "submitted_at": "2026-10-06T08:30:00Z",
+    "body": "**Actionable comments posted: 2**\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary>\n</details>"
+  },
+  {
+    "id": 7002,
+    "user": { "login": "coderabbitai-evil" },
+    "state": "COMMENTED",
+    "commit_id": "3e5ee3e4d477b7345ca5737210a2e76cc8ea4dfe",
+    "submitted_at": "2026-10-06T09:20:00Z",
+    "body": "**Actionable comments posted: 0**"
+  }
+]

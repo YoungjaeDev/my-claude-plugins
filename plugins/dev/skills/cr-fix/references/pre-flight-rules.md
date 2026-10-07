@@ -42,10 +42,13 @@ cr_desc=$(jq -r '.description // ""' <<<"$cr_status")
 | `completed` + `failure` \| `timed_out` \| `cancelled` \| `action_required` \| `stale` | `failure` |
 | `queued` \| `in_progress` | `pending` |
 | no CodeRabbit row on either surface | `none` |
+| `success` whose description / title is a rate-limit marker (`Review rate limited`, `Review limit reached`, `rate limited`, refill phrasing) | `rate_limited` |
+
+The last row is applied on both surfaces. On a rate-limited push CodeRabbit posts a passing `Review rate limited` check by design so it never blocks a protected branch (docs.coderabbit.ai `management/rate-limits`); no review ran, and PR #283 merged on exactly this row. The transient `Review skipped: free tier disabled` is not matched (see below). A success status is still not CodeRabbit's verdict: that is the review attached to HEAD (`scripts/cr-head-verdict.sh`, GLOSSARY "HEAD 판정").
 
 Reading only `/statuses` is what made every check-run repo report `cr_state: none` forever: pre-flight routed to `cr_wait`, `poll-cr-status.sh` never saw a terminal state, and the loop spun to `TIMEOUT` while the review had finished and posted inline comments. Fixture-covered in `tests/run-tests.sh`.
 
-- `cr_state ∈ {success, failure, pending, "", error}` (`""` → no status row yet).
+- `cr_state ∈ {success, failure, pending, rate_limited, "", error}` (`""` → no status row yet).
 - `cr_desc` carries the free-tier-disabled and `Review limit reached` text in newer CR versions (this is the **new channel** Step 7b previously missed).
 - **`Review skipped: free tier disabled` is transient, not terminal.** CodeRabbit briefly posts `success` + this description (an hourly fair-usage quota refill, observed ~5 min) before replacing it with `Review completed`. It is held non-terminal for `CR_SKIP_GRACE` seconds (default `300`) and only routed to `rate_limited` past that window — distinct from genuine `Review limit reached` / `rate limited`, which route immediately.
 
@@ -111,7 +114,7 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
 | `success` | none | no | empty | any | ≥ timeout | `proceed` (Codex assumed clean) |
 | `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | `cr_skip_age < CR_SKIP_GRACE` | `cr_wait` (transient, hold for the real `Review completed`) |
 | `success` | `Review skipped: free tier disabled` | n/a | n/a | n/a | `cr_skip_age ≥ CR_SKIP_GRACE` | `rate_limited` (genuine disable) |
-| `success` | `Review limit reached` / `rate limited` | n/a | n/a | n/a | n/a | `rate_limited` |
+| `rate_limited` (success + `Review rate limited` / `Review limit reached` / `rate limited`) | n/a | n/a | n/a | n/a | n/a | `rate_limited` |
 | `success` | none | yes (`comment` channel) | n/a | n/a | n/a | `proceed` — comment sniff is not authoritative over a terminal commit-status; the `description`/`both` channels still route to `rate_limited` |
 | `pending` / `in_progress` / `""` | n/a | n/a | n/a | n/a | n/a | `cr_wait` |
 | `failure` | n/a | n/a | n/a | n/a | n/a | `failure` |
@@ -127,7 +130,7 @@ The emoji and timeout rows apply only when the Codex HEAD verdict is `unknown` w
 
 ```json
 {
-  "cr_state": "success|failure|pending|error|none",
+  "cr_state": "success|failure|pending|rate_limited|error|none",
   "cr_actionable": true,
   "cr_desc": "Review skipped: ...",
   "codex_state": "actionable|clean|arriving|unknown",

@@ -67,7 +67,7 @@ Owner: {{OWNER}}
 | Source | Tier 정책 |
 |--------|-----------|
 | CodeRabbit `🚨 Bug` / `⚠️ Potential issue` / `🔒 Security` / `🔴 Critical-High` / `🟠 Major` | `gated` — 사용자 per-issue 확인 |
-| CodeRabbit `🛠️ Refactor` (`🟡 Minor` / `🟢 Trivial` / `🟢 Info`) | `auto` — 자동 적용 |
+| CodeRabbit `🛠️ Refactor` (`🟡 Minor` / `🔵 Trivial` / `⚪ Info`) | `auto` — 자동 적용 |
 | CodeRabbit `📝 Nitpick` | `skip` — 노출 X |
 | Codex P1 (red), P2 (yellow) | `gated` |
 | Codex P3 (green) | `skip` |

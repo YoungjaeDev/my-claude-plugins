@@ -11,7 +11,7 @@ OWNER=$(gh repo view --json owner --jq '.owner.login')
 REPO=$(gh repo view --json name --jq '.name')
 PR_NUM=$(gh pr list --head "$(git branch --show-current)" --state open --json number --jq '.[0].number // empty')
 applied_total=0; deferred_total=0; skipped_total=0
-verification_blocking=false
+verification_blocking=false; VERIFICATION_GATE=unknown
 codex_active=unknown; codex_review_id_to_process=""
 cli_invocations=0; rate_limit_hits=0
 auto_judge_apply=0; auto_judge_defer=0; auto_judge_skip=0
@@ -86,7 +86,7 @@ trap 'ITER=${ITER:-0} APPLIED_TOTAL=$applied_total DEFERRED_TOTAL=$deferred_tota
   MERGED=${merged:-false} PR_NUM=$PR_NUM LAST_SHA=$(git rev-parse HEAD 2>/dev/null) \
   CR_SOURCE=$CR_SOURCE CLI_INVOCATIONS=$cli_invocations RATE_LIMIT_HITS=$rate_limit_hits \
   AUTO_JUDGE_APPLY=$auto_judge_apply AUTO_JUDGE_DEFER=$auto_judge_defer AUTO_JUDGE_SKIP=$auto_judge_skip \
-  TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE \
+  TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE VERIFICATION_GATE=$VERIFICATION_GATE \
   bash $SKILL_DIR/scripts/emit-final-json.sh' EXIT
 ```
 
@@ -110,6 +110,17 @@ if ru=$(CR_SOURCE="$CR_SOURCE" NO_CODEX="$NO_CODEX" SINCE="$SINCE" \
 else
   echo "cr-fix: reviewer availability not checked (comment fetch failed); keeping the normal wait path" >&2
 fi
+```
+
+## Step 3: verification baseline
+
+```bash
+# VERIFY_CMD: the repo's build + test line, from AGENTS.md (Step 3) or the project's
+# own entry points; empty when the repo names none. Lint is not part of it.
+VERIFY_CMD="${VERIFY_CMD:-}"
+VERIFICATION_GATE=$(NO_BUILD="$NO_BUILD" bash "$SKILL_DIR/scripts/verify-fix.sh" baseline "$VERIFY_CMD")
+[ "$VERIFICATION_GATE" = on ] \
+  || echo "cr-fix: verification gate off ($VERIFICATION_GATE) — fixes will be committed unverified" >&2
 ```
 
 ## Step 5: loop head and pre-flight
@@ -280,6 +291,21 @@ bash $SKILL_DIR/scripts/path-trust.sh "$REPO_ROOT" "$path" || {
 bash $SKILL_DIR/scripts/churn-scope.sh "$PREV_SHA" "origin/$BASE" "$path" "$line"
 ```
 
+## Step 9c.6: verify the fix
+
+Wraps each `apply`: `snap` before the first Edit of the finding, `check` after its 9c.6 generalization.
+
+```bash
+[ "$VERIFICATION_GATE" = on ] && snap=$(bash "$SKILL_DIR/scripts/verify-fix.sh" snapshot)
+# ... Edit the fix and its same-file siblings ...
+if [ "$VERIFICATION_GATE" = on ] \
+   && [ "$(bash "$SKILL_DIR/scripts/verify-fix.sh" check "$snap" "$VERIFY_CMD")" = fail ]; then
+  # Reverted to $snap. The apply becomes a defer, reason `verification-failed`.
+  applied_this_cycle=$((applied_this_cycle-1)); auto_judge_apply=$((auto_judge_apply-1))
+  deferred_this_cycle=$((deferred_this_cycle+1)); auto_judge_defer=$((auto_judge_defer+1))
+fi
+```
+
 ## Step 9c.7: persist Codex review id
 
 ```bash
@@ -290,8 +316,8 @@ bash $SKILL_DIR/scripts/persist-codex-id.sh "$STATE_FILE" "$codex_review_id_to_p
 
 ```bash
 res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER")
-# If res == "noop", skip Steps 11-12 and jump to Step 13
-if [ "$res" = "noop" ]; then : ; fi
+# noop: every fix this cycle was reverted or nothing was applied -> no commit, so
+# Steps 11-12 are skipped and nothing is pushed. Jump to Step 13.
 ```
 
 ## Step 12: push

@@ -105,6 +105,8 @@ On `final_state=reviewers_unavailable`, report each non-null `codex_url` / `cr_u
 
 `Read` `AGENTS.md` at the repo root when it exists. Its build / lint / test / commit guidance governs Step 9c's edits, Step 10's message and Step 11's gate for the rest of the run; a repo without one uses the defaults below.
 
+**Verification baseline (once).** Set `VERIFY_CMD` to the repo's build + test line (the one `AGENTS.md` names, else the project's own conventional entry points; empty when it has none), then run the "Step 3: verification baseline" block in `references/run-blocks.md` verbatim. `VERIFICATION_GATE=on` only when that line passes on the untouched checkout. A repo that already fails (GPU- or data-bound tests, a broken main) is left out of the gate as `baseline_failed`, as is `--no-build-check` (`no_build_check`) and a repo with no command (`no_command`); Step 16 reports which, and the final report says the fixes went in unverified.
+
 ## Step 4: Manual paste short-circuit
 
 If `--paste` non-empty: treat the block as one thread-equivalent (extract path/line/severity heuristically), run path-trust + sanitization (`$SKILL_DIR/scripts/path-trust.sh` + `references/sanitization-rules.md`), Edit, append to `$TRACK_FILE`, run Steps 10-12, then continue the normal loop from Step 5.
@@ -206,7 +208,7 @@ Filter `tier=="skip"` items BEFORE rendering: increment `skipped_total` and sub-
 
 Render the remaining items as a single table: `Source · Category/Badge · Severity · Effort · Path:Line · Tier`. Append the footer when `skipped_total > 0`.
 
-CR/CLI tiers come from the inline header's three fields (`_<category>_ | _<severity>_ | _<effort>_`), severity-first — see `references/tier-classification.md`. There is no AskUserQuestion gate between 9a and 9c: when `gated_count==0 && auto_count==0`, Step 8c already handled convergence; otherwise go straight to 9c in severity order.
+CR/CLI tiers come from the inline header's three fields (`<category> | <severity> | <effort>`, read by emoji badge whatever the emphasis — `scripts/cr-header.jq`), severity-first — see `references/tier-classification.md`. There is no AskUserQuestion gate between 9a and 9c: when `gated_count==0 && auto_count==0`, Step 8c already handled convergence; otherwise go straight to 9c in severity order.
 
 ### 9c: Per-finding autonomous judgment
 
@@ -222,7 +224,7 @@ For each non-skip finding, in severity order (Codex P0, then CR/CLI Critical →
    **Location rule for Codex P1.** A P1 on frontmatter text, prose or a comment — anything that is not executable code — is `severity_reassess=low`. Codex badges by topic, not blast radius, and a wording drift left at `high` keeps every soft stop below from ever firing.
    A finding asking for a new surface is `defer` regardless of `fix_size` (hard constraint above).
 5. **Decision matrix**: `over_engineering=yes` → skip, evaluated first and overriding `fix_size`; real + small-safe → apply; real + high + large-risky → defer; real + low/cosmetic + large-risky → skip; spurious or stylistic-only → skip; ambiguous → defer.
-6. **Apply / defer / skip**: apply only behind the stale-line guard (defer when an earlier edit this cycle moved the anchor out of reach), then run bounded same-file generalization (9c.6); every decision updates its counters, and an `apply` or `defer` at `severity_reassess=="high"` feeds `high_sev_this_cycle`.
+6. **Apply / defer / skip**: apply only behind the stale-line guard (defer when an earlier edit this cycle moved the anchor out of reach), then run bounded same-file generalization (9c.6); every decision updates its counters, and an `apply` or `defer` at `severity_reassess=="high"` feeds `high_sev_this_cycle`. With `VERIFICATION_GATE=on`, each apply runs inside the "Step 9c.6: verify the fix" block in `references/run-blocks.md`: snapshot before the edit, build + test after it. A fix that fails is reverted to the snapshot and logged as `defer` with reason `verification-failed`, so it reaches the Step 14 follow-up issue instead of the commit.
 7. **Log entry**: one record per decision in `STATE_FILE.auto_judge_log`.
 8. **9c-review tier** (CR finding with no parseable header / Codex with no P0-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor or `clean`.
 9. **9c-defer tier** (Codex P2 at `ITER >= 2`, decision 15): no Read, no judgment, no edit. Log `action=defer`, `reason=codex-p2-after-iter1`, `judgment=null`; `auto_judge_defer=$((auto_judge_defer+1))`; `late_p2_this_cycle=$((late_p2_this_cycle+1))`. It counts into neither `judged_this_cycle` nor `deferred_this_cycle`: Step 13 adds it to `deferred_total` so Step 14 carries it in the follow-up issue, and a cycle with nothing else left ends at `minor_floor`.
@@ -239,9 +241,7 @@ Run the "Step 10: stage and commit" block in `references/run-blocks.md` verbatim
 
 ## Step 11: Verification gate
 
-Skip if `--no-build-check` OR `applied_this_cycle==0`. Otherwise run the repo's build, test and lint commands — the ones Step 3's `AGENTS.md` names, else the project's own conventional entry points — and record each as pass or fail. A gate with no command in this repo is reported as not-run, never as passed.
-
-On BUILD or TEST failure: `verification_blocking=true`, surface the failing output, and continue to push so the reviewer sees the new code (the user can intervene before merge). LINT-only failure: warn and proceed.
+Build and test already ran per fix in Step 9c.6, before this commit existed, so everything Step 10 committed passed them (or the gate is off, per Step 3). Only lint runs here: when the repo names a lint command, run it; a failure warns and proceeds. Step 10's `noop` — every fix this cycle reverted, or none applied — skips this step and Step 12, so a cycle of failed fixes pushes nothing.
 
 ## Step 12: Push
 
@@ -259,7 +259,7 @@ Run the "Step 13: convergence ladder" block in `references/run-blocks.md` verbat
 
 Loop exited at `ITER == MAX_ITER` with threads still actionable → `final_state=iteration_cap`; surface the remaining thread count + `target_url`.
 
-Then, when `final_state ∈ {churn, minor_floor, iteration_cap}` AND `deferred_total > 0`, file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment.
+Then, when `final_state ∈ {churn, minor_floor, iteration_cap, user_declined}` AND `deferred_total > 0`, file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment.
 
 Build the body from `auto_judge_log`'s `defer` records — reviewer prose reaches it through a file, never the command line — then `gh issue create --label tbd`. The block is idempotent: a re-run on the same PR reuses `STATE_FILE.followup_issue` instead of opening a second issue. Shell block: `references/failure-modes.md`.
 
@@ -275,6 +275,7 @@ Run the "Step 15: auto-merge gate" block in `references/run-blocks.md` verbatim.
 Handled by the `trap ... EXIT` set in Step 2 → `scripts/emit-final-json.sh` always emits the JSON line (schema: `assets/final-output.schema.json`).
 - `auto_judge_stats`: `{apply, defer, skip}` counts across the run.
 - `followup_issue`: `{number, url}` when Step 14 filed one, else `null`.
+- `verification_gate`: Step 3's baseline result. Anything but `on` means the run's fixes were committed without the build/test gate.
 - `pre_flight_last` mirrors `STATE_FILE` for the LAST iteration; the copy in `.claude/state/archive/` preserves every iter.
 
 See `references/failure-modes.md` for the `final_state` enum.
@@ -285,7 +286,7 @@ The run is done when all of these hold:
 - Step 16 emitted one JSON line validating against `assets/final-output.schema.json`, with a `final_state` from the `references/failure-modes.md` enum — never `unknown`.
 - Every finding that reached Step 9c has a record in `auto_judge_log`, so `auto_judge_stats` sums to the number of non-skip, non-review items the Step 9a table rendered (9c-review items are displayed only and never judged).
 - Each iteration that applied anything produced exactly one commit and one push.
-- `final_state ∈ {churn, minor_floor, iteration_cap}` with anything deferred carries a `followup_issue`, or an explicit creation-failure message saying why auto-merge stayed blocked.
+- `final_state ∈ {churn, minor_floor, iteration_cap, user_declined}` with anything deferred carries a `followup_issue`, or an explicit creation-failure message saying why auto-merge stayed blocked.
 - The PR carries no comment from this run other than a possible `@coderabbitai rate limit` query and, with `CR_REVIEW_REQUEST=request`, at most one `@coderabbitai review` per head SHA, counting requests from earlier runs.
 
 ## Reference

@@ -1094,6 +1094,37 @@ is "reviews fetch failure -> no verdict printed" "$out" ""
 rm -rf "$HV"
 
 echo
+echo "probe-codex-state.sh"
+
+# The emoji probe is the fallback where Codex posts no summary comment. Its heuristic
+# channels must never turn forgeable evidence into clean: a check-run anyone's app can
+# name "codex-*", or a reaction anyone can leave on the Codex review.
+PS=$(mktemp -d)
+cat > "$PS/gh" <<'SH'
+#!/usr/bin/env bash
+[ -n "${PS_FAIL:-}" ] && { echo "HTTP 502" >&2; exit 1; }
+case "$*" in
+  *"/issues/"*"/reactions"*)            echo "${PS_ISSUE_RXN:-[]}" ;;
+  *"/check-runs"*)                      echo "${PS_CHECKRUNS:-"{\"check_runs\":[]}"}" ;;
+  *"/pulls/"*"/reviews/"*"/reactions"*) echo "${PS_REVIEW_RXN:-[]}" ;;
+  *"/pulls/"*"/reviews"*)               echo "${PS_REVIEWS:-[]}" ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+chmod +x "$PS/gh"
+ps_state() { PATH="$PS:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA=deadbeef PUSH_TIME=2026-10-06T09:00:00Z \
+               bash "$SCRIPTS/probe-codex-state.sh" 2>/dev/null | jq -r '.emoji_state'; }
+is "forged 'codex-lint' check-run summarising clean -> not clean" \
+   "$(PS_CHECKRUNS='{"check_runs":[{"name":"codex-lint","status":"completed","conclusion":"success","app":{"slug":"codex-lint","owner":{"login":"mallory"}},"output":{"summary":"All clean"},"completed_at":"2026-10-06T09:05:00Z"}]}' ps_state)" unknown
+PS_CODEX_REVIEW='[{"id":9,"user":{"login":"chatgpt-codex-connector[bot]"},"submitted_at":"2026-10-06T09:04:00Z"}]'
+is "non-bot +1 on the Codex review -> not clean" \
+   "$(PS_REVIEWS="$PS_CODEX_REVIEW" PS_REVIEW_RXN='[{"user":{"login":"mallory"},"content":"+1","created_at":"2026-10-06T09:06:00Z"}]' ps_state)" unknown
+is "chatgpt-codex-connector[bot] +1 on its review -> clean" \
+   "$(PS_REVIEWS="$PS_CODEX_REVIEW" PS_REVIEW_RXN='[{"user":{"login":"chatgpt-codex-connector[bot]"},"content":"+1","created_at":"2026-10-06T09:06:00Z"}]' ps_state)" clean
+is "every gh call failing -> unknown, never clean" "$(PS_FAIL=1 ps_state)" unknown
+rm -rf "$PS"
+
+echo
 echo "head-verdicts.sh"
 
 # The loop ends or merges only once every reviewer it has on gave HEAD a verdict

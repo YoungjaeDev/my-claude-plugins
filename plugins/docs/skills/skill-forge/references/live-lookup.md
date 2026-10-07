@@ -32,7 +32,7 @@ Name the command or the page and what to read from it, at the step that uses it:
 | Instead of | Write |
 |---|---|
 | "`--loop` accepts `vscode \| claude \| codex`" | "read the accepted values from `npx playwright init-agents --help`" |
-| "Verified against X 1.61" | a capability floor checked at run time (`npx playwright --version` ≥ 1.59), plus the `--help` to read |
+| "Verified against X 1.61" | the installed version read at run time (`npx playwright --version`) and compared with the minimum the vendor docs state (or the skill's own stated floor, marked as policy), plus the `--help` to read |
 | a hard-coded enum of model names or effort levels | the listing command (`codex debug models`) and the field to read |
 | a copied table of frontmatter fields | the doc URL and section (`https://code.claude.com/docs/en/skills.md`, frontmatter reference) |
 

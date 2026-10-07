@@ -183,10 +183,10 @@ The built-in image tool always writes first to `${CODEX_HOME:-$HOME/.codex}/gene
 After `codex exec` finishes:
 
 1. Check the output directory for the expected file(s).
-2. If one is missing, recover it. Each `codex exec` call is one session; read its id from the `session id: <UUID>` line of the call's stderr banner. That banner is undocumented (the documented id is the `thread_id` of the `thread.started` event, which only `codex exec --json` emits, and the calls above do not pass `--json`), so when the line is missing, report the gap rather than guessing a session folder. With `-n` or `--variants` there is one expected destination per generated image, so recover one source file per missing destination from the session that produced it, never one file into several destinations. Take the newest `*.png` under that session folder — do not pin a filename pattern, it varies by Codex version — and copy it into the output directory under the requested filename base, refusing to overwrite:
+2. If one is missing, recover it. Each `codex exec` call is one session; read its id from the `session id: <UUID>` line of the call's stderr banner. That banner is undocumented (the documented id is the `thread_id` of the `thread.started` event, which only `codex exec --json` emits, and the calls above do not pass `--json`), so when the line is missing, report the gap rather than guessing a session folder. With `-n` or `--variants` there is one expected destination per generated image, so recover one source file per missing destination from the session that produced it, never one file into several destinations. List the session folder's `*.png` files newest first — do not pin a filename pattern, it varies by Codex version — and give each missing destination a different file from that list, so an `-n` session never copies one image twice. Copy each into the output directory under the requested filename base, refusing to overwrite:
 
    ```bash
-   src=$(ls -t "${CODEX_HOME:-$HOME/.codex}/generated_images/<session-id>"/*.png 2>/dev/null | head -1)
+   src=$(ls -t "${CODEX_HOME:-$HOME/.codex}/generated_images/<session-id>"/*.png 2>/dev/null | sed -n "<k>p")   # k = 1 for the first missing destination, 2 for the next, ...
    [ -n "$src" ] || { echo "no image in session folder" >&2; exit 1; }
    dest="<output-dir>/<filename-base>.png"
    [ -e "$dest" ] && { echo "refusing to overwrite $dest" >&2; exit 1; }
@@ -195,5 +195,5 @@ After `codex exec` finishes:
 
    Never re-run generation because a copy failed. The image already exists; a second run bills a second generation.
 3. `Read` each file for review.
-4. Report saved path(s), size requested versus produced (read each file's pixel size: `sips -g pixelWidth -g pixelHeight <file>` on macOS, `file <file>` elsewhere), quality requested, count requested versus produced, and any tool limitation Codex mentioned.
+4. Report saved path(s), size requested versus produced (read each file's pixel size: `sips -g pixelWidth -g pixelHeight <file>` on macOS, `file <file>` on Linux, and on Windows PowerShell `Add-Type -AssemblyName System.Drawing; $i = [System.Drawing.Image]::FromFile('<file>'); "$($i.Width)x$($i.Height)"; $i.Dispose()`), quality requested, count requested versus produced, and any tool limitation Codex mentioned.
 5. If generation itself failed, report the Codex CLI version, the error text, and the next concrete command for the user (`codex login`, a Codex update, or a retry at lower quality). Do not fabricate images or write placeholder files.

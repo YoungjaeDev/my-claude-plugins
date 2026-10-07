@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="assets/banner.png" width="800" height="267" alt="Claude Code와 Codex에서 쓰는 플러그인 8개">
+<img src="assets/banner.png" width="800" height="267" alt="귀찮은 건 플러그인한테 맡기자">
 
 # my-claude-plugins
 
-Claude Code 와 Codex CLI 가 같은 소스 트리를 읽는 8개 플러그인 모음이다.
+Claude Code 와 Codex CLI 에서 같이 쓰는 8개 플러그인 모음.
 
 [![Plugins](https://img.shields.io/badge/plugins-8-blue.svg)](#플러그인-목록)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://docs.anthropic.com/claude-code)
@@ -17,7 +17,7 @@ Claude Code 와 Codex CLI 가 같은 소스 트리를 읽는 8개 플러그인 �
 
 ---
 
-GitHub PR 로 개발하는 Claude Code 사용자가 PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 제작에 쓴다.
+PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 만들기처럼 손이 많이 가는 일을 슬래시 명령 하나로 맡긴다.
 
 - `/dev:review-loop` 는 CodeRabbit 과 Codex 의 리뷰 지적을 판정해 수정하고 push 한다. 리뷰어가 새 지적을 내지 않을 때까지 반복하고 남은 지적은 후속 이슈 1건으로 남긴다.
 - `/dev:flow` 는 아이디어부터 머지·정리까지 지금 단계에서 부를 스킬을 알려 준다.

@@ -36,7 +36,7 @@ OPEN_THREADS=$(gh api --paginate "repos/{owner}/{repo}/pulls/${PR_NUMBER}/commen
 
 ```bash
 case "$CRF_FINAL" in
-  iteration_cap|timeout|cli_failed|rate_limited|reviewers_unavailable) CAP_TRIGGER=1 ;;
+  iteration_cap|timeout|cli_failed|rate_limited|reviewers_unavailable|codex_failed) CAP_TRIGGER=1 ;;
   *) CAP_TRIGGER=0 ;;
 esac
 if [ "$DEFER_N" -gt 0 ] || [ "$CAP_TRIGGER" = 1 ]; then

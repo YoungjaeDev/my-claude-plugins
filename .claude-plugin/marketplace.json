@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 8 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.52.0"
+    "version": "2.53.0"
   },
   "plugins": [
     {
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Back half of the development flow, from a PR ready for review to merge and cleanup; the front half (idea -> spec -> tickets -> PR) belongs to Matt's skills (mattpocock-skills). GitHub workflow: commit-and-push, release, cr-fix (unified CodeRabbit + ChatGPT-Codex review loop with autonomous apply/defer/skip judgment and rate-limit fallback), post-merge (cleanup only: leftover reviews, branch, issues, project status, About line; lessons go to /retro), session-handoff (chat-only end-of-session summary for a fresh agent), orchestrate (subagent orchestration: job cards, model x effort worker presets, disjoint file ownership, bounded re-query, orchestrator-owned verification), flow (router over Matt's front half and dev's back half plus product-repo setup, no side effects of its own). Project setup: new (first-day bootstrap: interview, .claude/ scaffold, CLAUDE.md + AGENTS.md with Codex reviewer guidelines, gh repo create) and wiring (14-axis harness diagnostic for an existing repo, read-only until approved). Playwright E2E harness: e2e-setup, e2e-author, e2e-debug wrap Playwright's planner/generator/healer agents (planner/generator explore via playwright-cli, healer via the playwright-test MCP server); never overwrite an existing playwright.config and degrade gracefully without Playwright.",
-      "version": "4.0.0",
+      "version": "4.1.0",
       "category": "development"
     },
     {

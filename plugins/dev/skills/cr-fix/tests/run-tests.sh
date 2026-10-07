@@ -1894,5 +1894,34 @@ is "only-failed cycle -> noop, nothing to push" \
 rm -rf "$VF" "$TRK"
 
 echo
+echo "final_state enum: one set across the schema and every doc that lists it"
+# A value the loop can set but a doc or the schema leaves out is a state the
+# reader (or the schema check) does not know. Each doc carries one
+# "`final_state` enum: `a`, `b`, ..." list, which ends at the first "(" or ".".
+ROOT=$(cd "$HERE/../../../../.." && pwd)
+SKILL_ROOT=$(cd "$HERE/.." && pwd)
+SCHEMA_STATES=$(jq -r '.properties.final_state.enum[]' "$SKILL_ROOT/assets/final-output.schema.json" | sort | tr '\n' ' ')
+enum_line() {
+  grep -F '`final_state` enum' "$1" | head -1 | sed -n 's/.*`final_state` enum\([^(.]*\).*/\1/p' \
+    | grep -oE '`[a-z_]+`' | tr -d '`' | sort -u | tr '\n' ' '
+}
+not_in_schema() {  # prints each stdin word the schema enum does not list
+  local s
+  while read -r s; do
+    case " $SCHEMA_STATES" in *" $s "*) ;; *) printf '%s ' "$s" ;; esac
+  done
+}
+is "failure-modes.md table = schema enum" \
+   "$(grep -oE '^\| `[a-z_]+` \|' "$SKILL_ROOT/references/failure-modes.md" | grep -oE '[a-z_]+' \
+      | grep -vx final_state | sort | tr '\n' ' ')" "$SCHEMA_STATES"
+for doc in "$SKILL_ROOT/SKILL.md" "$ROOT/plugins/dev/CLAUDE.md" "$ROOT/AGENTS.md"; do
+  is "enum line in ${doc#"$ROOT"/} = schema enum" "$(enum_line "$doc")" "$SCHEMA_STATES"
+done
+# Every literal the run assigns must be a schema value.
+is "every final_state=<literal> in SKILL.md and run-blocks.md is in the schema" \
+   "$(grep -ohE 'final_state=[a-z_]+' "$SKILL_ROOT/SKILL.md" "$SKILL_ROOT/references/run-blocks.md" \
+      | cut -d= -f2 | sort -u | not_in_schema)" ""
+
+echo
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

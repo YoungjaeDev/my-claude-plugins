@@ -144,7 +144,7 @@ dev 는 뒷단만 맡는다: PR 부터 리뷰 루프, 머지, 정리까지. 아�
 | Skill | Description |
 |-------|-------------|
 | `/dev:commit-and-push` | 변경 분석, Conventional Commits 메시지, 커밋, 푸시 |
-| `/dev:cr-fix` | CodeRabbit + Codex 리뷰를 pre-flight 로 감지해 finding 별로 apply / defer / skip 을 판단하고, 수렴·low-severity 바닥·churn 중 하나에서 정지하며 남은 지적은 후속 이슈 1건으로 넘긴다. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate-limit 시 로컬 CLI 또는 Codex-only 폴백) |
+| `/dev:cr-fix` | CodeRabbit + Codex 리뷰를 pre-flight 로 감지해 finding 별로 apply / defer / skip 을 사용자에게 묻지 않고 판단하고, 수렴·low-severity 바닥·churn 중 하나에서 정지하며 남은 지적은 후속 이슈 1건으로 넘긴다. 켜진 리뷰어 전원이 HEAD 에 판정을 낸 뒤에만 다음 라운드를 push 하거나 끝내거나 머지하고, Codex 가 Failed 를 내면 `codex_failed` 로 멈춘다. PR 댓글은 `@coderabbitai rate limit` 질의와 HEAD 당 1회의 `@coderabbitai review` 요청(non-default base, 자동 리뷰 일시정지)뿐이다. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate-limit 시 로컬 CLI 또는 Codex-only 폴백) |
 | `/dev:post-merge` | 머지 후 정리만 한다: 남은 리뷰 지적 표시, base 전환, 머지된 브랜치 삭제, 남은 이슈 close, GitHub Project 상태 동기화, repo About(description) 불일치 점검, 커밋. README·CHANGELOG 는 `docs:readme`·`docs:changelog` 를 가리키기만 하고 교훈은 기록하지 않는다 (`/retro` 몫) |
 | `/dev:release` | 버전 태그 + GitHub Release (릴리스 노트 자동 생성) |
 | `/dev:session-handoff` | 컨텍스트를 비우기 전 세션 인수인계 요약 (결정, 변경, 핵심 파일, 실행 중 상태, 검증 명령, 보류·미해결 질문). 채팅 출력 전용, 파일·메모리 미기록 |

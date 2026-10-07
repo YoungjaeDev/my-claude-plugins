@@ -1,11 +1,13 @@
 name: validate-codex
 
 # Catch README/AGENTS doc-consistency drift, silent skill-contract violations,
-# and GNU-only shell regressions at PR time, even if a contributor skipped the
-# local .githooks pre-commit hook.
+# and GNU-only shell regressions before a release ships. Day to day the local
+# .githooks pre-commit hook runs the same guards on every commit; CI runs only on
+# a release tag (`/dev:release` pushes `vX.Y.Z` before `gh release create`) or by hand.
 on:
   push:
-  pull_request:
+    tags: ['v*.*.*']
+  workflow_dispatch:
 
 permissions:
   contents: read

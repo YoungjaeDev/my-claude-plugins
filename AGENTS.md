@@ -87,7 +87,8 @@ git add -A \
 
 - `.githooks/pre-commit` 이 매 커밋마다 같은 가드를 돌린다. clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화한다.
 - `check-shell-portability.mjs` 는 GNU 전용 셸 구문이 폴백도 capability probe 도 없이 쓰인 경우만 잡는다. 증거는 코드여야 하고 주석은 인정하지 않는다. 예외는 `# portability-ok: <사유>` 로 표시한다. 상세는 `README.md` 의 "CI 가드가 지키는 것".
-- macOS CI 레그(`validate-codex.yml` 의 `macos` job)가 BSD 폴백이 실제로 실행되는 유일한 지점이다. `/bin/bash` 로 돌려 bash 3.2 를 강제한다.
+- CI(`validate-codex.yml`)는 릴리스 태그 `vX.Y.Z` push 와 수동 실행(`workflow_dispatch`)에서만 돈다. push·PR 마다 돌지 않으므로 평소 게이트는 pre-commit 훅이다.
+- macOS CI 레그(`validate-codex.yml` 의 `macos` job)가 BSD 폴백이 CI 에서 실행되는 유일한 지점이다. `/bin/bash` 로 돌려 bash 3.2 를 강제한다. 릴리스 사이에는 Mac 에서 `/bin/bash plugins/dev/skills/review-loop/tests/run-tests.sh` 로 같은 확인을 한다.
 - Codex 카탈로그 확인은 일회용 `CODEX_HOME` 에서 돌린다 (8 entries). 실제 홈에서 `marketplace add` 하면 기존 등록과 소스가 달라 실패하고, 이어지는 `marketplace remove` 는 레시피가 만든 것이 아니라 원래 등록을 지운다. 정리는 `trap` 이 맡으므로 검증 명령의 종료 상태가 그대로 남는다.
 
   ```bash

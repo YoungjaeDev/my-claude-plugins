@@ -1123,6 +1123,10 @@ is "the script decides, it never posts" \
    "$(grep -cE -- '(-X|--method) *(POST|PATCH|PUT|DELETE)|(^| )(-f|-F|--field|--raw-field) |(pr|issue) comment' "$HW_LOG")" 0
 w=$(hw "$HW/r-none.json" "$HW/c-paused-requested.json")
 is "pause, already requested on this HEAD -> no second request" "$(hf .state):$(hf .cr_review_request)" timeout:skip
+# No push time: this HEAD's request cannot be told from an older one, so no request
+# is decided (request_cr_review, reading the same push time, would not post either).
+w=$(hw "$HW/r-none.json" "$HW/c-paused.json" PUSH_TIME=)
+is "pause, push time unknown -> no request decided" "$(hf .state):$(hf .cr_review_request)" timeout:null
 # Reviewers that are off do not hold the loop.
 echo '[]' > "$HW/empty.json"
 w=$(hw "$HW/cr-clean.json" "$HW/empty.json" CODEX_ON=auto)
@@ -1700,8 +1704,7 @@ AW=$(mktemp -d)
 cat > "$AW/gh" <<SH
 #!/usr/bin/env bash
 case "\$*" in
-  *"/statuses"*) echo '[]' ;;
-  *"/commits/"*) echo '{}' ;;
+  *"/statuses"*) echo '[{"created_at":"2026-10-06T10:00:00Z"}]' ;;
   *"/pulls/"*"/reviews"*) cat "$FIX/pr-reviews-cr-older-commit.json" ;;
   *"/issues/"*"/comments"*) cat "$FIX/issue-comments-cr-review-paused.json" ;;
   *) echo "unknown gh args: \$*" >&2; exit 1 ;;

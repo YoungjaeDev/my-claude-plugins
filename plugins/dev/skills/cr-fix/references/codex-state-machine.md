@@ -40,6 +40,34 @@ If the user wants to re-surface an already-processed review, they can delete the
 
 Codex states its own triggers as PR open, draft marked ready, and a `@codex review` comment. Repositories that enable automatic reviews also get one on every push, which is what the loop relies on: Step 12's push is the re-review trigger, and the skill never posts a trigger comment of its own.
 
+## HEAD verdict (`scripts/codex-head-verdict.sh`)
+
+Codex's result for the commit the PR points at now (`GLOSSARY.md` "HEAD 판정", ADR 0002). Two sources:
+
+- **Summary comment.** Codex keeps one `<!-- codex-pull-request-review-summary -->` issue comment and edits it in place: a table row per review with `**Running**` / `**Completed**` / `**Failed**` and a backticked short SHA. The newest such comment by `updated_at` from the anchored Codex login wins; a lookalike login is ignored.
+- **HEAD review.** A Codex review with `commit_id == CUR_SHA`. Codex submits one only when it has findings, a few seconds before it flips the summary to Completed.
+
+Interface: env `OWNER REPO PR_NUM CUR_SHA [PUSH_TIME] [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=600]`, one JSON line on stdout, exit 0 (exit 1 only with `verdict=error`).
+
+```json
+{"verdict":"findings|clean|failed|in_progress|none|unknown|error",
+ "summary_state":"completed|running|failed|unparsed|absent|null",
+ "summary_sha":"95ab2f6", "head_review_id":5427206208,
+ "fallback":"review_id_poll|null", "wait_seconds":224}
+```
+
+| Summary on HEAD | HEAD review | `verdict` |
+|---|---|---|
+| Running | any | `in_progress` |
+| Failed | any | `failed` |
+| Completed | yes | `findings` |
+| Completed | no | `clean` |
+| row for another SHA | yes / no | `findings` / `none` (Codex has not judged HEAD) |
+| unparseable or unknown status word (`summary_state=unparsed`), or no summary (`absent`) | yes / no | `findings` / `unknown`, `fallback=review_id_poll` |
+| gh failed | n/a | `error`, exit 1 |
+
+Only `clean` is a pass. `unknown` is never clean: callers fall back to review-id polling. `wait_seconds` is the single Codex wait budget, `max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age)`, reported even on `error`; `push_age` comes from `PUSH_TIME` via jq `fromdateiso8601` (no GNU/BSD `date` split), and an absent or unparseable `PUSH_TIME` counts as age 0. Consumers: `pre-flight.sh` (`codex_verdict`, `codex_wait_seconds`), Step 6b below, `poll-codex-grace.sh` (with `CUR_SHA`, ends on `clean` / `failed`).
+
 ## Review-id discovery and the grace cap (Step 6b)
 
 ```bash
@@ -57,25 +85,22 @@ if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
   if [ -n "$candidate" ] && [ "$candidate" != "null" ]; then
     codex_review_id_to_process="$candidate"
   elif [ "$CODEX_GRACE" -gt 0 ] && [ "$gate" = "codex_wait" -o "$gate" = "cr_wait" -o "$gate" = "bypass" ]; then
-    # Cap the poll at the larger of CODEX_GRACE and the pre-flight remainder:
-    # gate=codex_wait promised Codex is not assumed clean before
-    # push_age >= CODEX_PREFLIGHT_TIMEOUT, and the knob alone lets Step 8c mark
-    # `clean` mid-review. $pf exists only on the auto|pr-bot path, so read it
-    # under gate=codex_wait alone — a bare `<<<"$pf"` aborts bypass under
-    # `set -u`, and `${pf:-{}}` mis-expands to `<value>}` when it IS set.
-    if [ "$gate" = "codex_wait" ]; then
-      pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
-      push_age=$(jq -r '.push_age_seconds // 0' <<<"$pf")
-      pf_remaining=$(( pf_timeout - push_age ))
-      [ "$pf_remaining" -lt 0 ] && pf_remaining=0
-      [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
-    else
-      grace_cap="$CODEX_GRACE"
-    fi
+    # One Codex wait budget on every gate: max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT
+    # - push_age), computed by codex-head-verdict.sh (pre-flight reports the same
+    # number as codex_wait_seconds). CODEX_GRACE alone on cr_wait / bypass let
+    # Step 8c mark `clean` while Codex was still reviewing HEAD. Never read $pf
+    # here: the bypass path has none, and a bare `<<<"$pf"` aborts under set -u.
+    hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" PUSH_TIME="$PUSH_TIME" \
+         CODEX_GRACE="$CODEX_GRACE" bash "$SKILL_DIR/scripts/codex-head-verdict.sh" 2>/dev/null) \
+      || echo "warn: Codex HEAD verdict unavailable (gh error); the wait budget still applies" >&2
+    grace_cap=$(jq -r ".wait_seconds // empty" <<<"$hv"); [ -n "$grace_cap" ] || grace_cap="$CODEX_GRACE"
     # Bash(run_in_background=true, timeout=grace_cap*1000):
-    #   OWNER=... REPO=... PR_NUM=... PROCESSED=... INTERVAL=15 \
+    #   OWNER=... REPO=... PR_NUM=... PROCESSED=... CUR_SHA=$CUR_SHA INTERVAL=15 \
     #     bash $SKILL_DIR/scripts/poll-codex-grace.sh
-    # Monitor returns one JSON line: {codex_review_id:N, pr:N} or grace timeout (no line).
+    # Monitor returns one JSON line, or grace timeout (no line):
+    #   {codex_review_id:N, pr:N}                         -> codex_review_id_to_process=N
+    #   {codex_review_id:null, pr:N, verdict:clean|failed} -> no review is coming; proceed with none
+    #     (codex_review_id_to_process stays ""; verdict=failed is not a pass).
   fi
 fi
 ```

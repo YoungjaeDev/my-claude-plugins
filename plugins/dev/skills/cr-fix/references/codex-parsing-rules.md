@@ -12,10 +12,11 @@ How cr-fix v2 reads Codex review state without relying on PR timeline body order
 
 The emoji marker is visible on the PR page but its API surface is **not fully nailed down** — channel A returns `[]` in practice, and channel B sometimes carries check-runs with no state hint. Until a confirmed signal channel is found, treat emoji as a HINT for early routing, never as a definitive gate.
 
-## Two-tier reading
+## Three-tier reading
 
 1. **Review submission (definitive)** — `pulls/$PR/reviews` filtered by `chatgpt-codex-connector*` and `state ∈ {COMMENTED, CHANGES_REQUESTED}`, dedupe-filtered by `codex_processed_reviews`. **Any non-empty result → actionable, period**. Skip emoji probing in that branch.
-2. **Emoji hint (best-effort)** — Only consulted when review submission is empty. Three channels tried in order, first signal wins.
+2. **HEAD verdict** — `scripts/codex-head-verdict.sh` reads the `<!-- codex-pull-request-review-summary -->` comment and the `commit_id == HEAD` review (`references/codex-state-machine.md` "HEAD verdict"). When Codex posts that comment, it decides; an unparseable one is never clean and falls back to review-id polling.
+3. **Emoji hint (best-effort)** — Only consulted when review submission is empty and Codex posts no summary comment. Three channels tried in order, first signal wins.
 
 ## Channel A: PR-level reactions (`issues/$PR/reactions`)
 

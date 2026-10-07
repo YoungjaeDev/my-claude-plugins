@@ -144,9 +144,9 @@ Run the "Step 6: CR status poll" block in `references/run-blocks.md` verbatim.
 
 ## Step 6b: Codex review-id discovery (grace polling)
 
-Skip if `codex_active != "active"`, or if pre-flight already populated `codex_review_id_to_process` (the `gate=proceed` path). Otherwise query `pulls/$PR_NUM/reviews` for the newest `chatgpt-codex-connector*` review not already in `codex_processed_reviews`; when none is found and `CODEX_GRACE > 0`, poll `scripts/poll-codex-grace.sh` under `grace_cap` and take the `codex_review_id` it prints, or proceed with none when the cap expires.
+Skip if `codex_active != "active"`, or if pre-flight already populated `codex_review_id_to_process` (the `gate=proceed` path). Otherwise query `pulls/$PR_NUM/reviews` for the newest `chatgpt-codex-connector*` review not already in `codex_processed_reviews`; when none is found and `CODEX_GRACE > 0`, poll `scripts/poll-codex-grace.sh` under `grace_cap` and take the `codex_review_id` it prints, or proceed with none when it reports a HEAD verdict of `clean` / `failed` (`codex_review_id: null`) or the cap expires. `grace_cap` is the same on every gate: `max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age)`, from `scripts/codex-head-verdict.sh`.
 
-Discovery query, `grace_cap` derivation and the `pull_request_review_id` filter rationale: `references/codex-state-machine.md`.
+Discovery query, `grace_cap` block, the Codex HEAD verdict contract and the `pull_request_review_id` filter rationale: `references/codex-state-machine.md`.
 
 ## Step 7: In-progress sniffer
 

@@ -774,6 +774,126 @@ is "no unprocessed review -> watchdog killed it (not an early exit)" "$g_rc" 143
 rm -rf "$GSHIM2"
 
 echo
+echo "codex-head-verdict.sh"
+
+# Codex reports its HEAD verdict in one `<!-- codex-pull-request-review-summary -->`
+# issue comment it edits in place (Running/Completed/Failed + short SHA; shape
+# copied from PR #283), and posts a review only when it has findings. A run that
+# read only review ids archived PR #223 as clean while Codex was still Running
+# on HEAD (ADR 0002). Fixture HEAD is 95ab2f6...; `__FAIL__` makes gh fail.
+CHEAD=95ab2f621c9add07df26af3770418786a29a62bb
+VSHIM=$(mktemp -d)
+verdict() { # COMMENTS_FIXTURE REVIEWS_FIXTURE [VAR=value ...]
+  local c="$1" r="$2"; shift 2
+  cat > "$VSHIM/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/issues/"*"/comments"*) [ "$c" = __FAIL__ ] && exit 1; cat "$FIX/$c" ;;
+  *"/pulls/"*"/reviews"*)   [ "$r" = __FAIL__ ] && exit 1; cat "$FIX/$r" ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+  chmod +x "$VSHIM/gh"
+  env PATH="$VSHIM:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" \
+    PUSH_TIME=2020-01-01T00:00:00Z CODEX_GRACE=30 "$@" \
+    bash "$SCRIPTS/codex-head-verdict.sh" 2>/dev/null
+}
+vf() { jq -r "$1" <<<"$v" 2>/dev/null; }
+
+v=$(verdict issue-comments-codex-summary-completed.json pr-reviews-codex-head.json)
+is "Completed on HEAD + HEAD review -> findings"        "$(vf .verdict)" findings
+is "Completed on HEAD + HEAD review -> that review id"  "$(vf .head_review_id)" 5427206208
+is "Completed on HEAD -> summary_state completed"       "$(vf .summary_state)" completed
+is "Completed on HEAD -> summary_sha"                   "$(vf .summary_sha)" 95ab2f6
+is "Completed on HEAD -> no fallback"                   "$(vf .fallback)" null
+
+# The lookalike-login review on HEAD must not turn a pass into findings.
+v=$(verdict issue-comments-codex-summary-completed.json pr-reviews-codex-prior-only.json)
+is "Completed on HEAD, no HEAD review -> clean"         "$(vf .verdict)" clean
+is "spoofed codex-lookalike review on HEAD is ignored"  "$(vf .head_review_id)" null
+
+v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json)
+is "Running on HEAD -> in_progress"                     "$(vf .verdict)" in_progress
+v=$(verdict issue-comments-codex-summary-failed.json pr-reviews-codex-prior-only.json)
+is "Failed on HEAD -> failed"                           "$(vf .verdict)" failed
+
+# Completed, but for the previous commit: Codex has not judged HEAD yet.
+v=$(verdict issue-comments-codex-summary-stale-sha.json pr-reviews-codex-prior-only.json)
+is "Completed on another SHA -> none"                   "$(vf .verdict)" none
+is "Completed on another SHA -> summary_sha kept"       "$(vf .summary_sha)" 03a3e71
+
+# Edit history: a stale summary still says Running on HEAD, the live one was
+# edited to Completed, and a newer lookalike-login comment claims Failed.
+v=$(verdict issue-comments-codex-summary-edited.json pr-reviews-codex-prior-only.json)
+is "edited summary -> newest real comment wins (clean)" "$(vf .verdict)" clean
+
+# Unparseable summary: never clean; hand the caller to review-id polling.
+v=$(verdict issue-comments-codex-summary-unparseable.json pr-reviews-codex-prior-only.json)
+is "unparseable summary -> unknown, not clean"          "$(vf .verdict)" unknown
+is "unparseable summary -> summary_state unparsed"      "$(vf .summary_state)" unparsed
+is "unparseable summary -> review-id poll fallback"     "$(vf .fallback)" review_id_poll
+v=$(verdict issue-comments-codex-summary-unknown-status.json pr-reviews-codex-prior-only.json)
+is "unknown status word -> unknown, not clean"          "$(vf .verdict)" unknown
+is "unknown status word -> review-id poll fallback"     "$(vf .fallback)" review_id_poll
+
+# No summary comment at all: the HEAD review alone still decides findings.
+v=$(verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json)
+is "no summary -> unknown"                              "$(vf .verdict)" unknown
+is "no summary -> summary_state absent"                 "$(vf .summary_state)" absent
+is "no summary -> review-id poll fallback"              "$(vf .fallback)" review_id_poll
+v=$(verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-head.json)
+is "no summary + HEAD review -> findings"               "$(vf .verdict)" findings
+
+# gh failure is its own verdict with a non-zero exit, never an empty "clean".
+v=$(verdict __FAIL__ pr-reviews-codex-head.json); v_rc=$?
+is "comments fetch failure -> verdict error"            "$(vf .verdict)" error
+is "comments fetch failure -> exit 1"                   "$v_rc" 1
+v=$(verdict issue-comments-codex-summary-completed.json __FAIL__); v_rc=$?
+is "reviews fetch failure -> verdict error"             "$(vf .verdict)" error
+is "reviews fetch failure -> exit 1"                    "$v_rc" 1
+
+# One wait formula for every caller: max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age).
+v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json)
+is "old push -> wait is CODEX_GRACE"                    "$(vf .wait_seconds)" 30
+recent=$(jq -nr 'now - 100 | strftime("%Y-%m-%dT%H:%M:%SZ")')
+v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
+is "push 100s ago -> wait is timeout - age (~500)" \
+   "$(vf '.wait_seconds >= 495 and .wait_seconds <= 500')" true
+v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME= CODEX_PREFLIGHT_TIMEOUT=600)
+is "no push time -> age 0 -> full timeout"              "$(vf .wait_seconds)" 600
+v=$(verdict __FAIL__ __FAIL__ PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
+is "gh failure still reports the wait budget" \
+   "$(vf '.wait_seconds >= 495 and .wait_seconds <= 500')" true
+
+# The grace poll now runs under the full Codex wait budget on every gate, so it
+# must end as soon as Codex passes HEAD instead of sleeping out up to 600s.
+# Unreadable summaries keep it on plain review-id polling (watchdog kill = 143).
+pollv() { # COMMENTS_FIXTURE
+  cat > "$VSHIM/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/issues/"*"/comments"*) cat "$FIX/$1" ;;
+  *"/pulls/"*"/reviews"*)   cat "$FIX/pr-reviews-codex-prior-only.json" ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+  chmod +x "$VSHIM/gh"
+  run_capped 4 env PATH="$VSHIM:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" \
+    PROCESSED='[5426830676]' INTERVAL=1 bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null
+}
+g=$(pollv issue-comments-codex-summary-completed.json); g_rc=$?
+is "grace poll: Completed clean on HEAD -> ends at once"   "$g_rc" 0
+is "grace poll: Completed clean on HEAD -> verdict clean"  "$(jq -r '.verdict' <<<"$g" 2>/dev/null)" clean
+is "grace poll: Completed clean on HEAD -> no review id"   "$(jq -r '.codex_review_id' <<<"$g" 2>/dev/null)" null
+g=$(pollv issue-comments-codex-summary-failed.json); g_rc=$?
+is "grace poll: Failed on HEAD -> ends with verdict failed" "$g_rc:$(jq -r '.verdict' <<<"$g" 2>/dev/null)" 0:failed
+g=$(pollv issue-comments-codex-summary-unparseable.json); g_rc=$?
+is "grace poll: unparseable summary -> keeps review-id polling" "$g_rc:$g" "143:"
+g=$(pollv issue-comments-codex-summary-running.json); g_rc=$?
+is "grace poll: Running on HEAD -> keeps waiting"          "$g_rc:$g" "143:"
+rm -rf "$VSHIM"
+
+echo
 echo "engagement-gate.sh"
 
 # CR does NOT post a new comment when a re-review finds nothing — it EDITS its
@@ -1043,6 +1163,69 @@ rlp=$(PATH="$FSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 \
 is "poll: 'Review rate limited' success -> rate_limited" "$(jq -r '.state' <<<"$rlp" 2>/dev/null)" rate_limited
 rm -rf "$FSHIM"
 
+# Codex HEAD verdict inside pre-flight (codex-head-verdict.sh). CR_ROW picks the
+# CodeRabbit status row: success | pending | ratelimited.
+pfv() { # CR_ROW COMMENTS_FIXTURE REVIEWS_FIXTURE [VAR=value ...]
+  local row="$1" c="$2" r="$3"; shift 3
+  # Prior-SHA reviews in the fixtures were handled on earlier iterations.
+  local d; d=$(mktemp -d); echo '{"codex_processed_reviews":[555,5426830676]}' > "$d/state.json"
+  local st='[{"context":"CodeRabbit","state":"success","description":"Review completed","target_url":"","created_at":"2020-01-01T00:00:00Z"}]'
+  [ "$row" = pending ] && st='[{"context":"CodeRabbit","state":"pending","description":"Review in progress","target_url":"","created_at":"2020-01-01T00:00:00Z"}]'
+  [ "$row" = ratelimited ] && st='[{"context":"CodeRabbit","state":"success","description":"Review limit reached","target_url":"","created_at":"2020-01-01T00:00:00Z"}]'
+  cat > "$d/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*) echo '$st' ;;
+  *"/check-runs"*) echo '{"check_runs":[]}' ;;
+  *"/issues/"*"/comments"*) cat "$FIX/$c" ;;
+  *"/issues/"*"/reactions"*) echo '[]' ;;
+  *"/pulls/"*"/reviews"*) cat "$FIX/$r" ;;
+  *"/pulls/"*) echo '{"head":{"sha":"$CHEAD"}}' ;;
+  *) echo "unknown gh args: \$*" >&2; exit 1 ;;
+esac
+SH
+  chmod +x "$d/gh"
+  env PATH="$d:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" \
+    PUSH_TIME=2020-01-01T00:00:00Z STATE_FILE="$d/state.json" CODEX_GRACE=30 "$@" \
+    bash "$SCRIPTS/pre-flight.sh" 2>/dev/null
+  rm -rf "$d"
+}
+pg() { jq -r "$1" <<<"$pf" 2>/dev/null; }
+
+# Running on HEAD long past the timeout: the old timeout path called this clean.
+pf=$(pfv success issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json)
+is "pre-flight: Running on HEAD past timeout -> codex_wait, not proceed" "$(pg .gate)" codex_wait
+is "pre-flight: Running on HEAD -> codex_verdict in_progress"          "$(pg .codex_verdict)" in_progress
+
+# Completed without a HEAD review: Codex passed HEAD.
+pf=$(pfv success issue-comments-codex-summary-completed.json pr-reviews-codex-none.json)
+is "pre-flight: Completed clean on HEAD -> proceed"                    "$(pg .gate)" proceed
+is "pre-flight: Completed clean on HEAD -> codex_state clean"          "$(pg .codex_state)" clean
+
+# Unparseable summary is never clean, even past the timeout.
+pf=$(pfv success issue-comments-codex-summary-unparseable.json pr-reviews-codex-none.json)
+is "pre-flight: unparseable summary -> codex_wait (review-id poll)"    "$(pg .gate)" codex_wait
+is "pre-flight: unparseable summary -> codex_state arriving"           "$(pg .codex_state)" arriving
+
+# Completed on a previous SHA: Codex has not judged HEAD -> not clean.
+pf=$(pfv success issue-comments-codex-summary-stale-sha.json pr-reviews-codex-prior-only.json)
+is "pre-flight: summary on another SHA -> codex_wait"                  "$(pg .gate)" codex_wait
+
+# The Codex wait budget is one formula whatever the gate.
+recent=$(jq -nr 'now - 100 | strftime("%Y-%m-%dT%H:%M:%SZ")')
+waits=""
+for row in success pending ratelimited; do
+  pf=$(pfv "$row" issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json \
+         PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
+  waits="$waits $(pg .gate):$(pg '.codex_wait_seconds >= 495 and .codex_wait_seconds <= 500')"
+done
+is "pre-flight: every gate carries the same Codex wait budget" \
+   "$waits" " codex_wait:true cr_wait:true rate_limited:true"
+pf=$(pfv success issue-comments-codex-summary-completed.json pr-reviews-codex-none.json \
+       PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
+is "pre-flight: proceed gate carries the same Codex wait budget" \
+   "$(pg '.gate + ":" + (.codex_wait_seconds >= 495 and .codex_wait_seconds <= 500 | tostring)')" "proceed:true"
+
 echo
 echo "SKILL.md snippet contracts (mirror SKILL.md and references/run-blocks.md blocks)"
 
@@ -1140,37 +1323,31 @@ fb=$(printf '2.9.0\t/a\n2.10.0\t/b\n' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 
 is "fallback sort: 2.10.0 outranks 2.9.0" "$fb" "/b"
 rm -rf "$RS"
 
-# Step 6b grace-cap selection: the bypass path (CR_SOURCE cli/codex-only) skips
-# Step 5 pre-flight, so $pf is UNSET. Reading `<<<"$pf"` unconditionally aborts
-# it under set -u; pf_remaining matters only for gate=codex_wait, so $pf is read
-# only under that gate. RED against the bare read by construction. (Codex P2 iter 8)
-gc_rc=0; gcap=$(bash -euo pipefail -c '
-  gate=bypass; CODEX_GRACE=30
-  if [ "$gate" = "codex_wait" ]; then
-    pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
-    push_age=$(jq -r ".push_age_seconds // 0" <<<"$pf")
-    pf_remaining=$(( pf_timeout - push_age )); [ "$pf_remaining" -lt 0 ] && pf_remaining=0
-    [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
-  else
-    grace_cap="$CODEX_GRACE"
-  fi
-  printf "%s" "$grace_cap"') || gc_rc=$?
-is "grace-cap bypass: unset pf survives errexit" "$gc_rc" 0
-is "grace-cap bypass: falls back to CODEX_GRACE" "$gcap" 30
-# codex_wait path still consults pre-flight remaining when it is the larger budget;
-# $pf is guaranteed set there (Step 5 populated it), read bare — no fragile default.
-gcap2=$(bash -euo pipefail -c '
-  gate=codex_wait; CODEX_GRACE=30; pf="{\"push_age_seconds\":100}"
-  if [ "$gate" = "codex_wait" ]; then
-    pf_timeout=${CODEX_PREFLIGHT_TIMEOUT:-600}
-    push_age=$(jq -r ".push_age_seconds // 0" <<<"$pf")
-    pf_remaining=$(( pf_timeout - push_age )); [ "$pf_remaining" -lt 0 ] && pf_remaining=0
-    [ "$pf_remaining" -gt "$CODEX_GRACE" ] && grace_cap="$pf_remaining" || grace_cap="$CODEX_GRACE"
-  else
-    grace_cap="$CODEX_GRACE"
-  fi
-  printf "%s" "$grace_cap"')
-is "grace-cap codex_wait: pre-flight remaining wins" "$gcap2" 500
+# Step 6b grace cap. Mirrors the Step 6b block in references/codex-state-machine.md.
+# One budget on every gate, max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age),
+# from codex-head-verdict.sh. It used to be CODEX_GRACE alone on cr_wait / bypass,
+# so a Codex review still running when CR finished was cut off after 30s. The
+# block never reads $pf: the bypass path (cli / codex-only) has none, and a bare
+# `<<<"$pf"` aborts it under set -u. gh fails here on purpose: the budget must
+# survive a verdict error. (Codex P2 iter 8; ticket #287)
+GCSHIM=$(mktemp -d)
+printf '#!/usr/bin/env bash\nexit 1\n' > "$GCSHIM/gh"; chmod +x "$GCSHIM/gh"
+recent=$(jq -nr 'now - 100 | strftime("%Y-%m-%dT%H:%M:%SZ")')
+gcaps=""
+for g in bypass cr_wait codex_wait; do
+  gc_rc=0; gcap=$(env PATH="$GCSHIM:$PATH" SKILL_DIR="$HERE/.." gate="$g" PUSH_TIME="$recent" \
+    bash -euo pipefail -c '
+    OWNER=o REPO=r PR_NUM=42 CUR_SHA=deadbeef CODEX_GRACE=30
+    hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" PUSH_TIME="$PUSH_TIME" \
+         CODEX_GRACE="$CODEX_GRACE" bash "$SKILL_DIR/scripts/codex-head-verdict.sh" 2>/dev/null) \
+      || echo "warn: Codex HEAD verdict unavailable (gh error); the wait budget still applies" >&2
+    grace_cap=$(jq -r ".wait_seconds // empty" <<<"$hv"); [ -n "$grace_cap" ] || grace_cap="$CODEX_GRACE"
+    printf "%s" "$grace_cap"' 2>/dev/null) || gc_rc=$?
+  gcaps="$gcaps $g:$gc_rc:$([ "${gcap:-0}" -ge 495 ] && [ "${gcap:-0}" -le 500 ] && echo ok || echo "$gcap")"
+done
+is "grace-cap: same budget on every gate, errexit-safe without \$pf" \
+   "$gcaps" " bypass:0:ok cr_wait:0:ok codex_wait:0:ok"
+rm -rf "$GCSHIM"
 
 # Step 13 convergence ladder. Mirrors the Step 13 block in references/run-blocks.md. The churn test
 # must be guarded by judged_this_cycle > 0, or an iteration with NO findings

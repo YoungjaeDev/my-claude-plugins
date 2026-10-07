@@ -82,7 +82,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    npx playwright init-agents --loop=claude
    ```
    - **Verify the actual output**: list what init-agents wrote (it prints one path per line; or `git status --porcelain -uall`, plus `--ignored` if nothing shows) and use those paths from here on. Expect, by role rather than by filename:
-     - the planner / generator / healer agent definitions (under `.claude/agents/` for the claude loop); `e2e-author` / `e2e-debug` dispatch them by the names init-agents gave them.
+     - the planner / generator / healer agent definitions (under `.claude/agents/` for the claude loop); `e2e-author` / `e2e-debug` dispatch them as `playwright-test-planner`, `playwright-test-generator` and `playwright-test-healer`. If init-agents named them differently, stop and report the names it wrote: the later skills would not find them.
      - `.mcp.json`: MCP config for the `playwright-test` server. **Confirm it exists**; if it is missing, merge it with the recipe below.
      - the environment seed the planner runs first (`seed.spec.ts`, wherever init-agents put it) and the test-plan directory (`specs/`).
 

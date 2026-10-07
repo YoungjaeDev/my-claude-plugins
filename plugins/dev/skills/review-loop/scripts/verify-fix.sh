@@ -16,7 +16,16 @@ set -euo pipefail
 
 # Tree paths are repo-relative; the loop already runs at the root (Step 2).
 cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-run_cmd() { bash -c "$1" >&2; }
+# VERIFY_CMD runs on a copy of the index: a command that stages (`git add -A`) would
+# otherwise stage unrelated user changes, and the next commit would carry them.
+run_cmd() {
+  local idx real rc=0
+  idx=$(mktemp); real=$(git rev-parse --git-path index)
+  if [ -f "$real" ]; then cp "$real" "$idx"; else rm -f "$idx"; fi
+  GIT_INDEX_FILE="$idx" bash -c "$1" >&2 || rc=$?
+  rm -f "$idx"
+  return "$rc"
+}
 
 # Write the working tree as a tree object through a temp index seeded from the real one.
 tree_of_worktree() {

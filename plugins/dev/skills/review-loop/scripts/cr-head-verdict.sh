@@ -31,7 +31,10 @@ comments=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2>/dev
   .[0] as $reviews | .[1] as $comments
   | def cr: (.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i");
   def not_notice: (.body // "") | test($n; "i") | not;
-  [ $reviews[] | select(cr and .commit_id == $h and not_notice) ] as $on_head
+  # A real review always carries its actionable count; a notice never does. Without
+  # this, a review quoting a notice phrase (code that matches on it) was dropped.
+  def review_or_not_notice: ((.body // "") | test("Actionable comments posted:"; "i")) or not_notice;
+  [ $reviews[] | select(cr and .commit_id == $h and review_or_not_notice) ] as $on_head
   | if ($on_head | length) > 0 then
       # An unreadable count still means CR reviewed HEAD; the threads say what.
       if all($on_head[]; (.body // "") | test("Actionable comments posted:\\s*0\\b"; "i"))

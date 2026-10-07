@@ -1041,6 +1041,11 @@ is "walkthrough with HEAD only as range base -> none" \
 jq --arg h "$HEAD_SHA" '.[0].commit_id = $h | .[0].body = "<!-- This is an auto-generated comment: rate limited by coderabbit.ai -->\nReview rate limited"' \
   "$FIX/pr-reviews-cr-older-commit.json" > "$HV/head-rl.json"
 is "rate-limit notice on HEAD is not a verdict -> none" "$(hv "$HV/head-rl.json")" none
+# A real review that quotes a notice phrase (reviewing code that matches on it) is
+# still a review: it carries the actionable count a notice never has.
+jq --arg h "$HEAD_SHA" '.[0].commit_id = $h | .[0].body = "**Actionable comments posted: 2**\n\nThe matcher misses `Review rate limited`."' \
+  "$FIX/pr-reviews-cr-older-commit.json" > "$HV/head-quotes-notice.json"
+is "review on HEAD quoting a notice phrase -> findings" "$(hv "$HV/head-quotes-notice.json")" findings
 # Could not look is not "no verdict": exit non-zero with nothing on stdout.
 out=$(HV_REVIEWS=/nonexistent PATH="$HV:$PATH" bash "$SCRIPTS/cr-head-verdict.sh" o r 42 "$HEAD_SHA" 2>/dev/null); rc=$?
 is "reviews fetch failure -> non-zero exit" "$([ "$rc" -ne 0 ] && echo yes || echo no)" yes
@@ -2010,6 +2015,16 @@ snap=$(vfx snapshot); printf 'staged fix\n' > "$VF/a.sh"; printf '%s\0' a.sh >> 
 is "fix staged by the verify command -> pass" "$(vfx check "$snap" 'git add -A')" pass
 is "fix already in the index is still committed" \
    "$(cd "$VF" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK" 3 2>/dev/null | tail -1)" staged:1
+# The verify command runs on a throwaway index: its `git add -A` must not stage an
+# unrelated file into the real index, where the next commit would pick it up.
+printf 'user wip\n' > "$VF/wip.txt"
+vfx baseline 'git add -A' >/dev/null
+is "baseline's git add -A leaves the real index alone" \
+   "$(cd "$VF" && git diff --cached --name-only | tr '\n' ' ')" ""
+snap=$(vfx snapshot); printf 'fix 4\n' > "$VF/a.sh"
+vfx check "$snap" 'git add -A' >/dev/null
+is "check's git add -A leaves the real index alone" \
+   "$(cd "$VF" && git diff --cached --name-only | tr '\n' ' ')" ""
 rm -rf "$VF" "$TRK"
 
 echo

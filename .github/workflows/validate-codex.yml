@@ -56,6 +56,12 @@ jobs:
       # review never sees them. The step runs its own RED/GREEN fixtures before the
       # scan — a guard that silently stopped detecting fails instead of passing.
       - run: node scripts/check-skill-contract.mjs
+      # Version-bump helper: computes versions from the base ref so parallel PRs stop
+      # conflicting on version lines. Selftest runs in a throwaway git repo.
+      - run: node scripts/bump-version.mjs --selftest
+      # SessionStart hook (plugin cache lag + core.hooksPath). Fixture cache and
+      # throwaway repos only, so the result does not depend on the runner.
+      - run: node scripts/check-plugin-cache.mjs --selftest
 
   # The BSD fallbacks the suite is full of can only be proven on a BSD userland.
   # Without this leg every `stat -c || stat -f` and `date -d || date -j` branch is

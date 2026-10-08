@@ -37,6 +37,10 @@ node "$repo_root/scripts/check-shell-portability.test.mjs"
 # `<plugin>:<skill>` reference to a skill that no longer exists. Runs its own RED/GREEN
 # fixtures first, so a detector that stopped detecting fails here too.
 node "$repo_root/scripts/check-skill-contract.mjs"
+# Helper selftests: bump-version against a throwaway repo, the SessionStart hook
+# against a fixture cache and throwaway repos. Neither reads ~/.claude or global git config.
+node "$repo_root/scripts/bump-version.mjs" --selftest
+node "$repo_root/scripts/check-plugin-cache.mjs" --selftest
 # Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
 # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
 node "$repo_root/scripts/check-skill-prose.mjs" || true

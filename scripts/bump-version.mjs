@@ -34,12 +34,12 @@ const next = (v, level) => {
 };
 
 /** Returns the change lines; throws on an unknown plugin or an unreadable base. */
-function bump(root, names, level, base) {
+function bump(root, names, level, base, env = process.env) {
   const read = (rel) => JSON.parse(readFileSync(join(root, rel), 'utf8'));
   const save = (rel, obj) => writeFileSync(join(root, rel), JSON.stringify(obj, null, 2) + '\n');
   const atBase = (rel) => {
     try {
-      return JSON.parse(execFileSync('git', ['-C', root, 'show', `${base}:${rel}`], { stdio: ['ignore', 'pipe', 'pipe'] }).toString());
+      return JSON.parse(execFileSync('git', ['-C', root, 'show', `${base}:${rel}`], { env, stdio: ['ignore', 'pipe', 'pipe'] }).toString());
     } catch (err) {
       if (rel === MARKET) throw new Error(`cannot read ${base}:${rel}: ${String(err.stderr || err.message).trim()}`);
       return null; // plugin added on this branch: no base version to bump past
@@ -73,6 +73,8 @@ function selftest() {
   // The pre-commit hook exports GIT_INDEX_FILE / GIT_DIR; a throwaway repo must not inherit them.
   const env = { ...process.env };
   for (const k of Object.keys(env)) if (k.startsWith('GIT_')) delete env[k];
+  // No global/system git config, so a local commit.gpgsign or hook cannot change the result.
+  Object.assign(env, { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' });
   const git = (...a) => execFileSync('git', ['-C', dir, ...a], { env, stdio: ['ignore', 'pipe', 'pipe'] }).toString();
   const write = (rel, obj) => {
     mkdirSync(join(dir, rel, '..'), { recursive: true });
@@ -101,20 +103,20 @@ function selftest() {
     commit('sibling');
     git('checkout', '-q', 'main');
 
-    bump(dir, ['a'], 'patch', 'main');
+    bump(dir, ['a'], 'patch', 'main', env);
     expect('patch bump', '2.60.0 a=5.0.6/5.0.6 b=1.0.0');
-    bump(dir, ['a'], 'patch', 'main');
+    bump(dir, ['a'], 'patch', 'main', env);
     expect('idempotent re-run', '2.60.0 a=5.0.6/5.0.6 b=1.0.0');
-    bump(dir, ['a'], 'minor', 'main');
+    bump(dir, ['a'], 'minor', 'main', env);
     expect('minor over an earlier patch', '2.60.0 a=5.1.0/5.1.0 b=1.0.0');
-    bump(dir, ['a'], 'patch', 'ahead');
+    bump(dir, ['a'], 'patch', 'ahead', env);
     expect('base moved ahead', '2.61.0 a=5.1.4/5.1.4 b=1.0.0');
-    bump(dir, ['a'], 'patch', 'main');
+    bump(dir, ['a'], 'patch', 'main', env);
     expect('never lower than the branch', '2.61.0 a=5.1.4/5.1.4 b=1.0.0');
-    bump(dir, ['a', 'b'], 'major', 'main');
+    bump(dir, ['a', 'b'], 'major', 'main', env);
     expect('several plugins, major', '2.61.0 a=6.0.0/6.0.0 b=2.0.0');
     let threw = false;
-    try { bump(dir, ['nope'], 'patch', 'main'); } catch { threw = true; }
+    try { bump(dir, ['nope'], 'patch', 'main', env); } catch { threw = true; }
     if (!threw) failures.push('unknown plugin was accepted');
   } catch (err) {
     failures.push(`setup: ${err.message}`);

@@ -86,6 +86,10 @@ function selftest() {
   const tmp = mkdtempSync(join(tmpdir(), 'plugin-cache-'));
   const env = { ...process.env };
   for (const k of Object.keys(env)) if (k.startsWith('GIT_')) delete env[k];
+  // Same result on every machine: no global/system git config (a global core.hooksPath
+  // would fake the "unset" case), and the cache is always a fixture, never ~/.claude.
+  Object.assign(env, { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' });
+  delete env.CLAUDE_CODE_PLUGIN_CACHE_DIR;
   const repo = (name, hooksPath) => {
     const dir = join(tmp, name);
     mkdirSync(dir);

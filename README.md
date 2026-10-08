@@ -41,7 +41,7 @@ PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 만들기처럼 손이 �
 /dev:flow
 ```
 
-**You should see:** 슬래시 메뉴에 `/dev:` 로 시작하는 스킬이 뜨고 `/dev:flow` 가 지금 단계에서 부를 스킬을 알려 준다. 메뉴에 없으면 Claude Code 를 재시작하고, 그래도 옛 버전이 뜨면 [업데이트](#업데이트)의 캐시 삭제 절차를 따른다.
+**You should see:** 슬래시 메뉴에 `/dev:` 로 시작하는 스킬이 뜨고 `/dev:flow` 가 지금 단계에서 부를 스킬을 알려 준다. 메뉴에 없으면 Claude Code 를 재시작한다. 그래도 옛 버전이 뜨면 [업데이트](#업데이트)의 캐시 삭제 절차를 따른다.
 
 ## 플러그인 목록
 
@@ -382,6 +382,9 @@ git config core.hooksPath .githooks   # clone 당 1회
 - `check-doc-consistency.mjs`: README 구조 트리·`## 플러그인 상세` 의 `<summary>` 이름 집합·AGENTS `## Plugins` 표·배지와 카운트 문자열이 `marketplace.json` 과 일치하는지 본다. 트리와 `<details>` 는 같은 문서의 다른 표면이라 둘 다 대조한다.
 - `check-shell-portability.mjs`: GNU 전용 셸 구문 (`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등) 이 폴백도 capability probe 도 없이 쓰인 경우를 차단한다. `||` 는 우변에 BSD 대응물이 있을 때만 폴백으로 보고 probe 도 대응물과 짝일 때만 인정한다. BSD 대응물이 없는 구문 (`grep -P`·`timeout`·bash 4 문법) 은 `# portability-ok: <사유>` 명시 예외만 받는다 (사유 필수). 판정은 정규식이 아니라 셸 워드 토크나이저로 한다. 그래서 GNU 긴 옵션 (`--perl-regexp`·`--date`·`--in-place`) 도 잡고 인용 문자열과 `command -v` 인자, `case` 패턴은 호출로 세지 않는다. 스캔 대상은 `*.sh`·`*.bash`·`*.md` 의 bash 펜스와 shebang 이 sh/bash 인 확장자 없는 tracked 파일이다. 회귀 케이스 30건 (`check-shell-portability.test.mjs`) 이 함께 돈다.
 - `check-skill-contract.mjs`: Claude Code 나 Codex 중 한쪽에서만 조용히 깨지는 스킬 위반을 차단한다. 대상은 `description` 1024자 초과, 인용 없는 `: `, resolver 없는 펜스 블록의 bare `${CLAUDE_PLUGIN_ROOT}`, 비-kebab `name`, byte 0 에서 시작하지 않는 frontmatter, `name` 과 디렉터리명 불일치다. stale 스킬 참조도 막는다: git 이 추적하는 live 파일에서 이 marketplace 플러그인 이름으로 시작하는 `<plugin>:<skill>` 참조(슬래시 형태 포함)가 없는 스킬을 가리키면 실패한다. 과거 기록 폴더(`docs/audit`·`docs/prd`·`docs/superpowers`·`.claude/spec`)와 `.llmwiki` 는 검사하지 않는다. 그 밖의 파일은 change log 안이라도 지운 스킬을 `<plugin>:<skill>` 형태가 아니라 산문으로 적는다 (예외는 ml 참조 문서 머리의 `Migrated from` 출처 줄 1개). 외부 플러그인(Matt 등) 이름은 대상이 아니다. 스캔 전에 RED/GREEN 픽스처를 먼저 돌린다.
+- `bump-version.mjs --selftest`: 버전 범프 도우미가 base 기준으로 계산하는지, 다시 돌리면 아무것도 바꾸지 않는지, base 를 앞지르는지 임시 git 저장소에서 확인한다.
+- `check-plugin-cache.mjs --selftest`: SessionStart 훅의 캐시 지연 경고와 `core.hooksPath` 경고를 가짜 캐시와 임시 저장소로 확인한다.
+- `check-korean-copy.mjs`: README.md 의 번역투를 차단한다. 기준은 `plugins/deck/templates/rules/deck-copy.md` 의 `### 금지 표기` 표 (실행 시점에 읽는다), 연결어미 뒤 쉼표, 개수 자리의 고유어 수사다. 코드 펜스·인라인 코드·HTML 태그 밖의 글자만 보고 덱 전용 행 (슬라이드 라벨·강사 소개) 은 허용 목록으로 건너뛴다. 스캔 전에 RED/GREEN 픽스처를 먼저 돌린다.
 - `check-skill-prose.mjs`: 500줄 초과와 깊은 참조 경로를 정보성으로 경고한다 (비차단).
 
 픽스처 스위트 2개도 같은 자리에서 돈다. `plugins/dev/skills/review-loop/tests/run-tests.sh` 는 1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로를, `plugins/council/skills/convene/tests/run-tests.sh` 는 스킬 본문에만 있는 codex / agy 호출 계약을 검사한다. BSD 폴백이 실제로 실행되는 곳은 macOS CI 레그뿐이며 이 레그는 `/bin/bash` 로 bash 3.2 를 강제한다. 가드는 소스를 자동 수정하지 않는다.

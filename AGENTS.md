@@ -60,7 +60,7 @@
 
 ## 플러그인 변경 규칙
 
-- 버전을 올릴 때는 `plugins/<name>/.claude-plugin/plugin.json` 과 `.claude-plugin/marketplace.json` 의 해당 항목을 같은 변경에 포함한다. 어떤 플러그인 버전이든 바뀌면 `metadata.version` 도 올린다.
+- 버전을 올릴 때는 `plugins/<name>/.claude-plugin/plugin.json` 과 `.claude-plugin/marketplace.json` 의 해당 항목을 같은 변경에 포함한다. 어떤 플러그인 버전이든 바뀌면 `metadata.version` 도 올린다. 손으로 고치지 말고 `node scripts/bump-version.mjs <plugin>... [--minor|--major]` 로 올린다: `origin/main` 기준으로 계산하므로 다시 돌려도 같은 값이고, 병렬 PR 의 버전 줄 충돌은 높은 쪽을 고른 뒤 다시 돌리면 풀린다.
 - `plugins/<name>/` 아래 어떤 파일이든 바뀌면 버전 범프 대상이다 (`references/`·asset 편집 포함). 캐시로 게이트된 사용자는 범프가 있어야 새 내용을 받는다. 루트 문서(`AGENTS.md`, `README.md`, `code_review.md`, `.claude/rules/*`)는 어떤 플러그인도 범프하지 않는다.
 - per-plugin `version` 은 semver (PATCH 수정 / MINOR 기능 / MAJOR 깨짐). `metadata.version` 은 릴리스 카운터라 플러그인 제거처럼 깨지는 변경이어도 MINOR 로 올린다. 리뷰어가 이를 "MAJOR" 로 지적하면 오탐이며 근거는 `.claude/rules/plugin-versioning.md` 다. 이름이 바뀐 플러그인은 새 엔트리이므로 1.0.0 부터 시작한다.
 - 스킬을 다른 번들로 흡수할 때는 배선이 아니라 흡수된 스킬 본문을 먼저 감사한다. 깨지는 것은 스킬이 자기를 옛 플러그인 소속으로 아는 부분이다: Codex 캐시를 `*/<옛-플러그인>/*` 로 훑는 resolver, 네임스페이스 없는 `/skill-name` 예제, 흡수처 버전 미범프. 옮긴 트리에서 옛 플러그인명을 grep 해 확인한다.

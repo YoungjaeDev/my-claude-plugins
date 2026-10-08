@@ -16,9 +16,13 @@ chosen per job through the worker presets bundled in `plugins/dev/agents/`, beca
 tool overrides `model` per call but reads effort only from the agent definition
 (<https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields>, `#choose-a-model`).
 
-Codex has no `Agent` tool. There the skill degrades to inline work that still uses the job card as
-its checklist, and steps 4 to 7 read differently: with no worker to attribute, `isolation: worktree`
-and the branch check in step 5 do not apply. An inline run can still take the same isolation by hand
+On Codex, check whether subagent spawning is exposed in the session (the subagents page under
+<https://developers.openai.com/codex/llms.txt> describes it). Claude's `dev:worker-*` presets and
+`isolation: worktree` do not exist there, so the run is either Codex subagents with a hand-made
+`git worktree add` per writing slice, or, when no delegation tool is exposed, inline work that
+still uses the job card as its checklist. Inline, steps 4 to 7 read differently: with no worker to
+attribute, `isolation: worktree` and the branch check in step 5 do not apply. An inline run can
+still take the same isolation by hand
 — `git worktree add` per writing slice, then the identical step 5 command against that branch — and
 should when a slice is large enough that its scope is worth proving. Where it does not, the card's
 Paths bound the agent's own edits and the report names every path it wrote; that report is the
@@ -100,11 +104,16 @@ Preset:        which dev:worker-* and the one-clause reason
    reach the same transcript. Done when each card names its preset and the run names its structure.
 4. **Dispatch.** Independent slices go out in one message, in the background. Dependent slices wait
    for the result they consume. Before dispatching anything, check the main checkout for uncommitted
-   changes on a path any card owns or consults, and have the user commit them — not stash them,
-   which leaves `HEAD` where it was, so every worktree branches from a base that still lacks the
-   input. A worktree branches from a commit, so an edit that is not in one reaches neither the
-   workers nor the integration tree, and the run would verify a combination the user does not have.
-   Every slice that writes goes out with `isolation: worktree`. Before sending a card, check whether
+   changes on a path any card owns or consults, and have the user commit them — not stash them. A
+   worktree branches from a commit, so an edit that is not in one reaches neither the workers nor
+   the integration tree, and the run would verify a combination the user does not have. Which
+   commit an `isolation: worktree` branch starts from is a Claude Code setting, not a constant:
+   read <https://code.claude.com/docs/en/worktrees#choose-the-base-branch> and the `worktree.baseRef`
+   value in the settings files in effect. When that base would lack commits the cards depend on
+   (a feature branch, unpushed work), have the user set it to start from the current `HEAD`, or
+   create the worktrees by hand with `git worktree add` and dispatch into them without `isolation`.
+   Every slice that writes goes out with `isolation: worktree` or into such a hand-made worktree.
+   Before sending a card, check whether
    it consults anything git does not carry — a `.env`, a local fixture, an installed `node_modules`:
    a fresh worktree has none of it, which is the same property that keeps the user's secrets out of
    a worker's reach. Supply those inputs into the worktree with the user's approval, or regenerate
@@ -126,11 +135,15 @@ Preset:        which dev:worker-* and the one-clause reason
    the main checkout's are the ones a worker will faithfully open, editing the user's files while
    its branch stays empty and the gate sees nothing. The card also tells the worker to commit its
    work on its branch before returning, and to make no merge commits; work left uncommitted in a
-   worktree is invisible to the check and never merges. Record the base each worktree branched from,
-   per slice: an independent slice branches from the `git rev-parse HEAD` taken before the first
-   dispatch, a dependent slice from the accepted branch of the slice it consumes, so its worker
-   reads and tests against that work instead of an interface that no longer exists. Record `git
-   worktree list` as the baseline for step 7. While agents run, the orchestrator prepares the
+   worktree is invisible to the check and never merges. Record the base each worktree actually
+   branched from, per slice, rather than assuming one: for an `isolation: worktree` branch,
+   `git merge-base <worker branch> <the ref the setting names>` (the remote default branch or the
+   `HEAD` dispatched from). A dependent slice starts from the accepted branch of the slice it
+   consumes, so its worker reads and tests against that work instead of an interface that no longer
+   exists; the setting cannot name a branch, so create that worktree by hand with
+   `git worktree add -b <name> <path> <accepted branch>` and record that branch's tip as its base.
+   Record `git worktree list` as the baseline for step 7. While agents run, the orchestrator
+   prepares the
    verification of step 6 instead of doing a worker's job in parallel. Done when the checkout was
    clean on every card's paths, every card has been sent with worktree-rooted paths, and every
    slice's base plus the worktree baseline are recorded.
@@ -218,7 +231,8 @@ Preset:        which dev:worker-* and the one-clause reason
 | `Workflow` refused or surprised the user | the run was description-triggered; `Workflow` needs the user's own `/dev:orchestrate` call or "ultracode" |
 | a worker edited a file no card owned | the writing slice went out without `isolation: worktree`, so its writes landed in the shared checkout where no branch attributes them and the gate had only the worker's self-report |
 | a worker's branch diff came back empty | the card never told it to commit; uncommitted work in a worktree is invisible to the step 5 check and never merges |
-| a dependent slice built against an interface that no longer exists | its worktree branched from the pre-dispatch HEAD instead of the accepted branch it consumes |
+| a dependent slice built against an interface that no longer exists | its worktree branched from the setting's default base instead of the accepted branch it consumes; that worktree has to be made by hand |
+| every slice's base looked wrong on a feature branch | the base was assumed to be `HEAD`; `isolation: worktree` starts from the `worktree.baseRef` setting, so read it and record each branch's actual merge-base |
 | integration broke only after the run ended | step 6 verified each worktree on its own instead of one tree with every accepted branch merged in |
 | an out-of-scope file reached history although the gate passed | the check used `git diff <base>...<branch>`, whose net tree hides a path the branch added and later deleted |
 | a worker edited the user's files and its branch stayed empty | the card went out with the main checkout's absolute paths instead of paths under that worker's worktree root |

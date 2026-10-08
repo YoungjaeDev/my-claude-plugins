@@ -38,7 +38,7 @@ Parse the invocation arguments manually:
 - `--edit`: local image path to use as the base to edit; the prompt describes the change. The output is always a **new** file in the output directory; the input is never overwritten.
 - `--ref`: local image path to attach as a style/character reference while generating an image whose subject/scene is otherwise **new**. `--edit` and `--ref` are mutually exclusive; if both are given, ask which one is meant.
 - `--model`: Codex model id, passed through as `codex exec -m <id>`. Omit to use Codex's own default model: that auto-tracks the latest model, so no model pin is maintained here. The value is passed through unvalidated against the built-in image tool, which does not document a model parameter — a model id meant for the API fallback may simply be ignored.
-- `--reasoning`: reasoning effort, passed through as `-c model_reasoning_effort="<effort>"` (`low`, `medium`, `high`, `xhigh`). Explicit opt-in only: image generation barely benefits from reasoning effort.
+- `--reasoning`: reasoning effort, passed through as `-c model_reasoning_effort="<effort>"`. The accepted levels depend on the model and change with Codex releases; read them from `codex debug models` (the model's `supported_reasoning_levels`). Explicit opt-in only: image generation barely benefits from reasoning effort.
 - `--sandbox`: Codex sandbox mode: `read-only`, `workspace-write` (default), or `danger-full-access`. Escalate only on explicit request. Pass `--dangerously-bypass-approvals-and-sandbox` only when the user explicitly asks.
 - Remaining text is the image prompt. If it is missing, ask for one concise image prompt.
 
@@ -61,12 +61,12 @@ Before generating:
 5. Validate size:
    - `auto` is valid.
    - For `WIDTHxHEIGHT`, both dimensions must be positive integers.
-   - Prefer Codex imagegen-compatible sizes: both edges multiples of 16, max edge <= 3840, aspect ratio <= 3:1, and total pixels from 655360 to 8294400.
+   - Both edges multiples of 16, max edge <= 3840, aspect ratio <= 3:1, and total pixels from 655360 to 8294400. These are the `gpt-image-2` constraints in the "gpt-image-2 guidance for CLI fallback" section of `${CODEX_HOME:-$HOME/.codex}/skills/.system/imagegen/SKILL.md`; the built-in tool states none, and size reaches it only as prompt text, so nothing downstream rejects a bad size. Keep this check as the guard; when that file lists different constraints, follow the file.
    - If the requested size fails these constraints, ask for a valid size instead of silently changing it.
 6. Validate quality and count. Do not silently downgrade quality or reduce count.
 7. Validate the passthrough overrides before they reach the shell; each is interpolated into the `codex exec` command line:
    - `--model`: must match `^[A-Za-z0-9._:-]+$`. Refuse any other value (a model id with shell metacharacters could be parsed as a separate command).
-   - `--reasoning`: must be one of `low`, `medium`, `high`, `xhigh`.
+   - `--reasoning`: must match `^[a-z]+$` (shell safety). When `--model` is given and `codex debug models` lists it, the value must also be one of that model's `supported_reasoning_levels`; otherwise pass it through and let Codex reject it.
    - `--sandbox`: must be one of `read-only`, `workspace-write`, `danger-full-access`.
    Do not silently drop or rewrite an invalid value; ask for a valid one, the same way size/quality are handled above.
 8. `--edit` / `--ref` also reach the shell, quoted into `-i "<path>"`. Confirm the resolved path is a plain file under the project. Refuse any value containing shell-command metacharacters (`` ` $ " ' ; | & < > ( ) ``), but **not** `\` or `:`, which are legitimate on Windows paths (backslash separator, drive letter). Never interpolate the raw value directly; pass it as a single quoted shell argument. Correct quoting, not blanket character exclusion, is what stops injection.
@@ -130,7 +130,7 @@ Attach `--edit` / `--ref` images with Codex CLI's `-i` option. It is a generic a
 codex exec - -i "<edit-or-ref-image-path>" -C "<project-root>" -s workspace-write ...
 ```
 
-`use case` is optional. When the request maps cleanly onto Codex's own imagegen taxonomy (`photorealistic-natural`, `product-mockup`, `ui-mockup`, `logo-brand`, `identity-preserve`, `precise-object-edit`, and siblings), naming the slug lets Codex apply its per-use-case tips.
+`use case` is optional. When the request maps cleanly onto Codex's own imagegen taxonomy, naming the slug lets Codex apply its per-use-case tips. Pick the slug from the "Use-case taxonomy" section of `${CODEX_HOME:-$HOME/.codex}/skills/.system/imagegen/SKILL.md`, which ships with the installed Codex; omit `use case` if that file is not readable.
 
 ## Prompt Quality
 
@@ -178,15 +178,15 @@ A `codex exec` turn keeps nothing. To revise the last result, pass its output pa
 
 ## Result Handling
 
-The built-in image tool always writes first to `${CODEX_HOME:-~/.codex}/generated_images/<session-id>/`. Copying the file into the requested output directory is an extra step the Codex session performs on instruction, and it can fail to happen on any platform — one known trigger is the Windows `codex exec` sandbox blocking shell spawns. Treat recovery as the normal path, not an error branch.
+The built-in image tool always writes first to `${CODEX_HOME:-$HOME/.codex}/generated_images/<session-id>/`. Copying the file into the requested output directory is an extra step the Codex session performs on instruction, and it can fail to happen on any platform — one known trigger is the Windows `codex exec` sandbox blocking shell spawns. Treat recovery as the normal path, not an error branch.
 
 After `codex exec` finishes:
 
 1. Check the output directory for the expected file(s).
-2. If one is missing, recover it. Each `codex exec` call is one session and prints `session id: <UUID>` near the top of its output; with `-n` or `--variants` there is one expected destination per generated image, so recover one source file per missing destination from the session that produced it, never one file into several destinations. Take the newest `*.png` under that session folder — do not pin a filename pattern, it varies by Codex version — and copy it into the output directory under the requested filename base, refusing to overwrite:
+2. If one is missing, recover it. Each `codex exec` call is one session; read its id from the `session id: <UUID>` line of the call's stderr banner. That banner is undocumented (the documented id is the `thread_id` of the `thread.started` event, which only `codex exec --json` emits, and the calls above do not pass `--json`), so when the line is missing, report the gap rather than guessing a session folder. With `-n` or `--variants` there is one expected destination per generated image, so recover one source file per missing destination from the session that produced it, never one file into several destinations. List the session folder's `*.png` files newest first — do not pin a filename pattern, it varies by Codex version — and give each missing destination a different file from that list, so an `-n` session never copies one image twice. Copy each into the output directory under the requested filename base, refusing to overwrite:
 
    ```bash
-   src=$(ls -t "${CODEX_HOME:-$HOME/.codex}/generated_images/<session-id>"/*.png 2>/dev/null | head -1)
+   src=$(ls -t "${CODEX_HOME:-$HOME/.codex}/generated_images/<session-id>"/*.png 2>/dev/null | sed -n "<k>p")   # k = 1 for the first missing destination, 2 for the next, ...
    [ -n "$src" ] || { echo "no image in session folder" >&2; exit 1; }
    dest="<output-dir>/<filename-base>.png"
    [ -e "$dest" ] && { echo "refusing to overwrite $dest" >&2; exit 1; }
@@ -195,5 +195,5 @@ After `codex exec` finishes:
 
    Never re-run generation because a copy failed. The image already exists; a second run bills a second generation.
 3. `Read` each file for review.
-4. Report saved path(s), size and quality requested, count requested versus produced, and any tool limitation Codex mentioned.
+4. Report saved path(s), size requested versus produced (read each file's pixel size: `sips -g pixelWidth -g pixelHeight <file>` on macOS, `file <file>` on Linux, and on Windows PowerShell `Add-Type -AssemblyName System.Drawing; $i = [System.Drawing.Image]::FromFile('<file>'); "$($i.Width)x$($i.Height)"; $i.Dispose()`), quality requested, count requested versus produced, and any tool limitation Codex mentioned.
 5. If generation itself failed, report the Codex CLI version, the error text, and the next concrete command for the user (`codex login`, a Codex update, or a retry at lower quality). Do not fabricate images or write placeholder files.

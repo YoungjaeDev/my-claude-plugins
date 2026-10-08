@@ -21,9 +21,10 @@ worse than a missing rule.
 The only trigger mechanism. It is loaded every turn for every skill, so it is the one part of a
 skill that always costs context. Rules:
 
-- **Under 1024 characters.** Codex silently skips a skill whose description exceeds this.
-  Claude Code has no such limit, so the violation is invisible from the Claude side.
-  `scripts/check-skill-contract.mjs` blocks it at commit time.
+- **Under 1024 characters.** Codex silently skips a skill whose description exceeds this (observed;
+  the cap is the Agent Skills spec's, the silent skip is documented nowhere). Claude Code truncates
+  long listing text instead of skipping, at the cap its skills doc states, so the Codex loss is
+  invisible from the Claude side. `scripts/check-skill-contract.mjs` blocks it at commit time.
 - **Quote the value if it contains a colon-space (`: `).** Unquoted, YAML parses
   `description: Do X: then Y` as a nested mapping and the file fails to load with
   `mapping values are not allowed here`. Use double quotes or a `>-` block scalar.
@@ -32,16 +33,21 @@ skill that always costs context. Rules:
 - **Keep non-English trigger phrases in their source language.** Translating the Korean triggers in
   a `description` breaks skill matching for the users who type them.
 
-## Optional fields, and what each runtime does with them
+## Optional fields: repo policy
 
-| Field | Claude Code | Codex | Use here |
-|---|---|---|---|
-| `allowed-tools` | pre-approves those tools for the invoking turn | ignored | allowed; see the portability note below |
-| `disable-model-invocation` | supported | **validation error unless `false`** | not in a Codex-eligible plugin |
-| `argument-hint` | shown in autocomplete | ignored | allowed, low value |
-| `version` | not a documented field | ignored | no-op — do not add |
-| `license` | accepted, no behavior | ignored | no-op here |
-| everything else in the Claude table | supported | mostly ignored | decide per field, record the evidence |
+What each field does on Claude Code is in the frontmatter reference of
+<https://code.claude.com/docs/en/skills.md>; the portable set is in
+<https://agentskills.io/specification.md>. Read those for behavior. This table holds only what no
+doc states: the policy this repo applies.
+
+| Field | Use here |
+|---|---|
+| `allowed-tools` | allowed; see the portability note below |
+| `disable-model-invocation` | not in a Codex-eligible plugin |
+| `argument-hint` | not in a Codex-eligible plugin; allowed, low value, in `codex-image` and `council` |
+| `version` | do not add; `plugin.json` owns versions |
+| `license` | no-op here |
+| any other documented field | add only when you can state its runtime effect from the doc, and record that evidence |
 
 ### `allowed-tools`
 
@@ -57,36 +63,38 @@ Works in Claude Code: it removes the description from Claude's context entirely 
 skill reachable only by typing `/name`. That makes it the sharpest available lever against
 always-on context cost for a workflow with side effects.
 
-It is unusable in a Codex-eligible plugin. The Codex plugin validator
-(`~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py`) rejects any value other than
-`false` or absent. Every plugin in this repo except `codex-image` and `council` is Codex-eligible,
-so in practice: do not set it to `true` here.
-
-`unverified` — whether the Codex **runtime loader** enforces the same rule, or only the authoring
-validator does. The validator's verdict is enough to keep the field out; do not extend the claim to
-"Codex skips the skill at load" without checking.
+Policy: do not set it to `true` in a Codex-eligible plugin (every plugin here except `codex-image`
+and `council`); side-effecting skills use `agents/openai.yaml`
+`policy.allow_implicit_invocation: false` instead. The policy was set because the Codex plugin
+validator of that time rejected any value other than `false` or absent. Current Codex no longer ships
+that validator at the old path, so the reason is `unverified` on current Codex. Keep the policy;
+re-check it in a throwaway `CODEX_HOME` by adding a fixture plugin whose skill sets the field with
+`codex plugin marketplace add` and seeing whether `codex plugin list` still lists it.
 
 ### `argument-hint`
 
 It is a real skill field, not a command-only field — Claude Code documents it in the SKILL.md
-frontmatter reference and shows it during autocomplete. Codex ignores it (its skill validator has
-no allowed-key whitelist).
+frontmatter reference and shows it during autocomplete. On Codex, the authoring validator
+(`skill-creator`'s `quick_validate.py`) whitelists the Agent Skills fields and would reject it;
+whether the runtime loader does too is `unverified`.
 
-The one place it breaks is outside these two runtimes. The Agent Skills standard distribution
-paths — claude.ai skill upload, the Skills API, `package_skill.py` — accept only `name`,
-`description`, `license`, `compatibility`, `metadata`, `allowed-tools`, and reject anything else
-with a hard error. The official docs use `argument-hint` as their example of that error.
+The Agent Skills standard distribution paths — claude.ai skill upload, the Skills API,
+`package_skill.py` — accept only the fields in <https://agentskills.io/specification.md> and reject
+anything else with a hard error.
 
-So: harmless here, fatal if a skill is ever packaged for the standard paths. The two existing uses
-(`codex-image:codex-image`, `council:convene`) are not on those paths and are not defects.
+So the policy matches `disable-model-invocation`: keep it out of a Codex-eligible plugin, because
+Codex's validator rejects it; it is fine in a Claude-only plugin (`codex-image`, `council`) that is
+never packaged for the standard paths. Find the current uses with
+`rg -l '^argument-hint:' plugins/*/skills/*/SKILL.md`.
 
 ### `version` and `license`
 
-`version` appears in no frontmatter reference — not Claude Code's, not the Agent Skills six-field
-set. No runtime reads it. Versioning belongs to `plugin.json` plus `marketplace.json`; a `version`
-line in a SKILL.md is drift that will disagree with them. Four skills currently carry `version` or
-`license`; removing them is cleanup, not a correctness fix, and is out of scope for the skill you
-are writing now unless you are already editing that frontmatter.
+`version` is not a field in either reference above; check both when in doubt. Versioning belongs to
+`plugin.json` plus `marketplace.json`; a `version` line in a SKILL.md is drift that will disagree
+with them. Find the skills that carry `version` or `license` with
+`rg -l '^(version|license):' plugins/*/skills/*/SKILL.md`; removing them is cleanup, not a
+correctness fix, and is out of scope for the skill you are writing now unless you are already
+editing that frontmatter.
 
 `license` is a valid Agent Skills field that Claude Code accepts without acting on. Nothing here
 needs it.

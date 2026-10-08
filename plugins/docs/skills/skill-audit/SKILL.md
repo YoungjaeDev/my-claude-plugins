@@ -73,12 +73,12 @@ missing pointer.
 ### 3. Judge the seven axes
 
 `Read` the axis table and tier definitions in `../skill-forge/references/axes.md`, then work through
-all seven against this skill. Record a finding only where the body gives evidence.
+all seven against this skill. Record a finding only where the body, or a lookup the axis table
+calls for, gives evidence.
 
 ### 4. Tier the findings
 
-Per the tiers in `../skill-forge/references/axes.md`: **P0** silent failure on a runtime, **P1**
-structure / completion criteria / sibling pointer collision, **P2** pruning and phrasing.
+Per the tiers in `../skill-forge/references/axes.md`.
 
 ### 5. Report
 

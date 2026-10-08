@@ -11,12 +11,12 @@ first step.
 
 | Violation | What happens | Caught by |
 |---|---|---|
-| `description` over 1024 characters | Codex skips the skill. Claude Code loads it normally, so the loss is invisible from the authoring side | `scripts/check-skill-contract.mjs` |
+| `description` over 1024 characters | Codex skips the skill. Claude Code still loads it (it truncates long listing text instead, at the cap its skills doc states), so the loss is invisible from the authoring side | `scripts/check-skill-contract.mjs` |
 | unquoted `: ` inside `description` | YAML parses the value as a nested mapping; the frontmatter fails and the skill loads with no description on both runtimes | `scripts/check-skill-contract.mjs` |
-| bare `${CLAUDE_PLUGIN_ROOT}` | Codex does not export it, so a bundled-script call resolves to `/scripts/...` and dies at step one | `scripts/check-skill-contract.mjs` |
+| bare `${CLAUDE_PLUGIN_ROOT}` | in a skill body's shell Codex documents no plugin-root variable (only hook commands get `PLUGIN_ROOT` / `CLAUDE_PLUGIN_ROOT`), so a bundled-script call resolves to `/scripts/...` and dies at step one | `scripts/check-skill-contract.mjs` |
 | `name` non-kebab or over 64 characters | the command name stops being predictable from the tree, and the Codex validator rejects an empty name | `scripts/check-skill-contract.mjs` |
 | frontmatter not starting at byte 0 | no runtime finds the frontmatter; the skill has no description and never triggers | `scripts/check-skill-contract.mjs` |
-| `disable-model-invocation: true` | the Codex plugin validator rejects the plugin | reviewed by hand; see `frontmatter.md` |
+| `disable-model-invocation: true` | the Codex plugin validator this policy was set against rejected the plugin (`unverified` on current Codex) | reviewed by hand; see `frontmatter.md` |
 
 ## Calling a bundled script
 
@@ -56,11 +56,13 @@ let the caller decide.
 
 ## Surfaces that do not exist everywhere
 
-- **Commands and subagents are Claude-only.** Codex manifests support `skills`, `hooks`,
-  `mcpServers`, and `apps`. Logic moved into an agent definition silently disappears for Codex. A
-  subagent fan-out may accelerate a phase whose inline sequential path stays primary and complete.
+- **Claude-format `commands/` and `agents/*.md` are not read by Codex.** Logic moved there
+  disappears on Codex. For what a Codex plugin manifest does support, read
+  <https://developers.openai.com/codex/plugins/build.md>. A subagent fan-out may accelerate a phase
+  whose inline sequential path stays primary and complete.
 - **`.claude/rules/` is Claude-only.** Codex cannot read the directory. Guidance that must bind both
-  runtimes lives in `AGENTS.md`; shared lore lives in `.llmwiki/`.
+  runtimes lives in `AGENTS.md`; decisions live in `docs/adr/` and terms in `GLOSSARY.md`
+  (ADR 0003), which both runtimes read.
 
 ## Packaging obligations
 

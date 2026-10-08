@@ -4,7 +4,7 @@
 
 # my-claude-plugins
 
-Claude Code 와 Codex CLI 에서 같이 쓰는 8개 플러그인 모음.
+Claude Code 용 8개 플러그인 모음. 그중 6개는 Codex CLI 에서도 쓴다.
 
 [![Plugins](https://img.shields.io/badge/plugins-8-blue.svg)](#플러그인-목록)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://code.claude.com/docs/en/overview)
@@ -33,7 +33,11 @@ PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 만들기처럼 손이 �
 # 2. 필요한 플러그인 설치
 /plugin install dev@my-claude-plugins
 
-# 3. 다음에 할 일 묻기
+# 3. 아이디어부터 PR 까지도 맡기려면 Matt 스킬 설치
+/plugin marketplace add mattpocock/skills
+/plugin install mattpocock-skills@mattpocock
+
+# 4. 다음에 할 일 묻기
 /dev:flow
 ```
 

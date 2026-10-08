@@ -40,7 +40,7 @@
 - `CLAUDE.md.global`: 사용자 전역 지침의 저장소 정본 (Claude 와 Codex 공통). 고친 뒤 `cp CLAUDE.md.global ~/.claude/CLAUDE.md` 와 `cp CLAUDE.md.global ~/.codex/AGENTS.md` 로 두 런타임의 설치 사본을 갱신한다. 사본을 이 워킹트리로의 심볼릭 링크로 걸지 않는다 (브랜치 전환과 커밋 안 된 편집이 즉시 전역 지침으로 발효된다). 동기화 안내는 이 저장소에만 두고, 모든 프로젝트에서 로드되는 전역 파일에는 규칙 외의 줄을 넣지 않는다.
 - `README.md`: 사용자용 설치·마이그레이션·플러그인 문서.
 - `code_review.md`: Codex cloud reviewer 용 상세 리뷰 룰 (아래 `## Code Review Rules` 가 참조).
-- `.claude/settings.json`: 로컬 플러그인 auto-load 목록. 플러그인을 추가하면 여기도 등록한다 (어떤 가드도 누락을 잡지 않는다). SessionStart 훅이 `scripts/check-plugin-cache.mjs` 로 설치 캐시가 소스 버전보다 뒤처졌는지 보고 경고한다. 경고가 뜨면 Skill 도구가 부르는 스킬은 옛 버전이니, 캐시를 갱신하기 전까지 `plugins/<name>/skills/<skill>/SKILL.md` 를 직접 읽는다.
+- `.claude/settings.json`: 로컬 플러그인 auto-load 목록. 플러그인을 추가하면 여기도 등록한다 (어떤 가드도 누락을 잡지 않는다). SessionStart 훅이 `scripts/check-plugin-cache.mjs` 로 설치 캐시가 소스 버전보다 뒤처졌는지 보고 경고한다. 경고가 뜨면 Skill 도구가 부르는 스킬은 옛 버전이니, 캐시를 갱신하기 전까지 `plugins/<name>/skills/<skill>/SKILL.md` 를 직접 읽는다. 같은 훅이 `core.hooksPath` 가 상대 경로 `.githooks` 가 아니면 경고한다 (절대 경로면 워크트리가 메인 체크아웃의 훅을 돌린다).
 - `.claude-plugin/marketplace.json`: marketplace 레지스트리와 플러그인 버전. Codex 도 이 카탈로그를 읽는다.
 - `.claude/rules/`: 경로 스코프 상세 규칙 (Claude 전용, Codex 는 못 읽는다). `plugin-versioning.md` 는 매니페스트를 만질 때, `state-envelope.md` 는 `.claude/state/*.json` 을 만질 때만 로드된다. 포인터를 `@import` 로 바꾸면 스코핑이 죽으므로 백틱으로 둔다.
 - `plugins/<name>/`: 플러그인 원본. `.claude-plugin/plugin.json` 이 매니페스트이자 버전이며 두 런타임이 같은 파일을 읽는다.

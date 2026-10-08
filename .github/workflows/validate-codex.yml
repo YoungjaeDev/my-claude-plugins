@@ -62,6 +62,8 @@ jobs:
       # SessionStart hook (plugin cache lag + core.hooksPath). Fixture cache and
       # throwaway repos only, so the result does not depend on the runner.
       - run: node scripts/check-plugin-cache.mjs --selftest
+      # Translationese in README.md (deck-copy.md forbidden-phrase table, read at run time).
+      - run: node scripts/check-korean-copy.mjs
 
   # The BSD fallbacks the suite is full of can only be proven on a BSD userland.
   # Without this leg every `stat -c || stat -f` and `date -d || date -j` branch is

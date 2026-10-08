@@ -80,6 +80,7 @@ git add -A \
   && node scripts/check-skill-contract.mjs \
   && node scripts/bump-version.mjs --selftest \
   && node scripts/check-plugin-cache.mjs --selftest \
+  && node scripts/check-korean-copy.mjs \
   && bash plugins/dev/skills/review-loop/tests/run-tests.sh \
   && bash plugins/council/skills/convene/tests/run-tests.sh \
   && echo "verify: ok"

@@ -160,14 +160,19 @@ function sedBsdForm(tokens) {
   return false
 }
 
-// `<(` passed as an argument. The lexer splits it into an unquoted `<` word and a
-// `(` op; a `<` word right before it (`done < <(…)`, `done< <(…)`) makes it a
-// stdin redirect instead.
+// `<(` or `>(` passed as an argument. The lexer splits it into a word ending in
+// an unquoted `<`/`>` and a `(` op. The word may carry a prefix bash expands
+// in place: an option's `=` (`--input=<(…)`) or quoted text (`""<(…)`, which
+// leaves nothing unquoted before the `<`). Any other prefix is not counted: the
+// lexer reads one line at a time, so `/^> (` inside a multi-line awk string
+// looks like code. A lone `<`/`>` right after a redirect operator
+// (`done < <(…)`, `done< <(…)`, `2> >(…)`) is a redirect target, which bash
+// opens itself.
 function procSubstArg(tokens) {
   for (let i = 0; i < tokens.length - 1; i++) {
     const t = tokens[i], next = tokens[i + 1], prev = tokens[i - 1]
-    if (t.op || t.hadQuote || t.bare !== '<' || !next.op || next.bare !== '(') continue
-    if (prev && !prev.op && !prev.hadQuote && prev.bare.endsWith('<')) continue
+    if (t.op || !/(^|=)[<>]$/.test(t.bare) || !next.op || next.bare !== '(') continue
+    if ((t.bare === '<' || t.bare === '>') && prev && !prev.op && /[<>]$/.test(prev.bare)) continue
     return true
   }
   return false

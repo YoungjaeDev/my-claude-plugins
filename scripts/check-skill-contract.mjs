@@ -289,10 +289,12 @@ export function checkSkillContent(rel, content) {
   // resolver became the PR number on `/dev:review-loop 312`. Codex does no such
   // substitution, so the Claude-only escape `\$0` would leave a stray backslash there.
   // Spell the token so neither runtime touches it: awk `$(0)`, shell `"$@"` or a named
-  // variable, prose `\$1`.
+  // variable, prose `\$1`. Only exactly one backslash escapes: `\\$1` still expands.
   content.split('\n').forEach((t, i) => {
-    const m = t.match(/(?<!\\)\$[0-9]/);
-    if (m) add(i + 1, `\`${m[0]}\` is replaced by a skill argument on Claude Code (and left as-is on Codex) — write awk \`$(0)\`, shell \`"$@"\` or a named variable, prose \`\\${m[0]}\``);
+    const m = [...t.matchAll(/(\\*)\$[0-9]/g)].find((x) => x[1].length !== 1);
+    if (!m) return;
+    const tok = m[0].slice(m[1].length);
+    add(i + 1, `\`${tok}\` is replaced by a skill argument on Claude Code (and left as-is on Codex) — write awk \`$(0)\`, shell \`"$@"\` or a named variable, prose \`\\${tok}\``);
   });
 
   return errors;
@@ -543,6 +545,11 @@ const RED = [
     check: '8 awk $0 in a fenced block becomes the first skill argument',
     expect: /replaced by a skill argument/,
     content: "---\nname: argsub\ndescription: A skill.\n---\n\n```bash\nls | awk '{print $NF \"\\t\" $0}'\n```\n",
+  },
+  {
+    check: '8b a doubled backslash does not escape the placeholder',
+    expect: /replaced by a skill argument/,
+    content: '---\nname: argsub2\ndescription: A skill.\n---\n\nPay \\\\$1 today.\n',
   },
   {
     check: '6 name does not match the skill directory',

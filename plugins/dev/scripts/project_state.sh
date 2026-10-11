@@ -186,7 +186,7 @@ if [ -f "$HOME/.claude/settings.json" ] && mcp_readable "$HOME/.claude/settings.
   MCP_SETTINGS=$(mcp_keys "$HOME/.claude/settings.json" | wc -l | tr -d ' ')
 fi
 if [ "$MCP_USER" -gt 0 ] && [ "$MCP_SETTINGS" -gt 0 ]; then
-  MCP_DUPES=$(comm -12 <(mcp_keys "$HOME/.claude.json") <(mcp_keys "$HOME/.claude/settings.json") | jq -Rsc 'split("\n") | map(select(length>0))')
+  MCP_DUPES=$(comm -12 <(mcp_keys "$HOME/.claude.json") <(mcp_keys "$HOME/.claude/settings.json") | jq -Rsc 'split("\n") | map(select(length>0))')  # portability-ok: comm is an MSYS binary, so it can open the <(…) path
 fi
 # 중복 이름의 엔트리 본문 비교. 이름이 같아도 정의가 다르면 (drift) 현재 구성에서
 # 지는 사본이 무효라는 뜻 — 내용 동일 중복(WARN)과 급이 다르다 (FAIL). 비교는

@@ -47,10 +47,10 @@ Full table: `references/arguments.md`. The three that decide what the run reads:
 CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
 if sort -V </dev/null >/dev/null 2>&1; then
   CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/dev/* 2>/dev/null \
-    | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2- || true)
+    | awk -F/ '{print $NF "\t" $(0)}' | sort -V | tail -1 | cut -f2- || true)
 else
   CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/dev/* 2>/dev/null \
-    | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
+    | awk -F/ '{print $NF "\t" $(0)}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
 fi
 
 # Validate the script the next line executes, not just the directory: a bare -d

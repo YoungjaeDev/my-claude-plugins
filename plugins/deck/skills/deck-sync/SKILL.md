@@ -27,7 +27,7 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
    if [ -z "$PLUGIN_ROOT" ]; then
      # find, not a glob: zsh aborts on an unmatched glob and does not split an unquoted list.
      found=$(find "$HOME/.claude/plugins/cache" "${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}" \
-       -mindepth 3 -maxdepth 3 -type d -path '*/deck/*' 2>/dev/null | awk -F/ '{print $NF "\t" $0}')
+       -mindepth 3 -maxdepth 3 -type d -path '*/deck/*' 2>/dev/null | awk -F/ '{print $NF "\t" $(0)}')
      if sort -V </dev/null >/dev/null 2>&1; then
        PLUGIN_ROOT=$(printf '%s\n' "$found" | sort -V | tail -1 | cut -f2-)
      else

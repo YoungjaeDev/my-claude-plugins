@@ -101,6 +101,13 @@ clean('sed -i.bak is accepted by both',   "sed -i.bak 's/a/b/' f")
 clean('an exemption with a reason',       'G=$(md5sum f)  # portability-ok: fixture, never runs on a user machine')
 flags('an exemption without one',         'G=$(md5sum f)  # portability-ok')
 
+console.log('\nprocess substitution — a /proc/<pid>/fd path a native Windows exe cannot open')
+flags('<(…) handed to jq as a file',      "jq -s 'add' <(echo \"$a\") <(echo \"$b\")")
+flags('<(…) as an option value',          "jq -n --slurpfile c <(printf '%s' \"$c\") '$c'")
+clean('done < <(…) is a bash redirect',   'while read -r l; do :; done < <(sort -u f)')
+clean('done< <(…) attached is a redirect', 'while read -r l; do :; done< <(sort -u f)')
+clean('a quoted <( is a string',          "printf '%s\\n' 'use <(cmd) with care'")
+
 console.log('\nscan surface')
 flags('extensionless shell file, by shebang', 'H=$(md5sum f)', { name: '.githooks/pre-commit', mode: 0o755 })
 // Discovery is by shebang, not by extension -- so `.txt` carrying `#!/bin/bash`

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Flag GNU-only shell constructs that ship WITHOUT a BSD/macOS fallback.
+// Flag GNU-only shell constructs that ship WITHOUT a BSD/macOS fallback, plus
+// the one Git-Bash-only construct (`<(…)` handed to a native Windows exe).
 //
 // Usage: node scripts/check-shell-portability.mjs [--check]
 //        (--check is accepted for symmetry with the other guards; the script
@@ -78,6 +79,11 @@ const SYNTAX_RULES = [
     alt: 'parallel indexed arrays -- associative arrays are bash 4+' },
   { id: 'bash4-nameref', re: /\b(declare|local)\s+(-[a-zA-Z]+\s+)*-n(\s|$)/,
     alt: 'pass the value, not the name -- namerefs are bash 4.3+' },
+  // Not GNU-only but Git-Bash-only: `<(…)` expands to /proc/<pid>/fd/63, which a
+  // native Windows exe (jq.exe, gh.exe) gets as a path and cannot open (#309).
+  // `done < <(…)` is fine -- bash opens that fd itself.
+  { id: 'proc-subst-arg', tokFn: procSubstArg,
+    alt: 'pipe into stdin (`printf … | jq -s …`) or a mktemp file -- a native Windows exe cannot open a <(…) path' },
 ]
 
 const WINDOW = 4
@@ -150,6 +156,19 @@ function sedBsdForm(tokens) {
         if (next && next.hadQuote && next.bare === '' && next.text === '') return true
       }
     }
+  }
+  return false
+}
+
+// `<(` passed as an argument. The lexer splits it into an unquoted `<` word and a
+// `(` op; a `<` word right before it (`done < <(…)`, `done< <(…)`) makes it a
+// stdin redirect instead.
+function procSubstArg(tokens) {
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const t = tokens[i], next = tokens[i + 1], prev = tokens[i - 1]
+    if (t.op || t.hadQuote || t.bare !== '<' || !next.op || next.bare !== '(') continue
+    if (prev && !prev.op && !prev.hadQuote && prev.bare.endsWith('<')) continue
+    return true
   }
   return false
 }
@@ -289,7 +308,7 @@ for (const file of files) {
     const cmdPos = commandPositions(here.tokens)
     const hits = []
     for (const rule of CMD_RULES) if (cmdUsed(here.tokens, rule, cmdPos)) hits.push(rule)
-    for (const rule of SYNTAX_RULES) if (rule.re.test(here.code)) hits.push(rule)
+    for (const rule of SYNTAX_RULES) if (rule.re ? rule.re.test(here.code) : rule.tokFn(here.tokens)) hits.push(rule)
     if (hits.length === 0) continue
 
     for (const rule of hits) {

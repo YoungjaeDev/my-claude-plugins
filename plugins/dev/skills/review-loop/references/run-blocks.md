@@ -337,7 +337,8 @@ codex_records=$(bash $SKILL_DIR/scripts/fetch-codex-comments.sh "$OWNER" "$REPO"
 ```bash
 # Only a round with no records at all is gated here; records go on to Step 9a, which
 # also resolves a held stop on them.
-records_n=$(jq -s 'add | length' <(echo "${cr_records:-[]}") <(echo "${codex_records:-[]}")) \
+# One stdin stream, not two <(…) paths: native jq.exe on Git Bash cannot open those (#309).
+records_n=$(printf '%s\n%s\n' "${cr_records:-[]}" "${codex_records:-[]}" | jq -s 'add | length') \
   || { final_state=failure; break; }
 cr_engagement=""; cr_verdict=""
 if [ "$records_n" = 0 ]; then
@@ -360,7 +361,7 @@ cr_records=$cli_records
 ## Step 9a: classify
 
 ```bash
-all=$(jq -c -s 'add' <(echo "$cr_records") <(echo "$codex_records"))
+all=$(printf '%s\n%s\n' "$cr_records" "$codex_records" | jq -c -s 'add')
 classified=$(echo "$all" | jq -c '.[]' \
   | while IFS= read -r rec; do printf '%s\n' "$rec" | ITER=$ITER SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
   | jq -s '.')

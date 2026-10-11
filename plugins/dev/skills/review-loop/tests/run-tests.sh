@@ -879,6 +879,12 @@ is "Completed on HEAD -> summary_state completed"       "$(vf .summary_state)" c
 is "Completed on HEAD -> summary_sha"                   "$(vf .summary_sha)" 95ab2f6
 is "Completed on HEAD -> no fallback"                   "$(vf .fallback)" null
 
+# --paginate prints one array per page; the summary and the HEAD review each sit
+# on page two. The inputs go through temp files, not <(…), since #309.
+v=$(verdict issue-comments-codex-summary-two-pages.json pr-reviews-codex-two-pages.json)
+is "two pages each -> findings from page two"           "$(vf .verdict)" findings
+is "two pages each -> HEAD review id from page two"     "$(vf .head_review_id)" 5427206208
+
 # The lookalike-login review on HEAD must not turn a pass into findings.
 v=$(verdict issue-comments-codex-summary-completed.json pr-reviews-codex-prior-only.json)
 is "Completed on HEAD, no HEAD review -> clean"         "$(vf .verdict)" clean

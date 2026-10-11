@@ -39,8 +39,16 @@ if ! comments=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2
   exit 1
 fi
 
+# Files, not <(…): a native jq.exe on Git Bash gets /proc/<pid>/fd/63 and cannot
+# open it (#309), while MSYS rewrites a /tmp path it can. --slurpfile still folds
+# --paginate's several arrays into one, so the filter below is unchanged.
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+printf '%s' "$comments" > "$tmp/c.json"
+printf '%s' "$reviews" > "$tmp/r.json"
+
 jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" \
-  --slurpfile c <(printf '%s' "$comments") --slurpfile r <(printf '%s' "$reviews") '
+  --slurpfile c "$tmp/c.json" --slurpfile r "$tmp/r.json" '
   ($r | add // [] | [ .[]
       | select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
       | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")

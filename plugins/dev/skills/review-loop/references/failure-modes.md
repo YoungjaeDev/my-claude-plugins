@@ -16,6 +16,7 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 | `cli_failed` | Step 7d `coderabbit review --agent` exited non-zero OR emitted `type: "error"` event OR exited without emitting `type: "complete"` OR its `complete` event reports `outcome: "failed"` or `unreviewedFileCount > 0` (a partial review, even with findings emitted; spawn marker `incomplete: true`). | no | Inspect the CLI log at the path in the spawn marker's `jsonl` field (random `mktemp` suffix, no extension — glob `/tmp/cr-cli-review-${PR_NUM}-iter${ITER}-*`) for error detail. No auto-fallback to PR-bot in V1. |
 | `reviewers_unavailable` | Step 2b found a "will not review" comment for every reviewer this run uses (Codex usage limit, CodeRabbit "Auto reviews are disabled"), or dropped CodeRabbit and Codex was not engaged. Stops before any wait. | no | Read the comment URLs in the report. Re-run with `--cr-source cli` for a local CodeRabbit review, or ask for one with `@coderabbitai review`, or wait for the Codex quota. |
 | `codex_failed` | Codex's summary comment reports Failed for HEAD (`codex_verdict=failed` from pre-flight, or `verdict: failed` from the Step 6b grace poll). No Codex review of HEAD is coming. The loop stops without writing to the PR: no `@codex review`, no comment of any kind. | no | Read the Codex summary comment on the PR. Push a new commit for Codex to review, or ask Codex for a review yourself, then re-run. |
+| `ci_failing` | The run would end at `clean`, `minor_floor` or `churn`, but a CI check on HEAD failed (Step 14, `scripts/ci-checks.sh`: CodeRabbit and Codex checks left out, pending checks waited on under `TIMEOUT`, a failed lookup keeps the state). The failing names go to `ci_failing_checks` in the final JSON and to the Step 14 follow-up issue. | no | Fix the checks named in the follow-up issue, push, and re-run. |
 | `unknown` | Trap fired before any flow path set `final_state` (rare — e.g. SIGKILL, runtime error before Step 6). | no | Inspect archived state file in `.claude/state/archive/`. |
 
 ## Codex-specific failure cases (do NOT change final_state)
@@ -53,7 +54,7 @@ A stop reached right after a push (`minor_floor`, `churn` with fixes, `iteration
 
 ## Follow-up issue block (Step 14)
 
-Fires when the Step 14 block sets `followup_needed=true`: `final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` and `deferred_total > 0` (from any cycle — a later clean cycle records nothing an earlier one deferred), `review_total > 0` (`review`-tier findings nobody could read, which never reach the defer rows), or `HEAD_VERDICT` set. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
+Fires when the Step 14 block sets `followup_needed=true`: always on `ci_failing` (the body names the failing checks), and on `final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` when `deferred_total > 0` (from any cycle — a later clean cycle records nothing an earlier one deferred), `review_total > 0` (`review`-tier findings nobody could read, which never reach the defer rows), or `HEAD_VERDICT` set. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
 
 ```bash
 # Idempotent: a re-run on the same PR reuses the issue instead of opening a second one;
@@ -66,11 +67,17 @@ head_note() {
     unread)  printf '%s\n\n' "HEAD \`$(git rev-parse HEAD)\` drew reviewer findings after the last round; read them on the PR." ;;
   esac
 }
+# The CI checks that kept a converged HEAD from ending clean (Step 14, ci_failing).
+ci_note() {
+  [ "$final_state" = ci_failing ] || return 0
+  printf '%s\n\n' "CI checks failing on HEAD \`$(git rev-parse HEAD)\`: $(jq -r 'join(", ")' <<<"${ci_failing_checks:-[]}")"
+}
 if [ -n "$existing" ]; then
   BODY=$(mktemp)
   {
     printf '%s\n\n' "Additional findings deferred by a later review-loop run (\`final_state=$final_state\`):"
     head_note
+    ci_note
     [ "$review_total" -gt 0 ] && printf '%s\n\n' "$review_total finding(s) had no readable severity badge (\`review\` tier) and were not judged; read them on the PR."
     printf '| Reviewer | Severity | Location | Why deferred |\n|---|---|---|---|\n'
     jq -r '.auto_judge_log[]? | select(.action == "defer")
@@ -91,6 +98,7 @@ else
   {
     printf '%s\n\n' "review-loop stopped at \`final_state=$final_state\` on PR #$PR_NUM. Findings below were deferred or left unapplied."
     head_note
+    ci_note
     [ "$review_total" -gt 0 ] && printf '%s\n\n' "$review_total finding(s) had no readable severity badge (\`review\` tier) and were not judged; read them on the PR."
     printf '| Reviewer | Severity | Location | Why deferred |\n|---|---|---|---|\n'
     jq -r '.auto_judge_log[]? | select(.action == "defer")

@@ -193,6 +193,46 @@ out=$(CR_THREADS_RESPONSE_FILE="$FIX/gql-cursorless-next.json" \
 is "cursorless hasNextPage -> detector rc 1" "$rc" 1
 
 echo
+echo "ci-checks.sh"
+
+# HEAD's CI conclusions (issue #317). The gh stub answers `gh pr checks` from a
+# sequence file, one line per call: a fixture path, FAIL (lookup error) or NONE.
+CIS=$(mktemp -d)
+cat > "$CIS/gh" <<'SH'
+#!/usr/bin/env bash
+[ "$1 $2" = "pr checks" ] || { echo "unknown gh args: $*" >&2; exit 1; }
+n=$(cat "$CI_COUNT" 2>/dev/null || echo 0); echo $((n+1)) > "$CI_COUNT"
+f=$(sed -n "$((n+1))p" "$CI_SEQ" | tr -d '\r'); [ -n "$f" ] || f=$(tail -1 "$CI_SEQ" | tr -d '\r')
+case "$f" in
+  FAIL) echo "HTTP 502" >&2; exit 1 ;;
+  NONE) echo "no checks reported on the 'feat' branch" >&2; exit 1 ;;
+  *) cat "$f" ;;
+esac
+SH
+chmod +x "$CIS/gh"
+ci() { # CAP SEQ... -> the script's JSON line
+  local cap=$1; shift
+  printf '%s\n' "$@" > "$CIS/seq"; rm -f "$CIS/count"
+  CI_SEQ="$CIS/seq" CI_COUNT="$CIS/count" PATH="$CIS:$PATH" CAP="$cap" INTERVAL=0 \
+    bash "$SCRIPTS/ci-checks.sh" 42 2>/dev/null
+}
+c=$(ci 0 "$FIX/pr-checks-failing.json")
+is "failing check on HEAD -> fail"                "$(jq -r '.state' <<<"$c")" fail
+is "failing names exclude CodeRabbit, keep a lookalike" "$(jq -c '.failing' <<<"$c")" '["policy","coderabbit-lint"]'
+c=$(ci 0 "$FIX/pr-checks-passing.json")
+is "passing checks (CodeRabbit pending ignored) -> pass" "$(jq -r '.state' <<<"$c")" pass
+is "passing checks -> no failing names"           "$(jq -c '.failing' <<<"$c")" '[]'
+c=$(ci 0 "$FIX/pr-checks-pending.json")
+is "pending check, no wait (CAP=0) -> pending"    "$(jq -r '.state' <<<"$c")" pending
+is "pending names listed"                         "$(jq -c '.pending' <<<"$c")" '["build"]'
+c=$(ci 30 "$FIX/pr-checks-pending.json" "$FIX/pr-checks-passing.json")
+is "pending then pass within the cap -> pass"     "$(jq -r '.state' <<<"$c")" pass
+is "pending then pass -> looked twice"            "$(tr -d '\r' < "$CIS/count")" 2
+is "lookup failure -> error, not fail"            "$(jq -r '.state' <<<"$(ci 0 FAIL)")" error
+is "no checks at all -> none"                     "$(jq -r '.state' <<<"$(ci 0 NONE)")" none
+rm -rf "$CIS"
+
+echo
 echo "auto-merge-gate.sh"
 
 # Unprotected base returns 404: the old pipe emitted "404\n404", which --argjson
@@ -202,7 +242,7 @@ cat > "$SHIMDIR/gh" <<'SH'
 #!/usr/bin/env bash
 case "$1 $2" in
   "api --paginate"*) echo '[]';;
-  "pr checks") echo '0';;
+  "pr checks") echo '[]';;
   "pr view") echo "main";;
   "api repos"*) echo "HTTP/2.0 404 Not Found"; exit 1;;
   *) echo "unknown gh args: $*" >&2; exit 1;;
@@ -220,7 +260,7 @@ cat > "$SHIMDIR/gh" <<'SH'
 #!/usr/bin/env bash
 case "$1 $2" in
   "api --paginate"*) echo '[]';;
-  "pr checks") echo '0';;
+  "pr checks") echo '[]';;
   "pr view") echo "main";;
   "api repos"*) exit 1;;
   *) echo "unknown gh args: $*" >&2; exit 1;;
@@ -245,6 +285,7 @@ SH
 g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "gh pr checks failure -> gate still emits JSON" "$(jq -e . <<<"$g" >/dev/null 2>&1 && echo yes || echo no)" yes
 is "gh pr checks failure -> blocking_checks 1" "$(jq -r '.blocking_checks' <<<"$g" 2>/dev/null)" 1
+is "gh pr checks failure -> ci_state error"   "$(jq -r '.ci_state' <<<"$g" 2>/dev/null)" error
 
 # Check-run-only CR repo: CR posts 0 commit statuses and 1 check-run. The old
 # status-only cr_state read saw nothing -> "unknown" -> Step 15 never merged on
@@ -258,7 +299,7 @@ case "$*" in
   *"/statuses"*)   echo '[]';;
   *"/pulls/"*"/reviews"*)   cat "$AMG_REVIEWS";;
   *"/issues/"*"/comments"*) cat "$AMG_COMMENTS";;
-  "pr checks"*)    echo '0';;
+  "pr checks"*)    if [ -n "${AMG_CHECKS:-}" ]; then cat "$AMG_CHECKS"; else echo '[]'; fi;;
   "pr view"*)      echo "main";;
   *"/protection"*) echo "HTTP/2.0 404 Not Found"; exit 1;;
   *) echo "unknown gh args: $*" >&2; exit 1;;
@@ -292,6 +333,15 @@ is "iteration_cap with issue -> still ineligible" "$(elig iteration_cap 321)" fa
 is "user_declined -> ineligible"             "$(elig user_declined)" false
 # No reviewer looked at the PR: stopping is not convergence.
 is "reviewers_unavailable -> ineligible"     "$(elig reviewers_unavailable)" false
+# CI failing on HEAD is not convergence (issue #317), with or without an issue.
+is "ci_failing with issue -> ineligible"     "$(elig ci_failing 321)" false
+is "ci_failing reason names CI" \
+   "$(FINAL_STATE=ci_failing PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.ineligible_reason | test("CI")')" true
+g=$(AMG_CHECKS="$FIX/pr-checks-failing.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
+is "gate: failing checks counted without CodeRabbit" "$(jq -r '.blocking_checks' <<<"$g")" 2
+is "gate: failing check names carried"        "$(jq -c '.failing_checks' <<<"$g")" '["policy","coderabbit-lint"]'
+is "gate: pending check is not blocking" \
+   "$(AMG_CHECKS="$FIX/pr-checks-pending.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.blocking_checks')" 0
 is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false
 is "ineligible carries a reason"    "$(FINAL_STATE=churn PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null       | jq -r '.ineligible_reason | length > 0')" true
 # A defer from an earlier cycle is still unrecorded when a later one ends clean.
@@ -1480,13 +1530,17 @@ fo=$(FINAL_STATE="$cf_final" PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-fin
 is "final output: codex_failed passes the schema" "$(schema_ok "$fo")" true
 is "final output: final_state codex_failed"       "$(jq -r '.final_state' <<<"$fo")" codex_failed
 is "schema check rejects an unlisted final_state" "$(schema_ok "$(jq -c '.final_state="bogus"' <<<"$fo")")" false
+is "final output: no CI failure -> empty ci_failing_checks" "$(jq -c '.ci_failing_checks' <<<"$fo")" '[]'
+fo=$(FINAL_STATE=ci_failing CI_FAILING_CHECKS='["policy"]' PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: ci_failing passes the schema"   "$(schema_ok "$fo")" true
+is "final output: ci_failing_checks carried"      "$(jq -c '.ci_failing_checks' <<<"$fo")" '["policy"]'
 cat > "$CFD/gh" <<SH
 #!/usr/bin/env bash
 echo "\$*" >> "$GH_LOG"
 case "\$*" in
   *"/check-runs"*) echo '{"check_runs":[{"name":"CodeRabbit","status":"completed","conclusion":"success","started_at":"2025-01-01T00:00:00Z"}]}';;
   *"/statuses"*)   echo '[]';;
-  "pr checks"*)    echo '0';;
+  "pr checks"*)    echo '[]';;
   "pr view"*)      echo "main";;
   *"/protection"*) echo "HTTP/2.0 200 OK";;
   *) echo "unknown gh args: \$*" >&2; exit 1;;
@@ -1807,7 +1861,7 @@ is "Step 15 gate counts unread findings as left behind" "$(gate_env 0 2)" "D=2 A
 is "Step 15 gate with nothing left behind"              "$(gate_env 0 0)" "D=0 A=false"
 # The cr_state allow-list speaks for CodeRabbit only: a run that dropped it (codex-only,
 # cli) must not be refused on its rate-limited status. Blocking checks stop the merge.
-printf '#!/usr/bin/env bash\njq -nc %s\n' "'{eligible:true,cr_state:\"rate_limited\",blocking_checks:1,protection_http:200,base_branch:\"main\"}'" \
+printf '#!/usr/bin/env bash\njq -nc %s\n' "'{eligible:true,cr_state:\"rate_limited\",blocking_checks:1,ci_state:\"fail\",failing_checks:[\"policy\"],protection_http:200,base_branch:\"main\"}'" \
   > "$G15/scripts/auto-merge-gate.sh"
 cr_gate() { # CR_ON -> the Step 15 refusal line, if any
   CRON=$1 SKILL_DIR="$G15" STATE_FILE="$G15/state.json" BLOCK="$(rb_block "Step 15: auto-merge gate")" bash -c '
@@ -1816,7 +1870,11 @@ cr_gate() { # CR_ON -> the Step 15 refusal line, if any
     eval "$BLOCK"' 2>&1 >/dev/null | sed -n 's/^auto-merge: //p'
 }
 is "Step 15: CodeRabbit on, rate-limited -> refused" "$(cr_gate true)" "cr_state=rate_limited is not a merge-approved state"
-is "Step 15: CodeRabbit off -> its status is not read" "$(cr_gate false)" ""
+# With CodeRabbit off the next refusal is the failing check, which says why (#317).
+is "Step 15: CodeRabbit off -> its status is not read, failing check named" "$(cr_gate false)" "failing CI check(s) on HEAD: policy"
+printf '#!/usr/bin/env bash\njq -nc %s\n' "'{eligible:true,cr_state:\"success\",blocking_checks:1,ci_state:\"error\",failing_checks:[],protection_http:200,base_branch:\"main\"}'" \
+  > "$G15/scripts/auto-merge-gate.sh"
+is "Step 15: unreadable checks -> says so, not merged" "$(cr_gate true)" "CI checks on HEAD could not be read; merge not attempted"
 rm -rf "$G15"
 
 # Step 14 follow-up issue (failure-modes.md): a re-run that appends to the inherited
@@ -1829,6 +1887,18 @@ PATH="$FM:$PATH" STATE_FILE="$FM/state.json" BLOCK="$FM_BLOCK" bash -c '
   final_state=iteration_cap review_total=0 deferred_total=0 PR_NUM=1 HEAD_VERDICT=unread
   eval "$BLOCK"' >/dev/null 2>&1
 is "appended follow-up names an unread HEAD" "$(grep -c 'drew reviewer findings after the last round' "$FM/body" 2>/dev/null)" 1
+# A new follow-up issue for ci_failing names the failing checks (#317).
+cat > "$FM/gh" <<SH
+#!/usr/bin/env bash
+prev=""; for a in "\$@"; do [ "\$prev" = --body-file ] && cp "\$a" "$FM/body"; prev=\$a; done
+[ "\$1 \$2" = "issue create" ] && echo https://github.com/o/r/issues/9
+exit 0
+SH
+echo '{"auto_judge_log":[]}' > "$FM/state.json"; rm -f "$FM/body"
+PATH="$FM:$PATH" STATE_FILE="$FM/state.json" BLOCK="$FM_BLOCK" bash -c '
+  final_state=ci_failing ci_failing_checks="[\"policy\",\"build\"]" review_total=0 deferred_total=0 PR_NUM=1 HEAD_VERDICT=""
+  eval "$BLOCK"' >/dev/null 2>&1
+is "ci_failing follow-up issue names the failing checks" "$(grep -c 'CI checks failing on HEAD .*: policy, build' "$FM/body" 2>/dev/null)" 1
 rm -rf "$FM"
 
 # Step 12: a noop Step 10 (every fix reverted, or none applied) pushes nothing.
@@ -1860,13 +1930,31 @@ is "Step 10 commit failure -> failure, no push" \
 rm -rf "$P12"
 
 # Step 14: the last iteration's push is waited on, then one follow-up trigger.
+# ci-checks.sh is stubbed to print $CI_OUT (default: every check passed).
+CI14=$(mktemp -d); mkdir -p "$CI14/scripts"
+printf '#!/usr/bin/env bash\necho "$CI_OUT"; echo "CAP=$CAP" > "%s/cap"\n' "$CI14" > "$CI14/scripts/ci-checks.sh"
+CI_PASS='{"state":"pass","failing":[],"pending":[]}'
 last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:HEAD_VERDICT:followup
-  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 RT=${6:-0} BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
+  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 RT=${6:-0} SKILL_DIR="$CI14" CI_OUT="${CI_OUT:-$CI_PASS}" \
+    BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
     await_head_verdicts() { hv_state=$HVS; hv="{\"findings\":$FND}"; }
     pushed_this_cycle=$PUSHED final_state=$FS deferred_total=$DT review_total=$RT HEAD_VERDICT=""
+    PR_NUM=1 TIMEOUT=1800 INTERVAL=30
     eval "$BLOCK"
-    printf "%s:%s:%s" "$final_state" "$HEAD_VERDICT" "$followup_needed"'
+    printf "%s:%s:%s" "$final_state" "$HEAD_VERDICT" "$followup_needed"
+    [ -z "${SHOW_CI:-}" ] || printf ":%s" "${ci_failing_checks:-}"'
 }
+CI_FAIL='{"state":"fail","failing":["policy"],"pending":[]}'
+is "clean HEAD with a failing check -> ci_failing + issue + names" \
+   "$(CI_OUT=$CI_FAIL SHOW_CI=1 last_push false clean ready false 0)" 'ci_failing::true:["policy"]'
+is "minor_floor HEAD with a failing check -> ci_failing" "$(CI_OUT=$CI_FAIL last_push false minor_floor ready false 1)" "ci_failing::true"
+is "churn HEAD with a failing check -> ci_failing"       "$(CI_OUT=$CI_FAIL last_push false churn ready false 1)" "ci_failing::true"
+is "CI wait runs under TIMEOUT"                          "$(tr -d '\r' < "$CI14/cap")" "CAP=1800"
+is "iteration_cap is not rewritten by CI"  "$(CI_OUT=$CI_FAIL last_push false iteration_cap ready false 1)" "iteration_cap::true"
+is "clean HEAD, checks still pending at the cap -> clean" \
+   "$(CI_OUT='{"state":"pending","failing":[],"pending":["build"]}' last_push false clean ready false 0)" "clean::false"
+is "clean HEAD, checks unreadable -> clean (gate re-reads)" \
+   "$(CI_OUT='{"state":"error","failing":[],"pending":[]}' last_push false clean ready false 0 2>/dev/null)" "clean::false"
 is "last push, findings on HEAD, no round left -> iteration_cap + issue" \
    "$(last_push true minor_floor ready true 0)" "iteration_cap:unread:true"
 is "last push, HEAD passed -> state kept, nothing to file" \
@@ -1881,6 +1969,7 @@ is "timeout with earlier defers -> follow-up issue" "$(last_push false timeout t
 # A finding nobody could read (`review` tier) is left behind too: user_declined on it
 # alone must still file the issue failure-modes.md points the user to.
 is "only unread review-tier items -> follow-up issue" "$(last_push false user_declined ready false 0 1)" "user_declined::true"
+rm -rf "$CI14"
 
 # await_head_verdicts on a paused CodeRabbit: one request, then the same budget.
 AW=$(mktemp -d)

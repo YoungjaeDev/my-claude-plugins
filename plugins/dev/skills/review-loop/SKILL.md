@@ -278,9 +278,9 @@ A stop reached in a cycle that pushed is **held** (`HOLD_STATE`), not ended: the
 ## Step 14: Iteration cap + follow-up issue
 
 Loop exited at `ITER == MAX_ITER` with threads still actionable → `final_state=iteration_cap`; surface the remaining thread count + `target_url`.
-Run the "Step 14: last-push HEAD verdicts and follow-up trigger" block in `references/run-blocks.md` verbatim. When the last iteration pushed, it waits for that HEAD's verdicts first; findings on it have no round left, so the run ends at `iteration_cap` with `HEAD_VERDICT=unread`.
+Run the "Step 14: last-push HEAD verdicts and follow-up trigger" block in `references/run-blocks.md` verbatim. When the last iteration pushed, it waits for that HEAD's verdicts first; findings on it have no round left, so the run ends at `iteration_cap` with `HEAD_VERDICT=unread`. A run about to end at `clean`, `minor_floor` or `churn` then reads HEAD's CI checks (`scripts/ci-checks.sh`, pending checks waited on under `TIMEOUT`): any failing check ends it at `ci_failing` with the names in `ci_failing_checks`.
 
-Then, when the block set `followup_needed=true` (`final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` AND `deferred_total > 0` from any cycle, `review_total > 0`, or `HEAD_VERDICT` set), file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment.
+Then, when the block set `followup_needed=true` (always on `ci_failing`; otherwise `final_state ∈ {churn, minor_floor, iteration_cap, user_declined, clean, timeout}` AND `deferred_total > 0` from any cycle, `review_total > 0`, or `HEAD_VERDICT` set), file **one** issue carrying what the run left behind. This is the run's own output channel — do not post the same content as a PR comment.
 
 Build the body from `auto_judge_log`'s `defer` records — reviewer prose reaches it through a file, never the command line — then `gh issue create --label tbd`. The block is idempotent: a re-run on the same PR reuses `STATE_FILE.followup_issue` instead of opening a second issue. Shell block: `references/failure-modes.md`.
 
@@ -288,7 +288,7 @@ Creation failure is **not** fatal to the run, but it does block Step 15: the def
 
 ## Step 15: Auto-merge gate
 
-Run only when `--auto-merge` is set and `verification_blocking=false`. The gate script owns two axes. Convergence: `clean`, `minor_floor` and `churn` qualify once Step 14's follow-up issue exists or when the run deferred nothing and left no finding unread, and everything else (`codex_failed` included) is ineligible — so a failed `gh issue create` leaves the PR open by construction. HEAD verdicts: every reviewer that is on must have given HEAD findings or clean; a HEAD with no verdict, or only a rate-limit notice, is ineligible.
+Run only when `--auto-merge` is set and `verification_blocking=false`. The gate script owns two axes. Convergence: `clean`, `minor_floor` and `churn` qualify once Step 14's follow-up issue exists or when the run deferred nothing and left no finding unread, and everything else (`codex_failed` and `ci_failing` included) is ineligible — so a failed `gh issue create` leaves the PR open by construction. HEAD verdicts: every reviewer that is on must have given HEAD findings or clean; a HEAD with no verdict, or only a rate-limit notice, is ineligible. A failing or unreadable CI check on HEAD stops the merge, and the block prints which.
 Run the "Step 15: auto-merge gate" block in `references/run-blocks.md` verbatim.
 
 ## Step 16: Cleanup + final JSON
@@ -296,10 +296,11 @@ Run the "Step 15: auto-merge gate" block in `references/run-blocks.md` verbatim.
 Handled by the `trap ... EXIT` set in Step 2 → `scripts/emit-final-json.sh` always emits the JSON line (schema: `assets/final-output.schema.json`).
 - `auto_judge_stats`: `{apply, defer, skip}` counts across the run.
 - `followup_issue`: `{number, url}` when Step 14 filed one, else `null`.
+- `ci_failing_checks`: the failing CI check names on `ci_failing`, else `[]`.
 - `verification_gate`: Step 3's baseline result. Anything but `on` means the run's fixes were committed without the build/test gate.
 - `pre_flight_last` mirrors `STATE_FILE` for the LAST iteration; the copy in `.claude/state/archive/` preserves every iter.
 
-The `final_state` enum: `clean`, `user_declined`, `minor_floor`, `churn`, `iteration_cap`, `timeout`, `failure`, `cr_inactive`, `rate_limited`, `cli_failed`, `reviewers_unavailable`, `codex_failed`, `unknown`. Only `clean`, `minor_floor` and `churn` can auto-merge. Trigger and user action per value: `references/failure-modes.md`.
+The `final_state` enum: `clean`, `user_declined`, `minor_floor`, `churn`, `iteration_cap`, `timeout`, `failure`, `cr_inactive`, `rate_limited`, `cli_failed`, `reviewers_unavailable`, `codex_failed`, `ci_failing`, `unknown`. Only `clean`, `minor_floor` and `churn` can auto-merge. Trigger and user action per value: `references/failure-modes.md`.
 
 ## Verification
 

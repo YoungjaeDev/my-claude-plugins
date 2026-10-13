@@ -79,7 +79,7 @@ Run the block in `references/leftover-reviews.md` ("Primary signal") verbatim.
 
 Run the block in `references/leftover-reviews.md` ("Secondary signal") verbatim.
 
-**Decide the checkpoint line.** The primary trigger is a non-empty defer list OR a `final_state` that means the loop stopped with work potentially outstanding (`iteration_cap`, `timeout`, `cli_failed`, `rate_limited`, `reviewers_unavailable`, `codex_failed`). `user_declined` always carries `defer > 0`, so the defer list catches it; `minor_floor` and `churn` reach it only through their defers (late Codex P2s included), so neither is a trigger on its own:
+**Decide the checkpoint line.** The primary trigger is a non-empty defer list OR a `final_state` that means the loop stopped with work potentially outstanding (`iteration_cap`, `timeout`, `cli_failed`, `rate_limited`, `reviewers_unavailable`, `codex_failed`, `ci_failing`). `user_declined` always carries `defer > 0`, so the defer list catches it; `minor_floor` and `churn` reach it only through their defers (late Codex P2s included), so neither is a trigger on its own:
 
 Run the block in `references/leftover-reviews.md` ("Decide the checkpoint line") verbatim.
 

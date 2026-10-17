@@ -36,6 +36,31 @@
         "url":    { "type": "string" }
       },
       "additionalProperties": true
+    },
+    "auto_judge_log": {
+      "type": "array",
+      "description": "One record per Step 9c decision (references/autonomous-judgment.md, \"Log entry shape\"). scripts/auto-merge-gate.sh reads the current iteration's apply records to pick next_action.",
+      "items": {
+        "type": "object",
+        "required": ["iter", "src", "action"],
+        "properties": {
+          "iter":         { "type": "integer", "minimum": 1 },
+          "src":          { "type": "string", "enum": ["cr", "cli", "codex"] },
+          "path":         { "type": "string" },
+          "line":         { "type": ["integer", "null"] },
+          "category":     { "type": "string", "description": "CR/CLI header category as read (e.g. \"🔒 Security & Privacy\"); empty for Codex." },
+          "badge_or_sev": { "type": "string", "description": "CR/CLI severity as read (e.g. \"🟡 Minor\") or the Codex badge (\"P1\")." },
+          "judgment":     { "type": ["object", "null"] },
+          "action":       { "type": "string", "enum": ["apply", "defer", "skip"] },
+          "reason":       { "type": "string" },
+          "generalized_to": { "type": "array", "items": { "type": "integer" } }
+        },
+        "additionalProperties": true
+      }
+    },
+    "base_push": {
+      "type": ["object", "null"],
+      "description": "Set by Step 15 when the held Minor-or-lower fixes were pushed straight to the base after the merge (ADR 0006): {branch, sha, fixes}."
     }
   },
   "additionalProperties": true

@@ -86,8 +86,8 @@ dev 는 PR 부터 리뷰 루프, 머지, 정리까지 맡는다. 아이디어부
 |-------|---------|
 | `/dev:flow` | 다음에 부를 스킬을 알려 준다 (Matt 앞단과 dev 뒷단, 버그·E2E·worktree 갈래, 제품 repo 준비). 직접 실행하지 않는다 |
 | `/dev:commit-and-push` | 변경을 분석해 Conventional Commits 메시지로 커밋하고 푸시한다 |
-| `/dev:review-loop` | CodeRabbit 과 Codex 의 지적을 사용자에게 묻지 않고 apply / defer / skip 으로 판정해 수정한다. 수렴·저심각도 바닥·churn 중 하나에 이르면 멈추고 남은 지적은 후속 이슈 1건으로 남긴다. 켜진 리뷰어 전원이 HEAD 에 판정을 낸 뒤에만 push·종료·머지한다. PR 에 올리는 댓글은 `@coderabbitai rate limit` 질의와 HEAD 당 1회의 `@coderabbitai review` 요청뿐이다. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate limit 이면 로컬 CLI 나 Codex-only 로 전환) |
-| `/dev:post-merge` | 머지 후 정리만 한다: 남은 리뷰 지적 표시, base 전환, 브랜치 삭제, 남은 이슈 close, Project 상태 동기화, About 줄 점검, 커밋 |
+| `/dev:review-loop` | CodeRabbit 과 Codex 의 지적을 사용자에게 묻지 않고 apply / defer / skip 으로 판정해 수정한다. 수렴·저심각도 바닥·churn 중 하나에 이르면 멈추고 남은 지적은 후속 이슈 1건으로 남긴다. 켜진 리뷰어 전원이 HEAD 에 판정을 낼 때까지 기다리되, 대기 상한까지 판정이 없는 리뷰어는 빼고 남은 리뷰어의 판정으로 끝내며 뺀 이름을 보고한다 (CodeRabbit 은 상한 절반에 한 번 재촉한다). 한 사이클의 수정이 전부 Minor 이하 지적에서 왔으면 재리뷰 없이 판정받은 HEAD 를 머지한 뒤 build/test 와 pre-commit 가드를 거쳐 base 에 바로 push 한다. `--auto-merge` 가 없으면 끝에 "auto-merge 할까요?" 를 묻는다. 리뷰어를 뺀 실행은 `--auto-merge` 가 있어도 묻는다. PR 에 올리는 댓글은 `@coderabbitai rate limit` 질의와 HEAD 당 1회의 `@coderabbitai review` 요청뿐이다. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate limit 이면 로컬 CLI 나 Codex-only 로 전환) |
+| `/dev:post-merge` | 머지 후 정리만 한다: 남은 리뷰 지적 표시, base 전환, 안전 조건을 통과한 다른 worktree 를 한 번 확인받고 삭제, 브랜치 삭제, 안전 조건을 통과한 원격 브랜치를 한 번 확인받고 삭제, 남은 이슈 close, Project 상태 동기화, About 줄 점검, 커밋 |
 | `/dev:release` | 버전 태그와 GitHub Release 를 만든다 (릴리스 노트 자동 생성) |
 | `/dev:session-handoff` | 컨텍스트를 비우기 전에 새 에이전트가 이어받을 인수인계 요약을 채팅에 쓴다 |
 | `/dev:orchestrate` | 메인 에이전트가 오케스트레이터가 된다: 슬라이스별 job card, 워커 프리셋 `dev:worker-standard/deep/max`, 경로당 writer 1개, 오케스트레이터의 직접 검증. 파일을 쓰는 슬라이스는 worktree 에 격리한다. Codex 에는 `Agent` 도구가 없어 인라인으로 돈다 |
@@ -188,7 +188,7 @@ Playwright 가 없으면 graceful degrade 한다. Codex 에서는 역할 계약(
 
 | Skill | 하는 일 |
 |-------|---------|
-| `/wiki:ingest` | 원본 문서나 작업 중 알게 된 사실을 개념 페이지로 만들고 index·log 를 갱신한다. wiki 가 없으면 뼈대를 만든다 |
+| `/wiki:ingest` | 원본 문서나 작업 중 알게 된 사실을 개념 페이지로 만들고 index·log 를 갱신한다. `.llmwiki/` 가 없는 저장소에서는 아무것도 만들지 않고 후보만 보고한다 |
 | `/wiki:query` | index, 개념 페이지, raw 순서로 읽고 인용을 달아 답한다. 새 답은 승인 뒤에만 저장한다 |
 | `/wiki:lint` | 오래된 페이지, 깨진 링크·Sources, 고아 페이지, index 불일치를 점검한다 (read-only) |
 | `/wiki:plaud-note-taking` | PLAUD 녹음기 전사록을 프로젝트 용어로 정정해 corrected 와 digest 를 만들고 `/wiki:ingest` 로 넘긴다. 원본은 수정하지 않는다 |
@@ -221,7 +221,7 @@ Playwright 가 없으면 graceful degrade 한다. Codex 에서는 역할 계약(
 <details>
 <summary><strong>council</strong> - 이종 벤더 3인 심의</summary>
 
-`/council:convene` 은 질문 1개를 codex (GPT), agy (Gemini), Claude Opus 좌석에 동시에 던진다. 좌석끼리 서로 반박한 뒤 합의한 것과 끝내 갈린 것을 `.council/<날짜>-<슬러그>/consensus.md` 에 남긴다. Claude 서브에이전트는 여러 개를 띄워도 가중치가 같아 관점이 늘지 않는데 이 스킬은 그 문제를 다룬다.
+`/council:convene` 은 질문 1개를 codex (GPT), agy (Gemini), Claude Opus 좌석에 동시에 던진다. 좌석끼리 서로 반박한 뒤 합의한 것과 끝내 갈린 것을 `.council/<날짜>-<슬러그>/consensus.md` 에 남긴다. 질문·프롬프트·좌석별 답은 gitignore 된 `.tmp/council/<같은 이름>/` 에 둔다. Claude 서브에이전트는 여러 개를 띄워도 가중치가 같아 관점이 늘지 않는데 이 스킬은 그 문제를 다룬다.
 
 - 진행 순서: 독립 의견, 사용자 재질문, 상호 반박, 의장 합성
 - 좌석 모델은 `~/.claude/council-models.json` 주간 TTL 레지스트리에 있다. 만료되면 실제 목록을 근거로 사용자에게 묻고 자동 승급하지 않는다
@@ -387,7 +387,7 @@ git config core.hooksPath .githooks   # clone 당 1회
 - `check-korean-copy.mjs`: README.md 의 번역투를 차단한다. 기준은 `plugins/deck/templates/rules/deck-copy.md` 의 `### 금지 표기` 표 (실행 시점에 읽는다), 연결어미 뒤 쉼표, 개수 자리의 고유어 수사다. 코드 펜스·인라인 코드·HTML 태그 밖의 글자만 보고 덱 전용 행 (슬라이드 라벨·강사 소개) 은 허용 목록으로 건너뛴다. 스캔 전에 RED/GREEN 픽스처를 먼저 돌린다.
 - `check-skill-prose.mjs`: 500줄 초과와 깊은 참조 경로를 정보성으로 경고한다 (비차단).
 
-픽스처 스위트 2개도 같은 자리에서 돈다. `plugins/dev/skills/review-loop/tests/run-tests.sh` 는 1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로를, `plugins/council/skills/convene/tests/run-tests.sh` 는 스킬 본문에만 있는 codex / agy 호출 계약을 검사한다. BSD 폴백이 실제로 실행되는 곳은 macOS CI 레그뿐이며 이 레그는 `/bin/bash` 로 bash 3.2 를 강제한다. 가드는 소스를 자동 수정하지 않는다.
+픽스처 스위트 3개도 같은 자리에서 돈다. `plugins/dev/skills/review-loop/tests/run-tests.sh` 는 1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로를, `plugins/dev/skills/post-merge/tests/run-tests.sh` 는 지워도 되는 worktree 와 원격 브랜치를 고르는 수집 스크립트를 (일회용 저장소와 gh shim), `plugins/council/skills/convene/tests/run-tests.sh` 는 스킬 본문에만 있는 codex / agy 호출 계약을 검사한다. BSD 폴백이 실제로 실행되는 곳은 macOS CI 레그뿐이며 이 레그는 `/bin/bash` 로 bash 3.2 를 강제한다. 가드는 소스를 자동 수정하지 않는다.
 
 ### 프로젝트 구조
 

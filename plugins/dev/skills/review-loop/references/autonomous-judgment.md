@@ -23,20 +23,20 @@ Items 3-8 of the SKILL.md Step 9c list, in full. Items 1-2 (path-trust gate, san
 
    **Location rule for Codex P1.** A P1 on frontmatter text, prose or a comment — anything that is not executable code — is `severity_reassess=low`. Codex badges by topic, not blast radius, and a wording drift left at `high` keeps every soft stop below from ever firing.
 
-   A finding asking for a new surface is `defer` regardless of `fix_size` (hard constraint above).
-
-5. **Decision matrix** (`references/autonomous-judgment.md` for full rationale):
+5. **Decision matrix** (`references/autonomous-judgment.md` for full rationale). Only a finding that is both severe and large or unclear leaves the session; everything else is finished here, applied or skipped with its reason:
 
    | `is_real` | `severity_reassess` | `fix_size` | action |
    |---|---|---|---|
    | real | any | any *(over_engineering=yes)* | **skip** ("YAGNI: suggestion adds unrequested complexity; fails the senior-engineer test") |
    | real | any | small-safe | **apply** |
-   | real | high (P1 / Critical / Major / Security) | large-risky | **defer** ("needs review: too invasive for autopilot") |
+   | real | high (P0-P1 / Critical / Major / Security) | large-risky or ambiguous | **defer** ("needs review: too invasive for autopilot") |
    | real | low / cosmetic (P2 / Minor / churn) | large-risky | **skip** ("low value vs. invasiveness") |
+   | real | low / cosmetic | ambiguous | **apply** when the narrowest reading of the fix is small-safe, else **skip**; the reason says which reading |
    | spurious / stylistic-only | any | any | **skip** ("did not match local code" / "stylistic preference, repo convention differs") |
-   | ambiguous | any | any | **defer** ("needs human review on intent") |
+   | ambiguous | high | any | **defer** ("needs human review on intent") |
+   | ambiguous | low / cosmetic | any | **apply** or **skip** on the most likely reading of the claim; the reason names it |
 
-   `over_engineering=yes` is evaluated first and overrides `fix_size`, including at `small-safe`.
+   `over_engineering=yes` is evaluated first and overrides `fix_size`, including at `small-safe`. A fix that adds a flag, branch or entry point is judged like any other: small-safe applies, a large one follows its severity row.
 
 6. **Apply / defer / skip**:
    - **apply** → **Stale-line guard**: before editing, if `$path` already appears in `$TRACK_FILE` from an earlier finding this cycle, re-Read the target region (offset `max(1, line-20)`, limit `40`) and re-locate the finding's quoted context in it: an earlier edit may have shifted the line numbers this finding was anchored to. Edit only where the expected context still matches; if the anchor content cannot be re-found in the re-Read region, **defer** the finding instead of editing a guessed location. Then Edit the file with the smallest safe fix derived from local content; `printf '%s\0' "$path" >> "$TRACK_FILE"`; `applied_this_cycle=$((applied_this_cycle+1))`; `auto_judge_apply=$((auto_judge_apply+1))`; log judgment to `STATE_FILE.auto_judge_log`.
@@ -46,17 +46,15 @@ Items 3-8 of the SKILL.md Step 9c list, in full. Items 1-2 (path-trust gate, san
    - **High-severity accumulator (Step 13 soft-stop signal)**: for any `apply` or `defer` whose `severity_reassess=="high"`, `high_sev_this_cycle=$((high_sev_this_cycle+1))`. This feeds the Step 13 `minor_floor` soft-stop: a cycle that applied only low-severity fixes and deferred nothing can stop early.
    - **skip** → `auto_judge_skip=$((auto_judge_skip+1))`; log judgment. Does NOT touch `applied_this_cycle` or `deferred_this_cycle`.
 
-7. **Log entry** — append one record per decision to `STATE_FILE.auto_judge_log`: `iter`, `src` (`cr|cli|codex`), `path`, `line`, `badge_or_sev`, `judgment` (the six axes above with the values they took), `action`, `reason` (one line), and `generalized_to` (the sibling lines, only when 9c.6 fired). Full shape: `references/autonomous-judgment.md`.
+7. **Log entry** — append one record per decision to `STATE_FILE.auto_judge_log`: `iter`, `src` (`cr|cli|codex`), `path`, `line`, `category` (the CR/CLI header category as read, `category_emoji`; empty for Codex), `badge_or_sev` (the CR/CLI severity as read, `severity_emoji`, or the Codex badge `P0`-`P2`), `judgment` (the six axes above with the values they took), `action`, `reason` (one line), and `generalized_to` (the sibling lines, only when 9c.6 fired). `scripts/auto-merge-gate.sh` reads `category`, `badge_or_sev` and `severity_reassess` of this iteration's `apply` records to decide whether the fixes need a re-review (Step 12). Full shape: `references/autonomous-judgment.md`.
 
 8. **9c-review tier** (CR finding with no parseable header / Codex with no P0-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor or `clean`.
-
-9. **9c-defer tier** (Codex P2 at `ITER >= 2`, decision 15): no Read, no judgment, no edit. Log `action=defer`, `reason=codex-p2-after-iter1`, `judgment=null`; `auto_judge_defer=$((auto_judge_defer+1))`; `late_p2_this_cycle=$((late_p2_this_cycle+1))`. Not counted into `judged_this_cycle` or `deferred_this_cycle`: Step 13 adds it to `deferred_total`, so the Step 14 follow-up issue carries it, and a cycle with nothing else left ends at `minor_floor` rather than holding the loop open.
 
 ## Why no AskUserQuestion
 
 A per-finding prompt is almost always rhetorical: the answer is already determined by what the local code says. Removing it eliminates the wait for user input, forces the model to articulate *why* it applied or skipped each item, and keeps the user as auditor of the log rather than gatekeeper of every line.
 
-Three escape hatches remain, each where input is structurally required: pre-flight `gate=failure`, the auto-merge gate when branch protection is missing (Step 15), and the rate-limit fallback when no fallback channel is available (Step 7c).
+Two questions remain, each where the decision is the user's: the merge at the end of a finished review (Step 15: without `--auto-merge`, or on a base with no protection rules, where the merge is immediate), and the rate-limit fallback when no fallback channel is available (Step 7c). Pre-flight `gate=failure` stops the run rather than asking.
 
 ## Six judgment axes
 
@@ -133,11 +131,15 @@ A `churn` finding has its `severity_reassess` forced to `cosmetic` and increment
 | `real` | any | any *(`over_engineering=yes`)* | **skip** | "YAGNI — suggestion adds unrequested complexity; fails the senior-engineer test" |
 | `real` | any | `small-safe` | **apply** | "real + small/safe → fix in place" |
 | `real` | `high` | `large-risky` | **defer** | "real high-severity but invasive — needs review" |
+| `real` | `high` | `ambiguous` | **defer** | "high severity, needs broader context to size" |
 | `real` | `low` / `cosmetic` | `large-risky` | **skip** | "low value vs. invasiveness" |
-| `real` | any | `ambiguous` | **defer** | "needs broader context to size" |
+| `real` | `low` / `cosmetic` | `ambiguous` | **apply** / **skip** | "narrowest reading is small-safe → applied" / "cannot size at low value → skipped" |
 | `spurious` | any | any | **skip** | "did not match local code" |
 | `stylistic-only` | any | any | **skip** | "stylistic preference, repo convention differs" |
-| `ambiguous` | any | any | **defer** | "needs human review on intent" |
+| `ambiguous` | `high` | any | **defer** | "needs human review on intent" |
+| `ambiguous` | `low` / `cosmetic` | any | **apply** / **skip** | the reading the decision took, in one line |
+
+**Defer is for severe and large only.** A deferred finding leaves the session for a follow-up issue someone has to pick up later, and a pile of them is the cost (`tbd` issues, an issue with nothing in it). So only a finding that is both high-severity and too large or unclear to size goes there. A low-severity finding is finished in the session: applied when a small safe fix exists, otherwise skipped with the reason logged. A `verification-failed` revert (9c.6) still defers: the fix was wanted and did not build.
 
 **`over_engineering=yes` is checked first and overrides `fix_size`.** A real finding whose *suggestion* is pure over-engineering is skipped even at `small-safe` — the surgical-diff / senior-engineer test (no unrequested abstraction, no configurability for a value that never changes, three lines of duplication over a premature helper) outranks "the change is tiny." A reviewer's speculative-generality suggestion is cheap to apply and expensive to live with, so diff size is the wrong gate; the right gate is whether the codebase wanted that complexity at all.
 
@@ -161,6 +163,7 @@ Every Step 9c decision appends one record to `STATE_FILE.auto_judge_log`:
   "src": "codex",
   "path": "src/foo.py",
   "line": 42,
+  "category": "",
   "badge_or_sev": "P2",
   "judgment": {
     "is_real": "real",
@@ -184,20 +187,19 @@ The final JSON aggregates counts (`auto_judge_stats: {apply, defer, skip}`); the
 - `action=skip` → `auto_judge_skip++` only (the existing `skipped_total` continues to count tier=skip filtered-before-table items per `references/skip-minor-rules.md`)
 - `action ∈ {apply, defer}` AND `severity_reassess=="high"` → `high_sev_this_cycle++` (loop-local; feeds the Step 13 `minor_floor` soft-stop)
 - `in_prev_diff == "churn"` → `churn_this_cycle++` (loop-local; feeds the Step 13 `churn` stop)
-- tier `defer` (Codex P2 at `ITER >= 2`) → `late_p2_this_cycle++`, `auto_judge_defer++`; logged as `action=defer`, never judged
 - tier `review` → `review_this_cycle++` (blocks `minor_floor` and `clean`)
 
 This keeps the `applied==0 && deferred==0 && review==0 → clean` convergence test intact while exposing the autonomous-skip counter as a separate dimension.
 
-## No new surfaces inside the loop
+## Who reviews the fixes (Step 12, ADR 0006)
 
-A review-response commit fixes **existing behaviour only**. A finding that needs a new flag, a new branch, a new entry point, or any other surface the PR does not already have is **deferred**, never applied — regardless of how small the change looks. Every new surface handed to a reviewer mid-loop is fresh material for the next round, which is how a review loop turns into churn. Deferred findings of this class are exactly what the Step 14 follow-up issue exists to carry.
+A cycle's fixes are reviewed again only when one of them came from a severe finding. `scripts/auto-merge-gate.sh` reads the cycle's `apply` records and prints `next_action`; the rule lives in its header, not here. `rereview_push` pushes the fixes to the PR as before. On `merge_then_main_push` the fixes stay on the local commit, the run stops at `minor_floor`, Step 15 merges the reviewed HEAD, and `scripts/base-push.sh` puts the fixes on the base once build/test and the pre-commit guards pass there. A re-review of a Minor fix spends a CodeRabbit round on material that was never going to block the merge; the severity boundary, not an iteration cap, is what saves that round.
 
 ## Minor soft-stop (`minor_floor`)
 
-Default-on (disable with `--no-minor-stop`). The v1 convergence test only stopped when a cycle applied *and* deferred nothing, so a PR with an endless low-value tail (CR Minor / Codex P2 that keep being `real + small-safe → apply`) would loop to `MAX_ITER`. The soft-stop adds an early exit: from **iter 2 onward**, if a cycle applied at least one fix but reassessed **no** finding as `high` severity and deferred nothing (`high_sev_this_cycle == 0 && deferred_this_cycle == 0`), the loop ends with `final_state=minor_floor`.
+Default-on (disable with `--no-minor-stop`). The v1 convergence test only stopped when a cycle applied *and* deferred nothing, so a PR with an endless low-value tail (CR Minor / Codex P2 that keep being `real + small-safe → apply`) would loop to `MAX_ITER`. The soft-stop adds two early exits: a cycle whose fixes all came from Minor-or-lower findings (`merge_then_main_push`, above), and, for fixes that went back to the PR, from **iter 2 onward**, a cycle that applied at least one fix but reassessed **no** finding as `high` severity and deferred nothing (`high_sev_this_cycle == 0 && deferred_this_cycle == 0`). Both end with `final_state=minor_floor`.
 
-It is safe because Step 12 already pushed the applied fixes before Step 13 runs. When a cycle defers anything, the finding was `high` or `ambiguous` and the user should see it, so the soft-stop deliberately does not fire.
+The second is safe because Step 12 already pushed the applied fixes before Step 13 runs. When a cycle defers anything, the finding was severe and the user should see it, so that soft-stop deliberately does not fire.
 
 ## Churn stop (`churn`)
 
@@ -205,7 +207,7 @@ From `ITER >= 2`, when every finding this cycle came back `churn` on the `in_pre
 
 ## Merge eligibility
 
-`clean` merges on its own. `minor_floor` and `churn` merge only once Step 14 has filed the follow-up issue carrying what was left behind — `scripts/auto-merge-gate.sh` reads `FINAL_STATE` and `FOLLOWUP_ISSUE` and reports `eligible: false` without it, so a failed `gh issue create` keeps the PR open. Every other `final_state` is ineligible.
+`clean`, `minor_floor` and `churn` merge, and when the run left findings behind (deferred, or unread) only once Step 14 has filed the follow-up issue carrying them — `scripts/auto-merge-gate.sh` reads `FINAL_STATE`, `DEFERRED_TOTAL` and `FOLLOWUP_ISSUE` and reports `eligible: false` without it, so a failed `gh issue create` keeps the PR open. Every other `final_state` is ineligible.
 
 ## Bounded same-file generalization
 

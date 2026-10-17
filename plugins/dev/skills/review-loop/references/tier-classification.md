@@ -51,11 +51,10 @@ Severity decides, because the category names the defect domain rather than its i
 | CR / CLI | severity `🟡 Minor` + effort `🏗️ Heavy lift` | **gated** |
 | CR / CLI | severity `🟡 Minor` + effort `⚡ Quick win` or absent | **auto** |
 | CR / CLI | no parseable header | **review** (surface only) |
-| Codex | P2 at `ITER >= 2` | **defer** — recorded unjudged for the follow-up issue |
-| Codex | P0, P1, or P2 at `ITER == 1` | **gated** |
+| Codex | P0, P1, or P2, in any round | **gated** |
 | Codex | any other badge, or none | **review** (surface only) |
 
-A P2 from iteration 2 on is not judged (decision 15): an applied P2 becomes the next round's material, and before this rule 7 of 8 were applied. `classify-item.sh` reads the iteration from `ITER`.
+A P2 from a later round is judged like any other finding: deferring it unjudged filled the follow-up issues with findings nobody had looked at. What keeps a late P2 from feeding another round is Step 12, where a fix from a Minor-or-lower finding goes to the base after the merge instead of back to the PR (ADR 0006).
 
 Security escalates on category alone because a Minor-rated privacy leak is still a leak. Effort splits Minor because a quick win is worth applying unattended, while a heavy lift at Minor severity is a judgement call the run should surface rather than perform.
 

@@ -121,13 +121,13 @@ uvx hf datasets ls --limit 10
 uvx hf datasets info <repo_id>
 
 # Downloads (any repo type via --repo-type)
-uvx hf download <repo_id> --include "*.json" --local-dir /tmp/<name>     # config only
-uvx hf download <space_id> --repo-type space --include "*.py" --local-dir /tmp/<name>
+uvx hf download <repo_id> --include "*.json" --local-dir "$WORKSPACE/dl/<name>"     # config only
+uvx hf download <space_id> --repo-type space --include "*.py" --local-dir "$WORKSPACE/dl/<name>"
 ```
 
 For keyword search across models or datasets, the REST endpoints above are simpler than the CLI.
 
-Download into `/tmp/` — always temporary, outside the repo root.
+Download into `$WORKSPACE/dl/` (under the gitignored `.tmp/research/` run directory), never into the tracked tree.
 
 ## Optional Python wrappers
 

@@ -68,7 +68,7 @@ Generate through `codex-image` (`--size 1920x1920 --quality high --out deck/asse
 
 Write `sheet-NN-<topic>.md` next to each image (template in `references/sidecar.md`): prompt, tool + version, size, date, reference images, post-processing.
 
-Lost or failed copy: never re-run, a re-run bills again. Recover from `~/.codex/generated_images/<session>/` (`ls -t`, match by time) and copy it in.
+Lost or failed copy: never re-run, a re-run bills again. Recover from `${CODEX_HOME:-$HOME/.codex}/generated_images/<session>/` (`ls -t`, match by time) and copy it in.
 
 codex-image is the default path. When it hits quota, fall back to agy, then Higgsfield (optional, only if connected). A safety refusal is not a fallback case: re-asking another provider after a refusal is a policy bypass, so stop and ask the user whether to revise the prompt. Record which path produced the file in the sidecar.
 

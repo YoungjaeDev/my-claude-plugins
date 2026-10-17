@@ -1,6 +1,6 @@
 ---
 name: ingest
-description: "Bring outside knowledge into the repo's .llmwiki: a source document (meeting notes, research, customer or vendor doc) or a platform, vendor, customer or domain fact learned while working. Saves originals under .llmwiki/raw/, then creates or updates concept pages in .llmwiki/wiki/<topic>/<concept>.md with a ## Sources section, and updates index.md and log.md. Scaffolds the wiki if the repo has none. Turns away decisions (docs/adr), terms (GLOSSARY.md) and repeated mistakes (/retro). Use on /wiki:ingest, ingest-finding, 'wiki 에 넣어줘', '위키 정리', 'ingest this doc', 'add this to the wiki'."
+description: "Bring outside knowledge into the repo's .llmwiki: a source document (meeting notes, research, customer or vendor doc) or a platform, vendor, customer or domain fact learned while working. Saves originals under .llmwiki/raw/, then creates or updates concept pages in .llmwiki/wiki/<topic>/<concept>.md with a ## Sources section, and updates index.md and log.md. Writes only into an existing .llmwiki/ (a repo without one gets a report of the candidates, never a scaffold). Turns away decisions (docs/adr), terms (GLOSSARY.md) and repeated mistakes (/retro). With no argument, lists the research and council leftovers in .tmp/ as candidates. Use on /wiki:ingest, ingest-finding, 'wiki 에 넣어줘', '위키 정리', 'ingest this doc', 'add this to the wiki'."
 ---
 
 # wiki:ingest
@@ -20,6 +20,27 @@ Each kind of knowledge has one home. Before writing anything, sort the input:
 
 Mixed input (a meeting that produced a decision and surfaced a vendor fact) is split: ingest the fact, point the rest at its home.
 
+## No `.llmwiki/`: report, do not scaffold
+
+Check `[ -d .llmwiki ]` before writing anything. A repository without `.llmwiki/` keeps no outside knowledge (ADR 0003: outside knowledge lives in a product repo's `.llmwiki/`), so ingest creates nothing there:
+
+- List the outside-knowledge candidates with their paths and one line: "this repository has no .llmwiki (ADR 0003: outside knowledge goes in the product repository's .llmwiki)". Copy nothing, create no directory.
+- Route only decisions and terms: list them with their paths and point at the `domain-modeling` skill, as below. Mistakes still go to `/retro`.
+- Stop. The skeleton below is for a repo whose `.llmwiki/` already exists.
+
+## No argument: pick from `.tmp/`
+
+When called with nothing to ingest, list candidates instead of asking what to ingest. Originals are never deleted.
+
+- `.tmp/research/*/final_report.md` and `.tmp/research/*/*.json` (scout runs)
+- `.tmp/council/*/` raw files: `brief.md`, `questions.md`, `r1-*`, `r2-*`. Skip `*-prompt.md`; the committed `.council/<run>/consensus.md` is the result, not a candidate.
+
+Show each candidate with its path and one line on what it is, then sort it with the routing table:
+
+- **Outside knowledge** (platform, vendor, customer, domain facts): copy to `.llmwiki/raw/` per step 2 and continue with the normal steps. Ingest only what the user picked.
+- **Decision or term candidates**: never written by ingest. List them with their path and point the user at the `domain-modeling` skill, which owns `docs/adr/` and `GLOSSARY.md`. Promotion stays explicit (ADR 0003).
+- If nothing is outside knowledge, or the repo has no `.llmwiki/`, do not scaffold it; report the routing and stop.
+
 ## Structure
 
 ```text
@@ -32,7 +53,7 @@ Mixed input (a meeting that produced a decision and surfaced a vendor fact) is s
     └── <topic>/<concept>.md  concept pages, one level of topic folders, kebab-case names
 ```
 
-If `.llmwiki/wiki/index.md` or `.llmwiki/wiki/log.md` is missing, create the skeleton first. Check the files, not the directory: `/dev:new` seeds an empty `.llmwiki/wiki/` holding only a `.gitkeep`. The block is idempotent:
+In a repo that has `.llmwiki/`, if `.llmwiki/wiki/index.md` or `.llmwiki/wiki/log.md` is missing, create the skeleton first. Check the files, not the directory: `/dev:new` seeds an empty `.llmwiki/wiki/` holding only a `.gitkeep`. The block is idempotent:
 
 ```bash
 mkdir -p .llmwiki/raw .llmwiki/wiki

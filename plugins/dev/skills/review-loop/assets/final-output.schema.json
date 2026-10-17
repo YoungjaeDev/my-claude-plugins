@@ -63,6 +63,52 @@
       "items": { "type": "string" },
       "description": "Names of the CI checks that failed on the final HEAD when final_state is ci_failing (CodeRabbit and Codex checks left out, scripts/ci-checks.sh). Empty otherwise."
     },
+    "head_verdict": {
+      "description": "Why the final HEAD was left without every reviewer's verdict: timeout (the wait budget ran out) or unread (findings arrived after the last round). Null when every verdict came in. It files no follow-up issue by itself and keeps auto-merge off.",
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "enum": ["timeout", "unread"] }
+      ]
+    },
+    "base_push": {
+      "description": "Minor-or-lower fixes pushed straight to the PR's base after the reviewed HEAD merged (merge_then_main_push, ADR 0006). Null when none were.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["branch", "sha", "fixes"],
+          "properties": {
+            "branch": { "type": "string" },
+            "sha":    { "type": "string" },
+            "fixes":  { "type": "array", "items": { "type": "object" } }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "dropped_reviewers": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["coderabbit", "codex"] },
+      "description": "Reviewers the HEAD verdict wait dropped after their budget (ADR 0006): CodeRabbit after one `@coderabbitai review` for that HEAD, Codex without a nudge. The rest of the run judged HEAD without them, and no merge happens without the user's yes. The final report names them."
+    },
+    "cr_review_requested_base": {
+      "description": "The PR's base when this run posted `@coderabbitai review` because CodeRabbit does not auto-review that base (Step 2 request path). The final report then suggests adding it to the auto-review base-branch list in .coderabbit.yaml (key looked up in CodeRabbit's docs at run time; the file is never edited). Null when that request did not fire.",
+      "oneOf": [ { "type": "null" }, { "type": "string" } ]
+    },
+    "pending_decision": {
+      "description": "A question the background runner could not ask (no AskUserQuestion in a subagent), left for the main session: `merge` (Step 15's \"auto-merge 할까요?\", with what the Step 15 merge block needs) or `cr_source` (Step 7c's rate-limit fallback with no channel left). Null when nothing waits on the user.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["question"],
+          "properties": {
+            "question": { "type": "string", "enum": ["merge", "cr_source"] }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
     "verification_gate": {
       "type": "string",
       "enum": ["on", "baseline_failed", "no_build_check", "no_command", "unknown"],

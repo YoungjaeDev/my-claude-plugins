@@ -195,5 +195,5 @@ After `codex exec` finishes:
 
    Never re-run generation because a copy failed. The image already exists; a second run bills a second generation.
 3. `Read` each file for review.
-4. Report saved path(s), size requested versus produced (read each file's pixel size: `sips -g pixelWidth -g pixelHeight <file>` on macOS, `file <file>` on Linux, and on Windows PowerShell `Add-Type -AssemblyName System.Drawing; $i = [System.Drawing.Image]::FromFile('<file>'); "$($i.Width)x$($i.Height)"; $i.Dispose()`), quality requested, count requested versus produced, and any tool limitation Codex mentioned.
+4. Report saved path(s), size requested versus produced (read each file's pixel size from the file with an image-inspecting command this environment has; probe for one rather than assuming it, e.g. `command -v file` and then `file <file>`, which prints a PNG's dimensions; if none exists, report the size as unverified), quality requested, count requested versus produced, and any tool limitation Codex mentioned.
 5. If generation itself failed, report the Codex CLI version, the error text, and the next concrete command for the user (`codex login`, a Codex update, or a retry at lower quality). Do not fabricate images or write placeholder files.

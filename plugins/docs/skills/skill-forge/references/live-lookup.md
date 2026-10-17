@@ -35,6 +35,7 @@ Name the command or the page and what to read from it, at the step that uses it:
 | "Verified against X 1.61" | the installed version read at run time (`npx playwright --version`) and compared with the minimum the vendor docs state (or the skill's own stated floor, marked as policy), plus the `--help` to read |
 | a hard-coded enum of model names or effort levels | the listing command (`codex debug models`) and the field to read |
 | a copied table of frontmatter fields | the doc URL and section (`https://code.claude.com/docs/en/skills.md`, frontmatter reference) |
+| one install command per OS (`brew install` / `apt install` / `winget install`) <!-- portability-ok: names the pattern check 9 rejects --> | the vendor's install page (`https://cli.github.com/`), then `<tool> --version`; `scripts/check-skill-contract.mjs` check 9 fails a file that lists two or more OSes |
 
 Starting points that resolve today:
 

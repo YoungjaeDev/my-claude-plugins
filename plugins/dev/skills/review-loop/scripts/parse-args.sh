@@ -7,7 +7,7 @@ set -euo pipefail
 MAX_ITER=5; TIMEOUT=1800; INTERVAL=30; AUTO_MERGE=false; PASTE=""; NO_BUILD=false
 CODEX_GRACE=30; NO_CODEX=false; SKIP_MINOR=false
 CR_SOURCE=auto; SMALL_DIFF_LOC=200; SMALL_DIFF_FILES=5
-MINOR_STOP=true; GENERALIZE=true
+MINOR_STOP=true; GENERALIZE=true; RUNNER=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -22,6 +22,7 @@ while [ $# -gt 0 ]; do
     --skip-minor) SKIP_MINOR=true; shift;;
     --no-minor-stop) MINOR_STOP=false; shift;;
     --no-generalize) GENERALIZE=false; shift;;
+    --runner) RUNNER=true; shift;;
     --cr-source) CR_SOURCE="$2"; shift 2;;
     --small-diff-threshold-loc) SMALL_DIFF_LOC="$2"; shift 2;;
     --small-diff-threshold-files) SMALL_DIFF_FILES="$2"; shift 2;;
@@ -40,6 +41,6 @@ for v in MAX_ITER TIMEOUT INTERVAL CODEX_GRACE SMALL_DIFF_LOC SMALL_DIFF_FILES; 
   fi
 done
 
-for v in MAX_ITER TIMEOUT INTERVAL AUTO_MERGE PASTE NO_BUILD CODEX_GRACE NO_CODEX SKIP_MINOR MINOR_STOP GENERALIZE CR_SOURCE SMALL_DIFF_LOC SMALL_DIFF_FILES; do
+for v in MAX_ITER TIMEOUT INTERVAL AUTO_MERGE PASTE NO_BUILD CODEX_GRACE NO_CODEX SKIP_MINOR MINOR_STOP GENERALIZE RUNNER CR_SOURCE SMALL_DIFF_LOC SMALL_DIFF_FILES; do
   printf '%s=%q\n' "$v" "${!v}"
 done

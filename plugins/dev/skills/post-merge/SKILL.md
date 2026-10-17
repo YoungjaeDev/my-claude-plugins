@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: "Clean up after a PR merges: surface leftover review findings, switch to base, delete the merged branch, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', or right after a PR merges. Cleanup only: lessons belong to /retro in the building session, README and CHANGELOG edits to docs:readme and docs:changelog. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:review-loop)."
+description: "Clean up after a PR merges: surface leftover review findings, switch to base, remove other worktrees that pass the safety filter (merged PR, clean, unlocked, no unique commits) after one confirmation, delete the merged branch and the remote branches that pass the same filter, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', or right after a PR merges. Cleanup only: lessons belong to /retro in the building session, README and CHANGELOG edits to docs:readme and docs:changelog. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:review-loop)."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -12,11 +12,11 @@ Local cleanup after a PR is merged. One run takes a merged PR from leftover-revi
 
 - **Worktree mode.** post-merge runs from the main repo or from the PR's worktree. Every step works on the main repo: git calls run as `git -C "$MAIN_REPO"` and repo paths resolve under `$MAIN_REPO/`, in the steps below and in `references/`. `MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")` gives the same answer from either place, so re-derive it in any fresh shell. Inside a worktree (`IN_WT=1`) Step 1 copies the worktree's review-loop state into the main repo's archive, Step 4 leaves the branch alone (the worktree still has it checked out), and Step 11 prints the one command that removes the worktree and the branch. post-merge never removes the worktree itself: on Windows a worktree removed from inside itself is only half deleted.
 - **Non-default base.** For a PR into a branch CodeRabbit does not auto-review, review-loop on the `auto` / `pr-bot` source posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/review-loop/SKILL.md` Step 2); Step 3 below checks out that base like any other. It also changes what the merge did to the linked issues: GitHub honours a closing keyword only on a merge into the default branch, so a non-default base leaves every one of them open with no signal on the PR page — Step 5 is what catches that, and it runs on every PR.
-- **`gh pr view` is the authoritative merge signal.** Step 1's `gh pr view ... state=MERGED` is the single source of truth for "did this land". Later steps MUST NOT re-verify merge state by comparing git SHAs.
-- **Never use SHA-level merge comparison.** `git log <base>..<branch>`, `git cherry`, `git rev-list --left-right` all false-positive after squash merge (base gets one new SHA) and rebase merge (branch SHAs rewritten). If unsure content landed, diff content not SHAs (Step 4).
+- **`gh` is the authoritative merge signal.** Step 1's `gh pr view ... state=MERGED` is the single source of truth for "did this land", and Step 3.5 asks gh the same question (`gh pr list --head <branch>`) for every other worktree's branch. No step decides "merged" by comparing git SHAs.
+- **SHA comparison proves "nothing unique", never "merged".** `git log <base>..<branch>`, `git cherry` and `git rev-list --left-right` read as unmerged after a squash merge (base gets one new SHA) or a rebase merge (branch SHAs rewritten), so none of them answers "did it land". Step 3.5 runs `git cherry` only after gh has said merged, to show the branch holds no commit the PR did not deliver, and settles whatever cherry still lists by content: the branch's files against the PR's merge commit. If unsure content landed, diff content, not SHAs (Step 4).
 - **Leftover-review surface (Step 1.5) is informational.** The run reads review-loop's state file (`.claude/state/review-loop-<PR>.json`, else the latest `.claude/state/archive/` copy, else the same under the pre-rename `cr-fix-` prefix) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
 - **Codex partial-execution.** `/docs:readme` and `/docs:changelog` (Steps 9, 9.5) are commands, which Codex does not load; under Codex do the same edit by hand from the `docs:doc-guides` skill and note it. Every other step runs identically on both runtimes.
-- **Interactive input is capability-aware.** Every prompt and confirmation below, each `AskUserQuestion` mention included, is a gate rather than a tool name: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (`git rm`, `gh repo edit`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+- **Interactive input is capability-aware.** Every prompt and confirmation below, each `AskUserQuestion` mention included, is a gate rather than a tool name: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (`git rm`, `git worktree remove`, `git push origin --delete`, `gh repo edit`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 - **Run record.** Step 1 opens `.claude/state/post-merge-<PR>.json` and every step appends its outcome, so a silent skip becomes visible; Step 10 finalizes it. Mechanism, per-step skip reasons, and the finalize block: `references/run-record.md`.
 
 ## Arguments
@@ -97,10 +97,70 @@ Run the block in `references/leftover-reviews.md` ("Decide the checkpoint line")
 ### 3. Switch to base branch
 
 ```bash
-git -C "$MAIN_REPO" fetch origin
+# --prune drops tracking refs of branches already gone, so Step 4.7 does not list them.
+git -C "$MAIN_REPO" fetch --prune origin
 git -C "$MAIN_REPO" checkout <baseRefName>
 git -C "$MAIN_REPO" pull origin <baseRefName>
 ```
+
+### 3.5. Remove other merged worktrees
+
+Looks at every linked worktree in `git worktree list`, wherever it lives (`.claude/worktrees/`, a sibling directory, another workspace), not only this PR's. Runs after Step 3, because it checks against the freshly fetched `origin/<base>`. The collector is read-only: it prints `{main_repo, worktrees[], remote_branches[]}`, and each worktree entry carries `path`, `branch`, `pr`, `safe`, `reasons[]` and a `tmp` summary of the worktree's `.tmp/` files (path, bytes, mtime). `remote_branches[]` is Step 4.7's. With `--pr <PR_NUMBER>` the same output also carries `issues[]` and `issue_sources`, which Step 5 uses; keep the output for it.
+
+```bash
+# Codex exports no CLAUDE_PLUGIN_ROOT: fall back to the cached plugin dir, ranked
+# on the version basename (not the whole path) so the marketplace dir cannot
+# outrank the version. `|| true`: an empty cache is normal on Claude-only hosts.
+CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+if sort -V </dev/null >/dev/null 2>&1; then
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $(0)}' | sort -V | tail -1 | cut -f2- || true)
+else
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $(0)}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
+fi
+# Validate the script the next line runs, not just a directory.
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "$CLAUDE_PLUGIN_ROOT/skills/post-merge/scripts/collect-cleanup.sh" ]; then
+  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/post-merge"
+elif [ -f "plugins/dev/skills/post-merge/scripts/collect-cleanup.sh" ]; then
+  SKILL_DIR="plugins/dev/skills/post-merge"
+elif [ -n "$CODEX_CAND" ] && [ -f "$CODEX_CAND/skills/post-merge/scripts/collect-cleanup.sh" ]; then
+  SKILL_DIR="$CODEX_CAND/skills/post-merge"
+else
+  echo "post-merge: collect-cleanup.sh not found under CLAUDE_PLUGIN_ROOT, the source tree, or the Codex plugin cache" >&2
+  SKILL_DIR=""
+fi
+[ -n "$SKILL_DIR" ] && bash "$SKILL_DIR/scripts/collect-cleanup.sh" --pr "<PR_NUMBER>"
+```
+
+A failed collection (no script, no `jq`, a `git worktree list` error) skips this step with the error in the report; it does not stop the run, and Step 5 reports the same error.
+
+- **`safe: false`**: report the path and every reason, and leave it. The reasons are an open PR, no merged PR, a failed `gh` lookup, dirty, locked, prunable, detached, or unique commits (cherry lists commits whose content the merge commit does not have). A worktree with no upstream and its own commits lands here, never in the removal list. The worktree this session runs in is listed with reason `current session`: Step 11 prints its command.
+- **`safe: true`**: read the `tmp` summary first. `git worktree remove` treats ignored files as clean and deletes them with the worktree, so `.tmp/` material is gone unless it moves first. Open the files that look like research output (a council or research run directory, notes, a report or a findings file) and propose to keep only those worth having later. Scratch output, logs, caches and anything that can be fetched again stay behind and go with the worktree. Nothing is kept by default.
+- **One confirmation** through the interactive-input gate: list each safe worktree with its path, branch, PR and the `.tmp/` items you propose to keep, and let the user pick which to remove. Remove nothing they did not pick.
+
+For each picked worktree, move the kept items first, one `REL` at a time (`REL` is the item's path under the worktree, starting with `.tmp/`, so it lands at the same layout under the main repo's `.tmp/`):
+
+```bash
+WT="<worktree path>"; REL="<.tmp/... item>"
+DST="$MAIN_REPO/$REL"
+# Never overwrite: an existing target gets a sibling named after the worktree.
+[ -e "$DST" ] && DST="$DST-$(basename "$WT")"
+if [ -e "$DST" ]; then
+  echo "post-merge: $DST exists, $WT/$REL left in place" >&2
+else
+  mkdir -p "$(dirname "$DST")" && mv "$WT/$REL" "$DST" || echo "post-merge: moving $WT/$REL failed" >&2
+fi
+```
+
+If any kept item of a worktree did not move, do not remove that worktree; report it. Then remove it from the main repo, without `--force`:
+
+```bash
+WT="<worktree path>"; BR="<branch>"
+git -C "$MAIN_REPO" worktree remove "$WT" && git -C "$MAIN_REPO" branch -d "$BR"
+```
+
+`worktree remove` refusing (a file changed since the collection) leaves the worktree: report it, do not force. `branch -d` refusing is handled as in Step 4: report, never `-D`. This step belongs to Step 3's run-record entry.
 
 ### 4. Clean up local branch
 
@@ -109,7 +169,7 @@ git -C "$MAIN_REPO" pull origin <baseRefName>
 - **No SHA-level merge check** (see Guidelines). If unsure content landed, diff content: `git -C "$MAIN_REPO" diff "origin/$baseRefName..$headRefName" -- <paths>` (empty = fully landed; safe for squash).
 - If the branch exists, confirm deletion, then `git -C "$MAIN_REPO" branch -d "$headRefName"`.
   - For squash merges expect `warning: not yet merged to HEAD`, which is normal; `-d` detects the merge via `origin/<branch>` tracking and still succeeds. Do NOT escalate to `-D`, do NOT treat as data loss, do NOT open a "missing commits" PR.
-- If another worktree (not this one) still has the branch checked out, report its path from `git -C "$MAIN_REPO" worktree list` and leave it.
+- If another worktree (not this one) still has the branch checked out, Step 3.5 either removed it or reported why not; report its path and leave the branch.
 
 ### 4.5. Prune ephemeral artifacts merged by this PR (optional)
 
@@ -171,6 +231,26 @@ Skip silently when: no marker is found, or the user selects skip-all.
    stages them); `git rm` already stages the deletion. Do NOT add it to
    `RUN_TOUCHED`. Report each.
 
+### 4.7. Delete merged remote branches
+
+A repository that does not delete head branches on merge piles them up on `origin`. Step 3.5's collector checked every `origin/*` branch: each `remote_branches[]` entry carries `name`, `head` (the fetched tip), `pr` (the merged PR, else an open one, else any, else null), `safe` and `reasons[]`. This step runs after Step 4, because `git branch -d` finds a squash merge through `origin/<branch>`, which this step deletes. If Step 3.5 removed a worktree, its branch was still checked out when the collector ran: run the Step 3.5 block again without `--pr` for fresh facts. A failed collection, or `remote_branches: null` with a `remote_error`, skips this step with the error in the report.
+
+- **`safe: false`**: report the name and every reason, and leave it. The reasons are the default branch, checked out in a worktree (this PR's own branch when `IN_WT=1`), an open PR, the base of an open PR (deleting a base closes the PRs on it), a PR closed without merge, unique commits, no PR with a tip not in `origin/<default>`, or a failed `gh` lookup.
+- **`safe: true`**: a merged PR whose branch holds nothing its merge commit lacks (the same test as Step 3.5), or no PR at all and a tip already in `origin/<default>`.
+- **One confirmation** through the interactive-input gate: list each safe branch with its PR number and state, or "no PR, already in `origin/<default>`", and let the user pick. Delete nothing they did not pick.
+
+For each picked branch, with `HEAD_SHA` its `head` from the collector:
+
+```bash
+BR="<name>"; HEAD_SHA="<head>"
+# The lease makes the delete conditional on the remote: it deletes origin/$BR only while
+# it still points at the checked tip, so a push since the collection is never lost.
+git -C "$MAIN_REPO" push --force-with-lease="refs/heads/$BR:$HEAD_SHA" origin --delete "$BR" \
+  || echo "post-merge: origin/$BR not deleted (moved since the check, protected, or no permission): left alone" >&2
+```
+
+The lease is not a force: with an expected value (`--force-with-lease=<refname>:<expect>`, `git push --help`) the delete happens only while the remote ref still equals it. A refused delete is reported and the next branch goes on. This step belongs to Step 4's run-record entry.
+
 ### 5. Close the issues the merge left open (always runs)
 
 Not optional and not conditional on a GitHub Project existing — 5.1 below is the optional part.
@@ -180,19 +260,23 @@ A merge does not always close what the PR body says it closes, and every way it 
 - **Non-default base.** GitHub interprets a closing keyword only when the PR targets the default branch. "If the pull request targets any other branch, then these keywords are ignored, no links are created, and merging the PR has no effect on the issues." (`docs.github.com` → Linking a pull request to an issue.)
 - **Auto-close disabled.** A repository can turn off "Auto-close issues with merged linked pull requests" in Settings → General → Issues. The link exists, the merge does not act on it.
 
-**Read the issue's state, not the link set.** `closingIssuesReferences` is documented as issues that *may* be closed by the PR and includes manually linked ones, so subtracting it hides an issue that is linked and still open — exactly the case this step exists to catch. The issue's own `state` is the direct signal and needs no reasoning about link semantics.
+A PR can also name an issue with no keyword at all (`#N` in a sentence), and a spec stays open after its last ticket closes. All of these are what Step 3.5's collector put in `issues[]`.
 
-That demotes the field from evidence to **a source of candidates, which it still is**. An issue linked by hand in the PR sidebar appears in no body and in no commit message, so a text scan alone never reaches it — and on a repository with auto-close disabled it is exactly the issue left open. Take `gh pr view <PR_NUMBER> --json closingIssuesReferences` as a third input alongside the body and the commits, and put every issue it names through the same state read.
+**Read the issue's state, not the link set.** `closingIssuesReferences` is documented as issues that *may* be closed by the PR and includes manually linked ones, so subtracting it hides an issue that is linked and still open — exactly the case this step exists to catch. The issue's own `state` is the direct signal, so the collector reads it for every ref, and keeps the link set only as a source of candidates (a sidebar link is in no text).
 
-- Extract issue refs from the PR body **and from every commit message on the PR** (`gh api --hostname <host> --paginate "repos/{owner}/{repo}/pulls/<PR_NUMBER>/commits"`, the host taken from the PR's `url` — `gh api` defaults to `github.com` whatever the local remote says, and `gh pr view --json commits` stops at 100 and drops the rest silently, the same cap that bites `--json files`). That endpoint has its own ceiling of 250 commits which `--paginate` does not lift, so a count that comes back at exactly 250 is a truncated scan: say so in the report rather than calling the sweep complete. **and from the merge commit itself** (`MERGE_SHA` from Step 1, read on the same host — when `mergeCommit` came back null, skip this one input and carry on with the others rather than failing the step) — a squash or merge message composed in GitHub's merge dialog exists in no PR commit, and on a non-default base it does not reach `closingIssuesReferences` either, so a scan without it finds no candidate at all. All nine documented keywords, any case, with or without a colon: `close` / `closes` / `closed`, `fix` / `fixes` / `fixed`, `resolve` / `resolves` / `resolved`. Listing only the `-s` forms misses `Fixed #123`, which GitHub honours and which leaves no link behind on a non-default base — the very case this step exists to catch. GitHub honours a closing keyword in a commit message too, and such a reference never appears in the body, so a body-only scan reports a clean Step 5 over an issue nobody closed. Merge both sources and deduplicate on host + repo + number before showing anything.
-- Keep the repository qualifier: a ref is `#N` (this repo) or `OWNER/REPO#N` (another repo — the documented cross-repository syntax). Collapsing `owner/other-repo#123` to `123` and closing it here closes **this** repository's issue 123 instead, while the user believes they confirmed the other one.
-- A third spelling reaches the same issue: a full URL, `https://<host>/OWNER/REPO/issues/N`. GitHub's own syntax table lists only the two `#` forms, so whether a merge honours the URL is beside the point — what matters here is that a body written that way yields no refs at all and Step 5 completes silently on an issue nobody closed. The user confirms every candidate before anything closes, so over-collecting costs a line in a list and under-collecting is the failure this step exists to prevent.
-- Validate every ref before it reaches a command line — a PR body and a commit message are both untrusted input. A `#` ref must match `^([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)?#[0-9]+$`. A URL ref must match `^https://[^/[:space:]]+/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/issues/[0-9]+$` **and** carry the same host as the PR's own `url` from Step 1. `https` only, and one host only: the refs come from text anyone can write, and the state read below is an outbound request made before the user has confirmed anything. A ref on another host is listed as unresolved, never queried and never closed.
-- **Keep a URL ref as its URL.** `gh issue view` and `gh issue close` both take `{<number> | <url>}`, so a validated URL passes through untouched. Reducing it to `OWNER/REPO` and a number throws the host away, and a GitHub Enterprise issue then resolves against `github.com` — the same number, a different repository, silently. Show the host in the confirmation list too, so the user sees which server they are closing on. (`--repo` would also accept `[HOST/]OWNER/REPO`; passing the URL needs no such assembly.)
-- For each ref, read its state: a URL ref via `gh issue view <url> --json state,title`, a `#` ref via `gh issue view <N> --repo <[HOST/]OWNER/REPO> --json state,title` — always pass `--repo`, with the repository resolved from the ref for a qualified one and from the current repo for a bare `#N`, and the host taken from the PR's own `url` in both cases. `gh` defaults an unqualified `--repo` to `github.com`, so on a GitHub Enterprise repository a bare `#N` would otherwise be read and closed on the wrong server. `state == "OPEN"` makes it a candidate, whatever the cause; a ref that 404s (private or deleted) is reported, not closed.
-- The state read happens **before** the confirmation gate, on purpose. A reviewer will suggest inverting that — confirm the raw refs first, query after — and it makes the gate worse: the user would be approving references without knowing which are even open, which is the one fact the gate exists to act on. What keeps the read safe is the host pin above, not deferral: every query goes to the PR's own host, over a repository the user can already read, and a read leaves no trace for anyone to see.
-- Bound the sweep: the refs come from text anyone can write, so cap the deduplicated candidate list (a couple of dozen is generous for a real PR) and report anything past the cap as unresolved rather than issuing an unbounded run of API calls. A rate limit, a timeout or any other partial failure marks that ref unresolved too — keep the states already read, and never let a failed read pass as "not open".
-- List the candidates with their host, repo, number and title, and confirm through the interactive-input gate which ones this PR resolved. Then close each confirmed one the same way it was read — `gh issue close <url> --comment "Resolved by <PR url>"`, or `gh issue close <N> --repo <[HOST/]OWNER/REPO> --comment "Resolved by <PR url>"` — the **same** repository identifier the state read used one step earlier. Dropping the host on the write path alone sends the close to `github.com` while the read came from the Enterprise server. The comment body is read **in the issue's repository**, so a bare `#<PR>` there points at that repository's own number — a different pull request, or nothing. The PR's `url` (from Step 1) resolves the same everywhere and needs no same-repo special case. Do not close an issue the user did not confirm.
+**What the collector did** (`scripts/collect-cleanup.sh --pr`, rules in its header). It scanned the PR body, every PR commit message and the merge commit's message, plus `closingIssuesReferences`, for `#N`, `OWNER/REPO#N` and issue URLs. It validated each ref (https and the PR's own host only for a URL, the repository qualifier kept, at most 25 refs read), dropped this PR's own number and every ref gh resolves to a pull request (issues and PRs share numbers), and read each issue's state on the PR's host. Each `issues[]` entry has `ref` (as written), `via`, `state`, `title` and `url`:
+
+- `via`: `keyword` (one of GitHub's nine closing keywords), `closingRef` (linked on the PR), `bare` (a mention with no keyword), or `spec-parent`: the issue's GitHub sub-issue parent, listed only when it is open and every child still open is in this list. Its `after` names those children.
+- `state: null` with a `reason`: unresolved (another host, an invalid ref, past the cap, a failed read, a failed parent lookup). Report each one; never treat it as "not open", and never close it.
+- `issue_sources`: `commits` is null when the commit scan failed, and `commits_truncated: true` means the endpoint's 250-commit ceiling cut the scan. Say so in the report rather than calling the sweep complete. `merge_commit` is `read`, `none` (no merge commit) or `failed`. `issues: null` with `issue_sources.error` means nothing was read: report the error.
+
+The state read happens **before** the confirmation gate, on purpose. A reviewer will suggest inverting that — confirm the raw refs first, query after — and it makes the gate worse: the user would be approving references without knowing which are even open, which is the one fact the gate exists to act on. What keeps the read safe is the host pin, not deferral: every query goes to the PR's own host, over a repository the user can already read, and a read leaves no trace for anyone to see.
+
+**Judge each `OPEN` entry before asking.** A mention is not a resolution, least of all a `bare` one. Read the issue (`gh issue view <url> --comments`) and set what it asks for against the PR's diff (`gh pr diff <PR_NUMBER>`). Propose to close it only when the diff does what the issue asks. Leave it open, and say why, when the PR does only part of it, only mentions it, or the issue is kept open on purpose (it waits for a human check, tracks a follow-up, or says so in its body or comments). A `spec-parent` is resolved when its children are: propose it only together with every child in its `after`.
+
+**One confirmation** through the interactive-input gate for all proposed closes: each with its host, repo, number, title, `via`, and the evidence (the line of the issue and the part of the diff that match). List the unresolved refs and the ones you left open below it, with their reasons.
+
+**Close each confirmed one by its `url`**: `gh issue close <url> --comment "Resolved by <PR url>"`. The `url` is the one gh returned for the state read, so it carries the host the read used; a bare number would send the close to `github.com` while the read came from an Enterprise server. The comment body is read **in the issue's repository**, so a bare `#<PR>` there points at that repository's own number — a different pull request, or nothing. The PR's `url` (from Step 1) resolves the same everywhere. Close a `spec-parent` last, and only if every child in its `after` closed. Do not close an issue the user did not confirm.
 
 ### 5.1. Update GitHub Project status (optional)
 
@@ -239,7 +323,7 @@ Print this one line, filled in, as the last line of the run, and do not run it. 
   "$MAIN_REPO" "$WT_PATH" "$headRefName"
 ```
 
-`git worktree remove` refuses a worktree with modified or untracked files, which is the check to keep: anything it names was never committed. `git branch -d` behaves as in Step 4.
+`git worktree remove` refuses a worktree with modified or untracked files, which is the check to keep: anything it names was never committed. It deletes ignored files such as `.tmp/` without asking, so move anything worth keeping to `$MAIN_REPO/.tmp/` first, as Step 3.5 does. `git branch -d` behaves as in Step 4. Step 3.5 skips this worktree (reason `current session`) and leaves it to this command.
 
 ## References
 

@@ -88,14 +88,29 @@ function bannedPatterns(md) {
 function proseLines(md) {
   const out = [];
   let fence = null;
+  let para = []; // [lineNo, line] run with no blank line or fence between: a code span may cross lines inside it
+  const flush = () => {
+    if (!para.length) return;
+    // A code span closes on a backtick run of exactly the opener's length, so `` `x` `` is one span.
+    // Blank each run of non-newline chars so line breaks survive and line numbers stay valid.
+    const text = para.map((p) => p[1]).join('\n')
+      .replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, (m) => m.replace(/[^\n]+/g, ' '))
+      // A tag opens with a name (or `/`, `!`) right after `<`: `1 < 2` and a lone `<` line are text.
+      .replace(/<\/?[A-Za-z!][^<>]*>/g, ' ');
+    text.split('\n').forEach((t, k) => out.push([para[k][0], t]));
+    para = [];
+  };
   md.split('\n').forEach((line, i) => {
     const f = line.match(/^\s*(`{3,}|~{3,})(.*)$/);
     // CommonMark: a closer repeats the opener's character, is no shorter, and has nothing after it.
     if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length && !f[2].trim()) fence = null; return; }
-    if (f) { fence = f[1]; return; }
-    // A code span closes on a backtick run of exactly the opener's length, so `` `x` `` is one span.
-    out.push([i + 1, line.replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, ' ').replace(/<[^>]*>/g, ' ')]);
+    if (f) { flush(); fence = f[1]; return; }
+    if (!line.trim()) { flush(); out.push([i + 1, line]); return; }
+    // An ATX heading ends the paragraph before it and is a block of its own: no code span crosses it.
+    if (/^ {0,3}#{1,6}(\s|$)/.test(line)) { flush(); para.push([i + 1, line]); flush(); return; }
+    para.push([i + 1, line]);
   });
+  flush();
   return out;
 }
 
@@ -150,6 +165,13 @@ function runFixtures() {
     [[1, '설치 → 실행'], [5, '는 코드다'], [6, '본문'], [10, '끝에 대해']]);
   eq('multi-backtick span with an inner backtick is code',
     proseLines('정상 문장: `` `x` → y ``.').map(([, t]) => t.trim()), ['정상 문장:  .']);
+  eq('code span may span lines',
+    proseLines('앞 `a\nb → c` 뒤\n\n다음 → 줄').map(([n, t]) => [n, t.trim()]), [[1, '앞'], [2, '뒤'], [3, ''], [4, '다음 → 줄']]);
+  eq('a < or > that opens no tag is text, even across lines',
+    proseLines('비교: 1 < 2\n여기 → 다음 > 끝\n<\n설치 → 실행\n>').map(([, t]) => t.trim()),
+    ['비교: 1 < 2', '여기 → 다음 > 끝', '<', '설치 → 실행', '>']);
+  eq('a heading ends the paragraph, so no code span crosses it',
+    proseLines('` 예시\n## 설치 → 실행\n` 끝').map(([n, t]) => [n, t.trim()]), [[1, '` 예시'], [2, '## 설치 → 실행'], [3, '` 끝']]);
   eq('fence closes only on a bare marker',
     proseLines(['```', '```not-a-closer', 'a → b', '```', '끝 → 끝'].join('\n')).map(([n]) => n), [5]);
   try {

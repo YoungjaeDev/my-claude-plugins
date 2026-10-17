@@ -5,56 +5,56 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 8 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.64.0"
+    "version": "2.65.0"
   },
   "plugins": [
     {
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Back half of the development flow, from a PR ready for review to merge and cleanup; the front half (idea -> spec -> tickets -> PR) belongs to Matt's skills (mattpocock-skills). GitHub workflow: commit-and-push, release, review-loop (unified CodeRabbit + ChatGPT-Codex review loop with autonomous apply/defer/skip judgment and rate-limit fallback), post-merge (cleanup only: leftover reviews, branch, issues, project status, About line; lessons go to /retro), session-handoff (chat-only end-of-session summary for a fresh agent), orchestrate (subagent orchestration: job cards, model x effort worker presets, disjoint file ownership, bounded re-query, orchestrator-owned verification), flow (router over Matt's front half and dev's back half plus product-repo setup, no side effects of its own). Project setup: new (first-day bootstrap: interview, .claude/ scaffold, CLAUDE.md + AGENTS.md with Codex reviewer guidelines, gh repo create) and wiring (14-axis harness diagnostic for an existing repo, read-only until approved). Playwright E2E harness: e2e-setup, e2e-author, e2e-debug wrap Playwright's planner/generator/healer agents (planner/generator explore via playwright-cli, healer via the playwright-test MCP server); never overwrite an existing playwright.config and degrade gracefully without Playwright.",
-      "version": "5.1.0",
+      "version": "5.2.0",
       "category": "development"
     },
     {
       "name": "docs",
       "source": "./plugins/docs",
       "description": "Documents people and agents read, plus publishing them elsewhere. Project docs — readme / changelog / deploy-doc / moc commands backed by the doc-guides reference cards. Agent-facing authoring — write-rules (CLAUDE.md + .claude/rules), interview-methodology (open points of a small ambiguous request, inline summary, TCREI reusable-prompt output), vp (voice-dictated prompt gate with a shared .agents/voice-terms.md dictionary), and the skill-forge family (skill-forge authoring, skill-audit single-skill diagnosis, skill-fleet-review repository-wide sweep). Publishing — translate-web-article (web page to Korean markdown) and gws-sync (one-way local to Google Drive sync behind an approval gate).",
-      "version": "2.1.1",
+      "version": "2.1.2",
       "category": "documentation"
     },
     {
       "name": "scout",
       "source": "./plugins/scout",
       "description": "Research and search. research-orchestrator routes a query to the github / hf / web / docs scout agents in parallel and synthesis-scout dedups, trust-ranks, and writes the report (exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4). ask and generate-llmstxt query a GitHub repository through the DeepWiki MCP. Non-code/ML topics go to the sibling /deep-research.",
-      "version": "2.0.2",
+      "version": "2.0.3",
       "category": "research"
     },
     {
       "name": "ml",
       "source": "./plugins/ml",
       "description": "ML / multimodal / CV development: ml-dev-principles (working discipline incl. GPU parallel patterns), gradio-cv-app (Gradio computer-vision demo apps), cv-notebook (CV experiment notebooks with an interactive ipywidgets exploration mode), edit-notebook (safe .ipynb editing through NotebookEdit).",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "development"
     },
     {
       "name": "wiki",
       "source": "./plugins/wiki",
-      "description": "Outside-knowledge wiki under .llmwiki/: facts about what the repo does not control (platforms, vendors, customers, the domain), kept as untouched originals in raw/ and concept pages with a ## Sources section in wiki/. ingest (a source document or a fact learned while working into concept pages, updates index.md and log.md, scaffolds the wiki on first use, turns decisions, terms and repeated mistakes away to docs/adr, GLOSSARY.md and /retro), query (cited answers from index -> pages -> raw, saves a new answer only after approval), lint (stale pages, broken links and Sources, orphans, index drift), plaud-note-taking (PLAUD Whisper transcript correction into .llmwiki/raw/transcripts/, hands facts to ingest). No hooks, no scripts.",
-      "version": "2.0.0",
+      "description": "Outside-knowledge wiki under .llmwiki/: facts about what the repo does not control (platforms, vendors, customers, the domain), kept as untouched originals in raw/ and concept pages with a ## Sources section in wiki/. ingest (a source document or a fact learned while working into concept pages, updates index.md and log.md, writes only into an existing .llmwiki/ (no scaffold), turns decisions, terms and repeated mistakes away to docs/adr, GLOSSARY.md and /retro), query (cited answers from index -> pages -> raw, saves a new answer only after approval), lint (stale pages, broken links and Sources, orphans, index drift), plaud-note-taking (PLAUD Whisper transcript correction into .llmwiki/raw/transcripts/, hands facts to ingest). No hooks, no scripts.",
+      "version": "2.1.0",
       "category": "memory"
     },
     {
       "name": "deck",
       "source": "./plugins/deck",
       "description": "House-format HTML lecture decks (deck/shell.html + deck/sections/*.html + GSAP motions, 1920x1080, RALPHDEV brand). Rule originals (korean-style, deck-copy, deck-authoring) live in this plugin and are copied into each deck repo's .claude/rules/ with a version stamp. Tools run from the plugin, never copied: build, dev server with in-browser edit, copy check, Playwright render and interaction checks, Vercel deploy. Skills: deck-new (scaffold), deck-author (writing sections), deck-assets (logos, icon sheets, mascot cuts), deck-check (build + QA + rule drift), deck-sync (refresh rule copies and vendor), deck-deploy (explicit request only). Generic one-off presentations belong to frontend-slides.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "documentation"
     },
     {
       "name": "council",
       "source": "./plugins/council",
       "description": "Claude-only (do not install into Codex). Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync.",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "category": "ai-models",
       "policy": {
         "installation": "NOT_AVAILABLE"
@@ -64,7 +64,7 @@
       "name": "codex-image",
       "source": "./plugins/codex-image",
       "description": "Claude-only (do not install into Codex). Generate or edit images from Claude Code by delegating to Codex CLI image generation (ChatGPT OAuth, no OpenAI API key). Claude-only bridge; excluded from Codex sync.",
-      "version": "1.4.1",
+      "version": "1.4.2",
       "category": "ai-models",
       "policy": {
         "installation": "NOT_AVAILABLE"

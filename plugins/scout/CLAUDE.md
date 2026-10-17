@@ -22,7 +22,7 @@ For the full routing matrix (should / should-NOT, near-miss disambiguation vs `s
 
 ```text
 research-orchestrator (skill, entry point)
-  │   $WORKSPACE = ${TMPDIR:-/tmp}/research/run.XXXXXXXX  (per-run mktemp)
+  │   $WORKSPACE = <repo>/.tmp/research/run.XXXXXXXX      (per-run mktemp; ${TMPDIR:-/tmp}/research outside a repo)
   │   $REPORT    = $WORKSPACE/final_report.md             (override via report_path)
   │
   ├─ fan-out (parallel) ──────────────────────────────┐

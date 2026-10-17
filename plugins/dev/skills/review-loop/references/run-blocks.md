@@ -19,6 +19,13 @@ auto_judge_apply=0; auto_judge_defer=0; auto_judge_skip=0
 # HOLD_STATE: a Step 13 stop waiting on the pushed HEAD's verdicts. HEAD_VERDICT:
 # empty, or why the last HEAD was left unverified (timeout | unread) for Step 14.
 HOLD_STATE=""; HEAD_VERDICT=""; pushed_this_cycle=false
+# REVIEWED_SHA: set when Step 12 held a cycle's Minor-or-lower fixes back for the base
+# (merge_then_main_push): the PR head they wait on, which Step 15 merges.
+REVIEWED_SHA=""
+# dropped_reviewers: reviewers a HEAD verdict wait dropped (ADR 0006), space-separated.
+# CR_BASE_REQUESTED: the base, once this run posted the non-default-base review request.
+# pending_decision: the question a runner leaves for the main session (SKILL.md "Runner").
+dropped_reviewers=""; CR_BASE_REQUESTED=""; pending_decision=""
 ```
 
 ## Step 2: draft PR
@@ -46,16 +53,19 @@ CR_REVIEW_REQUEST=$(bash "$SKILL_DIR/scripts/cr-review-request.sh" "$BASE" "$DEF
 
 ```bash
 # Posts `@coderabbitai review` for HEAD when the PR bot is the source and either
-# CodeRabbit will not auto-review this base (Step 2) or, with `paused`, it paused
-# automatic reviews (any base).
+# CodeRabbit will not auto-review this base (Step 2), or, with `paused` / `stuck`, it
+# paused automatic reviews or gave no verdict within its budget (any base, ADR 0006).
 request_cr_review() {  # GitHub comments are the record; no state file
   local since decision
   case "$CR_SOURCE" in auto|pr-bot) : ;; *) return 0 ;; esac
-  [ "$CR_REVIEW_REQUEST" = request ] || [ "${1:-}" = paused ] || return 0
+  [ "$CR_REVIEW_REQUEST" = request ] || [ -n "${1:-}" ] || return 0
   since=$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "$(git rev-parse HEAD)")
   # Exit 1 = comments unreadable: do not post blind (the script logs why).
   decision=$(bash "$SKILL_DIR/scripts/cr-review-posted.sh" "$OWNER" "$REPO" "$PR_NUM" "$since") || return 0
-  [ "$decision" = post ] && gh pr comment "$PR_NUM" --body "@coderabbitai review"
+  [ "$decision" = post ] || return 0
+  gh pr comment "$PR_NUM" --body "@coderabbitai review" || return 0
+  # The final report suggests adding this base to CodeRabbit's auto-review list (Step 16).
+  if [ -z "${1:-}" ]; then CR_BASE_REQUESTED="$BASE"; fi
 }
 # Which reviewers are on now (Step 2b and pre-flight can drop one): cr_on, codex_on.
 reviewers_on() {
@@ -65,25 +75,47 @@ reviewers_on() {
 # Waits, inside the existing caps (TIMEOUT for CodeRabbit, the Codex wait budget),
 # until every reviewer this run has on gave HEAD a verdict. Sets hv (one JSON line,
 # scripts/head-verdicts.sh) and hv_state: ready | timeout | codex_failed. A paused
-# CodeRabbit (auto_pause_after_reviewed_commits) gets one `@coderabbitai review` for
-# this HEAD, then the wait resumes with the CodeRabbit budget counted from that
-# request (the newer of push and request time).
+# CodeRabbit (auto_pause_after_reviewed_commits), or one silent for half its budget
+# (stuck), gets one `@coderabbitai review` for this HEAD. After a pause the wait
+# resumes with the CodeRabbit budget counted from that request (it starts the
+# review); after a stuck nudge it keeps the first wait's deadline (cr_deadline), so
+# the whole wait stays inside one TIMEOUT. A reviewer the wait dropped (ADR 0006) is
+# off for the rest of the run, as Step 2b drops one, and named in dropped_reviewers.
 await_head_verdicts() {
-  local sha pt round cr_on codex_on
+  local sha pt round cr_on codex_on r tmp crdl=""
   sha=$(git rev-parse HEAD)
   pt=$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "$sha")
   reviewers_on
   for round in 1 2; do
-    # Bash(run_in_background=true, timeout=(TIMEOUT+CODEX_GRACE)*1000) + Monitor: one JSON line.
+    # Bash(run_in_background=true) + Monitor: one JSON line. The script keeps its own
+    # deadlines; on each wake read its output file, not a completion notification.
     hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$sha" PUSH_TIME="$pt" \
          CR_ON="$cr_on" CODEX_ON="$codex_on" TIMEOUT="$TIMEOUT" INTERVAL="$INTERVAL" \
-         CODEX_GRACE="$CODEX_GRACE" bash "$SKILL_DIR/scripts/head-verdicts.sh")
+         CODEX_GRACE="$CODEX_GRACE" CR_DEADLINE="$crdl" bash "$SKILL_DIR/scripts/head-verdicts.sh")
     hv_state=$(jq -r '.state // empty' <<<"$hv" 2>/dev/null) || hv_state=""
     [ -n "$hv_state" ] || hv_state=timeout  # no line: the wait was cut off
-    [ "$hv_state" = paused ] || return 0
-    if [ "$round" = 1 ]; then request_cr_review paused; fi  # posts only when this HEAD has no request yet
+    case "$hv_state" in
+      paused|stuck)
+        # Posts only when this HEAD has no request yet.
+        if [ "$round" = 1 ]; then request_cr_review "$hv_state"; fi
+        if [ "$hv_state" = stuck ]; then crdl=$(jq -r '.cr_deadline // empty' <<<"$hv" 2>/dev/null) || crdl=""; fi
+        continue ;;
+    esac
+    for r in $(jq -r '.dropped[]?' <<<"$hv" 2>/dev/null); do
+      case " $dropped_reviewers " in *" $r "*) continue ;; esac
+      dropped_reviewers="${dropped_reviewers:+$dropped_reviewers }$r"
+      case "$r" in
+        codex) NO_CODEX=true; codex_active=disabled ;;
+        coderabbit)
+          CR_SOURCE=codex-only
+          if [ -f "${STATE_FILE:-}" ]; then
+            tmp=$(mktemp); jq '.cr_source = "codex-only"' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+          fi ;;
+      esac
+    done
+    return 0
   done
-  hv_state=timeout  # still paused: the request did not land
+  hv_state=timeout  # still paused or stuck: the request did not land
 }
 # Before iter 1: the PR's opening push was never auto-reviewed.
 request_cr_review
@@ -143,7 +175,8 @@ trap 'ITER=${ITER:-0} APPLIED_TOTAL=$applied_total DEFERRED_TOTAL=$deferred_tota
   CR_SOURCE=$CR_SOURCE CLI_INVOCATIONS=$cli_invocations RATE_LIMIT_HITS=$rate_limit_hits \
   AUTO_JUDGE_APPLY=$auto_judge_apply AUTO_JUDGE_DEFER=$auto_judge_defer AUTO_JUDGE_SKIP=$auto_judge_skip \
   TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE VERIFICATION_GATE=$VERIFICATION_GATE \
-  CI_FAILING_CHECKS=${ci_failing_checks:-[]} \
+  CI_FAILING_CHECKS=${ci_failing_checks:-[]} HEAD_VERDICT=$HEAD_VERDICT \
+  DROPPED_REVIEWERS="$dropped_reviewers" CR_BASE_REQUESTED="$CR_BASE_REQUESTED" PENDING_DECISION="$pending_decision" \
   bash $SKILL_DIR/scripts/emit-final-json.sh' EXIT
 ```
 
@@ -195,7 +228,7 @@ for ITER in $(seq 1 $MAX_ITER); do
   CUR_SHA=$(git rev-parse HEAD)
   pushed_this_cycle=false
   applied_this_cycle=0; deferred_this_cycle=0; high_sev_this_cycle=0
-  churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0; late_p2_this_cycle=0
+  churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0
   # What the PREVIOUS iteration committed, for the Step 9c.4 in_prev_diff axis.
   # Empty on iter 1 or an empty diff both degrade to "no churn" — the safe side.
   PREV_SHA="${ITER_START_SHA:-}"; ITER_START_SHA="$CUR_SHA"
@@ -260,10 +293,10 @@ for ITER in $(seq 1 $MAX_ITER); do
 
 ```bash
 if [ "$gate" = "cr_wait" ]; then
-  # Bash(run_in_background=true, timeout=TIMEOUT*1000):
-  #   OWNER=... REPO=... SHA=$CUR_SHA PR_NUM=... INTERVAL=$INTERVAL PUSH_TIME=$PUSH_TIME TIMEOUT=... \
+  # Bash(run_in_background=true) + Monitor; the poller stops itself at TIMEOUT:
+  #   OWNER=... REPO=... SHA=$CUR_SHA PR_NUM=... INTERVAL=$INTERVAL PUSH_TIME=$PUSH_TIME TIMEOUT=$TIMEOUT \
   #     bash $SKILL_DIR/scripts/poll-cr-status.sh
-  # Monitor returns one JSON line: {state:"success"|"failure"|"rate_limited", ...}
+  # One JSON line: {state:"success"|"failure"|"rate_limited"|"error"|"timeout", ...}
 fi
 # CR_SOURCE ∈ {cli, codex-only} sets gate="bypass" (Step 5) — never poll PR-bot in those modes;
 # Step 7d (CLI) / Step 8b (Codex inline) handle the source directly.
@@ -364,12 +397,12 @@ cr_records=$cli_records
 ```bash
 all=$(printf '%s\n%s\n' "$cr_records" "$codex_records" | jq -c -s 'add')
 classified=$(echo "$all" | jq -c '.[]' \
-  | while IFS= read -r rec; do printf '%s\n' "$rec" | ITER=$ITER SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
+  | while IFS= read -r rec; do printf '%s\n' "$rec" | SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
   | jq -s '.')
 # A stop Step 13 held resolves here, on the new HEAD's findings: only one that needs
-# a decision (gated, a late-P2 defer, or unreadable) earns the extra round.
+# a decision (gated, or unreadable) earns the extra round.
 if [ -n "$HOLD_STATE" ]; then
-  if [ "$(jq '[.[] | select(.tier == "gated" or .tier == "defer" or .tier == "review")] | length' <<<"$classified")" = 0 ]; then
+  if [ "$(jq '[.[] | select(.tier == "gated" or .tier == "review")] | length' <<<"$classified")" = 0 ]; then
     final_state="$HOLD_STATE"; break
   fi
   HOLD_STATE=""
@@ -439,13 +472,23 @@ res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER") || { fi
 ```bash
 # Step 10 noop: no commit this cycle, so nothing to push (a cycle of failed fixes).
 if [ "$res" != noop ]; then
-  # A rejected push leaves the loop (references/failure-modes.md); nothing below may
-  # run for a head the PR never received.
-  git push 2>&1 || { final_state=failure; break; }
-  pushed_this_cycle=true
-  : > "$TRACK_FILE"  # reset for next iter
-  # Non-default base only (Step 2): this push will not be auto-reviewed.
-  request_cr_review  # Step 2: skips when this head already has a request
+  # Who reviews this cycle's fixes (ADR 0006): with only Minor-or-lower ones the
+  # reviewed HEAD is merged and they go to the base (Step 15); else back to the PR.
+  # An unreadable answer pushes.
+  next_action=$(STATE_FILE="$STATE_FILE" FIX_ITER="$ITER" VERIFICATION_GATE="$VERIFICATION_GATE" MINOR_STOP="$MINOR_STOP" \
+    bash "$SKILL_DIR/scripts/auto-merge-gate.sh" "$OWNER" "$REPO" "$PR_NUM" "$CUR_SHA" 2>/dev/null \
+    | jq -r '.next_action // empty' 2>/dev/null) || next_action=""
+  if [ "$next_action" = merge_then_main_push ]; then
+    REVIEWED_SHA="$CUR_SHA"  # Step 13 stops; the fixes stay on the local commit until Step 15
+  else
+    # A rejected push leaves the loop (references/failure-modes.md); nothing below may
+    # run for a head the PR never received.
+    git push 2>&1 || { final_state=failure; break; }
+    pushed_this_cycle=true
+    : > "$TRACK_FILE"  # reset for next iter
+    # Non-default base only (Step 2): this push will not be auto-reviewed.
+    request_cr_review  # Step 2: skips when this head already has a request
+  fi
 fi
 ```
 
@@ -455,14 +498,16 @@ Closes the per-iteration loop the Step 5 block opened.
 
 ```bash
 applied_total=$((applied_total + applied_this_cycle))
-# Late Codex P2s (tier defer) reach the follow-up issue through deferred_total but
-# never count as this cycle's deferrals: they are policy, not undecided findings.
-deferred_total=$((deferred_total + deferred_this_cycle + late_p2_this_cycle))
+deferred_total=$((deferred_total + deferred_this_cycle))
 review_total=$((review_total + review_this_cycle))
 stop=""
+# Step 12 held this cycle's Minor-or-lower fixes for the base: the reviewed HEAD is
+# what merges, so no round is left to run.
+if [ -n "$REVIEWED_SHA" ]; then
+  stop=minor_floor
 # Churn stop: from iter 2 on, every finding this cycle sat on material the loop
 # itself produced, or outside the PR diff.
-if [ "$ITER" -ge 2 ] && [ "$judged_this_cycle" -gt 0 ] \
+elif [ "$ITER" -ge 2 ] && [ "$judged_this_cycle" -gt 0 ] \
    && [ "$churn_this_cycle" = "$judged_this_cycle" ]; then
   stop=churn
 # Minor soft-stop: from iter 2 on, only low-severity fixes applied, none
@@ -470,10 +515,6 @@ if [ "$ITER" -ge 2 ] && [ "$judged_this_cycle" -gt 0 ] \
 elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$applied_this_cycle" -gt 0 ] \
    && [ "$high_sev_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
    && [ "$review_this_cycle" = 0 ]; then
-  stop=minor_floor
-# Only late Codex P2s left: a floor, not clean — clean files no follow-up issue.
-elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
-   && [ "$review_this_cycle" = 0 ] && [ "$late_p2_this_cycle" -gt 0 ]; then
   stop=minor_floor
 # clean also needs zero unread findings: a review-tier item is one nobody judged.
 elif [ "$applied_this_cycle" = 0 ] && [ "$deferred_this_cycle" = 0 ] \
@@ -513,34 +554,38 @@ fi
 case "$final_state" in
   clean|minor_floor|churn)
     # Bash(run_in_background=true, timeout=(TIMEOUT+60)*1000) + Monitor: one JSON line.
-    ci=$(CAP="$TIMEOUT" INTERVAL="$INTERVAL" bash "$SKILL_DIR/scripts/ci-checks.sh" "$PR_NUM")
+    ci=$(CAP="$TIMEOUT" INTERVAL="$INTERVAL" \
+         PUSH_TIME="$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "$(git rev-parse HEAD)")" \
+         bash "$SKILL_DIR/scripts/ci-checks.sh" "$PR_NUM")
     case "$(jq -r '.state' <<<"$ci" 2>/dev/null | tr -d '\r')" in
       fail) final_state=ci_failing; ci_failing_checks=$(jq -c '.failing' <<<"$ci") ;;
       error|"") echo "review-loop: CI checks on HEAD could not be read; final_state kept" >&2 ;;
     esac ;;
 esac
-# One follow-up issue for whatever the run leaves behind: deferred findings, from
-# this cycle or an earlier one (a later clean cycle records none of them), findings
-# nobody could read, or a HEAD without every verdict. Failing CI checks alone file
-# none: the final report names them. Block: references/failure-modes.md.
-followup_needed=false
-case "$final_state" in
-  churn|minor_floor|iteration_cap|user_declined|clean|timeout|ci_failing)
-    if [ "$deferred_total" -gt 0 ] || [ "$review_total" -gt 0 ] || [ -n "$HEAD_VERDICT" ]; then
-      followup_needed=true
-    fi ;;
-esac
+# One follow-up issue, only when the run left findings behind: deferred ones from any
+# cycle, or ones nobody could read (auto-merge-gate.sh `file_issue`). A HEAD without
+# every verdict and failing CI checks alone go to the final report. An unreadable
+# answer files it: losing a deferred finding costs more than an empty issue.
+# Block: references/failure-modes.md.
+reviewers_on
+gate=$(FINAL_STATE="$final_state" DEFERRED_TOTAL="$((deferred_total + ${review_total:-0}))" \
+       CR_ON="$cr_on" CODEX_ON="$codex_on" DROPPED_REVIEWERS="${dropped_reviewers:-}" \
+       bash "$SKILL_DIR/scripts/auto-merge-gate.sh" "$OWNER" "$REPO" "$PR_NUM" "${REVIEWED_SHA:-$(git rev-parse HEAD)}")
+followup_needed=$(jq -r '.file_issue' <<<"$gate" 2>/dev/null) || followup_needed=""
+case "$followup_needed" in true|false) : ;; *) followup_needed=true ;; esac
+[ -z "$HEAD_VERDICT" ] || echo "review-loop: HEAD $(git rev-parse HEAD) left unverified (HEAD_VERDICT=$HEAD_VERDICT); auto-merge stays off" >&2
 ```
 
 ## Step 15: auto-merge gate
 
 ```bash
-HEAD_SHA=$(git rev-parse HEAD)
+# The PR's head is the reviewed one when Step 12 held the Minor fixes for the base.
+FIX_SHA=$(git rev-parse HEAD); HEAD_SHA=${REVIEWED_SHA:-$FIX_SHA}
 # The gate re-reads every HEAD verdict (one look, no wait: Steps 7e and 14 waited).
 reviewers_on
 # Unread (`review`-tier) findings need the follow-up issue as much as deferred ones.
 left_behind=$((deferred_total + ${review_total:-0}))
-gate=$(FINAL_STATE="$final_state" CR_ON="$cr_on" CODEX_ON="$codex_on" \
+gate=$(FINAL_STATE="$final_state" CR_ON="$cr_on" CODEX_ON="$codex_on" DROPPED_REVIEWERS="${dropped_reviewers:-}" \
        FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$left_behind" \
        FOLLOWUP_APPEND_FAILED="$([ "$left_behind" -gt 0 ] && jq -r '.followup_issue.append_failed // false' "$STATE_FILE" || echo false)" \
        bash $SKILL_DIR/scripts/auto-merge-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$HEAD_SHA")
@@ -549,34 +594,79 @@ cr_state=$(jq -r '.cr_state' <<<"$gate")
 blocking=$(jq -r '.blocking_checks' <<<"$gate")
 proto=$(jq -r '.protection_http' <<<"$gate")
 base=$(jq -r '.base_branch' <<<"$gate")
-if [ "$eligible" != "true" ]; then
-  echo "auto-merge: $(jq -r '.ineligible_reason' <<<"$gate")" >&2; exit 0
+ci_state=$(jq -r '.ci_state' <<<"$gate" | tr -d '\r')
+# A check that failed after Step 14 looked ends the run where Step 14 would have (#336).
+if [ "$ci_state" = fail ]; then
+  case "$final_state" in
+    clean|minor_floor|churn) final_state=ci_failing; ci_failing_checks=$(jq -c '.failing_checks' <<<"$gate") ;;
+  esac
 fi
+why=""
+if [ "$verification_blocking" = true ]; then why="a merge-conflict resolution broke the checks"
+elif [ "$eligible" != "true" ]; then why=$(jq -r '.ineligible_reason' <<<"$gate")
 # Allow-list. A push this cycle leaves CR pending and `--auto` waits for it, so `pending`
 # qualifies — but `none` / `unknown` mean CR was never observed on this SHA, which must
 # never merge, and a deny-list would let them through. A run that dropped CodeRabbit
 # (codex-only, cli) does not read its status: the HEAD verdict axis judged without it.
-if [ "$cr_on" = true ]; then
-  case "$cr_state" in success|pending) : ;; *) echo "auto-merge: cr_state=$cr_state is not a merge-approved state" >&2; exit 0;; esac
+elif [ "$cr_on" = true ] && [ "$cr_state" != success ] && [ "$cr_state" != pending ]; then
+  why="cr_state=$cr_state is not a merge-approved state"
+elif [ "$blocking" != 0 ] && [ "$ci_state" = error ]; then why="CI checks on HEAD could not be read; merge not attempted"
+elif [ "$blocking" != 0 ]; then why="failing CI check(s) on HEAD: $(jq -r '.failing_checks | join(", ")' <<<"$gate")"
+# protection_http=0: the probe itself failed (network/auth/5xx) — never merge on an
+# unverified protection state; surface and leave the PR open.
+elif [ "$proto" != 200 ] && [ "$proto" != 404 ]; then why="branch-protection probe failed — merge not attempted"
 fi
-if [ "$blocking" != 0 ]; then
-  if [ "$(jq -r '.ci_state' <<<"$gate" | tr -d '\r')" = error ]; then
-    echo "auto-merge: CI checks on HEAD could not be read; merge not attempted" >&2
+# A finished review never ends silently: without --auto-merge, on a base with no
+# protection rules (the merge is immediate), or with a reviewer the wait dropped
+# (ADR 0006: HEAD has no verdict from it), the user decides.
+if [ -z "$why" ] && { [ "$AUTO_MERGE" != true ] || [ "$proto" = 404 ] || [ -n "${dropped_reviewers:-}" ]; }; then
+  # Interactive gate (see Hard constraints), one question: "auto-merge 할까요?" (Merge / Don't merge)
+  # for PR #$PR_NUM into $base, adding "Base branch '$base' has no protection rules; it merges
+  # now" on 404 and "No verdict on HEAD from: $dropped_reviewers" when one was dropped.
+  # On "Merge": MERGE_ANSWER=yes. No interaction tool on the runtime: leave it unset.
+  # A runner has none either: it leaves the question to the main session (SKILL.md "Runner").
+  if [ "${RUNNER:-false}" = true ] && [ -z "${MERGE_ANSWER:-}" ]; then
+    pending_decision=$(jq -nc --argjson pr "$PR_NUM" --arg base "$base" --argjson proto "$proto" \
+      --arg rs "$REVIEWED_SHA" --arg fs "$FIX_SHA" --argjson iter "${ITER:-0}" --arg vc "${VERIFY_CMD:-}" \
+      --argjson dr "$(bash "$SKILL_DIR/scripts/words-json.sh" "${dropped_reviewers:-}")" \
+      '{question:"merge", pr:$pr, base:$base, protection_http:$proto, reviewed_sha:$rs, fix_sha:$fs,
+        iter:$iter, verify_cmd:$vc, dropped_reviewers:$dr}')
+    why="the merge question waits for the main session"
+  elif [ "${MERGE_ANSWER:-}" != yes ]; then why="not merged: the user did not choose to merge"; fi
+fi
+[ -z "$why" ] || echo "auto-merge: $why" >&2
+```
+
+## Step 15: merge
+
+Runs right after the gate block. The main session also runs it on its own, after it asked a runner's pending `merge` question (SKILL.md "Runner"), with `PR_NUM`, `base`, `proto` (`protection_http`), `REVIEWED_SHA`, `FIX_SHA`, `ITER` and `VERIFY_CMD` from `pending_decision`, `STATE_FILE` set to the newest `.claude/state/archive/review-loop-<PR>-*.json`, `pending_decision` empty, and `why` empty on "Merge" or `not merged: the user did not choose to merge` otherwise.
+
+```bash
+if [ -z "$why" ]; then
+  if [ "$proto" = 200 ]; then gh pr merge "$PR_NUM" --auto --squash --delete-branch && merged=true
+  else gh pr merge "$PR_NUM" --squash --delete-branch && merged=true; fi
+fi
+# Minor fixes Step 12 held back (merge_then_main_push): onto the base once the merge
+# has landed (scripts/base-push.sh: build/test and pre-commit there first), else back
+# to the PR, whose review this run does not wait for. While the main session has not
+# answered a runner's merge question they stay on the local commit.
+if [ -n "$REVIEWED_SHA" ] && [ -n "${pending_decision:-}" ]; then
+  echo "review-loop: Minor fixes stay on local commit $FIX_SHA until the merge question is answered" >&2
+elif [ -n "$REVIEWED_SHA" ]; then
+  if [ "${merged:-false}" = true ] && [ "$proto" = 404 ]; then
+    if pushed=$(bash "$SKILL_DIR/scripts/base-push.sh" "$base" "$REVIEWED_SHA" "$FIX_SHA" "$VERIFY_CMD"); then
+      tmp=$(mktemp); jq --arg b "$base" --arg s "$pushed" --argjson it "$ITER" \
+        '.base_push = {branch:$b, sha:$s, fixes:[.auto_judge_log[]? | select(.iter == $it and .action == "apply")
+           | {src, path, line, badge_or_sev}]}' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+    else
+      echo "review-loop: Minor fixes not pushed to $base; they are on local commit $FIX_SHA" >&2
+    fi
+  elif [ "${merged:-false}" = true ]; then
+    echo "review-loop: the merge waits on base protection; Minor fixes stay on local commit $FIX_SHA" >&2
+  elif git push 2>&1; then
+    echo "review-loop: not merged; Minor fixes pushed to PR #$PR_NUM, unreviewed — re-run review-loop" >&2
   else
-    echo "auto-merge: failing CI check(s) on HEAD: $(jq -r '.failing_checks | join(", ")' <<<"$gate")" >&2
+    echo "review-loop: not merged and the push failed; Minor fixes are on local commit $FIX_SHA" >&2
   fi
-  exit 0
-fi
-if [ "$proto" = 200 ]; then
-  gh pr merge "$PR_NUM" --auto --squash --delete-branch && merged=true
-elif [ "$proto" = 404 ]; then
-  # Interactive gate (see Hard constraints): Merge now / Skip merge / Cancel, on
-  # "Base branch '$base' has no protection rules; --auto would merge immediately."
-  # On "Merge now": gh pr merge "$PR_NUM" --squash --delete-branch && merged=true
-  # With no interaction tool on the runtime, skip the merge and leave the PR open.
-else
-  # protection_http=0: the probe itself failed (network/auth/5xx) — never
-  # merge on an unverified protection state; surface and leave the PR open.
-  echo "auto-merge: branch-protection probe failed — merge not attempted" >&2
 fi
 ```

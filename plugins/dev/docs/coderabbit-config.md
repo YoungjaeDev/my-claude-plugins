@@ -70,15 +70,7 @@ When the PR-bot is rate-limited (org quota exhausted), `review-loop` (with `--cr
 
 ### Install
 
-```bash
-# Linux / macOS via official installer
-curl -fsSL https://cli.coderabbit.ai/install.sh | sh
-
-# macOS via Homebrew
-brew install coderabbit
-```
-
-Verify: `coderabbit --version`.
+Install for your platform per https://docs.coderabbit.ai/cli (the vendor page lists every installer). Verify: `coderabbit --version`.
 
 ### Authenticate
 

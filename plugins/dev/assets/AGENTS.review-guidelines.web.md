@@ -85,8 +85,7 @@ finding 은 티어와 무관하게 사용자에게 묻지 않고 로컬 코드�
 | CodeRabbit `🔴 Critical` / `🟠 Major`, `🟡 Minor` + `🏗️ Heavy lift` | `gated` — 자율 판정 |
 | CodeRabbit `🟡 Minor` + `⚡ Quick win` | `auto` — 자동 적용 |
 | CodeRabbit `🔵 Trivial` / `⚪ Info` / `📝 Nitpick` | `skip` |
-| Codex P0, P1, 첫 라운드의 P2 | `gated` |
-| Codex P2, 두 번째 라운드부터 | `defer` — 판정 없이 후속 이슈로 |
+| Codex P0, P1, P2 (라운드 무관) | `gated` |
 
 ## 완료 보고
 

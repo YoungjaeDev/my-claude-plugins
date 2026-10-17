@@ -6,7 +6,9 @@
 #   {"state":"success|failure","target_url":"..."}                      (CR responded)
 #   {"state":"rate_limited","reset_minutes_estimate":N,"hits":N}        (early escape — hang fix)
 #   {"state":"error","channel":"status|check_run"}                      (persistent fetch failure)
-# Exits 0 on success/failure/rate_limited/error terminal; timeout governed by surrounding Bash timeout.
+#   {"state":"timeout"}                                                  (TIMEOUT spent, exit 124)
+# Exits 0 on success/failure/rate_limited/error terminal. The deadline is its own:
+# a background run has no harness timeout to stop it (PR #315 polled for 6 h).
 #
 # Hang-fix design (Step 6, replaces 1800s unilateral spin):
 #   - After EARLY_CHECK_WINDOW seconds of wall-clock without seeing status, probe rate-limit body.
@@ -15,6 +17,7 @@
 set -euo pipefail
 
 : "${OWNER:?}"; : "${REPO:?}"; : "${SHA:?}"; : "${PR_NUM:?}"; : "${INTERVAL:=8}"; : "${PUSH_TIME:?}"
+: "${TIMEOUT:=1800}"
 EARLY_CHECK_WINDOW="${EARLY_CHECK_WINDOW:-30}"
 # CodeRabbit briefly posts `success` + "Review skipped: free tier disabled" (an
 # hourly fair-usage quota refill, transient ~5min) before the real "Review
@@ -28,6 +31,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # the old `elapsed -ge 30` test first becomes true at t=60 (after one sleep),
 # silently doubling the documented 30s rate-limit detection window.
 start_ts=$(date +%s)
+
+# Sleeps next-check.sh's gap (soon while CodeRabbit's row is pending, by the push age
+# otherwise), cut to the time left; past TIMEOUT it prints the timeout line.
+push_epoch=$(jq -n --arg t "$PUSH_TIME" 'try ($t | fromdateiso8601 | floor) catch -1')
+busy=false
+nap() {
+  local now left age
+  now=$(date +%s); left=$(( TIMEOUT - (now - start_ts) ))
+  if [ "$left" -le 0 ]; then
+    printf '{"state":"timeout","sha":"%s","pr":%s,"source":"poll"}\n' "$SHA" "$PR_NUM"
+    exit 124
+  fi
+  if [ "$push_epoch" -ge 0 ]; then age=$(( now - push_epoch )); else age=-1; fi
+  sleep "$(bash "$SCRIPT_DIR/next-check.sh" "$age" "$left" "$busy" "$INTERVAL")"
+}
 
 # state:"error" from cr-commit-state.sh means the fetch itself failed (auth /
 # network / secondary rate limit) — distinct from "CR has not responded". A
@@ -64,6 +82,7 @@ while true; do
   # normalize both to "" rather than letting "none" slip past it.
   s=$(jq -r 'if (.state // "none") == "none" or (.state // "") == "pending" then "" else .state end' <<<"$cr_obj")
   desc=$(jq -r '.description // ""' <<<"$cr_obj")
+  busy=false; [ "$(jq -r '.state // ""' <<<"$cr_obj")" = pending ] && busy=true
 
   if [ "$s" = "error" ]; then
     err_streak=$((err_streak + 1))
@@ -72,7 +91,7 @@ while true; do
       printf '{"state":"error","sha":"%s","pr":%s,"channel":"%s","source":"poll"}\n' "$SHA" "$PR_NUM" "$ch"
       exit 0
     fi
-    sleep "$INTERVAL"
+    nap
     continue
   fi
   err_streak=0
@@ -86,7 +105,7 @@ while true; do
     if [ "$((now_ts - skip_first_ts))" -ge "$CR_SKIP_GRACE" ]; then
       emit_rate_limited
     fi
-    sleep "$INTERVAL"
+    nap
     continue
   fi
 
@@ -120,7 +139,7 @@ while true; do
       # the grace logic governs it (it flips to the real "Review completed", or
       # to rate_limited once grace expires). Mirrors the s="success" guard above.
       if [ "$fresh" = "success" ] && printf '%s' "$fresh_desc" | grep -qiE '^Review skipped: free tier disabled'; then
-        sleep "$INTERVAL"; continue
+        nap; continue
       fi
       # A fresh success whose description is a rate-limit marker already reads
       # `rate_limited` here (cr-commit-state.sh), so it falls through to the
@@ -138,5 +157,5 @@ while true; do
     fi
   fi
 
-  sleep "$INTERVAL"
+  nap
 done

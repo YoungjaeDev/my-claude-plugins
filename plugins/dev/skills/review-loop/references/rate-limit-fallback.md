@@ -19,7 +19,7 @@ Triggered by `scripts/sniff-cr-rate-limit.sh` detecting a CR rate-limit comment 
 ## Silent flip semantics
 
 - "Silent" = no `AskUserQuestion`, just log a single line: `cr-source: auto → cli (rate-limit detected, CLI authed)` or `cr-source: auto → codex-only (rate-limit, no CLI)`.
-- The `codex-only` flip additionally logs an install suggestion when the CLI is absent, using `probe-cr-cli.sh`'s platform-aware `hint` field (Windows: `irm https://cli.coderabbit.ai/install.ps1 | iex` in PowerShell, native, no admin; macOS: `brew install coderabbit`; Linux: `curl -fsSL https://cli.coderabbit.ai/install.sh | sh`; all followed by `coderabbit auth login`). The suggestion also appears once in the Step 16 final report. The run itself is not interrupted — installing mid-run cannot complete `coderabbit auth login` (browser auth), so the payoff is the NEXT run's rate-limit fallback landing on `cli` instead of `codex-only`.
+- The `codex-only` flip additionally logs an install suggestion when the CLI is absent, using `probe-cr-cli.sh`'s `hint` field, which points at the vendor install page (https://docs.coderabbit.ai/cli, every platform's installer) followed by `coderabbit auth login`. The suggestion also appears once in the Step 16 final report. The run itself is not interrupted — installing mid-run cannot complete `coderabbit auth login` (browser auth), so the payoff is the NEXT run's rate-limit fallback landing on `cli` instead of `codex-only`.
 - The flip is **sticky for the remainder of the run** (not just this iter). A subsequent iter does NOT re-probe the rate-limit reset to flip back. Rationale: rate-limit resets are 5-60 min windows; once the user has invested 1+ iter on CLI/codex-only, paying iters to flip back mid-run causes record-source confusion in the Step 9a table.
 
 ## User-explicit modes are final
@@ -113,7 +113,10 @@ else:
   # Interactive gate (SKILL.md hard constraints): [Abort] / [Install CLI (${cli_hint})
   # then retry] / [Force codex-only], plus [Wait ${reset:-15} min] unless
   # permanent=true. With no interaction tool on the runtime, abort — flipping a
-  # source the user did not choose is not a safe default.
+  # source the user did not choose is not a safe default. A runner (--runner) aborts
+  # too, at final_state=rate_limited with
+  # pending_decision={question:"cr_source", reset_minutes:${reset:-null}, permanent:$permanent},
+  # and the main session asks this question, then dispatches a new runner (SKILL.md "Runner").
 ```
 
 When `cli_hint` is non-empty, the Step 16 summary carries one "install the CodeRabbit CLI" line.

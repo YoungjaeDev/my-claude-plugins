@@ -26,6 +26,8 @@ export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER
 
 # --- gh shim. Fixtures live under $GH_FIX; every issue/api call is logged to calls.log.
 #   pr list --head <branch>   -> <branch, / -> __>.json, a .fail file fails it, else []
+#   pr list --base <branch>   -> base-<branch, / -> __>.json, else []
+#   repo view                 -> repo.json, missing fails
 #   pr view <N>               -> prview-<N>.json
 #   issue view <url> | <N> --repo <host/o/r>  -> issue/<host__o__r__issues__N>.json
 #   api --hostname <h> <path> -> api/<h__path>.json; a missing .../parent answers GitHub's
@@ -36,12 +38,15 @@ cat > "$SHIM/gh" <<'SH'
 flat() { printf '%s' "$1" | sed 's#/#__#g'; }
 case "$1 $2" in
   "pr list")
-    head=""
-    while [ $# -gt 0 ]; do case "$1" in --head|-H) head=$2; shift;; esac; shift; done
-    f="$GH_FIX/$(flat "$head")"
+    head=""; base=""
+    while [ $# -gt 0 ]; do case "$1" in --head|-H) head=$2; shift;; --base|-B) base=$2; shift;; esac; shift; done
+    if [ -n "$base" ]; then f="$GH_FIX/base-$(flat "$base")"; else f="$GH_FIX/$(flat "$head")"; fi
     [ -f "$f.fail" ] && { echo "HTTP 502" >&2; exit 1; }
     [ -f "$f.json" ] && { cat "$f.json"; exit 0; }
     echo '[]' ;;
+  "repo view")
+    [ -f "$GH_FIX/repo.json" ] || { echo "HTTP 502" >&2; exit 1; }
+    cat "$GH_FIX/repo.json" ;;
   "pr view")
     [ -f "$GH_FIX/prview-$3.json" ] || { echo "no pull request $3" >&2; exit 1; }
     cat "$GH_FIX/prview-$3.json" ;;
@@ -147,6 +152,33 @@ wt gone feat-gone
 pr feat-gone 9 MERGED
 rm -rf "$T/gone"
 
+# --- remote branches (pushed to the bare origin; main stays checked out in $M)
+echo '{"defaultBranchRef":{"name":"main"}}' > "$GH_FIX/repo.json"
+# rb <branch>: push a new branch off main with one commit adding r-<branch>.txt
+rb() { g checkout -q -b "$1" main; echo "$1" > "$M/r-${1//\//_}.txt"; g add -A; g commit -qm "r $1"
+  g push -q origin "$1"; g checkout -q main; }
+rb r/merged;  pick r/merged;  pr r/merged 21 MERGED
+# squash: two commits on the branch, one different commit on main
+rb r/squash; g checkout -q r/squash; echo more >> "$M/r-r_squash.txt"; g commit -qam more
+g push -q origin r/squash; g checkout -q main
+g merge -q --squash r/squash >/dev/null; g commit -qm "squash (#22)"; pr r/squash 22 MERGED
+# unique: merged, then one more commit pushed that never reached main
+rb r/unique;  pick r/unique;  pr r/unique 23 MERGED
+g checkout -q r/unique; echo late > "$M/r-late.txt"; g add -A; g commit -qm late; g push -q origin r/unique; g checkout -q main
+rb r/closed;  pr r/closed 24 CLOSED
+rb r/open;    pr r/open 25 OPEN
+# no PR, tip already on main
+g branch r/contained main~1; g push -q origin r/contained
+# no PR, own commit
+rb r/nopr
+# merged, but the base of another open PR: deleting it would close that PR
+rb r/stack;   pick r/stack;   pr r/stack 27 MERGED
+echo '[{"number":28}]' > "$GH_FIX/base-r__stack.json"
+rb r/ghfail;  : > "$GH_FIX/r__ghfail.fail"
+# merged and clean, but checked out in a worktree
+git -C "$T/merged" push -q origin feat/merged
+g remote set-head origin main
+
 g push -q origin main
 g fetch -q origin
 
@@ -188,6 +220,46 @@ is ".tmp summary: entry bytes"            "$(w merged '.tmp.entries[0].bytes')" 
 is ".tmp summary: entry mtime is a number" "$(w merged '.tmp.entries[0].mtime | type')" number
 is "no .tmp -> zero files"                "$(w squash .tmp.files)" 0
 is "ignored .tmp does not make a worktree dirty" "$(has_reason merged dirty)" false
+
+echo "collect-cleanup.sh remote_branches[]"
+rbr() { jq -r --arg n "$1" "[.remote_branches[]? | select(.name == \$n)] | if length == 0 then \"absent\" else (.[0] | $2) end" <<<"$out"; }
+rbr_has() { rbr "$1" "[.reasons[] | select(startswith(\"$2\"))] | length > 0"; }
+is "remote_branches is an array"           "$(jq -r '.remote_branches | type' <<<"$out")" array
+is "fixture: origin/HEAD exists"           "$(g symbolic-ref -q refs/remotes/origin/HEAD)" refs/remotes/origin/main
+is "origin/HEAD is not listed"             "$(rbr HEAD .name)" absent
+is "default branch -> not safe"            "$(rbr main .safe)" false
+is "default branch -> reason"              "$(rbr_has main 'default branch')" true
+is "merged (rebase) -> safe"               "$(rbr r/merged .safe)" true
+is "merged -> PR number and state"         "$(rbr r/merged '"\(.pr.number) \(.pr.state)"')" "21 MERGED"
+is "merged -> head is the remote tip"      "$(rbr r/merged .head)" "$(g rev-parse origin/r/merged)"
+is "squash merged -> safe"                 "$(rbr r/squash .safe)" true
+is "unique commit after merge -> not safe" "$(rbr r/unique .safe)" false
+is "unique -> reason"                      "$(rbr_has r/unique 'unique commits')" true
+is "closed without merge -> not safe"      "$(rbr r/closed .safe)" false
+is "closed -> reason names the PR"         "$(rbr_has r/closed 'PR #24 closed without merge')" true
+is "closed -> PR state reported"           "$(rbr r/closed .pr.state)" CLOSED
+is "open PR -> not safe"                   "$(rbr r/open .safe)" false
+is "open PR -> reason names the PR"        "$(rbr_has r/open 'open PR #25')" true
+is "no PR, tip on origin/main -> safe"     "$(rbr r/contained .safe)" true
+is "no PR, tip on origin/main -> pr null"  "$(rbr r/contained .pr)" null
+is "no PR, own commit -> not safe"         "$(rbr r/nopr .safe)" false
+is "no PR, own commit -> reason"           "$(rbr_has r/nopr 'no PR and not in origin/main')" true
+is "base of an open PR -> not safe"        "$(rbr r/stack .safe)" false
+is "base of an open PR -> reason"          "$(rbr_has r/stack 'base of open PR #28')" true
+is "gh failure -> not safe"                "$(rbr r/ghfail .safe)" false
+is "gh failure -> reason"                  "$(rbr_has r/ghfail 'gh lookup failed')" true
+is "checked out in a worktree -> not safe" "$(rbr feat/merged .safe)" false
+is "checked out -> reason names the path"  "$(rbr_has feat/merged "checked out in $T/merged")" true
+is "default branch known -> no remote_error" "$(jq -r '.remote_error // "none"' <<<"$out")" none
+
+# default branch unknown: nothing is listed, and the error says why
+mv "$GH_FIX/repo.json" "$GH_FIX/repo.json.off"
+out=$(cd "$M" && PATH="$SHIM:$PATH" bash "$COLLECT")
+is "default branch unknown -> remote_branches null" "$(jq -r .remote_branches <<<"$out")" null
+is "default branch unknown -> remote_error" "$(jq -r '.remote_error | startswith("default branch unknown")' <<<"$out")" true
+is "default branch unknown -> worktrees still listed" "$(jq -r '.worktrees | length' <<<"$out")" 10
+mv "$GH_FIX/repo.json.off" "$GH_FIX/repo.json"
+out=$(cd "$M" && PATH="$SHIM:$PATH" bash "$COLLECT")
 
 # Run from inside a linked worktree: that one is the current session and Step 11 owns it.
 out=$(cd "$T/merged" && PATH="$SHIM:$PATH" bash "$COLLECT")

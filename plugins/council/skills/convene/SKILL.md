@@ -58,7 +58,7 @@ The confirmed pins are recorded with the **`Write` tool** (never a heredoc or `e
 `.claude/state/council-pins.json` as data, then a separate block validates every value against a
 conservative charset and the Claude seat's fixed model enum before writing the registry through
 a temp file: a value that fails validation must stop the write, not land a registry that looks
-valid. Registry writes also maintain `~/.codex/config.toml`'s `check_for_update_on_startup` key
+valid. Registry writes also maintain `${CODEX_HOME:-$HOME/.codex}/config.toml`'s `check_for_update_on_startup` key
 (insert only when the key is absent; never touch a user's own `false`), and a final preflight
 call re-reads the pins and probes the installed `codex` CLI before Step 1 relies on them.
 

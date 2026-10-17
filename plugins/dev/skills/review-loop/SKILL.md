@@ -87,7 +87,7 @@ Run the "Step 2: request_cr_review" block in `references/run-blocks.md` verbatim
 An absent CodeRabbit review is never convergence here: Step 8c's `cr_engagement == 0` waits or ends at `cr_inactive`, never at `clean`. The CLI and codex-only sources never post it.
 
 **Pre-flight per `--cr-source`** (source-mode availability check, separate from Step 5 review-state pre-flight):
-- `cli` → `bash $SKILL_DIR/scripts/probe-cr-cli.sh` (exit 0 required, else abort with install hint).
+- `cli` → `bash $SKILL_DIR/scripts/probe-cr-cli.sh` (exit 0 required, else abort and relay its `hint`, the vendor install page plus `coderabbit auth login`).
 - `codex-only` → `bash $SKILL_DIR/scripts/probe-codex-engagement.sh "$OWNER" "$REPO" "$PR_NUM"` must print `active`, else abort.
 - `auto` / `pr-bot` → no source-mode check (CR PR-bot assumed unless rate-limited mid-run).
 

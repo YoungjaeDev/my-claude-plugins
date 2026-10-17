@@ -430,6 +430,13 @@ is "ci_failing alone -> not eligible"              "$(FINAL_STATE=ci_failing DEF
 is "ci_failing with a defer -> issue"              "$(fi_of ci_failing 1)" true
 is "failure is not a state that files one"         "$(fi_of failure 3)" false
 is "unknown defer count -> issue"                  "$(FINAL_STATE=churn DEFERRED_TOTAL='' amg | jq -r '.file_issue')" true
+# A reviewer the wait dropped (ADR 0006) is named in the decision output; the HEAD
+# axis judges without it because the caller passes it as off.
+is "dropped reviewers named in the gate output" \
+   "$(DROPPED_REVIEWERS="coderabbit codex" amg | jq -c '.dropped_reviewers')" '["coderabbit","codex"]'
+is "nothing dropped -> empty list"                 "$(amg | jq -c '.dropped_reviewers')" '[]'
+is "Codex dropped and off -> CR verdict suffices" \
+   "$(AMG_COMMENTS="$SHIMDIR/comments-running.json" CODEX_ON=false DROPPED_REVIEWERS=codex amg | jq -r '.eligible')" true
 unset AMG_REVIEWS AMG_COMMENTS
 rm -rf "$SHIMDIR"
 
@@ -968,11 +975,12 @@ echo "codex-head-verdict.sh"
 # on HEAD (ADR 0002). Fixture HEAD is 95ab2f6...; `__FAIL__` makes gh fail.
 CHEAD=95ab2f621c9add07df26af3770418786a29a62bb
 VSHIM=$(mktemp -d)
-verdict() { # COMMENTS_FIXTURE REVIEWS_FIXTURE [VAR=value ...]
+verdict() { # COMMENTS_FIXTURE REVIEWS_FIXTURE [VAR=value ...]; RXN=<fixture> serves PR reactions
   local c="$1" r="$2"; shift 2
   cat > "$VSHIM/gh" <<SH
 #!/usr/bin/env bash
 case "\$*" in
+  *"/issues/"*"/reactions"*) [ -n "${RXN:-}" ] || exit 1; cat "$FIX/${RXN:-}" ;;
   *"/issues/"*"/comments"*) [ "$c" = __FAIL__ ] && exit 1; cat "$FIX/$c" ;;
   *"/pulls/"*"/reviews"*)   [ "$r" = __FAIL__ ] && exit 1; cat "$FIX/$r" ;;
   *) echo "unknown gh args: \$*" >&2; exit 1 ;;
@@ -1039,6 +1047,27 @@ is "no summary -> summary_state absent"                 "$(vf .summary_state)" a
 is "no summary -> review-id poll fallback"              "$(vf .fallback)" review_id_poll
 v=$(verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-head.json)
 is "no summary + HEAD review -> findings"               "$(vf .verdict)" findings
+
+# Codex with nothing to say leaves a 👍 on the PR and no review (PR #320: push
+# 11:45:48Z, 👍 11:48:26Z). Only the anchored bot login's +1 created after the push
+# counts; one from before the push belongs to an older HEAD.
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
+is "Codex 👍 after the push, no summary -> clean"       "$(vf .verdict)" clean
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-codex-summary-stale-sha.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
+is "Codex 👍 after the push, summary on an older SHA -> clean" "$(vf .verdict)" clean
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:50:00Z)
+is "Codex 👍 before the push -> not clean"              "$(vf .verdict)" unknown
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=)
+is "Codex 👍, push time unknown -> not clean"           "$(vf .verdict)" unknown
+v=$(RXN=issue-reactions-codex-lookalike.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
+is "look-alike logins' 👍 and the bot's 👀 -> not clean" "$(vf .verdict)" unknown
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-head.json PUSH_TIME=2026-10-17T11:45:48Z)
+is "Codex 👍 and a Codex review on HEAD -> findings"    "$(vf .verdict)" findings
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
+is "Codex 👍 while the summary says Running on HEAD -> in_progress" "$(vf .verdict)" in_progress
+# Reactions that cannot be read only withhold the 👍; they never fail the verdict.
+v=$(verdict issue-comments-codex-summary-completed.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z); v_rc=$?
+is "reactions unreadable -> summary still decides"      "$v_rc:$(vf .verdict)" 0:clean
 
 # gh failure is its own verdict with a non-zero exit, never an empty "clean".
 v=$(verdict __FAIL__ pr-reviews-codex-head.json); v_rc=$?
@@ -1244,6 +1273,24 @@ is "every gh call failing -> unknown, never clean" "$(PS_FAIL=1 ps_state)" unkno
 rm -rf "$PS"
 
 echo
+echo "next-check.sh"
+
+# The next look in a wait comes from what the wait saw, not a fixed 30 s: a reviewer
+# at work is checked soon, nothing is due before Codex's fastest observed turnaround
+# (68 s, ADR 0002), past its slowest (726 s) the wait backs off, and no sleep runs
+# past the budget left.
+nc() { bash "$SCRIPTS/next-check.sh" "$@" 2>/dev/null; }
+is "reviewer in progress -> a third of INTERVAL"   "$(nc 300 600 true 30)" 10
+is "push 20 s old, nothing seen -> until 68 s"     "$(nc 20 600 false 30)" 48
+is "inside the usual turnaround -> INTERVAL"       "$(nc 300 600 false 30)" 30
+is "past the slowest turnaround -> backs off"      "$(nc 900 600 false 30)" 60
+is "never past the budget left"                    "$(nc 900 7 false 30)" 7
+is "budget spent -> 1, never 0 or negative"        "$(nc 900 0 false 30)" 1
+is "in progress wins over a young push"            "$(nc 20 600 true 30)" 10
+is "INTERVAL 1 in progress -> 1"                   "$(nc 300 600 true 1)" 1
+is "non-numeric input -> INTERVAL, clamped"        "$(nc x 600 false 30)" 30
+
+echo
 echo "head-verdicts.sh"
 
 # The loop ends or merges only once every reviewer it has on gave HEAD a verdict
@@ -1296,13 +1343,31 @@ w=$(run_capped 3 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-clean.json" HW_COMMENTS=
       bash "$SCRIPTS/head-verdicts.sh" 2>/dev/null); rc=$?
 is "Codex Running on HEAD with budget left -> keeps waiting" "$rc:$w" "143:"
 # The wait stays inside the existing caps: an old push leaves the CR budget
-# (TIMEOUT - age) at 0 and the Codex budget at CODEX_GRACE.
+# (TIMEOUT - age) at 0 and the Codex budget at CODEX_GRACE. Codex past its budget
+# is dropped, never nudged (`@codex review` stays banned): CR's verdict decides.
 w=$(run_capped 8 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-clean.json" HW_COMMENTS="$FIX/issue-comments-codex-summary-running.json" \
       PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME=2020-01-01T00:00:00Z \
       TIMEOUT=1800 CODEX_GRACE=2 CODEX_PREFLIGHT_TIMEOUT=600 INTERVAL=1 \
       bash "$SCRIPTS/head-verdicts.sh" 2>/dev/null); rc=$?
-is "budget spent -> timeout line, not a hang"       "$rc:$(hf .state)" 0:timeout
-is "budget is max(CR, Codex) caps from push time"   "$(hf '.waited >= 2 and .waited <= 4')" true
+is "Codex past its budget -> dropped, CR's verdict stands" "$rc:$(hf .state):$(hf '.dropped | join(",")')" 0:ready:codex
+is "Codex dropped at its own budget from push time" "$(hf '.waited >= 2 and .waited <= 4')" true
+# CodeRabbit silent past its budget (PR #315: 6 h, no status, no pause, no notice):
+# one `@coderabbitai review` for this HEAD, decided here and posted by the caller.
+: > "$HW_LOG"
+w=$(hw "$HW/r-none.json" "$FIX/issue-comments-codex-summary-completed.json" CAP=)
+is "CR silent past its budget -> stuck, nudge decided" "$(hf .state):$(hf .cr_review_request)" stuck:post
+is "stuck: the script decides, it never posts" \
+   "$(grep -cE -- '(-X|--method) *(POST|PATCH|PUT|DELETE)|(^| )(-f|-F|--field|--raw-field) |(pr|issue) comment' "$HW_LOG")" 0
+mix "$FIX/issue-comments-codex-summary-completed.json" "$HW/req.json" > "$HW/c-codex-requested.json"
+w=$(hw "$HW/r-none.json" "$HW/c-codex-requested.json" CAP=)
+is "CR silent after this HEAD's request -> dropped, Codex's verdict stands" \
+   "$(hf .state):$(hf '.dropped | join(",")'):$(hf .codex)" ready:coderabbit:clean
+mix "$FIX/issue-comments-codex-summary-running.json" "$HW/req.json" > "$HW/c-running-requested.json"
+w=$(hw "$HW/r-none.json" "$HW/c-running-requested.json" CAP= CODEX_GRACE=0)
+is "every reviewer past its budget -> timeout, nobody dropped" "$(hf .state):$(hf '.dropped | length')" timeout:0
+# A reviewer that cannot be read is not stuck: it is never dropped.
+w=$(hw "$HW/missing.json" "$FIX/issue-comments-codex-summary-completed.json" CAP= CODEX_GRACE=0)
+is "unreadable reviewers past budget -> timeout, nobody dropped" "$(hf .state):$(hf '.dropped | length')" timeout:0
 # A `@coderabbitai review` posted long after the push starts CodeRabbit's work
 # then: its budget runs from the newer of the push and the request comment's
 # server time, or an old push leaves it nothing to wait with (issue #297).
@@ -1423,6 +1488,27 @@ ftier=$(PATH="$FTSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 \
 is "re-fetch free-tier success -> held for grace, not terminal success" \
    "$(jq -r '.state' <<<"$ftier" 2>/dev/null)" rate_limited
 rm -rf "$FTSHIM"
+
+# The poller keeps its own deadline: run in the background, no harness timeout
+# stops it, and PR #315's poll ran 6 h past TIMEOUT=1800. CR silent throughout; a
+# sleep longer than the time left is cut to it (watchdog kill would be 143).
+DLSHIM=$(mktemp -d)
+cat > "$DLSHIM/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/check-runs"*) echo '{"check_runs":[]}' ;;
+  *) echo '[]' ;;
+esac
+SH
+chmod +x "$DLSHIM/gh"
+dl=$(run_capped 10 env PATH="$DLSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=30 TIMEOUT=2 \
+  EARLY_CHECK_WINDOW=999 PUSH_TIME=2020-01-01T00:00:00Z bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null); dl_rc=$?
+is "poll-cr-status: CR silent past TIMEOUT -> own timeout line, exit 124" "$dl_rc:$(jq -r '.state' <<<"$dl" 2>/dev/null)" 124:timeout
+# Same for the Codex grace poll: CAP is its deadline, the grace-expiry branch (no line).
+dl=$(run_capped 10 env PATH="$DLSHIM:$PATH" OWNER=o REPO=r PR_NUM=42 PROCESSED='[]' INTERVAL=30 CAP=2 \
+  bash "$SCRIPTS/poll-codex-grace.sh" 2>/dev/null); dl_rc=$?
+is "poll-codex-grace: no review by CAP -> exits 124, no line" "$dl_rc:$dl" "124:"
+rm -rf "$DLSHIM"
 
 echo
 echo "pre-flight.sh"
@@ -1608,6 +1694,19 @@ echo '{"base_push":{"branch":"main","sha":"abc","fixes":[{"src":"cr","path":"a.s
 fo=$(FINAL_STATE=minor_floor MERGED=true STATE_FILE="$BPS/s/st.json" PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
 is "final output: base push carried"              "$(jq -r '.base_push.fixes[0].path' <<<"$fo")" a.sh
 is "final output: base_push passes the schema"    "$(schema_ok "$fo")" true
+# The runner's line is also a file next to the state, so the main session reads it
+# on any wake instead of waiting on a completion notification.
+is "final output: written to the state dir too"   "$(cat "$BPS/s/review-loop-final-42.json" 2>/dev/null)" "$fo"
+fo=$(FINAL_STATE=minor_floor DROPPED_REVIEWERS="coderabbit" CR_BASE_REQUESTED=integration/322 \
+  PENDING_DECISION='{"question":"merge","pr":42,"base":"main","protection_http":404}' PR_NUM=42 LAST_SHA="$CHEAD" \
+  bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: dropped reviewers listed"       "$(jq -c '.dropped_reviewers' <<<"$fo")" '["coderabbit"]'
+is "final output: non-default base request named" "$(jq -r '.cr_review_requested_base' <<<"$fo")" integration/322
+is "final output: pending decision carried"       "$(jq -r '.pending_decision.question' <<<"$fo")" merge
+is "final output: new fields pass the schema"     "$(schema_ok "$fo")" true
+fo=$(FINAL_STATE=clean PENDING_DECISION='not json' PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: defaults -> [] / null / null" \
+   "$(jq -c '[.dropped_reviewers, .cr_review_requested_base, .pending_decision]' <<<"$fo")" '[[],null,null]'
 rm -rf "$BPS"
 cat > "$CFD/gh" <<SH
 #!/usr/bin/env bash
@@ -1955,15 +2054,18 @@ mkdir -p "$G15/bin"
 printf '#!/usr/bin/env bash\necho "gh $*" >> "%s/calls"\n' "$G15" > "$G15/bin/gh"
 printf '#!/usr/bin/env bash\ncase "$1" in rev-parse) echo f1x ;; *) echo "git $*" >> "%s/calls" ;; esac\n' "$G15" > "$G15/bin/git"
 chmod +x "$G15/bin/gh" "$G15/bin/git"
-s15() { # GATE_JSON -> final_state|ci_failing_checks|merged|calls ; env FS AM ANS RS
+s15() { # GATE_JSON -> final_state|ci_failing_checks|merged|calls ; env FS AM ANS RS DR RUNNER
   : > "$G15/calls"; echo '{"auto_judge_log":[{"iter":1,"src":"cr","path":"a.sh","line":3,"badge_or_sev":"🟡 Minor","action":"apply"}]}' > "$G15/state.json"
   GATE_JSON=$1 PATH="$G15/bin:$PATH" SKILL_DIR="$G15" STATE_FILE="$G15/state.json" CALLS="$G15/calls" \
-    BLOCK="$(rb_block "Step 15: auto-merge gate")" bash -c '
+    BLOCK="$(rb_block "Step 15: auto-merge gate")
+$(rb_block "Step 15: merge")" bash -c '
     reviewers_on() { cr_on=true; codex_on=auto; }
     final_state=${FS:-clean} deferred_total=0 review_total=0 OWNER=o REPO=r PR_NUM=1 ITER=1 merged=false
     AUTO_MERGE=${AM:-false} MERGE_ANSWER=${ANS:-} REVIEWED_SHA=${RS:-} VERIFY_CMD=true verification_blocking=false
+    dropped_reviewers=${DR:-} pending_decision=""
     eval "$BLOCK"
-    printf "%s|%s|%s|%s" "$final_state" "${ci_failing_checks:-}" "$merged" "$(tr "\n" ";" < "$CALLS")"' 2>/dev/null
+    printf "%s|%s|%s|%s" "$final_state" "${ci_failing_checks:-}" "$merged" "$(tr "\n" ";" < "$CALLS")"
+    [ -z "${SHOW_PENDING:-}" ] || printf "|%s" "$pending_decision"' 2>/dev/null
 }
 ok404='{"eligible":true,"cr_state":"success","blocking_checks":0,"ci_state":"pass","failing_checks":[],"protection_http":404,"base_branch":"main"}'
 ok200=$(jq -c '.protection_http = 200' <<<"$ok404")
@@ -1984,6 +2086,28 @@ is "Step 15: held Minor fixes, merged -> pushed to the base" \
 is "Step 15: base push recorded for the final output" \
    "$(jq -c '[.base_push.branch, .base_push.sha, .base_push.fixes[0].path]' "$G15/state.json")" '["main","pu5h","a.sh"]'
 is "Step 15: held Minor fixes, not merged -> pushed to the PR instead" "$(RS=r3v s15 "$ok404")" 'clean||false|git push;'
+# A reviewer the wait dropped never saw HEAD: even --auto-merge on a protected base asks.
+is "Step 15: dropped reviewer, --auto-merge, nobody answered -> not merged" "$(DR=codex AM=true s15 "$ok200")" 'clean||false|'
+is "Step 15: dropped reviewer, user said merge -> merged" \
+   "$(DR=codex AM=true ANS=yes s15 "$ok200")" 'clean||true|gh pr merge 1 --auto --squash --delete-branch;'
+# The runner cannot ask (no AskUserQuestion in a subagent): it leaves the question to
+# the main session, touches nothing, and keeps the held fixes on the local commit.
+out=$(RUNNER=true RS=r3v SHOW_PENDING=1 s15 "$ok404")
+is "Step 15 runner: merge question pending, no merge, no push" "${out%|*}" 'clean||false|'
+is "Step 15 runner: pending decision carries the merge inputs" \
+   "$(jq -c '[.question, .pr, .base, .protection_http, .reviewed_sha, .fix_sha, .iter]' <<<"${out##*|}")" '["merge",1,"main",404,"r3v","f1x",1]'
+# The main session's answer runs the Step 15 merge block with the pending inputs.
+s15m() { # WHY -> merged|calls
+  : > "$G15/calls"; echo '{"auto_judge_log":[{"iter":1,"src":"cr","path":"a.sh","line":3,"badge_or_sev":"🟡 Minor","action":"apply"}]}' > "$G15/state.json"
+  W=$1 PATH="$G15/bin:$PATH" SKILL_DIR="$G15" STATE_FILE="$G15/state.json" CALLS="$G15/calls" \
+    BLOCK="$(rb_block "Step 15: merge")" bash -c '
+    why=$W PR_NUM=1 base=main proto=404 REVIEWED_SHA=r3v FIX_SHA=f1x ITER=1 VERIFY_CMD=true pending_decision="" merged=false
+    eval "$BLOCK"; printf "%s|%s" "$merged" "$(tr "\n" ";" < "$CALLS")"' 2>/dev/null
+}
+is "main session, user said merge -> merged, fixes to the base" \
+   "$(s15m "")" 'true|gh pr merge 1 --squash --delete-branch;base-push main r3v f1x true;'
+is "main session, user said no -> fixes to the PR" \
+   "$(s15m "not merged: the user did not choose to merge")" 'false|git push;'
 rm -rf "$G15"
 
 # Step 14 follow-up issue (failure-modes.md): a re-run that appends to the inherited
@@ -2123,6 +2247,43 @@ aw=$(cd "$HERE" && PATH="$AW:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step
   await_head_verdicts
   printf "%s:%s" "$hv_state" "$requests"' 2>/dev/null)
 is "paused CodeRabbit -> one review request, wait resumes" "$aw" "timeout:1"
+# A silent CodeRabbit (PR #315) past its budget: one nudge for this HEAD (the stub
+# posts it into the listing), then it is dropped and named; Codex's clean verdict
+# carries HEAD. CR is off for the rest of the run, as Step 2b's drop_cr.
+cat > "$AW/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*) echo '[{"created_at":"2026-10-06T10:00:00Z"}]' ;;
+  *"/pulls/"*"/reviews"*) cat "$FIX/pr-reviews-cr-older-commit.json" ;;
+  *"/issues/"*"/comments"*) cat "$AW/comments.json" ;;
+  *) exit 1 ;;
+esac
+SH
+cp "$FIX/issue-comments-codex-summary-completed.json" "$AW/comments.json"
+jq '. + [{"user":{"login":"YoungjaeDev"},"body":"@coderabbitai review","created_at":"2026-10-06T11:00:00Z"}]' \
+  "$FIX/issue-comments-codex-summary-completed.json" > "$AW/requested.json"
+echo '{"cr_source":"auto"}' > "$AW/state.json"
+aw=$(cd "$HERE" && AWD="$AW" PATH="$AW:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 2: request_cr_review")" bash -c '
+  OWNER=o REPO=r PR_NUM=42 CR_SOURCE=auto CR_REVIEW_REQUEST=skip NO_CODEX=false codex_active=unknown
+  TIMEOUT=0 INTERVAL=1 CODEX_GRACE=0 STATE_FILE="$AWD/state.json" dropped_reviewers=""
+  git() { echo 95ab2f621c9add07df26af3770418786a29a62bb; }
+  eval "$BLOCK"
+  requests=""; request_cr_review() { requests="$requests $1"; cp "$AWD/requested.json" "$AWD/comments.json"; }
+  await_head_verdicts
+  printf "%s:%s:%s:%s:%s" "$hv_state" "${requests# }" "$dropped_reviewers" "$CR_SOURCE" "$(jq -r .cr_source "$AWD/state.json")"' 2>/dev/null)
+is "stuck CodeRabbit -> one nudge, then dropped and listed" "$aw" "ready:stuck:coderabbit:codex-only:codex-only"
+# Codex past its budget is dropped the way Step 2b drops it: no Codex wait or fetch after.
+mkdir -p "$AW/skill/scripts"
+printf '#!/usr/bin/env bash\necho 2026-10-06T10:00:00Z\n' > "$AW/skill/scripts/push-time.sh"
+printf '#!/usr/bin/env bash\necho %s\n' "'{\"state\":\"ready\",\"cr\":\"clean\",\"codex\":\"dropped\",\"findings\":false,\"dropped\":[\"codex\"]}'" \
+  > "$AW/skill/scripts/head-verdicts.sh"
+aw=$(SKILL_DIR="$AW/skill" BLOCK="$(rb_block "Step 2: request_cr_review")" bash -c '
+  OWNER=o REPO=r PR_NUM=42 CR_SOURCE=auto CR_REVIEW_REQUEST=skip NO_CODEX=false codex_active=active dropped_reviewers="coderabbit"
+  git() { echo deadbeef; }
+  eval "$BLOCK"; request_cr_review() { :; }
+  await_head_verdicts; await_head_verdicts
+  printf "%s:%s:%s:%s" "$hv_state" "$NO_CODEX" "$codex_active" "$dropped_reviewers"' 2>/dev/null)
+is "Codex past its budget -> dropped once, off for the run" "$aw" "ready:true:disabled:coderabbit codex"
 rm -rf "$AW"
 
 # request_cr_review owns its guard: a PR-bot source and a base CodeRabbit will not
@@ -2152,6 +2313,28 @@ is "request: non-default base, pr-bot -> post"   "$(req pr-bot request)" 1
 is "request: cli source -> no post"              "$(req cli request)" 0
 is "request: paused, default base -> post"       "$(req auto skip paused)" 1
 is "request: paused, codex-only -> no post"      "$(req codex-only skip paused)" 0
+is "request: stuck, default base -> post"        "$(req auto skip stuck)" 1
+# The final report suggests adding the base to CodeRabbit's auto-review base branches
+# only when this run actually posted the non-default-base request.
+reqbase() { # CR_REVIEW_REQUEST [ARG] -> CR_BASE_REQUESTED
+  CRR=$1 ARG=${2:-} PATH="$RQ:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 2: request_cr_review")" bash -c '
+    OWNER=o REPO=r PR_NUM=42 CR_SOURCE=auto CR_REVIEW_REQUEST=skip BASE=integration/322 CR_BASE_REQUESTED=""
+    git() { echo deadbeef; }
+    eval "$BLOCK"; CR_REVIEW_REQUEST=$CRR
+    request_cr_review $ARG; printf %s "$CR_BASE_REQUESTED"' 2>/dev/null
+}
+is "non-default base request fired -> base recorded for the report" "$(reqbase request)" integration/322
+is "default base, stuck nudge -> no base hint"                      "$(reqbase skip stuck)" ""
+cat > "$RQ/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *"/statuses"*) echo '[{"created_at":"2026-10-06T10:00:00Z"}]' ;;
+  *"/issues/"*"/comments"*) echo '[{"body":"@coderabbitai review","created_at":"2026-10-06T11:00:00Z"}]' ;;
+  "pr comment"*) echo post >> "$RQ/posts" ;;
+  *) exit 1 ;;
+esac
+SH
+is "non-default base, request already on HEAD (re-run) -> no base hint" "$(reqbase request)" ""
 rm -rf "$RQ"
 
 # Step 2: a draft PR stops with the `gh pr ready` hint.

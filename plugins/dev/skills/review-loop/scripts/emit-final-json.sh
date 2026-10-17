@@ -3,9 +3,13 @@
 #        FINAL_STATE=... MERGED=true|false PR_NUM=N LAST_SHA=... \
 #        CR_SOURCE=auto|pr-bot|cli|codex-only CLI_INVOCATIONS=N RATE_LIMIT_HITS=N \
 #        TRACK_FILE=/tmp/... STATE_FILE=.claude/state/... VERIFICATION_GATE=on|... \
-#        [CI_FAILING_CHECKS='["name",...]'] [HEAD_VERDICT=timeout|unread] bash scripts/emit-final-json.sh
+#        [CI_FAILING_CHECKS='["name",...]'] [HEAD_VERDICT=timeout|unread] \
+#        [DROPPED_REVIEWERS="coderabbit codex"] [CR_BASE_REQUESTED=<base>] [PENDING_DECISION='{...}'] \
+#        bash scripts/emit-final-json.sh
 #
-# Idempotent: archives STATE_FILE if present, removes TRACK_FILE, prints one JSON line.
+# Idempotent: archives STATE_FILE if present, removes TRACK_FILE, prints one JSON line
+# and writes the same line to review-loop-final-<PR>.json next to STATE_FILE, where
+# the main session reads a runner's result on any wake.
 # Designed to be hooked into bash `trap ... EXIT` so the JSON always emits even on early exit.
 set -euo pipefail
 
@@ -19,6 +23,12 @@ set -euo pipefail
 CI_FAILING_CHECKS=$(jq -c 'if type == "array" then map(tostring) else [] end' <<<"${CI_FAILING_CHECKS:-[]}" 2>/dev/null) \
   || CI_FAILING_CHECKS='[]'
 [ -n "$CI_FAILING_CHECKS" ] || CI_FAILING_CHECKS='[]'
+# A decision the runner left for the main session (SKILL.md "Runner"); anything but an object reads as none.
+PENDING_DECISION=$(jq -c 'if type == "object" then . else null end' <<<"${PENDING_DECISION:-null}" 2>/dev/null) \
+  || PENDING_DECISION='null'
+[ -n "$PENDING_DECISION" ] || PENDING_DECISION='null'
+FINAL_FILE=""
+[ -z "$STATE_FILE" ] || FINAL_FILE="$(dirname "$STATE_FILE")/review-loop-final-${PR_NUM}.json"
 
 # Capture the LAST pre-flight decision before STATE_FILE is archived; the full
 # history remains in the archive copy for audit.
@@ -56,7 +66,7 @@ if [ -z "$LAST_SHA" ]; then
   LAST_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
 fi
 
-jq -nc \
+line=$(jq -nc \
   --argjson iters     "$ITER" \
   --argjson applied   "$APPLIED_TOTAL" \
   --argjson deferred  "$DEFERRED_TOTAL" \
@@ -78,6 +88,9 @@ jq -nc \
   --argjson ci_fail   "$CI_FAILING_CHECKS" \
   --arg     hv        "${HEAD_VERDICT:-}" \
   --argjson base_push "$BASE_PUSH" \
+  --arg     dropped   "${DROPPED_REVIEWERS:-}" \
+  --arg     req_base  "${CR_BASE_REQUESTED:-}" \
+  --argjson pending   "$PENDING_DECISION" \
   '{
     iterations: $iters,
     applied_total: $applied,
@@ -96,6 +109,12 @@ jq -nc \
     ci_failing_checks: $ci_fail,
     head_verdict: (if $hv == "" then null else $hv end),
     base_push: $base_push,
+    dropped_reviewers: ($dropped | split(" ") | map(select(length > 0))),
+    cr_review_requested_base: (if $req_base == "" then null else $req_base end),
+    pending_decision: $pending,
     verification_gate: $vgate,
     pre_flight_last: $pf_last
-  }'
+  }')
+printf '%s\n' "$line"
+# Best effort: stdout above is the contract; the file only spares a missed notification.
+if [ -n "$FINAL_FILE" ] && [ -d "$(dirname "$FINAL_FILE")" ]; then printf '%s\n' "$line" > "$FINAL_FILE" || true; fi

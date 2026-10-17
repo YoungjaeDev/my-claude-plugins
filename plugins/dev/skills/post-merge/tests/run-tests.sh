@@ -375,6 +375,21 @@ is "fixture: ignored .tmp/ goes with the worktree" "$([ -e "$T/merged/.tmp/resea
 g worktree remove "$T/dirty" >/dev/null 2>&1
 is "fixture: no-force remove refuses a dirty worktree" "$([ -d "$T/dirty" ] && echo kept || echo removed)" kept
 
+# --- Step 4.7 delete block, run as SKILL.md writes it against the bare origin. It deletes
+# only the tip the collector checked: a push between the check and the delete wins.
+echo "SKILL.md Step 4.7 remote delete"
+STEP47=$(awk '/^### 4\.7\./ {f=1; next} f && /^### / {exit} f && /^```bash$/ {c=1; next} c && /^```$/ {exit} c {print}' \
+  "$HERE/../SKILL.md" | grep -v '^BR="<name>"')
+del47() { (MAIN_REPO="$M" BR="$1" HEAD_SHA="$2" BLOCK="$STEP47" bash -c 'eval "$BLOCK"' >/dev/null 2>&1); }
+on_origin() { git -C "$T/origin.git" rev-parse -q --verify "refs/heads/$1" >/dev/null && echo yes || echo no; }
+rb r/lease-ok; del47 r/lease-ok "$(g rev-parse r/lease-ok)"
+is "checked tip unchanged -> deleted"              "$(on_origin r/lease-ok)" no
+rb r/lease-moved; checked=$(g rev-parse r/lease-moved)
+g checkout -q r/lease-moved; echo again >> "$M/r-r_lease-moved.txt"; g commit -qam again; g push -q origin r/lease-moved; g checkout -q main
+del47 r/lease-moved "$checked"
+is "pushed to after the check -> left alone"       "$(on_origin r/lease-moved)" yes
+is "the block holds no unconditional delete"       "$(grep -c 'push origin --delete' <<<"$STEP47")" 0
+
 echo
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

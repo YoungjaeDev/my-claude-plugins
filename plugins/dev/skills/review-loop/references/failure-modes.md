@@ -44,7 +44,7 @@ Does NOT change `final_state` directly. Build and test run before the commit, pe
 
 ## HEAD verdict wait (Steps 7e, 13, 14)
 
-A stop reached right after a push (`minor_floor`, `churn` with fixes, `iteration_cap`) has not seen the new HEAD's verdicts. Step 13 holds it (`HOLD_STATE`) and the next iteration's Step 7e waits; on the last iteration Step 14 waits. The wait is `scripts/head-verdicts.sh`, bounded by the existing caps, each reviewer by its own: `TIMEOUT` for CodeRabbit, counted from the newer of the push and the latest `@coderabbitai review` comment's server time, and the Codex wait budget for Codex, counted from the push. It stops itself at them and picks each next look with `scripts/next-check.sh`. Outcomes:
+A stop reached right after a push (`minor_floor`, `churn` with fixes, `iteration_cap`) has not seen the new HEAD's verdicts. Step 13 holds it (`HOLD_STATE`) and the next iteration's Step 7e waits; on the last iteration Step 14 waits. The wait is `scripts/head-verdicts.sh`, bounded by the existing caps, each reviewer by its own: one `TIMEOUT` for CodeRabbit, counted from the newer of the push and the latest `@coderabbitai review` comment's server time (a stuck nudge does not restart it), and the Codex wait budget for Codex, counted from the push. It stops itself at them and picks each next look with `scripts/next-check.sh`. Outcomes:
 
 | Outcome | Behavior |
 |---------|----------|

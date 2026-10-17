@@ -27,6 +27,9 @@ CI_FAILING_CHECKS=$(jq -c 'if type == "array" then map(tostring) else [] end' <<
 PENDING_DECISION=$(jq -c 'if type == "object" then . else null end' <<<"${PENDING_DECISION:-null}" 2>/dev/null) \
   || PENDING_DECISION='null'
 [ -n "$PENDING_DECISION" ] || PENDING_DECISION='null'
+DROPPED_JSON=$(bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/words-json.sh" "${DROPPED_REVIEWERS:-}" 2>/dev/null) \
+  || DROPPED_JSON='[]'
+[ -n "$DROPPED_JSON" ] || DROPPED_JSON='[]'
 FINAL_FILE=""
 [ -z "$STATE_FILE" ] || FINAL_FILE="$(dirname "$STATE_FILE")/review-loop-final-${PR_NUM}.json"
 
@@ -88,7 +91,7 @@ line=$(jq -nc \
   --argjson ci_fail   "$CI_FAILING_CHECKS" \
   --arg     hv        "${HEAD_VERDICT:-}" \
   --argjson base_push "$BASE_PUSH" \
-  --arg     dropped   "${DROPPED_REVIEWERS:-}" \
+  --argjson dropped   "$DROPPED_JSON" \
   --arg     req_base  "${CR_BASE_REQUESTED:-}" \
   --argjson pending   "$PENDING_DECISION" \
   '{
@@ -109,7 +112,7 @@ line=$(jq -nc \
     ci_failing_checks: $ci_fail,
     head_verdict: (if $hv == "" then null else $hv end),
     base_push: $base_push,
-    dropped_reviewers: ($dropped | split(" ") | map(select(length > 0))),
+    dropped_reviewers: $dropped,
     cr_review_requested_base: (if $req_base == "" then null else $req_base end),
     pending_decision: $pending,
     verification_gate: $vgate,

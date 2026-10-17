@@ -67,10 +67,10 @@ Returns `404` in most cases observed. Try only when channels A + B both produced
 
 When all three channels return `unknown`:
 
-- If `push_age < codex_timeout_seconds` (default `600`) → treat as `in_progress` (Codex may still post).
+- If `push_age < codex_timeout_seconds` (default `900`) → treat as `in_progress` (Codex may still post).
 - Otherwise → treat as `clean` (Codex never posted; assume nothing to add).
 
-The 10-minute default covers the upper end of Codex publish latency. Override via `CODEX_PREFLIGHT_TIMEOUT` env var when a repo shows consistently slower turnaround.
+The 15-minute default sits above the slowest Codex turnaround ADR 0002 measured (726 s; `scripts/codex-turnaround.sh`). Override via `CODEX_PREFLIGHT_TIMEOUT` env var when a repo shows consistently slower turnaround.
 
 ## False-emoji warning
 

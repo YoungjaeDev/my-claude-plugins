@@ -64,6 +64,24 @@ EOF
 # add <reason>: append to the calling check's local $reasons (bash scoping is dynamic).
 add() { reasons="$reasons$1"$'\n'; }
 
+# add_open_prs: add "open PR #N, #M" for the open ones in $PRS (prs_for's result).
+add_open_prs() {
+  local open
+  open=$(jq -r '[.[] | select(.state == "OPEN") | "#\(.number)"] | join(", ")' <<<"$PRS")
+  [ -n "$open" ] && add "open PR $open"
+  return 0
+}
+
+# entry <jq-args...> <filter>: one element, the filter's object plus safe and reasons[]
+# from the calling check's $reasons. The filter is the last argument.
+entry() {
+  local n=$# filter
+  filter=${!n}
+  jq -cn --arg reasons "$reasons" "${@:1:n-1}" \
+    "($filter) as \$o | (\$reasons | split(\"\\n\") | map(select(. != \"\"))) as \$r
+     | \$o + {safe: (\$r | length == 0), reasons: \$r}"
+}
+
 # prs_for <branch>: set PRS to gh's PRs with that head branch; fails when gh does.
 prs_for() {
   PRS=$(cd "$MAIN_REPO" && gh pr list --head "$1" --state all \
@@ -107,7 +125,7 @@ landed() {
 # check <path> <head> <branchref> <locked> <prunable>: one worktrees[] element.
 check() {
   local path=$1 head=$2 ref=$3 locked=$4 prunable=$5
-  local branch="${ref#refs/heads/}" reasons="" pr="null" st open
+  local branch="${ref#refs/heads/}" reasons="" pr="null" st
 
   [ "$path" = "$SELF" ] && add "current session: post-merge Step 11 prints its removal command"
   [ "$locked" = 1 ] && add "locked"
@@ -124,18 +142,15 @@ check() {
   elif ! prs_for "$branch"; then
     add "gh lookup failed: merge state unknown"
   else
-    open=$(jq -r '[.[] | select(.state == "OPEN") | "#\(.number)"] | join(", ")' <<<"$PRS")
-    [ -n "$open" ] && add "open PR $open"
+    add_open_prs
     pr=$(jq -c 'map(select(.state == "MERGED")) | first // null' <<<"$PRS")
     if [ "$pr" = "null" ]; then add "no merged PR for branch $branch"
     else landed "$pr" "$ref"; fi
   fi
 
-  jq -cn --arg path "$path" --arg branch "$branch" --arg head "$head" \
-     --arg reasons "$reasons" --argjson pr "$pr" --argjson tmp "$(tmp_summary "$path")" \
-     '($reasons | split("\n") | map(select(. != ""))) as $r
-      | {path:$path, branch:(if $branch == "" then null else $branch end), head:$head,
-         safe:($r | length == 0), reasons:$r, pr:$pr, tmp:$tmp}'
+  entry --arg path "$path" --arg branch "$branch" --arg head "$head" \
+     --argjson pr "$pr" --argjson tmp "$(tmp_summary "$path")" \
+     '{path:$path, branch:(if $branch == "" then null else $branch end), head:$head, pr:$pr, tmp:$tmp}'
 }
 
 # Porcelain -z: one NUL-terminated attribute per field, an empty field ends a record.
@@ -175,7 +190,7 @@ flush
 REMOTE_JSON=null; REMOTE_ERR=""
 # rcheck <name> <head>: one remote_branches[] element.
 rcheck() {
-  local name=$1 head=$2 ref="refs/remotes/origin/$1" reasons="" pr=null open wt based
+  local name=$1 head=$2 ref="refs/remotes/origin/$1" reasons="" pr=null wt based
   if [ "$name" = "$DEFAULT" ]; then
     add "default branch"
   else
@@ -184,8 +199,7 @@ rcheck() {
     if ! prs_for "$name"; then
       add "gh lookup failed: PR state unknown"
     else
-      open=$(jq -r '[.[] | select(.state == "OPEN") | "#\(.number)"] | join(", ")' <<<"$PRS")
-      [ -n "$open" ] && add "open PR $open"
+      add_open_prs
       pr=$(jq -c '(map(select(.state == "MERGED")) | first) // (map(select(.state == "OPEN")) | first)
                   // first // null' <<<"$PRS")
       case "$(jq -r '.state? // "none"' <<<"$pr")" in
@@ -202,9 +216,7 @@ rcheck() {
       add "base of open PR $based"
     fi
   fi
-  jq -cn --arg name "$name" --arg head "$head" --arg reasons "$reasons" --argjson pr "$pr" \
-    '($reasons | split("\n") | map(select(. != ""))) as $r
-     | {name:$name, head:$head, safe:($r | length == 0), reasons:$r, pr:$pr}'
+  entry --arg name "$name" --arg head "$head" --argjson pr "$pr" '{name:$name, head:$head, pr:$pr}'
 }
 if ! DEFAULT=$(cd "$MAIN_REPO" && gh repo view --json defaultBranchRef 2>/dev/null </dev/null) \
    || ! DEFAULT=$(jq -er '.defaultBranchRef.name | select(type == "string" and . != "")' <<<"$DEFAULT" 2>/dev/null); then

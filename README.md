@@ -86,7 +86,7 @@ dev 는 PR 부터 리뷰 루프, 머지, 정리까지 맡는다. 아이디어부
 |-------|---------|
 | `/dev:flow` | 다음에 부를 스킬을 알려 준다 (Matt 앞단과 dev 뒷단, 버그·E2E·worktree 갈래, 제품 repo 준비). 직접 실행하지 않는다 |
 | `/dev:commit-and-push` | 변경을 분석해 Conventional Commits 메시지로 커밋하고 푸시한다 |
-| `/dev:review-loop` | CodeRabbit 과 Codex 의 지적을 사용자에게 묻지 않고 apply / defer / skip 으로 판정해 수정한다. 수렴·저심각도 바닥·churn 중 하나에 이르면 멈추고 남은 지적은 후속 이슈 1건으로 남긴다. 켜진 리뷰어 전원이 HEAD 에 판정을 낸 뒤에만 push·종료·머지한다. PR 에 올리는 댓글은 `@coderabbitai rate limit` 질의와 HEAD 당 1회의 `@coderabbitai review` 요청뿐이다. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate limit 이면 로컬 CLI 나 Codex-only 로 전환) |
+| `/dev:review-loop` | CodeRabbit 과 Codex 의 지적을 사용자에게 묻지 않고 apply / defer / skip 으로 판정해 수정한다. 수렴·저심각도 바닥·churn 중 하나에 이르면 멈추고 남은 지적은 후속 이슈 1건으로 남긴다. 켜진 리뷰어 전원이 HEAD 에 판정을 낼 때까지 기다리되, 대기 상한까지 판정이 없는 리뷰어는 빼고 남은 리뷰어의 판정으로 끝내며 뺀 이름을 보고한다 (CodeRabbit 은 상한 절반에 한 번 재촉한다). 한 사이클의 수정이 전부 Minor 이하 지적에서 왔으면 재리뷰 없이 판정받은 HEAD 를 머지한 뒤 build/test 와 pre-commit 가드를 거쳐 base 에 바로 push 한다. `--auto-merge` 가 없으면 끝에 "auto-merge 할까요?" 를 묻는다. 리뷰어를 뺀 실행은 `--auto-merge` 가 있어도 묻는다. PR 에 올리는 댓글은 `@coderabbitai rate limit` 질의와 HEAD 당 1회의 `@coderabbitai review` 요청뿐이다. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate limit 이면 로컬 CLI 나 Codex-only 로 전환) |
 | `/dev:post-merge` | 머지 후 정리만 한다: 남은 리뷰 지적 표시, base 전환, 안전 조건을 통과한 다른 worktree 를 한 번 확인받고 삭제, 브랜치 삭제, 안전 조건을 통과한 원격 브랜치를 한 번 확인받고 삭제, 남은 이슈 close, Project 상태 동기화, About 줄 점검, 커밋 |
 | `/dev:release` | 버전 태그와 GitHub Release 를 만든다 (릴리스 노트 자동 생성) |
 | `/dev:session-handoff` | 컨텍스트를 비우기 전에 새 에이전트가 이어받을 인수인계 요약을 채팅에 쓴다 |
@@ -188,7 +188,7 @@ Playwright 가 없으면 graceful degrade 한다. Codex 에서는 역할 계약(
 
 | Skill | 하는 일 |
 |-------|---------|
-| `/wiki:ingest` | 원본 문서나 작업 중 알게 된 사실을 개념 페이지로 만들고 index·log 를 갱신한다. wiki 가 없으면 뼈대를 만든다 |
+| `/wiki:ingest` | 원본 문서나 작업 중 알게 된 사실을 개념 페이지로 만들고 index·log 를 갱신한다. `.llmwiki/` 가 없는 저장소에서는 아무것도 만들지 않고 후보만 보고한다 |
 | `/wiki:query` | index, 개념 페이지, raw 순서로 읽고 인용을 달아 답한다. 새 답은 승인 뒤에만 저장한다 |
 | `/wiki:lint` | 오래된 페이지, 깨진 링크·Sources, 고아 페이지, index 불일치를 점검한다 (read-only) |
 | `/wiki:plaud-note-taking` | PLAUD 녹음기 전사록을 프로젝트 용어로 정정해 corrected 와 digest 를 만들고 `/wiki:ingest` 로 넘긴다. 원본은 수정하지 않는다 |

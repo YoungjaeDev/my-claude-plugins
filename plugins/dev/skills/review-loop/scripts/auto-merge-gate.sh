@@ -141,8 +141,7 @@ jq -nc \
   --arg reason "$reason" \
   --arg next "$next_action" \
   --argjson file_issue "$file_issue" \
-  --arg dropped "${DROPPED_REVIEWERS:-}" \
+  --argjson dropped "$(bash "$SCRIPT_DIR/words-json.sh" "${DROPPED_REVIEWERS:-}")" \
   '{cr_state:$cr, blocking_checks:$bc, ci_state:$ci, failing_checks:$failing, base_branch:$base,
     protection_http:$http, eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end),
-    next_action:$next, file_issue:$file_issue,
-    dropped_reviewers:($dropped | split(" ") | map(select(length > 0)))}'
+    next_action:$next, file_issue:$file_issue, dropped_reviewers:$dropped}'

@@ -48,7 +48,7 @@ Codex's result for the commit the PR points at now (`GLOSSARY.md` "HEAD 판정",
 - **HEAD review.** A Codex review with `commit_id == CUR_SHA`. Codex submits one only when it has findings, a few seconds before it flips the summary to Completed.
 - **👍 reaction.** With nothing to say, Codex may leave only a `+1` reaction on the PR (`issues/{pr}/reactions`; PR #320, three minutes after the push). One from the anchored Codex login created after `PUSH_TIME` is `clean` where no HEAD row and no HEAD review decide. No `PUSH_TIME`, no reaction verdict. An unreadable reaction list only withholds it.
 
-Interface: env `OWNER REPO PR_NUM CUR_SHA [PUSH_TIME] [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=600]`, one JSON line on stdout, exit 0 (exit 1 only with `verdict=error`).
+Interface: env `OWNER REPO PR_NUM CUR_SHA [PUSH_TIME] [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=900]` (default from `scripts/codex-turnaround.sh`), one JSON line on stdout, exit 0 (exit 1 only with `verdict=error`). `reactions` says whether the PR's reactions were `read` or `unreadable`; unreadable where only a 👍 could give the verdict (no HEAD row, no HEAD review, `PUSH_TIME` known) is `verdict=error`, never "no 👍", so no wait drops Codex over a failed read.
 
 ```json
 {"verdict":"findings|clean|failed|in_progress|none|unknown|error",
@@ -67,7 +67,7 @@ Interface: env `OWNER REPO PR_NUM CUR_SHA [PUSH_TIME] [CODEX_GRACE=30] [CODEX_PR
 | unparseable or unknown status word (`summary_state=unparsed`), or no summary (`absent`) | yes / no | `findings` / `unknown`, `fallback=review_id_poll`; `clean` with a 👍 after the push |
 | gh failed | n/a | `error`, exit 1 |
 
-Only `clean` is a pass. `unknown` is never clean: callers fall back to review-id polling. `wait_seconds` is the single Codex wait budget, `max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age)`, reported even on `error`; `push_age` comes from `PUSH_TIME` via jq `fromdateiso8601` (no GNU/BSD `date` split), and an absent or unparseable `PUSH_TIME` counts as age 0. Consumers: `pre-flight.sh` (`codex_verdict`, `codex_wait_seconds`), Step 6b below, `poll-codex-grace.sh` (with `CUR_SHA`, ends on `clean` / `failed`).
+Only `clean` is a pass. `unknown` is never clean: callers fall back to review-id polling. `wait_seconds` is the single Codex wait budget, `max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age)`, reported even on `error`; `push_age` comes from `PUSH_TIME` via jq `fromdateiso8601` (no GNU/BSD `date` split), and an absent or unparseable `PUSH_TIME` counts as age 0. Consumers: `pre-flight.sh` (`codex_verdict`, `codex_wait_seconds`), Step 6b below, `poll-codex-grace.sh` (with `CUR_SHA` and `PUSH_TIME`, ends on `clean` / `failed`).
 
 ## Review-id discovery and the grace cap (Step 6b)
 
@@ -96,7 +96,7 @@ if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
       || echo "warn: Codex HEAD verdict unavailable (gh error); the wait budget still applies" >&2
     grace_cap=$(jq -r ".wait_seconds // empty" <<<"$hv"); [ -n "$grace_cap" ] || grace_cap="$CODEX_GRACE"
     # Bash(run_in_background=true) + Monitor; the poll stops itself at CAP:
-    #   OWNER=... REPO=... PR_NUM=... PROCESSED=... CUR_SHA=$CUR_SHA INTERVAL=15 CAP=$grace_cap \
+    #   OWNER=... REPO=... PR_NUM=... PROCESSED=... CUR_SHA=$CUR_SHA PUSH_TIME=$PUSH_TIME INTERVAL=15 CAP=$grace_cap \
     #     bash $SKILL_DIR/scripts/poll-codex-grace.sh
     # One JSON line, or grace expiry (exit 124, no line):
     #   {codex_review_id:N, pr:N}                         -> codex_review_id_to_process=N

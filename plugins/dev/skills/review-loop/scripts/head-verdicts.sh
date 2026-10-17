@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Usage: OWNER=... REPO=... PR_NUM=... CUR_SHA=... [PUSH_TIME=ISO8601] \
 #        [CR_ON=true|false] [CODEX_ON=auto|true|false] [CAP=seconds] [INTERVAL=30] \
-#        [TIMEOUT=1800] [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=600] \
-#        bash scripts/head-verdicts.sh
+#        [TIMEOUT=1800] [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=$CODEX_BUDGET_DEFAULT] \
+#        [CR_DEADLINE=epoch] bash scripts/head-verdicts.sh
 #
 # Waits until every reviewer the run has on gave CUR_SHA a HEAD verdict (GLOSSARY
 # "HEAD 판정", ADR docs/adr/0002-review-loop-waits-for-head-verdicts.md), then
@@ -10,7 +10,7 @@
 #   {"state":"ready|timeout|paused|stuck|codex_failed",
 #    "cr":"findings|clean|none|error|off|dropped", "codex":"<codex-head-verdict verdict>|off|dropped",
 #    "findings":bool, "cr_review_request":"post|skip"|null, "waited":N,
-#    "dropped":["coderabbit"|"codex", ...]}
+#    "dropped":["coderabbit"|"codex", ...], "cr_deadline":epoch|null}
 #
 # Verdicts come from cr-head-verdict.sh and codex-head-verdict.sh; this script only
 # combines them. findings and clean are verdicts; a progress mark, a rate-limit
@@ -21,20 +21,24 @@
 #   paused        CodeRabbit paused automatic reviews and this HEAD has no
 #                 `@coderabbitai review` request yet (cr_review_request=post).
 #                 The caller posts it; this script never writes to the PR.
-#   stuck         CodeRabbit gave no verdict within its budget and this HEAD has no
-#                 request yet (cr_review_request=post): the caller posts the one
-#                 nudge, then waits again
+#   stuck         CodeRabbit gave no verdict in the first half of its budget and this
+#                 HEAD has no request yet (cr_review_request=post): the caller posts
+#                 the one nudge, then waits again with CR_DEADLINE=cr_deadline
 #   timeout       no verdict at all before the budgets ran out
 #
 # Budget: the existing caps, anchored so waiting again on the same HEAD never
-# extends them. CR: TIMEOUT - age of the newer of the push and the latest
-# `@coderabbitai review` comment (CodeRabbit starts on either). Codex:
-# codex-head-verdict.sh wait_seconds, max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT -
-# push_age), as its first look reported it. Each reviewer has its own deadline (ADR
-# 0006): past it, CodeRabbit is nudged once per HEAD (stuck) and then dropped, Codex
-# is dropped without a nudge, and a reviewer that cannot be read ends the wait at
-# timeout. CAP replaces the budgets with one cap and drops nobody (CAP=0 is a single
-# look, which the auto-merge gate uses). The time between looks is next-check.sh's.
+# extends them. CR: one TIMEOUT from the newer of the push and the latest
+# `@coderabbitai review` comment (CodeRabbit starts on either), never past
+# CR_DEADLINE: the caller passes the deadline the stuck look reported, so the nudge
+# itself does not restart the budget. Codex: codex-head-verdict.sh wait_seconds,
+# max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age), as its first look reported it.
+# Each reviewer has its own deadline (ADR 0006): CodeRabbit silent for half its
+# budget is nudged once per HEAD (stuck), waits out the other half, and is then
+# dropped (a run that starts with the budget spent drops it at once); Codex is dropped
+# at its deadline without a nudge. A reviewer that cannot be read, or a nudge check
+# that cannot read the PR comments, is never dropped: the wait ends at timeout. CAP
+# replaces the budgets with one cap and drops nobody (CAP=0 is a single look, which
+# the auto-merge gate uses). The time between looks is next-check.sh's.
 #
 # CODEX_ON=auto: Codex counts as on unless it has never engaged on this PR (no
 # summary comment, no review, engagement probe says inactive without an error).
@@ -44,9 +48,10 @@ set -uo pipefail
 : "${PR_NUM:?pr required}"; : "${CUR_SHA:?sha required}"
 PUSH_TIME="${PUSH_TIME:-}"
 : "${CR_ON:=true}"; : "${CODEX_ON:=auto}"; : "${INTERVAL:=30}"
-: "${TIMEOUT:=1800}"; : "${CODEX_GRACE:=30}"; : "${CODEX_PREFLIGHT_TIMEOUT:=600}"
-CAP="${CAP:-}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$HERE/codex-turnaround.sh"
+: "${TIMEOUT:=1800}"; : "${CODEX_GRACE:=30}"; : "${CODEX_PREFLIGHT_TIMEOUT:=$CODEX_BUDGET_DEFAULT}"
+CAP="${CAP:-}"; CR_DEADLINE="${CR_DEADLINE:-}"
 PAUSE_MARK='auto-generated comment: review paused by coderabbit\.ai'
 
 # CodeRabbit starts on the push, or on a `@coderabbitai review` posted after it
@@ -71,6 +76,15 @@ cr_budget=$(jq -n --arg t "$PUSH_TIME" --argjson req "$req_times" --argjson know
      else ([$push, ($req[] | try fromdateiso8601 catch empty)] | max) as $from
        | now - $from | floor | if . < 0 then 0 else . end end) as $age
   | [0, $to - $age] | max')
+start_epoch=$(date +%s)
+case "$CR_DEADLINE" in
+  ''|*[!0-9]*) ;;
+  *) [ $((CR_DEADLINE - start_epoch)) -lt "$cr_budget" ] && cr_budget=$((CR_DEADLINE - start_epoch))
+     [ "$cr_budget" -ge 0 ] || cr_budget=0 ;;
+esac
+# The nudge point: half the budget gone (SECONDS of this run; at or below 0 means now).
+cr_nudge_at=$((cr_budget - TIMEOUT / 2))
+cr_deadline=null; [ "$CR_ON" = true ] && cr_deadline=$((start_epoch + cr_budget))
 # For next-check.sh's AGE; -1 when unknown, and AGE then counts from the first look.
 push_epoch=$(jq -n --arg t "$PUSH_TIME" 'try ($t | fromdateiso8601 | floor) catch -1')
 
@@ -78,7 +92,7 @@ in_list() { case " $2 " in *" $1 "*) return 0 ;; esac; return 1; }
 is_done() { case "$1" in off|findings|clean|dropped) return 0 ;; esac; return 1; }
 
 SECONDS=0
-request=""; codex_deadline=""; dropped=""
+request=""; codex_deadline=""; dropped=""; nudge=""
 while :; do
   cr=off
   if [ "$CR_ON" = true ]; then
@@ -127,18 +141,22 @@ while :; do
     fi
   fi
 
-  # Budget mode (no CAP), ADR 0006. CodeRabbit with no verdict at its deadline gets
-  # one `@coderabbitai review` for this HEAD (stuck: the caller posts it and waits
-  # again, with the budget now counted from the request), and is dropped once this
-  # HEAD has a request. Codex is dropped at its deadline: `@codex review` is never
-  # posted. A reviewer that could not be read (error) is never dropped.
+  # Budget mode (no CAP), ADR 0006. CodeRabbit silent for half its budget gets one
+  # `@coderabbitai review` for this HEAD (stuck: the caller posts it and waits again
+  # with CR_DEADLINE, so the nudge waits only in what is left), and is dropped at the
+  # deadline. Codex is dropped at its deadline: `@codex review` is never posted. A
+  # reviewer that could not be read (error) is never dropped, and neither is CodeRabbit
+  # when the nudge check could not read the comments (exit 1 is not "already asked").
   if [ -z "$state" ] && [ -z "$CAP" ]; then
     if [ "$cr" = none ] && [ "$SECONDS" -ge "$cr_budget" ]; then
-      if d=$(bash "$HERE/cr-review-posted.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null) \
-         && [ "$d" = post ]; then
-        request=post; state=stuck
+      if [ "$nudge" = unreadable ]; then cr=error
+      else dropped="${dropped:+$dropped }coderabbit"; cr=dropped; fi
+    elif [ "$cr" = none ] && [ "$SECONDS" -ge "$cr_nudge_at" ] && [ "$nudge" != skip ]; then
+      if d=$(bash "$HERE/cr-review-posted.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null); then
+        nudge=skip  # decided: this HEAD has its request, or the caller posts it now
+        [ "$d" = post ] && { request=post; state=stuck; }
       else
-        dropped="${dropped:+$dropped }coderabbit"; cr=dropped
+        nudge=unreadable  # looked again on the next round
       fi
     fi
     if [ -z "$state" ] && ! is_done "$codex" && [ "$codex" != error ] && [ "$SECONDS" -ge "$codex_deadline" ]; then
@@ -162,10 +180,10 @@ while :; do
 
   if [ -n "$state" ]; then
     jq -nc --arg s "$state" --arg cr "$cr" --arg cx "$codex" --arg req "$request" --argjson w "$SECONDS" \
-      --arg d "$dropped" '
+      --argjson d "$(bash "$HERE/words-json.sh" "$dropped")" --argjson dl "$cr_deadline" '
       {state:$s, cr:$cr, codex:$cx, findings:($cr == "findings" or $cx == "findings"),
        cr_review_request:(if $req == "" then null else $req end), waited:$w,
-       dropped:($d | split(" ") | map(select(length > 0)))}'
+       dropped:$d, cr_deadline:$dl}'
     exit 0
   fi
 
@@ -174,6 +192,8 @@ while :; do
   else
     left=""
     is_done "$cr" || left=$((cr_budget - SECONDS))
+    # Wake for the nudge point too, not only the deadline.
+    if [ "$cr" = none ] && [ "$nudge" != skip ] && [ "$cr_nudge_at" -gt "$SECONDS" ]; then left=$((cr_nudge_at - SECONDS)); fi
     if ! is_done "$codex"; then
       cl=$((codex_deadline - SECONDS))
       if [ -z "$left" ] || [ "$cl" -lt "$left" ]; then left=$cl; fi

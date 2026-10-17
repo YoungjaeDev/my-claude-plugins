@@ -181,10 +181,10 @@ if [ -z "$PLUGIN_ROOT" ]; then
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
   if sort -V </dev/null >/dev/null 2>&1; then
     candidate=$(ls -1d "$cache_root"/*/dev/* 2>/dev/null \
-      | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2-)
+      | awk -F/ '{print $NF "\t" $(0)}' | sort -V | tail -1 | cut -f2-)
   else
     candidate=$(ls -1d "$cache_root"/*/dev/* 2>/dev/null \
-      | awk -F/ '{print $NF "\t" $0}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2-)
+      | awk -F/ '{print $NF "\t" $(0)}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2-)
   fi
   [ -n "$candidate" ] && [ -d "$candidate" ] && PLUGIN_ROOT="$candidate"
 fi

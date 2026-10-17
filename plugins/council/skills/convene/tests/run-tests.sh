@@ -90,9 +90,9 @@ has "agy call closes stdin with < /dev/null" '--print "$AGY_PROMPT" < /dev/null'
 has "--print is the last flag before the prompt" '--model "$AGY_MODEL" --print'
 
 # -o (--output-last-message) is the documented carrier of the final answer.
-has "codex captures its answer with -o"     '-o "$DIR/r1-codex.md"'
+has "codex captures its answer with -o"     '-o "$RAW/r1-codex.md"'
 # `-` reads the prompt from stdin, so no user text is ever re-parsed by the shell.
-has "codex takes its prompt on stdin"       '- < "$DIR/r1-prompt.md"'
+has "codex takes its prompt on stdin"       '- < "$RAW/r1-prompt.md"'
 has "codex effort is quoted as TOML"        'model_reasoning_effort="\"$CODEX_EFFORT\""'
 
 # GNU-only date math would break on macOS; epoch seconds behave the same on both.
@@ -129,6 +129,8 @@ has "shared lock is released at the end"    'rmdir ".claude/state/council-lock-s
 # mkdir -p succeeds on an existing directory, so it cannot arbitrate a race.
 has "run directory is allocated atomically" 'until mkdir "$DIR" 2>/dev/null; do'
 # The preflight must probe the same config the seat call uses.
+# Only consensus.md is tracked; raw material derives from $DIR under the gitignored .tmp/.
+has "raw material goes under .tmp/council"  'RAW=".tmp/council/${DIR#.council/}"'
 has "probe carries the service tier"        '-c service_tier="\"$CODEX_TIER\"" \'
 # The Claude seat has no CLI list — its candidate set is the Agent tool's enum.
 has "claude pin is checked against the enum" 'sonnet|opus|haiku|fable) ;;'

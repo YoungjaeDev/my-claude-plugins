@@ -3,7 +3,7 @@
 #        FINAL_STATE=... MERGED=true|false PR_NUM=N LAST_SHA=... \
 #        CR_SOURCE=auto|pr-bot|cli|codex-only CLI_INVOCATIONS=N RATE_LIMIT_HITS=N \
 #        TRACK_FILE=/tmp/... STATE_FILE=.claude/state/... VERIFICATION_GATE=on|... \
-#        bash scripts/emit-final-json.sh
+#        [CI_FAILING_CHECKS='["name",...]'] bash scripts/emit-final-json.sh
 #
 # Idempotent: archives STATE_FILE if present, removes TRACK_FILE, prints one JSON line.
 # Designed to be hooked into bash `trap ... EXIT` so the JSON always emits even on early exit.
@@ -15,6 +15,10 @@ set -euo pipefail
 : "${CR_SOURCE:=auto}"; : "${CLI_INVOCATIONS:=0}"; : "${RATE_LIMIT_HITS:=0}"
 : "${AUTO_JUDGE_APPLY:=0}"; : "${AUTO_JUDGE_DEFER:=0}"; : "${AUTO_JUDGE_SKIP:=0}"
 : "${TRACK_FILE:=}"; : "${STATE_FILE:=}"; : "${VERIFICATION_GATE:=unknown}"
+# Step 14 sets it on ci_failing; anything but a JSON array of names reads as none.
+CI_FAILING_CHECKS=$(jq -c 'if type == "array" then map(tostring) else [] end' <<<"${CI_FAILING_CHECKS:-[]}" 2>/dev/null) \
+  || CI_FAILING_CHECKS='[]'
+[ -n "$CI_FAILING_CHECKS" ] || CI_FAILING_CHECKS='[]'
 
 # Capture the LAST pre-flight decision before STATE_FILE is archived; the full
 # history remains in the archive copy for audit.
@@ -69,6 +73,7 @@ jq -nc \
   --argjson pf_last   "$PRE_FLIGHT_LAST" \
   --argjson followup  "$FOLLOWUP_ISSUE" \
   --arg     vgate     "$VERIFICATION_GATE" \
+  --argjson ci_fail   "$CI_FAILING_CHECKS" \
   '{
     iterations: $iters,
     applied_total: $applied,
@@ -84,6 +89,7 @@ jq -nc \
     rate_limit_hits: $rl_hits,
     auto_judge_stats: { apply: $aj_apply, defer: $aj_defer, skip: $aj_skip },
     followup_issue: $followup,
+    ci_failing_checks: $ci_fail,
     verification_gate: $vgate,
     pre_flight_last: $pf_last
   }'

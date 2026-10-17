@@ -25,7 +25,7 @@
     "deferred_total":  { "type": "integer", "minimum": 0 },
     "skipped_total":   { "type": "integer", "minimum": 0, "description": "CR Trivial/Info + CR Nitpicks + (when --skip-minor) Minor severity + Codex P2" },
     "codex_state":     { "type": "string", "enum": ["active", "inactive", "disabled", "unknown"] },
-    "final_state":     { "type": "string", "enum": ["clean", "user_declined", "minor_floor", "churn", "iteration_cap", "timeout", "failure", "cr_inactive", "rate_limited", "cli_failed", "reviewers_unavailable", "codex_failed", "unknown"] },
+    "final_state":     { "type": "string", "enum": ["clean", "user_declined", "minor_floor", "churn", "iteration_cap", "timeout", "failure", "cr_inactive", "rate_limited", "cli_failed", "reviewers_unavailable", "codex_failed", "ci_failing", "unknown"] },
     "merged":          { "type": "boolean" },
     "pr":              { "type": "integer", "minimum": 0 },
     "last_sha":        { "type": "string" },
@@ -57,6 +57,11 @@
           "additionalProperties": true
         }
       ]
+    },
+    "ci_failing_checks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Names of the CI checks that failed on the final HEAD when final_state is ci_failing (CodeRabbit and Codex checks left out, scripts/ci-checks.sh). Empty otherwise."
     },
     "verification_gate": {
       "type": "string",

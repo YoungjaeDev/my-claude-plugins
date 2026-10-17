@@ -96,7 +96,7 @@ function proseLines(md) {
     const text = para.map((p) => p[1]).join('\n')
       .replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, (m) => m.replace(/[^\n]+/g, ' '))
       // A tag opens with a name (or `/`, `!`) right after `<`: `1 < 2` and a lone `<` line are text.
-      .replace(/<\/?[A-Za-z!][^<>]*>/g, ' ');
+      .replace(/<\/?[A-Za-z!][^<>]*>/g, (m) => m.replace(/[^\n]+/g, ' '));
     text.split('\n').forEach((t, k) => out.push([para[k][0], t]));
     para = [];
   };
@@ -170,6 +170,8 @@ function runFixtures() {
   eq('a < or > that opens no tag is text, even across lines',
     proseLines('비교: 1 < 2\n여기 → 다음 > 끝\n<\n설치 → 실행\n>').map(([, t]) => t.trim()),
     ['비교: 1 < 2', '여기 → 다음 > 끝', '<', '설치 → 실행', '>']);
+  eq('a tag across lines keeps the line numbers after it',
+    proseLines('<span\nclass="x">설치 → 실행').map(([n, t]) => [n, t.trim()]), [[1, ''], [2, '설치 → 실행']]);
   eq('a heading ends the paragraph, so no code span crosses it',
     proseLines('` 예시\n## 설치 → 실행\n` 끝').map(([n, t]) => [n, t.trim()]), [[1, '` 예시'], [2, '## 설치 → 실행'], [3, '` 끝']]);
   eq('fence closes only on a bare marker',

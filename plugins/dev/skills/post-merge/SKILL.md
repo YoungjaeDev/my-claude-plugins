@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: "Clean up after a PR merges: surface leftover review findings, switch to base, delete the merged branch, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', or right after a PR merges. Cleanup only: lessons belong to /retro in the building session, README and CHANGELOG edits to docs:readme and docs:changelog. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:review-loop)."
+description: "Clean up after a PR merges: surface leftover review findings, switch to base, remove other worktrees that pass the safety filter (merged PR, clean, unlocked, no unique commits) after one confirmation, delete the merged branch, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', or right after a PR merges. Cleanup only: lessons belong to /retro in the building session, README and CHANGELOG edits to docs:readme and docs:changelog. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:review-loop)."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -12,11 +12,11 @@ Local cleanup after a PR is merged. One run takes a merged PR from leftover-revi
 
 - **Worktree mode.** post-merge runs from the main repo or from the PR's worktree. Every step works on the main repo: git calls run as `git -C "$MAIN_REPO"` and repo paths resolve under `$MAIN_REPO/`, in the steps below and in `references/`. `MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")` gives the same answer from either place, so re-derive it in any fresh shell. Inside a worktree (`IN_WT=1`) Step 1 copies the worktree's review-loop state into the main repo's archive, Step 4 leaves the branch alone (the worktree still has it checked out), and Step 11 prints the one command that removes the worktree and the branch. post-merge never removes the worktree itself: on Windows a worktree removed from inside itself is only half deleted.
 - **Non-default base.** For a PR into a branch CodeRabbit does not auto-review, review-loop on the `auto` / `pr-bot` source posts `@coderabbitai review` itself, unless the repo set `reviews.auto_review.enabled: false` (`plugins/dev/skills/review-loop/SKILL.md` Step 2); Step 3 below checks out that base like any other. It also changes what the merge did to the linked issues: GitHub honours a closing keyword only on a merge into the default branch, so a non-default base leaves every one of them open with no signal on the PR page — Step 5 is what catches that, and it runs on every PR.
-- **`gh pr view` is the authoritative merge signal.** Step 1's `gh pr view ... state=MERGED` is the single source of truth for "did this land". Later steps MUST NOT re-verify merge state by comparing git SHAs.
-- **Never use SHA-level merge comparison.** `git log <base>..<branch>`, `git cherry`, `git rev-list --left-right` all false-positive after squash merge (base gets one new SHA) and rebase merge (branch SHAs rewritten). If unsure content landed, diff content not SHAs (Step 4).
+- **`gh` is the authoritative merge signal.** Step 1's `gh pr view ... state=MERGED` is the single source of truth for "did this land", and Step 3.5 asks gh the same question (`gh pr list --head <branch>`) for every other worktree's branch. No step decides "merged" by comparing git SHAs.
+- **SHA comparison proves "nothing unique", never "merged".** `git log <base>..<branch>`, `git cherry` and `git rev-list --left-right` read as unmerged after a squash merge (base gets one new SHA) or a rebase merge (branch SHAs rewritten), so none of them answers "did it land". Step 3.5 runs `git cherry` only after gh has said merged, to show the branch holds no commit the PR did not deliver, and settles whatever cherry still lists by content: the branch's files against the PR's merge commit. If unsure content landed, diff content, not SHAs (Step 4).
 - **Leftover-review surface (Step 1.5) is informational.** The run reads review-loop's state file (`.claude/state/review-loop-<PR>.json`, else the latest `.claude/state/archive/` copy, else the same under the pre-rename `cr-fix-` prefix) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
 - **Codex partial-execution.** `/docs:readme` and `/docs:changelog` (Steps 9, 9.5) are commands, which Codex does not load; under Codex do the same edit by hand from the `docs:doc-guides` skill and note it. Every other step runs identically on both runtimes.
-- **Interactive input is capability-aware.** Every prompt and confirmation below, each `AskUserQuestion` mention included, is a gate rather than a tool name: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (`git rm`, `gh repo edit`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+- **Interactive input is capability-aware.** Every prompt and confirmation below, each `AskUserQuestion` mention included, is a gate rather than a tool name: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (`git rm`, `git worktree remove`, `gh repo edit`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 - **Run record.** Step 1 opens `.claude/state/post-merge-<PR>.json` and every step appends its outcome, so a silent skip becomes visible; Step 10 finalizes it. Mechanism, per-step skip reasons, and the finalize block: `references/run-record.md`.
 
 ## Arguments
@@ -102,6 +102,65 @@ git -C "$MAIN_REPO" checkout <baseRefName>
 git -C "$MAIN_REPO" pull origin <baseRefName>
 ```
 
+### 3.5. Remove other merged worktrees
+
+Looks at every linked worktree in `git worktree list`, wherever it lives (`.claude/worktrees/`, a sibling directory, another workspace), not only this PR's. Runs after Step 3, because it checks against the freshly fetched `origin/<base>`. The collector is read-only: it prints `{main_repo, worktrees[]}`, and each entry carries `path`, `branch`, `pr`, `safe`, `reasons[]` and a `tmp` summary of the worktree's `.tmp/` files (path, bytes, mtime).
+
+```bash
+# Codex exports no CLAUDE_PLUGIN_ROOT: fall back to the cached plugin dir, ranked
+# on the version basename (not the whole path) so the marketplace dir cannot
+# outrank the version. `|| true`: an empty cache is normal on Claude-only hosts.
+CACHE_ROOT="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
+if sort -V </dev/null >/dev/null 2>&1; then
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $(0)}' | sort -V | tail -1 | cut -f2- || true)
+else
+  CODEX_CAND=$(ls -1d "$CACHE_ROOT"/*/dev/* 2>/dev/null \
+    | awk -F/ '{print $NF "\t" $(0)}' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2- || true)
+fi
+# Validate the script the next line runs, not just a directory.
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "$CLAUDE_PLUGIN_ROOT/skills/post-merge/scripts/collect-cleanup.sh" ]; then
+  SKILL_DIR="$CLAUDE_PLUGIN_ROOT/skills/post-merge"
+elif [ -f "plugins/dev/skills/post-merge/scripts/collect-cleanup.sh" ]; then
+  SKILL_DIR="plugins/dev/skills/post-merge"
+elif [ -n "$CODEX_CAND" ] && [ -f "$CODEX_CAND/skills/post-merge/scripts/collect-cleanup.sh" ]; then
+  SKILL_DIR="$CODEX_CAND/skills/post-merge"
+else
+  echo "post-merge: collect-cleanup.sh not found under CLAUDE_PLUGIN_ROOT, the source tree, or the Codex plugin cache" >&2
+  SKILL_DIR=""
+fi
+[ -n "$SKILL_DIR" ] && bash "$SKILL_DIR/scripts/collect-cleanup.sh"
+```
+
+A failed collection (no script, no `jq`, a `git worktree list` error) skips this step with the error in the report; it does not stop the run.
+
+- **`safe: false`**: report the path and every reason, and leave it. The reasons are an open PR, no merged PR, a failed `gh` lookup, dirty, locked, prunable, detached, or unique commits (cherry lists commits whose content the merge commit does not have). A worktree with no upstream and its own commits lands here, never in the removal list. The worktree this session runs in is listed with reason `current session`: Step 11 prints its command.
+- **`safe: true`**: read the `tmp` summary first. `git worktree remove` treats ignored files as clean and deletes them with the worktree, so `.tmp/` material is gone unless it moves first. Open the files that look like research output (a council or research run directory, notes, a report or a findings file) and propose to keep only those worth having later. Scratch output, logs, caches and anything that can be fetched again stay behind and go with the worktree. Nothing is kept by default.
+- **One confirmation** through the interactive-input gate: list each safe worktree with its path, branch, PR and the `.tmp/` items you propose to keep, and let the user pick which to remove. Remove nothing they did not pick.
+
+For each picked worktree, move the kept items first, one `REL` at a time (`REL` is the item's path under the worktree, starting with `.tmp/`, so it lands at the same layout under the main repo's `.tmp/`):
+
+```bash
+WT="<worktree path>"; REL="<.tmp/... item>"
+DST="$MAIN_REPO/$REL"
+# Never overwrite: an existing target gets a sibling named after the worktree.
+[ -e "$DST" ] && DST="$DST-$(basename "$WT")"
+if [ -e "$DST" ]; then
+  echo "post-merge: $DST exists, $WT/$REL left in place" >&2
+else
+  mkdir -p "$(dirname "$DST")" && mv "$WT/$REL" "$DST" || echo "post-merge: moving $WT/$REL failed" >&2
+fi
+```
+
+If any kept item of a worktree did not move, do not remove that worktree; report it. Then remove it from the main repo, without `--force`:
+
+```bash
+WT="<worktree path>"; BR="<branch>"
+git -C "$MAIN_REPO" worktree remove "$WT" && git -C "$MAIN_REPO" branch -d "$BR"
+```
+
+`worktree remove` refusing (a file changed since the collection) leaves the worktree: report it, do not force. `branch -d` refusing is handled as in Step 4: report, never `-D`. This step belongs to Step 3's run-record entry.
+
 ### 4. Clean up local branch
 
 - `IN_WT=1`: skip the deletion (the worktree still has the branch checked out, so `git branch -d` would refuse); Step 11 prints it. The content check below still applies.
@@ -109,7 +168,7 @@ git -C "$MAIN_REPO" pull origin <baseRefName>
 - **No SHA-level merge check** (see Guidelines). If unsure content landed, diff content: `git -C "$MAIN_REPO" diff "origin/$baseRefName..$headRefName" -- <paths>` (empty = fully landed; safe for squash).
 - If the branch exists, confirm deletion, then `git -C "$MAIN_REPO" branch -d "$headRefName"`.
   - For squash merges expect `warning: not yet merged to HEAD`, which is normal; `-d` detects the merge via `origin/<branch>` tracking and still succeeds. Do NOT escalate to `-D`, do NOT treat as data loss, do NOT open a "missing commits" PR.
-- If another worktree (not this one) still has the branch checked out, report its path from `git -C "$MAIN_REPO" worktree list` and leave it.
+- If another worktree (not this one) still has the branch checked out, Step 3.5 either removed it or reported why not; report its path and leave the branch.
 
 ### 4.5. Prune ephemeral artifacts merged by this PR (optional)
 
@@ -239,7 +298,7 @@ Print this one line, filled in, as the last line of the run, and do not run it. 
   "$MAIN_REPO" "$WT_PATH" "$headRefName"
 ```
 
-`git worktree remove` refuses a worktree with modified or untracked files, which is the check to keep: anything it names was never committed. `git branch -d` behaves as in Step 4.
+`git worktree remove` refuses a worktree with modified or untracked files, which is the check to keep: anything it names was never committed. It deletes ignored files such as `.tmp/` without asking, so move anything worth keeping to `$MAIN_REPO/.tmp/` first, as Step 3.5 does. `git branch -d` behaves as in Step 4. Step 3.5 skips this worktree (reason `current session`) and leaves it to this command.
 
 ## References
 

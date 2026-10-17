@@ -34,6 +34,9 @@ jobs:
       # primary path fails, so nothing exercised them until they broke in
       # production (issues #105, #110). Fixture-driven, no network, sub-second.
       - run: bash plugins/dev/skills/review-loop/tests/run-tests.sh
+      # post-merge's worktree collector decides what is safe to delete: a throwaway
+      # repo with linked worktrees and a gh shim, no network.
+      - run: bash plugins/dev/skills/post-merge/tests/run-tests.sh
       # convene ships no scripts -- its runner contracts are shell inside SKILL.md,
       # so nothing executes them. A dropped `< /dev/null` on the agy call blocks
       # that seat forever (--print-timeout does not bound it), and parsing codex
@@ -131,5 +134,7 @@ jobs:
       # suite under 5 would let a bash-4-only construct pass here and break for them.
       - name: review-loop suite under /bin/bash (3.2) + BSD tools
         run: /bin/bash plugins/dev/skills/review-loop/tests/run-tests.sh
+      - name: post-merge suite under /bin/bash (3.2) + BSD tools
+        run: /bin/bash plugins/dev/skills/post-merge/tests/run-tests.sh
       - name: convene suite under /bin/bash (3.2) + BSD tools
         run: /bin/bash plugins/council/skills/convene/tests/run-tests.sh

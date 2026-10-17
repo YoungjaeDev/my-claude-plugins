@@ -52,6 +52,10 @@ node "$repo_root/scripts/check-skill-prose.mjs" || true
 # Fixture-driven, no network, sub-second.
 bash "$repo_root/plugins/dev/skills/review-loop/tests/run-tests.sh"
 
+# post-merge's worktree collector decides which worktrees are safe to delete.
+# Throwaway repo + gh shim, no network.
+bash "$repo_root/plugins/dev/skills/post-merge/tests/run-tests.sh"
+
 # convene has no bundled scripts — its runner contracts live as shell inside
 # SKILL.md, where nothing executes them. Dropping `< /dev/null` from the agy call
 # makes the seat block forever, and check-shell-portability does not cover it.

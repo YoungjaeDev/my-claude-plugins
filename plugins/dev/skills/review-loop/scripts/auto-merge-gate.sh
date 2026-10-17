@@ -3,7 +3,8 @@
 #        [CR_ON=true|false] [CODEX_ON=auto|true|false] \
 #          bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
 # Returns JSON on stdout summarizing the gates:
-#   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N, "base_branch":"...",
+#   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N,
+#    "ci_state":"<ci-checks.sh state>", "failing_checks":[names], "base_branch":"...",
 #    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null}
 # `eligible` covers two axes. Convergence: `clean`, `minor_floor` and `churn`
 # qualify once the follow-up issue carrying the run's deferred findings exists (or
@@ -46,6 +47,7 @@ case "$FINAL_STATE" in
     else eligible=false; reason="$FINAL_STATE without a follow-up issue"; fi ;;
   # Codex reported Failed on HEAD: HEAD has no Codex verdict, and the loop never asks for one.
   codex_failed)       eligible=false; reason="codex_failed: Codex reported Failed on HEAD, so HEAD has no Codex verdict" ;;
+  ci_failing)         eligible=false; reason="ci_failing: CI checks failed on HEAD" ;;
   # Everything else, `reviewers_unavailable` included: no reviewer looked, so stopping is not convergence.
   *)                  eligible=false; reason="final_state=$FINAL_STATE is not a merge-eligible convergence" ;;
 esac
@@ -79,20 +81,16 @@ cr_state=$(bash "$SCRIPT_DIR/cr-commit-state.sh" "$OWNER" "$REPO" "$HEAD_SHA" 2>
 cr_state="${cr_state:-unknown}"
 
 # Pending checks are not blocking: `gh pr merge --auto` waits for them. Only a check
-# that has already failed, errored, or been cancelled blocks the merge.
-# With --json, `gh pr checks` exits 0 whatever the checks say (it returns before the
-# pending-8 / failed-1 exit codes, cli/cli pkg/cmd/pr/checks), but a network/auth/API
-# failure still exits 1, which under `set -e` would end the gate before the guard
-# below. `&& rc=0 || rc=$?` keeps that rc; `|| echo 0` would append a second value.
-blocking=$(gh pr checks "$PR_NUM" --json name,state \
-  --jq '[.[] | select(.state == "FAILURE" or .state == "ERROR" or .state == "CANCELLED" or .state == "TIMED_OUT" or .state == "ACTION_REQUIRED")] | length' 2>/dev/null) && rc=0 || rc=$?
-case "$rc" in
-  0) : ;;                           # counted normally
-  *)     blocking="" ;;             # the query itself failed — fall through to the guard
-esac
-# Anything that is not a plain integer means we could not measure: report 1 so the
-# caller refuses to merge on an unverified check state.
-case "$blocking" in ''|*[!0-9]*) blocking=1 ;; esac
+# that has already failed, errored, or been cancelled blocks the merge. One look
+# (CAP=0) through the same summary Step 14 uses, CodeRabbit and Codex left out.
+ci=$(CAP=0 bash "$SCRIPT_DIR/ci-checks.sh" "$PR_NUM" 2>/dev/null) || ci=""
+ci_state=$(jq -r '.state // "error"' <<<"$ci" 2>/dev/null | tr -d '\r') || ci_state=error
+failing=$(jq -c '.failing // []' <<<"$ci" 2>/dev/null) || failing='[]'
+[ -n "$failing" ] || failing='[]'
+blocking=$(jq 'length' <<<"$failing" | tr -d '\r')
+# A lookup we could not make reports 1 so the caller refuses to merge on an
+# unverified check state.
+case "$ci_state" in error|"") ci_state=error; blocking=1 ;; esac
 
 base=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
 
@@ -111,9 +109,11 @@ case "$http" in 200|404) : ;; *) http=0 ;; esac
 jq -nc \
   --arg cr "$cr_state" \
   --argjson bc "$blocking" \
+  --arg ci "$ci_state" \
+  --argjson failing "$failing" \
   --arg base "$base" \
   --argjson http "$http" \
   --argjson eligible "$eligible" \
   --arg reason "$reason" \
-  '{cr_state:$cr, blocking_checks:$bc, base_branch:$base, protection_http:$http,
-    eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end)}'
+  '{cr_state:$cr, blocking_checks:$bc, ci_state:$ci, failing_checks:$failing, base_branch:$base,
+    protection_http:$http, eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end)}'

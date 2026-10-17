@@ -38,7 +38,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
      cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
      while IFS= read -r d; do
        [ -e "$d/$CHK" ] && { PLUGIN_ROOT="$d"; break; }
-     done < <(ls -1d "$cache_root"/*/dev/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$0}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
+     done < <(ls -1d "$cache_root"/*/dev/*/ 2>/dev/null | awk -F/ '{print $(NF-1)"\t"$(0)}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2- | sed 's#/$##')
    fi
    { [ -n "$PLUGIN_ROOT" ] && [ -e "$PLUGIN_ROOT/$CHK" ]; } || { echo "e2e-setup: plugin root not resolved (need $CHK)" >&2; exit 1; }
    echo "PLUGIN_ROOT=$PLUGIN_ROOT"

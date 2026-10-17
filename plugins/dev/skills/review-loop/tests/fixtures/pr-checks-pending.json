@@ -1,0 +1,1 @@
+[{"name":"build","state":"IN_PROGRESS","bucket":"pending"},{"name":"stale-job","state":"STALE","bucket":"a-bucket-gh-adds-later"},{"name":"CodeRabbit","state":"SUCCESS","bucket":"pass"}]

@@ -47,7 +47,7 @@ if [ -z "$PLUGIN_ROOT" ]; then
   # sort puts 0.9.0 above 0.10.0 and lets the marketplace directory outrank the version.
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
   if sort -V </dev/null >/dev/null 2>&1; then vsort="sort -V"; else vsort="sort -t. -k1,1n -k2,2n -k3,3n"; fi
-  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/docs/* 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | $vsort | tail -1 | cut -f2-)
+  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/docs/* 2>/dev/null | awk -F/ '{print $NF "\t" $(0)}' | $vsort | tail -1 | cut -f2-)
 fi
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
 TARGET_ROOT="${TARGET_ROOT:?set TARGET_ROOT to the directory containing the target skill}"

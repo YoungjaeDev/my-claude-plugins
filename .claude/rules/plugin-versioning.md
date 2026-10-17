@@ -50,11 +50,9 @@ Absorbing a plugin's skills into another bundle is a removal plus a re-home, so 
 
 ## Developer Workflow
 
-1. Update `version` in `plugins/<name>/.claude-plugin/plugin.json`.
-2. Update the matching `version` in `.claude-plugin/marketplace.json`.
-3. Bump `metadata.version` in `.claude-plugin/marketplace.json`.
-4. (If adding/removing a plugin) update plugin counts in `AGENTS.md` and `README.md`, and add/remove its `./plugins/<name>` entry in `.claude/settings.json` (`plugins.local`).
-5. Commit all changes together.
+1. Run `node scripts/bump-version.mjs <plugin>... [--minor|--major] [--base origin/main]`. It sets each plugin's `version` in `plugin.json` and `marketplace.json` above both the base and the branch, and `metadata.version` to the base's MINOR+1, so a re-run is a no-op and a base that moved ahead is bumped past (the concurrent-branch Don't above). On a version-line merge conflict, take the higher side and re-run it.
+2. (If adding/removing a plugin) update plugin counts in `AGENTS.md` and `README.md`, and add/remove its `./plugins/<name>` entry in `.claude/settings.json` (`plugins.local`).
+3. Commit all changes together.
 
 ## User Update Workflow
 

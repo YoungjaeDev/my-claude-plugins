@@ -243,20 +243,13 @@ For each picked branch, with `HEAD_SHA` its `head` from the collector:
 
 ```bash
 BR="<name>"; HEAD_SHA="<head>"
-# Delete only the tip that was checked; a failed ls-remote reads as moved and deletes nothing.
-# shortcut: a push between this read and the delete is not caught; a lease would need --force-with-lease.
-NOW=""
-while read -r sha ref; do [ "$ref" = "refs/heads/$BR" ] && NOW=$sha; done <<EOF
-$(git -C "$MAIN_REPO" ls-remote origin "refs/heads/$BR")
-EOF
-if [ "$NOW" != "$HEAD_SHA" ]; then
-  echo "post-merge: origin/$BR is at ${NOW:-nothing}, not the checked $HEAD_SHA: left alone" >&2
-else
-  git -C "$MAIN_REPO" push origin --delete "$BR" || echo "post-merge: deleting origin/$BR failed" >&2
-fi
+# The lease makes the delete conditional on the remote: it deletes origin/$BR only while
+# it still points at the checked tip, so a push since the collection is never lost.
+git -C "$MAIN_REPO" push --force-with-lease="refs/heads/$BR:$HEAD_SHA" origin --delete "$BR" \
+  || echo "post-merge: origin/$BR not deleted (moved since the check, protected, or no permission): left alone" >&2
 ```
 
-Never force. A failed delete (protected branch, no permission) is reported and the next branch goes on. This step belongs to Step 4's run-record entry.
+The lease is not a force: with an expected value (`--force-with-lease=<refname>:<expect>`, `git push --help`) the delete happens only while the remote ref still equals it. A refused delete is reported and the next branch goes on. This step belongs to Step 4's run-record entry.
 
 ### 5. Close the issues the merge left open (always runs)
 

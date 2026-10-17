@@ -143,6 +143,7 @@ trap 'ITER=${ITER:-0} APPLIED_TOTAL=$applied_total DEFERRED_TOTAL=$deferred_tota
   CR_SOURCE=$CR_SOURCE CLI_INVOCATIONS=$cli_invocations RATE_LIMIT_HITS=$rate_limit_hits \
   AUTO_JUDGE_APPLY=$auto_judge_apply AUTO_JUDGE_DEFER=$auto_judge_defer AUTO_JUDGE_SKIP=$auto_judge_skip \
   TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE VERIFICATION_GATE=$VERIFICATION_GATE \
+  CI_FAILING_CHECKS=${ci_failing_checks:-[]} \
   bash $SKILL_DIR/scripts/emit-final-json.sh' EXIT
 ```
 
@@ -507,12 +508,24 @@ if [ "$pushed_this_cycle" = true ]; then
       esac ;;
   esac
 fi
+# A converged HEAD whose CI checks fail has not converged (#317). Pending checks are
+# waited on under TIMEOUT; a lookup that fails keeps the state, and Step 15 re-reads.
+case "$final_state" in
+  clean|minor_floor|churn)
+    # Bash(run_in_background=true, timeout=(TIMEOUT+60)*1000) + Monitor: one JSON line.
+    ci=$(CAP="$TIMEOUT" INTERVAL="$INTERVAL" bash "$SKILL_DIR/scripts/ci-checks.sh" "$PR_NUM")
+    case "$(jq -r '.state' <<<"$ci" 2>/dev/null | tr -d '\r')" in
+      fail) final_state=ci_failing; ci_failing_checks=$(jq -c '.failing' <<<"$ci") ;;
+      error|"") echo "review-loop: CI checks on HEAD could not be read; final_state kept" >&2 ;;
+    esac ;;
+esac
 # One follow-up issue for whatever the run leaves behind: deferred findings, from
 # this cycle or an earlier one (a later clean cycle records none of them), findings
-# nobody could read, or a HEAD without every verdict. Block: references/failure-modes.md.
+# nobody could read, or a HEAD without every verdict. Failing CI checks alone file
+# none: the final report names them. Block: references/failure-modes.md.
 followup_needed=false
 case "$final_state" in
-  churn|minor_floor|iteration_cap|user_declined|clean|timeout)
+  churn|minor_floor|iteration_cap|user_declined|clean|timeout|ci_failing)
     if [ "$deferred_total" -gt 0 ] || [ "$review_total" -gt 0 ] || [ -n "$HEAD_VERDICT" ]; then
       followup_needed=true
     fi ;;
@@ -546,7 +559,14 @@ fi
 if [ "$cr_on" = true ]; then
   case "$cr_state" in success|pending) : ;; *) echo "auto-merge: cr_state=$cr_state is not a merge-approved state" >&2; exit 0;; esac
 fi
-[ "$blocking" = 0 ] || exit 0
+if [ "$blocking" != 0 ]; then
+  if [ "$(jq -r '.ci_state' <<<"$gate" | tr -d '\r')" = error ]; then
+    echo "auto-merge: CI checks on HEAD could not be read; merge not attempted" >&2
+  else
+    echo "auto-merge: failing CI check(s) on HEAD: $(jq -r '.failing_checks | join(", ")' <<<"$gate")" >&2
+  fi
+  exit 0
+fi
 if [ "$proto" = 200 ]; then
   gh pr merge "$PR_NUM" --auto --squash --delete-branch && merged=true
 elif [ "$proto" = 404 ]; then

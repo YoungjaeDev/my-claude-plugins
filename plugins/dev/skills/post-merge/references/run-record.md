@@ -55,13 +55,13 @@ tool calls**: `REC` is the deterministic path `$MAIN_REPO/.claude/state/post-mer
 bash block that closes a later step, re-derive `MAIN_REPO`, re-set `REC` and re-declare `record_step`
 (copy them from above) before calling it.
 
-Sub-steps fold into their parent entry: 1.5 into 1, 4.5 and 4.6 into 4, 5.1 into 5. Step 5 is `always done` precisely so that folding 5.1 in cannot make a skipped Project read as a skipped issue-close check; which Project condition fired goes in the run output, not the envelope.
+Sub-steps fold into their parent entry: 1.5 into 1, 3.5 into 3, 4.5 and 4.6 into 4, 5.1 into 5. Step 5 is `always done` precisely so that folding 5.1 in cannot make a skipped Project read as a skipped issue-close check; which Project condition fired goes in the run output, not the envelope.
 
 | Step | `done` | `skipped "<reason>"` |
 |---|---|---|
 | 1 | always | — |
 | 2 | always | — |
-| 3 | always | — |
+| 3 | always (folds 3.5, whatever it removed or reported) | — |
 | 4 | always (folds 4.5, 4.6) | — |
 | 5 | always — the issue-close check runs on every PR (folds 5.1) | — |
 | 9 | whenever the About check fired, README edit or not | `no README changes` only when the About check also could not run (no `gh` auth, no remote) |

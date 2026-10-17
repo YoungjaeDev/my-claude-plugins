@@ -3,7 +3,7 @@
 #        FINAL_STATE=... MERGED=true|false PR_NUM=N LAST_SHA=... \
 #        CR_SOURCE=auto|pr-bot|cli|codex-only CLI_INVOCATIONS=N RATE_LIMIT_HITS=N \
 #        TRACK_FILE=/tmp/... STATE_FILE=.claude/state/... VERIFICATION_GATE=on|... \
-#        [CI_FAILING_CHECKS='["name",...]'] bash scripts/emit-final-json.sh
+#        [CI_FAILING_CHECKS='["name",...]'] [HEAD_VERDICT=timeout|unread] bash scripts/emit-final-json.sh
 #
 # Idempotent: archives STATE_FILE if present, removes TRACK_FILE, prints one JSON line.
 # Designed to be hooked into bash `trap ... EXIT` so the JSON always emits even on early exit.
@@ -24,9 +24,11 @@ CI_FAILING_CHECKS=$(jq -c 'if type == "array" then map(tostring) else [] end' <<
 # history remains in the archive copy for audit.
 PRE_FLIGHT_LAST='null'
 FOLLOWUP_ISSUE='null'
+BASE_PUSH='null'
 if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
   PRE_FLIGHT_LAST=$(jq -c '.pre_flight_decisions // [] | .[-1] // null' "$STATE_FILE" 2>/dev/null || echo 'null')
   FOLLOWUP_ISSUE=$(jq -c '.followup_issue // null' "$STATE_FILE" 2>/dev/null || echo 'null')
+  BASE_PUSH=$(jq -c '.base_push // null' "$STATE_FILE" 2>/dev/null || echo 'null')
 fi
 
 if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
@@ -74,6 +76,8 @@ jq -nc \
   --argjson followup  "$FOLLOWUP_ISSUE" \
   --arg     vgate     "$VERIFICATION_GATE" \
   --argjson ci_fail   "$CI_FAILING_CHECKS" \
+  --arg     hv        "${HEAD_VERDICT:-}" \
+  --argjson base_push "$BASE_PUSH" \
   '{
     iterations: $iters,
     applied_total: $applied,
@@ -90,6 +94,8 @@ jq -nc \
     auto_judge_stats: { apply: $aj_apply, defer: $aj_defer, skip: $aj_skip },
     followup_issue: $followup,
     ci_failing_checks: $ci_fail,
+    head_verdict: (if $hv == "" then null else $hv end),
+    base_push: $base_push,
     verification_gate: $vgate,
     pre_flight_last: $pf_last
   }'

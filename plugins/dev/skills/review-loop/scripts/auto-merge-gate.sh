@@ -1,50 +1,54 @@
 #!/usr/bin/env bash
 # Usage: [FINAL_STATE=clean] [FOLLOWUP_ISSUE=<number>] [DEFERRED_TOTAL=N] \
-#        [CR_ON=true|false] [CODEX_ON=auto|true|false] \
+#        [CR_ON=true|false] [CODEX_ON=auto|true|false] [FOLLOWUP_APPEND_FAILED=true|false] \
+#        [STATE_FILE=<state json>] [FIX_ITER=N] [VERIFICATION_GATE=on|...] [MINOR_STOP=true|false] \
 #          bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
-# Returns JSON on stdout summarizing the gates:
+# The loop's end-of-cycle and end-of-run decisions, as one JSON line on stdout:
 #   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N,
 #    "ci_state":"<ci-checks.sh state>", "failing_checks":[names], "base_branch":"...",
-#    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null}
+#    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null,
+#    "next_action":"rereview_push|merge_then_main_push", "file_issue":bool}
+# `next_action` (ADR 0006): who reviews the fixes iteration FIX_ITER applied (its
+# `apply` records in STATE_FILE's auto_judge_log). One from a Critical/High/Major,
+# Security or Codex P0-P1 finding, or reassessed high, goes back to the PR for
+# re-review. When all are Minor or lower, the reviewed HEAD merges and the fixes go
+# straight to the base, which needs an unprotected base (404: a protected one takes
+# no direct push), the build/test gate on and MINOR_STOP not false. Anything
+# unreadable re-reviews.
+# `file_issue`: a state that files the follow-up issue left something behind
+# (DEFERRED_TOTAL, deferred plus unread; unset reads as some). A HEAD without every
+# verdict and failing CI alone file none: the final report carries them.
 # `eligible` covers two axes. Convergence: `clean`, `minor_floor` and `churn`
-# qualify once the follow-up issue carrying the run's deferred findings exists (or
-# nothing was deferred). HEAD verdicts: every reviewer that is on (CR_ON, CODEX_ON,
-# as scripts/head-verdicts.sh reads them) gave HEAD_SHA findings or clean; a HEAD
-# with no verdict, or only a rate-limit notice, does not qualify (ADR 0002). The
-# caller still enforces cr_state / blocking_checks / protection_http before merging.
-# Caller (SKILL.md Step 15) decides:
-#   - protection_http == 200 → `gh pr merge --auto --squash --delete-branch`
-#   - protection_http == 404 → AskUserQuestion (Merge now / Skip / Cancel)
-#   - protection_http == 0   → probe failed (network/auth/5xx) — no merge
+# qualify once the follow-up issue exists whenever one is due. HEAD verdicts: every
+# reviewer that is on (CR_ON, CODEX_ON, as scripts/head-verdicts.sh reads them) gave
+# HEAD_SHA findings or clean; a HEAD with no verdict, or only a rate-limit notice,
+# does not qualify (ADR 0002). The caller still enforces cr_state / blocking_checks /
+# protection_http before merging (references/run-blocks.md, Step 15).
 # This script does NOT call gh pr merge — separation of probe vs action.
 set -euo pipefail
 
 OWNER="${1:?}"; REPO="${2:?}"; PR_NUM="${3:?}"; HEAD_SHA="${4:?}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${FINAL_STATE:=unknown}"; : "${FOLLOWUP_ISSUE:=}"
+left="${DEFERRED_TOTAL:-unknown}"
 
-# Convergence axis. A run that stopped at the low-severity floor or on churn has
-# real findings left behind; merging is allowed only once they are recorded in an
-# issue, so a failed `gh issue create` keeps the PR open by construction.
+file_issue=false
 case "$FINAL_STATE" in
-  # A clean last cycle does not record what an earlier cycle deferred.
-  clean)
+  churn|minor_floor|iteration_cap|user_declined|clean|timeout|ci_failing)
+    [ "$left" = 0 ] || file_issue=true ;;
+esac
+
+# Convergence axis. Findings left behind must be recorded in an issue before the
+# merge, so a failed `gh issue create` keeps the PR open by construction.
+case "$FINAL_STATE" in
+  clean|minor_floor|churn)
     eligible=true; reason=""
-    if [ "${DEFERRED_TOTAL:-0}" != 0 ]; then
+    # Only a positive integer counts: a failed create can leave "null", "", or error text behind.
+    if [ "$file_issue" = true ]; then
       case "$FOLLOWUP_ISSUE" in
-        ""|*[!0-9]*|0*) eligible=false; reason="clean with $DEFERRED_TOTAL deferred finding(s) from earlier cycles and no follow-up issue" ;;
+        ""|*[!0-9]*|0*) eligible=false; reason="$FINAL_STATE with $left finding(s) left behind and no valid follow-up issue number" ;;
       esac
     fi ;;
-  minor_floor|churn)
-    # Nothing deferred means nothing to record: no issue is required. Otherwise only a
-    # positive integer counts: a failed create can leave "null", "", or error text behind.
-    if [ "${DEFERRED_TOTAL:-}" = 0 ]; then FOLLOWUP_ISSUE="${FOLLOWUP_ISSUE:-0}"; [ "$FOLLOWUP_ISSUE" = 0 ] && FOLLOWUP_ISSUE=1; fi
-    case "$FOLLOWUP_ISSUE" in
-      ""|*[!0-9]*|0*) eligible=false; reason="$FINAL_STATE without a valid follow-up issue number" ;;
-      *) eligible=true; reason="" ;;
-    esac
-    if [ "$eligible" = true ]; then :
-    else eligible=false; reason="$FINAL_STATE without a follow-up issue"; fi ;;
   # Codex reported Failed on HEAD: HEAD has no Codex verdict, and the loop never asks for one.
   codex_failed)       eligible=false; reason="codex_failed: Codex reported Failed on HEAD, so HEAD has no Codex verdict" ;;
   ci_failing)         eligible=false; reason="ci_failing: CI checks failed on HEAD" ;;
@@ -92,19 +96,35 @@ blocking=$(jq 'length' <<<"$failing" | tr -d '\r')
 # unverified check state.
 case "$ci_state" in error|"") ci_state=error; blocking=1 ;; esac
 
-base=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName')
+# A failed lookup still prints the JSON (Step 14 needs file_issue); the empty base
+# then reports protection_http 0, which refuses the merge.
+base=$(gh pr view "$PR_NUM" --json baseRefName --jq '.baseRefName' 2>/dev/null) || base=""
 
 # An unprotected base returns 404: gh api exits non-zero AND its `-i` status line
 # prints `404`. Piping straight into `... || echo 404` under `set -o pipefail`
 # then emitted BOTH (`404\n404`), which --argjson rejects as invalid JSON and the
 # whole gate died silently. Capture the status line in one step (so pipefail can't
 # double it), then parse — a single clean value for both 200 and 404.
-proto_line=$(gh api "repos/$OWNER/$REPO/branches/$base/protection" --silent -i 2>/dev/null | head -1 || true)
-http=$(awk '{print $2}' <<<"$proto_line")
+http=0
+if [ -n "$base" ]; then
+  proto_line=$(gh api "repos/$OWNER/$REPO/branches/$base/protection" --silent -i 2>/dev/null | head -1 || true)
+  http=$(awk '{print $2}' <<<"$proto_line")
+fi
 # Only 200 (protected) and 404 (unprotected) are trusted probe outcomes. An
 # empty or other status (network, auth, 5xx) must not masquerade as
 # "unprotected" — report 0 so Step 15 refuses to merge on an unverified state.
 case "$http" in 200|404) : ;; *) http=0 ;; esac
+
+# This cycle's fixes from a severe finding. An unreadable log prints nothing: re-review.
+severe=$(jq --argjson it "${FIX_ITER:-0}" '[.auto_judge_log[]?
+    | select(.iter == $it and .action == "apply")
+    | select(((.category // "") | test("Security"; "i"))
+             or ((.badge_or_sev // "") | tostring | test("^P?[01]$|Critical|High|Major"; "i"))
+             or (.judgment.severity_reassess? == "high"))] | length' "${STATE_FILE:-/nonexistent}" 2>/dev/null) || severe=""
+next_action=rereview_push
+if [ "$severe" = 0 ] && [ "$http" = 404 ] && [ "${VERIFICATION_GATE:-}" = on ] && [ "${MINOR_STOP:-true}" != false ]; then
+  next_action=merge_then_main_push
+fi
 
 jq -nc \
   --arg cr "$cr_state" \
@@ -115,5 +135,8 @@ jq -nc \
   --argjson http "$http" \
   --argjson eligible "$eligible" \
   --arg reason "$reason" \
+  --arg next "$next_action" \
+  --argjson file_issue "$file_issue" \
   '{cr_state:$cr, blocking_checks:$bc, ci_state:$ci, failing_checks:$failing, base_branch:$base,
-    protection_http:$http, eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end)}'
+    protection_http:$http, eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end),
+    next_action:$next, file_issue:$file_issue}'

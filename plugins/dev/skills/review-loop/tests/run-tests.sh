@@ -318,7 +318,7 @@ case "$*" in
   *"/issues/"*"/comments"*) cat "$AMG_COMMENTS";;
   "pr checks"*)    if [ -n "${AMG_CHECKS:-}" ]; then cat "$AMG_CHECKS"; else echo '[]'; fi;;
   "pr view"*)      echo "main";;
-  *"/protection"*) echo "HTTP/2.0 404 Not Found"; exit 1;;
+  *"/protection"*) if [ -n "${AMG_PROTECTED:-}" ]; then echo "HTTP/2.0 200 OK"; else echo "HTTP/2.0 404 Not Found"; exit 1; fi;;
   *) echo "unknown gh args: $*" >&2; exit 1;;
 esac
 SH
@@ -336,7 +336,9 @@ is "check-run-only CR -> cr_state success" "$(jq -r '.cr_state' <<<"$g" 2>/dev/n
 # them. A failed `gh issue create` therefore keeps the PR open by construction,
 # rather than merging a PR whose deferred findings exist nowhere a person looks.
 elig() { FINAL_STATE="$1" FOLLOWUP_ISSUE="${2:-}" PATH="$SHIMDIR:$PATH"            bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible'; }
-is "clean -> eligible"                       "$(elig clean)" true
+is "clean -> eligible"                       "$(DEFERRED_TOTAL=0 elig clean)" true
+# An unknown count of left-behind findings is read as some: the issue is required.
+is "clean, nothing said about defers -> needs the issue" "$(elig clean)" false
 is "minor_floor without issue -> ineligible" "$(elig minor_floor)" false
 is "minor_floor with issue -> eligible"      "$(elig minor_floor 321)" true
 is "churn without issue -> ineligible"       "$(elig churn)" false
@@ -369,7 +371,7 @@ jq '.[0].commit_id = "0ldc0mm1t"' "$SHIMDIR/reviews.json" > "$SHIMDIR/reviews-no
 jq '.[0].body = "<!-- This is an auto-generated comment: rate limited by coderabbit.ai -->\nReview rate limited"' \
   "$SHIMDIR/reviews.json" > "$SHIMDIR/reviews-rl.json"
 sed 's/Completed/Running/' "$SHIMDIR/comments.json" > "$SHIMDIR/comments-running.json"
-amg() { FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null; }
+amg() { FINAL_STATE="${FINAL_STATE:-clean}" DEFERRED_TOTAL="${DEFERRED_TOTAL-0}" PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null; }
 g=$(AMG_REVIEWS="$SHIMDIR/reviews-none.json" amg)
 is "no CodeRabbit verdict on HEAD -> ineligible"   "$(jq -r '.eligible' <<<"$g")" false
 is "no-verdict reason names the HEAD verdict"     "$(jq -r '.ineligible_reason | test("HEAD verdict")' <<<"$g")" true
@@ -377,6 +379,57 @@ is "rate-limit notice only on HEAD -> ineligible" "$(AMG_REVIEWS="$SHIMDIR/revie
 is "Codex still Running on HEAD -> ineligible"    "$(AMG_COMMENTS="$SHIMDIR/comments-running.json" amg | jq -r '.eligible')" false
 is "Codex off for the run -> CR verdict suffices" \
    "$(AMG_COMMENTS="$SHIMDIR/comments-running.json" CODEX_ON=false amg | jq -r '.eligible')" true
+# Severity decides who reviews the fixes the cycle applied (ADR 0006): one from a
+# Critical/Major/Security/Codex P0-P1 finding goes back to the PR for re-review; if
+# all are Minor or lower, the reviewed HEAD merges and they go straight to the base.
+SF="$SHIMDIR/state.json"
+st() { printf '{"auto_judge_log":[%s]}' "$1" > "$SF"; }
+nxt() { STATE_FILE="$SF" FIX_ITER=2 VERIFICATION_GATE="${VG:-on}" amg | jq -r '.next_action'; }
+fix() { # ITER SRC CATEGORY BADGE ACTION [REASSESS]
+  jq -nc --argjson i "$1" --arg s "$2" --arg c "$3" --arg b "$4" --arg a "$5" --arg r "${6:-low}" \
+    '{iter:$i, src:$s, category:$c, badge_or_sev:$b, action:$a, judgment:{severity_reassess:$r}}'
+}
+minor=$(fix 2 cr '🎯 Functional Correctness' '🟡 Minor' apply)
+st "$minor"
+is "only Minor fixes -> merge_then_main_push" "$(nxt)" merge_then_main_push
+st "$minor,$(fix 2 cr '🎯 Functional Correctness' '🟠 Major' apply high)"
+is "a Major fix -> rereview_push" "$(nxt)" rereview_push
+st "$minor,$(fix 2 cr '🔒 Security & Privacy' '🟡 Minor' apply)"
+is "a Security fix, even Minor -> rereview_push" "$(nxt)" rereview_push
+st "$(fix 2 cli '🩺 Stability & Availability' '🔴 Critical' apply high)"
+is "a Critical CLI fix -> rereview_push" "$(nxt)" rereview_push
+st "$(fix 2 codex '' P1 apply low)"
+is "a Codex P1 fix, even reassessed low -> rereview_push" "$(nxt)" rereview_push
+st "$(fix 2 codex '' P0 apply)"
+is "a Codex P0 fix -> rereview_push" "$(nxt)" rereview_push
+st "$(fix 2 codex '' P2 apply)"
+is "a Codex P2 fix -> merge_then_main_push" "$(nxt)" merge_then_main_push
+st "$(fix 2 cr '🎯 Functional Correctness' '🟡 Minor' apply high)"
+is "a Minor reassessed high -> rereview_push" "$(nxt)" rereview_push
+# Only fixes no reviewer has seen count: an earlier iteration's Major was re-reviewed,
+# and a deferred Major changed no code.
+st "$(fix 1 cr '🎯 Functional Correctness' '🟠 Major' apply high),$minor"
+is "an earlier round's Major -> merge_then_main_push" "$(nxt)" merge_then_main_push
+st "$(fix 2 cr '🎯 Functional Correctness' '🟠 Major' defer high),$minor"
+is "a deferred Major -> merge_then_main_push" "$(nxt)" merge_then_main_push
+st "$minor"
+is "base protected (200): no direct push -> rereview_push" "$(AMG_PROTECTED=1 nxt)" rereview_push
+is "build/test gate off -> rereview_push"                  "$(VG=baseline_failed nxt)" rereview_push
+is "--no-minor-stop -> rereview_push"                      "$(MINOR_STOP=false nxt)" rereview_push
+is "state file unreadable -> rereview_push" \
+   "$(STATE_FILE="$SHIMDIR/missing.json" FIX_ITER=2 VERIFICATION_GATE=on amg | jq -r '.next_action')" rereview_push
+# One follow-up issue only when something was left behind; a HEAD without every
+# verdict, or failing CI, goes to the final report instead.
+fi_of() { FINAL_STATE=$1 DEFERRED_TOTAL=$2 amg | jq -r '.file_issue'; }
+is "minor_floor, nothing deferred -> no issue"     "$(fi_of minor_floor 0)" false
+is "minor_floor, deferred -> issue"                "$(fi_of minor_floor 2)" true
+is "timeout (HEAD unverified), nothing deferred -> no issue" "$(fi_of timeout 0)" false
+is "iteration_cap, deferred -> issue"              "$(fi_of iteration_cap 1)" true
+is "ci_failing alone -> no issue"                  "$(fi_of ci_failing 0)" false
+is "ci_failing alone -> not eligible"              "$(FINAL_STATE=ci_failing DEFERRED_TOTAL=0 amg | jq -r '.eligible')" false
+is "ci_failing with a defer -> issue"              "$(fi_of ci_failing 1)" true
+is "failure is not a state that files one"         "$(fi_of failure 3)" false
+is "unknown defer count -> issue"                  "$(FINAL_STATE=churn DEFERRED_TOTAL='' amg | jq -r '.file_issue')" true
 unset AMG_REVIEWS AMG_COMMENTS
 rm -rf "$SHIMDIR"
 
@@ -427,18 +480,11 @@ is "skip-minor: Codex P1 stays gated" "$(cls "$(jq -nc '{source:"codex",p_badge:
 # P0 is Codex's most severe badge. Before the parser read it, P0 fell to `review`
 # (surfaced, never judged): the worst finding was the one the loop never acted on.
 is "Codex P0 -> gated" "$(cls "$(jq -nc '{source:"codex",p_badge:"0"}')")" gated
-# Decision 15: a Codex P2 from iteration 2 on is deferred unjudged. An applied P2
-# becomes the next round's material (7 of 8 were applied before this rule).
+# A Codex P2 from a later round is judged like any other finding (#327): deferring it
+# unjudged filled the follow-up issues. The round no longer changes a tier.
 clsi() { printf '%s' "$1" | ITER="$2" bash "$SCRIPTS/classify-item.sh" | jq -r '.tier'; }
-is "iter 1 Codex P2 -> gated (judged)"   "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 1)" gated
-is "iter 2 Codex P2 -> defer"            "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 2)" defer
-is "iter 3 Codex P2 -> defer"            "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 3)" defer
-is "iter 2 Codex P1 stays gated"         "$(clsi "$(jq -nc '{source:"codex",p_badge:"1"}')" 2)" gated
-is "iter 2 Codex P0 stays gated"         "$(clsi "$(jq -nc '{source:"codex",p_badge:"0"}')" 2)" gated
-is "iter 2 CR Minor unaffected"          "$(clsi "$(cr '🎯 Functional Correctness' '🟡 Minor' '⚡ Quick win')" 2)" auto
-# --skip-minor already hides every P2; it keeps winning over the late-P2 defer.
-is "iter 2 skip-minor Codex P2 -> skip" \
-   "$(printf '%s' "$(jq -nc '{source:"codex",p_badge:"2"}')" | ITER=2 SKIP_MINOR=true bash "$SCRIPTS/classify-item.sh" | jq -r '.tier')" skip
+is "iter 2 Codex P2 -> gated (judged)"   "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 2)" gated
+is "iter 3 Codex P2 -> gated (judged)"   "$(clsi "$(jq -nc '{source:"codex",p_badge:"2"}')" 3)" gated
 
 echo
 echo "fetch-codex-comments.sh"
@@ -1551,6 +1597,18 @@ is "final output: no CI failure -> empty ci_failing_checks" "$(jq -c '.ci_failin
 fo=$(FINAL_STATE=ci_failing CI_FAILING_CHECKS='["policy"]' PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
 is "final output: ci_failing passes the schema"   "$(schema_ok "$fo")" true
 is "final output: ci_failing_checks carried"      "$(jq -c '.ci_failing_checks' <<<"$fo")" '["policy"]'
+is "final output: verdicts complete -> head_verdict null" "$(jq -c '.head_verdict' <<<"$fo")" null
+# A HEAD left without every verdict files no issue (#327); the final output says so.
+fo=$(FINAL_STATE=minor_floor HEAD_VERDICT=timeout PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: unverified HEAD reported"       "$(jq -r '.head_verdict' <<<"$fo")" timeout
+is "final output: head_verdict passes the schema" "$(schema_ok "$fo")" true
+# The Minor fixes pushed straight to the base after the merge (merge_then_main_push).
+BPS=$(mktemp -d); mkdir -p "$BPS/s"
+echo '{"base_push":{"branch":"main","sha":"abc","fixes":[{"src":"cr","path":"a.sh","line":3,"badge_or_sev":"🟡 Minor"}]}}' > "$BPS/s/st.json"
+fo=$(FINAL_STATE=minor_floor MERGED=true STATE_FILE="$BPS/s/st.json" PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: base push carried"              "$(jq -r '.base_push.fixes[0].path' <<<"$fo")" a.sh
+is "final output: base_push passes the schema"    "$(schema_ok "$fo")" true
+rm -rf "$BPS"
 cat > "$CFD/gh" <<SH
 #!/usr/bin/env bash
 echo "\$*" >> "$GH_LOG"
@@ -1699,12 +1757,11 @@ rm -rf "$GCSHIM"
 # must be guarded by judged_this_cycle > 0, or an iteration with NO findings
 # (0 == 0) reports churn instead of clean and never files the follow-up issue.
 conv() {
-  ITER=$1 JUDGED=$2 CHURN=$3 APPLIED=$4 DEFERRED=$5 HIGH=$6 MINOR_STOP=${7:-true} REVIEW=${8:-0} LATE=${9:-0} \
+  ITER=$1 JUDGED=$2 CHURN=$3 APPLIED=$4 DEFERRED=$5 HIGH=$6 MINOR_STOP=${7:-true} REVIEW=${8:-0} \
   bash -c '
     if [ "$ITER" -ge 2 ] && [ "$JUDGED" -gt 0 ] && [ "$CHURN" = "$JUDGED" ]; then echo churn
     elif [ "$MINOR_STOP" = true ] && [ "$ITER" -ge 2 ] && [ "$APPLIED" -gt 0 ] \
          && [ "$HIGH" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ]; then echo minor_floor
-    elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ] && [ "$LATE" -gt 0 ]; then echo minor_floor
     elif [ "$APPLIED" = 0 ] && [ "$DEFERRED" = 0 ] && [ "$REVIEW" = 0 ]; then echo clean
     elif [ "$APPLIED" = 0 ]; then echo user_declined
     else echo continue; fi'
@@ -1749,12 +1806,6 @@ is "deferred everything -> user_declined"  "$(conv 2 2 0 0 2 0)" user_declined
 # is not convergence, and `clean` is the state that auto-merges unconditionally.
 is "unparsed review item blocks clean"     "$(conv 2 0 0 0 0 0 true 1)" user_declined
 is "unparsed review item blocks clean (iter 1)" "$(conv 1 0 0 0 0 0 true 1)" user_declined
-# Late Codex P2s (iter >= 2, tier defer) are deferred unjudged into the follow-up issue.
-# They must not hold the loop open, and must not end it at `clean`, which files no issue.
-is "only late P2 -> minor_floor not clean" "$(conv 2 0 0 0 0 0 true 0 2)" minor_floor
-is "only late P2, --no-minor-stop -> minor_floor" "$(conv 2 0 0 0 0 0 false 0 2)" minor_floor
-is "late P2 does not block minor_floor"    "$(conv 2 2 0 2 0 0 true 0 1)" minor_floor
-is "late P2 + judged defer -> user_declined" "$(conv 2 1 0 0 1 0 true 0 1)" user_declined
 
 echo
 echo "run-blocks: HEAD verdict wait (blocks executed from references/run-blocks.md)"
@@ -1774,7 +1825,8 @@ done
 ladder() { # PUSHED ITER MAX_ITER APPLIED DEFERRED -> final_state:HOLD_STATE
   PUSHED=$1 IT=$2 MAX=$3 AP=$4 DF=$5 BLOCK="$(rb_block "Step 13: convergence ladder")" bash -c '
     applied_total=0 deferred_total=0 MINOR_STOP=true MAX_ITER=$MAX HOLD_STATE="" final_state=""
-    pushed_this_cycle=$PUSHED applied_this_cycle=$AP deferred_this_cycle=$DF late_p2_this_cycle=0
+    REVIEWED_SHA=${REVIEWED:-}
+    pushed_this_cycle=$PUSHED applied_this_cycle=$AP deferred_this_cycle=$DF
     judged_this_cycle=$((AP+DF)) churn_this_cycle=0 high_sev_this_cycle=0 review_this_cycle=0
     eval "for ITER in $IT; do $BLOCK"
     printf "%s:%s" "$final_state" "$HOLD_STATE"'
@@ -1783,6 +1835,9 @@ is "minor_floor right after a push -> held, loop not ended" "$(ladder true 2 5 2
 is "minor_floor with no push this cycle -> ends"            "$(ladder false 2 5 2 0)" "minor_floor:"
 is "minor_floor pushed on the last iteration -> ends (Step 14 waits)" "$(ladder true 5 5 2 0)" "minor_floor:"
 is "clean (nothing pushed) -> ends"                          "$(ladder false 3 5 0 0)" "clean:"
+# Step 12 held Minor fixes for the base: the reviewed HEAD merges, even on iter 1.
+is "Minor fixes held for the base -> minor_floor on iter 1"  "$(REVIEWED=abc ladder false 1 5 1 0)" "minor_floor:"
+is "Minor fixes held, a defer too -> still stops"           "$(REVIEWED=abc ladder false 1 5 1 1)" "minor_floor:"
 
 # Step 7e: no round goes past this block, so nothing is pushed, before every
 # verdict is in. await_head_verdicts is stubbed to the state under test.
@@ -1892,6 +1947,43 @@ is "Step 15: CodeRabbit off -> its status is not read, failing check named" "$(c
 printf '#!/usr/bin/env bash\njq -nc %s\n' "'{eligible:true,cr_state:\"success\",blocking_checks:1,ci_state:\"error\",failing_checks:[],protection_http:200,base_branch:\"main\"}'" \
   > "$G15/scripts/auto-merge-gate.sh"
 is "Step 15: unreadable checks -> says so, not merged" "$(cr_gate true)" "CI checks on HEAD could not be read; merge not attempted"
+# Step 15 end to end on a stubbed gate: the #336 CI update, the merge question, and the
+# held Minor fixes (merge_then_main_push). gh, git and base-push.sh log their calls.
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$GATE_JSON"\n' > "$G15/scripts/auto-merge-gate.sh"
+printf '#!/usr/bin/env bash\necho "base-push $*" >> "%s/calls"; echo pu5h\n' "$G15" > "$G15/scripts/base-push.sh"
+mkdir -p "$G15/bin"
+printf '#!/usr/bin/env bash\necho "gh $*" >> "%s/calls"\n' "$G15" > "$G15/bin/gh"
+printf '#!/usr/bin/env bash\ncase "$1" in rev-parse) echo f1x ;; *) echo "git $*" >> "%s/calls" ;; esac\n' "$G15" > "$G15/bin/git"
+chmod +x "$G15/bin/gh" "$G15/bin/git"
+s15() { # GATE_JSON -> final_state|ci_failing_checks|merged|calls ; env FS AM ANS RS
+  : > "$G15/calls"; echo '{"auto_judge_log":[{"iter":1,"src":"cr","path":"a.sh","line":3,"badge_or_sev":"🟡 Minor","action":"apply"}]}' > "$G15/state.json"
+  GATE_JSON=$1 PATH="$G15/bin:$PATH" SKILL_DIR="$G15" STATE_FILE="$G15/state.json" CALLS="$G15/calls" \
+    BLOCK="$(rb_block "Step 15: auto-merge gate")" bash -c '
+    reviewers_on() { cr_on=true; codex_on=auto; }
+    final_state=${FS:-clean} deferred_total=0 review_total=0 OWNER=o REPO=r PR_NUM=1 ITER=1 merged=false
+    AUTO_MERGE=${AM:-false} MERGE_ANSWER=${ANS:-} REVIEWED_SHA=${RS:-} VERIFY_CMD=true verification_blocking=false
+    eval "$BLOCK"
+    printf "%s|%s|%s|%s" "$final_state" "${ci_failing_checks:-}" "$merged" "$(tr "\n" ";" < "$CALLS")"' 2>/dev/null
+}
+ok404='{"eligible":true,"cr_state":"success","blocking_checks":0,"ci_state":"pass","failing_checks":[],"protection_http":404,"base_branch":"main"}'
+ok200=$(jq -c '.protection_http = 200' <<<"$ok404")
+cifail='{"eligible":true,"cr_state":"success","blocking_checks":1,"ci_state":"fail","failing_checks":["policy"],"protection_http":404,"base_branch":"main"}'
+# #336: a check that failed after Step 14 looked reaches final_state and ci_failing_checks.
+is "Step 15: CI failing at the gate -> ci_failing + names, no merge" "$(AM=true ANS=yes s15 "$cifail")" 'ci_failing|["policy"]|false|'
+is "Step 15: CI failing does not rewrite iteration_cap" \
+   "$(FS=iteration_cap s15 "$(jq -c '.eligible = false | .ineligible_reason = "x"' <<<"$cifail")")" 'iteration_cap||false|'
+# Without --auto-merge a finished review asks; no answer (no interaction tool) is no merge.
+is "Step 15: no --auto-merge, nobody answered -> not merged" "$(s15 "$ok200")" 'clean||false|'
+is "Step 15: no --auto-merge, user said merge -> merged" "$(ANS=yes s15 "$ok200")" 'clean||true|gh pr merge 1 --auto --squash --delete-branch;'
+is "Step 15: --auto-merge on a protected base -> merged without asking" \
+   "$(AM=true s15 "$ok200")" 'clean||true|gh pr merge 1 --auto --squash --delete-branch;'
+is "Step 15: --auto-merge, unprotected base, nobody answered -> not merged" "$(AM=true s15 "$ok404")" 'clean||false|'
+# merge_then_main_push: the reviewed HEAD merges, then the held fixes go to the base.
+is "Step 15: held Minor fixes, merged -> pushed to the base" \
+   "$(RS=r3v ANS=yes s15 "$ok404")" 'clean||true|gh pr merge 1 --squash --delete-branch;base-push main r3v f1x true;'
+is "Step 15: base push recorded for the final output" \
+   "$(jq -c '[.base_push.branch, .base_push.sha, .base_push.fixes[0].path]' "$G15/state.json")" '["main","pu5h","a.sh"]'
+is "Step 15: held Minor fixes, not merged -> pushed to the PR instead" "$(RS=r3v s15 "$ok404")" 'clean||false|git push;'
 rm -rf "$G15"
 
 # Step 14 follow-up issue (failure-modes.md): a re-run that appends to the inherited
@@ -1920,18 +2012,25 @@ rm -rf "$FM"
 
 # Step 12: a noop Step 10 (every fix reverted, or none applied) pushes nothing.
 P12=$(mktemp -d); printf '#!/usr/bin/env bash\necho "$*" >> "%s/calls"\n' "$P12" > "$P12/git"; chmod +x "$P12/git"
-push_step() { # RES -> pushed_this_cycle:git-calls
+# The gate (stubbed: prints NEXT) decides who reviews the fixes; it is asked about this iteration's.
+mkdir -p "$P12/gate/scripts"
+printf '#!/usr/bin/env bash\necho "FIX_ITER=$FIX_ITER sha=$4" > "%s/gate.args"\n[ "$NEXT" = broken ] && exit 1\necho "{\\"next_action\\":\\"$NEXT\\"}"\n' "$P12" \
+  > "$P12/gate/scripts/auto-merge-gate.sh"
+push_step() { # RES [NEXT] -> pushed_this_cycle:git-calls:REVIEWED_SHA
   local pushed
   : > "$P12/calls"
-  pushed=$(RES=$1 PATH="$P12:$PATH" BLOCK="$(rb_block "Step 12: push")" bash -c '
+  pushed=$(RES=$1 NEXT=${2:-rereview_push} PATH="$P12:$PATH" SKILL_DIR="$P12/gate" BLOCK="$(rb_block "Step 12: push")" bash -c '
     request_cr_review() { :; }
-    res=$RES pushed_this_cycle=false TRACK_FILE=/dev/null final_state=""
+    res=$RES pushed_this_cycle=false TRACK_FILE=/dev/null final_state="" ITER=2 CUR_SHA=r3v REVIEWED_SHA=""
     eval "for i in 1; do $BLOCK
-    done"; printf "%s" "$pushed_this_cycle"' 2>/dev/null)
-  printf '%s:%s' "$pushed" "$(grep -c push "$P12/calls")"
+    done"; printf "%s:%s" "$pushed_this_cycle" "$REVIEWED_SHA"' 2>/dev/null)
+  printf '%s:%s' "${pushed%%:*}" "$(grep -c push "$P12/calls"):${pushed#*:}"
 }
-is "Step 10 noop -> no push"        "$(push_step noop)" "false:0"
-is "Step 10 staged -> one push"     "$(push_step staged:2)" "true:1"
+is "Step 10 noop -> no push"        "$(push_step noop)" "false:0:"
+is "Step 10 staged -> one push"     "$(push_step staged:2)" "true:1:"
+is "gate asked about this iteration's fixes on the reviewed HEAD" "$(cat "$P12/gate.args")" "FIX_ITER=2 sha=r3v"
+is "Minor-only fixes -> held for the base, no PR push" "$(push_step staged:2 merge_then_main_push)" "false:0:r3v"
+is "gate unreadable -> pushed for re-review"           "$(push_step staged:2 broken)" "true:1:"
 # A failed commit (a pre-commit hook refusing it) leaves the fixes staged and HEAD
 # unchanged: the run stops before Step 12 can mark a push or clear the track file.
 mkdir -p "$P12/skill/scripts"; printf '#!/usr/bin/env bash\necho "[hook] refused" >&2\nexit 1\n' > "$P12/skill/scripts/stage-and-commit.sh"
@@ -1948,15 +2047,20 @@ rm -rf "$P12"
 
 # Step 14: the last iteration's push is waited on, then one follow-up trigger.
 # ci-checks.sh is stubbed to print $CI_OUT (default: every check passed).
-CI14=$(mktemp -d); mkdir -p "$CI14/scripts"
-printf '#!/usr/bin/env bash\necho "$CI_OUT"; echo "CAP=$CAP" > "%s/cap"\n' "$CI14" > "$CI14/scripts/ci-checks.sh"
+# The follow-up trigger is the real auto-merge-gate.sh (`file_issue`), next to the stub;
+# gh fails, so the gate's lookups all come back unread.
+CI14=$(mktemp -d); mkdir -p "$CI14/scripts" "$CI14/bin"
+printf '#!/usr/bin/env bash\necho "$CI_OUT"; echo "CAP=$CAP" >> "%s/cap"\n' "$CI14" > "$CI14/scripts/ci-checks.sh"
+cp "$SCRIPTS/auto-merge-gate.sh" "$CI14/scripts/"
+printf '#!/usr/bin/env bash\nexit 1\n' > "$CI14/bin/gh"; chmod +x "$CI14/bin/gh"
 CI_PASS='{"state":"pass","failing":[],"pending":[]}'
 last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:HEAD_VERDICT:followup
-  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 RT=${6:-0} SKILL_DIR="$CI14" CI_OUT="${CI_OUT-$CI_PASS}" \
+  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 RT=${6:-0} SKILL_DIR="$CI14" CI_OUT="${CI_OUT-$CI_PASS}" PATH="$CI14/bin:$PATH" \
     BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
     await_head_verdicts() { hv_state=$HVS; hv="{\"findings\":$FND}"; }
+    reviewers_on() { cr_on=true; codex_on=auto; }
     pushed_this_cycle=$PUSHED final_state=$FS deferred_total=$DT review_total=$RT HEAD_VERDICT=""
-    PR_NUM=1 TIMEOUT=1800 INTERVAL=30
+    OWNER=o REPO=r PR_NUM=1 TIMEOUT=1800 INTERVAL=30
     eval "$BLOCK"
     printf "%s:%s:%s" "$final_state" "$HEAD_VERDICT" "$followup_needed"
     [ -z "${SHOW_CI:-}" ] || printf ":%s" "${ci_failing_checks:-}"'
@@ -1970,7 +2074,7 @@ is "minor_floor HEAD with a failing check and a defer -> ci_failing + issue" \
    "$(CI_OUT=$CI_FAIL last_push false minor_floor ready false 1)" "ci_failing::true"
 is "churn HEAD with a failing check, nothing deferred -> no issue" \
    "$(CI_OUT=$CI_FAIL last_push false churn ready false 0)" "ci_failing::false"
-is "CI wait runs under TIMEOUT"                          "$(tr -d '\r' < "$CI14/cap")" "CAP=1800"
+is "CI wait runs under TIMEOUT"                          "$(grep -q 'CAP=1800' "$CI14/cap" && echo yes)" yes
 is "iteration_cap is not rewritten by CI"  "$(CI_OUT=$CI_FAIL last_push false iteration_cap ready false 1)" "iteration_cap::true"
 is "clean HEAD, checks still pending at the cap -> clean" \
    "$(CI_OUT='{"state":"pending","failing":[],"pending":["build"]}' last_push false clean ready false 0)" "clean::false"
@@ -1978,12 +2082,17 @@ is "clean HEAD, checks unreadable -> clean (gate re-reads)" \
    "$(CI_OUT='{"state":"error","failing":[],"pending":[]}' last_push false clean ready false 0 2>/dev/null)" "clean::false"
 is "clean HEAD, CI script printed nothing -> clean + warning" \
    "$(CI_OUT='' last_push false clean ready false 0 2>&1 >/dev/null | grep -c 'could not be read')" 1
-is "last push, findings on HEAD, no round left -> iteration_cap + issue" \
-   "$(last_push true minor_floor ready true 0)" "iteration_cap:unread:true"
+# Nothing deferred files no issue, however HEAD ended (#327): the report says so.
+is "last push, findings on HEAD, no round left, nothing deferred -> iteration_cap, no issue" \
+   "$(last_push true minor_floor ready true 0 2>/dev/null)" "iteration_cap:unread:false"
+is "unverified HEAD is reported instead" \
+   "$(last_push true minor_floor ready true 0 2>&1 >/dev/null | grep -c 'HEAD_VERDICT=unread')" 1
 is "last push, HEAD passed -> state kept, nothing to file" \
    "$(last_push true minor_floor ready false 0)" "minor_floor::false"
-is "last push, budget spent -> issue, HEAD unverified" \
-   "$(last_push true churn timeout false 0)" "churn:timeout:true"
+is "last push, budget spent, nothing deferred -> HEAD unverified, no issue" \
+   "$(last_push true churn timeout false 0 2>/dev/null)" "churn:timeout:false"
+is "last push, budget spent, a defer -> issue" \
+   "$(last_push true churn timeout false 1 2>/dev/null)" "churn:timeout:true"
 is "loop ran out after a push -> iteration_cap"   "$(last_push true "" ready false 1)" "iteration_cap::true"
 # The earlier gap: a defer from cycle 1 and a clean cycle 2 filed nothing.
 is "clean after earlier defers -> follow-up issue" "$(last_push false clean ready false 2)" "clean::true"
@@ -2284,6 +2393,41 @@ vfx check "$snap" 'git add -A' >/dev/null
 is "check's git add -A leaves the real index alone" \
    "$(cd "$VF" && git diff --cached --name-only | tr '\n' ' ')" ""
 rm -rf "$VF" "$TRK"
+
+echo
+echo "base-push.sh"
+# merge_then_main_push (ADR 0006): after the reviewed HEAD merged, the held Minor
+# fixes go onto the base, only once build/test and the pre-commit guards pass there.
+BP=$(mktemp -d)
+(
+  git init -q --bare "$BP/remote.git" && git clone -q "$BP/remote.git" "$BP/w" && cd "$BP/w" \
+    && git config user.email t@t && git config user.name t && git checkout -q -b main \
+    && printf 'a\nb\nc\n' > f && git add f && git commit -qm base && git push -q origin main \
+    && git checkout -q -b pr && printf 'a\nB\nc\n' > f && git commit -qam reviewed && git push -q origin pr \
+    && printf 'a\nB\nC\n' > f && git commit -qam "fix: minor (review-loop iter 1)" \
+    && git checkout -q --detach origin/main && git checkout -q pr~1 -- f && git commit -qm "squash (#1)" \
+    && git push -q origin HEAD:main && git checkout -q pr
+) >/dev/null 2>&1
+BP_R=$(git -C "$BP/w" rev-parse pr~1); BP_F=$(git -C "$BP/w" rev-parse pr)
+bp() { (cd "$BP/w" && bash "$SCRIPTS/base-push.sh" main "$BP_R" "$BP_F" "$1" 2>/dev/null); }
+bp_main() { git -C "$BP/remote.git" show main:f | tr '\n' ' '; }
+bp 'false' >/dev/null; rc=$?
+is "build/test fails on base + fixes -> not pushed" "$rc:$(bp_main)" "1:a B c "
+bp '' >/dev/null; rc=$?
+is "no build/test command -> not pushed"           "$rc:$(bp_main)" "1:a B c "
+mkdir -p "$BP/hooks"; printf '#!/bin/sh\nexit 1\n' > "$BP/hooks/pre-commit"; chmod +x "$BP/hooks/pre-commit"
+git -C "$BP/w" config core.hooksPath "$BP/hooks"
+bp 'true' >/dev/null; rc=$?
+is "pre-commit guard refuses -> not pushed"         "$rc:$(bp_main)" "1:a B c "
+git -C "$BP/w" config --unset core.hooksPath
+is "failed attempts leave no worktree behind"       "$(git -C "$BP/w" worktree list | wc -l | tr -d ' ')" 1
+# The command runs where the fixes were applied on top of the base.
+out=$(bp 'grep -q C f'); rc=$?
+is "fixes pass on the base -> pushed"               "$rc:$(bp_main)" "0:a B C "
+is "pushed commit keeps the fix message"            "$(git -C "$BP/remote.git" log -1 --format=%s main)" "fix: minor (review-loop iter 1)"
+is "prints the pushed sha"                          "$out" "$(git -C "$BP/remote.git" rev-parse main)"
+is "the user's checkout is left as it was"          "$(git -C "$BP/w" rev-parse --abbrev-ref HEAD):$(git -C "$BP/w" rev-parse HEAD)" "pr:$BP_F"
+rm -rf "$BP"
 
 echo
 echo "post-merge leftover surface: reads review-loop- and the pre-rename cr-fix- state"

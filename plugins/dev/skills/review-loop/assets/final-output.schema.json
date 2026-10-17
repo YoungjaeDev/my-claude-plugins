@@ -63,6 +63,29 @@
       "items": { "type": "string" },
       "description": "Names of the CI checks that failed on the final HEAD when final_state is ci_failing (CodeRabbit and Codex checks left out, scripts/ci-checks.sh). Empty otherwise."
     },
+    "head_verdict": {
+      "description": "Why the final HEAD was left without every reviewer's verdict: timeout (the wait budget ran out) or unread (findings arrived after the last round). Null when every verdict came in. It files no follow-up issue by itself and keeps auto-merge off.",
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "enum": ["timeout", "unread"] }
+      ]
+    },
+    "base_push": {
+      "description": "Minor-or-lower fixes pushed straight to the PR's base after the reviewed HEAD merged (merge_then_main_push, ADR 0006). Null when none were.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["branch", "sha", "fixes"],
+          "properties": {
+            "branch": { "type": "string" },
+            "sha":    { "type": "string" },
+            "fixes":  { "type": "array", "items": { "type": "object" } }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "verification_gate": {
       "type": "string",
       "enum": ["on", "baseline_failed", "no_build_check", "no_command", "unknown"],

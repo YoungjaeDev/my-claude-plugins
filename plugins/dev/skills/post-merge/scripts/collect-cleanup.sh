@@ -2,7 +2,9 @@
 # Usage: bash collect-cleanup.sh [--pr <N>]   (run anywhere inside the repo or one of its worktrees)
 #
 # Read-only collector for post-merge. Prints one JSON object:
-#   {"main_repo": "...", "worktrees": [ {path, branch, head, safe, reasons[], pr, tmp} ]}
+#   {"main_repo": "...", "worktrees": [ {path, branch, head, safe, reasons[], pr, tmp} ],
+#    "remote_branches": [ {name, head, safe, reasons[], pr} ] | null, "remote_error"?: "..."}
+# (remote rules above the remote_branches section below).
 # With --pr <N> (the merged PR) it adds the issues that PR names, each with its state read
 # (see collect_issues below for the sources and the ref-safety rules):
 #   "issues": [ {ref, via: keyword|bare|closingRef|spec-parent, state, title, url, reason?, after?} ],
@@ -59,11 +61,53 @@ EOF
     '{files:$n, bytes:$b, entries:., truncated:($n > (. | length))}'
 }
 
+# add <reason>: append to the calling check's local $reasons (bash scoping is dynamic).
+add() { reasons="$reasons$1"$'\n'; }
+
+# prs_for <branch>: set PRS to gh's PRs with that head branch; fails when gh does.
+prs_for() {
+  PRS=$(cd "$MAIN_REPO" && gh pr list --head "$1" --state all \
+        --json number,state,baseRefName,mergeCommit,url --limit 20 2>/dev/null </dev/null) \
+    && jq -e 'type == "array"' >/dev/null 2>&1 <<<"$PRS"
+}
+
+# landed <merged-pr-json> <ref>: add a reason unless the PR's merge commit is in
+# origin/<base> and <ref> holds nothing that merge commit lacks.
+landed() {
+  local pr=$1 ref=$2 base mc ch plus=0 l f mb files=()
+  base=$(jq -r '.baseRefName' <<<"$pr")
+  mc=$(jq -r '.mergeCommit.oid // empty' <<<"$pr")
+  if [ -z "$mc" ]; then
+    add "merged PR has no merge commit: content unverified"; return 0
+  elif ! git -C "$MAIN_REPO" merge-base --is-ancestor "$mc" "refs/remotes/origin/$base" 2>/dev/null; then
+    add "merge commit ${mc:0:12} not in origin/$base: fetch first"; return 0
+  fi
+  # A failed cherry must not read as "no unique commits".
+  if ! ch=$(git -C "$MAIN_REPO" cherry "origin/$base" "$ref" 2>/dev/null); then
+    add "git cherry failed: unique commits unknown"; ch=""
+  fi
+  while IFS= read -r l; do case "$l" in "+ "*) plus=$((plus+1));; esac; done <<<"$ch"
+  [ "$plus" -gt 0 ] || return 0
+  # Squash merge: the commits differ but their content may have landed. Compare
+  # every file the branch changed with the PR's merge commit, not the base tip:
+  # later merges that edit the same files would otherwise read as unique work.
+  mb=$(git -C "$MAIN_REPO" merge-base "$mc" "$ref" 2>/dev/null)
+  if [ -n "$mb" ]; then
+    while IFS= read -r -d '' f; do files+=("$f"); done \
+      < <(git -C "$MAIN_REPO" diff -z --name-only "$mb" "$ref" 2>/dev/null)
+  fi
+  if [ -z "$mb" ]; then
+    add "unique commits not in origin/$base: $plus (no merge base)"
+  elif [ "${#files[@]}" -gt 0 ] && ! git --literal-pathspecs -C "$MAIN_REPO" \
+         diff --quiet "$mc" "$ref" -- "${files[@]}"; then
+    add "unique commits not in origin/$base: $plus"
+  fi
+}
+
 # check <path> <head> <branchref> <locked> <prunable>: one worktrees[] element.
 check() {
   local path=$1 head=$2 ref=$3 locked=$4 prunable=$5
-  local branch="${ref#refs/heads/}" reasons="" pr="null" prs base mc st ch plus=0 l f
-  add() { reasons="$reasons$1"$'\n'; }
+  local branch="${ref#refs/heads/}" reasons="" pr="null" st open
 
   [ "$path" = "$SELF" ] && add "current session: post-merge Step 11 prints its removal command"
   [ "$locked" = 1 ] && add "locked"
@@ -77,47 +121,14 @@ check() {
 
   if [ -z "$ref" ]; then
     add "detached HEAD: no branch to look up"
-  elif ! prs=$(cd "$MAIN_REPO" && gh pr list --head "$branch" --state all \
-        --json number,state,baseRefName,mergeCommit,url --limit 20 2>/dev/null) \
-      || ! jq -e 'type == "array"' >/dev/null 2>&1 <<<"$prs"; then
+  elif ! prs_for "$branch"; then
     add "gh lookup failed: merge state unknown"
   else
-    local open; open=$(jq -r '[.[] | select(.state == "OPEN") | "#\(.number)"] | join(", ")' <<<"$prs")
+    open=$(jq -r '[.[] | select(.state == "OPEN") | "#\(.number)"] | join(", ")' <<<"$PRS")
     [ -n "$open" ] && add "open PR $open"
-    pr=$(jq -c 'map(select(.state == "MERGED")) | first // null' <<<"$prs")
-    if [ "$pr" = "null" ]; then
-      add "no merged PR for branch $branch"
-    else
-      base=$(jq -r '.baseRefName' <<<"$pr")
-      mc=$(jq -r '.mergeCommit.oid // empty' <<<"$pr")
-      if [ -z "$mc" ]; then
-        add "merged PR has no merge commit: content unverified"
-      elif ! git -C "$MAIN_REPO" merge-base --is-ancestor "$mc" "refs/remotes/origin/$base" 2>/dev/null; then
-        add "merge commit ${mc:0:12} not in origin/$base: fetch first"
-      else
-        # A failed cherry must not read as "no unique commits".
-        if ! ch=$(git -C "$MAIN_REPO" cherry "origin/$base" "$ref" 2>/dev/null); then
-          add "git cherry failed: unique commits unknown"; ch=""
-        fi
-        while IFS= read -r l; do case "$l" in "+ "*) plus=$((plus+1));; esac; done <<<"$ch"
-        if [ "$plus" -gt 0 ]; then
-          # Squash merge: the commits differ but their content may have landed. Compare
-          # every file the branch changed with the PR's merge commit, not the base tip:
-          # later merges that edit the same files would otherwise read as unique work.
-          local mb files=(); mb=$(git -C "$MAIN_REPO" merge-base "$mc" "$ref" 2>/dev/null)
-          if [ -n "$mb" ]; then
-            while IFS= read -r -d '' f; do files+=("$f"); done \
-              < <(git -C "$MAIN_REPO" diff -z --name-only "$mb" "$ref" 2>/dev/null)
-          fi
-          if [ -z "$mb" ]; then
-            add "unique commits not in origin/$base: $plus (no merge base)"
-          elif [ "${#files[@]}" -gt 0 ] && ! git --literal-pathspecs -C "$MAIN_REPO" \
-                 diff --quiet "$mc" "$ref" -- "${files[@]}"; then
-            add "unique commits not in origin/$base: $plus"
-          fi
-        fi
-      fi
-    fi
+    pr=$(jq -c 'map(select(.state == "MERGED")) | first // null' <<<"$PRS")
+    if [ "$pr" = "null" ]; then add "no merged PR for branch $branch"
+    else landed "$pr" "$ref"; fi
   fi
 
   jq -cn --arg path "$path" --arg branch "$branch" --arg head "$head" \
@@ -129,8 +140,10 @@ check() {
 
 # Porcelain -z: one NUL-terminated attribute per field, an empty field ends a record.
 # The first record is the main worktree (or the bare repo), which is never a candidate.
-out=""; first=1; path=""; head=""; ref=""; locked=0; prunable=0; bare=0
+# CHECKED: "<branch>\t<path>" for every worktree with a branch checked out, the main one too.
+out=""; CHECKED=""; first=1; path=""; head=""; ref=""; locked=0; prunable=0; bare=0
 flush() {
+  [ -n "$ref" ] && CHECKED="$CHECKED${ref#refs/heads/}"$'\t'"$path"$'\n'
   if [ -n "$path" ]; then
     if [ "$first" = 1 ] || [ "$bare" = 1 ]; then first=0
     else
@@ -152,6 +165,61 @@ while IFS= read -r -d '' line; do
   esac
 done < <(git -C "$MAIN_REPO" worktree list --porcelain -z)
 flush
+
+# --- remote_branches[] -------------------------------------------------------------------
+# Every refs/remotes/origin/* branch (origin/HEAD aside), checked against the fetched refs.
+# Never safe: the default branch, a branch checked out in any worktree, the head or the base
+# of an open PR (deleting a base closes the PRs on it), a PR closed without merge, a failed
+# gh lookup. Safe: a merged PR and no unique commits (landed, as for worktrees), or no PR
+# at all and the tip already in origin/<default>.
+REMOTE_JSON=null; REMOTE_ERR=""
+# rcheck <name> <head>: one remote_branches[] element.
+rcheck() {
+  local name=$1 head=$2 ref="refs/remotes/origin/$1" reasons="" pr=null open wt based
+  if [ "$name" = "$DEFAULT" ]; then
+    add "default branch"
+  else
+    wt=$(awk -F'\t' -v b="$name" '$1 == b { print $2; exit }' <<<"$CHECKED")
+    [ -n "$wt" ] && add "checked out in $wt"
+    if ! prs_for "$name"; then
+      add "gh lookup failed: PR state unknown"
+    else
+      open=$(jq -r '[.[] | select(.state == "OPEN") | "#\(.number)"] | join(", ")' <<<"$PRS")
+      [ -n "$open" ] && add "open PR $open"
+      pr=$(jq -c '(map(select(.state == "MERGED")) | first) // (map(select(.state == "OPEN")) | first)
+                  // first // null' <<<"$PRS")
+      case "$(jq -r '.state? // "none"' <<<"$pr")" in
+        MERGED) landed "$pr" "$ref" ;;
+        CLOSED) add "PR #$(jq -r .number <<<"$pr") closed without merge" ;;
+        none) git -C "$MAIN_REPO" merge-base --is-ancestor "$ref" "refs/remotes/origin/$DEFAULT" 2>/dev/null \
+                || add "no PR and not in origin/$DEFAULT" ;;
+      esac
+    fi
+    if ! based=$(cd "$MAIN_REPO" && gh pr list --base "$name" --state open --json number --limit 20 2>/dev/null </dev/null) \
+       || ! based=$(jq -er 'if type == "array" then map("#\(.number)") | join(", ") else error end' <<<"$based" 2>/dev/null); then
+      add "gh lookup failed: open PRs based on it unknown"
+    elif [ -n "$based" ]; then
+      add "base of open PR $based"
+    fi
+  fi
+  jq -cn --arg name "$name" --arg head "$head" --arg reasons "$reasons" --argjson pr "$pr" \
+    '($reasons | split("\n") | map(select(. != ""))) as $r
+     | {name:$name, head:$head, safe:($r | length == 0), reasons:$r, pr:$pr}'
+}
+if ! DEFAULT=$(cd "$MAIN_REPO" && gh repo view --json defaultBranchRef 2>/dev/null </dev/null) \
+   || ! DEFAULT=$(jq -er '.defaultBranchRef.name | select(type == "string" and . != "")' <<<"$DEFAULT" 2>/dev/null); then
+  REMOTE_ERR="default branch unknown: gh repo view failed, no remote branch checked"
+elif ! rrefs=$(git -C "$MAIN_REPO" for-each-ref --format='%(objectname) %(refname)' refs/remotes/origin/); then
+  REMOTE_ERR="git for-each-ref failed"
+else
+  # A refname holds no space or newline (git check-ref-format), so one line per ref is exact.
+  rows=""
+  while read -r sha r; do
+    [ -n "$r" ] && [ "$r" != refs/remotes/origin/HEAD ] || continue
+    rows="$rows$(rcheck "${r#refs/remotes/origin/}" "$sha")"$'\n'
+  done <<<"$rrefs"
+  REMOTE_JSON=$(printf '%s' "$rows" | jq -cs .)
+fi
 
 # --- issues[] (--pr only) ---------------------------------------------------------------
 # Sources: the PR body, every PR commit message, the merge commit's message (a message typed
@@ -284,4 +352,7 @@ collect_issues() {
 [ -n "$PR_NUM" ] && collect_issues
 
 printf '%s' "$out" | jq -s --arg main "$MAIN_REPO" --argjson issues "$ISSUES_JSON" --argjson src "$SOURCES_JSON" \
-  '{main_repo:$main, worktrees:.} + (if $src == null then {} else {issues:$issues, issue_sources:$src} end)'
+  --argjson rb "$REMOTE_JSON" --arg rerr "$REMOTE_ERR" \
+  '{main_repo:$main, worktrees:., remote_branches:$rb}
+   + (if $rerr == "" then {} else {remote_error:$rerr} end)
+   + (if $src == null then {} else {issues:$issues, issue_sources:$src} end)'

@@ -1,6 +1,6 @@
 ---
 name: post-merge
-description: "Clean up after a PR merges: surface leftover review findings, switch to base, remove other worktrees that pass the safety filter (merged PR, clean, unlocked, no unique commits) after one confirmation, delete the merged branch, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', or right after a PR merges. Cleanup only: lessons belong to /retro in the building session, README and CHANGELOG edits to docs:readme and docs:changelog. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:review-loop)."
+description: "Clean up after a PR merges: surface leftover review findings, switch to base, remove other worktrees that pass the safety filter (merged PR, clean, unlocked, no unique commits) after one confirmation, delete the merged branch and the remote branches that pass the same filter, close the issues the merge left open, sync the GitHub Project status, check the repo About line, commit. Use on /dev:post-merge, 'post-merge cleanup', '머지 후 정리', or right after a PR merges. Cleanup only: lessons belong to /retro in the building session, README and CHANGELOG edits to docs:readme and docs:changelog. gh pr view is the merge signal, never git SHAs; inside a worktree it works on the main repo and prints the worktree removal command last. Not for an open PR's review feedback (/dev:review-loop)."
 allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 ---
 
@@ -16,7 +16,7 @@ Local cleanup after a PR is merged. One run takes a merged PR from leftover-revi
 - **SHA comparison proves "nothing unique", never "merged".** `git log <base>..<branch>`, `git cherry` and `git rev-list --left-right` read as unmerged after a squash merge (base gets one new SHA) or a rebase merge (branch SHAs rewritten), so none of them answers "did it land". Step 3.5 runs `git cherry` only after gh has said merged, to show the branch holds no commit the PR did not deliver, and settles whatever cherry still lists by content: the branch's files against the PR's merge commit. If unsure content landed, diff content, not SHAs (Step 4).
 - **Leftover-review surface (Step 1.5) is informational.** The run reads review-loop's state file (`.claude/state/review-loop-<PR>.json`, else the latest `.claude/state/archive/` copy, else the same under the pre-rename `cr-fix-` prefix) to surface autonomously-deferred or cap/timeout-stopped findings after the merge, but never blocks cleanup. It always prints one `leftover-reviews: …` checkpoint line so a skip can't pass unnoticed. `gh` / `jq` / `Read` only → identical under Claude and Codex.
 - **Codex partial-execution.** `/docs:readme` and `/docs:changelog` (Steps 9, 9.5) are commands, which Codex does not load; under Codex do the same edit by hand from the `docs:doc-guides` skill and note it. Every other step runs identically on both runtimes.
-- **Interactive input is capability-aware.** Every prompt and confirmation below, each `AskUserQuestion` mention included, is a gate rather than a tool name: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (`git rm`, `git worktree remove`, `gh repo edit`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
+- **Interactive input is capability-aware.** Every prompt and confirmation below, each `AskUserQuestion` mention included, is a gate rather than a tool name: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (`git rm`, `git worktree remove`, `git push origin --delete`, `gh repo edit`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
 - **Run record.** Step 1 opens `.claude/state/post-merge-<PR>.json` and every step appends its outcome, so a silent skip becomes visible; Step 10 finalizes it. Mechanism, per-step skip reasons, and the finalize block: `references/run-record.md`.
 
 ## Arguments
@@ -97,14 +97,15 @@ Run the block in `references/leftover-reviews.md` ("Decide the checkpoint line")
 ### 3. Switch to base branch
 
 ```bash
-git -C "$MAIN_REPO" fetch origin
+# --prune drops tracking refs of branches already gone, so Step 4.7 does not list them.
+git -C "$MAIN_REPO" fetch --prune origin
 git -C "$MAIN_REPO" checkout <baseRefName>
 git -C "$MAIN_REPO" pull origin <baseRefName>
 ```
 
 ### 3.5. Remove other merged worktrees
 
-Looks at every linked worktree in `git worktree list`, wherever it lives (`.claude/worktrees/`, a sibling directory, another workspace), not only this PR's. Runs after Step 3, because it checks against the freshly fetched `origin/<base>`. The collector is read-only: it prints `{main_repo, worktrees[]}`, and each entry carries `path`, `branch`, `pr`, `safe`, `reasons[]` and a `tmp` summary of the worktree's `.tmp/` files (path, bytes, mtime). With `--pr <PR_NUMBER>` the same output also carries `issues[]` and `issue_sources`, which Step 5 uses; keep the output for it.
+Looks at every linked worktree in `git worktree list`, wherever it lives (`.claude/worktrees/`, a sibling directory, another workspace), not only this PR's. Runs after Step 3, because it checks against the freshly fetched `origin/<base>`. The collector is read-only: it prints `{main_repo, worktrees[], remote_branches[]}`, and each worktree entry carries `path`, `branch`, `pr`, `safe`, `reasons[]` and a `tmp` summary of the worktree's `.tmp/` files (path, bytes, mtime). `remote_branches[]` is Step 4.7's. With `--pr <PR_NUMBER>` the same output also carries `issues[]` and `issue_sources`, which Step 5 uses; keep the output for it.
 
 ```bash
 # Codex exports no CLAUDE_PLUGIN_ROOT: fall back to the cached plugin dir, ranked
@@ -229,6 +230,33 @@ Skip silently when: no marker is found, or the user selects skip-all.
    `git -C "$MAIN_REPO" rm` (whole stub file); `Edit` the `$MAIN_REPO/` path, never the worktree copy. `Edit`ed files go into `RUN_TOUCHED` (Step 10
    stages them); `git rm` already stages the deletion. Do NOT add it to
    `RUN_TOUCHED`. Report each.
+
+### 4.7. Delete merged remote branches
+
+A repository that does not delete head branches on merge piles them up on `origin`. Step 3.5's collector checked every `origin/*` branch: each `remote_branches[]` entry carries `name`, `head` (the fetched tip), `pr` (the merged PR, else an open one, else any, else null), `safe` and `reasons[]`. This step runs after Step 4, because `git branch -d` finds a squash merge through `origin/<branch>`, which this step deletes. If Step 3.5 removed a worktree, its branch was still checked out when the collector ran: run the Step 3.5 block again without `--pr` for fresh facts. A failed collection, or `remote_branches: null` with a `remote_error`, skips this step with the error in the report.
+
+- **`safe: false`**: report the name and every reason, and leave it. The reasons are the default branch, checked out in a worktree (this PR's own branch when `IN_WT=1`), an open PR, the base of an open PR (deleting a base closes the PRs on it), a PR closed without merge, unique commits, no PR with a tip not in `origin/<default>`, or a failed `gh` lookup.
+- **`safe: true`**: a merged PR whose branch holds nothing its merge commit lacks (the same test as Step 3.5), or no PR at all and a tip already in `origin/<default>`.
+- **One confirmation** through the interactive-input gate: list each safe branch with its PR number and state, or "no PR, already in `origin/<default>`", and let the user pick. Delete nothing they did not pick.
+
+For each picked branch, with `HEAD_SHA` its `head` from the collector:
+
+```bash
+BR="<name>"; HEAD_SHA="<head>"
+# Delete only the tip that was checked; a failed ls-remote reads as moved and deletes nothing.
+# shortcut: a push between this read and the delete is not caught; a lease would need --force-with-lease.
+NOW=""
+while read -r sha ref; do [ "$ref" = "refs/heads/$BR" ] && NOW=$sha; done <<EOF
+$(git -C "$MAIN_REPO" ls-remote origin "refs/heads/$BR")
+EOF
+if [ "$NOW" != "$HEAD_SHA" ]; then
+  echo "post-merge: origin/$BR is at ${NOW:-nothing}, not the checked $HEAD_SHA: left alone" >&2
+else
+  git -C "$MAIN_REPO" push origin --delete "$BR" || echo "post-merge: deleting origin/$BR failed" >&2
+fi
+```
+
+Never force. A failed delete (protected branch, no permission) is reported and the next branch goes on. This step belongs to Step 4's run-record entry.
 
 ### 5. Close the issues the merge left open (always runs)
 

@@ -86,17 +86,21 @@ function bannedPatterns(md) {
 
 /** [[lineNo, text]] for prose lines: fences dropped, code spans and HTML tags blanked. */
 function proseLines(md) {
-  const out = [];
+  const lines = md.split('\n');
+  const prose = [];
   let fence = null;
-  md.split('\n').forEach((line, i) => {
+  for (const line of lines) {
     const f = line.match(/^\s*(`{3,}|~{3,})(.*)$/);
     // CommonMark: a closer repeats the opener's character, is no shorter, and has nothing after it.
-    if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length && !f[2].trim()) fence = null; return; }
-    if (f) { fence = f[1]; return; }
-    // A code span closes on a backtick run of exactly the opener's length, so `` `x` `` is one span.
-    out.push([i + 1, line.replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, ' ').replace(/<[^>]*>/g, ' ')]);
-  });
-  return out;
+    if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length && !f[2].trim()) fence = null; prose.push(false); continue; }
+    if (f) { fence = f[1]; prose.push(false); continue; }
+    prose.push(true);
+  }
+  // A code span closes on a backtick run of exactly the opener's length (`` `x` `` is one span)
+  // and may run across lines, but not across a blank line; fence lines count as blank.
+  const text = lines.map((l, i) => (prose[i] ? l : '')).join('\n')
+    .replace(/(?<!`)(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)/g, (m) => ` ${m.replace(/[^\n]/g, '')}`);
+  return text.split('\n').map((t, i) => [i + 1, t.replace(/<[^>]*>/g, ' ')]).filter((_, i) => prose[i]);
 }
 
 /** Labels of every violation in one prose line. */
@@ -150,6 +154,9 @@ function runFixtures() {
     [[1, '설치 → 실행'], [5, '는 코드다'], [6, '본문'], [10, '끝에 대해']]);
   eq('multi-backtick span with an inner backtick is code',
     proseLines('정상 문장: `` `x` → y ``.').map(([, t]) => t.trim()), ['정상 문장:  .']);
+  eq('code span across lines is code, but not across a blank line',
+    proseLines(['앞 `코드', 'a → b', '끝` 뒤', '', '`홀로', '', 'c → d'].join('\n')).map(([n, t]) => [n, t.trim()]).filter(([, t]) => t),
+    [[1, '앞'], [3, '뒤'], [5, '`홀로'], [7, 'c → d']]);
   eq('fence closes only on a bare marker',
     proseLines(['```', '```not-a-closer', 'a → b', '```', '끝 → 끝'].join('\n')).map(([n]) => n), [5]);
   try {

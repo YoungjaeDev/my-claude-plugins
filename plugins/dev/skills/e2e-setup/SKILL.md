@@ -14,7 +14,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
 
 > Bundled templates live at `<plugin-root>/assets/`. Resolve `<plugin-root>` with the cross-runtime block in Step 0 (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache). Codex does not export `CLAUDE_PLUGIN_ROOT`, so a bare `${CLAUDE_PLUGIN_ROOT}/assets/...` copy fails there. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
 >
-> **Check the installed Playwright, not this file.** Floors: `init-agents` needs >= 1.56, the headless trace CLI >= 1.59. Run `npx playwright --version` and read `npx playwright init-agents --help` before relying on any flag value or output filename below; those change between releases, and Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.
+> **Check the installed Playwright, not this file.** Probe each subcommand instead of trusting a version floor: `npx playwright init-agents --help` (and `npx playwright trace --help` for the headless trace CLI) must print that subcommand's own usage, not the top-level help. Read that `init-agents --help` output, with `npx playwright --version`, before relying on any flag value or output filename below; those change between releases, and Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.
 
 ## Preconditions / graceful degrade
 

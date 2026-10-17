@@ -241,7 +241,7 @@ the enum is a policy change to this skill, not a per-run choice.
 
 ### codex update setting
 
-When writing the registry, also make sure `~/.codex/config.toml` carries
+When writing the registry, also make sure `${CODEX_HOME:-$HOME/.codex}/config.toml` carries
 `check_for_update_on_startup = true`. Only write it when the key is absent; never rewrite keys
 the user set. In the same breath as the weekly pin question, offer to run `codex update`.
 **Never run it mid-council**: it replaces the running binary, so a seat can vanish in the middle

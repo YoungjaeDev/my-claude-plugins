@@ -14,6 +14,9 @@
 //                                                on-disk identity stop matching
 //   8. `$<digit>` in the file                  → Claude Code replaces it with a skill
 //                                                argument, code fences included
+//   9. install commands for two or more OSes  → a copied per-OS recipe goes stale; also
+//      in one file (SKILL.md, references, docs,  scanned outside SKILL.md, because that
+//      scripts under plugins/)                   is where the agent is sent to read it
 //
 // Plus one repo-wide scan (section 7): a `<plugin>:<skill>` or `/<plugin>:<skill>`
 // reference in any live tracked file must name a skill, command, or agent that exists,
@@ -297,28 +300,63 @@ export function checkSkillContent(rel, content) {
     add(i + 1, `\`${m[0]}\` is replaced by a skill argument on Claude Code (and left as-is on Codex), and no backslash escape reads the same on both — rewrite it: awk \`$(0)\`, shell \`"$@"\` or a named variable, prose in words`);
   });
 
+  errors.push(...installRecipes(rel, content));
   return errors;
+}
+
+// --- 9. per-OS install recipes
+//
+// Not a silent failure but a stale one: a skill that lists `brew install` next to
+// `winget install` copies a vendor fact that changes when the vendor ships, and the
+// agent follows the copy instead of the vendor's page. One OS alone is not judged;
+// two or more OS families in one file is a recipe table. Points at live-lookup.md.
+
+const INSTALL_FAMILIES = [
+  ['macOS', /\b(brew|port)\s+install\b/],
+  ['Linux', /\b(apt|apt-get|dnf|yum|zypper|snap)\s+install\b|\bpacman\s+-S\b|\bapk\s+add\b/],
+  ['Windows', /\b(winget|choco|scoop)\s+install\b|\birm\b[^|\n]*\|\s*iex\b/],
+];
+// User-product README templates: a multi-platform install section is the content they teach.
+const INSTALL_EXEMPT = new Set(['plugins/docs/references/TEMPLATES.md', 'plugins/docs/references/README_PATTERNS.md']);
+const INSTALL_MARK = /portability-ok:\s*\S/;
+
+export function installRecipes(rel, content) {
+  if (INSTALL_EXEMPT.has(rel)) return [];
+  const seen = new Map(); // family -> first [line, command]
+  content.split('\n').forEach((t, i) => {
+    if (INSTALL_MARK.test(t)) return;
+    for (const [family, re] of INSTALL_FAMILIES) {
+      const m = t.match(re);
+      if (m && !seen.has(family)) seen.set(family, [i + 1, m[0]]);
+    }
+  });
+  if (seen.size < 2) return [];
+  const hits = [...seen].map(([f, [, cmd]]) => `${f}: \`${cmd}\``).join(', ');
+  const line = Math.min(...[...seen.values()].map(([l]) => l));
+  return [`${rel}:${line}: install commands for ${seen.size} OSes (${hits}) — a per-OS recipe goes stale when the vendor ships; point at the vendor's install page or \`<tool> --help\` instead (plugins/docs/skills/skill-forge/references/live-lookup.md), or mark a deliberate line \`portability-ok: <reason>\``];
 }
 
 // --- scan
 
-function walkSkillFiles(dir) {
+function walkFiles(dir, keep) {
   if (!existsSync(dir)) return [];
   const out = [];
   for (const ent of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, ent.name);
-    if (ent.isDirectory()) out.push(...walkSkillFiles(p));
-    else if (ent.name === 'SKILL.md') out.push(p);
+    if (ent.isDirectory()) out.push(...walkFiles(p, keep));
+    else if (keep(ent.name)) out.push(p);
   }
   return out;
 }
 
 export function checkSkillContracts(root) {
-  const files = walkSkillFiles(join(root, 'plugins'));
+  const toRel = (abs) => relative(root, abs).split(sep).join('/');
+  const files = walkFiles(join(root, 'plugins'), (n) => n === 'SKILL.md');
   const errors = [];
-  for (const abs of files) {
-    const rel = relative(root, abs).split(sep).join('/');
-    errors.push(...checkSkillContent(rel, readFileSync(abs, 'utf8')));
+  for (const abs of files) errors.push(...checkSkillContent(toRel(abs), readFileSync(abs, 'utf8')));
+  // Check 9 also reads what a skill sends the agent to: references, docs, scripts.
+  for (const abs of walkFiles(join(root, 'plugins'), (n) => n !== 'SKILL.md' && /\.(md|sh)$/.test(n))) {
+    errors.push(...installRecipes(toRel(abs), readFileSync(abs, 'utf8')));
   }
   return { errors, scanned: files.length };
 }
@@ -557,6 +595,11 @@ const RED = [
     content: '---\nname: argsub3\ndescription: A skill.\n---\n\nPass the ticket as \\$1.\n',
   },
   {
+    check: '9 a SKILL.md body listing installers for two OSes',
+    expect: /install commands for 2 OSes/,
+    content: '---\nname: recipes\ndescription: A skill.\n---\n\n```bash\nbrew install tool   # macOS\nscoop install tool  # Windows\n```\n',
+  },
+  {
     check: '6 name does not match the skill directory',
     expect: /does not match the skill directory/,
     rel: 'plugins/demo/skills/foo/SKILL.md',
@@ -583,8 +626,28 @@ const REF_CASES = [
   { check: 'a history heading does not exempt its section', stale: true, rel: 'plugins/demo/CLAUDE.md', content: '## Change log\n| 1.0 | adds demo:gone |\n' },
 ];
 
+// Install-recipe fixtures (check 9) run against installRecipes() directly, so the
+// references/ and script scope and the path exemption are exercised, not just SKILL.md.
+const INSTALL_CASES = [
+  { check: 'three OSes in one references file', flagged: true, rel: 'plugins/demo/skills/x/references/tool.md', content: '```bash\n# macOS\nbrew install gh\n# Debian\nsudo apt install gh\n# Windows\nwinget install GitHub.cli\n```\n' },
+  { check: 'two OSes in a script hint', flagged: true, rel: 'plugins/demo/skills/x/scripts/probe.sh', content: "echo 'brew install tool'\necho 'irm https://example.com/install.ps1 | iex'\n" },
+  { check: 'two OSes in a SKILL.md prose line', flagged: true, rel: 'plugins/demo/skills/x/SKILL.md', content: 'Install it (`apt-get install foo` on Linux, `choco install foo` on Windows).\n' },
+  { check: 'one OS only', flagged: false, rel: 'plugins/demo/skills/x/SKILL.md', content: 'On this repo maintainer machine: `brew install jq`.\n' },
+  { check: 'vendor install page instead of a recipe', flagged: false, rel: 'plugins/demo/skills/x/SKILL.md', content: 'Install `gh` per https://cli.github.com/ then run `gh auth login`.\n' },
+  { check: 'a marked line does not count', flagged: false, rel: 'plugins/demo/skills/x/SKILL.md', content: 'brew install a\nwinget install a <!-- portability-ok: compares two installers on purpose -->\n' },
+  { check: 'a marker with no reason is not a marker', flagged: true, rel: 'plugins/demo/skills/x/SKILL.md', content: 'brew install a\nwinget install a # portability-ok:\n' },
+  { check: 'the docs README templates are exempt', flagged: false, rel: 'plugins/docs/references/TEMPLATES.md', content: 'brew install --cask app\nchoco install app\nsnap install app\n' },
+  { check: 'bot-login anchor, notice string, and capability fallback', flagged: false, rel: 'plugins/demo/CLAUDE.md', content: 'select((.user.login // "") | test("^coderabbitai(\\\\[bot\\\\])?$"; "i"))\ngrep -F "Rate limit exceeded" fixtures/notice.md\nif sort -V </dev/null >/dev/null 2>&1; then sort -V; else sort -t. -k1,1n; fi\n' },
+];
+
 export function runFixtures() {
   const failures = [];
+  for (const { check, rel, content, flagged } of INSTALL_CASES) {
+    const errs = installRecipes(rel, content);
+    if (flagged ? !errs.length : errs.length) {
+      failures.push(`${flagged ? 'RED' : 'GREEN'} install "${check}" ${flagged ? 'was not detected' : `was flagged: ${errs.join(' | ')}`}`);
+    }
+  }
   for (const { check, expect, content, rel } of RED) {
     const errs = checkSkillContent(rel ?? 'fixture', content);
     if (!errs.some((e) => expect.test(e))) {
@@ -630,7 +693,7 @@ if (isMain) {
   }
 
   if (process.argv.includes('--selftest')) {
-    console.log(`skill-contract selftest OK — ${RED.length} RED cases detected, GREEN fixture clean, ${REF_CASES.length} stale-ref cases.`);
+    console.log(`skill-contract selftest OK — ${RED.length} RED cases detected, GREEN fixture clean, ${INSTALL_CASES.length} install-recipe cases, ${REF_CASES.length} stale-ref cases.`);
   } else {
     const { errors, scanned } = checkSkillContracts(ROOT);
     const stale = checkStaleRefs(ROOT);
@@ -646,6 +709,6 @@ if (isMain) {
       }
       process.exit(1);
     }
-    console.log(`skill-contract OK — ${scanned} skills scanned, 7 silent-failure checks + stale-ref scan, selftest ${RED.length} RED + 1 GREEN + ${REF_CASES.length} ref cases.`);
+    console.log(`skill-contract OK — ${scanned} skills scanned, 7 silent-failure checks + install-recipe check + stale-ref scan, selftest ${RED.length} RED + 1 GREEN + ${INSTALL_CASES.length} install + ${REF_CASES.length} ref cases.`);
   }
 }

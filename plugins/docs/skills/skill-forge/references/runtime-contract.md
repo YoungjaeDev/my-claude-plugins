@@ -16,7 +16,7 @@ first step.
 | bare `${CLAUDE_PLUGIN_ROOT}` | in a skill body's shell Codex documents no plugin-root variable (only hook commands get `PLUGIN_ROOT` / `CLAUDE_PLUGIN_ROOT`), so a bundled-script call resolves to `/scripts/...` and dies at step one | `scripts/check-skill-contract.mjs` |
 | `name` non-kebab or over 64 characters | the command name stops being predictable from the tree, and the Codex validator rejects an empty name | `scripts/check-skill-contract.mjs` |
 | frontmatter not starting at byte 0 | no runtime finds the frontmatter; the skill has no description and never triggers | `scripts/check-skill-contract.mjs` |
-| `$<digit>` anywhere in `SKILL.md` | Claude Code replaces `$N` with the N-th skill argument before the agent reads the body, code fences included, so awk's `$0` becomes the argument. Codex does not substitute, so the Claude-only escape `\$0` leaves a backslash there. Write awk `$(0)`, shell `"$@"` or a named variable | `scripts/check-skill-contract.mjs` |
+| `$<digit>` anywhere in `SKILL.md` | Claude Code replaces `$N` with the N-th skill argument before the agent reads the body, code fences included, so awk's `$0` becomes the argument. Codex does not substitute, so the Claude-only escape `\$0` leaves a backslash there, and `\\$0` still expands on Claude Code. Rewrite instead of escaping: awk `$(0)`, shell `"$@"` or a named variable, prose in words | `scripts/check-skill-contract.mjs` |
 | `disable-model-invocation: true` | the Codex plugin validator this policy was set against rejected the plugin (`unverified` on current Codex) | reviewed by hand; see `frontmatter.md` |
 
 ## Calling a bundled script

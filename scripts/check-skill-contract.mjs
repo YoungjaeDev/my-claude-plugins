@@ -288,13 +288,13 @@ export function checkSkillContent(rel, content) {
   // argument before the agent reads the body, code fences included: awk's `$0` in a
   // resolver became the PR number on `/dev:review-loop 312`. Codex does no such
   // substitution, so the Claude-only escape `\$0` would leave a stray backslash there.
-  // Spell the token so neither runtime touches it: awk `$(0)`, shell `"$@"` or a named
-  // variable, prose `\$1`. Only exactly one backslash escapes: `\\$1` still expands.
+  // No escape works for both: `\$1` reaches Codex with its backslash and `\\$1` still
+  // expands on Claude Code. Spell the token so neither runtime touches it: awk `$(0)`,
+  // shell `"$@"` or a named variable, prose in words ("the first argument").
   content.split('\n').forEach((t, i) => {
-    const m = [...t.matchAll(/(\\*)\$[0-9]/g)].find((x) => x[1].length !== 1);
+    const m = t.match(/\$[0-9]/);
     if (!m) return;
-    const tok = m[0].slice(m[1].length);
-    add(i + 1, `\`${tok}\` is replaced by a skill argument on Claude Code (and left as-is on Codex) — write awk \`$(0)\`, shell \`"$@"\` or a named variable, prose \`\\${tok}\``);
+    add(i + 1, `\`${m[0]}\` is replaced by a skill argument on Claude Code (and left as-is on Codex), and no backslash escape reads the same on both — rewrite it: awk \`$(0)\`, shell \`"$@"\` or a named variable, prose in words`);
   });
 
   return errors;
@@ -550,6 +550,11 @@ const RED = [
     check: '8b a doubled backslash does not escape the placeholder',
     expect: /replaced by a skill argument/,
     content: '---\nname: argsub2\ndescription: A skill.\n---\n\nPay \\\\$1 today.\n',
+  },
+  {
+    check: '8c a single backslash escape leaves the backslash on Codex',
+    expect: /replaced by a skill argument/,
+    content: '---\nname: argsub3\ndescription: A skill.\n---\n\nPass the ticket as \\$1.\n',
   },
   {
     check: '6 name does not match the skill directory',

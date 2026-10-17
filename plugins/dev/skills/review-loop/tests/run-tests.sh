@@ -313,12 +313,14 @@ cat > "$SHIMDIR/gh" <<'SH'
 #!/usr/bin/env bash
 case "$*" in
   *"/check-runs"*) echo '{"check_runs":[{"name":"CodeRabbit","status":"completed","conclusion":"success","started_at":"2025-01-01T00:00:00Z"}]}';;
-  *"/statuses"*)   echo '[]';;
+  *"/statuses"*)   if [ -n "${AMG_STATUSES:-}" ]; then cat "$AMG_STATUSES"; else echo '[]'; fi;;
+  *"/reactions"*)  if [ -n "${AMG_REACTIONS:-}" ]; then cat "$AMG_REACTIONS"; else echo '[]'; fi;;
   *"/pulls/"*"/reviews"*)   cat "$AMG_REVIEWS";;
   *"/issues/"*"/comments"*) cat "$AMG_COMMENTS";;
   "pr checks"*)    if [ -n "${AMG_CHECKS:-}" ]; then cat "$AMG_CHECKS"; else echo '[]'; fi;;
   "pr view"*)      echo "main";;
   *"/protection"*) if [ -n "${AMG_PROTECTED:-}" ]; then echo "HTTP/2.0 200 OK"; else echo "HTTP/2.0 404 Not Found"; exit 1; fi;;
+  *"/branches/main --jq .protected") if [ -n "${AMG_PROTECTED:-}${AMG_RULESET:-}" ]; then echo true; else echo false; fi;;
   *) echo "unknown gh args: $*" >&2; exit 1;;
 esac
 SH
@@ -379,6 +381,13 @@ is "rate-limit notice only on HEAD -> ineligible" "$(AMG_REVIEWS="$SHIMDIR/revie
 is "Codex still Running on HEAD -> ineligible"    "$(AMG_COMMENTS="$SHIMDIR/comments-running.json" amg | jq -r '.eligible')" false
 is "Codex off for the run -> CR verdict suffices" \
    "$(AMG_COMMENTS="$SHIMDIR/comments-running.json" CODEX_ON=false amg | jq -r '.eligible')" true
+# Codex's clean can be only a 👍 after the push (its summary row is for an older SHA):
+# the gate reads it only when it passes the push time on (PR #334).
+printf '[{"context":"ci","state":"success","created_at":"2026-01-01T00:00:00Z"}]' > "$SHIMDIR/statuses.json"
+printf '[{"user":{"login":"chatgpt-codex-connector[bot]"},"content":"+1","created_at":"2026-06-01T00:00:00Z"}]' > "$SHIMDIR/reactions.json"
+is "Codex 👍 after the push on HEAD -> eligible" \
+   "$(AMG_COMMENTS="$FIX/issue-comments-codex-summary-completed.json" AMG_STATUSES="$SHIMDIR/statuses.json" \
+      AMG_REACTIONS="$SHIMDIR/reactions.json" amg | jq -r '.eligible')" true
 # Severity decides who reviews the fixes the cycle applied (ADR 0006): one from a
 # Critical/Major/Security/Codex P0-P1 finding goes back to the PR for re-review; if
 # all are Minor or lower, the reviewed HEAD merges and they go straight to the base.
@@ -414,6 +423,7 @@ st "$(fix 2 cr '🎯 Functional Correctness' '🟠 Major' defer high),$minor"
 is "a deferred Major -> merge_then_main_push" "$(nxt)" merge_then_main_push
 st "$minor"
 is "base protected (200): no direct push -> rereview_push" "$(AMG_PROTECTED=1 nxt)" rereview_push
+is "base guarded by a ruleset only (404, protected) -> rereview_push" "$(AMG_RULESET=1 nxt)" rereview_push
 is "build/test gate off -> rereview_push"                  "$(VG=baseline_failed nxt)" rereview_push
 is "--no-minor-stop -> rereview_push"                      "$(MINOR_STOP=false nxt)" rereview_push
 is "state file unreadable -> rereview_push" \
@@ -1415,6 +1425,15 @@ is "every reviewer past its budget -> timeout, nobody dropped" "$(hf .state):$(h
 # A reviewer that cannot be read is not stuck: it is never dropped.
 w=$(hw "$HW/missing.json" "$FIX/issue-comments-codex-summary-completed.json" CAP= CODEX_GRACE=0)
 is "unreadable reviewers past budget -> timeout, nobody dropped" "$(hf .state):$(hf '.dropped | length')" timeout:0
+# CodeRabbit unreadable past its deadline while Codex still works: the next look waits
+# for Codex's deadline, not a negative `left` clamped to a 1 s poll (PR #334).
+HWS=$(mktemp -d); cp -R "$SCRIPTS/." "$HWS/"; printf '#!/usr/bin/env bash\nexit 1\n' > "$HWS/cr-head-verdict.sh"
+: > "$HW_LOG"
+run_capped 4 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-clean.json" HW_COMMENTS="$FIX/issue-comments-codex-summary-running.json" \
+  PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME=2020-01-01T00:00:00Z \
+  TIMEOUT=1800 INTERVAL=30 bash "$HWS/head-verdicts.sh" >/dev/null 2>&1
+is "CR error past its deadline -> no 1 s polling while Codex works" "$(grep -c '/pulls/' "$HW_LOG")" 1
+rm -rf "$HWS"
 # A `@coderabbitai review` posted long after the push starts CodeRabbit's work
 # then: its budget runs from the newer of the push and the request comment's
 # server time, or an old push leaves it nothing to wait with (issue #297).
@@ -2743,6 +2762,9 @@ mkdir -p "$BP/hooks"; printf '#!/bin/sh\nexit 1\n' > "$BP/hooks/pre-commit"; chm
 git -C "$BP/w" config core.hooksPath "$BP/hooks"
 bp 'true' >/dev/null; rc=$?
 is "pre-commit guard refuses -> not pushed"         "$rc:$(bp_main)" "1:a B c "
+printf '#!/bin/sh\necho fmt >> f\n' > "$BP/hooks/pre-commit"
+bp 'true' >/dev/null; rc=$?
+is "pre-commit guard rewrites a file -> not pushed" "$rc:$(bp_main)" "1:a B c "
 git -C "$BP/w" config --unset core.hooksPath
 is "failed attempts leave no worktree behind"       "$(git -C "$BP/w" worktree list | wc -l | tr -d ' ')" 1
 # The command runs where the fixes were applied on top of the base.

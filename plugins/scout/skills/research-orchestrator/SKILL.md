@@ -66,7 +66,7 @@ REPORT="${report_path:-${WORKSPACE%/}/final_report.md}"
 mkdir -p "$WORKSPACE" "$(dirname "$REPORT")"
 ```
 
-Inside a repo, `.tmp/` must be gitignored or the run shows up as untracked changes. Test it with `git check-ignore -q .tmp/`. When it is not ignored, ask through the interactive-input gate whether to append `.tmp/` to `.gitignore`; without an answer, leave `.gitignore` alone and say so. Scouts that download repo files put them under `$WORKSPACE/dl/<name>`, never under a fixed `/tmp` path.
+When the run uses the default workspace inside a repo (no caller `workspace_dir`), `.tmp/` must be gitignored or the run shows up as untracked changes; a caller-supplied path is the caller's to manage. Test it with `git check-ignore -q .tmp/`. When it is not ignored, ask through the interactive-input gate whether to append `.tmp/` to `.gitignore`; without an answer, leave `.gitignore` alone and say so. Scouts that download repo files put them under `$WORKSPACE/dl/<name>`, never under a fixed `/tmp` path.
 
 Caller-supplied `workspace_dir` / `report_path` are honored verbatim; otherwise each run gets its own `mktemp` directory under `.tmp/research/` (or the system temp dir outside a repo). Tell the user the resolved `$WORKSPACE` and `$REPORT` paths in the final summary so they can inspect or delete the run's artifacts.
 

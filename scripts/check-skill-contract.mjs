@@ -312,9 +312,9 @@ export function checkSkillContent(rel, content) {
 // two or more OS families in one file is a recipe table. Points at live-lookup.md.
 
 const INSTALL_FAMILIES = [
-  ['macOS', /\b(brew|port)\s+install\b/],
-  ['Linux', /\b(apt|apt-get|dnf|yum|zypper|snap)\s+install\b|\bpacman\s+-S\b|\bapk\s+add\b/],
-  ['Windows', /\b(winget|choco|scoop)\s+install\b|\birm\b[^|\n]*\|\s*iex\b/],
+  ['macOS', /\b(brew|port)\s+(?:-\S+\s+)*install\b/],
+  ['Linux', /\b(apt|apt-get|dnf|yum|zypper|snap)\s+(?:-\S+\s+)*install\b|\bpacman\s+-S\b|\bapk\s+add\b/],
+  ['Windows', /\b(winget|choco|scoop)\s+(?:-\S+\s+)*install\b|\birm\b[^|\n]*\|\s*iex\b/],
 ];
 // User-product README templates: a multi-platform install section is the content they teach.
 const INSTALL_EXEMPT = new Set(['plugins/docs/references/TEMPLATES.md', 'plugins/docs/references/README_PATTERNS.md']);
@@ -632,6 +632,7 @@ const INSTALL_CASES = [
   { check: 'three OSes in one references file', flagged: true, rel: 'plugins/demo/skills/x/references/tool.md', content: '```bash\n# macOS\nbrew install gh\n# Debian\nsudo apt install gh\n# Windows\nwinget install GitHub.cli\n```\n' },
   { check: 'two OSes in a script hint', flagged: true, rel: 'plugins/demo/skills/x/scripts/probe.sh', content: "echo 'brew install tool'\necho 'irm https://example.com/install.ps1 | iex'\n" },
   { check: 'two OSes in a SKILL.md prose line', flagged: true, rel: 'plugins/demo/skills/x/SKILL.md', content: 'Install it (`apt-get install foo` on Linux, `choco install foo` on Windows).\n' },
+  { check: 'options before the install action', flagged: true, rel: 'plugins/demo/skills/x/SKILL.md', content: 'brew install jq\nsudo apt-get -y install jq\n' },
   { check: 'one OS only', flagged: false, rel: 'plugins/demo/skills/x/SKILL.md', content: 'On this repo maintainer machine: `brew install jq`.\n' },
   { check: 'vendor install page instead of a recipe', flagged: false, rel: 'plugins/demo/skills/x/SKILL.md', content: 'Install `gh` per https://cli.github.com/ then run `gh auth login`.\n' },
   { check: 'a marked line does not count', flagged: false, rel: 'plugins/demo/skills/x/SKILL.md', content: 'brew install a\nwinget install a <!-- portability-ok: compares two installers on purpose -->\n' },

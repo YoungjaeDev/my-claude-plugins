@@ -34,5 +34,7 @@ guard=$(cd "$WT" && {
 if [ -n "$guard" ]; then
   (cd "$WT" && "$guard") >&2 || no "the pre-commit guard refused the fixes ($guard)"
 fi
+# A guard or command that rewrote tracked files (a formatter) passed content the push would not carry.
+git -C "$WT" diff --quiet HEAD -- || no "build/test or the pre-commit guard changed tracked files"
 git -C "$WT" push -q origin "HEAD:$BASE" >&2 || no "the push was rejected"
 git -C "$WT" rev-parse HEAD

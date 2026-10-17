@@ -190,11 +190,13 @@ while :; do
   # Next look (next-check.sh): soon while a reviewer is at work, never past a deadline.
   if [ -n "$CAP" ]; then left=$((CAP - SECONDS))
   else
+    # A reviewer past its deadline (an unreadable one stays undone) has no deadline left
+    # to wake for: counting it makes `left` negative and the loop polls every second.
     left=""
-    is_done "$cr" || left=$((cr_budget - SECONDS))
+    is_done "$cr" || [ "$cr_over" = true ] || left=$((cr_budget - SECONDS))
     # Wake for the nudge point too, not only the deadline.
     if [ "$cr" = none ] && [ "$nudge" != skip ] && [ "$cr_nudge_at" -gt "$SECONDS" ]; then left=$((cr_nudge_at - SECONDS)); fi
-    if ! is_done "$codex"; then
+    if ! is_done "$codex" && [ "$codex_over" != true ]; then
       cl=$((codex_deadline - SECONDS))
       if [ -z "$left" ] || [ "$cl" -lt "$left" ]; then left=$cl; fi
     fi

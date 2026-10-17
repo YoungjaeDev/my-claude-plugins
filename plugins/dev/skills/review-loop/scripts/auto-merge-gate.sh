@@ -64,8 +64,10 @@ esac
 if [ "${FOLLOWUP_APPEND_FAILED:-false}" = true ]; then eligible=false; reason="follow-up issue append failed"; fi
 
 # HEAD verdict axis: one look (CAP=0), never a wait — the loop already waited.
+# PUSH_TIME too: without it a Codex 👍-only clean verdict cannot be read (codex-head-verdict.sh).
 if [ "$eligible" = true ]; then
-  hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$HEAD_SHA" CAP=0 \
+  pt=$(bash "$SCRIPT_DIR/push-time.sh" "$OWNER" "$REPO" "$HEAD_SHA" 2>/dev/null) || pt=""
+  hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$HEAD_SHA" PUSH_TIME="$pt" CAP=0 \
        CR_ON="${CR_ON:-true}" CODEX_ON="${CODEX_ON:-auto}" \
        bash "$SCRIPT_DIR/head-verdicts.sh" 2>/dev/null || true)
   hv_state=$(jq -r '.state // "error"' <<<"$hv" 2>/dev/null || echo error)
@@ -125,8 +127,14 @@ severe=$(jq --argjson it "${FIX_ITER:-0}" '[.auto_judge_log[]?
     | select(((.category // "") | test("Security"; "i"))
              or ((.badge_or_sev // "") | tostring | test("^P?[01]$|Critical|High|Major"; "i"))
              or (.judgment.severity_reassess? == "high"))] | length' "${STATE_FILE:-/nonexistent}" 2>/dev/null) || severe=""
+# The protection endpoint 404s on a base guarded only by a ruleset; the branch's
+# `protected` flag covers both, so a direct push needs it false too.
+ruleset_free=false
+if [ "$http" = 404 ]; then
+  [ "$(gh api "repos/$OWNER/$REPO/branches/$base" --jq '.protected' 2>/dev/null || true)" = false ] && ruleset_free=true
+fi
 next_action=rereview_push
-if [ "$severe" = 0 ] && [ "$http" = 404 ] && [ "${VERIFICATION_GATE:-}" = on ] && [ "${MINOR_STOP:-true}" != false ]; then
+if [ "$severe" = 0 ] && [ "$ruleset_free" = true ] && [ "${VERIFICATION_GATE:-}" = on ] && [ "${MINOR_STOP:-true}" != false ]; then
   next_action=merge_then_main_push
 fi
 

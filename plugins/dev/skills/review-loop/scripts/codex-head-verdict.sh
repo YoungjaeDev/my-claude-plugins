@@ -16,6 +16,10 @@
 #     backticked short SHA. The newest such comment by updated_at wins, and in it
 #     the newest row for HEAD (by its relative-time) is the one judged.
 #   - a Codex review whose commit_id == CUR_SHA (Codex posts one only with findings).
+#   - a `+1` reaction on the PR by the Codex bot created after PUSH_TIME: Codex with
+#     nothing to say leaves only that (PR #320). It stands in for a missing or
+#     older-SHA summary row; a HEAD row or a HEAD review still decides. No PUSH_TIME,
+#     no reaction verdict: a 👍 from an older push cannot be told apart.
 # wait_seconds is the one Codex wait budget every gate uses:
 #   max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age).
 set -euo pipefail
@@ -46,9 +50,20 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 printf '%s' "$comments" > "$tmp/c.json"
 printf '%s' "$reviews" > "$tmp/r.json"
+# Reactions only add a clean signal, so an unreadable list just withholds it.
+if ! gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/reactions" > "$tmp/x.json" 2>/dev/null \
+   || ! jq -e . "$tmp/x.json" >/dev/null 2>&1; then
+  echo '[]' > "$tmp/x.json"
+fi
 
-jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" \
-  --slurpfile c "$tmp/c.json" --slurpfile r "$tmp/r.json" '
+jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" --arg push "$PUSH_TIME" \
+  --slurpfile c "$tmp/c.json" --slurpfile r "$tmp/r.json" --slurpfile x "$tmp/x.json" '
+  (try ($push | fromdateiso8601) catch null) as $pt
+  | ($pt != null and ($x | add // [] | any(.[];
+      ((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
+      and .content == "+1"
+      and ((try (.created_at | fromdateiso8601) catch 0) > $pt)))) as $thumb
+  |
   ($r | add // [] | [ .[]
       | select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
       | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
@@ -78,8 +93,8 @@ jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" \
   # most that one row.
   | [ ($rows // [])[] | select(. as $x | $sha | ascii_downcase | startswith($x.sha)) ]
     | sort_by(.at) | .[-1:] as $head
-  | ( if $bad != null then (if $hrid != null then "findings" else "unknown" end)
-      elif ($head | length) == 0 then (if $hrid != null then "findings" else "none" end)
+  | ( if $bad != null then (if $hrid != null then "findings" elif $thumb then "clean" else "unknown" end)
+      elif ($head | length) == 0 then (if $hrid != null then "findings" elif $thumb then "clean" else "none" end)
       elif any($head[]; .st == "running") then "in_progress"
       elif any($head[]; .st == "failed") then "failed"
       elif $hrid != null then "findings"

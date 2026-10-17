@@ -44,14 +44,16 @@ Does NOT change `final_state` directly. Build and test run before the commit, pe
 
 ## HEAD verdict wait (Steps 7e, 13, 14)
 
-A stop reached right after a push (`minor_floor`, `churn` with fixes, `iteration_cap`) has not seen the new HEAD's verdicts. Step 13 holds it (`HOLD_STATE`) and the next iteration's Step 7e waits; on the last iteration Step 14 waits. The wait is `scripts/head-verdicts.sh`, bounded by the existing caps: `TIMEOUT` for CodeRabbit, counted from the newer of the push and the latest `@coderabbitai review` comment's server time, and the Codex wait budget for Codex, counted from the push. Outcomes:
+A stop reached right after a push (`minor_floor`, `churn` with fixes, `iteration_cap`) has not seen the new HEAD's verdicts. Step 13 holds it (`HOLD_STATE`) and the next iteration's Step 7e waits; on the last iteration Step 14 waits. The wait is `scripts/head-verdicts.sh`, bounded by the existing caps, each reviewer by its own: `TIMEOUT` for CodeRabbit, counted from the newer of the push and the latest `@coderabbitai review` comment's server time, and the Codex wait budget for Codex, counted from the push. It stops itself at them and picks each next look with `scripts/next-check.sh`. Outcomes:
 
 | Outcome | Behavior |
 |---------|----------|
 | Every reviewer that is on gave findings or clean, nothing new needs a decision | The held state stands. |
 | A new gated or unreadable finding on the held HEAD | One more round (Step 9a clears `HOLD_STATE`). On the last iteration there is no round: `final_state=iteration_cap`, `HEAD_VERDICT=unread`. |
-| Budget spent | The held state stands (or `timeout` with none held), `HEAD_VERDICT=timeout`: the Step 15 gate finds no verdict on HEAD, so nothing merges. Step 14 reports it (final JSON `head_verdict`) and files the follow-up issue only when something was deferred. |
+| Budget spent with no verdict from anyone (every reviewer dropped, or one that cannot be read) | The held state stands (or `timeout` with none held), `HEAD_VERDICT=timeout`: the Step 15 gate finds no verdict on HEAD, so nothing merges. Step 14 reports it (final JSON `head_verdict`) and files the follow-up issue only when something was deferred. |
 | CodeRabbit paused automatic reviews | One `@coderabbitai review` for this HEAD (`cr-review-posted.sh` dedupes), then the wait resumes with the CodeRabbit budget counted from that request. |
+| CodeRabbit silent past its budget (no review, no status, no pause; PR #315) | Stuck (ADR 0006): one `@coderabbitai review` for this HEAD when it has none, the same dedupe and budget as a pause. Silent again, or HEAD already had a request: CodeRabbit is dropped for the run (`CR_SOURCE=codex-only`), named in `dropped_reviewers`, and Codex's verdict carries HEAD. Step 15 then asks before any merge, even with `--auto-merge`. |
+| Codex without a verdict past its budget (Running, or nothing) | Dropped for the run without a nudge (`@codex review` is never posted; `NO_CODEX=true`), named in `dropped_reviewers`; CodeRabbit's verdict carries HEAD and Step 15 asks before any merge. A Codex 👍 reaction on the PR after the push counts as clean before it comes to this. |
 | Codex Failed on HEAD | `final_state=codex_failed`. |
 
 ## Follow-up issue block (Step 14)

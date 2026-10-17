@@ -2,12 +2,16 @@
 # Usage: [FINAL_STATE=clean] [FOLLOWUP_ISSUE=<number>] [DEFERRED_TOTAL=N] \
 #        [CR_ON=true|false] [CODEX_ON=auto|true|false] [FOLLOWUP_APPEND_FAILED=true|false] \
 #        [STATE_FILE=<state json>] [FIX_ITER=N] [VERIFICATION_GATE=on|...] [MINOR_STOP=true|false] \
-#          bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
+#        [DROPPED_REVIEWERS="coderabbit codex"] bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
 # The loop's end-of-cycle and end-of-run decisions, as one JSON line on stdout:
 #   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N,
 #    "ci_state":"<ci-checks.sh state>", "failing_checks":[names], "base_branch":"...",
 #    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null,
-#    "next_action":"rereview_push|merge_then_main_push", "file_issue":bool}
+#    "next_action":"rereview_push|merge_then_main_push", "file_issue":bool,
+#    "dropped_reviewers":[names]}
+# `dropped_reviewers`: the reviewers the HEAD verdict wait dropped (ADR 0006). The
+# caller passes them as off (CR_ON / CODEX_ON), so the HEAD axis judges without
+# them; Step 15 asks before any merge they did not see.
 # `next_action` (ADR 0006): who reviews the fixes iteration FIX_ITER applied (its
 # `apply` records in STATE_FILE's auto_judge_log). One from a Critical/High/Major,
 # Security or Codex P0-P1 finding, or reassessed high, goes back to the PR for
@@ -137,6 +141,8 @@ jq -nc \
   --arg reason "$reason" \
   --arg next "$next_action" \
   --argjson file_issue "$file_issue" \
+  --arg dropped "${DROPPED_REVIEWERS:-}" \
   '{cr_state:$cr, blocking_checks:$bc, ci_state:$ci, failing_checks:$failing, base_branch:$base,
     protection_http:$http, eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end),
-    next_action:$next, file_issue:$file_issue}'
+    next_action:$next, file_issue:$file_issue,
+    dropped_reviewers:($dropped | split(" ") | map(select(length > 0)))}'

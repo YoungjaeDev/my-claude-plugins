@@ -7,27 +7,34 @@
 # Waits until every reviewer the run has on gave CUR_SHA a HEAD verdict (GLOSSARY
 # "HEAD 판정", ADR docs/adr/0002-review-loop-waits-for-head-verdicts.md), then
 # prints one JSON line:
-#   {"state":"ready|timeout|paused|codex_failed",
-#    "cr":"findings|clean|none|error|off", "codex":"<codex-head-verdict verdict>|off",
-#    "findings":bool, "cr_review_request":"post|skip"|null, "waited":N}
+#   {"state":"ready|timeout|paused|stuck|codex_failed",
+#    "cr":"findings|clean|none|error|off|dropped", "codex":"<codex-head-verdict verdict>|off|dropped",
+#    "findings":bool, "cr_review_request":"post|skip"|null, "waited":N,
+#    "dropped":["coderabbit"|"codex", ...]}
 #
 # Verdicts come from cr-head-verdict.sh and codex-head-verdict.sh; this script only
 # combines them. findings and clean are verdicts; a progress mark, a rate-limit
 # notice and a review pause are not. A reviewer that cannot be read is not ready.
-#   ready         every reviewer that is on has findings or clean on CUR_SHA
+#   ready         every reviewer that is on has findings or clean on CUR_SHA, or was
+#                 dropped (`dropped`) while another one gave a verdict
 #   codex_failed  Codex reported Failed on CUR_SHA (no review is coming)
 #   paused        CodeRabbit paused automatic reviews and this HEAD has no
 #                 `@coderabbitai review` request yet (cr_review_request=post).
 #                 The caller posts it; this script never writes to the PR.
-#   timeout       the budget ran out first
+#   stuck         CodeRabbit gave no verdict within its budget and this HEAD has no
+#                 request yet (cr_review_request=post): the caller posts the one
+#                 nudge, then waits again
+#   timeout       no verdict at all before the budgets ran out
 #
 # Budget: the existing caps, anchored so waiting again on the same HEAD never
 # extends them. CR: TIMEOUT - age of the newer of the push and the latest
 # `@coderabbitai review` comment (CodeRabbit starts on either). Codex:
 # codex-head-verdict.sh wait_seconds, max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT -
-# push_age). The cap is the
-# larger budget among reviewers still pending on the first look. CAP overrides it
-# (CAP=0 is a single look, which the auto-merge gate uses).
+# push_age), as its first look reported it. Each reviewer has its own deadline (ADR
+# 0006): past it, CodeRabbit is nudged once per HEAD (stuck) and then dropped, Codex
+# is dropped without a nudge, and a reviewer that cannot be read ends the wait at
+# timeout. CAP replaces the budgets with one cap and drops nobody (CAP=0 is a single
+# look, which the auto-merge gate uses). The time between looks is next-check.sh's.
 #
 # CODEX_ON=auto: Codex counts as on unless it has never engaged on this PR (no
 # summary comment, no review, engagement probe says inactive without an error).
@@ -64,17 +71,24 @@ cr_budget=$(jq -n --arg t "$PUSH_TIME" --argjson req "$req_times" --argjson know
      else ([$push, ($req[] | try fromdateiso8601 catch empty)] | max) as $from
        | now - $from | floor | if . < 0 then 0 else . end end) as $age
   | [0, $to - $age] | max')
+# For next-check.sh's AGE; -1 when unknown, and AGE then counts from the first look.
+push_epoch=$(jq -n --arg t "$PUSH_TIME" 'try ($t | fromdateiso8601 | floor) catch -1')
+
+in_list() { case " $2 " in *" $1 "*) return 0 ;; esac; return 1; }
+is_done() { case "$1" in off|findings|clean|dropped) return 0 ;; esac; return 1; }
 
 SECONDS=0
-request=""; cap=""
+request=""; codex_deadline=""; dropped=""
 while :; do
   cr=off
   if [ "$CR_ON" = true ]; then
-    cr=$(bash "$HERE/cr-head-verdict.sh" "$OWNER" "$REPO" "$PR_NUM" "$CUR_SHA" 2>/dev/null) || cr=error
+    if in_list coderabbit "$dropped"; then cr=dropped
+    else cr=$(bash "$HERE/cr-head-verdict.sh" "$OWNER" "$REPO" "$PR_NUM" "$CUR_SHA" 2>/dev/null) || cr=error; fi
   fi
 
   codex=off; codex_budget=0
-  if [ "$CODEX_ON" != false ]; then
+  if [ "$CODEX_ON" != false ] && in_list codex "$dropped"; then codex=dropped
+  elif [ "$CODEX_ON" != false ]; then
     # rc 1 still prints a verdict=error line; no line at all is an error too.
     hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$CUR_SHA" PUSH_TIME="$PUSH_TIME" \
          CODEX_GRACE="$CODEX_GRACE" CODEX_PREFLIGHT_TIMEOUT="$CODEX_PREFLIGHT_TIMEOUT" \
@@ -90,14 +104,12 @@ while :; do
       if ! grep -q '^warn:' <<<"$eng" && [ "$(tail -1 <<<"$eng")" = inactive ]; then codex=off; fi
     fi
   fi
+  # The Codex deadline is the budget its first look reported; later looks only shrink it.
+  [ -n "$codex_deadline" ] || codex_deadline="$codex_budget"
 
   state=""
   if [ "$codex" = failed ]; then state=codex_failed
-  else
-    case "$cr" in off|findings|clean) cr_done=true ;; *) cr_done=false ;; esac
-    case "$codex" in off|findings|clean) codex_done=true ;; *) codex_done=false ;; esac
-    if [ "$cr_done" = true ] && [ "$codex_done" = true ]; then state=ready; fi
-  fi
+  elif is_done "$cr" && is_done "$codex"; then state=ready; fi
 
   if [ -z "$state" ] && [ "$cr" = none ]; then
     # A paused CodeRabbit never reviews this HEAD on its own. The pause block lives
@@ -115,21 +127,63 @@ while :; do
     fi
   fi
 
-  if [ -z "$cap" ] && [ -z "$state" ]; then
-    if [ -n "$CAP" ]; then cap="$CAP"
-    else
-      cap=0
-      case "$cr" in off|findings|clean) : ;; *) [ "$cr_budget" -gt "$cap" ] && cap="$cr_budget" ;; esac
-      case "$codex" in off|findings|clean) : ;; *) [ "$codex_budget" -gt "$cap" ] && cap="$codex_budget" ;; esac
+  # Budget mode (no CAP), ADR 0006. CodeRabbit with no verdict at its deadline gets
+  # one `@coderabbitai review` for this HEAD (stuck: the caller posts it and waits
+  # again, with the budget now counted from the request), and is dropped once this
+  # HEAD has a request. Codex is dropped at its deadline: `@codex review` is never
+  # posted. A reviewer that could not be read (error) is never dropped.
+  if [ -z "$state" ] && [ -z "$CAP" ]; then
+    if [ "$cr" = none ] && [ "$SECONDS" -ge "$cr_budget" ]; then
+      if d=$(bash "$HERE/cr-review-posted.sh" "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME" 2>/dev/null) \
+         && [ "$d" = post ]; then
+        request=post; state=stuck
+      else
+        dropped="${dropped:+$dropped }coderabbit"; cr=dropped
+      fi
+    fi
+    if [ -z "$state" ] && ! is_done "$codex" && [ "$codex" != error ] && [ "$SECONDS" -ge "$codex_deadline" ]; then
+      dropped="${dropped:+$dropped }codex"; codex=dropped
+    fi
+    cr_over=false; codex_over=false
+    if is_done "$cr" || { [ "$cr" = error ] && [ "$SECONDS" -ge "$cr_budget" ]; }; then cr_over=true; fi
+    if is_done "$codex" || { [ "$codex" = error ] && [ "$SECONDS" -ge "$codex_deadline" ]; }; then codex_over=true; fi
+    if [ -z "$state" ] && [ "$cr_over" = true ] && [ "$codex_over" = true ]; then
+      # Ready only when a reviewer that is on gave a verdict: an unreadable one, or
+      # every one dropped, leaves HEAD unjudged.
+      case "$cr:$codex" in
+        *error*) state=timeout; dropped="" ;;
+        *findings*|*clean*) state=ready ;;
+        *) state=timeout; dropped="" ;;
+      esac
     fi
   fi
-  [ -z "$state" ] && [ "$SECONDS" -ge "${cap:-0}" ] && state=timeout
+
+  if [ -n "$CAP" ] && [ -z "$state" ] && [ "$SECONDS" -ge "$CAP" ]; then state=timeout; fi
 
   if [ -n "$state" ]; then
-    jq -nc --arg s "$state" --arg cr "$cr" --arg cx "$codex" --arg req "$request" --argjson w "$SECONDS" '
+    jq -nc --arg s "$state" --arg cr "$cr" --arg cx "$codex" --arg req "$request" --argjson w "$SECONDS" \
+      --arg d "$dropped" '
       {state:$s, cr:$cr, codex:$cx, findings:($cr == "findings" or $cx == "findings"),
-       cr_review_request:(if $req == "" then null else $req end), waited:$w}'
+       cr_review_request:(if $req == "" then null else $req end), waited:$w,
+       dropped:($d | split(" ") | map(select(length > 0)))}'
     exit 0
   fi
-  sleep "$INTERVAL"
+
+  # Next look (next-check.sh): soon while a reviewer is at work, never past a deadline.
+  if [ -n "$CAP" ]; then left=$((CAP - SECONDS))
+  else
+    left=""
+    is_done "$cr" || left=$((cr_budget - SECONDS))
+    if ! is_done "$codex"; then
+      cl=$((codex_deadline - SECONDS))
+      if [ -z "$left" ] || [ "$cl" -lt "$left" ]; then left=$cl; fi
+    fi
+    [ -n "$left" ] || left=0
+  fi
+  busy=false
+  if [ "$codex" = in_progress ]; then busy=true
+  elif [ "$cr" = none ] && [ "$(bash "$HERE/cr-commit-state.sh" "$OWNER" "$REPO" "$CUR_SHA" 2>/dev/null \
+         | jq -r '.state // empty' 2>/dev/null)" = pending ]; then busy=true; fi
+  if [ "$push_epoch" -ge 0 ]; then age=$(( $(date +%s) - push_epoch )); else age=$SECONDS; fi
+  sleep "$(bash "$HERE/next-check.sh" "$age" "$left" "$busy" "$INTERVAL")"
 done

@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # Usage: OWNER=... REPO=... PR_NUM=... PROCESSED='[123,456]' INTERVAL=15 [CUR_SHA=...] \
-#        bash scripts/poll-codex-grace.sh
-# Background poll for an unprocessed Codex review id. Caller wraps with
-# Bash(timeout=grace_cap*1000), grace_cap = codex-head-verdict.sh .wait_seconds.
+#        [CAP=grace_cap] bash scripts/poll-codex-grace.sh
+# Background poll for an unprocessed Codex review id, ending at its own deadline
+# CAP (default 600): grace_cap = codex-head-verdict.sh .wait_seconds.
 # Emits exactly one terminal JSON line:
 #   {"codex_review_id":NUM,"pr":NUM}                  (found)
 #   {"codex_review_id":null,"pr":NUM,"verdict":V}     (CUR_SHA set and Codex's HEAD
 #                                                      verdict is clean or failed:
 #                                                      no review will arrive)
 # An unreadable summary (verdict unknown) keeps plain review-id polling.
-# If grace expires (caller timeout), no line emitted; SKILL.md handles via Monitor.
+# Grace expiry (CAP spent) exits 124 with no line; SKILL.md handles via Monitor.
 set -euo pipefail
 
 : "${OWNER:?}"; : "${REPO:?}"; : "${PR_NUM:?}"; : "${PROCESSED:=[]}"; : "${INTERVAL:=15}"
+: "${CAP:=600}"
 CUR_SHA="${CUR_SHA:-}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -41,7 +42,9 @@ until id=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/n
       esac
     fi
   fi
-  sleep "$INTERVAL"
+  left=$((CAP - SECONDS))
+  [ "$left" -gt 0 ] || exit 124
+  sleep "$(( INTERVAL < left ? INTERVAL : left ))"
 done
 
 printf '{"codex_review_id":%s,"pr":%s}\n' "$id" "$PR_NUM"

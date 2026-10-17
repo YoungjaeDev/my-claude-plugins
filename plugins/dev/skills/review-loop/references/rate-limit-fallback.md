@@ -113,7 +113,10 @@ else:
   # Interactive gate (SKILL.md hard constraints): [Abort] / [Install CLI (${cli_hint})
   # then retry] / [Force codex-only], plus [Wait ${reset:-15} min] unless
   # permanent=true. With no interaction tool on the runtime, abort — flipping a
-  # source the user did not choose is not a safe default.
+  # source the user did not choose is not a safe default. A runner (--runner) aborts
+  # too, at final_state=rate_limited with
+  # pending_decision={question:"cr_source", reset_minutes:${reset:-null}, permanent:$permanent},
+  # and the main session asks this question, then dispatches a new runner (SKILL.md "Runner").
 ```
 
 When `cli_hint` is non-empty, the Step 16 summary carries one "install the CodeRabbit CLI" line.

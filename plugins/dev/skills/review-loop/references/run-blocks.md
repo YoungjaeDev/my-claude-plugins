@@ -521,12 +521,11 @@ case "$final_state" in
 esac
 # One follow-up issue for whatever the run leaves behind: deferred findings, from
 # this cycle or an earlier one (a later clean cycle records none of them), findings
-# nobody could read, a HEAD without every verdict, or failing CI checks.
-# Block: references/failure-modes.md.
+# nobody could read, or a HEAD without every verdict. Failing CI checks alone file
+# none: the final report names them. Block: references/failure-modes.md.
 followup_needed=false
 case "$final_state" in
-  ci_failing) followup_needed=true ;;
-  churn|minor_floor|iteration_cap|user_declined|clean|timeout)
+  churn|minor_floor|iteration_cap|user_declined|clean|timeout|ci_failing)
     if [ "$deferred_total" -gt 0 ] || [ "$review_total" -gt 0 ] || [ -n "$HEAD_VERDICT" ]; then
       followup_needed=true
     fi ;;

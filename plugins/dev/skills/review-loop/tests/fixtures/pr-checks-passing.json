@@ -1,1 +1,1 @@
-[{"name":"build","state":"SUCCESS"},{"name":"docs","state":"NEUTRAL"},{"name":"CodeRabbit","state":"PENDING"}]
+[{"name":"build","state":"SUCCESS","bucket":"pass"},{"name":"docs","state":"NEUTRAL","bucket":"skipping"},{"name":"CodeRabbit","state":"PENDING","bucket":"pending"}]

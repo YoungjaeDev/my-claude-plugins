@@ -202,6 +202,7 @@ CIS=$(mktemp -d)
 cat > "$CIS/gh" <<'SH'
 #!/usr/bin/env bash
 [ "$1 $2" = "pr checks" ] || { echo "unknown gh args: $*" >&2; exit 1; }
+echo "$*" > "$CI_COUNT.args"
 n=$(cat "$CI_COUNT" 2>/dev/null || echo 0); echo $((n+1)) > "$CI_COUNT"
 f=$(sed -n "$((n+1))p" "$CI_SEQ" | tr -d '\r'); [ -n "$f" ] || f=$(tail -1 "$CI_SEQ" | tr -d '\r')
 case "$f" in
@@ -219,13 +220,24 @@ ci() { # CAP SEQ... -> the script's JSON line
 }
 c=$(ci 0 "$FIX/pr-checks-failing.json")
 is "failing check on HEAD -> fail"                "$(jq -r '.state' <<<"$c")" fail
-is "failing names exclude CodeRabbit, keep a lookalike" "$(jq -c '.failing' <<<"$c")" '["policy","coderabbit-lint"]'
+# The reviewer's own check is left out under both names it reports (plain status
+# and `CodeRabbit / Review` check run); a CI job that only starts with it still counts.
+is "failing names exclude CodeRabbit, keep a lookalike" "$(jq -c '.failing' <<<"$c")" '["policy","coderabbit-lint","deploy"]'
+# Classification reads gh's normalized bucket, never a copied list of raw states.
+is "checks are read with the bucket field"        "$(grep -c 'bucket' "$CIS/count.args")" 1
 c=$(ci 0 "$FIX/pr-checks-passing.json")
 is "passing checks (CodeRabbit pending ignored) -> pass" "$(jq -r '.state' <<<"$c")" pass
 is "passing checks -> no failing names"           "$(jq -c '.failing' <<<"$c")" '[]'
 c=$(ci 0 "$FIX/pr-checks-pending.json")
 is "pending check, no wait (CAP=0) -> pending"    "$(jq -r '.state' <<<"$c")" pending
-is "pending names listed"                         "$(jq -c '.pending' <<<"$c")" '["build"]'
+# A bucket gh adds later is not a pass (STALE, new states).
+is "pending names listed, an unknown bucket among them" "$(jq -c '.pending' <<<"$c")" '["build","stale-job"]'
+# The poll sleeps no longer than what is left of the caller's cap.
+printf '%s\n' "$FIX/pr-checks-pending.json" > "$CIS/seq"; rm -f "$CIS/count"; t0=$SECONDS
+c=$(CI_SEQ="$CIS/seq" CI_COUNT="$CIS/count" PATH="$CIS:$PATH" CAP=1 INTERVAL=30 \
+    bash "$SCRIPTS/ci-checks.sh" 42 2>/dev/null)
+is "pending past the cap -> pending"              "$(jq -r '.state' <<<"$c")" pending
+is "sleep never outlasts the cap"                 "$([ $((SECONDS - t0)) -le 3 ] && echo yes || echo no)" yes
 c=$(ci 30 "$FIX/pr-checks-pending.json" "$FIX/pr-checks-passing.json")
 is "pending then pass within the cap -> pass"     "$(jq -r '.state' <<<"$c")" pass
 is "pending then pass -> looked twice"            "$(tr -d '\r' < "$CIS/count")" 2
@@ -339,8 +351,8 @@ is "ci_failing with issue -> ineligible"     "$(elig ci_failing 321)" false
 is "ci_failing reason names CI" \
    "$(FINAL_STATE=ci_failing PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.ineligible_reason | test("CI")')" true
 g=$(AMG_CHECKS="$FIX/pr-checks-failing.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
-is "gate: failing checks counted without CodeRabbit" "$(jq -r '.blocking_checks' <<<"$g")" 2
-is "gate: failing check names carried"        "$(jq -c '.failing_checks' <<<"$g")" '["policy","coderabbit-lint"]'
+is "gate: failing checks counted without CodeRabbit" "$(jq -r '.blocking_checks' <<<"$g")" 3
+is "gate: failing check names carried"        "$(jq -c '.failing_checks' <<<"$g")" '["policy","coderabbit-lint","deploy"]'
 is "gate: pending check is not blocking" \
    "$(AMG_CHECKS="$FIX/pr-checks-pending.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.blocking_checks')" 0
 is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false
@@ -1888,7 +1900,7 @@ PATH="$FM:$PATH" STATE_FILE="$FM/state.json" BLOCK="$FM_BLOCK" bash -c '
   final_state=iteration_cap review_total=0 deferred_total=0 PR_NUM=1 HEAD_VERDICT=unread
   eval "$BLOCK"' >/dev/null 2>&1
 is "appended follow-up names an unread HEAD" "$(grep -c 'drew reviewer findings after the last round' "$FM/body" 2>/dev/null)" 1
-# A new follow-up issue for ci_failing names the failing checks (#317).
+# A follow-up issue filed on ci_failing (for its deferred findings) names the failing checks (#317).
 cat > "$FM/gh" <<SH
 #!/usr/bin/env bash
 prev=""; for a in "\$@"; do [ "\$prev" = --body-file ] && cp "\$a" "$FM/body"; prev=\$a; done
@@ -1946,10 +1958,14 @@ last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:
     [ -z "${SHOW_CI:-}" ] || printf ":%s" "${ci_failing_checks:-}"'
 }
 CI_FAIL='{"state":"fail","failing":["policy"],"pending":[]}'
-is "clean HEAD with a failing check -> ci_failing + issue + names" \
-   "$(CI_OUT=$CI_FAIL SHOW_CI=1 last_push false clean ready false 0)" 'ci_failing::true:["policy"]'
-is "minor_floor HEAD with a failing check -> ci_failing" "$(CI_OUT=$CI_FAIL last_push false minor_floor ready false 1)" "ci_failing::true"
-is "churn HEAD with a failing check -> ci_failing"       "$(CI_OUT=$CI_FAIL last_push false churn ready false 1)" "ci_failing::true"
+# A failing check alone files no issue (minimal-issue policy, #325): the final
+# report carries the names. Deferred findings still get theirs.
+is "clean HEAD with a failing check -> ci_failing + names, no issue" \
+   "$(CI_OUT=$CI_FAIL SHOW_CI=1 last_push false clean ready false 0)" 'ci_failing::false:["policy"]'
+is "minor_floor HEAD with a failing check and a defer -> ci_failing + issue" \
+   "$(CI_OUT=$CI_FAIL last_push false minor_floor ready false 1)" "ci_failing::true"
+is "churn HEAD with a failing check, nothing deferred -> no issue" \
+   "$(CI_OUT=$CI_FAIL last_push false churn ready false 0)" "ci_failing::false"
 is "CI wait runs under TIMEOUT"                          "$(tr -d '\r' < "$CI14/cap")" "CAP=1800"
 is "iteration_cap is not rewritten by CI"  "$(CI_OUT=$CI_FAIL last_push false iteration_cap ready false 1)" "iteration_cap::true"
 is "clean HEAD, checks still pending at the cap -> clean" \

@@ -208,6 +208,7 @@ f=$(sed -n "$((n+1))p" "$CI_SEQ" | tr -d '\r'); [ -n "$f" ] || f=$(tail -1 "$CI_
 case "$f" in
   FAIL) echo "HTTP 502" >&2; exit 1 ;;
   NONE) echo "no checks reported on the 'feat' branch" >&2; exit 1 ;;
+  RC*:*) cat "${f#*:}"; r=${f%%:*}; exit "${r#RC}" ;;
   *) cat "$f" ;;
 esac
 SH
@@ -241,6 +242,9 @@ is "sleep never outlasts the cap"                 "$([ $((SECONDS - t0)) -le 3 ]
 c=$(ci 30 "$FIX/pr-checks-pending.json" "$FIX/pr-checks-passing.json")
 is "pending then pass within the cap -> pass"     "$(jq -r '.state' <<<"$c")" pass
 is "pending then pass -> looked twice"            "$(tr -d '\r' < "$CIS/count")" 2
+# Valid JSON on stdout is the answer whatever the exit status (1 failed, 8 pending).
+is "JSON with exit 1 -> still read as fail"       "$(jq -r '.state' <<<"$(ci 0 "RC1:$FIX/pr-checks-failing.json")")" fail
+is "JSON with exit 8 -> still read as pending"    "$(jq -r '.state' <<<"$(ci 0 "RC8:$FIX/pr-checks-pending.json")")" pending
 is "lookup failure -> error, not fail"            "$(jq -r '.state' <<<"$(ci 0 FAIL)")" error
 is "no checks at all -> none"                     "$(jq -r '.state' <<<"$(ci 0 NONE)")" none
 rm -rf "$CIS"
@@ -1948,7 +1952,7 @@ CI14=$(mktemp -d); mkdir -p "$CI14/scripts"
 printf '#!/usr/bin/env bash\necho "$CI_OUT"; echo "CAP=$CAP" > "%s/cap"\n' "$CI14" > "$CI14/scripts/ci-checks.sh"
 CI_PASS='{"state":"pass","failing":[],"pending":[]}'
 last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:HEAD_VERDICT:followup
-  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 RT=${6:-0} SKILL_DIR="$CI14" CI_OUT="${CI_OUT:-$CI_PASS}" \
+  PUSHED=$1 FS=$2 HVS=$3 FND=$4 DT=$5 RT=${6:-0} SKILL_DIR="$CI14" CI_OUT="${CI_OUT-$CI_PASS}" \
     BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
     await_head_verdicts() { hv_state=$HVS; hv="{\"findings\":$FND}"; }
     pushed_this_cycle=$PUSHED final_state=$FS deferred_total=$DT review_total=$RT HEAD_VERDICT=""
@@ -1972,6 +1976,8 @@ is "clean HEAD, checks still pending at the cap -> clean" \
    "$(CI_OUT='{"state":"pending","failing":[],"pending":["build"]}' last_push false clean ready false 0)" "clean::false"
 is "clean HEAD, checks unreadable -> clean (gate re-reads)" \
    "$(CI_OUT='{"state":"error","failing":[],"pending":[]}' last_push false clean ready false 0 2>/dev/null)" "clean::false"
+is "clean HEAD, CI script printed nothing -> clean + warning" \
+   "$(CI_OUT='' last_push false clean ready false 0 2>&1 >/dev/null | grep -c 'could not be read')" 1
 is "last push, findings on HEAD, no round left -> iteration_cap + issue" \
    "$(last_push true minor_floor ready true 0)" "iteration_cap:unread:true"
 is "last push, HEAD passed -> state kept, nothing to file" \

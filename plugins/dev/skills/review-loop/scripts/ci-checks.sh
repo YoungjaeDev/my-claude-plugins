@@ -31,11 +31,13 @@ emit() { jq -nc --arg s "$1" --argjson r "$2" --argjson w "$SECONDS" \
 
 SECONDS=0
 while :; do
-  # `--json` exits 0 whatever the checks say; 1 means the lookup failed, or the PR
-  # has no checks at all, which gh reports as an error too.
-  if out=$(gh pr checks "$PR_NUM" --json name,bucket 2>"$errf"); then :
-  elif grep -q 'no checks reported' "$errf"; then emit none '[]'; exit 0
-  else emit error '[]'; exit 0
+  # A JSON array on stdout is the answer whatever the exit status says (the status
+  # is not a check-state signal to rely on). Without one, a PR with no checks is
+  # `none` (gh reports it as an error) and anything else is a failed lookup.
+  out=$(gh pr checks "$PR_NUM" --json name,bucket 2>"$errf")
+  if ! jq -e 'type == "array"' <<<"$out" >/dev/null 2>&1; then
+    if grep -q 'no checks reported' "$errf"; then emit none '[]'; else emit error '[]'; fi
+    exit 0
   fi
   rows=$(jq -c '[.[]
       | select((.name // "") | test("^(coderabbit( / review)?|codex|chatgpt-codex-connector)$"; "i") | not)

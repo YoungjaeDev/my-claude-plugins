@@ -516,7 +516,7 @@ case "$final_state" in
     ci=$(CAP="$TIMEOUT" INTERVAL="$INTERVAL" bash "$SKILL_DIR/scripts/ci-checks.sh" "$PR_NUM")
     case "$(jq -r '.state' <<<"$ci" 2>/dev/null | tr -d '\r')" in
       fail) final_state=ci_failing; ci_failing_checks=$(jq -c '.failing' <<<"$ci") ;;
-      error) echo "review-loop: CI checks on HEAD could not be read; final_state kept" >&2 ;;
+      error|"") echo "review-loop: CI checks on HEAD could not be read; final_state kept" >&2 ;;
     esac ;;
 esac
 # One follow-up issue for whatever the run leaves behind: deferred findings, from

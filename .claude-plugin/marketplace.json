@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Personal Claude Code plugin collection with 8 specialized plugins. Codex reads the same `.claude-plugin/` manifests natively (manifest fallback, no generated layer).",
-    "version": "2.62.0"
+    "version": "2.63.0"
   },
   "plugins": [
     {
@@ -26,7 +26,7 @@
       "name": "scout",
       "source": "./plugins/scout",
       "description": "Research and search. research-orchestrator routes a query to the github / hf / web / docs scout agents in parallel and synthesis-scout dedups, trust-ranks, and writes the report (exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4). ask and generate-llmstxt query a GitHub repository through the DeepWiki MCP. Non-code/ML topics go to the sibling /deep-research.",
-      "version": "2.0.2",
+      "version": "2.0.3",
       "category": "research"
     },
     {
@@ -54,7 +54,7 @@
       "name": "council",
       "source": "./plugins/council",
       "description": "Claude-only (do not install into Codex). Cross-vendor model council. codex (GPT), agy (Gemini), and a Claude Opus seat answer independently, surface follow-up questions to the user, then rebut each other before the chair synthesizes. Seat models live in a weekly-TTL registry at ~/.claude/council-models.json. Claude-only; excluded from Codex sync.",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "category": "ai-models",
       "policy": {
         "installation": "NOT_AVAILABLE"

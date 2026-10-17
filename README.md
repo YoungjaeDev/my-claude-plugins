@@ -221,7 +221,7 @@ Playwright 가 없으면 graceful degrade 한다. Codex 에서는 역할 계약(
 <details>
 <summary><strong>council</strong> - 이종 벤더 3인 심의</summary>
 
-`/council:convene` 은 질문 1개를 codex (GPT), agy (Gemini), Claude Opus 좌석에 동시에 던진다. 좌석끼리 서로 반박한 뒤 합의한 것과 끝내 갈린 것을 `.council/<날짜>-<슬러그>/consensus.md` 에 남긴다. Claude 서브에이전트는 여러 개를 띄워도 가중치가 같아 관점이 늘지 않는데 이 스킬은 그 문제를 다룬다.
+`/council:convene` 은 질문 1개를 codex (GPT), agy (Gemini), Claude Opus 좌석에 동시에 던진다. 좌석끼리 서로 반박한 뒤 합의한 것과 끝내 갈린 것을 `.council/<날짜>-<슬러그>/consensus.md` 에 남긴다. 질문·프롬프트·좌석별 답은 gitignore 된 `.tmp/council/<같은 이름>/` 에 둔다. Claude 서브에이전트는 여러 개를 띄워도 가중치가 같아 관점이 늘지 않는데 이 스킬은 그 문제를 다룬다.
 
 - 진행 순서: 독립 의견, 사용자 재질문, 상호 반박, 의장 합성
 - 좌석 모델은 `~/.claude/council-models.json` 주간 TTL 레지스트리에 있다. 만료되면 실제 목록을 근거로 사용자에게 묻고 자동 승급하지 않는다

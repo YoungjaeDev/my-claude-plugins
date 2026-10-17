@@ -32,14 +32,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # silently doubling the documented 30s rate-limit detection window.
 start_ts=$(date +%s)
 
-# Sleeps INTERVAL, cut to the time left; past TIMEOUT it prints the timeout line.
+# Sleeps next-check.sh's gap (soon while CodeRabbit's row is pending, by the push age
+# otherwise), cut to the time left; past TIMEOUT it prints the timeout line.
+push_epoch=$(jq -n --arg t "$PUSH_TIME" 'try ($t | fromdateiso8601 | floor) catch -1')
+busy=false
 nap() {
-  local left=$(( TIMEOUT - ($(date +%s) - start_ts) ))
+  local now left age
+  now=$(date +%s); left=$(( TIMEOUT - (now - start_ts) ))
   if [ "$left" -le 0 ]; then
     printf '{"state":"timeout","sha":"%s","pr":%s,"source":"poll"}\n' "$SHA" "$PR_NUM"
     exit 124
   fi
-  sleep "$(( INTERVAL < left ? INTERVAL : left ))"
+  if [ "$push_epoch" -ge 0 ]; then age=$(( now - push_epoch )); else age=-1; fi
+  sleep "$(bash "$SCRIPT_DIR/next-check.sh" "$age" "$left" "$busy" "$INTERVAL")"
 }
 
 # state:"error" from cr-commit-state.sh means the fetch itself failed (auth /
@@ -77,6 +82,7 @@ while true; do
   # normalize both to "" rather than letting "none" slip past it.
   s=$(jq -r 'if (.state // "none") == "none" or (.state // "") == "pending" then "" else .state end' <<<"$cr_obj")
   desc=$(jq -r '.description // ""' <<<"$cr_obj")
+  busy=false; [ "$(jq -r '.state // ""' <<<"$cr_obj")" = pending ] && busy=true
 
   if [ "$s" = "error" ]; then
     err_streak=$((err_streak + 1))

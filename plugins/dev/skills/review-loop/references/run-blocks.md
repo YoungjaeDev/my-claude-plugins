@@ -75,13 +75,14 @@ reviewers_on() {
 # Waits, inside the existing caps (TIMEOUT for CodeRabbit, the Codex wait budget),
 # until every reviewer this run has on gave HEAD a verdict. Sets hv (one JSON line,
 # scripts/head-verdicts.sh) and hv_state: ready | timeout | codex_failed. A paused
-# CodeRabbit (auto_pause_after_reviewed_commits), or one silent past its budget
-# (stuck), gets one `@coderabbitai review` for this HEAD, then the wait resumes with
-# the CodeRabbit budget counted from that request (the newer of push and request
-# time). A reviewer the wait dropped (ADR 0006) is off for the rest of the run, as
-# Step 2b drops one, and named in dropped_reviewers.
+# CodeRabbit (auto_pause_after_reviewed_commits), or one silent for half its budget
+# (stuck), gets one `@coderabbitai review` for this HEAD. After a pause the wait
+# resumes with the CodeRabbit budget counted from that request (it starts the
+# review); after a stuck nudge it keeps the first wait's deadline (cr_deadline), so
+# the whole wait stays inside one TIMEOUT. A reviewer the wait dropped (ADR 0006) is
+# off for the rest of the run, as Step 2b drops one, and named in dropped_reviewers.
 await_head_verdicts() {
-  local sha pt round cr_on codex_on r tmp
+  local sha pt round cr_on codex_on r tmp crdl=""
   sha=$(git rev-parse HEAD)
   pt=$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "$sha")
   reviewers_on
@@ -90,13 +91,14 @@ await_head_verdicts() {
     # deadlines; on each wake read its output file, not a completion notification.
     hv=$(OWNER="$OWNER" REPO="$REPO" PR_NUM="$PR_NUM" CUR_SHA="$sha" PUSH_TIME="$pt" \
          CR_ON="$cr_on" CODEX_ON="$codex_on" TIMEOUT="$TIMEOUT" INTERVAL="$INTERVAL" \
-         CODEX_GRACE="$CODEX_GRACE" bash "$SKILL_DIR/scripts/head-verdicts.sh")
+         CODEX_GRACE="$CODEX_GRACE" CR_DEADLINE="$crdl" bash "$SKILL_DIR/scripts/head-verdicts.sh")
     hv_state=$(jq -r '.state // empty' <<<"$hv" 2>/dev/null) || hv_state=""
     [ -n "$hv_state" ] || hv_state=timeout  # no line: the wait was cut off
     case "$hv_state" in
       paused|stuck)
         # Posts only when this HEAD has no request yet.
         if [ "$round" = 1 ]; then request_cr_review "$hv_state"; fi
+        if [ "$hv_state" = stuck ]; then crdl=$(jq -r '.cr_deadline // empty' <<<"$hv" 2>/dev/null) || crdl=""; fi
         continue ;;
     esac
     for r in $(jq -r '.dropped[]?' <<<"$hv" 2>/dev/null); do
@@ -552,7 +554,9 @@ fi
 case "$final_state" in
   clean|minor_floor|churn)
     # Bash(run_in_background=true, timeout=(TIMEOUT+60)*1000) + Monitor: one JSON line.
-    ci=$(CAP="$TIMEOUT" INTERVAL="$INTERVAL" bash "$SKILL_DIR/scripts/ci-checks.sh" "$PR_NUM")
+    ci=$(CAP="$TIMEOUT" INTERVAL="$INTERVAL" \
+         PUSH_TIME="$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "$(git rev-parse HEAD)")" \
+         bash "$SKILL_DIR/scripts/ci-checks.sh" "$PR_NUM")
     case "$(jq -r '.state' <<<"$ci" 2>/dev/null | tr -d '\r')" in
       fail) final_state=ci_failing; ci_failing_checks=$(jq -c '.failing' <<<"$ci") ;;
       error|"") echo "review-loop: CI checks on HEAD could not be read; final_state kept" >&2 ;;
@@ -624,9 +628,9 @@ if [ -z "$why" ] && { [ "$AUTO_MERGE" != true ] || [ "$proto" = 404 ] || [ -n "$
   if [ "${RUNNER:-false}" = true ] && [ -z "${MERGE_ANSWER:-}" ]; then
     pending_decision=$(jq -nc --argjson pr "$PR_NUM" --arg base "$base" --argjson proto "$proto" \
       --arg rs "$REVIEWED_SHA" --arg fs "$FIX_SHA" --argjson iter "${ITER:-0}" --arg vc "${VERIFY_CMD:-}" \
-      --arg dr "${dropped_reviewers:-}" \
+      --argjson dr "$(bash "$SKILL_DIR/scripts/words-json.sh" "${dropped_reviewers:-}")" \
       '{question:"merge", pr:$pr, base:$base, protection_http:$proto, reviewed_sha:$rs, fix_sha:$fs,
-        iter:$iter, verify_cmd:$vc, dropped_reviewers:($dr | split(" ") | map(select(length > 0)))}')
+        iter:$iter, verify_cmd:$vc, dropped_reviewers:$dr}')
     why="the merge question waits for the main session"
   elif [ "${MERGE_ANSWER:-}" != yes ]; then why="not merged: the user did not choose to merge"; fi
 fi

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: OWNER=... REPO=... PR_NUM=... CUR_SHA=... PUSH_TIME=... STATE_FILE=... \
-#        [CODEX_TIMEOUT=600] [SKIP_DIR=/path/to/scripts] \
+#        [CODEX_TIMEOUT=$CODEX_BUDGET_DEFAULT] [SKIP_DIR=/path/to/scripts] \
 #        bash scripts/pre-flight.sh
 #
 # Emits exactly one JSON line on stdout summarising the pre-flight decision.
@@ -17,8 +17,9 @@ set -euo pipefail
 : "${PUSH_TIME:?push time required}"
 : "${STATE_FILE:?state file required}"
 # Honor the documented CODEX_PREFLIGHT_TIMEOUT alias (references/arguments.md);
-# fall through to the internal CODEX_TIMEOUT name otherwise. Default 600s.
-: "${CODEX_TIMEOUT:=${CODEX_PREFLIGHT_TIMEOUT:-600}}"
+# fall through to the internal CODEX_TIMEOUT name otherwise. Default: codex-turnaround.sh.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/codex-turnaround.sh"
+: "${CODEX_TIMEOUT:=${CODEX_PREFLIGHT_TIMEOUT:-$CODEX_BUDGET_DEFAULT}}"
 # Grace window during which a transient `success` + "Review skipped: free tier
 # disabled" placeholder is held as cr_wait rather than rate_limited. See
 # references/pre-flight-rules.md. Mirrors poll-cr-status.sh CR_SKIP_GRACE.

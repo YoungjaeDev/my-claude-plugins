@@ -12,6 +12,8 @@
 //   5. frontmatter not starting at byte 0      → no runtime finds it; the skill never triggers
 //   6. `name` != skill directory name          → the skill's command identity and its
 //                                                on-disk identity stop matching
+//   8. `$<digit>` in the file                  → Claude Code replaces it with a skill
+//                                                argument, code fences included
 //
 // Plus one repo-wide scan (section 7): a `<plugin>:<skill>` or `/<plugin>:<skill>`
 // reference in any live tracked file must name a skill, command, or agent that exists,
@@ -282,6 +284,19 @@ export function checkSkillContent(rel, content) {
     }
   }
 
+  // 8. `$<digit>` anywhere in the file. Claude Code replaces `$N` with the N-th skill
+  // argument before the agent reads the body, code fences included: awk's `$0` in a
+  // resolver became the PR number on `/dev:review-loop 312`. Codex does no such
+  // substitution, so the Claude-only escape `\$0` would leave a stray backslash there.
+  // No escape works for both: `\$1` reaches Codex with its backslash and `\\$1` still
+  // expands on Claude Code. Spell the token so neither runtime touches it: awk `$(0)`,
+  // shell `"$@"` or a named variable, prose in words ("the first argument").
+  content.split('\n').forEach((t, i) => {
+    const m = t.match(/\$[0-9]/);
+    if (!m) return;
+    add(i + 1, `\`${m[0]}\` is replaced by a skill argument on Claude Code (and left as-is on Codex), and no backslash escape reads the same on both — rewrite it: awk \`$(0)\`, shell \`"$@"\` or a named variable, prose in words`);
+  });
+
   return errors;
 }
 
@@ -527,6 +542,21 @@ const RED = [
     content: '---\nname: unclosed\ndescription: A skill.\n----\n\nbody\n',
   },
   {
+    check: '8 awk $0 in a fenced block becomes the first skill argument',
+    expect: /replaced by a skill argument/,
+    content: "---\nname: argsub\ndescription: A skill.\n---\n\n```bash\nls | awk '{print $NF \"\\t\" $0}'\n```\n",
+  },
+  {
+    check: '8b a doubled backslash does not escape the placeholder',
+    expect: /replaced by a skill argument/,
+    content: '---\nname: argsub2\ndescription: A skill.\n---\n\nPay \\\\$1 today.\n',
+  },
+  {
+    check: '8c a single backslash escape leaves the backslash on Codex',
+    expect: /replaced by a skill argument/,
+    content: '---\nname: argsub3\ndescription: A skill.\n---\n\nPass the ticket as \\$1.\n',
+  },
+  {
     check: '6 name does not match the skill directory',
     expect: /does not match the skill directory/,
     rel: 'plugins/demo/skills/foo/SKILL.md',
@@ -616,6 +646,6 @@ if (isMain) {
       }
       process.exit(1);
     }
-    console.log(`skill-contract OK — ${scanned} skills scanned, 6 silent-failure checks + stale-ref scan, selftest ${RED.length} RED + 1 GREEN + ${REF_CASES.length} ref cases.`);
+    console.log(`skill-contract OK — ${scanned} skills scanned, 7 silent-failure checks + stale-ref scan, selftest ${RED.length} RED + 1 GREEN + ${REF_CASES.length} ref cases.`);
   }
 }

@@ -29,7 +29,8 @@ SKILL="$(mktemp "${TMPDIR:-/tmp}/council-skill-combined-XXXXXX")"
 cat "$HERE/../SKILL.md" "$HERE/../references/"*.md > "$SKILL"
 pass=0; fail=0
 
-ok()  { pass=$((pass+1)); printf '  ok   %s\n' "$1"; }
+# Passing cases print only with VERBOSE=1: the pre-commit hook and agents read this output.
+ok()  { pass=$((pass+1)); [ "${VERBOSE:-0}" = 1 ] && printf '  ok   %s\n' "$1"; return 0; }
 bad() { fail=$((fail+1)); printf '  FAIL %s\n     expected: %s\n     actual:   %s\n' "$1" "$2" "$3"; }
 is()  { [ "$2" = "$3" ] && ok "$1" || bad "$1" "$3" "$2"; }
 has() { grep -qF -- "$2" "$SKILL" && ok "$1" || bad "$1" "present: $2" "absent"; }

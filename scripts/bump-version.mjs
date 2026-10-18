@@ -106,9 +106,10 @@ function check(root, base, env = process.env) {
     const baseVer = show(`${base}:${manifest(name)}`)?.version;
     const plugin = show(`:${manifest(name)}`);
     const entry = market?.plugins?.find((p) => p.name === name)?.version;
-    // plugin.json and its marketplace entry carry one version, an added plugin's too.
-    if (plugin && plugin.version !== entry) {
-      failures.push(`${manifest(name)} is ${plugin.version} but ${MARKET} (${name}) is ${entry || 'missing'}: give both the same version`);
+    // plugin.json and its marketplace entry carry one version, an added plugin's too; a
+    // removed plugin takes its entry with it.
+    if (plugin?.version !== entry) {
+      failures.push(`${manifest(name)} is ${plugin?.version || 'missing'} but ${MARKET} (${name}) is ${entry || 'missing'}: give both the same version, or remove both`);
     }
     // Added or removed on this branch: no version pair to compare, but the release
     // counter (metadata.version) still has to move.
@@ -286,6 +287,8 @@ function checkSelftest(env) {
     json('.claude-plugin/marketplace.json', { ...m, metadata: { version: '1.3.0' }, plugins: [...m.plugins, { name: 'c', version: '0.1.0' }] });
     git('add', '-A');
     expect('a plugin new on the branch, metadata moved', null);
+    rmSync(join(dir, 'plugins/b'), { recursive: true, force: true }); git('add', '-A');
+    expect('a plugin removed, its marketplace entry kept', /plugin\.json is missing but/);
     let threw = false;
     try { check(dir, 'no-such-ref', env); } catch { threw = true; }
     if (!threw) failures.push('check: an unreadable base did not fail');

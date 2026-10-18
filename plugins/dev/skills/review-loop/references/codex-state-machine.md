@@ -15,6 +15,7 @@ Two related state caches live alongside the iteration loop: `codex_active` (per-
 
 - **First iter (Step 6)**: always probe `/pulls/{pr}/reviews` filtered by `chatgpt-codex-connector` (REST reports it as `chatgpt-codex-connector[bot]`, GraphQL strips the suffix). Sets `disabled` (if `--no-codex`), `active` (count > 0), or `inactive` (count == 0).
 - **Subsequent iters (Step 6)**: re-probe only if cache is `inactive`. `active` and `disabled` never flip back. This catches the common case where a PR opens just before its first Codex review arrives — without the mid-run re-probe the run would skip Codex output entirely.
+- **Step 6b entry**: `inactive` is probed once more after the CR poll, since Step 6 ran before it. Then the value holds for the rest of the iteration.
 - **Mid-iter constancy**: `codex_active` is cached within an iteration so Step 6b grace polling and Step 8b inline-fetch both see a fixed value. Within a single iteration the resolution is fixed.
 - **Probe error handling**: if `gh api` fails, the `inactive` decision is non-sticky (treats failure as "unknown, retry next iter"). The earlier bug pattern was `gh api ... | wc -l` returning 0 on failure, silently locking `codex_active` to `inactive` — fixed by separating the gh call from the count.
 
@@ -72,6 +73,11 @@ Only `clean` is a pass. `unknown` is never clean: callers fall back to review-id
 ## Review-id discovery and the grace cap (Step 6b)
 
 ```bash
+# Step 6 probed before the CR poll; a PR that opened minutes ago can have its first
+# Codex review by now (PR #334: inactive at 292 s, active after the poll). Probe again.
+if [ "$codex_active" = "inactive" ]; then
+  [ "$(bash "$SKILL_DIR/scripts/probe-codex-engagement.sh" "$OWNER" "$REPO" "$PR_NUM")" = active ] && codex_active=active
+fi
 if [ "$codex_active" = "active" ] && [ -z "$codex_review_id_to_process" ]; then
   PROCESSED=$(jq -c '.codex_processed_reviews // []' "$STATE_FILE")
   # jq -sr, not -s: without -r an empty result prints the two-char string '""',

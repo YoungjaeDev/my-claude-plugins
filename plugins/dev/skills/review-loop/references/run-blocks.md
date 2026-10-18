@@ -164,6 +164,7 @@ jq -n --arg sha "$START_SHA" --argjson prior "$PRIOR_PROCESSED" --argjson crprio
   > "$STATE_FILE"
 
 TRACK_FILE="/tmp/review-loop-${PR_NUM}-modified.list"; : > "$TRACK_FILE"
+DIRTY_BASE="/tmp/review-loop-${PR_NUM}-dirty-base.list"  # Step 5 rewrites it every iteration
 ```
 
 ## Step 2: final-JSON trap
@@ -219,6 +220,11 @@ Opens the per-iteration loop. Steps 5a to 13 run inside it; the Step 13 block cl
 
 ```bash
 for ITER in $(seq 1 $MAX_ITER); do
+  # Merged or closed outside the run (PR #308): nothing left to review or push to. The
+  # last iteration pushed its fixes, so none are waiting. An unreadable state goes on.
+  case "$(gh pr view "$PR_NUM" --json state --jq '.state' 2>/dev/null)" in
+    MERGED|CLOSED) final_state=merged_externally; break ;;
+  esac
   # Step 5a, before CUR_SHA is taken.
   if [ "$(gh pr view "$PR_NUM" --json mergeable --jq '.mergeable')" = CONFLICTING ]; then
     # references/merge-conflicts.md: merge origin/$BASE, resolve, re-check, commit, push.
@@ -226,6 +232,12 @@ for ITER in $(seq 1 $MAX_ITER); do
     continue  # the merge commit is this iteration's one commit
   fi
   CUR_SHA=$(git rev-parse HEAD)
+  # Per iteration: kept, the next Step 6b skips discovery and Step 8b fetches this
+  # iteration's Codex review again. Pre-flight below may set it for this HEAD.
+  codex_review_id_to_process=""
+  # What is dirty before any fix: Step 10 commits the other files a fix changed (its
+  # test, a fixture) with it, and leaves these alone.
+  { git diff HEAD --name-only -z; git ls-files --others --exclude-standard -z; } > "$DIRTY_BASE"
   pushed_this_cycle=false
   applied_this_cycle=0; deferred_this_cycle=0; high_sev_this_cycle=0
   churn_this_cycle=0; judged_this_cycle=0; review_this_cycle=0
@@ -395,7 +407,13 @@ cr_records=$cli_records
 ## Step 9a: classify
 
 ```bash
-all=$(printf '%s\n%s\n' "$cr_records" "$codex_records" | jq -c -s 'add')
+# A thread judged earlier in this run stays unresolved (deferred, skipped, or applied
+# and not re-reviewed yet) and is fetched again: judged twice, its defer counts twice,
+# minor_floor never fires and the follow-up issue lists it twice. Drop it by the
+# comment id its auto_judge_log record carries.
+judged_ids=$(jq -c '[.auto_judge_log[]?.comment_id // empty]' "$STATE_FILE") || { final_state=failure; break; }
+all=$(printf '%s\n%s\n' "$cr_records" "$codex_records" | jq -c -s --argjson j "$judged_ids" \
+  'add | [.[] | select((.databaseId // .comment_id // null) as $id | $id == null or ($j | index($id) | not))]')
 classified=$(echo "$all" | jq -c '.[]' \
   | while IFS= read -r rec; do printf '%s\n' "$rec" | SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
   | jq -s '.')
@@ -417,8 +435,11 @@ bash $SKILL_DIR/scripts/path-trust.sh "$REPO_ROOT" "$path" || {
   auto_judge_skip=$((auto_judge_skip+1))
   # The log entry is part of the gate, not an afterthought: a skip with no record
   # breaks the Verification invariant that auto_judge_stats matches the log.
-  tmp=$(mktemp); jq --arg p "$path" --argjson i "$ITER" \
-    '.auto_judge_log += [{iter:$i, src:"cr", path:$p, action:"skip", reason:"untrusted-path"}]' \
+  # comment_id: the record's databaseId (CR thread) or comment_id (Codex), so Step 9a
+  # does not judge it again this run.
+  tmp=$(mktemp); jq --arg p "$path" --argjson i "$ITER" --arg cid "${comment_id:-}" \
+    '.auto_judge_log += [{iter:$i, src:"cr", path:$p, action:"skip", reason:"untrusted-path",
+       comment_id:($cid | tonumber? // null)}]' \
     "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
   continue
 }
@@ -462,7 +483,8 @@ jq -r '[.[].review_id // empty] | unique | .[]' <<<"$cr_records" \
 ```bash
 # A failed commit (a hook refused it) leaves the fixes staged and HEAD unchanged: stop
 # here, before Step 12 marks a push or clears the track file.
-res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER") || { final_state=failure; break; }
+# DIRTY_BASE (Step 5): the other files a fix changed go in with it, the user's do not.
+res=$(bash $SKILL_DIR/scripts/stage-and-commit.sh "$TRACK_FILE" "$ITER" "$DIRTY_BASE") || { final_state=failure; break; }
 # noop: every fix this cycle was reverted or nothing was applied -> no commit, so
 # Step 11 is skipped and the Step 12 block pushes nothing.
 ```
@@ -481,6 +503,13 @@ if [ "$res" != noop ]; then
   if [ "$next_action" = merge_then_main_push ]; then
     REVIEWED_SHA="$CUR_SHA"  # Step 13 stops; the fixes stay on the local commit until Step 15
   else
+    # Merged or closed while this cycle judged (PR #308): the fixes stay on the local
+    # commit, which the final report names. Step 15 pushes nothing either.
+    case "$(gh pr view "$PR_NUM" --json state --jq '.state' 2>/dev/null)" in
+      MERGED|CLOSED)
+        echo "review-loop: PR #$PR_NUM was merged or closed during iter $ITER; its fixes stay on local commit $(git rev-parse HEAD)" >&2
+        final_state=merged_externally; break ;;
+    esac
     # A rejected push leaves the loop (references/failure-modes.md); nothing below may
     # run for a head the PR never received.
     git push 2>&1 || { final_state=failure; break; }
@@ -554,8 +583,10 @@ fi
 case "$final_state" in
   clean|minor_floor|churn)
     # Bash(run_in_background=true, timeout=(TIMEOUT+60)*1000) + Monitor: one JSON line.
+    # With fixes held for the base (Step 12), HEAD is a local commit GitHub never saw:
+    # the PR's head is REVIEWED_SHA.
     ci=$(CAP="$TIMEOUT" INTERVAL="$INTERVAL" \
-         PUSH_TIME="$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "$(git rev-parse HEAD)")" \
+         PUSH_TIME="$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "${REVIEWED_SHA:-$(git rev-parse HEAD)}")" \
          bash "$SKILL_DIR/scripts/ci-checks.sh" "$PR_NUM")
     case "$(jq -r '.state' <<<"$ci" 2>/dev/null | tr -d '\r')" in
       fail) final_state=ci_failing; ci_failing_checks=$(jq -c '.failing' <<<"$ci") ;;
@@ -595,6 +626,13 @@ blocking=$(jq -r '.blocking_checks' <<<"$gate")
 proto=$(jq -r '.protection_http' <<<"$gate")
 base=$(jq -r '.base_branch' <<<"$gate")
 ci_state=$(jq -r '.ci_state' <<<"$gate" | tr -d '\r')
+# Merged or closed outside the run while it waited (PR #308): nothing to merge. Held
+# Minor fixes still reach an unprotected base after a merge (the Step 15 merge block).
+pr_state=$(gh pr view "$PR_NUM" --json state --jq '.state' 2>/dev/null) || pr_state=""
+case "$pr_state" in
+  MERGED) final_state=merged_externally; merged=true ;;
+  CLOSED) final_state=merged_externally ;;
+esac
 # A check that failed after Step 14 looked ends the run where Step 14 would have (#336).
 if [ "$ci_state" = fail ]; then
   case "$final_state" in
@@ -602,7 +640,8 @@ if [ "$ci_state" = fail ]; then
   esac
 fi
 why=""
-if [ "$verification_blocking" = true ]; then why="a merge-conflict resolution broke the checks"
+if [ "$final_state" = merged_externally ]; then why="PR #$PR_NUM was ${pr_state:-merged or closed} outside the run"
+elif [ "$verification_blocking" = true ]; then why="a merge-conflict resolution broke the checks"
 elif [ "$eligible" != "true" ]; then why=$(jq -r '.ineligible_reason' <<<"$gate")
 # Allow-list. A push this cycle leaves CR pending and `--auto` waits for it, so `pending`
 # qualifies — but `none` / `unknown` mean CR was never observed on this SHA, which must
@@ -643,8 +682,16 @@ Runs right after the gate block. The main session also runs it on its own, after
 
 ```bash
 if [ -z "$why" ]; then
-  if [ "$proto" = 200 ]; then gh pr merge "$PR_NUM" --auto --squash --delete-branch && merged=true
-  else gh pr merge "$PR_NUM" --squash --delete-branch && merged=true; fi
+  mflag=""; [ "$proto" != 200 ] || mflag=--auto
+  # The exit code is not the merge: gh merges, then fails to delete a local branch
+  # another worktree has checked out (PR #334). The PR says: merged, or (protected
+  # base) auto-merge armed.
+  gh pr merge "$PR_NUM" ${mflag:+"$mflag"} --squash --delete-branch \
+    || echo "review-loop: gh pr merge exited non-zero; reading the PR state" >&2
+  if [ "$(gh pr view "$PR_NUM" --json state,autoMergeRequest \
+          --jq 'if .state == "MERGED" or .autoMergeRequest != null then "yes" else "no" end' 2>/dev/null)" = yes ]; then
+    merged=true
+  fi
 fi
 # Minor fixes Step 12 held back (merge_then_main_push): onto the base once the merge
 # has landed (scripts/base-push.sh: build/test and pre-commit there first), else back
@@ -661,6 +708,8 @@ elif [ -n "$REVIEWED_SHA" ]; then
     else
       echo "review-loop: Minor fixes not pushed to $base; they are on local commit $FIX_SHA" >&2
     fi
+  elif [ "${final_state:-}" = merged_externally ]; then
+    echo "review-loop: PR #$PR_NUM was merged or closed outside the run; Minor fixes stay on local commit $FIX_SHA" >&2
   elif [ "${merged:-false}" = true ]; then
     echo "review-loop: the merge waits on base protection; Minor fixes stay on local commit $FIX_SHA" >&2
   elif git push 2>&1; then

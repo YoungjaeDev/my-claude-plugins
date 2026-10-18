@@ -2111,8 +2111,10 @@ is "held minor_floor, budget spent -> minor_floor, HEAD unverified" \
 is "Codex Failed while waiting -> codex_failed, no push" "$(verdict_gate codex_failed minor_floor)" "codex_failed::0"
 
 # Step 9a: a held stop resolves on the new HEAD's findings. Real classify-item.sh.
+# Step 9a drops the threads this run already judged (auto_judge_log comment ids).
+EMPTY_SF=$(mktemp); echo '{"auto_judge_log":[]}' > "$EMPTY_SF"
 hold_round() { # CR_RECORD_JSON -> final_state:HOLD_STATE:round
-  REC=$1 SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 9a: classify")" bash -c '
+  REC=$1 STATE_FILE="$EMPTY_SF" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 9a: classify")" bash -c '
     cr_records="[$REC]" codex_records="[]" ITER=3 SKIP_MINOR=false HOLD_STATE=minor_floor final_state="" round=""
     eval "for i in 1; do $BLOCK
       round=yes; done"
@@ -2131,14 +2133,14 @@ is "held stop, nothing fetched -> ends as held" \
 # finding must reach the classifier, not end at 8c. gh fails: 8c may not look.
 H8=$(mktemp -d); printf '#!/usr/bin/env bash\nexit 1\n' > "$H8/gh"; chmod +x "$H8/gh"
 is "held stop, gated finding fetched -> 8c hands it to 9a, one more round" \
-   "$(REC=$major PATH="$H8:$PATH" SKILL_DIR="$HERE/.." B8="$(rb_block "Step 8c: engagement gate")" \
+   "$(REC=$major PATH="$H8:$PATH" STATE_FILE="$EMPTY_SF" SKILL_DIR="$HERE/.." B8="$(rb_block "Step 8c: engagement gate")" \
       B9="$(rb_block "Step 9a: classify")" bash -c '
       cr_records="[$REC]" codex_records="[]" ITER=3 SKIP_MINOR=false HOLD_STATE=minor_floor final_state="" round=""
       eval "for i in 1; do $B8
       $B9
       round=yes; done"
       printf "%s:%s:%s" "$final_state" "$HOLD_STATE" "$round"' 2>/dev/null)" "::yes"
-rm -rf "$H8"
+rm -rf "$H8" "$EMPTY_SF"
 
 # Step 9c.6: a check that dies before printing (its revert failed under set -e) is not
 # a pass. Only `pass` keeps the apply; anything else turns it into a defer.
@@ -2207,7 +2209,9 @@ is "Step 15: unreadable checks -> says so, not merged" "$(cr_gate true)" "CI che
 printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$GATE_JSON"\n' > "$G15/scripts/auto-merge-gate.sh"
 printf '#!/usr/bin/env bash\necho "base-push $*" >> "%s/calls"; echo pu5h\n' "$G15" > "$G15/scripts/base-push.sh"
 mkdir -p "$G15/bin"
-printf '#!/usr/bin/env bash\necho "gh $*" >> "%s/calls"\n' "$G15" > "$G15/bin/gh"
+# PR reads answer "open" and "merged or auto-merge armed" (the merge is read from the PR,
+# not gh pr merge's exit code); every other call is logged.
+printf '#!/usr/bin/env bash\ncase "$*" in\n  "pr view"*autoMergeRequest*) echo yes ;;\n  "pr view"*) echo OPEN ;;\n  *) echo "gh $*" >> "%s/calls" ;;\nesac\n' "$G15" > "$G15/bin/gh"
 printf '#!/usr/bin/env bash\ncase "$1" in rev-parse) echo f1x ;; *) echo "git $*" >> "%s/calls" ;; esac\n' "$G15" > "$G15/bin/git"
 chmod +x "$G15/bin/gh" "$G15/bin/git"
 s15() { # GATE_JSON -> final_state|ci_failing_checks|merged|calls ; env FS AM ANS RS DR RUNNER
@@ -2292,6 +2296,8 @@ rm -rf "$FM"
 
 # Step 12: a noop Step 10 (every fix reverted, or none applied) pushes nothing.
 P12=$(mktemp -d); printf '#!/usr/bin/env bash\necho "$*" >> "%s/calls"\n' "$P12" > "$P12/git"; chmod +x "$P12/git"
+# The PR is still open (the merged-meanwhile case is under "retro #339"); no network.
+printf '#!/usr/bin/env bash\necho OPEN\n' > "$P12/gh"; chmod +x "$P12/gh"
 # The gate (stubbed: prints NEXT) decides who reviews the fixes; it is asked about this iteration's.
 mkdir -p "$P12/gate/scripts"
 printf '#!/usr/bin/env bash\necho "FIX_ITER=$FIX_ITER sha=$4" > "%s/gate.args"\n[ "$NEXT" = broken ] && exit 1\necho "{\\"next_action\\":\\"$NEXT\\"}"\n' "$P12" \
@@ -2420,8 +2426,13 @@ esac
 SH
 cp "$FIX/issue-comments-codex-summary-completed.json" "$AW/comments.json"
 echo '{"cr_source":"auto"}' > "$AW/state.json"
-aw_t0=$SECONDS
-aw=$(cd "$HERE" && AWD="$AW" FIX="$FIX" PATH="$AW:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 2: request_cr_review")" bash -c '
+# The waits' naps are logged and then really taken (the poller's clock is its own
+# SECONDS): their sum is what the wait asked for, which load cannot stretch the way
+# it stretched the elapsed time this case once measured (8-12 s against 7, #339).
+mkdir -p "$AW/nap"; : > "$AW/naps"
+printf '#!/usr/bin/env bash\necho "$1" >> "%s/naps"\nexec %s "$1"\n' "$AW" "$(command -v sleep)" > "$AW/nap/sleep"
+chmod +x "$AW/nap/sleep"
+aw=$(cd "$HERE" && AWD="$AW" FIX="$FIX" PATH="$AW/nap:$AW:$PATH" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 2: request_cr_review")" bash -c '
   OWNER=o REPO=r PR_NUM=42 CR_SOURCE=auto CR_REVIEW_REQUEST=skip NO_CODEX=false codex_active=unknown
   TIMEOUT=10 INTERVAL=1 CODEX_GRACE=0 STATE_FILE="$AWD/state.json" dropped_reviewers=""
   git() { echo 95ab2f621c9add07df26af3770418786a29a62bb; }
@@ -2435,7 +2446,11 @@ aw=$(cd "$HERE" && AWD="$AW" FIX="$FIX" PATH="$AW:$PATH" SKILL_DIR="$HERE/.." BL
   printf "%s:%s:%s:%s:%s" "$hv_state" "${requests# }" "$dropped_reviewers" "$CR_SOURCE" "$(jq -r .cr_source "$AWD/state.json")"' 2>/dev/null)
 is "stuck CodeRabbit -> one nudge, then dropped and listed" "$aw" "ready:stuck:coderabbit:codex-only:codex-only"
 # The nudge waits only in what is left of the cap (push + TIMEOUT), not TIMEOUT again.
-is "stuck CodeRabbit -> the whole wait stays inside one TIMEOUT" "$([ $((SECONDS - aw_t0)) -le 7 ] && echo yes || echo "no ($((SECONDS - aw_t0)) s)")" yes
+# Push 6 s ago, TIMEOUT 10: about 4 s are left, and a nudge that restarted TIMEOUT
+# would ask for 10 more.
+aw_naps=$(awk '{s += $1} END {print s + 0}' "$AW/naps")
+is "stuck CodeRabbit -> the whole wait stays inside one TIMEOUT" \
+   "$(awk -v s="$aw_naps" 'BEGIN {print (s <= 6) ? "yes" : "no (" s " s of naps)"}')" yes
 # Codex past its budget is dropped the way Step 2b drops it: no Codex wait or fetch after.
 mkdir -p "$AW/skill/scripts"
 printf '#!/usr/bin/env bash\necho 2026-10-06T10:00:00Z\n' > "$AW/skill/scripts/push-time.sh"
@@ -2837,6 +2852,184 @@ echo '{"final_state":"clean"}' > "$LF/new/.claude/state/cr-fix-42.json"
 is "review-loop-<PR>.json wins over the old prefix"   "$(lr_primary "$LF/new")" "1:timeout"
 is "no state file -> none"                           "$(lr_primary "$LF")" "0:"
 rm -rf "$LF"
+
+echo
+echo "retro #339: per-iteration state, external merges, the commit and the base push"
+# Each case is a defect a live run hit (PR #308, #334). Blocks run as written.
+R9=$(mktemp -d); mkdir -p "$R9/skill/scripts" "$R9/bin"
+(cd "$R9" && git init -q repo && cd repo && git config user.email t@t && git config user.name t \
+  && echo a > a.sh && echo t > t.sh && echo w > wip.txt && git add -A && git commit -qm base) >/dev/null 2>&1
+printf '#!/usr/bin/env bash\necho "$3" >> "%s/push-time.args"; echo 2026-10-06T10:00:00Z\n' "$R9" > "$R9/skill/scripts/push-time.sh"
+printf '#!/usr/bin/env bash\necho active\n' > "$R9/skill/scripts/probe-codex-engagement.sh"
+# gh: PR_STATE answers `pr view --json state`, MERGE_RC is `pr merge`'s exit, PRV_MERGED
+# answers the merged-or-armed read; writes are logged, reads are not.
+cat > "$R9/bin/gh" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  "pr view"*autoMergeRequest*) echo "\${PRV_MERGED:-yes}" ;;
+  "pr view"*"--json mergeable"*) echo MERGEABLE ;;
+  "pr view"*"--json state"*) echo "\${PR_STATE:-OPEN}" ;;
+  "pr merge"*) echo "gh \$*" >> "$R9/calls"; exit "\${MERGE_RC:-0}" ;;
+  "api --paginate repos/o/r/pulls/42/reviews") echo '[{"id":5558727164,"user":{"login":"chatgpt-codex-connector[bot]"},"state":"COMMENTED","submitted_at":"2026-10-17T16:20:00Z"}]' ;;
+  *) echo "gh \$*" >> "$R9/calls" ;;
+esac
+SH
+chmod +x "$R9/bin/gh"
+
+# Item 2: the Codex review id is per iteration. Kept, iter 2's Step 6b skips discovery
+# and Step 8b fetches iter 1's review again. Item 10: a PR merged or closed outside the
+# run ends it at the top of the iteration. Item 8: the loop head records what was
+# already dirty, so the commit can tell a fix's extra files from the user's.
+loop5() { # PR_STATE -> final_state:codex_review_id_to_process:round
+  (cd "$R9/repo" && PR_STATE=$1 PATH="$R9/bin:$PATH" SKILL_DIR="$R9/skill" BLOCK="$(rb_block "Step 5: loop head and pre-flight")" bash -c '
+    OWNER=o REPO=r PR_NUM=42 MAX_ITER=1 CR_SOURCE=codex-only codex_review_id_to_process=5558727164
+    final_state="" round="" DIRTY_BASE="$DB"
+    eval "$BLOCK
+      round=yes; done"
+    printf "%s:%s:%s" "$final_state" "$codex_review_id_to_process" "$round"' 2>/dev/null)
+}
+echo changed > "$R9/repo/wip.txt"
+export DB="$R9/dirty.base"
+is "Step 5: a new iteration starts without the last one's Codex review id" "$(loop5 OPEN)" "::yes"
+is "Step 5: the loop head records the files already dirty" "$(tr '\0' ' ' < "$DB")" "wip.txt "
+is "Step 5: PR merged outside the run -> merged_externally, no round" "$(loop5 MERGED)" "merged_externally:5558727164:"
+is "Step 5: PR closed outside the run -> merged_externally, no round" "$(loop5 CLOSED)" "merged_externally:5558727164:"
+unset DB
+
+# Item 3: a thread this run already judged stays unresolved (deferred, skipped, or
+# applied and not yet re-reviewed) and comes back every iteration. Judged again, its
+# defer is counted twice, blocks minor_floor and lands twice in the follow-up issue.
+echo '{"auto_judge_log":[{"iter":1,"src":"cr","path":"a.sh","line":3,"action":"defer","comment_id":4303464262}]}' > "$R9/state.json"
+old_major='{"source":"cr","path":"a.sh","line":3,"databaseId":4303464262,"category_emoji":"🎯 Functional Correctness","severity_emoji":"🟠 Major","effort_emoji":"⚡ Quick win"}'
+new_minor='{"source":"cr","path":"a.sh","line":9,"databaseId":4303469999,"category_emoji":"🎯 Functional Correctness","severity_emoji":"🟡 Minor","effort_emoji":"⚡ Quick win"}'
+judged() { # HOLD_STATE RECORDS -> final_state:classified databaseIds
+  HS=$1 RECS=$2 STATE_FILE="$R9/state.json" SKILL_DIR="$HERE/.." BLOCK="$(rb_block "Step 9a: classify")" bash -c '
+    cr_records="$RECS" codex_records="[]" ITER=2 SKIP_MINOR=false HOLD_STATE=$HS final_state="" classified="[]"
+    eval "for i in 1; do $BLOCK
+    done"; printf "%s:%s" "$final_state" "$(jq -c "[.[].databaseId]" <<<"$classified")"' 2>/dev/null
+}
+is "Step 9a: a thread judged earlier this run is not judged again" "$(judged "" "[$old_major,$new_minor]")" ":[4303469999]"
+is "Step 9a: held stop, only an already-judged Major back -> ends as held" "$(judged minor_floor "[$old_major]")" "minor_floor:[]"
+is "log shape: the comment id is a state schema field" \
+   "$(jq -r '.properties.auto_judge_log.items.properties | has("comment_id")' "$HERE/../assets/state.schema.json")" true
+
+# Item 4: Step 6 probed Codex before the CR poll (PR #334: 292 s after the PR opened,
+# no Codex review yet) and stayed inactive, so Step 6b and 8b skipped 4 findings.
+SMB=$(awk '/^## Review-id discovery and the grace cap \(Step 6b\)/ {f=1; next} f && /^## / {exit}
+  f && /^```bash$/ {c=1; next} c && /^```$/ {c=0; next} c {print}' "$HERE/../references/codex-state-machine.md")
+echo '{"codex_processed_reviews":[]}' > "$R9/state6b.json"
+is "Step 6b: inactive at entry is probed again, and the review is found" \
+   "$(PATH="$R9/bin:$PATH" SKILL_DIR="$R9/skill" STATE_FILE="$R9/state6b.json" BLOCK="$SMB" bash -c '
+      OWNER=o REPO=r PR_NUM=42 codex_active=inactive codex_review_id_to_process="" CODEX_GRACE=0 gate=cr_wait
+      eval "$BLOCK"; printf "%s:%s" "$codex_active" "$codex_review_id_to_process"' 2>/dev/null)" "active:5558727164"
+
+# Item 10 at the push: the loop must not push a cycle's fixes onto a PR that merged
+# while it judged them (PR #308: merged 11:41, pushed 11:46).
+mkdir -p "$R9/gate/scripts"
+printf '#!/usr/bin/env bash\necho "{\\"next_action\\":\\"${NEXT:-rereview_push}\\"}"\n' > "$R9/gate/scripts/auto-merge-gate.sh"
+printf '#!/usr/bin/env bash\necho "git $*" >> "%s/calls"\n' "$R9" > "$R9/bin/git"; chmod +x "$R9/bin/git"
+push12() { # PR_STATE -> final_state:pushed_this_cycle:pushes
+  : > "$R9/calls"
+  PR_STATE=$1 PATH="$R9/bin:$PATH" SKILL_DIR="$R9/gate" BLOCK="$(rb_block "Step 12: push")" bash -c '
+    request_cr_review() { :; }
+    res=staged:1 pushed_this_cycle=false TRACK_FILE=/dev/null final_state="" ITER=2 CUR_SHA=r3v REVIEWED_SHA="" PR_NUM=42
+    eval "for i in 1; do $BLOCK
+    done"; printf "%s:%s:%s" "$final_state" "$pushed_this_cycle" "$(grep -c "git push" "$CALLS")"' 2>/dev/null
+}
+export CALLS="$R9/calls"
+is "Step 12: PR still open -> pushed"                       "$(push12 OPEN)" ":true:1"
+is "Step 12: PR merged meanwhile -> merged_externally, no push" "$(push12 MERGED)" "merged_externally:false:0"
+is "Step 12: PR closed meanwhile -> merged_externally, no push" "$(push12 CLOSED)" "merged_externally:false:0"
+rm -f "$R9/bin/git"
+
+# Item 5: gh pr merge's exit code is not the merge. With the branch checked out in
+# another worktree gh merges, cannot delete the local branch, and fails; read as
+# "not merged", the held fixes were pushed to a merged PR. Item 10 at Step 15: a PR
+# merged outside the run sends its held Minor fixes to an unprotected base; a closed
+# one keeps them on the local commit.
+printf '#!/usr/bin/env bash\necho "{\\"eligible\\":${ELIG:-true},\\"ineligible_reason\\":\\"x\\",\\"cr_state\\":\\"success\\",\\"blocking_checks\\":0,\\"ci_state\\":\\"pass\\",\\"failing_checks\\":[],\\"protection_http\\":${PROTO:-404},\\"base_branch\\":\\"main\\"}"\n' \
+  > "$R9/gate/scripts/auto-merge-gate.sh"
+printf '#!/usr/bin/env bash\necho "base-push $*" >> "%s/calls"; echo pu5h\n' "$R9" > "$R9/gate/scripts/base-push.sh"
+cp "$SCRIPTS/words-json.sh" "$R9/gate/scripts/"
+printf '#!/usr/bin/env bash\ncase "$1" in rev-parse) echo f1x ;; *) echo "git $*" >> "%s/calls" ;; esac\n' "$R9" > "$R9/bin/git"; chmod +x "$R9/bin/git"
+s15x() { # FINAL_STATE -> final_state|merged|calls ; env PR_STATE MERGE_RC PRV_MERGED PROTO ELIG
+  : > "$R9/calls"; echo '{"auto_judge_log":[]}' > "$R9/state15.json"
+  FS=$1 PATH="$R9/bin:$PATH" SKILL_DIR="$R9/gate" STATE_FILE="$R9/state15.json" \
+    BLOCK="$(rb_block "Step 15: auto-merge gate")
+$(rb_block "Step 15: merge")" bash -c '
+    reviewers_on() { cr_on=true; codex_on=auto; }
+    final_state=$FS deferred_total=0 review_total=0 OWNER=o REPO=r PR_NUM=1 ITER=1 merged=false
+    AUTO_MERGE=false MERGE_ANSWER=yes REVIEWED_SHA=r3v VERIFY_CMD=true verification_blocking=false
+    dropped_reviewers="" pending_decision=""
+    eval "$BLOCK"
+    printf "%s|%s|%s" "$final_state" "$merged" "$(tr "\n" ";" < "$CALLS")"' 2>/dev/null
+}
+is "Step 15: merge lands but gh exits 1 -> merged, held fixes to the base" \
+   "$(MERGE_RC=1 s15x minor_floor)" 'minor_floor|true|gh pr merge 1 --squash --delete-branch;base-push main r3v f1x true;'
+is "Step 15: gh exits 0 but the PR is not merged -> not merged, fixes to the PR" \
+   "$(PRV_MERGED=no s15x minor_floor)" 'minor_floor|false|gh pr merge 1 --squash --delete-branch;git push;'
+is "Step 15: protected base, auto-merge armed though gh exits 1 -> fixes stay local" \
+   "$(PROTO=200 MERGE_RC=1 s15x minor_floor)" 'minor_floor|true|gh pr merge 1 --auto --squash --delete-branch;'
+is "Step 15: PR merged outside the run -> merged_externally, held fixes to the base, no merge call" \
+   "$(PR_STATE=MERGED s15x minor_floor)" 'merged_externally|true|base-push main r3v f1x true;'
+is "Step 15: PR closed outside the run -> merged_externally, fixes stay local" \
+   "$(PR_STATE=CLOSED s15x minor_floor)" 'merged_externally|false|'
+is "Step 15: merged_externally from Step 12, closed -> nothing pushed" \
+   "$(PR_STATE=CLOSED ELIG=false s15x merged_externally)" 'merged_externally|false|'
+unset CALLS
+rm -f "$R9/bin/git"
+is "auto-merge gate: merged_externally is not merge-eligible" \
+   "$(FINAL_STATE=merged_externally DEFERRED_TOTAL=0 PATH="$R9/bin:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false
+is "auto-merge gate: merged_externally with a defer files the follow-up issue" \
+   "$(FINAL_STATE=merged_externally DEFERRED_TOTAL=1 PATH="$R9/bin:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.file_issue')" true
+
+# Item 11: after merge_then_main_push HEAD is a local commit GitHub never saw; the CI
+# wait's push time is the reviewed HEAD's.
+cp "$SCRIPTS/auto-merge-gate.sh" "$SCRIPTS/words-json.sh" "$R9/skill/scripts/"
+printf '#!/usr/bin/env bash\necho "{\\"state\\":\\"pass\\",\\"failing\\":[],\\"pending\\":[]}"\n' > "$R9/skill/scripts/ci-checks.sh"
+: > "$R9/push-time.args"
+(cd "$R9/repo" && PATH="$R9/bin:$PATH" SKILL_DIR="$R9/skill" \
+  BLOCK="$(rb_block "Step 14: last-push HEAD verdicts and follow-up trigger")" bash -c '
+  reviewers_on() { cr_on=true; codex_on=auto; }
+  pushed_this_cycle=false final_state=minor_floor deferred_total=0 review_total=0 HEAD_VERDICT=""
+  OWNER=o REPO=r PR_NUM=1 TIMEOUT=1800 INTERVAL=30 REVIEWED_SHA=r3v
+  eval "$BLOCK"' >/dev/null 2>&1)
+is "Step 14: CI push time read for the reviewed HEAD, not the local commit" "$(head -1 "$R9/push-time.args")" r3v
+
+# Item 8: a fix that also added its regression test committed only the finding's path
+# (PR #334 iter 1 left run-tests.sh out). Files the cycle changed beyond the track list
+# go in; files dirty before the cycle (the user's) stay out.
+printf 'wip.txt\0' > "$R9/dirty.base"
+(cd "$R9/repo" && echo fix >> a.sh && echo test >> t.sh && echo new > new_test.sh)
+TRK9=$(mktemp); printf 'a.sh\0' > "$TRK9"
+(cd "$R9/repo" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK9" 1 "$R9/dirty.base") >/dev/null 2>&1
+is "stage-and-commit: the fix's test and new file go in with it" \
+   "$(cd "$R9/repo" && git show --name-only --pretty=format: HEAD | sort | tr '\n' ' ')" "a.sh new_test.sh t.sh "
+is "stage-and-commit: a file dirty before the cycle stays out" \
+   "$(cd "$R9/repo" && git status --porcelain | tr '\n' ' ')" " M wip.txt "
+rm -f "$TRK9"
+rm -rf "$R9"
+
+# Item 9: an absolute core.hooksPath can point at another checkout's older hook; the
+# base push runs the base's own tracked guard first.
+BP=$(mktemp -d)
+(
+  git init -q --bare "$BP/remote.git" && git clone -q "$BP/remote.git" "$BP/w" && cd "$BP/w" \
+    && git config user.email t@t && git config user.name t && git checkout -q -b main \
+    && mkdir .githooks && printf '#!/bin/sh\necho tracked-guard >&2\nexit 1\n' > .githooks/pre-commit \
+    && chmod +x .githooks/pre-commit && printf 'a\n' > f && git add -A && git commit -qm base \
+    && git push -q origin main && git checkout -q -b pr && echo b >> f && git commit -qam reviewed \
+    && echo c >> f && git commit -qam "fix: minor (review-loop iter 1)" && git push -q origin pr \
+    && git checkout -q --detach origin/main && git checkout -q pr~1 -- f && git commit -qm "squash (#1)" \
+    && git push -q origin HEAD:main && git checkout -q pr
+) >/dev/null 2>&1
+mkdir -p "$BP/old-hooks"; printf '#!/bin/sh\necho old-guard >&2\nexit 0\n' > "$BP/old-hooks/pre-commit"; chmod +x "$BP/old-hooks/pre-commit"
+git -C "$BP/w" config core.hooksPath "$BP/old-hooks"
+before=$(git -C "$BP/remote.git" rev-parse main)
+err=$(cd "$BP/w" && bash "$SCRIPTS/base-push.sh" main "$(git rev-parse pr~1)" "$(git rev-parse pr)" true 2>&1 >/dev/null); rc=$?
+is "base-push: tracked guard runs before an absolute core.hooksPath" \
+   "$rc:$(grep -c tracked-guard <<<"$err"):$(grep -c old-guard <<<"$err"):$([ "$(git -C "$BP/remote.git" rev-parse main)" = "$before" ] && echo kept)" "1:1:0:kept"
+rm -rf "$BP"
 
 echo
 echo "final_state enum: one set across the schema and every doc that lists it"

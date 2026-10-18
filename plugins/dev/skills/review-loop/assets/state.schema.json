@@ -48,6 +48,7 @@
           "src":          { "type": "string", "enum": ["cr", "cli", "codex"] },
           "path":         { "type": "string" },
           "line":         { "type": ["integer", "null"] },
+          "comment_id":   { "type": ["integer", "null"], "description": "The finding's databaseId (CR thread) or comment_id (Codex); Step 9a skips a thread this run already judged." },
           "category":     { "type": "string", "description": "CR/CLI header category as read (e.g. \"🔒 Security & Privacy\"); empty for Codex." },
           "badge_or_sev": { "type": "string", "description": "CR/CLI severity as read (e.g. \"🟡 Minor\") or the Codex badge (\"P1\")." },
           "judgment":     { "type": ["object", "null"] },

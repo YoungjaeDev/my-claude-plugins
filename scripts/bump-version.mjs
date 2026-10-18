@@ -105,10 +105,14 @@ function check(root, base, env = process.env) {
   for (const name of names) {
     const baseVer = show(`${base}:${manifest(name)}`)?.version;
     const plugin = show(`:${manifest(name)}`);
+    const entry = market?.plugins?.find((p) => p.name === name)?.version;
+    // plugin.json and its marketplace entry carry one version, an added plugin's too.
+    if (plugin && plugin.version !== entry) {
+      failures.push(`${manifest(name)} is ${plugin.version} but ${MARKET} (${name}) is ${entry || 'missing'}: give both the same version`);
+    }
     // Added or removed on this branch: no version pair to compare, but the release
     // counter (metadata.version) still has to move.
     if (!baseVer || !plugin) { if (baseVer || plugin) bumped = true; continue; }
-    const entry = market?.plugins?.find((p) => p.name === name)?.version;
     for (const [where, v] of [[manifest(name), plugin.version], [`${MARKET} (${name})`, entry]]) {
       if (!v || cmp(v, baseVer) <= 0) {
         failures.push(`plugins/${name}/ changed since ${base} but ${where} is ${v || 'missing'}, not above ${base}'s ${baseVer}: run node scripts/bump-version.mjs ${name}`);
@@ -250,6 +254,11 @@ function checkSelftest(env) {
     expect('bump in the working tree only (not staged)', /plugins\/a\/ changed since main|metadata\.version/);
     git('add', '-A');
     expect('bumped above base', null);
+    const mk = readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8');
+    const drift = JSON.parse(mk); drift.plugins[0].version = '1.0.2';
+    json('.claude-plugin/marketplace.json', drift); git('add', '-A');
+    expect('both above base but not equal', /plugin\.json is 1\.0\.1 but/);
+    put('.claude-plugin/marketplace.json', mk); git('add', '-A');
     commit('feat');
     // A sibling release lands on main: b changed and bumped.
     git('checkout', '-q', 'main');
@@ -272,7 +281,7 @@ function checkSelftest(env) {
     expect('a fix straight onto base without a bump', /plugins\/b\/ changed since main|metadata\.version/);
     git('checkout', 'HEAD', '--', 'plugins/b/y.md');
     put('plugins/c/.claude-plugin/plugin.json', '{"name":"c","version":"0.1.0"}\n'); git('add', '-A');
-    expect('a plugin new on the branch, metadata not moved', /metadata\.version/);
+    expect('a plugin new on the branch, unregistered, metadata not moved', /\(c\) is missing|metadata\.version/);
     const m = JSON.parse(readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8'));
     json('.claude-plugin/marketplace.json', { ...m, metadata: { version: '1.3.0' }, plugins: [...m.plugins, { name: 'c', version: '0.1.0' }] });
     git('add', '-A');

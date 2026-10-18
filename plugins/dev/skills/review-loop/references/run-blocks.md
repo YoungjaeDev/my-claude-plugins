@@ -596,6 +596,10 @@ case "$final_state" in
       error|"") echo "review-loop: CI checks on HEAD could not be read; final_state kept" >&2 ;;
     esac ;;
 esac
+# Merged or closed during the waits above: the issue decision below must see it (Step 15 reads it again).
+case "$(gh pr view "$PR_NUM" --json state --jq '.state' 2>/dev/null)" in
+  MERGED|CLOSED) final_state=merged_externally ;;
+esac
 # One follow-up issue, only when the run left findings behind: deferred ones from any
 # cycle, or ones nobody could read (auto-merge-gate.sh `file_issue`). A HEAD without
 # every verdict and failing CI checks alone go to the final report. An unreadable

@@ -78,6 +78,7 @@ git add -A \
   && node scripts/check-shell-portability.mjs \
   && node scripts/check-shell-portability.test.mjs \
   && node scripts/check-skill-contract.mjs \
+  && node scripts/bump-version.mjs --check \
   && node scripts/bump-version.mjs --selftest \
   && node scripts/check-plugin-cache.mjs --selftest \
   && node scripts/check-korean-copy.mjs \
@@ -88,6 +89,7 @@ git add -A \
 ```
 
 - `git add -A` 가 먼저다: 가드는 git-tracked 파일만 스캔한다.
+- `bump-version.mjs --check` 는 `plugins/<name>/` 가 `origin/main` 대비 바뀌었는데 그 플러그인 버전이 `origin/main` 보다 크지 않으면 실패한다. 이 브랜치가 건드리지 않은 변경(앞서간 `origin/main`, 머지해 들인 base)은 세지 않는다. `origin/main` 이 없으면 실패하므로 먼저 `git fetch origin` 한다. review-loop 의 base 직행 push 도 base 쪽 pre-commit 으로 이 검사를 받는다.
 
 - `.githooks/pre-commit` 이 매 커밋마다 같은 가드를 돌린다. clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화한다.
 - `check-shell-portability.mjs` 는 GNU 전용 셸 구문이 폴백도 capability probe 도 없이 쓰인 경우만 잡는다. 증거는 코드여야 하고 주석은 인정하지 않는다. 예외는 `# portability-ok: <사유>` 로 표시한다. 상세는 `README.md` 의 "CI 가드가 지키는 것".

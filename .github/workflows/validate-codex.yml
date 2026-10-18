@@ -21,6 +21,8 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
+          # bump-version --check diffs against origin/main and its merge-base.
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
@@ -62,6 +64,8 @@ jobs:
       # Version-bump helper: computes versions from the base ref so parallel PRs stop
       # conflicting on version lines. Selftest runs in a throwaway git repo.
       - run: node scripts/bump-version.mjs --selftest
+      # A plugin file changed against origin/main without a version above it (#339).
+      - run: node scripts/bump-version.mjs --check
       # SessionStart hook (plugin cache lag + core.hooksPath). Fixture cache and
       # throwaway repos only, so the result does not depend on the runner.
       - run: node scripts/check-plugin-cache.mjs --selftest
@@ -77,6 +81,8 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
+          # bump-version --check diffs against origin/main and its merge-base.
+          fetch-depth: 0
       # Printed directly rather than through `echo "$(...)"`. Command substitution
       # inside echo discards the inner status -- echo succeeds either way -- which
       # is the "종료 상태가 사라지는 자리" P1 this repo added in #183, and a workflow
@@ -138,3 +144,9 @@ jobs:
         run: /bin/bash plugins/dev/skills/post-merge/tests/run-tests.sh
       - name: convene suite under /bin/bash (3.2) + BSD tools
         run: /bin/bash plugins/council/skills/convene/tests/run-tests.sh
+      # The version guard on the BSD userland too: it shells out to git only.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: version bump guard
+        run: node scripts/bump-version.mjs --selftest && node scripts/bump-version.mjs --check

@@ -8,9 +8,11 @@
 # or the guard fails. The caller's checkout and index are never touched.
 #
 # The guard runs whether or not this clone turned its hooks on: the first executable
-# of <core.hooksPath>/pre-commit, the tracked .githooks/pre-commit, and git's default
-# hooks/pre-commit, resolved inside the worktree (a relative core.hooksPath is
-# relative to the worktree root, as git reads it). A repo with none has no guard to run.
+# of the tracked .githooks/pre-commit (the base's own, with the fixes), then
+# <core.hooksPath>/pre-commit and git's default hooks/pre-commit, resolved inside the
+# worktree (a relative core.hooksPath is relative to the worktree root, as git reads
+# it). The tracked hook goes first because an absolute core.hooksPath can point at
+# another checkout's older hook (PR #334). A repo with none has no guard to run.
 set -euo pipefail
 
 BASE="${1:?base branch required}"; FROM="${2:?reviewed sha required}"; TO="${3:?fix sha required}"
@@ -27,7 +29,7 @@ git -C "$WT" cherry-pick "$FROM..$TO" >/dev/null 2>&1 || no "the fixes do not ap
 
 guard=$(cd "$WT" && {
   hp=$(git config --path core.hooksPath 2>/dev/null || true)
-  for h in ${hp:+"$hp/pre-commit"} .githooks/pre-commit "$(git rev-parse --git-path hooks/pre-commit)"; do
+  for h in .githooks/pre-commit ${hp:+"$hp/pre-commit"} "$(git rev-parse --git-path hooks/pre-commit)"; do
     if [ -f "$h" ] && [ -x "$h" ]; then (cd "$(dirname "$h")" && printf '%s/%s' "$(pwd)" "$(basename "$h")"); break; fi
   done
 })

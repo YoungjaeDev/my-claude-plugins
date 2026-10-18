@@ -46,7 +46,7 @@ Items 3-8 of the SKILL.md Step 9c list, in full. Items 1-2 (path-trust gate, san
    - **High-severity accumulator (Step 13 soft-stop signal)**: for any `apply` or `defer` whose `severity_reassess=="high"`, `high_sev_this_cycle=$((high_sev_this_cycle+1))`. This feeds the Step 13 `minor_floor` soft-stop: a cycle that applied only low-severity fixes and deferred nothing can stop early.
    - **skip** → `auto_judge_skip=$((auto_judge_skip+1))`; log judgment. Does NOT touch `applied_this_cycle` or `deferred_this_cycle`.
 
-7. **Log entry** — append one record per decision to `STATE_FILE.auto_judge_log`: `iter`, `src` (`cr|cli|codex`), `path`, `line`, `category` (the CR/CLI header category as read, `category_emoji`; empty for Codex), `badge_or_sev` (the CR/CLI severity as read, `severity_emoji`, or the Codex badge `P0`-`P2`), `judgment` (the six axes above with the values they took), `action`, `reason` (one line), and `generalized_to` (the sibling lines, only when 9c.6 fired). `scripts/auto-merge-gate.sh` reads `category`, `badge_or_sev` and `severity_reassess` of this iteration's `apply` records to decide whether the fixes need a re-review (Step 12). Full shape: `references/autonomous-judgment.md`.
+7. **Log entry** — append one record per decision to `STATE_FILE.auto_judge_log`: `iter`, `src` (`cr|cli|codex`), `path`, `line`, `comment_id` (the record's `databaseId` for a CR thread, `comment_id` for Codex, `null` for an outside-diff or CLI finding; Step 9a drops a thread this run already judged by it), `category` (the CR/CLI header category as read, `category_emoji`; empty for Codex), `badge_or_sev` (the CR/CLI severity as read, `severity_emoji`, or the Codex badge `P0`-`P2`), `judgment` (the six axes above with the values they took), `action`, `reason` (one line), and `generalized_to` (the sibling lines, only when 9c.6 fired). `scripts/auto-merge-gate.sh` reads `category`, `badge_or_sev` and `severity_reassess` of this iteration's `apply` records to decide whether the fixes need a re-review (Step 12). Full shape: `references/autonomous-judgment.md`.
 
 8. **9c-review tier** (CR finding with no parseable header / Codex with no P0-P2 badge): surface in the Step 9a table only. No edit, no judgment — but `review_this_cycle=$((review_this_cycle+1))`. These are findings nobody examined; Step 13 refuses to call that a floor or `clean`.
 
@@ -163,6 +163,7 @@ Every Step 9c decision appends one record to `STATE_FILE.auto_judge_log`:
   "src": "codex",
   "path": "src/foo.py",
   "line": 42,
+  "comment_id": 2412345678,
   "category": "",
   "badge_or_sev": "P2",
   "judgment": {

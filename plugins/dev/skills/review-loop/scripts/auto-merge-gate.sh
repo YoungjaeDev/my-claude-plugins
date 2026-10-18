@@ -38,7 +38,8 @@ left="${DEFERRED_TOTAL:-unknown}"
 
 file_issue=false
 case "$FINAL_STATE" in
-  churn|minor_floor|iteration_cap|user_declined|clean|timeout|ci_failing)
+  # merged_externally too: the PR is gone, and its deferred findings with it.
+  churn|minor_floor|iteration_cap|user_declined|clean|timeout|ci_failing|merged_externally)
     [ "$left" = 0 ] || file_issue=true ;;
 esac
 
@@ -56,6 +57,7 @@ case "$FINAL_STATE" in
   # Codex reported Failed on HEAD: HEAD has no Codex verdict, and the loop never asks for one.
   codex_failed)       eligible=false; reason="codex_failed: Codex reported Failed on HEAD, so HEAD has no Codex verdict" ;;
   ci_failing)         eligible=false; reason="ci_failing: CI checks failed on HEAD" ;;
+  merged_externally)  eligible=false; reason="merged_externally: the PR was merged or closed outside the run" ;;
   # Everything else, `reviewers_unavailable` included: no reviewer looked, so stopping is not convergence.
   *)                  eligible=false; reason="final_state=$FINAL_STATE is not a merge-eligible convergence" ;;
 esac

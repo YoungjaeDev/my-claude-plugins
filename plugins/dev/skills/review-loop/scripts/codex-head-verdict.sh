@@ -10,7 +10,8 @@
 #    "fallback":"review_id_poll"|null, "wait_seconds":N, "reactions":"read|unreadable"|null}
 # Exit 0, or 1 with verdict=error when a gh call fails (never an empty "clean"). The
 # reactions list failing is an error only where a 👍 could have been the verdict (no
-# HEAD row, no HEAD review, PUSH_TIME known): elsewhere the summary or review decides.
+# HEAD row, no HEAD review, PUSH_TIME known, state marker on HEAD): elsewhere the
+# summary or review decides.
 #
 # Sources (references/codex-state-machine.md "HEAD verdict"):
 #   - the `<!-- codex-pull-request-review-summary -->` issue comment Codex edits in
@@ -19,9 +20,12 @@
 #     the newest row for HEAD (by its relative-time) is the one judged.
 #   - a Codex review whose commit_id == CUR_SHA (Codex posts one only with findings).
 #   - a `+1` reaction on the PR by the Codex bot created after PUSH_TIME: Codex with
-#     nothing to say leaves only that (PR #320). It stands in for a missing or
-#     older-SHA summary row; a HEAD row or a HEAD review still decides. No PUSH_TIME,
-#     no reaction verdict: a 👍 from an older push cannot be told apart.
+#     nothing to say leaves only that (PR #320). It stands in for an older-SHA summary
+#     row only when the summary's `<!-- codex-review-state:v1 {json} -->` marker says
+#     code_review.commit_sha == CUR_SHA with status completed; a HEAD row or a HEAD
+#     review still decides. Without that marker, or without PUSH_TIME, no reaction
+#     verdict: Codex finishing the previous commit after a push also leaves a 👍
+#     newer than the push (#338).
 # wait_seconds is the one Codex wait budget every gate uses:
 #   max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age).
 set -euo pipefail
@@ -63,12 +67,7 @@ fi
 out=$(jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" --arg push "$PUSH_TIME" --arg rx "$rx" \
   --slurpfile c "$tmp/c.json" --slurpfile r "$tmp/r.json" --slurpfile x "$tmp/x.json" '
   (try ($push | fromdateiso8601) catch null) as $pt
-  | ($pt != null and ($x | add // [] | any(.[];
-      ((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
-      and .content == "+1"
-      and ((try (.created_at | fromdateiso8601) catch 0) > $pt)))) as $thumb
-  |
-  ($r | add // [] | [ .[]
+  | ($r | add // [] | [ .[]
       | select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
       | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
       | select(.commit_id == $sha) ]
@@ -77,6 +76,17 @@ out=$(jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" --arg push "$PUSH_
       | select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
       | select((.body // "") | contains("<!-- codex-pull-request-review-summary -->")) ]
     | sort_by(.updated_at) | last) as $summary
+  # The state marker in the summary names the commit its code review covers. A 👍 counts
+  # only when that is HEAD, completed: Codex finishing the previous commit after a
+  # push leaves a 👍 newer than the push too (#338).
+  | ((($summary.body // "") | capture("<!-- codex-review-state:v1 (?<j>\\{.*\\}) -->") | .j
+       | try fromjson catch null) // null) as $mark
+  | (try (($mark.code_review.commit_sha // "" | ascii_downcase) == ($sha | ascii_downcase)
+      and $mark.code_review.status == "completed") catch false) as $mark_head
+  | ($pt != null and $mark_head and ($x | add // [] | any(.[];
+      ((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
+      and .content == "+1"
+      and ((try (.created_at | fromdateiso8601) catch 0) > $pt)))) as $thumb
   # Data rows: a **Status** cell and a backticked hex SHA. Header and separator
   # rows carry neither. A row with an unknown status word poisons the parse.
   # `at` is the <relative-time datetime> of the row, "" when it has none.
@@ -104,7 +114,7 @@ out=$(jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" --arg push "$PUSH_
       elif $hrid != null then "findings"
       else "clean" end ) as $read
   # Only a 👍 could have spoken here, and the list could not be read.
-  | (if ($read == "none" or $read == "unknown") and $pt != null and $rx == "unreadable"
+  | (if ($read == "none" or $read == "unknown") and $pt != null and $mark_head and $rx == "unreadable"
      then "error" else $read end) as $verdict
   | ( if $bad != null then $bad
       elif ($head | length) > 0 then

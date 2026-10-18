@@ -10,13 +10,13 @@ The third leg of the harness. A CI failure is a sensor reading; this skill turns
 
 Two runtime families, three execution paths, same bounded loop: on **Claude Code** the healer is the named agent `playwright-test-healer` that `e2e-setup` generated (**Path A**); on **Codex** that agent file is not registerable, so the healer runs as a **generic subagent** carrying the bundled contract from `references/role-contracts.md` (**Path B**), or in-agent sequentially when no delegation is available (**Path C**).
 
-> The headless `npx playwright trace` CLI needs Playwright >= 1.59. On Path A, `npx playwright trace install-skill` installs Playwright's own agent skill for it (it writes to `.claude/skills/` only, so it does nothing for Codex). The GUI viewer `npx playwright show-trace <trace.zip>` is also available if a human wants to look.
+> The headless `npx playwright trace` CLI exists only in newer Playwright releases; probe for it (Precondition check) instead of trusting a version number. On Path A, `npx playwright trace install-skill` installs Playwright's own agent skill for it (it writes to `.claude/skills/` only, so it does nothing for Codex). The GUI viewer `npx playwright show-trace <trace.zip>` is also available if a human wants to look.
 
 ## Precondition check
 
 - Need `gh` CLI authenticated to fetch CI artifacts.
 - **Path A only**: confirm the named healer exists (`.claude/agents/playwright-test-healer.md`). If missing **and you are on Claude Code**, route to `dev:e2e-setup`. **Do not** demand this Claude agent file under Codex; there the bundled healer contract stands in (see Step 0).
-- **Requires Playwright >= 1.59** for the headless `npx playwright trace` CLI used in Step 2 (`npx playwright --version` to check). On older versions there is no headless trace CLI: fall back to the GUI viewer `npx playwright show-trace <trace.zip>`.
+- **Probe the headless trace CLI** used in Step 2: run `npx playwright trace --help` and check that it printed the `trace` subcommand's own usage, not the top-level help (an unknown subcommand can answer with the top-level help and exit 0). When it is missing: fall back to the GUI viewer `npx playwright show-trace <trace.zip>`.
 
 ## Workflow
 

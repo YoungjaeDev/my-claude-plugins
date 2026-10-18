@@ -57,9 +57,15 @@ until mkdir "$DIR" 2>/dev/null; do
   DIR="$BASE-$n"; n=$((n+1))
 done
 
+# Raw material (brief, prompts, every seat answer, questions) is scratch and lives under
+# .tmp/; only consensus.md goes into the tracked $DIR. $RAW is derived from $DIR, so the
+# date-slug and any -n suffix match in both places.
+RAW=".tmp/council/${DIR#.council/}"
+mkdir -p "$RAW" || { echo "council: cannot create $RAW" >&2; exit 1; }
+
 printf '%s\n' "$DIR" > ".claude/state/council-run-$RUN_KEY" \
   || { echo "council: failed to record the run pointer" >&2; exit 1; }
-echo "DIR=$DIR RUN_KEY=$RUN_KEY"
+echo "DIR=$DIR RAW=$RAW RUN_KEY=$RUN_KEY"
 ```
 
 **Release the lock when the council ends.** The `shared` lock is held for the whole run, and
@@ -75,8 +81,14 @@ rm -f ".claude/state/council-run-$RUN_KEY"
 exit 0
 ```
 
-The directory is **git-tracked**: it is the decision record, not scratch. The run pointer under
-`.claude/state/` is not.
+`$DIR` (`.council/<date>-<slug>/`) is **git-tracked** and holds only `consensus.md`, the decision
+record. `$RAW` (`.tmp/council/<date>-<slug>/`, same name) is gitignored scratch for the brief,
+the questions, the round prompts and every seat answer. The run pointer under `.claude/state/` is
+not tracked either.
+
+`.tmp/` must be gitignored, or the raw files show up as untracked changes. Test it with
+`git check-ignore -q .tmp/`. When it is not ignored, ask through the interactive-input gate
+whether to append `.tmp/` to `.gitignore`; without an answer, leave `.gitignore` alone and say so.
 
 ### Re-hydrating state in every later block
 
@@ -88,6 +100,7 @@ REG="$HOME/.claude/council-models.json"
 RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
 case "$RUN_KEY" in *[!A-Za-z0-9._-]*) echo "council: invalid session id" >&2; exit 1 ;; esac
 DIR=$(cat ".claude/state/council-run-$RUN_KEY")
+RAW=".tmp/council/${DIR#.council/}"
 CODEX_MODEL=$(jq -r '.seats.codex.model'        "$REG")
 CODEX_EFFORT=$(jq -r '.seats.codex.effort'      "$REG")
 CODEX_TIER=$(jq -r '.seats.codex.service_tier'  "$REG")
@@ -113,14 +126,14 @@ pasted. Only collect what a path cannot carry:
 
 Do **not** paste `AGENTS.md`, `.llmwiki/` pages, or source files. Cite their paths.
 
-Write the shared brief to `$DIR/brief.md`: the question, the resolved facts, the pre-collected
+Write the shared brief to `$RAW/brief.md`: the question, the resolved facts, the pre-collected
 context, and the file paths worth reading.
 
 ---
 
 ## Step 2 — Round 1, independent opinions
 
-Compose `$DIR/r1-prompt.md` from the brief plus these instructions to every seat:
+Compose `$RAW/r1-prompt.md` from the brief plus these instructions to every seat:
 
 1. Answer the question directly with reasoning.
 2. Separately list **open questions for the user**: only things that would change the answer
@@ -132,11 +145,12 @@ Run the three seats. They must not see each other's answers in this round.
 
 ```bash
 # Re-hydrate first — see "Re-hydrating state in every later block" in Step 1.
-# Without it $CODEX_MODEL and $DIR are empty here and the call fails immediately.
+# Without it $CODEX_MODEL and $RAW are empty here and the call fails immediately.
 REG="$HOME/.claude/council-models.json"
 RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
 case "$RUN_KEY" in *[!A-Za-z0-9._-]*) echo "council: invalid session id" >&2; exit 1 ;; esac
 DIR=$(cat ".claude/state/council-run-$RUN_KEY")
+RAW=".tmp/council/${DIR#.council/}"
 CODEX_MODEL=$(jq -r '.seats.codex.model' "$REG")
 CODEX_EFFORT=$(jq -r '.seats.codex.effort' "$REG")
 CODEX_TIER=$(jq -r '.seats.codex.service_tier' "$REG")
@@ -148,7 +162,7 @@ codex exec -s read-only --skip-git-repo-check \
   -m "$CODEX_MODEL" \
   -c model_reasoning_effort="\"$CODEX_EFFORT\"" \
   -c service_tier="\"$CODEX_TIER\"" \
-  -o "$DIR/r1-codex.md" - < "$DIR/r1-prompt.md"
+  -o "$RAW/r1-codex.md" - < "$RAW/r1-prompt.md"
 ```
 
 ```bash
@@ -157,23 +171,24 @@ REG="$HOME/.claude/council-models.json"
 RUN_KEY="${CLAUDE_SESSION_ID:-${CODEX_COMPANION_SESSION_ID:-shared}}"
 case "$RUN_KEY" in *[!A-Za-z0-9._-]*) echo "council: invalid session id" >&2; exit 1 ;; esac
 DIR=$(cat ".claude/state/council-run-$RUN_KEY")
+RAW=".tmp/council/${DIR#.council/}"
 AGY_MODEL=$(jq -r '.seats.agy.model' "$REG")
 
 # agy — prompt is a shell argument, so quote the expansion and keep --print LAST.
 # The trailing < /dev/null is mandatory: without it agy waits on a TTY forever and
 # --print-timeout does not bound it.
-AGY_PROMPT="$(cat "$DIR/r1-prompt.md")
+AGY_PROMPT="$(cat "$RAW/r1-prompt.md")
 OUTPUT INSTRUCTION: do not print the answer to chat. Write it with the write_file tool to:
-  $PWD/$DIR/r1-agy.md
+  $PWD/$RAW/r1-agy.md
 After writing, confirm the path. That is your only deliverable."
-agy --dangerously-skip-permissions --add-dir "$PWD/$DIR" --print-timeout 10m0s \
+agy --dangerously-skip-permissions --add-dir "$PWD/$RAW" --print-timeout 10m0s \
   --model "$AGY_MODEL" --print "$AGY_PROMPT" < /dev/null
 ```
 
 The Claude seat runs through the `Agent` tool with `model` set to `seats.claude.model` read from
 the registry (`opus` by default; allowed aliases `sonnet`, `opus`, `haiku`, `fable`, a policy
 subset of <https://code.claude.com/docs/en/sub-agents#choose-a-model>). Have it
-write its answer to `$DIR/r1-claude.md`.
+write its answer to `$RAW/r1-claude.md`.
 
 Verify each file exists and is non-empty before moving on. A missing file is a failure, not an
 empty opinion; see the failure policy.

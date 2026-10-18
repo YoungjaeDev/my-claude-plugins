@@ -22,7 +22,7 @@ Two reviewers (CR + Codex) on different channels with different timings:
 | 5 | Codex emoji B | `repos/$O/$R/commits/$SHA/check-runs` | Check-runs named like Codex — wait signal only (in_progress / findings), never clean |
 | 6 | Codex HEAD verdict | `scripts/codex-head-verdict.sh` -> `issues/$PR/comments` + `pulls/$PR/reviews` (`--paginate`) | Summary comment Running/Completed/Failed + SHA, and the `commit_id == HEAD` review; authoritative over channels 4/5 |
 
-Channel 4/5 (emoji) are best-effort: the GitHub API exposes **no reliable surfacing path** for the marker. If both return empty, fall back to **timeout-based** logic (`push_age vs codex_timeout_seconds`, default `600` = 10 min).
+Channel 4/5 (emoji) are best-effort: the GitHub API exposes **no reliable surfacing path** for the marker. If both return empty, fall back to **timeout-based** logic (`push_age vs codex_timeout_seconds`, default `900` = 15 min, `scripts/codex-turnaround.sh`).
 
 > Channel C (`pulls/$PR/reviews/$rid/reactions`) was considered but returns 404 in most cases — only worth adding if a confirmed PR URL surfaces a real signal there.
 
@@ -121,7 +121,7 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
 | `failure` | n/a | n/a | n/a | n/a | n/a | `failure` |
 | `error` | n/a | n/a | n/a | n/a | n/a | `cr_wait` (treat as transient, retry-by-polling) |
 
-The emoji and timeout rows apply only when the Codex HEAD verdict is `unknown` with no summary comment (see "Codex HEAD verdict" above). `codex_timeout_seconds` defaults to `600`. Override per-run via env var `CODEX_PREFLIGHT_TIMEOUT` if a CI pattern shows Codex routinely lands later.
+The emoji and timeout rows apply only when the Codex HEAD verdict is `unknown` with no summary comment (see "Codex HEAD verdict" above). `codex_timeout_seconds` defaults to `900` (`CODEX_BUDGET_DEFAULT`, `scripts/codex-turnaround.sh`). Override per-run via env var `CODEX_PREFLIGHT_TIMEOUT` if a CI pattern shows Codex routinely lands later.
 
 `CR_SKIP_GRACE` defaults to `300` (seconds). It bounds how long a transient `success` + `Review skipped: free tier disabled` row is held as `cr_wait` before being treated as a genuine disable (`rate_limited`). The grace clock (`cr_skip_age`) is anchored to the CR status row's own `created_at` — i.e. how long *that placeholder* has existed — so a bot that queues the row late (more than the grace after the push) still gets the full window to flip to `Review completed`; it falls back to `push_age` only when the status carries no parseable timestamp. The background `poll-cr-status.sh` anchors the same window to the first moment it *sees* the skip row — both measure placeholder age, not push age. Env-only, no `--flag` — mirrors `EARLY_CHECK_WINDOW`.
 

@@ -314,15 +314,12 @@ HF_HOME=/path/to/huggingface/cache
 
 #### Using venv
 ```bash
-# Create virtual environment (runs before activation, so it resolves against the
-# system PATH: macOS 12.3+ has no `python`, and a python.org Windows install has
-# no `python3` -- only `python` and the `py` launcher)
-python3 -m venv .venv        # Linux/Mac
-# py -3 -m venv .venv        # Windows
+# Create virtual environment with whichever interpreter this machine has on PATH
+# (detect it: the interpreter name differs by platform)
+PY=$(command -v python3 || command -v python || command -v py) && "$PY" -m venv .venv
 
-# Activate
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate    # Windows
+# Activate: the script path depends on the OS and shell; read the table under
+# "How venvs work" at https://docs.python.org/3/library/venv.html
 
 # Install dependencies
 pip install --upgrade pip
@@ -334,15 +331,11 @@ python -c "import torch; print(torch.cuda.is_available())"
 
 #### Using uv (fast)
 ```bash
-# Install uv (if not installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# Install uv (if not installed) for this platform per
+# https://docs.astral.sh/uv/getting-started/installation/
 
-# Create virtual environment
+# Create virtual environment; uv prints the activate command for this shell
 uv venv
-
-# Activate
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate    # Windows
 
 # Install dependencies (much faster than pip)
 uv pip install -r requirements.txt

@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # Usage: OWNER=... REPO=... PR_NUM=... CUR_SHA=... [PUSH_TIME=ISO8601] \
-#        [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=600] bash scripts/codex-head-verdict.sh
+#        [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=$CODEX_BUDGET_DEFAULT] bash scripts/codex-head-verdict.sh
 #
 # Codex's HEAD verdict: what Codex has said about the commit the PR points at now.
 # Emits exactly one JSON line on stdout:
 #   {"verdict":"findings|clean|failed|in_progress|none|unknown|error",
 #    "summary_state":"completed|running|failed|unparsed|absent|null",
 #    "summary_sha":"95ab2f6"|null, "head_review_id":N|null,
-#    "fallback":"review_id_poll"|null, "wait_seconds":N}
-# Exit 0, or 1 with verdict=error when a gh call fails (never an empty "clean").
+#    "fallback":"review_id_poll"|null, "wait_seconds":N, "reactions":"read|unreadable"|null}
+# Exit 0, or 1 with verdict=error when a gh call fails (never an empty "clean"). The
+# reactions list failing is an error only where a 👍 could have been the verdict (no
+# HEAD row, no HEAD review, PUSH_TIME known, state marker on HEAD): elsewhere the
+# summary or review decides.
 #
 # Sources (references/codex-state-machine.md "HEAD verdict"):
 #   - the `<!-- codex-pull-request-review-summary -->` issue comment Codex edits in
@@ -16,6 +19,13 @@
 #     backticked short SHA. The newest such comment by updated_at wins, and in it
 #     the newest row for HEAD (by its relative-time) is the one judged.
 #   - a Codex review whose commit_id == CUR_SHA (Codex posts one only with findings).
+#   - a `+1` reaction on the PR by the Codex bot created after PUSH_TIME: Codex with
+#     nothing to say leaves only that (PR #320). It stands in for an older-SHA summary
+#     row only when the summary's `<!-- codex-review-state:v1 {json} -->` marker says
+#     code_review.commit_sha == CUR_SHA with status completed; a HEAD row or a HEAD
+#     review still decides. Without that marker, or without PUSH_TIME, no reaction
+#     verdict: Codex finishing the previous commit after a push also leaves a 👍
+#     newer than the push (#338).
 # wait_seconds is the one Codex wait budget every gate uses:
 #   max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age).
 set -euo pipefail
@@ -23,7 +33,8 @@ set -euo pipefail
 : "${OWNER:?owner required}"; : "${REPO:?repo required}"
 : "${PR_NUM:?pr required}"; : "${CUR_SHA:?sha required}"
 PUSH_TIME="${PUSH_TIME:-}"
-: "${CODEX_GRACE:=30}"; : "${CODEX_PREFLIGHT_TIMEOUT:=600}"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/codex-turnaround.sh"
+: "${CODEX_GRACE:=30}"; : "${CODEX_PREFLIGHT_TIMEOUT:=$CODEX_BUDGET_DEFAULT}"
 
 # jq's fromdateiso8601 avoids GNU `date -d` vs BSD `date -j`; an unparseable or
 # absent PUSH_TIME counts as age 0 (the full window), the conservative side.
@@ -35,7 +46,7 @@ if ! comments=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2
    || ! reviews=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null); then
   echo "warn: codex-head-verdict: gh api failed; verdict=error" >&2
   jq -nc --argjson w "$wait_seconds" '{verdict:"error", summary_state:null, summary_sha:null,
-    head_review_id:null, fallback:null, wait_seconds:$w}'
+    head_review_id:null, fallback:null, wait_seconds:$w, reactions:null}'
   exit 1
 fi
 
@@ -46,10 +57,17 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 printf '%s' "$comments" > "$tmp/c.json"
 printf '%s' "$reviews" > "$tmp/r.json"
+# Reactions only add a clean signal; an unreadable list is reported, never read as "no 👍".
+rx=read
+if ! gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/reactions" > "$tmp/x.json" 2>/dev/null \
+   || ! jq -e . "$tmp/x.json" >/dev/null 2>&1; then
+  echo '[]' > "$tmp/x.json"; rx=unreadable
+fi
 
-jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" \
-  --slurpfile c "$tmp/c.json" --slurpfile r "$tmp/r.json" '
-  ($r | add // [] | [ .[]
+out=$(jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" --arg push "$PUSH_TIME" --arg rx "$rx" \
+  --slurpfile c "$tmp/c.json" --slurpfile r "$tmp/r.json" --slurpfile x "$tmp/x.json" '
+  (try ($push | fromdateiso8601) catch null) as $pt
+  | ($r | add // [] | [ .[]
       | select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
       | select(.state == "COMMENTED" or .state == "CHANGES_REQUESTED")
       | select(.commit_id == $sha) ]
@@ -58,6 +76,17 @@ jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" \
       | select((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
       | select((.body // "") | contains("<!-- codex-pull-request-review-summary -->")) ]
     | sort_by(.updated_at) | last) as $summary
+  # The state marker in the summary names the commit its code review covers. A 👍 counts
+  # only when that is HEAD, completed: Codex finishing the previous commit after a
+  # push leaves a 👍 newer than the push too (#338).
+  | ((($summary.body // "") | capture("<!-- codex-review-state:v1 (?<j>\\{.*\\}) -->") | .j
+       | try fromjson catch null) // null) as $mark
+  | (try (($mark.code_review.commit_sha // "" | ascii_downcase) == ($sha | ascii_downcase)
+      and $mark.code_review.status == "completed") catch false) as $mark_head
+  | ($pt != null and $mark_head and ($x | add // [] | any(.[];
+      ((.user.login // "") | test("^chatgpt-codex-connector(\\[bot\\])?$"; "i"))
+      and .content == "+1"
+      and ((try (.created_at | fromdateiso8601) catch 0) > $pt)))) as $thumb
   # Data rows: a **Status** cell and a backticked hex SHA. Header and separator
   # rows carry neither. A row with an unknown status word poisons the parse.
   # `at` is the <relative-time datetime> of the row, "" when it has none.
@@ -78,12 +107,15 @@ jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" \
   # most that one row.
   | [ ($rows // [])[] | select(. as $x | $sha | ascii_downcase | startswith($x.sha)) ]
     | sort_by(.at) | .[-1:] as $head
-  | ( if $bad != null then (if $hrid != null then "findings" else "unknown" end)
-      elif ($head | length) == 0 then (if $hrid != null then "findings" else "none" end)
+  | ( if $bad != null then (if $hrid != null then "findings" elif $thumb then "clean" else "unknown" end)
+      elif ($head | length) == 0 then (if $hrid != null then "findings" elif $thumb then "clean" else "none" end)
       elif any($head[]; .st == "running") then "in_progress"
       elif any($head[]; .st == "failed") then "failed"
       elif $hrid != null then "findings"
-      else "clean" end ) as $verdict
+      else "clean" end ) as $read
+  # Only a 👍 could have spoken here, and the list could not be read.
+  | (if ($read == "none" or $read == "unknown") and $pt != null and $mark_head and $rx == "unreadable"
+     then "error" else $read end) as $verdict
   | ( if $bad != null then $bad
       elif ($head | length) > 0 then
         (if any($head[]; .st == "running") then "running"
@@ -94,4 +126,10 @@ jq -nc --argjson w "$wait_seconds" --arg sha "$CUR_SHA" \
       summary_sha: (if $bad != null then null else (($head[0] // $rows[0]).sha) end),
       head_review_id: $hrid,
       fallback: (if $bad != null then "review_id_poll" else null end),
-      wait_seconds: $w }'
+      wait_seconds: $w,
+      reactions: $rx }')
+printf '%s\n' "$out"
+if [ "$(jq -r .verdict <<<"$out")" = error ]; then
+  echo "warn: codex-head-verdict: PR reactions unreadable; verdict=error" >&2
+  exit 1
+fi

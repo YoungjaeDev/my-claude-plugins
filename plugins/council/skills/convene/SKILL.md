@@ -58,7 +58,7 @@ The confirmed pins are recorded with the **`Write` tool** (never a heredoc or `e
 `.claude/state/council-pins.json` as data, then a separate block validates every value against a
 conservative charset and the Claude seat's fixed model enum before writing the registry through
 a temp file: a value that fails validation must stop the write, not land a registry that looks
-valid. Registry writes also maintain `~/.codex/config.toml`'s `check_for_update_on_startup` key
+valid. Registry writes also maintain `${CODEX_HOME:-$HOME/.codex}/config.toml`'s `check_for_update_on_startup` key
 (insert only when the key is absent; never touch a user's own `false`), and a final preflight
 call re-reads the pins and probes the installed `codex` CLI before Step 1 relies on them.
 
@@ -80,8 +80,11 @@ directory outside `.council/`). The run directory is allocated per session, keye
 `CLAUDE_SESSION_ID`/`CODEX_COMPANION_SESSION_ID`, or a `shared` lock when neither is exposed,
 so two concurrent councils never share one run pointer or one output directory; both the key
 and the directory allocation are claimed atomically (`mkdir`, never a check-then-write). The
-run directory itself is **git-tracked**: it is the decision record, not scratch. The run
-pointer under `.claude/state/` is not, and Step 5 releases the `shared` lock on both the
+run directory
+`$DIR` is **git-tracked** but holds only `consensus.md`, the decision record. Everything else
+(brief, questions, round prompts, every seat answer) goes to the gitignored `$RAW` =
+`.tmp/council/<same run name>/`. The run pointer under `.claude/state/` is not tracked either,
+and Step 5 releases the `shared` lock on both the
 success and the give-up path.
 
 Shell variables do **not** survive between tool calls: every bash block from here on starts by
@@ -93,7 +96,7 @@ never pasted. Only collect context a path cannot carry: mem0 memories (behind an
 not a file), the Serena symbol graph (`find_referencing_symbols` needs a language-server index
 agy cannot build), and scout research (facts outside the repo, and the most expensive of the
 three, and only when the question actually turns on external facts). Do **not** paste `AGENTS.md`,
-`.llmwiki/` pages, or source files; cite their paths. Write the shared brief to `$DIR/brief.md`:
+`.llmwiki/` pages, or source files; cite their paths. Write the shared brief to `$RAW/brief.md`:
 the question, the resolved facts, the pre-collected context, and the file paths worth reading.
 
 See `references/run-and-rounds.md` for the SLUG/session-id validation, the atomic lock and
@@ -103,7 +106,7 @@ directory allocation, the lock-release block, and the state re-hydration block.
 
 ## Step 2 — Round 1, independent opinions
 
-Compose `$DIR/r1-prompt.md` from the brief plus these instructions to every seat:
+Compose `$RAW/r1-prompt.md` from the brief plus these instructions to every seat:
 
 1. Answer the question directly with reasoning.
 2. Separately list **open questions for the user**: only things that would change the answer
@@ -119,7 +122,7 @@ a TTY that `--print-timeout` does not bound. The Claude seat runs through the `A
 `model` set to `seats.claude.model` from the registry (`opus` by default; the allowed aliases are
 `sonnet`, `opus`, `haiku`, `fable`, a policy subset of
 <https://code.claude.com/docs/en/sub-agents#choose-a-model>), writing its answer to
-`$DIR/r1-claude.md`.
+`$RAW/r1-claude.md`.
 
 Verify each file exists and is non-empty before moving on. A missing file is a failure, not an
 empty opinion; see the failure policy.
@@ -136,7 +139,7 @@ from the repo or by running a read-only command: **facts are the chair's job, de
 user's**. Ask what remains through the interactive-input gate, in the user's language, in one
 batch.
 
-Record the questions and the user's answers in `$DIR/questions.md`.
+Record the questions and the user's answers in `$RAW/questions.md`.
 
 If the user declines to answer, carry those items forward as unresolved and say so in the
 final document rather than guessing.
@@ -145,7 +148,7 @@ final document rather than guessing.
 
 ## Step 4 — Round 2, mutual rebuttal
 
-Compose `$DIR/r2-prompt.md` containing, for each seat: the other two seats' full Round 1
+Compose `$RAW/r2-prompt.md` containing, for each seat: the other two seats' full Round 1
 answers, the user's answers from Step 3, and the instruction to state where it agrees, where it
 disagrees, and why, with reasons, not verdicts.
 
@@ -154,14 +157,14 @@ seats first.** It shares weights with the chair, so agreement is its cheapest an
 move; the role exists to stop it defaulting there.
 
 Run the same three commands as Step 2 against `r2-prompt.md`, writing `r2-codex.md`,
-`r2-agy.md`, `r2-claude.md`. Each round is a fresh CLI invocation carrying the debate in its
+`r2-agy.md`, `r2-claude.md` under `$RAW`. Each round is a fresh CLI invocation carrying the debate in its
 prompt: deterministic, and no dependence on `--resume-last` picking the right session.
 
 ---
 
 ## Step 5 — synthesis and output
 
-The chair writes `$DIR/consensus.md`:
+The chair writes `$DIR/consensus.md` (the only file committed; the raw record stays in `$RAW`):
 
 - **합의**: what the seats converged on, and on what grounds.
 - **갈린 이견**: positions that survived rebuttal, each with its holder and its strongest

@@ -50,16 +50,16 @@ uvx hf download <repo_id> --repo-type dataset
 
 ```bash
 # Download model config (temporary analysis)
-uvx hf download microsoft/resnet-50 --include "*.json" --local-dir /tmp/resnet-50
+uvx hf download microsoft/resnet-50 --include "*.json" --local-dir "$WORKSPACE/dl/resnet-50"
 
 # Download space source code (temporary analysis)
-uvx hf download Qwen/Qwen3-VL-Demo --repo-type space --include "*.py" --local-dir /tmp/qwen3-vl-demo
+uvx hf download Qwen/Qwen3-VL-Demo --repo-type space --include "*.py" --local-dir "$WORKSPACE/dl/qwen3-vl-demo"
 
 # Download specific file
-uvx hf download Qwen/Qwen2.5-VL-7B-Instruct config.json --local-dir /tmp/qwen-config
+uvx hf download Qwen/Qwen2.5-VL-7B-Instruct config.json --local-dir "$WORKSPACE/dl/qwen-config"
 ```
 
-**Note**: Always use `--local-dir /tmp/` for temporary code analysis to avoid cluttering the project.
+**Note**: Always use `--local-dir "$WORKSPACE/dl/<name>"` for temporary code analysis to avoid cluttering the project.
 
 ## Repository Commands
 
@@ -218,18 +218,18 @@ https://huggingface.co/spaces/{space_id}/raw/main/app.py
 # 1. Search for spaces (using script)
 python scripts/search_huggingface.py "qwen vl" --type spaces
 
-# 2. Download the source code (to /tmp/ for temporary analysis)
-uvx hf download Qwen/Qwen3-VL-Demo --repo-type space --include "*.py" --local-dir /tmp/qwen-demo
+# 2. Download the source code (into the run workspace)
+uvx hf download Qwen/Qwen3-VL-Demo --repo-type space --include "*.py" --local-dir "$WORKSPACE/dl/qwen-demo"
 ```
 
 ## Analyze Space Implementation
 
 ```bash
-# Download app.py and requirements (to /tmp/)
-uvx hf download username/space-name --repo-type space --include "app.py" --include "requirements.txt" --local-dir /tmp/space-code
+# Download app.py and requirements (into the run workspace)
+uvx hf download username/space-name --repo-type space --include "app.py" --include "requirements.txt" --local-dir "$WORKSPACE/dl/space-code"
 
 # Read the code
-cat /tmp/space-code/app.py
+cat "$WORKSPACE/dl/space-code/app.py"
 ```
 
 ---

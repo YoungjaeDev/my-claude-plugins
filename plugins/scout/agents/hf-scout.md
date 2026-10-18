@@ -29,7 +29,7 @@ Primary: `curl https://huggingface.co/api/{models,datasets,spaces}?search=...` f
 2. Decide axis: if `repo_type` unset, default to `model` first, fall back to `space` for demo discovery.
 3. Hit the REST endpoint with `sort=downloads&direction=-1&limit=10`; parse with `jq`.
 4. For each top candidate, fetch metadata (tags, library, license) via the per-repo endpoint.
-5. Optional: download config-only artifacts (`uvx hf download <id> --include "*.json" --local-dir /tmp/<name>`) to compare model shapes — never download weights.
+5. Optional: download config-only artifacts (`uvx hf download <id> --include "*.json" --local-dir "${workspace_dir}/dl/<name>"`) to compare model shapes — never download weights.
 6. Write findings as JSON to `${workspace_dir}/${artifact_id}.json`.
 
 ## Output schema (`${artifact_id}.json`)

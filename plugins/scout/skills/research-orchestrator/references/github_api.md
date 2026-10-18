@@ -2,16 +2,7 @@
 
 ## Installation
 
-```bash
-# macOS
-brew install gh
-
-# Ubuntu/Debian
-sudo apt install gh
-
-# Windows
-winget install GitHub.cli
-```
+Install `gh` for this platform per https://cli.github.com/ (the vendor page lists every installer), then confirm with `gh --version`.
 
 ## Authentication
 

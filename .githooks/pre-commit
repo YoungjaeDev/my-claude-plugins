@@ -41,6 +41,9 @@ node "$repo_root/scripts/check-skill-contract.mjs"
 # against a fixture cache and throwaway repos. Neither reads ~/.claude or global git config.
 node "$repo_root/scripts/bump-version.mjs" --selftest
 node "$repo_root/scripts/check-plugin-cache.mjs" --selftest
+# A plugin file changed against origin/main with its version not above origin/main's:
+# cache-gated users never get it. d7dbb96 went straight onto main that way (issue #339).
+node "$repo_root/scripts/bump-version.mjs" --check
 # Translationese in README.md, judged by deck-copy.md's forbidden-phrase table.
 node "$repo_root/scripts/check-korean-copy.mjs"
 # Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
@@ -51,6 +54,10 @@ node "$repo_root/scripts/check-skill-prose.mjs" || true
 # fails, so nothing exercised them until they broke in production (issue #105).
 # Fixture-driven, no network, sub-second.
 bash "$repo_root/plugins/dev/skills/review-loop/tests/run-tests.sh"
+
+# post-merge's worktree collector decides which worktrees are safe to delete.
+# Throwaway repo + gh shim, no network.
+bash "$repo_root/plugins/dev/skills/post-merge/tests/run-tests.sh"
 
 # convene has no bundled scripts — its runner contracts live as shell inside
 # SKILL.md, where nothing executes them. Dropping `< /dev/null` from the agy call

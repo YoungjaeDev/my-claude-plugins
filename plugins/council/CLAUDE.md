@@ -17,7 +17,7 @@ else. Nothing discovers that another model is on PATH or executes the delegation
 |---|---|
 | Entry point | `/council:convene` |
 | Seat roster + pinned models | `~/.claude/council-models.json` (global, 7-day TTL) |
-| Per-run output | `.council/<YYYY-MM-DD>-<slug>/` in the current repo, git-tracked |
+| Per-run output | `.council/<YYYY-MM-DD>-<slug>/consensus.md` in the current repo, git-tracked; brief, questions, prompts and seat answers in `.tmp/council/<same name>/`, gitignored |
 | Design record | `.claude/spec/2026-07-29-council.md` |
 
 Three seats, plus a chair that is not a seat:

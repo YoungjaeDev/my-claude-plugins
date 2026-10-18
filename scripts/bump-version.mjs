@@ -6,6 +6,11 @@
 //
 //   node scripts/bump-version.mjs <plugin>... [--minor|--major] [--base origin/main]
 //   node scripts/bump-version.mjs --selftest
+//   node scripts/bump-version.mjs --check [--base origin/main]
+//
+// --check is the guard (verify chain, pre-commit, CI): it fails when a plugin's files
+// changed against base and its version is not above base's, including a commit that
+// goes straight onto base (review-loop's base push). See check() for what "changed" is.
 //
 // Each named plugin goes to max(current, base bumped at the level): patch by default.
 // metadata.version goes to max(current, base MINOR+1). Re-running is a no-op, and a
@@ -69,6 +74,65 @@ function bump(root, names, level, base, env = process.env) {
   for (const [name, plugin] of plugins) save(manifest(name), plugin);
   save(MARKET, market);
   return changes;
+}
+
+/**
+ * The guard (--check): every plugin this branch changed must be above base. Returns
+ * the failure lines. "Changed" is a path under plugins/<name>/ that differs both from
+ * the merge-base (this branch touched it) and from base (it is not just base's own
+ * newer content): a branch that merged base in, or one base moved past, is not blamed
+ * for base's changes. Versions are read from the index, which is the commit a
+ * pre-commit hook is checking (the verify chain stages everything first). A plugin new
+ * on this branch has no base version to exceed. Throws when base cannot be read.
+ */
+function check(root, base, env = process.env) {
+  const git = (...a) => execFileSync('git', ['-C', root, ...a], { env, stdio: ['ignore', 'pipe', 'pipe'] }).toString();
+  let mb;
+  try { mb = git('merge-base', base, 'HEAD').trim(); } catch (err) {
+    throw new Error(`cannot find the merge-base with ${base} (fetch it, or pass --base): ${String(err.stderr || err.message).trim()}`);
+  }
+  // --no-renames: a file moved between plugins must count for both, not just the new one.
+  const touched = (ref) => new Set(git('diff', '--cached', '--no-renames', '--name-only', '-z', ref, '--', 'plugins/')
+    .split('\0').map((p) => /^plugins\/([^/]+)\//.exec(p)?.[1]).filter(Boolean));
+  const fromBase = touched(base);
+  const names = [...touched(mb)].filter((n) => fromBase.has(n)).sort();
+  const show = (spec) => { try { return JSON.parse(git('show', spec)); } catch { return null; } };
+  const failures = [];
+  const market = show(`:${MARKET}`);
+  const baseMarket = show(`${base}:${MARKET}`);
+  if (!baseMarket) throw new Error(`cannot read ${base}:${MARKET}`);
+  // plugin.json and its marketplace entry exist together and carry one version. Every
+  // registered plugin is checked: a marketplace-only edit touches no plugins/ path.
+  const entries = market?.plugins || [];
+  for (const name of new Set([...names, ...entries.map((p) => p.name)])) {
+    const plugin = show(`:${manifest(name)}`);
+    const e = entries.find((p) => p.name === name);
+    if (!plugin !== !e || plugin?.version !== e?.version) {
+      failures.push(`${manifest(name)} is ${plugin?.version || 'missing'} but ${MARKET} (${name}) is ${e ? e.version || 'unversioned' : 'missing'}: give both the same version, or remove both`);
+    }
+  }
+  let bumped = false;
+  for (const name of names) {
+    const baseVer = show(`${base}:${manifest(name)}`)?.version;
+    const plugin = show(`:${manifest(name)}`);
+    const entry = entries.find((p) => p.name === name)?.version;
+    // Added or removed on this branch: no version pair to compare, but the release
+    // counter (metadata.version) still has to move.
+    if (!baseVer || !plugin) { if (baseVer || plugin) bumped = true; continue; }
+    for (const [where, v] of [[manifest(name), plugin.version], [`${MARKET} (${name})`, entry]]) {
+      if (!v || cmp(v, baseVer) <= 0) {
+        failures.push(`plugins/${name}/ changed since ${base} but ${where} is ${v || 'missing'}, not above ${base}'s ${baseVer}: run node scripts/bump-version.mjs ${name}`);
+      }
+    }
+    bumped = true;
+  }
+  // metadata.version against the merge-base: did this branch move it at all. Against
+  // base it would fail every commit on a branch a sibling release overtook.
+  const mbMeta = show(`${mb}:${MARKET}`)?.metadata?.version || '0.0.0';
+  if (bumped && cmp(market?.metadata?.version || '0.0.0', mbMeta) <= 0) {
+    failures.push(`a plugin version moved but metadata.version ${market?.metadata?.version} is not above ${mbMeta}: run node scripts/bump-version.mjs <plugin>`);
+  }
+  return failures;
 }
 
 /** {names, level, base} from argv; throws on an unknown option, two levels, or no plugin. */
@@ -146,6 +210,8 @@ function selftest() {
   } catch (err) {
     failures.push(`setup: ${err.message}`);
   }
+  rmSync(dir, { recursive: true, force: true });
+  failures.push(...checkSelftest(env));
   const argv = (a) => { try { return JSON.stringify(parseArgs(a)); } catch (err) { return `error: ${err.message}`; } };
   const argCases = [
     [['a', 'b'], '{"names":["a","b"],"level":"patch","base":"origin/main"}'],
@@ -158,6 +224,90 @@ function selftest() {
   for (const [a, want] of argCases) {
     const got = argv(a);
     if (typeof want === 'string' ? got !== want : !want.test(got)) failures.push(`args ${a.join(' ')}: got ${got}`);
+  }
+  return failures;
+}
+
+/** --check against a throwaway repo: base `main`, a feature branch, a sibling release. */
+function checkSelftest(env) {
+  const dir = mkdtempSync(join(tmpdir(), 'bump-check-'));
+  const git = (...a) => execFileSync('git', ['-C', dir, ...a], { env, stdio: ['ignore', 'pipe', 'pipe'] }).toString();
+  const put = (rel, text) => { mkdirSync(join(dir, rel, '..'), { recursive: true }); writeFileSync(join(dir, rel), text); };
+  const json = (rel, obj) => put(rel, JSON.stringify(obj, null, 2) + '\n');
+  const commit = (msg) => git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', msg);
+  const failures = [];
+  const expect = (name, want) => {
+    let got;
+    try { got = check(dir, 'main', env); } catch (err) { got = [`threw: ${err.message}`]; }
+    const ok = want instanceof RegExp ? got.length > 0 && got.every((l) => want.test(l)) : got.length === 0;
+    if (!ok) failures.push(`check ${name}: got ${JSON.stringify(got)}`);
+  };
+  try {
+    git('init', '-q', '-b', 'main');
+    json('.claude-plugin/marketplace.json', { name: 'm', metadata: { version: '1.0.0' }, plugins: [{ name: 'a', version: '1.0.0' }, { name: 'b', version: '1.0.0' }] });
+    json('plugins/a/.claude-plugin/plugin.json', { name: 'a', version: '1.0.0' });
+    json('plugins/b/.claude-plugin/plugin.json', { name: 'b', version: '1.0.0' });
+    put('plugins/a/x.md', 'x\n'); put('plugins/b/y.md', 'y\n'); put('README.md', 'r\n');
+    git('add', '-A'); commit('base');
+    git('checkout', '-qb', 'feat');
+    expect('nothing changed', null);
+    const base0 = readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8');
+    const only = JSON.parse(base0); only.plugins[1].version = '9.9.9';
+    json('.claude-plugin/marketplace.json', only); git('add', '-A');
+    expect('a marketplace-only version edit', /\(b\) is 9\.9\.9/);
+    put('.claude-plugin/marketplace.json', base0); git('add', '-A');
+    put('README.md', 'root docs bump nothing\n'); git('add', '-A');
+    expect('root file only', null);
+    put('plugins/a/x.md', 'changed\n'); git('add', '-A');
+    expect('plugin file changed, no bump', /plugins\/a\/ changed since main|metadata\.version/);
+    // The pre-commit hook checks the commit, which is the index.
+    bump(dir, ['a'], 'patch', 'main', env);
+    expect('bump in the working tree only (not staged)', /plugins\/a\/ changed since main|metadata\.version/);
+    git('add', '-A');
+    expect('bumped above base', null);
+    const mk = readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8');
+    const drift = JSON.parse(mk); drift.plugins[0].version = '1.0.2';
+    json('.claude-plugin/marketplace.json', drift); git('add', '-A');
+    expect('both above base but not equal', /plugin\.json is 1\.0\.1 but/);
+    put('.claude-plugin/marketplace.json', mk); git('add', '-A');
+    commit('feat');
+    // A sibling release lands on main: b changed and bumped.
+    git('checkout', '-q', 'main');
+    put('plugins/b/y.md', 'sibling\n'); bump(dir, ['b'], 'patch', 'main', env);
+    git('add', '-A'); commit('sibling');
+    git('checkout', '-q', 'feat');
+    expect('base moved on another plugin', null);
+    git('-c', 'user.name=t', '-c', 'user.email=t@t', 'merge', '-q', '--no-commit', '--no-ff', 'main');
+    expect('merging base in, before the merge commit', null);
+    git('merge', '--abort');
+    // A later release moves metadata.version past the branch's: not this branch's to fix.
+    git('checkout', '-q', 'main');
+    json('.claude-plugin/marketplace.json', { ...JSON.parse(readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8')), metadata: { version: '1.2.0' } });
+    git('add', '-A'); commit('release');
+    git('checkout', '-q', 'feat');
+    expect('base metadata moved past the branch', null);
+    // The base push: base plus a fix to a plugin, committed straight onto base.
+    git('checkout', '-q', 'main'); git('checkout', '-qb', 'direct');
+    put('plugins/b/y.md', 'direct fix\n'); git('add', '-A');
+    expect('a fix straight onto base without a bump', /plugins\/b\/ changed since main|metadata\.version/);
+    git('checkout', 'HEAD', '--', 'plugins/b/y.md');
+    put('plugins/c/.claude-plugin/plugin.json', '{"name":"c","version":"0.1.0"}\n'); git('add', '-A');
+    expect('a plugin new on the branch, unregistered, metadata not moved', /\(c\) is missing|metadata\.version/);
+    const m = JSON.parse(readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8'));
+    json('.claude-plugin/marketplace.json', { ...m, metadata: { version: '1.3.0' }, plugins: [...m.plugins, { name: 'c', version: '0.1.0' }] });
+    git('add', '-A');
+    expect('a plugin new on the branch, metadata moved', null);
+    rmSync(join(dir, 'plugins/b'), { recursive: true, force: true }); git('add', '-A');
+    expect('a plugin removed, its marketplace entry kept', /plugin\.json is missing but/);
+    const kept = JSON.parse(readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8'));
+    delete kept.plugins.find((p) => p.name === 'b').version;
+    json('.claude-plugin/marketplace.json', kept); git('add', '-A');
+    expect('a plugin removed, its unversioned entry kept', /\(b\) is unversioned/);
+    let threw = false;
+    try { check(dir, 'no-such-ref', env); } catch { threw = true; }
+    if (!threw) failures.push('check: an unreadable base did not fail');
+  } catch (err) {
+    failures.push(`check setup: ${err.message}`);
   }
   rmSync(dir, { recursive: true, force: true });
   return failures;
@@ -174,6 +324,29 @@ if (args.includes('--selftest')) {
     process.exit(1);
   }
   console.log('bump-version selftest OK');
+  process.exit(0);
+}
+if (args[0] === '--check') {
+  const rest = args.slice(1);
+  if (!(rest.length === 0 || (rest.length === 2 && rest[0] === '--base' && rest[1] && !rest[1].startsWith('--')))) {
+    console.error('usage: node scripts/bump-version.mjs --check [--base origin/main]');
+    process.exit(2);
+  }
+  const base = rest[1] || 'origin/main';
+  // The repo the caller is in (a base-push worktree runs this file from its own checkout).
+  const root = execFileSync('git', ['rev-parse', '--show-toplevel']).toString().trim();
+  try {
+    const failures = check(root, base);
+    if (failures.length) {
+      console.error('bump-version --check: plugin files changed without a version bump:');
+      for (const f of failures) console.error(`  ${f}`);
+      process.exit(1);
+    }
+    console.log(`bump-version --check OK (against ${base})`);
+  } catch (err) {
+    console.error(`bump-version --check: ${err.message}`);
+    process.exit(1);
+  }
   process.exit(0);
 }
 let opts;

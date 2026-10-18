@@ -1,24 +1,12 @@
 #!/usr/bin/env bash
 # Usage: bash scripts/probe-cr-cli.sh
 # Exits 0 if `coderabbit` CLI present AND authenticated.
-# Prints one JSON line summarizing status. The install hint is platform-aware:
-# Windows has a native PowerShell installer (no WSL, no admin — docs.coderabbit.ai/cli/windows),
-# so pointing a Windows user at install.sh sends them down the wrong path.
+# Prints one JSON line summarizing status. The install hint names the vendor page, not
+# one installer per OS: the page lists every platform's installer and stays current.
 set -euo pipefail
 
-install_hint() {
-  case "$(uname -s 2>/dev/null || echo unknown)" in
-    MINGW*|MSYS*|CYGWIN*)
-      echo 'Install (PowerShell, no admin): irm https://cli.coderabbit.ai/install.ps1 | iex — then: coderabbit auth login' ;;
-    Darwin)
-      echo 'Install: brew install coderabbit (or curl -fsSL https://cli.coderabbit.ai/install.sh | sh) — then: coderabbit auth login' ;;
-    *)
-      echo 'Install: curl -fsSL https://cli.coderabbit.ai/install.sh | sh — then: coderabbit auth login' ;;
-  esac
-}
-
 if ! command -v coderabbit >/dev/null 2>&1; then
-  jq -cn --arg hint "$(install_hint)" '{installed:false, authed:false, hint:$hint}'
+  jq -cn '{installed:false, authed:false, hint:"Install the CodeRabbit CLI for this platform per https://docs.coderabbit.ai/cli — then: coderabbit auth login"}'
   exit 1
 fi
 

@@ -56,15 +56,19 @@ Default `quick`. Upgrade to `deep` if any of these match in the query:
 ```bash
 # Per-run isolated workspace — never share a fixed path across runs
 # (parallel orchestrator runs would otherwise clobber each other's artifacts).
-# Ensure the parent exists before mktemp, then create the workspace.
-PARENT="${TMPDIR:-/tmp}/research"
+# Inside a git repo the run lives under the gitignored <repo>/.tmp/research/ so it is
+# easy to find and survives the session; outside one, fall back to the system temp dir.
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) && PARENT="$ROOT/.tmp/research" \
+  || PARENT="${TMPDIR:-/tmp}/research"
 mkdir -p "$PARENT"
 WORKSPACE="${workspace_dir:-$(mktemp -d "$PARENT/run.XXXXXXXX")}"
 REPORT="${report_path:-${WORKSPACE%/}/final_report.md}"
 mkdir -p "$WORKSPACE" "$(dirname "$REPORT")"
 ```
 
-Caller-supplied `workspace_dir` / `report_path` are honored verbatim; otherwise each run gets its own `mktemp` directory. Tell the user the resolved `$WORKSPACE` and `$REPORT` paths in the final summary so they can inspect or delete the run's artifacts.
+When the run uses the default workspace inside a repo (no caller `workspace_dir`), `.tmp/` must be gitignored or the run shows up as untracked changes; a caller-supplied path is the caller's to manage. Test it with `git check-ignore -q .tmp/`. When it is not ignored, ask through the interactive-input gate whether to append `.tmp/` to `.gitignore`; without an answer, leave `.gitignore` alone and say so. Scouts that download repo files put them under `$WORKSPACE/dl/<name>`, never under a fixed `/tmp` path.
+
+Caller-supplied `workspace_dir` / `report_path` are honored verbatim; otherwise each run gets its own `mktemp` directory under `.tmp/research/` (or the system temp dir outside a repo). Tell the user the resolved `$WORKSPACE` and `$REPORT` paths in the final summary so they can inspect or delete the run's artifacts.
 
 ### 3. Axis routing
 

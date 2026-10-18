@@ -12,7 +12,7 @@ ADR 0002 의 HEAD 판정 대기는 PR 머지에 그대로 적용된다. 켜진 �
 
 리뷰어가 자기 대기 상한(CodeRabbit 은 `TIMEOUT`, Codex 는 Codex 대기 예산)이 지나도 HEAD 에 판정을 내지 않으면 막힌 것으로 본다. CodeRabbit 의 상한은 push(또는 그보다 늦은 첫 요청) 기준 `TIMEOUT` 하나다. 그 절반이 지나도 판정이 없고 그 HEAD 에 요청이 아직 없으면 `@coderabbitai review` 를 한 번 올리고, 남은 절반만 기다린다. 재촉이 상한을 다시 세지 않으므로 최악 대기는 `TIMEOUT` 이다. 상한까지 판정이 없으면 뺀다. Codex 는 재촉하지 않고 상한에서 뺀다. Codex 대기 예산 기본값은 ADR 0002 가 잰 가장 늦은 Codex 리뷰(726초)보다 큰 900초다 (`scripts/codex-turnaround.sh`): 늦지만 정상인 리뷰가 빠지지 않게 한다. 읽을 수 없는 리뷰어(재촉 여부를 확인하는 댓글 조회 실패, 👍 만이 판정일 수 있는데 반응 조회 실패 포함)는 빼지 않는다. `@codex review` 금지는 그대로이고, Codex 는 push 마다 알아서 돈다. 뺀 리뷰어는 그 실행의 나머지 동안 꺼지고, 남은 리뷰어의 판정으로 HEAD 를 판정한다. 이름은 종료 판정 출력과 최종 JSON 의 `dropped_reviewers`, 최종 보고에 남는다. 리뷰어를 뺀 실행은 `--auto-merge` 가 있어도 사용자에게 머지를 묻는다. 남은 리뷰어가 없거나 읽을 수 없는 리뷰어만 남으면 예전처럼 `timeout` 이다. 결정 당시 PR #315 에서 CodeRabbit 이 push 뒤 6시간 동안 아무것도 내지 않았고, 일시정지·rate limit 표시도 없어 재요청 조건에 걸리지 않았다. 루프는 timeout 으로 끝났고 사용자가 손으로 머지했다.
 
-판정은 `plugins/dev/skills/review-loop/scripts/head-verdicts.sh` 가 내린다 (`stuck` 상태와 `dropped`). Codex 가 지적 없이 PR 에 남기는 👍 반응은 push 뒤에 생긴 것이면 clean 판정으로 읽으므로, 그 경우는 막힌 것으로 치지 않는다.
+판정은 `plugins/dev/skills/review-loop/scripts/head-verdicts.sh` 가 내린다 (`stuck` 상태와 `dropped`). Codex 가 지적 없이 PR 에 남기는 👍 반응은 push 뒤에 생겼고 summary 댓글의 `codex-review-state` 표식이 HEAD 를 가리키면 clean 판정으로 읽으므로 (#338), 그 경우는 막힌 것으로 치지 않는다.
 
 ## Considered Options
 

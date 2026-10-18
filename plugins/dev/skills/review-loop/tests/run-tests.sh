@@ -385,9 +385,16 @@ is "Codex off for the run -> CR verdict suffices" \
 # the gate reads it only when it passes the push time on (PR #334).
 printf '[{"context":"ci","state":"success","created_at":"2026-01-01T00:00:00Z"}]' > "$SHIMDIR/statuses.json"
 printf '[{"user":{"login":"chatgpt-codex-connector[bot]"},"content":"+1","created_at":"2026-06-01T00:00:00Z"}]' > "$SHIMDIR/reactions.json"
-is "Codex 👍 after the push on HEAD -> eligible" \
-   "$(AMG_COMMENTS="$FIX/issue-comments-codex-summary-completed.json" AMG_STATUSES="$SHIMDIR/statuses.json" \
+sed 's/95ab2f621c9add07df26af3770418786a29a62bb/deadbeef/' "$FIX/issue-comments-codex-summary-state-head.json" \
+  > "$SHIMDIR/comments-state-head.json"
+is "Codex 👍 after the push, state marker on HEAD -> eligible" \
+   "$(AMG_COMMENTS="$SHIMDIR/comments-state-head.json" AMG_STATUSES="$SHIMDIR/statuses.json" \
       AMG_REACTIONS="$SHIMDIR/reactions.json" amg | jq -r '.eligible')" true
+# The same 👍 with the marker still on the previous commit is Codex finishing that
+# commit after the push, not a verdict on HEAD (#338).
+is "Codex 👍 after the push, state marker on an older commit -> ineligible" \
+   "$(AMG_COMMENTS="$FIX/issue-comments-codex-summary-state-stale.json" AMG_STATUSES="$SHIMDIR/statuses.json" \
+      AMG_REACTIONS="$SHIMDIR/reactions.json" amg | jq -r '.eligible')" false
 # Severity decides who reviews the fixes the cycle applied (ADR 0006): one from a
 # Critical/Major/Security/Codex P0-P1 finding goes back to the PR for re-review; if
 # all are Minor or lower, the reviewed HEAD merges and they go straight to the base.
@@ -1060,11 +1067,20 @@ is "no summary + HEAD review -> findings"               "$(vf .verdict)" finding
 
 # Codex with nothing to say leaves a 👍 on the PR and no review (PR #320: push
 # 11:45:48Z, 👍 11:48:26Z). Only the anchored bot login's +1 created after the push
-# counts; one from before the push belongs to an older HEAD.
-v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
-is "Codex 👍 after the push, no summary -> clean"       "$(vf .verdict)" clean
+# counts; one from before the push belongs to an older HEAD. And only when the
+# summary's `<!-- codex-review-state:v1 {...} -->` marker (shape read from PR #320
+# and #334) names HEAD as the completed code review: Codex finishing the previous
+# commit after a new push leaves a 👍 newer than the push too (#338).
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-codex-summary-state-head.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
+is "Codex 👍 after the push, older-SHA row, state marker on HEAD -> clean" "$(vf .verdict)" clean
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-codex-summary-state-stale.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
+is "Codex 👍 after the push, state marker on the previous commit -> none (#338)" "$(vf .verdict)" none
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-codex-summary-state-head-running.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
+is "Codex 👍 after the push, state marker running on HEAD -> none" "$(vf .verdict)" none
 v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-codex-summary-stale-sha.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
-is "Codex 👍 after the push, summary on an older SHA -> clean" "$(vf .verdict)" clean
+is "Codex 👍 after the push, older-SHA row, no state marker -> none" "$(vf .verdict)" none
+v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
+is "Codex 👍 after the push, no summary -> not clean"   "$(vf .verdict)" unknown
 v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:50:00Z)
 is "Codex 👍 before the push -> not clean"              "$(vf .verdict)" unknown
 v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=)
@@ -1081,10 +1097,13 @@ is "reactions unreadable -> summary still decides"      "$v_rc:$(vf .verdict)" 0
 is "reactions unreadable -> reported as unreadable"     "$(vf .reactions)" unreadable
 # Where only a 👍 could give the verdict, an unreadable list is a failed read, not
 # "no 👍": verdict error, so the HEAD verdict wait never drops Codex over it (#328).
+v=$(RXN=__FAIL__ verdict issue-comments-codex-summary-state-head.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z); v_rc=$?
+is "reactions unreadable, state marker on HEAD -> error, exit 1" "$v_rc:$(vf .verdict)" 1:error
+# Without the marker on HEAD no 👍 could decide, so the failed read changes nothing.
 v=$(RXN=__FAIL__ verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z); v_rc=$?
-is "reactions unreadable, no summary -> error, exit 1"  "$v_rc:$(vf .verdict)" 1:error
-v=$(RXN=__FAIL__ verdict issue-comments-codex-summary-stale-sha.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z); v_rc=$?
-is "reactions unreadable, summary on an older SHA -> error" "$v_rc:$(vf .verdict)" 1:error
+is "reactions unreadable, no summary -> unknown"        "$v_rc:$(vf .verdict)" 0:unknown
+v=$(RXN=__FAIL__ verdict issue-comments-codex-summary-state-stale.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z); v_rc=$?
+is "reactions unreadable, state marker on an older commit -> none" "$v_rc:$(vf .verdict)" 0:none
 v=$(RXN=__FAIL__ verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=); v_rc=$?
 is "reactions unreadable, no push time (no 👍 counts) -> unknown" "$v_rc:$(vf .verdict)" 0:unknown
 v=$(RXN=issue-reactions-codex-plus1.json verdict issue-comments-cr-edited-in-place.json pr-reviews-codex-prior-only.json PUSH_TIME=2026-10-17T11:45:48Z)
@@ -1474,8 +1493,9 @@ is "pause, push time unknown -> no request decided" "$(hf .state):$(hf .cr_revie
 echo '[]' > "$HW/empty.json"
 w=$(hw "$HW/cr-clean.json" "$HW/empty.json" CODEX_ON=auto)
 is "Codex never engaged on the PR -> off, CR clean -> ready" "$(hf .state):$(hf .codex)" ready:off
-# Codex whose only possible verdict (a 👍) cannot be read is not dropped (#328).
-w=$(hw "$HW/r-clean.json" "$HW/empty.json" CAP= CODEX_ON=true CODEX_GRACE=0 HW_RXN=__FAIL__)
+# Codex whose only possible verdict (a 👍, which the state marker on HEAD would let
+# count) cannot be read is not dropped (#328).
+w=$(hw "$HW/r-clean.json" "$FIX/issue-comments-codex-summary-state-head.json" CAP= CODEX_ON=true CODEX_GRACE=0 HW_RXN=__FAIL__)
 is "Codex reactions unreadable past its budget -> not dropped, timeout" \
    "$(hf .state):$(hf '.dropped | length'):$(hf .codex)" timeout:0:error
 w=$(hw "$HW/r-clean.json" "$FIX/issue-comments-codex-summary-running.json" CODEX_ON=false)

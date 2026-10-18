@@ -46,7 +46,7 @@ Codex's result for the commit the PR points at now (`GLOSSARY.md` "HEAD 판정",
 
 - **Summary comment.** Codex keeps one `<!-- codex-pull-request-review-summary -->` issue comment and edits it in place: a table row per review with `**Running**` / `**Completed**` / `**Failed**`, a `<relative-time datetime>` and a backticked short SHA. Only the newest row for HEAD (by that datetime, wherever it sits in the table; a tie takes the later row) decides, so a re-run's Completed row overrides an earlier Failed one. The newest such comment by `updated_at` from the anchored Codex login wins; a lookalike login is ignored.
 - **HEAD review.** A Codex review with `commit_id == CUR_SHA`. Codex submits one only when it has findings, a few seconds before it flips the summary to Completed.
-- **👍 reaction.** With nothing to say, Codex may leave only a `+1` reaction on the PR (`issues/{pr}/reactions`; PR #320, three minutes after the push). One from the anchored Codex login created after `PUSH_TIME` is `clean` where no HEAD row and no HEAD review decide. No `PUSH_TIME`, no reaction verdict. An unreadable reaction list only withholds it.
+- **👍 reaction.** With nothing to say, Codex may leave only a `+1` reaction on the PR (`issues/{pr}/reactions`; PR #320, three minutes after the push). One from the anchored Codex login created after `PUSH_TIME` is `clean` where no HEAD row and no HEAD review decide, and only when the summary's `<!-- codex-review-state:v1 {json} -->` marker (shape read from PR #320 and #334) has `code_review.commit_sha` equal to `CUR_SHA` and `code_review.status` `completed`: a review of the previous commit that finishes after a new push leaves a 👍 newer than the push too (#338). No `PUSH_TIME` or no such marker, no reaction verdict. An unreadable reaction list only withholds it, and is `error` only where the marker could have let a 👍 decide.
 
 Interface: env `OWNER REPO PR_NUM CUR_SHA [PUSH_TIME] [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=900]` (default from `scripts/codex-turnaround.sh`), one JSON line on stdout, exit 0 (exit 1 only with `verdict=error`). `reactions` says whether the PR's reactions were `read` or `unreadable`; unreadable where only a 👍 could give the verdict (no HEAD row, no HEAD review, `PUSH_TIME` known) is `verdict=error`, never "no 👍", so no wait drops Codex over a failed read.
 
@@ -63,8 +63,8 @@ Interface: env `OWNER REPO PR_NUM CUR_SHA [PUSH_TIME] [CODEX_GRACE=30] [CODEX_PR
 | Failed | any | `failed` |
 | Completed | yes | `findings` |
 | Completed | no | `clean` |
-| row for another SHA | yes / no | `findings` / `none` (Codex has not judged HEAD), `clean` with a 👍 after the push |
-| unparseable or unknown status word (`summary_state=unparsed`), or no summary (`absent`) | yes / no | `findings` / `unknown`, `fallback=review_id_poll`; `clean` with a 👍 after the push |
+| row for another SHA | yes / no | `findings` / `none` (Codex has not judged HEAD), `clean` with a 👍 after the push and the state marker on HEAD |
+| unparseable or unknown status word (`summary_state=unparsed`), or no summary (`absent`) | yes / no | `findings` / `unknown`, `fallback=review_id_poll`; `clean` with a 👍 after the push and the state marker on HEAD (never with no summary) |
 | gh failed | n/a | `error`, exit 1 |
 
 Only `clean` is a pass. `unknown` is never clean: callers fall back to review-id polling. `wait_seconds` is the single Codex wait budget, `max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age)`, reported even on `error`; `push_age` comes from `PUSH_TIME` via jq `fromdateiso8601` (no GNU/BSD `date` split), and an absent or unparseable `PUSH_TIME` counts as age 0. Consumers: `pre-flight.sh` (`codex_verdict`, `codex_wait_seconds`), Step 6b below, `poll-codex-grace.sh` (with `CUR_SHA` and `PUSH_TIME`, ends on `clean` / `failed`).

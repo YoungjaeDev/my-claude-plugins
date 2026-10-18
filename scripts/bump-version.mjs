@@ -101,16 +101,21 @@ function check(root, base, env = process.env) {
   const market = show(`:${MARKET}`);
   const baseMarket = show(`${base}:${MARKET}`);
   if (!baseMarket) throw new Error(`cannot read ${base}:${MARKET}`);
+  // plugin.json and its marketplace entry exist together and carry one version. Every
+  // registered plugin is checked: a marketplace-only edit touches no plugins/ path.
+  const entries = market?.plugins || [];
+  for (const name of new Set([...names, ...entries.map((p) => p.name)])) {
+    const plugin = show(`:${manifest(name)}`);
+    const e = entries.find((p) => p.name === name);
+    if (!plugin !== !e || plugin?.version !== e?.version) {
+      failures.push(`${manifest(name)} is ${plugin?.version || 'missing'} but ${MARKET} (${name}) is ${e ? e.version || 'unversioned' : 'missing'}: give both the same version, or remove both`);
+    }
+  }
   let bumped = false;
   for (const name of names) {
     const baseVer = show(`${base}:${manifest(name)}`)?.version;
     const plugin = show(`:${manifest(name)}`);
-    const entry = market?.plugins?.find((p) => p.name === name)?.version;
-    // plugin.json and its marketplace entry carry one version, an added plugin's too; a
-    // removed plugin takes its entry with it.
-    if (plugin?.version !== entry) {
-      failures.push(`${manifest(name)} is ${plugin?.version || 'missing'} but ${MARKET} (${name}) is ${entry || 'missing'}: give both the same version, or remove both`);
-    }
+    const entry = entries.find((p) => p.name === name)?.version;
     // Added or removed on this branch: no version pair to compare, but the release
     // counter (metadata.version) still has to move.
     if (!baseVer || !plugin) { if (baseVer || plugin) bumped = true; continue; }
@@ -246,6 +251,11 @@ function checkSelftest(env) {
     git('add', '-A'); commit('base');
     git('checkout', '-qb', 'feat');
     expect('nothing changed', null);
+    const base0 = readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8');
+    const only = JSON.parse(base0); only.plugins[1].version = '9.9.9';
+    json('.claude-plugin/marketplace.json', only); git('add', '-A');
+    expect('a marketplace-only version edit', /\(b\) is 9\.9\.9/);
+    put('.claude-plugin/marketplace.json', base0); git('add', '-A');
     put('README.md', 'root docs bump nothing\n'); git('add', '-A');
     expect('root file only', null);
     put('plugins/a/x.md', 'changed\n'); git('add', '-A');
@@ -289,6 +299,10 @@ function checkSelftest(env) {
     expect('a plugin new on the branch, metadata moved', null);
     rmSync(join(dir, 'plugins/b'), { recursive: true, force: true }); git('add', '-A');
     expect('a plugin removed, its marketplace entry kept', /plugin\.json is missing but/);
+    const kept = JSON.parse(readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8'));
+    delete kept.plugins.find((p) => p.name === 'b').version;
+    json('.claude-plugin/marketplace.json', kept); git('add', '-A');
+    expect('a plugin removed, its unversioned entry kept', /\(b\) is unversioned/);
     let threw = false;
     try { check(dir, 'no-such-ref', env); } catch { threw = true; }
     if (!threw) failures.push('check: an unreadable base did not fail');

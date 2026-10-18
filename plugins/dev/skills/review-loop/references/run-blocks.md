@@ -508,6 +508,9 @@ if [ "$res" != noop ]; then
     case "$(gh pr view "$PR_NUM" --json state --jq '.state' 2>/dev/null)" in
       MERGED|CLOSED)
         echo "review-loop: PR #$PR_NUM was merged or closed during iter $ITER; its fixes stay on local commit $(git rev-parse HEAD)" >&2
+        # This break skips Step 13: count the cycle here, or Step 14 files no issue for its defers.
+        applied_total=$((applied_total + applied_this_cycle)); deferred_total=$((deferred_total + deferred_this_cycle))
+        review_total=$((review_total + review_this_cycle))
         final_state=merged_externally; break ;;
     esac
     # A rejected push leaves the loop (references/failure-modes.md); nothing below may
@@ -685,8 +688,9 @@ if [ -z "$why" ]; then
   mflag=""; [ "$proto" != 200 ] || mflag=--auto
   # The exit code is not the merge: gh merges, then fails to delete a local branch
   # another worktree has checked out (PR #334). The PR says: merged, or (protected
-  # base) auto-merge armed.
-  gh pr merge "$PR_NUM" ${mflag:+"$mflag"} --squash --delete-branch \
+  # base) auto-merge armed. --match-head-commit: a push after the gate read the
+  # verdicts makes gh refuse, so only the reviewed HEAD can land.
+  gh pr merge "$PR_NUM" ${mflag:+"$mflag"} --squash --delete-branch --match-head-commit "${REVIEWED_SHA:-$FIX_SHA}" \
     || echo "review-loop: gh pr merge exited non-zero; reading the PR state" >&2
   if [ "$(gh pr view "$PR_NUM" --json state,autoMergeRequest \
           --jq 'if .state == "MERGED" or .autoMergeRequest != null then "yes" else "no" end' 2>/dev/null)" = yes ]; then

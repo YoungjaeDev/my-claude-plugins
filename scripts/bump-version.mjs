@@ -91,7 +91,8 @@ function check(root, base, env = process.env) {
   try { mb = git('merge-base', base, 'HEAD').trim(); } catch (err) {
     throw new Error(`cannot find the merge-base with ${base} (fetch it, or pass --base): ${String(err.stderr || err.message).trim()}`);
   }
-  const touched = (ref) => new Set(git('diff', '--cached', '--name-only', '-z', ref, '--', 'plugins/')
+  // --no-renames: a file moved between plugins must count for both, not just the new one.
+  const touched = (ref) => new Set(git('diff', '--cached', '--no-renames', '--name-only', '-z', ref, '--', 'plugins/')
     .split('\0').map((p) => /^plugins\/([^/]+)\//.exec(p)?.[1]).filter(Boolean));
   const fromBase = touched(base);
   const names = [...touched(mb)].filter((n) => fromBase.has(n)).sort();
@@ -104,7 +105,9 @@ function check(root, base, env = process.env) {
   for (const name of names) {
     const baseVer = show(`${base}:${manifest(name)}`)?.version;
     const plugin = show(`:${manifest(name)}`);
-    if (!baseVer || !plugin) continue; // added or removed on this branch
+    // Added or removed on this branch: no version pair to compare, but the release
+    // counter (metadata.version) still has to move.
+    if (!baseVer || !plugin) { if (baseVer || plugin) bumped = true; continue; }
     const entry = market?.plugins?.find((p) => p.name === name)?.version;
     for (const [where, v] of [[manifest(name), plugin.version], [`${MARKET} (${name})`, entry]]) {
       if (!v || cmp(v, baseVer) <= 0) {
@@ -269,7 +272,11 @@ function checkSelftest(env) {
     expect('a fix straight onto base without a bump', /plugins\/b\/ changed since main|metadata\.version/);
     git('checkout', 'HEAD', '--', 'plugins/b/y.md');
     put('plugins/c/.claude-plugin/plugin.json', '{"name":"c","version":"0.1.0"}\n'); git('add', '-A');
-    expect('a plugin new on the branch', null);
+    expect('a plugin new on the branch, metadata not moved', /metadata\.version/);
+    const m = JSON.parse(readFileSync(join(dir, '.claude-plugin/marketplace.json'), 'utf8'));
+    json('.claude-plugin/marketplace.json', { ...m, metadata: { version: '1.3.0' }, plugins: [...m.plugins, { name: 'c', version: '0.1.0' }] });
+    git('add', '-A');
+    expect('a plugin new on the branch, metadata moved', null);
     let threw = false;
     try { check(dir, 'no-such-ref', env); } catch { threw = true; }
     if (!threw) failures.push('check: an unreadable base did not fail');

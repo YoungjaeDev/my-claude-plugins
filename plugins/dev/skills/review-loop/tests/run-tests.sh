@@ -2236,20 +2236,20 @@ is "Step 15: CI failing does not rewrite iteration_cap" \
    "$(FS=iteration_cap s15 "$(jq -c '.eligible = false | .ineligible_reason = "x"' <<<"$cifail")")" 'iteration_cap||false|'
 # Without --auto-merge a finished review asks; no answer (no interaction tool) is no merge.
 is "Step 15: no --auto-merge, nobody answered -> not merged" "$(s15 "$ok200")" 'clean||false|'
-is "Step 15: no --auto-merge, user said merge -> merged" "$(ANS=yes s15 "$ok200")" 'clean||true|gh pr merge 1 --auto --squash --delete-branch;'
+is "Step 15: no --auto-merge, user said merge -> merged" "$(ANS=yes s15 "$ok200")" 'clean||true|gh pr merge 1 --auto --squash --delete-branch --match-head-commit f1x;'
 is "Step 15: --auto-merge on a protected base -> merged without asking" \
-   "$(AM=true s15 "$ok200")" 'clean||true|gh pr merge 1 --auto --squash --delete-branch;'
+   "$(AM=true s15 "$ok200")" 'clean||true|gh pr merge 1 --auto --squash --delete-branch --match-head-commit f1x;'
 is "Step 15: --auto-merge, unprotected base, nobody answered -> not merged" "$(AM=true s15 "$ok404")" 'clean||false|'
 # merge_then_main_push: the reviewed HEAD merges, then the held fixes go to the base.
 is "Step 15: held Minor fixes, merged -> pushed to the base" \
-   "$(RS=r3v ANS=yes s15 "$ok404")" 'clean||true|gh pr merge 1 --squash --delete-branch;base-push main r3v f1x true;'
+   "$(RS=r3v ANS=yes s15 "$ok404")" 'clean||true|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;base-push main r3v f1x true;'
 is "Step 15: base push recorded for the final output" \
    "$(jq -c '[.base_push.branch, .base_push.sha, .base_push.fixes[0].path]' "$G15/state.json")" '["main","pu5h","a.sh"]'
 is "Step 15: held Minor fixes, not merged -> pushed to the PR instead" "$(RS=r3v s15 "$ok404")" 'clean||false|git push;'
 # A reviewer the wait dropped never saw HEAD: even --auto-merge on a protected base asks.
 is "Step 15: dropped reviewer, --auto-merge, nobody answered -> not merged" "$(DR=codex AM=true s15 "$ok200")" 'clean||false|'
 is "Step 15: dropped reviewer, user said merge -> merged" \
-   "$(DR=codex AM=true ANS=yes s15 "$ok200")" 'clean||true|gh pr merge 1 --auto --squash --delete-branch;'
+   "$(DR=codex AM=true ANS=yes s15 "$ok200")" 'clean||true|gh pr merge 1 --auto --squash --delete-branch --match-head-commit f1x;'
 # The runner cannot ask (no AskUserQuestion in a subagent): it leaves the question to
 # the main session, touches nothing, and keeps the held fixes on the local commit.
 out=$(RUNNER=true RS=r3v SHOW_PENDING=1 s15 "$ok404")
@@ -2265,7 +2265,7 @@ s15m() { # WHY -> merged|calls
     eval "$BLOCK"; printf "%s|%s" "$merged" "$(tr "\n" ";" < "$CALLS")"' 2>/dev/null
 }
 is "main session, user said merge -> merged, fixes to the base" \
-   "$(s15m "")" 'true|gh pr merge 1 --squash --delete-branch;base-push main r3v f1x true;'
+   "$(s15m "")" 'true|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;base-push main r3v f1x true;'
 is "main session, user said no -> fixes to the PR" \
    "$(s15m "not merged: the user did not choose to merge")" 'false|git push;'
 rm -rf "$G15"
@@ -2965,11 +2965,11 @@ $(rb_block "Step 15: merge")" bash -c '
     printf "%s|%s|%s" "$final_state" "$merged" "$(tr "\n" ";" < "$CALLS")"' 2>/dev/null
 }
 is "Step 15: merge lands but gh exits 1 -> merged, held fixes to the base" \
-   "$(MERGE_RC=1 s15x minor_floor)" 'minor_floor|true|gh pr merge 1 --squash --delete-branch;base-push main r3v f1x true;'
+   "$(MERGE_RC=1 s15x minor_floor)" 'minor_floor|true|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;base-push main r3v f1x true;'
 is "Step 15: gh exits 0 but the PR is not merged -> not merged, fixes to the PR" \
-   "$(PRV_MERGED=no s15x minor_floor)" 'minor_floor|false|gh pr merge 1 --squash --delete-branch;git push;'
+   "$(PRV_MERGED=no s15x minor_floor)" 'minor_floor|false|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;git push;'
 is "Step 15: protected base, auto-merge armed though gh exits 1 -> fixes stay local" \
-   "$(PROTO=200 MERGE_RC=1 s15x minor_floor)" 'minor_floor|true|gh pr merge 1 --auto --squash --delete-branch;'
+   "$(PROTO=200 MERGE_RC=1 s15x minor_floor)" 'minor_floor|true|gh pr merge 1 --auto --squash --delete-branch --match-head-commit r3v;'
 is "Step 15: PR merged outside the run -> merged_externally, held fixes to the base, no merge call" \
    "$(PR_STATE=MERGED s15x minor_floor)" 'merged_externally|true|base-push main r3v f1x true;'
 is "Step 15: PR closed outside the run -> merged_externally, fixes stay local" \

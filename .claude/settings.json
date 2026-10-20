@@ -8,7 +8,8 @@
       "./plugins/wiki",
       "./plugins/deck",
       "./plugins/council",
-      "./plugins/codex-image"
+      "./plugins/codex-image",
+      "./plugins/aside"
     ]
   },
   "hooks": {

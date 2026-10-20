@@ -1,6 +1,6 @@
 ---
 name: operator
-description: Use for website work through the user's Aside browser: authenticated navigation, inspection, requested downloads or authorized actions, and resuming a task after the user logs in. Keeps browser output out of the coding conversation.
+description: "Use for website work through the user's Aside browser: authenticated navigation, inspection, requested downloads or authorized actions, and resuming a task after the user logs in. Keeps browser output out of the coding conversation."
 model: inherit
 tools: Bash, Read, Write, Edit, Glob, Grep, ToolSearch, WebFetch, mcp__mcpdocs__list_doc_sources, mcp__mcpdocs__fetch_docs
 skills:

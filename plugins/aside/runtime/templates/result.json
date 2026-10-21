@@ -1,0 +1,12 @@
+{
+  "template_only": true,
+  "request_id": "REPLACE_WITH_UNIQUE_ID",
+  "state": "accepted",
+  "summary": null,
+  "aside_session_id": null,
+  "actions_performed": [],
+  "evidence": [],
+  "artifact_paths": [],
+  "error": null,
+  "next_step": null
+}

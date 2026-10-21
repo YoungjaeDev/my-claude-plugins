@@ -4,9 +4,9 @@
 
 # my-claude-plugins
 
-Claude Code 용 8개 플러그인 모음. 그중 6개는 Codex CLI 에서도 쓴다.
+Claude Code 용 9개 플러그인 모음. 그중 6개는 Codex CLI 에서도 쓴다.
 
-[![Plugins](https://img.shields.io/badge/plugins-8-blue.svg)](#플러그인-목록)
+[![Plugins](https://img.shields.io/badge/plugins-9-blue.svg)](#플러그인-목록)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple.svg)](https://code.claude.com/docs/en/overview)
 [![Codex CLI](https://img.shields.io/badge/Codex%20CLI-native-black.svg)](#codex-cli)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -55,6 +55,7 @@ PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 만들기처럼 손이 �
 | `deck` | house 형식 HTML 강의 덱 조립·검사·배포 | `/deck:deck-ask` |
 | `council` | GPT·Gemini·Claude 좌석 3개의 교차 심의 (Claude 전용) | `/council:convene` |
 | `codex-image` | OpenAI API key 없이 Codex 로 이미지 생성 (Claude 전용) | `/codex-image:codex-image` |
+| `aside` | 로그인된 Aside 브라우저로 웹 작업을 맡기고 로그인 뒤 같은 세션에서 이어 감 (Claude 전용) | `/aside:aside` |
 
 ## 업데이트
 
@@ -246,6 +247,35 @@ Playwright 가 없으면 graceful degrade 한다. Codex 에서는 역할 계약(
 
 </details>
 
+<details>
+<summary><strong>aside</strong> - Aside 브라우저 작업 위임</summary>
+
+`/aside:aside` 는 웹 작업을 `aside:operator` 서브에이전트에 넘긴다. 서브에이전트가 Aside CLI(`aside exec --permission guard`)를 직접 돌리므로 브라우저 출력이 코딩 대화에 쌓이지 않는다. 작업 문장, `request.json` 경로, `continue <request-id>` 를 받는다.
+
+```text
+/aside:aside 이 사이트에서 필요한 정보를 조회해줘. 변경이나 전송은 하지 마.
+/aside:aside continue <request-id> — 로그인 완료했으니 기존 세션에서 계속해줘.
+```
+
+- 한 번에 작업 하나만 돈다. 기록 루트의 공용 게이트 `$OPS_ROOT/bin/aside_gate.py` 가 예약을 잡고 다른 작업은 busy(75)로 거절한다. 게이트 런타임은 플러그인의 `runtime/` 에 들어 있다. 처음 한 번 기록 루트에 복사해 설치한다 (아래). 플러그인의 `scripts/aside_gate.py` 는 설치된 게이트로 넘기기만 한다. 같은 루트를 쓰는 Hermes·SSH 호출자도 이 게이트를 거쳐야 한다. 게이트를 우회하는 직접 CLI 호출까지 막는 샌드박스는 아니다
+- 로그인·2FA·수동 승인에 막히면 `waiting_for_user` 와 실제 Aside 세션 ID 를 남기고 돌아온다. 계속하라고 하면 같은 Aside 세션을 이어 간다
+- 종료 코드 0 이나 Aside 의 성공 문구가 아니라 실제 페이지·파일을 다시 확인해야 완료로 친다
+- 기록은 `ASIDE_OPS_ROOT` (기본 `~/aside-ops`) 의 `runs/<request-id>/`, `sites/<domain>/playbook.md`, `artifacts/` 에 남는다. 비밀번호·토큰·쿠키는 남기지 않는다
+- 문서는 `aside --help`·`aside guide` 를 먼저 보고, 모호하면 기존 `mcpdocs` 의 Aside 소스(`https://docs.aside.com/llms.txt`)를 본다. MCP 서버를 따로 등록하지 않는다
+- Claude 전용 (진입 스킬이 플러그인 agent 로 fork 하는데 Codex 는 `agents/` 를 읽지 않는다)
+
+게이트 런타임 설치. 플러그인을 갱신한 뒤에도 다시 실행한다. `bin/`, `README.md`, `SSH.md`, `templates/` 만 덮어쓰고 `sites/`·`runs/`·`artifacts/`·`.coordination/` 은 건드리지 않는다:
+
+```bash
+OPS_ROOT="${ASIDE_OPS_ROOT:-$HOME/aside-ops}"
+SRC=~/.claude/plugins/marketplaces/my-claude-plugins/plugins/aside/runtime   # 저장소를 clone 했다면 그쪽 경로
+mkdir -p "$OPS_ROOT" && cp -R "$SRC/." "$OPS_ROOT/"
+```
+
+**Requirements:** 로그인된 Aside CLI (`aside` 또는 `ASIDE_BIN`), Python 3, macOS/Linux (게이트가 POSIX `fcntl` 을 쓴다), 문서 조회용 `mcpdocs` (선택)
+
+</details>
+
 ## Codex CLI
 
 Codex 는 같은 `plugins/<name>/` 트리와 `.claude-plugin/` 매니페스트를 네이티브 폴백으로 읽는다. `.codex-plugin` 이 없으면 `.claude-plugin` 을, `.agents/plugins/marketplace.json` 이 없으면 `.claude-plugin/marketplace.json` 을 읽는다. Claude Code 가 체크아웃해 둔 marketplace 를 그대로 등록한다.
@@ -263,7 +293,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add dev@my-claude-plugins
 ```
 
-- **`council` 과 `codex-image` 는 Codex 에 설치하지 않는다** (순환한다).
+- **`council` 과 `codex-image` 는 Codex 에 설치하지 않는다** (순환한다). **`aside` 도 설치하지 않는다** (플러그인 agent 에 의존한다).
 - Codex 는 `commands` / `agents` 를 무시하고 skill 만 노출한다. `docs` 의 커맨드 4개와 `scout` 의 agent 팀은 Claude 전용이다.
 - 지금 이 marketplace 의 플러그인은 모두 Codex 훅을 싣지 않는다.
 
@@ -295,6 +325,7 @@ cp "$SRC" ~/.codex/AGENTS.md       # Codex
 | `gh` | GitHub 워크플로우 | dev |
 | `jq` | 상태 파일, council | dev, council |
 | Codex CLI | 네이티브 로드, council 좌석, codex-image | Codex 사용자, council, codex-image |
+| Aside CLI, Python 3, 공용 게이트 런타임 | 브라우저 작업, 실행 게이트 | aside |
 | Node 18+ | 가드 스크립트 | 기여자 |
 
 ## 옛 버전에서 옮겨 오기
@@ -407,7 +438,8 @@ git config core.hooksPath .githooks   # clone 당 1회
 │   ├── wiki/                 # 바깥 지식 wiki (ingest / query / lint / plaud)
 │   ├── deck/                 # house 형식 HTML 강의 덱 (규칙 원본 + 도구 + 템플릿)
 │   ├── council/              # 이종 벤더 3인 심의 (Claude 전용)
-│   └── codex-image/          # Codex 로 이미지 생성 (Claude 전용)
+│   ├── codex-image/          # Codex 로 이미지 생성 (Claude 전용)
+│   └── aside/                # Aside 브라우저 작업 위임 (Claude 전용)
 ├── scripts/                  # 가드 스크립트 (Node 18+, 의존성 없음)
 ├── docs/adr/                 # 결정 기록 (ADR)
 ├── GLOSSARY.md               # 용어집

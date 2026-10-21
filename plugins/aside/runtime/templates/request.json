@@ -1,0 +1,22 @@
+{
+  "request_id": "REPLACE_WITH_UNIQUE_ID",
+  "goal": "REPLACE_WITH_GOAL",
+  "allowed_domains": [
+    "example.com"
+  ],
+  "account_alias": null,
+  "browser_profile_alias": null,
+  "allowed_actions": [
+    "navigate",
+    "read"
+  ],
+  "forbidden_actions": [
+    "send",
+    "purchase",
+    "delete",
+    "change_settings"
+  ],
+  "success_criteria": [
+    "REPLACE_WITH_OBSERVABLE_CONDITION"
+  ]
+}

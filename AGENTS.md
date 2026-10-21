@@ -14,7 +14,7 @@
 
 플러그인 트리 하나를 Claude Code 와 Codex CLI 가 함께 읽는다 (one source, two runtimes). Codex 는 `.claude-plugin/marketplace.json` 과 `plugins/*/.claude-plugin/plugin.json` 을 네이티브 폴백으로 직접 읽으므로 생성 계층이 없다.
 
-## Plugins (8)
+## Plugins (9)
 
 각 플러그인의 설명은 `jq -r '.plugins[] | "\(.name): \(.description)"' .claude-plugin/marketplace.json` 으로 읽는다. 아래 표는 이름과 분류만 유지하고, `check-doc-consistency.mjs` 가 이 이름 집합을 marketplace.json 과 대조한다.
 
@@ -28,6 +28,7 @@
 | `deck` | Documentation | (신규, 덱 저장소 3곳에 손으로 복사되던 규칙·도구) |
 | `council` | AI Models | (단독 유지, Claude 전용) |
 | `codex-image` | AI Models | (단독 유지, Claude 전용) |
+| `aside` | Browser Automation | (신규, 로컬 aside-operator 를 옮겨 옴, Claude 전용) |
 
 플러그인명을 짧게 둔 이유는 호출 길이와 가독성이다. 플러그인 스킬은 항상 `/plugin:skill` 로 노출된다. 슬래시 메뉴는 `:`·`-`·`_` 를 무시하고 이름 안의 단어 시작에서도 매칭하므로 (`/rev` 가 `/dev:review-loop` 를 하이라이트, Claude Code 2.1.236 이상) 접두사 길이가 매칭을 막지는 않는다. 플러그인은 `.claude/settings.json` 에서 auto-load 된다. 사용법은 `README.md`.
 
@@ -95,7 +96,7 @@ git add -A \
 - `check-shell-portability.mjs` 는 GNU 전용 셸 구문이 폴백도 capability probe 도 없이 쓰인 경우만 잡는다. 증거는 코드여야 하고 주석은 인정하지 않는다. 예외는 `# portability-ok: <사유>` 로 표시한다. 상세는 `README.md` 의 "CI 가드가 지키는 것".
 - CI(`validate-codex.yml`)는 릴리스 태그 `vX.Y.Z` push 와 수동 실행(`workflow_dispatch`)에서만 돈다. push·PR 마다 돌지 않으므로 평소 게이트는 pre-commit 훅이고, 훅은 Node 가 없으면 커밋을 거부한다. CI 는 릴리스를 막지 않는다: `/dev:release` 는 이 run 을 기다리지 않고 `gh release create` 를 하므로, 결과는 릴리스 뒤 Actions 탭에서 확인한다.
 - macOS CI 레그(`validate-codex.yml` 의 `macos` job)가 BSD 폴백이 CI 에서 실행되는 유일한 지점이다. `/bin/bash` 로 돌려 bash 3.2 를 강제한다. 릴리스 사이에는 Mac 에서 `/bin/bash plugins/dev/skills/review-loop/tests/run-tests.sh` 와 `/bin/bash plugins/dev/skills/post-merge/tests/run-tests.sh` 로 같은 확인을 한다.
-- Codex 카탈로그 확인은 일회용 `CODEX_HOME` 에서 돌린다 (8 entries). 실제 홈에서 `marketplace add` 하면 기존 등록과 소스가 달라 실패하고, 이어지는 `marketplace remove` 는 레시피가 만든 것이 아니라 원래 등록을 지운다. 정리는 `trap` 이 맡으므로 검증 명령의 종료 상태가 그대로 남는다.
+- Codex 카탈로그 확인은 일회용 `CODEX_HOME` 에서 돌린다 (9 entries). 실제 홈에서 `marketplace add` 하면 기존 등록과 소스가 달라 실패하고, 이어지는 `marketplace remove` 는 레시피가 만든 것이 아니라 원래 등록을 지운다. 정리는 `trap` 이 맡으므로 검증 명령의 종료 상태가 그대로 남는다.
 
   ```bash
   set -e
@@ -103,7 +104,7 @@ git add -A \
   trap 'rm -rf "$CH"' EXIT
   CODEX_HOME="$CH" codex plugin marketplace add "$PWD"
   CODEX_HOME="$CH" codex plugin list --marketplace my-claude-plugins --available --json \
-    | jq -e '[.available[].name] | sort == ["codex-image","council","deck","dev","docs","ml","scout","wiki"]' >/dev/null
+    | jq -e '[.available[].name] | sort == ["aside","codex-image","council","deck","dev","docs","ml","scout","wiki"]' >/dev/null
   ```
 - Python 테스트는 해당 플러그인 디렉터리에서 `uv run pytest`.
 

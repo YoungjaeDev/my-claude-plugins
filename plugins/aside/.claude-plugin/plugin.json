@@ -1,0 +1,5 @@
+{
+  "name": "aside",
+  "version": "0.2.0",
+  "description": "Claude-only (do not install into Codex). Website work through the user's Aside browser via the Aside CLI. /aside:aside hands a task, a request.json path, or `continue <request-id>` after a login to the aside:operator subagent, which runs `aside exec --permission guard` behind the shared one-task gate at $ASIDE_OPS_ROOT/bin/aside_gate.py (default ~/aside-ops; the plugin ships that runtime in runtime/ and the user copies it there once), verifies the outcome against the actual page or file, and keeps request/result/notes and per-site playbooks under the same root. Stops on login, 2FA, or a needed approval with a waiting_for_user record and resumes the same Aside session. Claude-only: the entry skill forks into a plugin agent."
+}

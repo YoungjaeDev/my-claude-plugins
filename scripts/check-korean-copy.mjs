@@ -34,6 +34,10 @@ const ALLOW = new Map([
   ['함께 해요', 'slide label rule'],
   ['중소기업', 'instructor bio rule'],
   ['고친다', 'agent-loop wording rule for slides; plain 고친다 is fine in prose'],
+  ['(?<![가-힣])오늘(?!날)', 'live-session deixis rule for slides; README is not a session'],
+  ['(?<![가-힣])지금', 'live-session deixis rule for slides; README is not a session'],
+  ['이번 ?시간', 'live-session deixis rule for slides; README is not a session'],
+  ['(?<![가-힣])여기서', 'live-session deixis rule for slides; README is not a session'],
 ]);
 const COMMA = /([가-힣]*(?:고|며|지만|면서|어서|아서|해서)),/g;
 const COMMA_OK = new Set(['보고', '광고', '창고', '참고', '최고', '재고', '경고', '원고', '사고']);

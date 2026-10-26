@@ -82,7 +82,7 @@ def banned_patterns(md: str) -> list:
 
 
 def labels(raw: str) -> list:
-    """장 라벨: 내용 장표는 h2 바로 앞에 span.kind 하나, 실습·개념 뒤는 16자 안팎 명사구."""
+    """장 라벨: 내용 장표는 h2 바로 앞에 span.kind 하나, 실습·개념·사례 뒤는 16자 안팎 명사구."""
     tags = lambda t: re.sub(r"<[^>]+>", "", t).strip()
     out = []
     for m in re.finditer(r'<section\b([^>]*)>(.*?)</section>', raw, re.S):
@@ -99,7 +99,7 @@ def labels(raw: str) -> list:
             out.append(f"{sid}: h2 바로 앞 span.kind 하나 필요")
             continue
         label, h2 = tags(k[1]), tags(k[2])
-        tail = re.fullmatch(r"(?:실습|개념) · (.+)", label)
+        tail = re.fullmatch(r"(?:실습|개념|사례) · (.+)", label)
         if label not in KINDS and not (tail and len(tail[1].replace(" ", "")) <= 16 and tail[1] != h2):
             out.append(f"{sid}: 라벨 형식 '{label}'")
     return out
@@ -167,6 +167,8 @@ def selftest() -> None:
     bad = '<section class="slide" aria-label="S1-02 x"><h2>제목</h2></section>'
     cover = '<section class="slide cover" aria-label="00-01 x"><span class="kind">개념 · 표지</span><h1>t</h1></section>'
     assert labels(ok) == []
+    assert labels(ok.replace("개념 · 덱 제작 순서", "사례 · 데이터센터 화재")) == []
+    assert labels(ok.replace("개념 · 덱 제작 순서", "사건 · 데이터센터 화재")) == ["S1-01: 라벨 형식 '사건 · 데이터센터 화재'"]
     assert labels(bad) == ["S1-02: h2 바로 앞 span.kind 하나 필요"]
     assert labels(cover) == ["00-01: 라벨을 두지 않는 장표"]
     assert check_file("f", '<p class="source">x</p><template><p class="source">y</p></template>', banned) == \
@@ -177,6 +179,13 @@ def selftest() -> None:
         except ValueError:
             continue
         raise AssertionError(f"accepted a malformed rule file: {broken!r}")
+    # 강의 현장 지시어: the shipped rule table, so the real regexes are what is tested
+    real = banned_patterns((Path(__file__).resolve().parent.parent / "templates/rules/deck-copy.md").read_text(encoding="utf-8"))
+    deixis = lambda t: [h for h in text_hits(t, real) if "현장 지시어" in h]
+    for t in ("오늘 만들 앱", "지금 보는 화면", "지금까지 본 구조", "이번 시간에는", "여기서 브라우저가"):
+        assert deixis(t), t
+    for t in ("오늘날 웹", "착지금지 표시", "이야기서 나온다", "예제 앱"):
+        assert not deixis(t), t
     print("check_copy selftest OK")
 
 

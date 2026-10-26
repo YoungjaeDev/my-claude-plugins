@@ -23,6 +23,11 @@
       --done: #6b7178;
       --accent: #8db4e8;
       --hl: #f5c842; /* Ralph yellow: one key phrase per slide at most */
+      --page: #f6f6f3; /* web page inside .browser-win */
+      --page-ink: #1f2226;
+      --page-muted: #5d636b;
+      --page-field: #fff;
+      --page-rule: #c9ccd1;
       --font: "Plex KR", sans-serif;
       /* Chrome ignores ui-monospace; Menlo (macOS) / Consolas (Windows) carry Latin, Hangul falls through to Plex KR. */
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, var(--font), monospace;
@@ -40,6 +45,7 @@
     .slide.active, .slide.visible { visibility: visible; opacity: 1; pointer-events: auto; z-index: 1; }
     img, svg { max-width: 100%; max-height: 100%; }
     img[src$="codex.svg"] { filter: invert(1); }
+    img[src*="logos/icon-"] { filter: invert(0.92); } /* Lucide icons stroke currentColor, which an <img> renders black */
 
     @media print {
       html, body { width: 1920px; height: auto; overflow: visible; background: var(--bg); }
@@ -50,7 +56,7 @@
     }
 
     /* === TYPE === */
-    .slide h1, .slide h2, .slide h3, .slide p, .slide li, .slide td, .slide th { word-break: keep-all; overflow-wrap: break-word; }
+    .slide h1, .slide h2, .slide h3, .slide p, .slide li, .slide td, .slide th, .slide .fbox { word-break: keep-all; overflow-wrap: break-word; }
     h1, h2, h3, strong, th { font-weight: 600; }
     h1, h2, h3 { padding-bottom: 0.15em; }
     .deck-sec-name { padding-bottom: 0.2em; }
@@ -59,9 +65,12 @@
     p, li { font-size: var(--t-s); line-height: 1.5; }
     .lead { margin-top: 18px; max-width: 1500px; font-size: var(--t-m); line-height: 1.5; color: var(--muted); }
     .body { flex: 1; min-height: 0; margin-top: 44px; }
-    .body:not(:has(figure, svg, table, pre, .split, .flow, .compare, .convert, .loop, img)) { display: flex; flex-direction: column; justify-content: center; padding-bottom: 72px; }
+    /* A text-only body is centered. :where keeps the specificity at 0,2,0 so .body.versus/.hero-num/.grid4 still win. */
+    .body:not(:where(.split, .compare)):not(:has(figure, svg, table, pre, .split, .flow, .compare, .convert, .loop, img, .browser-win)) { display: flex; flex-direction: column; justify-content: center; padding-bottom: 72px; }
     .accent { color: var(--accent); }
     .key { color: var(--hl); font-weight: 600; }
+    /* .mark: highlighter band under one phrase on a text-heavy slide; text colour stays, so it never reads as a link */
+    .mark { background: linear-gradient(transparent 62%, rgba(245, 200, 66, 0.34) 62%); -webkit-box-decoration-break: clone; box-decoration-break: clone; padding: 0 2px; }
     .slide a, .deck-panel-body a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
     code { font-family: var(--font); color: var(--accent); }
     .kind { align-self: flex-start; margin-bottom: 22px; padding: 4px 16px; border: 1.5px solid var(--accent); border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; color: var(--accent); }
@@ -195,6 +204,10 @@
     ol.agenda li:last-child { border-bottom: 1px solid var(--rule); }
     ol.agenda .no { font-size: var(--t-s); color: var(--muted); font-variant-numeric: tabular-nums; }
     ol.agenda h3 { font-size: var(--t-l); line-height: 1.2; letter-spacing: -0.015em; }
+    /* shortcut: six or more sections fill two columns of 4 rows, so up to 8 rows fit; past 8 or with an li.pre row, change repeat(4) and nth-child(4n) together */
+    ol.agenda:has(> li:nth-child(6)) { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, auto); grid-auto-flow: column; column-gap: 64px; }
+    ol.agenda:has(> li:nth-child(6)) li { grid-template-columns: 80px 1fr auto; }
+    ol.agenda:has(> li:nth-child(6)) li:nth-child(4n) { border-bottom: 1px solid var(--rule); }
 
     /* === SECTION COVER (deck-sechead / deck-bigbar injected) === */
     .section-cover > h2 { margin-top: 26px; max-width: 1500px; }
@@ -265,6 +278,16 @@
     .boxflow > .fbox .out { display: block; margin-top: 12px; font-size: var(--t-2xs); color: var(--muted); }
     .boxflow > svg.links { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; z-index: 0; overflow: visible; pointer-events: none; }
     .boxflow > svg.links path { fill: none; stroke: var(--done); stroke-width: 3; }
+    .boxflow > svg.links text { font-family: var(--font); font-size: var(--t-2xs); fill: var(--muted); text-anchor: middle; }
+    .boxflow > svg.links circle { fill: var(--accent); } /* a packet dot for the hops motion */
+    .boxflow > .fbox.frame { background: transparent; }
+    .boxflow > .fbox.off { opacity: 0.35; } /* a box that is down in the slide's end state */
+    .boxflow > .fbox strong img { width: 34px; height: 34px; margin-right: 12px; vertical-align: -6px; }
+    .boxflow > .fbox .logos { gap: 14px; margin-top: 12px; }
+    .boxflow > .fbox .logos img { width: 34px; height: 34px; }
+    /* one-line real case under a flow, logo first */
+    .flow-case { display: flex; align-items: center; gap: 16px; color: var(--muted); }
+    .flow-case img { width: 44px; height: 44px; }
 
     /* === ORCA MOCKUP: HTML/CSS stand-in for the Orca ADE window, fictional content only === */
     .orca-win { display: grid; grid-template-columns: 240px minmax(0, 1fr) 250px; height: 640px; background: var(--code-bg); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; font-size: 17px; line-height: 1.4; color: var(--ink); }
@@ -301,6 +324,31 @@
     .orca-sc .orca-label { margin-top: 0; }
     .orca-sc-row { padding: 0 4px; font-size: 15px; }
     .orca-pr { padding: 8px 12px; border-radius: 8px; background: var(--accent); color: var(--code-bg); font-size: 15px; font-weight: 600; text-align: center; }
+
+    /* === BROWSER WINDOW MOCKUP: a web page in a browser frame, fictional content only ===
+       .browser-win > .bar(i, i, i, span.url) + .page. Inline height sets the size; add role="img" and an aria-label. */
+    .browser-win { position: relative; display: flex; flex-direction: column; background: var(--well); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+    .browser-win > .bar { display: flex; align-items: center; gap: 10px; height: 56px; flex: none; padding: 0 20px; border-bottom: 1px solid var(--rule); }
+    .browser-win > .bar i { width: 13px; height: 13px; border-radius: 50%; background: var(--rule); }
+    .browser-win > .bar .url { flex: 1; margin-left: 16px; padding: 4px 20px; border-radius: 999px; background: var(--code-bg); font-size: var(--t-2xs); line-height: 1.4; color: var(--muted); }
+    .browser-win > .page { flex: 1; min-height: 0; display: grid; gap: 16px; align-content: start; padding: 40px 48px; background: var(--page); color: var(--page-ink); }
+    .browser-win .page h3 { font-size: var(--t-m); }
+    .browser-win .page p { font-size: var(--t-xs); line-height: 1.45; color: var(--page-muted); }
+    .browser-win .page .field { padding: 12px 20px; background: var(--page-field); border: 1.5px solid var(--page-rule); border-radius: 8px; font-size: var(--t-xs); line-height: 1.4; color: var(--page-muted); }
+    .browser-win .page .btn { position: relative; justify-self: start; padding: 12px 32px; border-radius: 8px; background: var(--page-ink); color: var(--page); font-size: var(--t-xs); line-height: 1.4; font-weight: 600; }
+    /* .page.raw: the same page with HTML only, drawn like browser defaults (white page, plain inputs, grey button) */
+    .browser-win > .page.raw { gap: 10px; padding: 24px 28px; background: #fff; color: #000; }
+    .browser-win .page.raw p { color: #000; }
+    .browser-win .page.raw .field { justify-self: start; width: 60%; padding: 2px 8px; background: #fff; border: 1px solid #767676; border-radius: 2px; }
+    .browser-win .page.raw .btn { padding: 2px 12px; border: 1px solid #767676; border-radius: 3px; background: #efefef; color: #000; font-weight: 400; }
+    /* .page.before: an earlier look laid over the page; hidden in the authored end state, a motion fades it out */
+    .browser-win > .page.before { position: absolute; inset: 56px 0 0; opacity: 0; } /* 56px: below .bar */
+    /* .swap: the old value under the new one in the same cell; the old one is hidden in the authored end state */
+    .swap { display: inline-grid; }
+    .swap > * { grid-area: 1 / 1; }
+    .swap > :first-child { opacity: 0; }
+    /* .cursor: a mouse pointer resting on the bottom-right of a mockup button */
+    .browser-win .cursor { position: absolute; right: -22px; bottom: -30px; width: 40px; height: 40px; fill: #fff; stroke: #000; stroke-width: 1.5; }
 
     /* === MESSAGE LAYOUTS: statement, quote (slide-level), versus, hero-num, grid4 (on .body) === */
     /* Layout lives on containers only, so any child may carry data-anim and take GSAP transforms. */
@@ -345,7 +393,7 @@
   <script src="vendor/gsap.min.js"></script>
   <!-- MOTION_SCRIPTS -->
   <script>
-    // The only definition of section names. data-section="S1".."S5" on a <section> refers to these ids.
+    // The only definition of section names. data-section on a <section> refers to one of these ids; add as many as the deck has.
     const SECTIONS = [
       { id: "S1", name: "섹션 1 이름", goal: "섹션 1에서 수강생이 하는 일", logos: [] },
       { id: "S2", name: "섹션 2 이름", goal: "섹션 2에서 수강생이 하는 일", logos: [] },

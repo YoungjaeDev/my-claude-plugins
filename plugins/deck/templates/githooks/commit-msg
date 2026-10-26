@@ -1,0 +1,8 @@
+#!/bin/sh
+# A commit body must be separated from the subject by one blank line (git shows line 2+ as part of the subject otherwise).
+# Installed by the deck plugin (`kit.py new` / `sync`).
+second=$(grep -v '^#' "$1" | sed -n '2p')
+if [ -n "$second" ]; then
+  echo "commit-msg: put a blank line between the subject and the body" >&2
+  exit 1
+fi

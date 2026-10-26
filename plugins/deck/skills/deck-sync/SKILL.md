@@ -7,7 +7,7 @@ description: "Update an existing house-format deck repo (deck/shell.html + deck/
 
 ## Overview
 
-Brings a deck repo's copies up to the plugin version. Rule copies and `deck/vendor/` are overwritten from the plugin; `deck/shell.html` belongs to the deck and is only diffed. A rule copy edited by hand at the current version is left alone unless the user agrees to `--force`. `.claude/rules/deck-local.md` holds deck-specific exceptions and is never read or written.
+Brings a deck repo's copies up to the plugin version. Rule copies and `deck/vendor/` are overwritten from the plugin; `deck/shell.html` belongs to the deck and is only diffed. Missing `.githooks/` files (`deck` launcher, `pre-commit`, `commit-msg`) are added; existing ones are kept. A rule copy edited by hand at the current version is left alone unless the user agrees to `--force`. `.claude/rules/deck-local.md` holds deck-specific exceptions and is never read or written.
 
 ## When to use
 
@@ -56,5 +56,5 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 ## Verification
 
 - `kit.py check .` prints `ok` for every rule copy and `vendor: ok`.
-- `git diff --stat` shows changes only under `.claude/rules/` and `deck/vendor/`; `deck/shell.html` and `.claude/rules/deck-local.md` are unchanged.
+- `git diff --stat` shows changes only under `.claude/rules/`, `deck/vendor/` and new `.githooks/` files; `deck/shell.html` and `.claude/rules/deck-local.md` are unchanged.
 - Run `deck-check` afterwards: the copy check now reads the new `deck-copy.md` table, so new bans can surface as violations.

@@ -1,0 +1,29 @@
+#!/bin/sh
+# Fast deck checks before a commit that touches deck/ or the rule copies: build, index.html staleness,
+# copy check, outline check, rule copies. Render and interaction checks are slow and stay in deck-check.
+# Installed by the deck plugin (`kit.py new` / `sync`); enable with: git config core.hooksPath .githooks
+git diff --cached --name-only | grep -qE '^(deck/|\.claude/rules/)' || exit 0
+
+deck="$(dirname "$0")/deck"
+if ! sh "$deck" root >/dev/null 2>&1; then
+  echo "pre-commit: deck plugin not found, skipping deck checks (set PLUGIN_ROOT)" >&2
+  exit 0
+fi
+
+rc=0
+sh "$deck" build deck >/dev/null || rc=1
+# A committed build that differs from a fresh one means deck/index.html is stale.
+if ! git diff --quiet -- deck/index.html; then
+  echo "pre-commit: deck/index.html differs from the build. Run: git add deck/index.html" >&2
+  rc=1
+fi
+# Capture first so a pipe does not hide the checker's exit status.
+out=$(sh "$deck" copy deck 2>&1) || rc=1
+echo "$out" | tail -n 20
+# Every section title, lead, list item and box text must also be in the outline (the copy source).
+# Exit 3: the installed plugin predates check_outline.py; warn and go on.
+out=$(sh "$deck" outline deck 2>&1) || { [ $? -eq 3 ] || rc=1; }
+echo "$out" | tail -n 20
+out=$(sh "$deck" check . 2>&1) || rc=1
+echo "$out" | grep -E '^(rules|vendor):'
+exit $rc

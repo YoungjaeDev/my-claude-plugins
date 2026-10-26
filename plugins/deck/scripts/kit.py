@@ -1,7 +1,7 @@
 """Scaffold a deck repo and keep its rule copies in step with this plugin.
 
-    python3 kit.py new   [REPO]          # REPO/deck from templates/deck + stamped rule copies; refuses if REPO/deck exists
-    python3 kit.py sync  [REPO] [--force] # rewrite rule copies + deck/vendor, print the shell.html diff (never writes shell)
+    python3 kit.py new   [REPO]          # REPO/deck from templates/deck + stamped rule copies + .githooks; refuses if REPO/deck exists
+    python3 kit.py sync  [REPO] [--force] # rewrite rule copies + deck/vendor, add missing .githooks, print the shell.html diff (never writes shell)
     python3 kit.py check [REPO] [--diff]  # rule copies, vendor, shell base; exit 1 on drift
     python3 kit.py prereq                 # is the frontend-slides plugin installed? warning only, always exit 0
     python3 kit.py --selftest
@@ -10,6 +10,8 @@ REPO defaults to the current directory. Rule templates are templates/rules/*.md;
 REPO/.claude/rules/ gets STAMP inserted right after its YAML frontmatter. A copy is compared by
 re-stamping the template with the copy's own version, so no unstamping heuristics are needed.
 REPO/.claude/rules/deck-local.md is the deck's own file and is never read or written here.
+templates/githooks/* (the `deck` launcher, pre-commit, commit-msg) go to REPO/.githooks/ only when
+missing; an existing hook is never overwritten, and git config is left to the user.
 """
 import difflib
 import json
@@ -22,6 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DECK = ROOT / "templates" / "deck"
 TEMPLATE_RULES = ROOT / "templates" / "rules"
+TEMPLATE_HOOKS = ROOT / "templates" / "githooks"
 LOCAL_RULE = "deck-local.md"
 STAMP = "> deck 플러그인 {v} 사본. 고칠 때는 플러그인 원본을 고친다."
 STAMP_RE = re.compile(r"^> deck 플러그인 (\S+) 사본\.", re.M)
@@ -47,7 +50,10 @@ def rule_templates() -> list:
 
 
 def rule_status(repo: Path, v: str) -> list:
-    """(name, status, copy_version) per template: ok | missing | stale | edited | unstamped."""
+    """(name, status, copy_version) per template: ok | missing | stale | edited | unstamped | bare.
+
+    bare: no stamp, but otherwise the template itself (a copy made by hand); safe to stamp.
+    """
     out = []
     for tpl in rule_templates():
         copy = repo / ".claude" / "rules" / tpl.name
@@ -57,7 +63,8 @@ def rule_status(repo: Path, v: str) -> list:
         text = copy.read_text(encoding="utf-8")
         m = STAMP_RE.search(text)
         if not m:
-            out.append((tpl.name, "unstamped", None))
+            same = text.strip() == tpl.read_text(encoding="utf-8").strip()
+            out.append((tpl.name, "bare" if same else "unstamped", None))
         elif m[1] != v:
             out.append((tpl.name, "stale", m[1]))
         elif text != stamp(tpl.read_text(encoding="utf-8"), v):
@@ -81,8 +88,24 @@ def write_rules(repo: Path, v: str, force: bool) -> int:
             blocked += 1
             continue
         (dest / name).write_text(stamp((TEMPLATE_RULES / name).read_text(encoding="utf-8"), v), encoding="utf-8")
-        print(f"rules: {name} written ({status} -> {v})")
+        print(f"rules: {name} ok (stamped {v}, content was the template)" if status == "bare"
+              else f"rules: {name} written ({status} -> {v})")
     return blocked
+
+
+def write_hooks(repo: Path) -> None:
+    """Copy each missing templates/githooks file into REPO/.githooks; never overwrite."""
+    dest = repo / ".githooks"
+    dest.mkdir(exist_ok=True)
+    for src in sorted(TEMPLATE_HOOKS.iterdir()):
+        target = dest / src.name
+        if target.exists():
+            print(f"githooks: {src.name} exists, left as is")
+            continue
+        shutil.copyfile(src, target)
+        target.chmod(0o755)
+        print(f"githooks: {src.name} written")
+    print("githooks: enable with `git config core.hooksPath .githooks`; tools: `sh .githooks/deck <command>`")
 
 
 def vendor_drift(deck: Path) -> list:
@@ -135,6 +158,7 @@ def cmd_new(repo: Path, v: str) -> int:
     shell.write_text(text.replace("<!DOCTYPE html>\n", "<!DOCTYPE html>\n" + SHELL_STAMP.format(v=v) + "\n", 1), encoding="utf-8")
     print(f"deck: scaffolded {deck} from templates/deck ({v})")
     blocked = write_rules(repo, v, force=False)
+    write_hooks(repo)
     prereq()
     return 1 if blocked else 0
 
@@ -145,6 +169,7 @@ def cmd_sync(repo: Path, v: str, force: bool) -> int:
         print(f"[abort] no deck at {deck}. Use deck-new first.", file=sys.stderr)
         return 1
     blocked = write_rules(repo, v, force)
+    write_hooks(repo)
     for name in vendor_drift(deck):
         (deck / "vendor").mkdir(exist_ok=True)
         shutil.copy2(TEMPLATE_DECK / "vendor" / name, deck / "vendor" / name)
@@ -161,7 +186,8 @@ def cmd_check(repo: Path, v: str, show_diff: bool) -> int:
     for name, status, cv in rule_status(repo, v):
         hint = {"ok": "", "missing": " -> run deck-sync", "stale": f" (copy {cv}, plugin {v}) -> run deck-sync",
                 "edited": " (hand-edited at the current version) -> move deck lines to deck-local.md",
-                "unstamped": " (no stamp) -> run deck-sync --force after review"}[status]
+                "unstamped": " (no stamp) -> run deck-sync --force after review",
+                "bare": " (no stamp, same as template) -> run deck-sync"}[status]
         print(f"rules: {name} {status}{hint}")
         bad += status != "ok"
         if show_diff and status in ("edited", "stale", "unstamped"):
@@ -189,6 +215,20 @@ def selftest() -> None:
     assert STAMP_RE.search(s)[1] == "1.2.3"
     assert stamp("# 제목\n", "1.0.0") == "> deck 플러그인 1.0.0 사본. 고칠 때는 플러그인 원본을 고친다.\n\n# 제목\n"
     assert SHELL_STAMP_RE.sub("", "<!DOCTYPE html>\n<!-- deck shell base 1.0.0 -->\n<html>") == "<!DOCTYPE html>\n<html>"
+    import contextlib, io, tempfile
+    with tempfile.TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()):
+        repo = Path(d)
+        tpl = rule_templates()[0]
+        (repo / ".claude" / "rules").mkdir(parents=True)
+        (repo / ".claude" / "rules" / tpl.name).write_text(tpl.read_text(encoding="utf-8"), encoding="utf-8")
+        assert dict((n, s) for n, s, _ in rule_status(repo, "9.9.9"))[tpl.name] == "bare"
+        assert write_rules(repo, "9.9.9", force=False) == 0
+        assert dict((n, s) for n, s, _ in rule_status(repo, "9.9.9"))[tpl.name] == "ok"
+        write_hooks(repo)
+        (repo / ".githooks" / "pre-commit").write_text("mine", encoding="utf-8")
+        write_hooks(repo)
+        assert (repo / ".githooks" / "pre-commit").read_text(encoding="utf-8") == "mine"
+        assert (repo / ".githooks" / "deck").is_file()
     print("kit selftest OK")
 
 

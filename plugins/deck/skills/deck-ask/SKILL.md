@@ -53,7 +53,7 @@ Suggest the next deck skill. Look, then answer in a few lines; the user or that 
 | Tempting | Instead |
 |---|---|
 | Deploy because the check passed | Deploy waits for the user's request every time. |
-| Generate a logo with codex-image | Logos are collected official SVGs (`deck-assets`). |
+| Generate a logo with codex-image | Logos are the brand's own files, collected by `deck-assets`. |
 | Fix the section now, the outline later | Outline first; edit-mode text goes back into the outline. |
 | Another router's "ship" or "make-pdf" | In a house deck, deploy is `deck-deploy`; the PDF comes from `deck-check`'s render. |
 

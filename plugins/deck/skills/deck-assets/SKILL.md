@@ -1,6 +1,6 @@
 ---
 name: deck-assets
-description: "Prepare assets at the start of a house-format deck (deck/shell.html + deck/sections/*.html, assets in deck/assets/): inventory the outline, collect official SVG logos with a sources.json record, generate pixel-style icon sheets and Ralph mascot variants through codex-image, slice sheets into cells, and gate where cuts may be used. Triggers: 덱 에셋, 로고 수집, 픽셀아트 아이콘, 아이콘 시트, 캐릭터 변형, deck assets, collect logos, icon sheet, mascot variants. For a one-off image request outside a deck, use codex-image directly. Generation spends quota and writes files, so confirm counts first."
+description: "Prepare assets at the start of a house-format deck (deck/shell.html + deck/sections/*.html, assets in deck/assets/): inventory the outline, collect official logos (brand SVG, else the brand's PNG) with a sources.json record, generate pixel-style icon sheets and Ralph mascot variants through codex-image, slice sheets into cells, and gate where cuts may be used. Triggers: 덱 에셋, 로고 수집, 픽셀아트 아이콘, 아이콘 시트, 캐릭터 변형, deck assets, collect logos, icon sheet, mascot variants. For a one-off image request outside a deck, use codex-image directly. Generation spends quota and writes files, so confirm counts first."
 ---
 
 # deck-assets
@@ -39,18 +39,34 @@ Read `deck/outline.md`. List:
 
 Write the draft to `deck/assets/manifest.json` (`logos`, `icons`, `mascot` arrays). Show the counts to the user and get confirmation before steps 3 and 5. Sheets hold 9/16/25 cells, so round the icon count up to the next sheet size, or ask the user which concepts to drop.
 
-## 2. Official SVG logos
+## 2. Official logos
 
-Fixed source priority per tool, first hit wins:
+Keep the format the brand ships: its SVG, else its own transparent PNG, else no logo (write the name as text, also for brands whose terms bar logo use in teaching material). Source order per tool, first hit wins:
 
-1. The brand's own press/brand page or product domain.
-2. svgl.app API: `https://api.svgl.app/?search=<name>`, follow `brandUrl`/`url` to the brand's own file, fall back to the `route` SVG. Cache responses, the API is throttled.
-3. Simple Icons: record `source`, `guidelines`, `license` from its JSON. CC0 covers the file, not the trademark.
-4. Anything else: keep it with `official: false`.
+1. The brand's own press/brand page, brand kit or product domain, or the brand's own GitHub repo pinned to a commit SHA.
+2. Simple Icons as an index, not a file source: its JSON `source` and `guidelines` fields point at the brand original and the trademark page. Download from that `source`. The Simple Icons file itself is a redrawn 24x24 mono glyph; CC0 covers that file, not the trademark.
+3. Unofficial helpers, `official: false`: svgl (`https://api.svgl.app/?search=<name>`, cache responses, the API is throttled), Wikimedia Commons, icon packs. svgl records no per-file origin, asks contributors to run SVGO, and some files are older Simple Icons glyphs or SVG Repo copies. Use its `brandUrl` only to find the brand page; a file is `official: true` only when it is fetched again from the brand itself.
 
-Save to `deck/assets/logos/<slug>[-mono].svg` unmodified. Never redraw, recolor or generate a logo. Look up Claude Code/Codex marks at run time, do not assume. Record each file in `deck/assets/logos/sources.json` (array):
+Save unmodified to `deck/assets/logos/<slug>[-mono].svg` or `.png`. Never redraw, recolor, crop, convert or generate a logo. Look up Claude Code/Codex marks at run time, do not assume.
+
+- PNG only when the brand ships no SVG of that mark, transparent background, short side at least 256 px. Card images with a filled background are not logos.
+- `-mono` marks a single-colour brand logo (the brand's mono file, or a brand whose only mark is one colour). Generic UI icons (Lucide and the like) are not brand logos: name them `icon-<name>.svg`, never `-mono`.
+
+Fetch and record in one step (stdlib only, sets a User-Agent, `--member` pulls one file out of a zip brand kit):
+
+```bash
+"$PY" "$SCRIPTS/fetch-logo.py" <slug>.svg <url> [--member <path in zip>] --name <Name> \
+  --official|--unofficial --license "<basis for use>" --guidelines <url> --variant color|mono|wordmark
+```
+
+It writes the file and upserts the `deck/assets/logos/sources.json` record (array, one per file, `retrieved` = today):
 
 `file, name, source_url, official (bool), license, guidelines_url, variant (color|mono|wordmark), sha256, retrieved (YYYY-MM-DD)`
+
+- `official: true` means the saved bytes came unmodified from a place the brand controls: its domain, its brand kit, or its own repo at a pinned commit. Anything fetched through svgl, Simple Icons, Commons or a pack is `false`, even when it renders the same.
+- `source_url` is the URL actually downloaded; with `--member` it is `<zip url>#<member>`.
+- `guidelines_url` is the brand's logo/trademark guideline page (Simple Icons `guidelines` often has it). When the brand publishes none, use the brand home page.
+- `license` says the basis for use and how the file was obtained (for example a file saved from a logged-in browser session).
 
 Then verify:
 
@@ -58,7 +74,7 @@ Then verify:
 "$PY" "$SCRIPTS/check-logos.py" deck/assets/logos
 ```
 
-It checks file/record parity, sha256, and that each SVG has no `<script>`, `on*=` handler, `<foreignObject>`, external `href` or external CSS `url()`. Fix every failure before any slide references a logo. Self-test: `"$PY" "$SCRIPTS/check-logos.py" --self-test`.
+It checks file/record parity for `.svg` and `.png`, sha256, the PNG short side, and that each SVG has no `<script>`, `on*=` handler, `<foreignObject>`, embedded raster (`data:` URI), external `href` or external CSS `url()`. Fix every failure before any slide references a logo. Self-tests: `"$PY" "$SCRIPTS/check-logos.py" --selftest`, `"$PY" "$SCRIPTS/fetch-logo.py" --selftest`.
 
 ## 3. Icon sheets (costs quota)
 
@@ -92,4 +108,4 @@ Apply `references/usage.md` when a cut is placed on a slide. Record every placem
 
 ## Output
 
-Report: files written, counts generated vs confirmed, `check-logos.py` result, any `official:false` logos and their reasons, sheets recovered or fell back.
+Report: files written, counts generated vs confirmed, `check-logos.py` result, any `official: false` logos and their reasons, tools left as text, sheets recovered or fell back.

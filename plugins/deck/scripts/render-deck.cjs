@@ -44,14 +44,23 @@ function usage() {
     "  --chrome PATH    Chrome executable (default: $CHROME, else the platform's standard path)",
     "  --pdfinfo PATH   pdfinfo executable or command name (default: pdfinfo)",
     "  --pdf-name NAME  PDF filename (default: deck.pdf)",
+    "  --slides LIST    only these slides: 1-based numbers or slide ids (aria-label prefix), e.g. 12,S3-04; no PDF",
+    "  --quick          1920x1080 pass only, no other viewports, no reduced-motion pass, no PDF",
+    "PNGs: previews/slide-<NN>-<ID>.png, contact sheets: previews/sheet-<N>.png (8 slides each).",
   ].join("\n");
 }
+
+const BOOLEAN_FLAGS = new Set(["quick"]);
 
 function parseArgs(argv) {
   const parsed = {};
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
     if (!key.startsWith("--")) throw new Error(`Unexpected argument: ${key}`);
+    if (BOOLEAN_FLAGS.has(key.slice(2))) {
+      parsed[key.slice(2)] = true;
+      continue;
+    }
     const value = argv[index + 1];
     if (!value || value.startsWith("--")) throw new Error(`Missing value for ${key}`);
     parsed[key.slice(2)] = value;
@@ -73,7 +82,41 @@ function parseArgs(argv) {
     chrome: path.resolve(parsed.chrome || defaultChrome()),
     pdfinfo: parsed.pdfinfo || "pdfinfo",
     pdfName,
+    slides: parsed.slides ? String(parsed.slides).split(",").map(token => token.trim()).filter(Boolean) : null,
+    quick: Boolean(parsed.quick),
   };
+}
+
+// --slides tokens -> sorted 0-based indexes. A number is the slide position, anything else an id.
+function selectSlides(tokens, ids) {
+  const picked = new Set();
+  for (const token of tokens) {
+    const index = /^\d+$/.test(token) ? Number(token) - 1 : ids.indexOf(token);
+    if (index < 0 || index >= ids.length) throw new Error(`--slides: no slide ${token} (deck has ${ids.length}; ids are the section aria-label prefix)`);
+    picked.add(index);
+  }
+  return [...picked].sort((a, b) => a - b);
+}
+
+const viewportLabel = check => check.phase === "pdf" ? "pdf" : `${check.viewport.width}x${check.viewport.height}${check.reducedMotion === "reduce" ? "-reduced" : ""}`;
+
+// Same problem string from several passes -> one group listing the passes.
+function groupFailures(failures) {
+  const groups = new Map();
+  for (const failure of failures) {
+    const group = groups.get(failure.problem) || { problem: failure.problem, passes: [] };
+    const pass = viewportLabel(failure);
+    if (!group.passes.includes(pass)) group.passes.push(pass);
+    groups.set(failure.problem, group);
+  }
+  return [...groups.values()];
+}
+
+// "kind:index:rest" (index 0-based, only the per-slide kinds; http:404, slide-count:N:M carry no index) -> "slide 12 S3-04 kind: rest"; other problems print as they are.
+function failureLine(group, ids) {
+  const match = group.problem.match(/^(overflow|clip|out-of-bounds|footer-overlap|single-slide|font-evidence-missing|font-fallback):(\d+):(.*)$/s);
+  const head = match ? `slide ${Number(match[2]) + 1} ${ids[Number(match[2])] || "-"} ${match[1]}: ${match[3]}` : group.problem;
+  return `${head} [${group.passes.join(", ")}]`;
 }
 
 function sha256(file) {
@@ -281,7 +324,7 @@ async function auditActualTextFonts(page, index) {
   return reports;
 }
 
-async function inspectViewport(browser, url, viewport, reducedMotion, expectedSlides, auditFonts) {
+async function inspectViewport(browser, url, viewport, reducedMotion, expectedSlides, auditFonts, indexes) {
   const problems = [];
   const { context, page, assets } = await readyPage(browser, url, viewport, reducedMotion, problems);
   const initial = await page.evaluate(() => {
@@ -302,7 +345,7 @@ async function inspectViewport(browser, url, viewport, reducedMotion, expectedSl
 
   const slideReports = [];
   const fontReports = [];
-  for (let index = 0; index < initial.slideCount; index += 1) {
+  for (const index of indexes.filter(value => value < initial.slideCount)) {
     await page.evaluate(value => window.presentation.showSlide(value), index);
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const report = await page.evaluate(slideIndex => {
@@ -311,6 +354,12 @@ async function inspectViewport(browser, url, viewport, reducedMotion, expectedSl
       const slideBox = slide.getBoundingClientRect();
       const footer = slide.querySelector("deck-footer");
       const footerBox = footer?.getBoundingClientRect();
+      // getAttribute, not className: an SVG element's className is an SVGAnimatedString.
+      const name = element => `${element.tagName}.${element.getAttribute("class") || "-"}`;
+      const size = element => `[${element.clientWidth}x${element.clientHeight}->${element.scrollWidth}x${element.scrollHeight}]`;
+      // The mockup pointer .cursor sits outside its button on purpose: keep it out of every scroll size.
+      const cursors = [...slide.querySelectorAll(".cursor")].map(element => [element, element.style.getPropertyValue("display"), element.style.getPropertyPriority("display")]);
+      for (const [element] of cursors) element.style.setProperty("display", "none", "important");
       const directTextElements = [...slide.querySelectorAll("*")].filter(element =>
         [...element.childNodes].some(node => node.nodeType === Node.TEXT_NODE && (node.nodeValue || "").trim())
       );
@@ -321,7 +370,7 @@ async function inspectViewport(browser, url, viewport, reducedMotion, expectedSl
       const visibleLineMetricOverflow = [];
       const textOverflow = [];
       for (const element of overflowCandidates) {
-        const label = `${element.tagName}.${element.className || "-"}[${element.clientWidth}x${element.clientHeight}->${element.scrollWidth}x${element.scrollHeight}]`;
+        const label = `${name(element)}${size(element)}`;
         const pseudo = getComputedStyle(element, "::after");
         const hasAfter = pseudo.content && pseudo.content !== "none" && pseudo.content !== "normal" && pseudo.display !== "none";
         const box = element.getBoundingClientRect();
@@ -350,6 +399,19 @@ async function inspectViewport(browser, url, viewport, reducedMotion, expectedSl
           else textOverflow.push(label);
         }
       }
+      // Text cut off inside an overflow:hidden|clip box (a mockup page, a card) never reaches the slide edge,
+      // so the overflow check above misses it when the box itself has no direct text.
+      const hides = value => value === "hidden" || value === "clip";
+      const candidateSet = new Set(overflowCandidates);
+      const clipped = [...slide.querySelectorAll("*")].filter(element => {
+        if (candidateSet.has(element) || element.closest("[data-intentional-clip]") || !element.textContent.trim()) return false;
+        const style = getComputedStyle(element);
+        return (hides(style.overflowY) && element.scrollHeight > element.clientHeight + 1) || (hides(style.overflowX) && element.scrollWidth > element.clientWidth + 1);
+      }).map(element => `${name(element)}${size(element)}`);
+      for (const [element, value, priority] of cursors) {
+        if (value) element.style.setProperty("display", value, priority);
+        else element.style.removeProperty("display");
+      }
       const rawBoundedContent = [...new Set([
         ...directTextElements,
         ...slide.querySelectorAll("img,svg,canvas,video,table,pre,code,[data-boundary-check],[data-intentional-clip]"),
@@ -370,10 +432,10 @@ async function inspectViewport(browser, url, viewport, reducedMotion, expectedSl
       const outOfBounds = boundedContent.filter(element => {
         const box = element.getBoundingClientRect();
         return box.left < slideBox.left - 1 || box.right > slideBox.right + 1 || box.top < slideBox.top - 1 || box.bottom > slideBox.bottom + 1;
-      }).map(element => `${element.tagName}.${element.className || "-"}`);
+      }).map(name);
       const footerOverlap = footerBox ? boundedContent
         .filter(element => !element.closest("deck-footer") && element.getBoundingClientRect().bottom > footerBox.top + 1)
-        .map(element => `${element.tagName}.${element.className || "-"}`) : [];
+        .map(name) : [];
       const visible = slides.filter(element => getComputedStyle(element).visibility === "visible" && Number(getComputedStyle(element).opacity) > 0.5).length;
       return {
         index: slideIndex,
@@ -384,12 +446,14 @@ async function inspectViewport(browser, url, viewport, reducedMotion, expectedSl
         textOverflow,
         pseudoDecorativeOverflow,
         visibleLineMetricOverflow,
+        clipped,
         outOfBounds,
         footerOverlap,
       };
     }, index);
     for (const key of ["active", "visibleClass", "ariaVisible", "computedVisible"]) if (report[key] !== 1) problems.push(`single-slide:${index}:${key}:${report[key]}`);
     if (report.textOverflow.length) problems.push(`overflow:${index}:${report.textOverflow.join("|")}`);
+    if (report.clipped.length) problems.push(`clip:${index}:${report.clipped.join("|")}`);
     if (report.outOfBounds.length) problems.push(`out-of-bounds:${index}:${report.outOfBounds.join("|")}`);
     if (report.footerOverlap.length) problems.push(`footer-overlap:${index}:${report.footerOverlap.join("|")}`);
     slideReports.push(report);
@@ -451,39 +515,62 @@ async function main() {
   const checks = [];
   let pdfReport;
   const outputs = [];
+  let ids = [];
   try {
     browser = await chromium.launch({ headless: true, executablePath: args.chrome });
     browserVersion = browser.version();
-    checks.push(await inspectViewport(browser, url, { width: 1920, height: 1080 }, "no-preference", args.expectedSlides, true));
-    checks.push(await inspectViewport(browser, url, { width: 1280, height: 720 }, "no-preference", args.expectedSlides, false));
-    checks.push(await inspectViewport(browser, url, { width: 390, height: 844 }, "no-preference", args.expectedSlides, false));
-    checks.push(await inspectViewport(browser, url, { width: 1920, height: 1080 }, "reduce", args.expectedSlides, false));
+    // Slide ids (aria-label prefix, e.g. "S3-04") name the PNGs, resolve --slides and label failures.
+    const probe = await readyPage(browser, url, { width: 1920, height: 1080 }, "reduce", []);
+    ids = await probe.page.evaluate(() => [...document.querySelectorAll(".slide")].map(slide => (slide.getAttribute("aria-label") || "").split(" ")[0]));
+    await probe.context.close();
+    const indexes = args.slides ? selectSlides(args.slides, ids) : [...Array(Math.max(ids.length, args.expectedSlides)).keys()];
+    const passes = [[{ width: 1920, height: 1080 }, "no-preference", true]];
+    if (!args.quick) passes.push([{ width: 1280, height: 720 }, "no-preference", false], [{ width: 390, height: 844 }, "no-preference", false], [{ width: 1920, height: 1080 }, "reduce", false]);
+    for (const [viewport, reducedMotion, auditFonts] of passes) checks.push(await inspectViewport(browser, url, viewport, reducedMotion, args.expectedSlides, auditFonts, indexes));
 
     const renderProblems = [];
     const rendered = await readyPage(browser, url, { width: 1920, height: 1080 }, "reduce", renderProblems);
     // A shell that failed to boot has no controller; record it instead of throwing so the report is still written.
     const hasController = await rendered.page.evaluate(() => Boolean(window.presentation));
     if (!hasController) renderProblems.push("deck-controller-missing");
-    for (let index = 0; hasController && index < args.expectedSlides; index += 1) {
+    const shots = [];
+    for (const index of hasController ? indexes.filter(value => value < ids.length) : []) {
       await rendered.page.evaluate(value => window.presentation.showSlide(value), index);
       await rendered.page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      const file = path.join(previewDir, `slide-${String(index + 1).padStart(String(args.expectedSlides).length, "0")}.png`);
+      const number = String(index + 1).padStart(String(Math.max(ids.length, args.expectedSlides)).length, "0");
+      const id = (ids[index] || "").replace(/[^A-Za-z0-9_-]/g, "_");
+      const file = path.join(previewDir, `slide-${number}${id ? `-${id}` : ""}.png`);
       await rendered.page.screenshot({ path: file, animations: "disabled" });
+      shots.push({ file, caption: `${index + 1} ${ids[index] || ""}`.trim() });
+      outputs.push({ path: path.relative(args.outputDir, file).replaceAll("\\", "/"), bytes: fs.statSync(file).size, sha256: sha256(file) });
+    }
+    // Contact sheets: 8 slides per PNG, 2 columns at half size with the number and id under each.
+    const sheet = await rendered.context.newPage();
+    await sheet.setViewportSize({ width: 1920, height: 100 }); // fullPage grows to the grid height
+    for (let start = 0; start < shots.length; start += 8) {
+      const cells = shots.slice(start, start + 8).map(shot => `<figure><img src="data:image/png;base64,${fs.readFileSync(shot.file).toString("base64")}"><figcaption>${shot.caption.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</figcaption></figure>`).join("");
+      await sheet.setContent(`<style>body{margin:0;background:#888;display:grid;grid-template-columns:960px 960px}figure{margin:0}img{display:block;width:960px;height:540px}figcaption{font:600 22px/32px sans-serif;color:#000;background:#fff;padding:0 12px}</style>${cells}`, { waitUntil: "load" });
+      const file = path.join(previewDir, `sheet-${start / 8 + 1}.png`);
+      await sheet.screenshot({ path: file, fullPage: true });
       outputs.push({ path: path.relative(args.outputDir, file).replaceAll("\\", "/"), bytes: fs.statSync(file).size, sha256: sha256(file) });
     }
     checks.push({ viewport: { width: 1920, height: 1080 }, reducedMotion: "reduce", phase: "screenshots", problems: renderProblems });
     await rendered.context.close();
 
-    const printProblems = [];
-    const printable = await readyPage(browser, url, { width: 1920, height: 1080 }, "reduce", printProblems);
-    await printable.page.emulateMedia({ media: "print", reducedMotion: "reduce" });
-    await printable.page.addStyleTag({ content: RENDER_CSS });
-    const pdfPath = path.join(args.outputDir, args.pdfName);
-    await printable.page.pdf({ path: pdfPath, width: "1920px", height: "1080px", preferCSSPageSize: true, printBackground: true, margin: { top: 0, right: 0, bottom: 0, left: 0 }, timeout: 120000 });
-    await printable.context.close();
-    pdfReport = inspectPdf(args.pdfinfo, pdfPath, args.expectedSlides);
-    pdfReport.problems.push(...printProblems);
-    outputs.push({ path: path.relative(args.outputDir, pdfPath).replaceAll("\\", "/"), bytes: fs.statSync(pdfPath).size, sha256: sha256(pdfPath) });
+    if (args.quick || args.slides) {
+      pdfReport = { problems: [], pages: null, pageSizePoints: null, skipped: args.quick ? "--quick" : "--slides" };
+    } else {
+      const printProblems = [];
+      const printable = await readyPage(browser, url, { width: 1920, height: 1080 }, "reduce", printProblems);
+      await printable.page.emulateMedia({ media: "print", reducedMotion: "reduce" });
+      await printable.page.addStyleTag({ content: RENDER_CSS });
+      const pdfPath = path.join(args.outputDir, args.pdfName);
+      await printable.page.pdf({ path: pdfPath, width: "1920px", height: "1080px", preferCSSPageSize: true, printBackground: true, margin: { top: 0, right: 0, bottom: 0, left: 0 }, timeout: 120000 });
+      await printable.context.close();
+      pdfReport = inspectPdf(args.pdfinfo, pdfPath, args.expectedSlides);
+      pdfReport.problems.push(...printProblems);
+      outputs.push({ path: path.relative(args.outputDir, pdfPath).replaceAll("\\", "/"), bytes: fs.statSync(pdfPath).size, sha256: sha256(pdfPath) });
+    }
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.close(resolve));
@@ -491,21 +578,26 @@ async function main() {
 
   const failures = checks.flatMap(check => check.problems.map(problem => ({ viewport: check.viewport, reducedMotion: check.reducedMotion, phase: check.phase || "inspect", problem })))
     .concat(pdfReport.problems.map(problem => ({ phase: "pdf", problem })));
+  const grouped = groupFailures(failures);
   const report = {
     status: failures.length ? "failed" : "verified",
     input: args.input,
     inputSha256: sha256(args.input),
     expectedSlides: args.expectedSlides,
+    slides: args.slides,
+    quick: args.quick,
     chrome: args.chrome,
     browserVersion,
     checks,
     pdf: pdfReport,
     outputs,
     failures,
+    grouped,
   };
   const reportPath = path.join(args.outputDir, "render-report.json");
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + "\n", "utf8");
-  console.log(JSON.stringify({ status: report.status, slides: args.expectedSlides, fontFallbacks: failures.filter(item => item.problem.startsWith("font-fallback")).length, pdfPages: pdfReport.pages, failures: failures.length }));
+  console.log(JSON.stringify({ status: report.status, slides: args.expectedSlides, rendered: outputs.filter(item => item.path.startsWith("previews/slide-")).length, fontFallbacks: grouped.filter(item => item.problem.startsWith("font-fallback")).length, pdfPages: pdfReport.pages, failures: failures.length, problems: grouped.length }));
+  for (const group of grouped) console.log(failureLine(group, ids));
   return failures.length ? 1 : 0;
 }
 

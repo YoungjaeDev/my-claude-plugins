@@ -11,6 +11,7 @@ This file owns markup only.
 - Class vocabulary
 - Message layouts
 - Mockups and flow diagrams
+- Shell-filled reusable parts
 - Panels
 - Screen description card
 - Motion
@@ -75,7 +76,7 @@ Anything else repeated twice belongs in `shell.html` as a class.
 | Slide type | Structure |
 |---|---|
 | Cover | `section.slide.cover > header.brandbar(img.monogram + img.wordmark + .logos) + h1 + p.subtitle + div.cover-ralph > img` |
-| Agenda | `h2 + ol.agenda`. The shell adds one row per `SECTIONS` entry. Extra rows only: `li > span.no + h3`; a row before the sections is `li.pre` |
+| Agenda | `h2 + ol.agenda`. The shell adds one row per `SECTIONS` entry. Extra rows only: `li > span.no + h3`; a row before the sections is `li.pre`. Up to 5 rows stack in one column; 6–8 rows go to two columns of 4. Past 8 rows, or `li.pre` with 6 or more sections, the shell's agenda CSS has to change first |
 | Section cover | `section.slide.section-cover[data-section] > h2 + p.lead + .logos` |
 | Concept | `h2 + .body > ul.points`, or `.flow > .flow-step(strong + text)`; `.split` puts a figure beside it |
 | Procedure | `h2 + .body > ol.steps > li`; a command goes in `pre.code` inside the `li` |
@@ -92,7 +93,11 @@ take none are in deck-copy ("듣는 사람 자리에서"). `deck-check` enforces
 Shared classes: `.lead` (one or two sentences under the title), `.body` (fills the remaining height; a
 text-only body is centered vertically), `.split` (`.even`, `.wide-text`), `code` (inline command or field),
 `pre.code` (`span.k` highlight, `span.c` comment), `.accent` (the accent-colour text of deck-copy
-"표기는 하나로"), `.key` (the yellow emphasis of the same rule), `.logos`.
+"표기는 하나로"), `.key` (the yellow emphasis of the same rule), `.mark` (see below), `.logos`.
+
+`.mark` is a highlighter band under one phrase (`span` inside `p`/`li`) on a slide with 3 or more lines of
+list: one per slide, never with a `.key`. Outline notation: `==구절==`. The shell inverts every
+`img[src*="logos/icon-"]` (line icons stroked with `currentColor`); never name a brand logo `icon-*`.
 
 `figure.cut > img` is a small pixel-art cut pinned bottom-right, placed as the sibling after `.body`.
 Where and how often is decided by the `deck-assets` skill.
@@ -167,7 +172,8 @@ y 900 when the counts below hold. These counts are the per-layout exceptions to 
 | `.tr-win` | chat window | `.tr-win > .bar + .msg.user + .msg.agent`; `.msg > span.who` for the speaker |
 | `.orca-win` | ADE/IDE window with three columns | `.orca-win > .orca-side + .orca-main + .orca-panel`. Side: `.orca-head(i×3 + b)`, `.orca-search`, `.orca-nav`, `.orca-label`, `.orca-repo(.orca-badge)`, `.orca-wt(.on)`. Main: `.orca-tabs > span(.on)`, `pre.orca-term(.orca-p, .orca-ok, .orca-dot)`, `.orca-status`. Panel: `.orca-tabs`, `.orca-tree(.d1, .d2, .m, .u > em)`, `.orca-sc(.orca-sc-row, .orca-pr)`. Inline `height` sets the size; add `role="img"` and an `aria-label` |
 | `.flow` | static steps in a row | `.flow > .flow-step > strong + text` |
-| `.boxflow` | boxes joined by lines | `.boxflow > svg.links + .fbox(.on) > strong + text + span.out` |
+| `.boxflow` | boxes joined by lines | `.boxflow > svg.links + .fbox(.on, .off, .frame) > strong + text + span.out` |
+| `.browser-win` | a web page in a browser frame | `.browser-win > .bar(i, i, i, span.url) + .page`; states (`.page.raw`, `.page.before`, `.swap`, `.cursor`) in `references/mockups-motion.md` |
 
 `.boxflow` rules:
 
@@ -178,7 +184,24 @@ y 900 when the counts below hold. These counts are the per-layout exceptions to 
   space as the `svg.links` `viewBox` (`viewBox="0 0 1680 350"` for a 1680×350 box). Moving a box means
   recomputing its paths.
 - More than 5 boxes: split the slide (deck-authoring). `.fbox.on` marks the box the slide is about.
+  A shell-filled overview diagram (below) is exempt.
+- `.fbox.off` dims a box that is down in the end state; `.fbox.frame` drops the fill of a grouping box.
+- A logo goes inside `strong` before the title (`<strong><img src="assets/logos/..." alt="">DNS</strong>`);
+  a logo row under the text is `span.logos`. Line labels are `text` in `svg.links` (centered on `x`).
+- One real case under the flow: `p.flow-case > img + text` (one line) in its own positioned child
+  `.boxflow`. A positioned child may also be a plain `div` holding a `.browser-win`.
 - `data-anim` goes on `.fbox` or on SVG children, never on the positioned wrapper.
+
+## Shell-filled reusable parts
+
+The way to reuse one diagram on 3 or more slides (an overview map marking the current part). The section
+writes one placeholder, `<div class="overview" data-now="2"></div>`; the shell fills it like the agenda
+rows. Data attributes carry all that differs per slide.
+
+- The shell holds the part's CSS and its markup (a JS array or function next to `SECTIONS`), inserted in
+  the `slides.forEach` loop with `data-runtime` on every inserted element so edit-mode saves drop it.
+  Document the part and its attributes in `.claude/rules/deck-local.md`.
+- An overview diagram is exempt from the 5-box rule; the per-part slides it leads to keep it.
 
 ## Panels
 
@@ -265,6 +288,11 @@ screen icon.
   dev server strips `style`, `transform` and `data-svg-origin` from `data-anim` elements.
 - `data-anim` alone does nothing; the slide needs `data-motion`.
 - Render QA uses the end state: `?static=1` or `window.presentation.finishMotion()`.
+- **A turn-revealed `fromTo` uses `immediateRender: false`.** `fromTo` applies its from-values when the
+  timeline is built, so visible from-values show the element at frame 0, before its turn. Keep the
+  default only for an earlier state that should show from the first frame. The render sees only the end state.
+- `deck/motions/basic.js` ships `loop`, `convert` and `hops`; use them before writing a motion file.
+  Earlier states and the `hops` attributes are in `references/mockups-motion.md`.
 
 ## Dev server edit mode
 

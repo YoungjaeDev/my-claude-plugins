@@ -170,6 +170,79 @@ async function motionState(page, waitForEnd) {
   return { reduced, index, progressOnEntry, reachedEnd };
 }
 
+// Per data-motion slide: build the motion, freeze it before the first tick, then step it forward and read each
+// tween target's effective opacity. GSAP renders a fromTo's start values at creation (immediateRender), so a later
+// tween can make an element visible before its turn. An element is early when it is visible at t=0 and either
+//   - is hidden at a later step and shown again (it shows before its own reveal), or
+//   - its first opacity tween starts later and holds opacity at a visible value (fromTo opacity 1 -> 1): that tween
+//     exists only to show the element at its turn, so the element must be hidden until then.
+// A "before" screen that is visible at t=0 and fades out later (fromTo opacity 1 -> 0) is not flagged.
+async function motionStarts(page) {
+  const indexes = await page.evaluate(() => [...document.querySelectorAll(".slide")].flatMap((slide, index) => slide.dataset.motion ? [index] : []));
+  const results = [];
+  for (const index of indexes) {
+    results.push(await page.evaluate(slideIndex => {
+      const slide = document.querySelectorAll(".slide")[slideIndex];
+      const id = (slide.getAttribute("aria-label") || "").split(" ")[0];
+      // Same hash first, so show() does not trigger a hashchange that rebuilds the motion.
+      history.replaceState(null, "", `#slide-${slideIndex + 1}`);
+      try {
+        window.presentation.showSlide(slideIndex);
+      } catch (error) {
+        return { index: slideIndex, id, error: `${error.name}: ${error.message}` };
+      }
+      if (!window.gsap) return { index: slideIndex, id, skipped: "no gsap" };
+      const inSlide = tween => tween.targets().some(target => target instanceof Element && slide.contains(target));
+      const timeline = gsap.globalTimeline.getChildren(false, false, true).filter(child => child.getChildren(true, true, false).some(inSlide)).pop();
+      if (!timeline) return { index: slideIndex, id, skipped: "no timeline" };
+      timeline.pause();
+      const absolute = tween => {
+        let time = tween.startTime();
+        for (let parent = tween.parent; parent && parent !== timeline; parent = parent.parent) time += parent.startTime();
+        return time;
+      };
+      const touchesOpacity = vars => vars && ("opacity" in vars || "autoAlpha" in vars);
+      const alphaOf = vars => Number(vars && ("autoAlpha" in vars ? vars.autoAlpha : vars.opacity));
+      const tweens = timeline.getChildren(true, true, false).filter(inSlide).map(tween => ({
+        start: absolute(tween),
+        end: absolute(tween) + tween.totalDuration(),
+        opacity: touchesOpacity(tween.vars) || touchesOpacity(tween.vars.startAt),
+        holds: touchesOpacity(tween.vars) && touchesOpacity(tween.vars.startAt) && alphaOf(tween.vars) > 0.05 && alphaOf(tween.vars) === alphaOf(tween.vars.startAt),
+        targets: tween.targets().filter(target => target instanceof Element && slide.contains(target)),
+      }));
+      const elements = [...new Set(tweens.flatMap(tween => tween.targets))];
+      const seen = element => {
+        let alpha = 1;
+        for (let node = element; node && node !== slide; node = node.parentElement) {
+          const style = getComputedStyle(node);
+          if (style.display === "none" || style.visibility === "hidden") return 0;
+          alpha *= Number(style.opacity);
+        }
+        return alpha;
+      };
+      const times = [...new Set(tweens.flatMap(tween => [tween.start + 0.001, tween.end]))].filter(time => time > 0.001).sort((a, b) => a - b);
+      const samples = [{ time: 0, alpha: elements.map(seen) }];
+      for (const time of times) {
+        timeline.seek(time, true);
+        samples.push({ time, alpha: elements.map(seen) });
+      }
+      timeline.progress(1, true);
+      const label = element => `${element.tagName.toLowerCase()}${(element.getAttribute("class") || "").trim().split(/\s+/).filter(Boolean).map(name => `.${name}`).join("")}${element.dataset.anim ? `[data-anim=${element.dataset.anim}]` : ""} "${(element.textContent || "").replace(/\s+/g, " ").trim().slice(0, 24)}"`;
+      const early = [];
+      elements.forEach((element, k) => {
+        if (samples[0].alpha[k] <= 0.05) return;
+        const hidden = samples.find(sample => sample.time > 0 && sample.alpha[k] < 0.05);
+        const shown = hidden && samples.find(sample => sample.time > hidden.time && sample.alpha[k] > 0.05);
+        const first = tweens.filter(tween => tween.opacity && tween.targets.includes(element)).sort((a, b) => a.start - b.start)[0];
+        if (shown) early.push(`${label(element)} visible at 0s, hidden at ${hidden.time.toFixed(2)}s, shown again at ${shown.time.toFixed(2)}s`);
+        else if (first && first.holds && first.start > 0.05) early.push(`${label(element)} visible at 0s, but its first opacity tween (a fromTo that holds opacity) only starts at ${first.start.toFixed(2)}s: add immediateRender: false`);
+      });
+      return { index: slideIndex, id, motion: slide.dataset.motion, duration: timeline.duration(), early };
+    }, index));
+  }
+  return results;
+}
+
 async function scaleState(page) {
   return page.evaluate(() => {
     const stage = document.querySelector(".deck-stage");
@@ -331,6 +404,12 @@ async function main() {
     if (observations.motion.normal.reduced || (!observations.motion.normal.skipped && !(observations.motion.normal.progressOnEntry < 1 && observations.motion.normal.reachedEnd))) {
       failures.push({ check: "motion-normal", observed: observations.motion.normal });
     }
+    observations.motion.starts = await motionStarts(page);
+    for (const result of observations.motion.starts) {
+      const where = `slide ${result.index + 1} ${result.id || "-"}`;
+      if (result.error) failures.push({ check: "motion-build", detail: `${where}: ${result.error}` });
+      for (const item of result.early || []) failures.push({ check: "motion-early", detail: `${where}: ${item}` });
+    }
     await normalContext.close();
 
     const validInitialIndex = Math.min(2, args.expectedSlides - 1);
@@ -404,7 +483,8 @@ async function main() {
   };
   const reportPath = path.join(args.outputDir, "interaction-report.json");
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + "\n", "utf8");
-  console.log(JSON.stringify({ status: report.status, failures: failures.length, keyboardChecks: observations.keyboard.length, hashChecks: observations.hash.length, resizeChecks: observations.resize.length }));
+  console.log(JSON.stringify({ status: report.status, failures: failures.length, keyboardChecks: observations.keyboard.length, hashChecks: observations.hash.length, resizeChecks: observations.resize.length, motionSlides: (observations.motion.starts || []).length }));
+  for (const failure of failures) console.log(`${failure.check}${failure.detail ? `: ${failure.detail}` : ""}`);
   return failures.length ? 1 : 0;
 }
 

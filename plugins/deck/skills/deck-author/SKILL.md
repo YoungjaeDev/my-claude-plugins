@@ -31,12 +31,23 @@ read the originals in this plugin's `templates/rules/` and tell the user.
 
 1. **Outline first** (deck-authoring "원고가 기준"): change `deck/outline.md`, then carry its title and
    body text into the section verbatim.
-2. **Write the section** per `references/shell-contract.md`, touching only the slides asked for.
-3. **Motion** only where deck-authoring "흐름은 움직임으로" allows it, registered as the contract's
+2. **Copy review** before the draft goes to the user. Hand the target slide IDs to a subagent that
+   reads `.claude/rules/deck-copy.md`, `.claude/rules/korean-style.md` and, when present, the
+   before/after case table in `.claude/rules/deck-local.md` (the cases win where they and a principle
+   read differently). It judges every sentence of those slides: title, label, lead, items and the
+   text inside figures and mockups. It returns, per slide ID:
+   - each hit: the original sentence, the rule or case it hits, one fix;
+   - the first question a newcomer would ask on that slide, and whether the slide answers it;
+   - technical statements that need a source, and any that a second "why?" would show as wrong.
+   The subagent skips the 금지 표기 table (`check_copy.py` covers it). Apply the fixes to the outline,
+   then show the user. Each instructor correction adds one row (slide, before, after, rule hit) to the
+   case table in `deck-local.md`, created on first use.
+3. **Write the section** per `references/shell-contract.md`, touching only the slides asked for.
+4. **Motion** only where deck-authoring "흐름은 움직임으로" allows it, registered as the contract's
    Motion section describes.
-4. **Check** with `deck-check` (build, copy check, render) and fix every finding.
-5. **Look** at every rendered PNG of the changed slides against `references/qa.md`.
-6. **Report** the slide IDs changed, the files written, and anything not verified. Deployment is not
+5. **Check** with `deck-check` (build, copy check, render) and fix every finding.
+6. **Look** at every rendered PNG of the changed slides against `references/qa.md`.
+7. **Report** the slide IDs changed, the files written, and anything not verified. Deployment is not
    part of this skill (deck-authoring "원고가 기준", `deck-deploy`).
 
 ## References
@@ -44,6 +55,7 @@ read the originals in this plugin's `templates/rules/` and tell the user.
 | File | Read when |
 |---|---|
 | `references/shell-contract.md` | writing or reviewing any section markup, panel, mockup, box flow or motion |
+| `references/mockups-motion.md` | writing a browser mockup, a state change, or a hop motion |
 | `references/qa.md` | deciding whether a change passes, or briefing a subagent to write a section |
 
 Assets (logos, icon cells, mascot cuts) are the `deck-assets` skill. Rule copies are refreshed by

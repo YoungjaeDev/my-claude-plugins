@@ -7,7 +7,7 @@ description: "Scaffold a new lecture deck in the house format (deck/shell.html +
 
 ## Overview
 
-Creates `deck/` from the plugin template (neutral `shell.html`, a sample `sections/00-cover.html`, `outline.md`, `motions/basic.js`, fonts, `vendor/gsap.min.js`, brand assets, an empty `assets/logos/sources.json`, `deck/.gitignore`) and writes the three rule copies into `.claude/rules/`, each stamped with the plugin version. The deck owns every copied file afterwards. Build, check, render and deploy tools stay in the plugin and are never copied.
+Creates `deck/` from the plugin template (neutral `shell.html`, a sample `sections/00-cover.html`, `outline.md`, `motions/basic.js`, fonts, `vendor/gsap.min.js`, brand assets, an empty `assets/logos/sources.json`, `deck/.gitignore`) and writes the three rule copies into `.claude/rules/`, each stamped with the plugin version, plus the tool launcher and commit hooks into `.githooks/` (an existing file there is never overwritten). The deck owns every copied file afterwards. Build, check, render and deploy tools stay in the plugin and are never copied.
 
 ## When to use
 
@@ -41,21 +41,26 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
    "$PY" "$PLUGIN_ROOT/scripts/kit.py" new .
    ```
 
-   Observable result: `deck: scaffolded <repo>/deck`, one `rules: <name> written (missing -> <version>)` line per rule, and a `frontend-slides:` line. On `[abort] ... already exists` stop and point the user to `deck-sync`.
+   Observable result: `deck: scaffolded <repo>/deck`, one `rules: <name> written (missing -> <version>)` line per rule, one `githooks: <file> written` (or `exists, left as is`) line each for `deck`, `pre-commit` and `commit-msg` in `.githooks/`, and a `frontend-slides:` line. On `[abort] ... already exists` stop and point the user to `deck-sync`.
 
-3. Prerequisite check. The `frontend-slides:` line reports whether the frontend-slides plugin is installed. It is a warning only: the house deck builds without it. When it says `missing`, relay the printed install commands to the user and continue.
+   `.githooks/deck` is the deck's stable entry to the plugin tools (`sh .githooks/deck build`, `copy`, `outline`, `check`, `render`, `interaction`, `frames`, `dev`): it resolves the newest installed plugin on every run, so later skills use it instead of a cached plugin path.
 
-4. Fill the deck identity. Ask for the deck title, the thesis sentence, the section list (id, name, goal) and the Vercel project name, then edit:
+3. Commit hooks. `.githooks/pre-commit` runs build, the `index.html` staleness check, the copy check, the outline check and the rule-copy check on commits that touch `deck/` or `.claude/rules/`, and skips itself when no deck plugin is installed. `commit-msg` requires a blank line after the subject. Git ignores them until `core.hooksPath` points there, which changes the repo's git config: show the user the printed line `git config core.hooksPath .githooks` and run it only on a yes.
+
+4. Prerequisite check. The `frontend-slides:` line reports whether the frontend-slides plugin is installed. It is a warning only: the house deck builds without it. When it says `missing`, relay the printed install commands to the user and continue.
+
+5. Fill the deck identity. Ask for the deck title, the thesis sentence, the section list (id, name, goal) and the Vercel project name, then edit:
    - `deck/outline.md` header lines (`덱의 주장`, `섹션`, `Vercel 프로젝트`, `배포 주소`),
    - `deck/shell.html`: `<title>`, the stage `aria-label`, and the `SECTIONS` array (keep `id`, `name`, `goal`, `logos`),
    - `deck/sections/00-cover.html`: the cover `h1` and subtitle.
 
    Leave the sample S1-01 slide until real content replaces it.
 
-5. Hand off. Tell the user the next steps: `deck-assets` for logos and icon cells, `deck-author` for slides, `deck-check` before showing anyone the deck. Deck-specific rule exceptions go in `.claude/rules/deck-local.md`, which sync never touches.
+6. Hand off. Tell the user the next steps: `deck-assets` for logos and icon cells, `deck-author` for slides, `deck-check` before showing anyone the deck. Deck-specific rule exceptions go in `.claude/rules/deck-local.md`, which sync never touches.
 
 ## Verification
 
 - `deck/shell.html`, `deck/sections/00-cover.html`, `deck/outline.md` and `deck/vendor/gsap.min.js` exist, and the second line of `deck/shell.html` is `<!-- deck shell base <version> -->`.
+- `.githooks/deck`, `.githooks/pre-commit` and `.githooks/commit-msg` exist and are executable; `sh .githooks/deck root` prints the plugin root.
 - Every file in `.claude/rules/` written here contains `> deck 플러그인 <version> 사본.` right after its frontmatter.
 - Running `deck-check` on the fresh scaffold passes build, copy check and render.

@@ -17,6 +17,9 @@ interaction check) belong to the `deck-check` skill; this file owns what counts 
 - Each slide makes sense with its panels closed (deck-authoring "원문은 패널로") and panel commands
   match their source (deck-copy "본문은 말, 명령은 패널").
 - Panel buttons in a `div.reveal-group` do not overlap the title or each other.
+- Every motion slide, watched once from the start in the browser (not `?static=1`), shows no end-state
+  element before its turn and every earlier state (`.page.before`, the old value of a `.swap`) from the
+  first frame (shell-contract "Motion", mockups-motion "Earlier states").
 
 ## Look at every PNG
 
@@ -27,7 +30,11 @@ Open each rendered PNG yourself. A report that says "0 overflow" does not catch 
 - unreadable fragments of a capture,
 - the same element rendered twice,
 - SVG text crossing its box border,
-- a `.boxflow` line that no longer meets its box after a box moved.
+- a `.boxflow` line that no longer meets its box after a box moved,
+- a Hangul word broken in the middle in box or SVG text,
+- a line icon (`icon-*.svg`) drawn black on the dark ground,
+- a two-column `.body.split` that collapsed into one column,
+- an agenda that runs into the footer.
 
 This visual pass is not delegated to a subagent. A QA agent that reports shell-injected elements
 (agenda section rows, the "N / 5" footer text, the footer itself) as missing is wrong: the shell adds

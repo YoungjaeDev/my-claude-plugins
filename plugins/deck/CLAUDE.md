@@ -11,6 +11,7 @@ Generic presentations and PPTX conversion stay with `frontend-slides`.
 |---|---|---|
 | Rule originals (korean-style, deck-copy, deck-authoring) | `templates/rules/*.md` | yes, stamped, by `deck-new` / `deck-sync` into `.claude/rules/` |
 | Deck template (shell, sample cover, outline, motions, fonts, GSAP, brand, logo manifest) | `templates/deck/` | once, by `deck-new`; the deck owns it afterwards |
+| Tool launcher `deck`, `pre-commit`, `commit-msg` | `templates/githooks/` | into `.githooks/` by `deck-new` / `deck-sync` when missing; never overwritten |
 | Tools | `scripts/` | never; skills run them from the plugin root |
 | Playwright for the render tools | `package.json` + `package-lock.json` | no |
 
@@ -21,15 +22,18 @@ Skills: `deck-ask`, `deck-new`, `deck-author`, `deck-assets`, `deck-check`, `dec
 ## Tools
 
 All take the deck directory (default `./deck`); the rule copies are read from `<deck>/../.claude/rules/`.
+In a deck repo every tool is also `sh .githooks/deck <build|copy|outline|check|kit|render|interaction|frames|dev|root> [args]`.
 
 | Script | Does |
 |---|---|
 | `build.py [DECK]` | splice sections and motion script tags into the shell, write `index.html`, print `slides: N` |
 | `dev.py [DECK] [--port N]` | 127.0.0.1 dev server, rebuild per request, `E` edit mode, Cmd/Ctrl+S writes the section back |
 | `check_copy.py [DECK] [--rules F] [--selftest]` | banned patterns from the `### 금지 표기` table of `deck-copy.md`, plus comma-after-connective, native counting words, `p.source`/tag chips, slide labels |
-| `kit.py new\|sync\|check\|prereq [REPO]` | scaffold, rule copies + vendor refresh, drift report, frontend-slides detection |
-| `render-deck.cjs` | PNG per slide + PDF, overflow / bounds / footer / font-fallback checks at four viewports |
-| `check-deck-interaction.cjs` | keyboard, hash, history, input focus, panel, resize, motion checks |
+| `check_outline.py [DECK] [--outline F] [--selftest]` | every h2, `p.lead`, `li` and `.fbox` text piece of the sections appears verbatim in `outline.md`; exit 2 on an unreadable deck or outline |
+| `kit.py new\|sync\|check\|prereq [REPO]` | scaffold, rule copies + vendor refresh, missing `.githooks/` files, drift report, frontend-slides detection |
+| `render-deck.cjs [--slides 12,S3-04] [--quick]` | `previews/slide-<NN>-<ID>.png` + `sheet-<N>.png` contact sheets + PDF; overflow / clip / bounds / footer / font-fallback checks at four viewports, one grouped line per problem; `--slides` (numbers or ids) skips the PDF, `--quick` runs 1920x1080 only |
+| `check-deck-interaction.cjs` | keyboard, hash, history, input focus, panel, resize, motion checks; `motion-early` for an element visible before its turn |
+| `motion-frames.cjs --slide N\|ID --at 0,800,end` | PNGs of one slide's motion at seeked times |
 | `deploy.sh [DECK] [PROJECT]` | stage a self-contained folder with noindex, `vercel deploy --prod`; `DECK_STAGE_ONLY=1` stops before deploying |
 
 ## Design decisions worth not re-litigating
@@ -51,6 +55,10 @@ All take the deck directory (default `./deck`); the rule copies are read from `<
 - **Runtime files are copied into the deck.** Fonts, GSAP, motions and assets must be in the
   deployed folder and must open from disk without the plugin, so the deck carries them.
 - **Deploy only on an explicit request**, after local review. Never as a follow-up to an edit.
+- **Decks call the tools through `.githooks/deck`, not a cache path.** Shell state does not survive
+  between agent tool calls, so a multi-line resolver gets replaced by a hard-coded
+  `~/.claude/plugins/cache/.../deck/<version>` that breaks on the next update. The launcher re-resolves
+  on every run and exits 3 when no plugin (or a too-old one) is found; the pre-commit hook skips on 3.
 - **frontend-slides is a soft prerequisite.** `kit.py prereq` reports it from
   `~/.claude/plugins/installed_plugins.json` or the plugin caches; it never fails a build.
 

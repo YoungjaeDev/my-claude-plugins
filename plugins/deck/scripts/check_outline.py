@@ -130,6 +130,14 @@ def selftest() -> None:
     assert {s for _, s, _, _ in found} == {"S9-01"}
     # Unclosed tags and stray end tags must not raise.
     misses([("b.html", '<section class="slide" aria-label="X"><li>열림</div></p>')], "열림")
+    # A section that is not UTF-8 exits 2 and names the file.
+    import subprocess, tempfile
+    with tempfile.TemporaryDirectory() as t:
+        (Path(t) / "sections").mkdir()
+        (Path(t) / "outline.md").write_text("x", encoding="utf-8")
+        (Path(t) / "sections" / "bad.html").write_bytes(b"\xff\xfe")
+        r = subprocess.run([sys.executable, "-I", __file__, t], capture_output=True, text=True)
+        assert r.returncode == 2 and "bad.html" in r.stderr, (r.returncode, r.stderr)
     print("check_outline selftest OK")
 
 
@@ -148,11 +156,13 @@ def main() -> int:
     if not files:
         print(f"outline: no {deck / 'sections'}/*.html; pass the deck directory", file=sys.stderr)
         return 2
-    try:
+    path, sections = outline_path, []
+    try:  # UnicodeDecodeError has no .filename, so track the file being read
         outline = outline_path.read_text(encoding="utf-8")
-        sections = [(f.name, f.read_text(encoding="utf-8")) for f in files]
+        for path in files:
+            sections.append((path.name, path.read_text(encoding="utf-8")))
     except (OSError, UnicodeDecodeError) as error:
-        print(f"outline: cannot read {error.filename or outline_path}: {error}", file=sys.stderr)
+        print(f"outline: cannot read {path}: {error}", file=sys.stderr)
         return 2
     found, total = misses(sections, outline)
     for name, sid, kind, text in found:

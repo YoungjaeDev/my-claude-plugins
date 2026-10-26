@@ -20,8 +20,8 @@ BAD = [
     (re.compile(r"<\s*script", re.I), "<script>"),
     (re.compile(r"<\s*foreignObject", re.I), "<foreignObject>"),
     (re.compile(r"\son[a-z]+\s*=", re.I), "on* handler"),
-    (re.compile(r"""(?:xlink:)?href\s*=\s*["']\s*(?!#|data:)[^"']""", re.I), "external/non-fragment href"),
-    (re.compile(r"""url\(\s*["']?\s*(?!#|data:)|@import""", re.I), "external/non-fragment CSS url()"),
+    (re.compile(r"""(?:xlink:)?href\s*=\s*["'](?!\s*(?:#|data:))\s*[^"'\s]""", re.I), "external/non-fragment href"),
+    (re.compile(r"""url\(\s*(?!["']?\s*(?:#|data:))|@import""", re.I), "external/non-fragment CSS url()"),
 ]
 
 
@@ -56,7 +56,7 @@ def check(d):
     for f in sorted(files):
         if f.endswith(".png"):
             head = (d / f).read_bytes()[:24]
-            if head[:8] != b"\x89PNG\r\n\x1a\n":
+            if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n":
                 errs.append(f"{f}: not a PNG file")
             elif min(struct.unpack(">II", head[16:24])) < 256:
                 errs.append(f"{f}: PNG short side under 256 px")
@@ -71,7 +71,8 @@ def check(d):
 def self_test():
     with tempfile.TemporaryDirectory() as t:
         d = Path(t)
-        ok = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path fill="url(#g)" d="M0 0h1v1z"/></svg>'
+        ok = (b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path fill="url(#g)" d="M0 0h1v1z"/>'
+              b'<path style=\'fill:url("#g")\' d="M0 0"/><use href=" #g"/></svg>')
         (d / "a.svg").write_bytes(ok)
         rec = dict(file="a.svg", name="A", source_url="https://x", official=True, license="x",
                    guidelines_url="https://x", variant="color", sha256=hashlib.sha256(ok).hexdigest(), retrieved="2026-10-05")
@@ -89,12 +90,12 @@ def self_test():
         (d / "c.svg").unlink()
         png = lambda w, h: b"\x89PNG\r\n\x1a\n" + b"\0\0\0\rIHDR" + struct.pack(">II", w, h) + b"\x08\x06\0\0\0"
         recs = [rec]
-        for name, data in (("p.png", png(512, 256)), ("q.png", png(512, 128))):
+        for name, data in (("p.png", png(512, 256)), ("q.png", png(512, 128)), ("r.png", png(512, 512)[:12])):
             (d / name).write_bytes(data)
             recs.append(dict(rec, file=name, sha256=hashlib.sha256(data).hexdigest()))
         (d / "sources.json").write_text(json.dumps(recs))
-        assert check(d) == ["q.png: PNG short side under 256 px"], check(d)
-        for name in ("p.png", "q.png"):
+        assert check(d) == ["q.png: PNG short side under 256 px", "r.png: not a PNG file"], check(d)
+        for name in ("p.png", "q.png", "r.png"):
             (d / name).unlink()
         (d / "sources.json").write_text(json.dumps([rec]))
         (d / "a.svg").write_bytes(ok + b" ")  # hash drift

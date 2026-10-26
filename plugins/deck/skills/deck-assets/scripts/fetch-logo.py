@@ -37,20 +37,22 @@ def fetch(file, url, name, official, license, guidelines, variant, member=None, 
         raise ValueError(f"{file}: want a bare lower-case name ending .svg or .png")
     data = download(url)
     if member:
-        with zipfile.ZipFile(io.BytesIO(data)) as z:
-            data = z.read(member)  # KeyError names the missing member
-    if file.endswith(".png") and data[:8] != b"\x89PNG\r\n\x1a\n":
+        with zipfile.ZipFile(io.BytesIO(data)) as z, z.open(member) as m:  # KeyError names the missing member
+            data = m.read(MAX_BYTES + 1)  # capped: a small zip can inflate to gigabytes
+        if len(data) > MAX_BYTES:
+            raise ValueError(f"{member}: larger than {MAX_BYTES} bytes uncompressed")
+    if file.endswith(".png") and (len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n"):
         raise ValueError(f"{file}: downloaded bytes are not a PNG")
     if file.endswith(".svg") and b"<svg" not in data[:4096]:
         raise ValueError(f"{file}: downloaded bytes are not an SVG")
     d = Path(logos)
+    sj = d / "sources.json"
+    recs = json.loads(sj.read_text(encoding="utf-8")) if sj.exists() else []  # before the write: bad JSON leaves the logo as it was
     d.mkdir(parents=True, exist_ok=True)
     (d / file).write_bytes(data)
     rec = dict(file=file, name=name, source_url=f"{url}#{member}" if member else url, official=official,
                license=license, guidelines_url=guidelines, variant=variant,
                sha256=hashlib.sha256(data).hexdigest(), retrieved=datetime.date.today().isoformat())
-    sj = d / "sources.json"
-    recs = json.loads(sj.read_text(encoding="utf-8")) if sj.exists() else []
     recs = [r for r in recs if r.get("file") != file] + [rec]
     sj.write_text(json.dumps(recs, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return rec
@@ -84,11 +86,21 @@ def selftest():
             except ValueError:
                 continue
             raise AssertionError(f"accepted file name {bad!r}")
+        (t / "short.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        with zipfile.ZipFile(t / "bomb.zip", "w", zipfile.ZIP_DEFLATED) as z:
+            z.writestr("big.svg", b"<svg" + b" " * 10000)
+        global MAX_BYTES
+        saved, MAX_BYTES = MAX_BYTES, 1000  # zip itself fits, its member does not
         try:
-            fetch("c.png", (t / "src.svg").as_uri(), **args)
-            raise AssertionError("saved SVG bytes as .png")
-        except ValueError:
-            pass
+            for f, src, member in (("c.png", "src.svg", None), ("c.png", "short.png", None), ("c.svg", "bomb.zip", "big.svg")):
+                try:
+                    fetch(f, (t / src).as_uri(), member=member, **args)
+                except ValueError:
+                    continue
+                raise AssertionError(f"accepted {src} as {f}")
+        finally:
+            MAX_BYTES = saved
+        assert not (logos / "c.png").exists() and not (logos / "c.svg").exists()
     print("fetch-logo selftest ok")
 
 

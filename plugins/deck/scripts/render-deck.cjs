@@ -112,9 +112,9 @@ function groupFailures(failures) {
   return [...groups.values()];
 }
 
-// "kind:index:rest" (index 0-based) -> "slide 12 S3-04 kind: rest"; other problems print as they are.
+// "kind:index:rest" (index 0-based, only the per-slide kinds; http:404, slide-count:N:M carry no index) -> "slide 12 S3-04 kind: rest"; other problems print as they are.
 function failureLine(group, ids) {
-  const match = group.problem.match(/^([a-z-]+):(\d+):(.*)$/s);
+  const match = group.problem.match(/^(overflow|clip|out-of-bounds|footer-overlap|single-slide|font-evidence-missing|font-fallback):(\d+):(.*)$/s);
   const head = match ? `slide ${Number(match[2]) + 1} ${ids[Number(match[2])] || "-"} ${match[1]}: ${match[3]}` : group.problem;
   return `${head} [${group.passes.join(", ")}]`;
 }

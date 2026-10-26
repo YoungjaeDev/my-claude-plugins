@@ -41,7 +41,7 @@ Write the draft to `deck/assets/manifest.json` (`logos`, `icons`, `mascot` array
 
 ## 2. Official logos
 
-Keep the format the brand ships: its SVG, else its own transparent PNG, else no logo (write the name as text, also for brands whose terms bar logo use in teaching material). Source order per tool, first hit wins:
+Keep the format the brand ships: its SVG, else its own transparent PNG, else an unofficial file from source 3 below recorded `official: false`, else no logo (write the name as text, also for brands whose terms bar logo use in teaching material). Source order per tool, first hit wins:
 
 1. The brand's own press/brand page, brand kit or product domain, or the brand's own GitHub repo pinned to a commit SHA.
 2. Simple Icons as an index, not a file source: its JSON `source` and `guidelines` fields point at the brand original and the trademark page. Download from that `source`. The Simple Icons file itself is a redrawn 24x24 mono glyph; CC0 covers that file, not the trademark.

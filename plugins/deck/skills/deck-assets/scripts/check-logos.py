@@ -14,6 +14,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+IEND = b"\0\0\0\0IEND\xaeB`\x82"  # the last chunk of every complete PNG
 FIELDS = ("file", "name", "source_url", "official", "license", "guidelines_url", "variant", "sha256", "retrieved")
 BAD = [
     (re.compile(r"""(?:href\s*=\s*["']|url\(\s*["']?)\s*data:""", re.I), "embedded raster (data URI)"),
@@ -55,8 +56,10 @@ def check(d):
         errs.append(f"{f}: file without record")
     for f in sorted(files):
         if f.endswith(".png"):
-            head = (d / f).read_bytes()[:24]
-            if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n":
+            data = (d / f).read_bytes()
+            head = data[:24]
+            # A file cut short after its header still has a valid signature; a complete PNG ends with IEND.
+            if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n" or not data.endswith(IEND):
                 errs.append(f"{f}: not a PNG file")
             elif min(struct.unpack(">II", head[16:24])) < 256:
                 errs.append(f"{f}: PNG short side under 256 px")
@@ -88,14 +91,14 @@ def self_test():
         e = check(d)
         assert "c.svg: contains embedded raster (data URI)" in e and not any("c.svg" in x and "external" in x for x in e), e
         (d / "c.svg").unlink()
-        png = lambda w, h: b"\x89PNG\r\n\x1a\n" + b"\0\0\0\rIHDR" + struct.pack(">II", w, h) + b"\x08\x06\0\0\0"
+        png = lambda w, h: b"\x89PNG\r\n\x1a\n" + b"\0\0\0\rIHDR" + struct.pack(">II", w, h) + b"\x08\x06\0\0\0" + b"\0" * 4 + IEND
         recs = [rec]
-        for name, data in (("p.png", png(512, 256)), ("q.png", png(512, 128)), ("r.png", png(512, 512)[:12])):
+        for name, data in (("p.png", png(512, 256)), ("q.png", png(512, 128)), ("r.png", png(512, 512)[:12]), ("s.png", png(512, 512)[:33])):
             (d / name).write_bytes(data)
             recs.append(dict(rec, file=name, sha256=hashlib.sha256(data).hexdigest()))
         (d / "sources.json").write_text(json.dumps(recs))
-        assert check(d) == ["q.png: PNG short side under 256 px", "r.png: not a PNG file"], check(d)
-        for name in ("p.png", "q.png", "r.png"):
+        assert check(d) == ["q.png: PNG short side under 256 px", "r.png: not a PNG file", "s.png: not a PNG file"], check(d)
+        for name in ("p.png", "q.png", "r.png", "s.png"):
             (d / name).unlink()
         (d / "sources.json").write_text(json.dumps([rec]))
         (d / "a.svg").write_bytes(ok + b" ")  # hash drift

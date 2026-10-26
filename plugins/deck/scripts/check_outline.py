@@ -97,8 +97,8 @@ class Texts(HTMLParser):
 
 
 def outline_text(text: str) -> str:
-    # A lead may break at <br> (deck-copy "one line"); the section text joins the two halves without a space.
-    return norm(re.sub(r"<br\s*/?>", "", text.replace("==", "").replace("`", "")))
+    # A lead may break at <br> or the outline's " / " (deck-copy); the section text joins the halves without a space.
+    return norm(re.sub(r"<br\s*/?>|\s+/\s+", "", text.replace("==", "").replace("`", "")))
 
 
 def misses(sections: list, outline: str) -> tuple:
@@ -128,6 +128,9 @@ def selftest() -> None:
     assert [(k, t) for _, _, k, t in found] == [
         ("lead", "리드 <a>둘째"), ("li", "항목 밑줄이다."), ("fbox", "moim.example.com"), ("fbox", "IP로"), ("fbox", "바꾼다")], found
     assert {s for _, s, _, _ in found} == {"S9-01"}
+    found, _ = misses([("a.html", '<section class="slide" aria-label="S9-02 t"><p class="lead">첫 문장<br>다음 문장</p></section>')],
+                      "| S9-02 | 리드: 첫 문장 / 다음 문장 |")
+    assert found == [], found
     # Unclosed tags and stray end tags must not raise.
     misses([("b.html", '<section class="slide" aria-label="X"><li>열림</div></p>')], "열림")
     # A section that is not UTF-8 exits 2 and names the file.

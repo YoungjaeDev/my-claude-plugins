@@ -575,6 +575,22 @@ is "PR #283 bold Major -> gated"          "$(tier_at 3)" gated
 is "🔵 Trivial header -> skip"           "$(tier_at 5)" skip
 is "⚪ Info header -> skip"              "$(tier_at 6)" skip
 
+# PR #344 (2026-10): severity-first, `·`-separated, <img> icons instead of emoji.
+# The old parser read none of it, so every finding fell to `review` and the run
+# ended at user_declined. Bodies are the real comments' first lines; the third
+# record swaps in an unknown severity word under a major-16.svg icon.
+th=$(CR_THREADS_RESPONSE_FILE="$FIX/cr-threads-pr344-header.json" \
+       bash "$SCRIPTS/fetch-cr-threads.sh" o r 42 2>/dev/null)
+is "PR #344 Major header -> fields" "$(fields 0)" "Stability & Availability / 🟠 Major / Heavy lift"
+is "PR #344 Minor header -> fields" "$(fields 1)" "Functional Correctness / 🟡 Minor / Quick win"
+is "PR #344 Major + Heavy lift -> gated" "$(tier_at 0)" gated
+is "PR #344 Minor + Quick win -> auto"   "$(tier_at 1)" auto
+is "PR #344 title after the new header" \
+   "$(jq -r '.[1].body' <<<"$th" | jq -Rrs -L "$SCRIPTS" 'include "cr-header"; cr_title')" \
+   "Fix the \`error.filename\` access for \`UnicodeDecodeError\`."
+is "unknown severity word is not read off the icon" "$(jq -r '.[2].severity_emoji' <<<"$th")" null
+is "unknown severity word -> review"     "$(tier_at 2)" review
+
 echo
 echo "fetch-cr-outside-diff.sh"
 

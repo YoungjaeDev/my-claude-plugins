@@ -1,29 +1,52 @@
 #!/bin/sh
-# Fast deck checks before a commit that touches deck/ or the rule copies: build, index.html staleness,
-# copy check, outline check, rule copies. Render and interaction checks are slow and stay in deck-check.
+# Fast deck checks before a commit. Every commit: the deck's own .githooks/local-checks.sh (when it
+# exists) and the raw screenshot / archive name check. A commit that touches deck/ or the rule copies
+# also gets build, index.html staleness, copy, outline, assets and rule copies, all run on the staged
+# snapshot rather than the working tree. Render and interaction checks are slow and stay in deck-check.
 # Installed by the deck plugin (`kit.py new` / `sync`); enable with: git config core.hooksPath .githooks
-git diff --cached --name-only | grep -qE '^(deck/|\.claude/rules/)' || exit 0
+hooks="$(dirname "$0")"
+# The deck's extension point: this file is never overwritten, so its checks survive deck-sync.
+if [ -f "$hooks/local-checks.sh" ]; then
+  sh "$hooks/local-checks.sh" || { echo "pre-commit: .githooks/local-checks.sh failed" >&2; exit 1; }
+fi
+touches=0
+git diff --cached --name-only | grep -qE '^(deck/|\.claude/rules/)' && touches=1
 
-deck="$(dirname "$0")/deck"
+deck="$hooks/deck"
 if ! sh "$deck" root >/dev/null 2>&1; then
-  echo "pre-commit: deck plugin not found, skipping deck checks (set PLUGIN_ROOT)" >&2
+  [ "$touches" -eq 1 ] && echo "pre-commit: deck plugin not found, skipping deck checks (set PLUGIN_ROOT)" >&2
   exit 0
 fi
 
 rc=0
-sh "$deck" build deck >/dev/null || rc=1
-# A committed build that differs from a fresh one means deck/index.html is stale.
-if ! git diff --quiet -- deck/index.html; then
-  echo "pre-commit: deck/index.html differs from the build. Run: git add deck/index.html" >&2
+# Raw screenshots and archives anywhere in the commit; with deck/ staged also captures.md rows and
+# asset paths, read from the index. Exit 3: the installed plugin predates check_assets.py; go on.
+out=$(sh "$deck" assets --staged deck 2>&1) || { [ $? -eq 3 ] || rc=1; }
+if [ "$touches" -eq 0 ]; then
+  [ "$rc" -eq 0 ] || echo "$out" | tail -n 20
+  exit $rc
+fi
+echo "$out" | tail -n 20
+
+# The staged files of deck/ (without assets/, which only the assets check reads) and the rule copies,
+# so a partly staged section is checked as committed.
+snap=$(mktemp -d) || exit 1
+trap 'rm -rf "$snap"' EXIT
+git ls-files -z -- deck .claude/rules ':(exclude)deck/assets' | xargs -0 git checkout-index --prefix="$snap/" -- || rc=1
+cp "$snap/deck/index.html" "$snap/staged-index.html" 2>/dev/null
+sh "$deck" build "$snap/deck" >/dev/null || rc=1
+# A staged build that differs from a fresh one means deck/index.html is stale.
+if ! cmp -s "$snap/deck/index.html" "$snap/staged-index.html"; then
+  echo "pre-commit: staged deck/index.html differs from the build. Run: sh .githooks/deck build && git add deck/index.html" >&2
   rc=1
 fi
 # Capture first so a pipe does not hide the checker's exit status.
-out=$(sh "$deck" copy deck 2>&1) || rc=1
+out=$(sh "$deck" copy "$snap/deck" 2>&1) || rc=1
 echo "$out" | tail -n 20
 # Every section title, lead, list item and box text must also be in the outline (the copy source).
 # Exit 3: the installed plugin predates check_outline.py; warn and go on.
-out=$(sh "$deck" outline deck 2>&1) || { [ $? -eq 3 ] || rc=1; }
+out=$(sh "$deck" outline "$snap/deck" 2>&1) || { [ $? -eq 3 ] || rc=1; }
 echo "$out" | tail -n 20
-out=$(sh "$deck" check . 2>&1) || rc=1
+out=$(sh "$deck" check "$snap" 2>&1) || rc=1
 echo "$out" | grep -E '^(rules|vendor):'
 exit $rc

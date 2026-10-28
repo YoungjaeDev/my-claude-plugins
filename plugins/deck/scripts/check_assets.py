@@ -68,8 +68,9 @@ def problems(files: set, read, sources: list) -> tuple:
         if not folder.startswith("assets"):
             continue
         log = f"{folder}/captures.md"
-        # The row names the image relative to the log's folder, so a parent log's a.png does not cover sub/a.png.
-        row = re.compile(r"(?<![\w./-])" + re.escape(nfc(posixpath.relpath(img, folder))) + r"(?![\w.-])")
+        # The row names the image relative to the log's folder (./ allowed), so a parent log's a.png
+        # does not cover sub/a.png.
+        row = re.compile(r"(?<![\w./-])(?:\./)?" + re.escape(nfc(posixpath.relpath(img, folder))) + r"(?![\w.-])")
         if not any(l.lstrip().startswith("|") and row.search(l) for l in nfc(read(log) or "").splitlines()):
             fail.append(f"{img}: no row in {log} (what it shows, when, what was blurred)")
     for ref in sorted(set(REF.findall(text))):
@@ -145,8 +146,8 @@ def selftest() -> None:
         "sections/01.html": '<img src="assets/shots/a.png"><img src="assets/shots/gone.png">'
                             '<img src="assets/x/%ED%95%9C.png">',
         "motions/m.js": "url('assets/shots/sub/b.png')",
-        "assets/shots/captures.md": "| 파일 | 화면 |\n|---|---|\n| `a.png` | 피드 |\nsub/b.png 는 표 밖",
-        "assets/shots/a.png": "", "assets/shots/sub/a.png": "", "assets/shots/sub/b.png": "", "assets/shots/c.png": "",
+        "assets/shots/captures.md": "| 파일 | 화면 |\n|---|---|\n| `a.png` | 피드 |\n| ./c2.png | 설정 |\nsub/b.png 는 표 밖",
+        "assets/shots/a.png": "", "assets/shots/sub/a.png": "", "assets/shots/sub/b.png": "", "assets/shots/c.png": "", "assets/shots/c2.png": "",
         "assets/logos/react.svg": "", "assets/logos/vite.svg": "", "assets/x/한.png": "",
         "assets/Screenshot 2026.png": "", "assets/raw.ZIP": "",
     })
@@ -161,7 +162,7 @@ def selftest() -> None:
         "assets/shots/c.png: no row in assets/shots/captures.md (what it shows, when, what was blurred)",
         "assets/shots/gone.png: referenced but missing",
     ]), fail
-    assert unused == ["assets/Screenshot 2026.png", "assets/logos/vite.svg", "assets/shots/c.png"], unused
+    assert unused == ["assets/Screenshot 2026.png", "assets/logos/vite.svg", "assets/shots/c.png", "assets/shots/c2.png"], unused
     assert raw_name(unicodedata.normalize("NFD", "x/스크린샷 2026-10-27.png")) and not raw_name("a/screen.png")
     # --staged reads the index: a row only in the working tree, or an unstaged image, does not count.
     with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):

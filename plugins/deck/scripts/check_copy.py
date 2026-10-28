@@ -76,9 +76,10 @@ def banned_patterns(md: str, heading: str = TABLE_HEADING) -> list:
         raise ValueError(f"table under '{heading}' must start with columns {' | '.join(TABLE_COLUMNS)}")
     out = []
     for cells in rows[2:]:  # rows[1] is the |---| separator
-        if len(cells) < 3:
-            continue
-        for rx in re.findall(r"`([^`]+)`", cells[2]):
+        regexes = re.findall(r"`([^`]+)`", cells[2]) if len(cells) >= 3 else []
+        if not regexes:  # a row that bans nothing is a typo, not an intent
+            raise ValueError(f"table under '{heading}' has a row without a regex in backticks: {' | '.join(cells)}")
+        for rx in regexes:
             re.compile(rx)  # a bad regex should fail loudly, not silently match nothing
             out.append((rx, cells[0]))
     if not out:
@@ -189,7 +190,8 @@ def selftest() -> None:
     attrs = check_file("f", '<section aria-label="S1-01 x"><img alt="모델에 대해 읽고, 쓴다">'
                        '<a aria-label="파일을 읽고, 쓴다">a</a><template><img alt="에 대해"></template></section>', banned)
     assert attrs == ['f S1-01: 에 대해: alt="모델에 대해 읽고, 쓴다"'], attrs
-    for broken in ("# none","### 금지 표기\n\n| a | b | c |\n|---|---|---|\n| x | y | `z` |"):
+    for broken in ("# none","### 금지 표기\n\n| a | b | c |\n|---|---|---|\n| x | y | `z` |",
+                   md.replace("| 따라 하기 | 실습 · 할 일 | `따라 ?하기` |", "| 따라 하기 | 실습 · 할 일 | 따라 하기 |")):
         try:
             banned_patterns(broken)
         except ValueError:

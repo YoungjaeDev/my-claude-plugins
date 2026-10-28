@@ -58,9 +58,10 @@ if ! (cd "$OUT" && npx -y vercel@latest "$@") >"$LOG" 2>&1; then
   echo "[abort] vercel deploy failed; full log: $LOG" >&2
   exit 1
 fi
-# "Aliased:" is the project domain viewers open; "Production:" the unique deployment URL.
-URL="$(sed -n 's/.*Aliased: *\(https:[^ ]*\).*/\1/p' "$LOG" | tail -1)"
-[ -n "$URL" ] || URL="$(sed -n 's/.*Production: *\(https:[^ ]*\).*/\1/p' "$LOG" | tail -1)"
+# "Aliased" is the project domain viewers open; "Production" the unique deployment URL. The colon
+# after the label depends on the CLI version.
+URL="$(sed -n 's/.*Aliased:\{0,1\} *\(https:[^ ]*\).*/\1/p' "$LOG" | tail -1)"
+[ -n "$URL" ] || URL="$(sed -n 's/.*Production:\{0,1\} *\(https:[^ ]*\).*/\1/p' "$LOG" | tail -1)"
 [ -n "$URL" ] || { echo "[abort] no deployment URL in $LOG" >&2; exit 1; }
 echo "url: $URL"
 # A stale cache or a deploy to the wrong project serves a different slide count.

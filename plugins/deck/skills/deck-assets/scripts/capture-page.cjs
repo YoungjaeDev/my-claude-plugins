@@ -89,12 +89,16 @@ async function launch() {
     const ctx = await browser.newContext({ viewport: a.vp, deviceScaleFactor: a.scale });
     if (a.kv.length) await ctx.addInitScript((kv) => kv.forEach(([k, v]) => localStorage.setItem(k, v)), a.kv);
     const page = await ctx.newPage();
+    const written = new Set();
     for (const t of a.targets) {
       const url = toUrl(t, a.base);
+      const file = path.join(a.out, `${slug(url)}${a.suffix ? "-" + a.suffix : ""}.png`);
+      // Two targets with one slug (another host's /, or /a-b and /a/b) would overwrite each other.
+      if (written.has(file)) throw new Error(`${t} would overwrite ${file}; capture it in a separate run with another --suffix or --out`);
+      written.add(file);
       await page.goto(url, { waitUntil: "networkidle" });
       if (a.blur.length) await page.addStyleTag({ content: `${a.blur.join(",")}{filter:blur(6px)!important}` });
       await page.waitForTimeout(a.wait);
-      const file = path.join(a.out, `${slug(url)}${a.suffix ? "-" + a.suffix : ""}.png`);
       await page.screenshot({ path: file, fullPage: !!a.full });
       console.log(file);
     }

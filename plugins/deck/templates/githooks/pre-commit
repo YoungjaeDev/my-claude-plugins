@@ -10,7 +10,8 @@ if [ -f "$hooks/local-checks.sh" ]; then
   sh "$hooks/local-checks.sh" || { echo "pre-commit: .githooks/local-checks.sh failed" >&2; exit 1; }
 fi
 touches=0
-git diff --cached --name-only | grep -qE '^(deck/|\.claude/rules/)' && touches=1
+# quotePath=false: a non-ASCII path would otherwise come out quoted and miss the prefix.
+git -c core.quotePath=false diff --cached --name-only | grep -qE '^(deck/|\.claude/rules/)' && touches=1
 
 deck="$hooks/deck"
 if ! sh "$deck" root >/dev/null 2>&1; then

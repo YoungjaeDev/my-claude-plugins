@@ -6,8 +6,8 @@
 Fails on:
   - a file named like a raw OS screenshot (스크린샷*, Screenshot*, Screen Shot*) or a .zip archive;
   - an image under DECK/assets/ whose nearest captures.md (its own folder, or a parent folder up to
-    assets/) has no table row naming the file. captures.md is the deck's record of what a capture
-    shows and what was blurred, so a folder opts in by holding one;
+    assets/) has no table row naming the file by its path from that folder. captures.md is the
+    deck's record of what a capture shows and what was blurred, so a folder opts in by holding one;
   - an assets/... image path in sections/*.html, shell.html or motions/*.js that does not exist.
 Warns only: an image under assets/ that no section, shell or motion names by path or by file name
 (the shell builds logo paths from bare file names at runtime).
@@ -68,7 +68,8 @@ def problems(files: set, read, sources: list) -> tuple:
         if not folder.startswith("assets"):
             continue
         log = f"{folder}/captures.md"
-        row = re.compile(r"(?<![\w.-])" + re.escape(nfc(posixpath.basename(img))) + r"(?![\w.-])")
+        # The row names the image relative to the log's folder, so a parent log's a.png does not cover sub/a.png.
+        row = re.compile(r"(?<![\w./-])" + re.escape(nfc(posixpath.relpath(img, folder))) + r"(?![\w.-])")
         if not any(l.lstrip().startswith("|") and row.search(l) for l in nfc(read(log) or "").splitlines()):
             fail.append(f"{img}: no row in {log} (what it shows, when, what was blurred)")
     for ref in sorted(set(REF.findall(text))):
@@ -85,15 +86,17 @@ def git(deck: Path, *args) -> str:
 
 
 def run(deck: Path, staged: bool) -> int:
-    if not (deck / "sections").is_dir():
+    if not staged and not (deck / "sections").is_dir():
         print(f"no sections/ under {deck}", file=sys.stderr)
         return 2
     if staged:
         try:
             names = [p for p in git(deck, "diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").split("\0") if p]
+            # Deletions count as touching the deck: removing a used image breaks its references.
+            touched = [p for p in git(deck, "diff", "--cached", "--name-only", "--no-renames", "-z").split("\0") if p]
             prefix = git(deck, "rev-parse", "--show-prefix").strip()
             fail = raw_fails(names)
-            if not any(p.startswith(prefix) for p in names):
+            if not any(p.startswith(prefix) for p in touched):
                 for line in fail:
                     print(line)
                 print(f"assets: {len(fail)} failed (commit does not touch {prefix or 'the deck'})")
@@ -101,6 +104,9 @@ def run(deck: Path, staged: bool) -> int:
             indexed = [p for p in git(deck, "ls-files", "-z", "--", ".").split("\0") if p]
         except (OSError, subprocess.CalledProcessError) as exc:
             print(f"--staged needs a git repo: {exc}", file=sys.stderr)
+            return 2
+        if not any(p.startswith("sections/") for p in indexed):
+            print(f"no sections/ in the index under {deck}", file=sys.stderr)
             return 2
         files = {p for p in indexed if p.startswith("assets/")}
         sources = sources_of(indexed)
@@ -140,7 +146,7 @@ def selftest() -> None:
                             '<img src="assets/x/%ED%95%9C.png">',
         "motions/m.js": "url('assets/shots/sub/b.png')",
         "assets/shots/captures.md": "| 파일 | 화면 |\n|---|---|\n| `a.png` | 피드 |\nsub/b.png 는 표 밖",
-        "assets/shots/a.png": "", "assets/shots/sub/b.png": "", "assets/shots/c.png": "",
+        "assets/shots/a.png": "", "assets/shots/sub/a.png": "", "assets/shots/sub/b.png": "", "assets/shots/c.png": "",
         "assets/logos/react.svg": "", "assets/logos/vite.svg": "", "assets/x/한.png": "",
         "assets/Screenshot 2026.png": "", "assets/raw.ZIP": "",
     })
@@ -150,6 +156,7 @@ def selftest() -> None:
     assert sorted(fail) == sorted([
         "assets/Screenshot 2026.png: raw screenshot or archive, keep it outside the repo",
         "assets/raw.ZIP: raw screenshot or archive, keep it outside the repo",
+        "assets/shots/sub/a.png: no row in assets/shots/captures.md (what it shows, when, what was blurred)",
         "assets/shots/sub/b.png: no row in assets/shots/captures.md (what it shows, when, what was blurred)",
         "assets/shots/c.png: no row in assets/shots/captures.md (what it shows, when, what was blurred)",
         "assets/shots/gone.png: referenced but missing",
@@ -176,6 +183,11 @@ def selftest() -> None:
         g("reset", "-q")
         g("add", "스크린샷 1.png")
         assert run(repo / "deck", staged=True) == 1  # caught even when the commit leaves deck/ alone
+        g("reset", "-q")
+        g("add", "deck")
+        g("-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "--no-verify", "-m", "deck")
+        g("rm", "-q", "deck/assets/shots/a.png")
+        assert run(repo / "deck", staged=True) == 1  # a deletion-only commit still checks the references
     print("check_assets selftest OK")
 
 

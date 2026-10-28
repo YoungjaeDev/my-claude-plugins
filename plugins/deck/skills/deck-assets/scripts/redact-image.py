@@ -38,6 +38,7 @@ def redact(src, dst, circles=(), rects=(), crop=None):
         blur_region(im, tuple(box))
     if crop:
         im = im.crop(tuple(crop))
+    Path(dst).parent.mkdir(parents=True, exist_ok=True)  # a new deck/assets/<source>/ folder
     im.save(dst)
     return im.size
 

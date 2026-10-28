@@ -57,9 +57,11 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 
 - `deploy.sh` exited 0 and printed `slides: built N, served N` with the same N as `slides: N` from `deck-check`.
 
+`<url>` is the `url:` line `deploy.sh` printed: the project domain is not always `<name>.vercel.app`.
+
 ```bash
-curl -sI https://<name>.vercel.app | grep -i x-robots-tag     # X-Robots-Tag: noindex, nofollow, noarchive
-curl -s https://<name>.vercel.app/robots.txt                  # User-agent: * / Disallow: /
+curl -sI <url> | grep -i x-robots-tag     # X-Robots-Tag: noindex, nofollow, noarchive
+curl -s <url>/robots.txt                  # User-agent: * / Disallow: /
 ```
 
 Open the URL once and confirm the first slide renders with the deck's fonts.

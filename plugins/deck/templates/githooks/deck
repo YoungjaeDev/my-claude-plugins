@@ -8,17 +8,23 @@
 #   check [REPO]           rule copies, vendor, shell base  kit ARGS         kit.py passthrough
 #   render ARGS            render-deck.cjs                  interaction ARGS check-deck-interaction.cjs
 #   frames ARGS            motion-frames.cjs                dev [DECK] [--port N]  dev server
+#   assets [--staged] [DECK]  image names, captures.md rows, broken and unused asset paths
 #   root                   print the plugin root (exit 3 when no plugin is found)
 # Written once by the deck plugin (`kit.py new` / `sync`) and never overwritten: delete it to refresh.
 PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 if [ -z "$PLUGIN_ROOT" ]; then
   # find, not a glob: zsh aborts on an unmatched glob and does not split an unquoted list.
+  # "<version> <0|1> <path>": at the same version the copy with node_modules (Playwright for
+  # render, interaction, frames) sorts last. The Claude cache installs it, the Codex cache does not.
   found=$(find "$HOME/.claude/plugins/cache" "${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}" \
-    -mindepth 3 -maxdepth 3 -type d -path '*/deck/*' 2>/dev/null | awk -F/ '{print $NF "\t" $0}')
+    -mindepth 3 -maxdepth 3 -type d -path '*/deck/*' 2>/dev/null | while IFS= read -r d; do
+      nm=0; [ -d "$d/node_modules" ] && nm=1
+      printf '%s\t%s\t%s\n' "${d##*/}" "$nm" "$d"
+    done)
   if sort -V </dev/null >/dev/null 2>&1; then
-    PLUGIN_ROOT=$(printf '%s\n' "$found" | sort -V | tail -1 | cut -f2-)
+    PLUGIN_ROOT=$(printf '%s\n' "$found" | sort -V | tail -1 | cut -f3-)
   else
-    PLUGIN_ROOT=$(printf '%s\n' "$found" | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2-)
+    PLUGIN_ROOT=$(printf '%s\n' "$found" | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f3-)
   fi
 fi
 if [ ! -f "$PLUGIN_ROOT/scripts/kit.py" ]; then
@@ -34,13 +40,14 @@ case "$cmd" in
   build) run=py; tool=build.py ;;
   copy) run=py; tool=check_copy.py ;;
   outline) run=py; tool=check_outline.py ;;
+  assets) run=py; tool=check_assets.py ;;
   check) run=py; tool=kit.py; [ $# -eq 0 ] && set -- .; set -- check "$@" ;;
   kit) run=py; tool=kit.py ;;
   dev) run=py; tool=dev.py ;;
   render) run=node; tool=render-deck.cjs ;;
   interaction) run=node; tool=check-deck-interaction.cjs ;;
   frames) run=node; tool=motion-frames.cjs ;;
-  *) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+  *) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
 esac
 # An older plugin may lack a newer tool: exit 3 so the pre-commit hook can skip it.
 [ -f "$S/$tool" ] || { echo "deck: $tool is not in $PLUGIN_ROOT; update the deck plugin" >&2; exit 3; }

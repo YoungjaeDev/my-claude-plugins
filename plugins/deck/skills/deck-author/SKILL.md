@@ -55,7 +55,7 @@ read the originals in this plugin's `templates/rules/` and tell the user.
 | File | Read when |
 |---|---|
 | `references/shell-contract.md` | writing or reviewing any section markup, panel, mockup, box flow or motion |
-| `references/mockups-motion.md` | writing a browser mockup, a state change, or a hop motion |
+| `references/mockups-motion.md` | writing a browser or phone mockup, a state change, or a hop motion |
 | `references/qa.md` | deciding whether a change passes, or briefing a subagent to write a section |
 
 Assets (logos, icon cells, mascot cuts) are the `deck-assets` skill. Rule copies are refreshed by

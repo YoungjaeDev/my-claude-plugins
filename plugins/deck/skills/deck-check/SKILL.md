@@ -1,6 +1,6 @@
 ---
 name: deck-check
-description: "Build and QA a house-format deck (deck/shell.html + deck/sections/*.html): assemble index.html, run the Korean copy check against the banned-pattern table in .claude/rules/deck-copy.md, check that section text matches deck/outline.md, compare the stamped rule copies with the deck plugin, render every slide to PNG and PDF at 1920x1080 with overflow and font checks, run the keyboard/hash/panel/motion interaction check, and report; a quick mode renders chosen slides only. Use on '덱 검사', '덱 빌드', '빌드하고 확인', '렌더 확인', 'deck QA', 'check the deck', 'render the deck', '/deck:deck-check', and before any deploy. Writes only deck/index.html and deck/renders/. Not for generic presentations made with frontend-slides."
+description: "Build and QA a house-format deck (deck/shell.html + deck/sections/*.html): assemble index.html, run the Korean copy check against the banned-pattern table in .claude/rules/deck-copy.md, check that section text matches deck/outline.md, check images against captures.md records and broken asset paths, compare the stamped rule copies with the deck plugin, render every slide to PNG and PDF at 1920x1080 with overflow and font checks, run the keyboard/hash/panel/motion interaction check, and report; a quick mode renders chosen slides only. Use on '덱 검사', '덱 빌드', '빌드하고 확인', '렌더 확인', 'deck QA', 'check the deck', 'render the deck', '/deck:deck-check', and before any deploy. Writes only deck/index.html and deck/renders/. Not for generic presentations made with frontend-slides."
 ---
 
 # deck-check
@@ -19,7 +19,7 @@ One QA pass over a house-format deck. Every tool runs from the plugin, against `
 
 Run every block from the repo root (the directory that holds `deck/`). Call the tools through the deck's launcher `sh .githooks/deck <command> [args]`: one line, no resolver, and it always picks the newest installed plugin, so never hard-code a `~/.claude/plugins/cache/.../deck/<version>` path.
 
-No `.githooks/deck` (a deck scaffolded before the launcher shipped): ask the user to run `deck-sync` once, which adds it. Until then put the resolver below at the top of each block and run the tool directly, mapping `build`, `copy`, `outline`, `check`, `dev` to `"$PY" "$PLUGIN_ROOT/scripts/<build.py | check_copy.py | check_outline.py | kit.py check . | dev.py>"` and `render`, `interaction`, `frames` to `node "$PLUGIN_ROOT/scripts/<render-deck.cjs | check-deck-interaction.cjs | motion-frames.cjs>"`.
+No `.githooks/deck` (a deck scaffolded before the launcher shipped): ask the user to run `deck-sync` once, which adds it. Until then put the resolver below at the top of each block and run the tool directly, mapping `build`, `copy`, `outline`, `assets`, `check`, `dev` to `"$PY" "$PLUGIN_ROOT/scripts/<build.py | check_copy.py | check_outline.py | check_assets.py | kit.py check . | dev.py>"` and `render`, `interaction`, `frames` to `node "$PLUGIN_ROOT/scripts/<render-deck.cjs | check-deck-interaction.cjs | motion-frames.cjs>"`.
 
 ```bash
 PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
@@ -38,7 +38,7 @@ fi
 PY=$(command -v python3 || command -v python)
 ```
 
-1. Build, copy check, outline check, rule copies.
+1. Build, copy check, outline check, asset check, rule copies.
 
    ```bash
    # Run every check even after a failure, then fail the block if any of them failed.
@@ -46,13 +46,15 @@ PY=$(command -v python3 || command -v python)
    sh .githooks/deck build || rc=1
    sh .githooks/deck copy || rc=1
    sh .githooks/deck outline || rc=1
+   sh .githooks/deck assets || rc=1   # exit 3: the launcher or plugin predates check_assets.py
    sh .githooks/deck check || rc=1
    [ "$rc" -eq 0 ]
    ```
 
    Observable results:
    - `slides: N`. Keep N for step 2.
-   - `violations: 0`. Otherwise each line names file, slide id, rule and text. Fix the section (and `deck/outline.md`, the copy source) rather than the checker. `cannot read banned patterns` means `.claude/rules/deck-copy.md` is missing or lost its `### 금지 표기` table: run `deck-sync`.
+   - `violations: 0`. Otherwise each line names file, slide id, rule and text. Fix the section (and `deck/outline.md`, the copy source) rather than the checker. `cannot read banned patterns` means `.claude/rules/deck-copy.md` is missing or lost its `### 금지 표기` table: run `deck-sync`. The deck's own bans go in a `### 덱 금지 표기` table of `.claude/rules/deck-local.md`, same columns (`| 쓰지 않는다 | 대신 | 검사식 |`); `patterns: N from ... and deck-local.md` shows it was read, and `cannot read deck bans` means that table is malformed. A line ending in `alt="..."` or `aria-label="..."` is screen-reader text: only the banned patterns apply there, not the comma or counting checks.
+   - `assets: 0 failed`. A failure line names the file: a raw screenshot or `.zip` name (keep the original outside the repo, commit a renamed, blurred copy), an image with no row in the nearest `captures.md` of its folder (a folder under `deck/assets/` that holds a `captures.md` records every capture: file name, screen, date, what was blurred), or an `assets/...` path that a section, the shell or a motion loads but that does not exist. `unused (...)`: images nothing names; warning only, delete them or leave them.
    - `outline: 0 missing of T`. Every h2, `p.lead`, `li` and `.fbox` text piece (its `strong`, its own text, its `span`) must appear verbatim somewhere in `deck/outline.md`. A miss line names file, slide id, kind and text: bring the outline and the section back to the same words (the outline is the source; a dev-server edit belongs in it too). `none of the T texts is in` means a wrong path or an outline that paraphrases instead of quoting. Mockups (`.term`, `.tr-win`, `.browser-win`), `svg`, `pre`, panels and `[data-outline-skip]` are not checked.
    - One `rules: <file> <status>` line per rule copy. `stale` or `missing` means run `deck-sync`; `edited` means someone changed a copy by hand: the deck-specific lines belong in `.claude/rules/deck-local.md`. Add `--diff` to see the change.
    - `vendor:` and `shell.html:` lines. A shell that differs from the template is normal (the deck owns it) and is info only.
@@ -101,7 +103,8 @@ PY=$(command -v python3 || command -v python)
 
 ## Verification
 
-- Pass means: `violations: 0`, `outline: 0 missing`, every `rules:` line `ok`, `vendor: ok`, both render tools `"status":"verified"` on a full (not `--quick`) run, and the PNGs look right.
+- Pass means: `violations: 0`, `outline: 0 missing`, `assets: 0 failed`, every `rules:` line `ok`, `vendor: ok`, both render tools `"status":"verified"` on a full (not `--quick`) run, and the PNGs look right.
 - `deck: plugin scripts not found` (exit 3) from the launcher: no deck plugin in the Claude or Codex cache; export `PLUGIN_ROOT`. `deck: <tool> is not in <root>`: the installed plugin is older than the launcher; update it.
-- `MissingPlaywright`: the plugin's `package-lock.json` installs Playwright when Claude Code copies the plugin into its cache. A local source checkout or Codex does not. Run `npm ci --ignore-scripts` in the plugin root (`sh .githooks/deck root` prints it), or point `NODE_PATH` at another `node_modules` that has `playwright` (browsers are not needed; the tools drive the system Chrome).
+- The pre-commit hook runs the build, copy, outline, assets and rule-copy checks on the staged files (not the working tree), and the raw screenshot name check on every commit. A deck's own commit checks go in `.githooks/local-checks.sh`: the hook runs it first on every commit and fails the commit on a non-zero exit.
+- `MissingPlaywright`: the plugin's `package-lock.json` installs Playwright when Claude Code copies the plugin into its cache. A local source checkout or Codex does not. The launcher prefers, at the same version, the cached copy that has `node_modules`; an older `.githooks/deck` may pick the Codex copy (delete it and run `deck-sync` to refresh). Run `npm ci --ignore-scripts` in the plugin root (`sh .githooks/deck root` prints it), or point `NODE_PATH` at another `node_modules` that has `playwright` (browsers are not needed; the tools drive the system Chrome).
 - `pdf-pages:` / `pdfinfo:` failures with no other problem mean `pdfinfo` (poppler) is missing; pass `--pdfinfo PATH` or install poppler.

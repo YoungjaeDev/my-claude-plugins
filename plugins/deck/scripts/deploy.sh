@@ -5,6 +5,9 @@
 #   DECK_DIR defaults to ./deck. VERCEL_PROJECT defaults to the "- Vercel 프로젝트: `name`" line
 #   of <deck>/outline.md. Run build.py first; this script deploys index.html as it is on disk.
 #   DECK_STAGE_ONLY=1 stops after staging, so the folder can be inspected without deploying.
+#   DECK_CREATE_PROJECT=1 adds --create-if-missing for a first deploy to a project that does not exist.
+# The full Vercel log goes to <staging dir>.log, outside the uploaded folder. After the deploy the
+# production URL must serve as many slides as the staged index.html, or the script exits 1.
 set -euo pipefail
 DECK="$(cd "${1:-deck}" && pwd)"
 NAME="${2:-}"
@@ -43,4 +46,31 @@ J
 echo "staged: $OUT"
 echo "project: $NAME"
 if [ "${DECK_STAGE_ONLY:-}" = 1 ]; then echo "DECK_STAGE_ONLY=1: staged, not deployed"; exit 0; fi
-cd "$OUT" && npx -y vercel@latest deploy --prod --yes --project "$NAME" 2>&1 | tail -5
+LOG="$OUT.log"
+set -- deploy --prod --yes --project "$NAME"
+if [ "${DECK_CREATE_PROJECT:-}" = 1 ]; then set -- "$@" --create-if-missing; fi
+echo "log: $LOG"
+if ! (cd "$OUT" && npx -y vercel@latest "$@") >"$LOG" 2>&1; then
+  tail -20 "$LOG" >&2
+  if grep -qiE 'project_not_found|project not found' "$LOG"; then
+    echo "[abort] Vercel project $NAME does not exist. Check the name, or rerun with DECK_CREATE_PROJECT=1 to create it." >&2
+  fi
+  echo "[abort] vercel deploy failed; full log: $LOG" >&2
+  exit 1
+fi
+# "Aliased" is the project domain viewers open; "Production" the unique deployment URL. The colon
+# after the label depends on the CLI version.
+URL="$(sed -n 's/.*Aliased:\{0,1\} *\(https:[^ ]*\).*/\1/p' "$LOG" | tail -1)"
+[ -n "$URL" ] || URL="$(sed -n 's/.*Production:\{0,1\} *\(https:[^ ]*\).*/\1/p' "$LOG" | tail -1)"
+[ -n "$URL" ] || { echo "[abort] no deployment URL in $LOG" >&2; exit 1; }
+echo "url: $URL"
+# A stale cache or a deploy to the wrong project serves a different slide count.
+# grep exit 1 is a count of 0; under pipefail it would end the script before the comparison.
+BUILT="$({ grep -o 'class="slide' "$OUT/index.html" || [ $? -eq 1 ]; } | wc -l | tr -d ' ')"
+LIVE="$(curl -fsSL "$URL")" || { echo "[abort] could not fetch $URL" >&2; exit 1; }
+SERVED="$(printf '%s' "$LIVE" | { grep -o 'class="slide' || [ $? -eq 1 ]; } | wc -l | tr -d ' ')"
+echo "slides: built $BUILT, served $SERVED"
+if [ "$BUILT" != "$SERVED" ]; then
+  echo "[abort] $URL serves $SERVED slides, the build has $BUILT: stale cache or wrong project" >&2
+  exit 1
+fi

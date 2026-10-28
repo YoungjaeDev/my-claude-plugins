@@ -1,6 +1,6 @@
 ---
 name: deck-deploy
-description: "Deploy a house-format deck (deck/shell.html + deck/sections/*.html built into deck/index.html) to Vercel production: stage index.html, fonts, vendor, motions and the assets it loads into a fresh self-contained folder with noindex headers and robots.txt, run vercel deploy, then verify the headers. Use ONLY when the user explicitly asks to deploy after reviewing the deck locally: '덱 배포', '배포해줘', 'Vercel에 올려', 'deploy the deck', '/deck:deck-deploy'. Never deploy on your own after an edit or a passing check. Publishes to the internet. Not for frontend-slides decks."
+description: "Deploy a house-format deck (deck/shell.html + deck/sections/*.html built into deck/index.html) to Vercel production: stage index.html, fonts, vendor, motions and the assets it loads into a fresh self-contained folder with noindex headers and robots.txt, run vercel deploy, then verify the served slide count and the headers. Use ONLY when the user explicitly asks to deploy after reviewing the deck locally: '덱 배포', '배포해줘', 'Vercel에 올려', 'deploy the deck', '/deck:deck-deploy'. Never deploy on your own after an edit or a passing check. Publishes to the internet. Not for frontend-slides decks."
 ---
 
 # deck-deploy
@@ -47,15 +47,21 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
    bash "$PLUGIN_ROOT/scripts/deploy.sh" deck
    ```
 
-   It stages a fresh folder and runs `npx -y vercel@latest deploy --prod --yes --project <name>`. The last lines carry the deployment URL. A Vercel login prompt or an auth error means the user must run `npx vercel login` themselves; do not work around it.
+   It stages a fresh folder and runs `npx -y vercel@latest deploy --prod --yes --project <name>`. Observable result: `log: <dir>.log` (the full Vercel output, kept outside the uploaded folder), `url: <production URL>`, then `slides: built N, served N`. The script fetches the production URL and counts `class="slide` in it and in the staged `index.html`; a different count exits 1 with `stale cache or wrong project`. Read the log before retrying.
 
-4. Report the production URL and the header check below.
+   On failure the script prints the last 20 log lines. `does not exist` (Vercel `project_not_found`) means the project name is wrong or the project was never created: confirm the name with the user, and only on their yes rerun with `DECK_CREATE_PROJECT=1 bash "$PLUGIN_ROOT/scripts/deploy.sh" deck`, which adds `--create-if-missing`. A Vercel login prompt or an auth error means the user must run `npx vercel login` themselves; do not work around it.
+
+4. Report the production URL, the `slides: built N, served N` line and the header check below.
 
 ## Verification
 
+- `deploy.sh` exited 0 and printed `slides: built N, served N` with the same N as `slides: N` from `deck-check`.
+
+`<url>` is the `url:` line `deploy.sh` printed: the project domain is not always `<name>.vercel.app`.
+
 ```bash
-curl -sI https://<name>.vercel.app | grep -i x-robots-tag     # X-Robots-Tag: noindex, nofollow, noarchive
-curl -s https://<name>.vercel.app/robots.txt                  # User-agent: * / Disallow: /
+curl -sI <url> | grep -i x-robots-tag     # X-Robots-Tag: noindex, nofollow, noarchive
+curl -s <url>/robots.txt                  # User-agent: * / Disallow: /
 ```
 
 Open the URL once and confirm the first slide renders with the deck's fonts.

@@ -29,9 +29,10 @@ This file owns markup only.
 
 | Property | Where |
 |---|---|
-| `width`, `height`, `max-width` | any container, `figure.shot`, `.orca-win`, an `img` or inline SVG |
+| `width`, `height`, `max-width` | any container, `figure.shot`, `.orca-win`, `.phone`, `.app-media`, an `img` or inline SVG |
+| `max-height` | an `img` in a `.shot-row` (all images of one row get the same value) |
 | `margin`, `margin-top`, `margin-bottom` | any container or button, for vertical rhythm |
-| `grid-template-columns` | a `.split` or `.notes` that needs a different ratio |
+| `grid-template-columns` | a `.split` or `.notes` that needs a different ratio (a `.convert` whose left text wraps takes `.convert.wide`) |
 | `grid-column` | a `div.reveal-group` spanning a grid body (`grid-column:1 / -1`) |
 | `position:absolute` + `left` + `top` (+ `width`/`height`) | only on a direct child of a `.boxflow`, in the same pixel space as its `svg.links` viewBox |
 
@@ -57,7 +58,7 @@ Anything else repeated twice belongs in `shell.html` as a class.
       <li>토큰이 만료되면 다시 링크를 보낸다.</li>
       <li>로그아웃하면 그 기기의 토큰만 지운다.</li>
     </ul>
-    <figure class="shot"><img src="assets/s02-login-link-v01.png" alt="이메일 로그인 링크를 누른 뒤 열린 앱 화면"></figure>
+    <figure class="shot"><img src="assets/memo-app/login-link.png" alt="이메일 로그인 링크를 누른 뒤 열린 앱 화면"></figure>
   </div>
 </section>
 ```
@@ -80,7 +81,7 @@ Anything else repeated twice belongs in `shell.html` as a class.
 | Section cover | `section.slide.section-cover[data-section] > h2 + p.lead + .logos` |
 | Concept | `h2 + .body > ul.points`, or `.flow > .flow-step(strong + text)`; `.split` puts a figure beside it |
 | Procedure | `h2 + .body > ol.steps > li`; a command goes in `pre.code` inside the `li` |
-| Capture | `.body.split > (ul.points, figure.shot > img)`. Text longer than the image: `.split.wide-text`. Wide capture: `figure.shot` (inline `height`) then `.notes > p + p` |
+| Capture | `.body.split > (ul.points, figure.shot > img)`. Text longer than the image: `.split.wide-text`. Wide capture: `figure.shot` (inline `height`) then `.notes > p + p`. Several captures side by side: `.shot-row > figure(.off) > img + figcaption`. Files and their `captures.md` log: deck-authoring "화면은 목업으로" |
 | Compare | `.body.compare > .col(.off/.on) > h3 + p`; `.on` on the column this deck uses. Numbers: `table.data` (`th.num`, `td.num`, `tr.hl`) |
 | Checkpoint | `span.kind` "체크포인트" `+ h2 + .body > ol.checklist > li` |
 | Misconception | `span.kind` "오해 바로잡기" `+ h2 + .body > ul.points` |
@@ -93,7 +94,10 @@ take none are in deck-copy ("듣는 사람 자리에서"). `deck-check` enforces
 Shared classes: `.lead` (one or two sentences under the title), `.body` (fills the remaining height; a
 text-only body is centered vertically), `.split` (`.even`, `.wide-text`), `code` (inline command or field),
 `pre.code` (`span.k` highlight, `span.c` comment), `.accent` (the accent-colour text of deck-copy
-"표기는 하나로"), `.key` (the yellow emphasis of the same rule), `.mark` (see below), `.logos`.
+"표기는 하나로"), `.key` (the yellow emphasis of the same rule), `.mark` (see below), `.logos`,
+`.warn` (red text for a dangerous choice copied from a real menu or message, such as a "full access"
+option the audience must not pick; never for emphasis), `.row` (mockups or figures side by side,
+centered as a group, each child keeping its own width; use it instead of a `.boxflow` without lines).
 
 `.mark` is a highlighter band under one phrase (`span` inside `p`/`li`) on a slide with 3 or more lines of
 list: one per slide, never with a `.key`. Outline notation: `==구절==`. The shell inverts every
@@ -174,6 +178,7 @@ y 900 when the counts below hold. These counts are the per-layout exceptions to 
 | `.flow` | static steps in a row | `.flow > .flow-step > strong + text` |
 | `.boxflow` | boxes joined by lines | `.boxflow > svg.links + .fbox(.on, .off, .frame) > strong + text + span.out` |
 | `.browser-win` | a web page in a browser frame | `.browser-win > .bar(i, i, i, span.url) + .page`; states (`.page.raw`, `.page.before`, `.swap`, `.cursor`) in `references/mockups-motion.md` |
+| `.phone` | a mobile app screen in a phone frame | `.phone > .app-top + content + .app-tabs`; content parts `.app-avatars`, `.app-card`, `.app-profile`, `.app-btn`, `.app-grid`. Markup, sizes and adding a part in `references/mockups-motion.md` |
 
 `.boxflow` rules:
 
@@ -189,7 +194,9 @@ y 900 when the counts below hold. These counts are the per-layout exceptions to 
 - A logo goes inside `strong` before the title (`<strong><img src="assets/logos/..." alt="">DNS</strong>`);
   a logo row under the text is `span.logos`. Line labels are `text` in `svg.links` (centered on `x`).
 - One real case under the flow: `p.flow-case > img + text` (one line) in its own positioned child
-  `.boxflow`. A positioned child may also be a plain `div` holding a `.browser-win`.
+  `.boxflow`. A positioned child may also be a plain `div` holding a `.browser-win` or a `.phone`
+  (give the `div` the same `width`/`height` as the mockup).
+- Two mockups side by side with no lines between them are a `.row`, not a `.boxflow`.
 - `data-anim` goes on `.fbox` or on SVG children, never on the positioned wrapper.
 
 ## Shell-filled reusable parts

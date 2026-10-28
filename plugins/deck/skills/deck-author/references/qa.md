@@ -12,7 +12,8 @@ interaction check) belong to the `deck-check` skill; this file owns what counts 
   The render report shows 0 overflow, 0 font fallback, 0 failures.
 - The body of every slide ends above the footer: its bottom edge is at y ≤ 900 on the stage. If not, split
   the slide (deck-copy "한 줄").
-- Every `src` exists, and every logo has its record (deck-authoring "근거는 링크로").
+- Every `src` exists, every logo has its record (deck-authoring "근거는 링크로"), and every capture has
+  its `captures.md` row with what was redacted (deck-authoring "화면은 목업으로").
 - `data-section` is placed as deck-authoring "디자인은 셸에" decides.
 - Each slide makes sense with its panels closed (deck-authoring "원문은 패널로") and panel commands
   match their source (deck-copy "본문은 말, 명령은 패널").
@@ -33,6 +34,9 @@ Open each rendered PNG yourself. A report that says "0 overflow" does not catch 
 - a `.boxflow` line that no longer meets its box after a box moved,
 - a Hangul word broken in the middle in box or SVG text,
 - a line icon (`icon-*.svg`) drawn black on the dark ground,
+- the old and new values of a `.swap` stacked one above the other,
+- a `.phone` part cut at the frame edge where it should show whole, or a `.cursor` covering the text it points at,
+- a face, name or ID of another person visible in a capture,
 - a two-column `.body.split` that collapsed into one column,
 - an agenda that runs into the footer.
 

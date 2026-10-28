@@ -23,6 +23,7 @@
       --done: #6b7178;
       --accent: #8db4e8;
       --hl: #f5c842; /* Ralph yellow: one key phrase per slide at most */
+      --warn: #ff6b4a; /* a dangerous choice copied from a real menu or message; never decoration */
       --page: #f6f6f3; /* web page inside .browser-win */
       --page-ink: #1f2226;
       --page-muted: #5d636b;
@@ -66,9 +67,10 @@
     .lead { margin-top: 18px; max-width: 1500px; font-size: var(--t-m); line-height: 1.5; color: var(--muted); }
     .body { flex: 1; min-height: 0; margin-top: 44px; }
     /* A text-only body is centered. :where keeps the specificity at 0,2,0 so .body.versus/.hero-num/.grid4 still win. */
-    .body:not(:where(.split, .compare)):not(:has(figure, svg, table, pre, .split, .flow, .compare, .convert, .loop, img, .browser-win)) { display: flex; flex-direction: column; justify-content: center; padding-bottom: 72px; }
+    .body:not(:where(.split, .compare)):not(:has(figure, svg, table, pre, .split, .flow, .compare, .convert, .loop, img, .browser-win, .phone)) { display: flex; flex-direction: column; justify-content: center; padding-bottom: 72px; }
     .accent { color: var(--accent); }
     .key { color: var(--hl); font-weight: 600; }
+    .warn { color: var(--warn); }
     /* .mark: highlighter band under one phrase on a text-heavy slide; text colour stays, so it never reads as a link */
     .mark { background: linear-gradient(transparent 62%, rgba(245, 200, 66, 0.34) 62%); -webkit-box-decoration-break: clone; box-decoration-break: clone; padding: 0 2px; }
     .slide a, .deck-panel-body a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
@@ -100,6 +102,9 @@
     .compare .col.off { border-top-color: var(--rule); color: var(--muted); }
     .compare .col.on { border-top-color: var(--accent); }
     .compare .col.on h3 { color: var(--accent); }
+    /* .row: mockups or figures side by side, centered as a group; each child keeps its own width */
+    .row { display: flex; gap: 64px; align-items: center; justify-content: center; }
+    .row > * { min-width: 0; }
     .flow { display: flex; gap: 18px; align-items: stretch; }
     .flow-step { flex: 1; padding-top: 22px; border-top: 4px solid var(--rule); font-size: var(--t-xs); line-height: 1.45; }
     .flow-step strong { display: block; margin-bottom: 8px; font-size: var(--t-s); }
@@ -113,7 +118,8 @@
     figure.cut img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
     /* Bust cells (expr-*) end in a flat crop at the cell edge; fade it into the slide ground. */
     figure.cut img[src*="/expr-"] { -webkit-mask-image: linear-gradient(#000 72%, transparent); mask-image: linear-gradient(#000 72%, transparent); }
-    figure.shot.zoomed { position: absolute; inset: 0; z-index: 20; height: auto; align-items: center; justify-content: center; background: var(--bg); cursor: zoom-out; }
+    /* !important: a section may size the figure with inline width/height/margin, which would pin the zoomed box. */
+    figure.shot.zoomed { position: absolute; inset: 0; z-index: 20; width: auto !important; max-width: none !important; height: auto !important; margin: 0 !important; align-items: center; justify-content: center; background: var(--bg); cursor: zoom-out; }
     figure.shot.zoomed img { border: 0; border-radius: 0; background: none; }
     .notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 80px; margin-top: 28px; }
     .pending { color: var(--muted); border: 2px dashed var(--rule); border-radius: 10px; font-weight: 400; }
@@ -127,6 +133,12 @@
     figure.shot.brief h3 { font-size: var(--t-s); }
     figure.shot.brief ul.points { gap: 14px; }
     figure.shot.brief li { font-size: var(--t-xs); line-height: 1.45; }
+    /* .shot-row: several captures side by side, each figure > img + figcaption; figure.off dims one. Inline max-height on the img shrinks the row. */
+    .shot-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 28px; align-items: start; }
+    .shot-row figure { display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; }
+    .shot-row img { display: block; max-width: 100%; max-height: 560px; border: 1px solid var(--rule); border-radius: 12px; background: var(--well); }
+    .shot-row figcaption { font-size: var(--t-xs); line-height: 1.4; color: var(--muted); text-align: center; }
+    .shot-row figure.off { opacity: 0.35; }
 
     /* === REVEAL PANEL (deck-panel injected) === */
     button.reveal-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 12px; padding: 10px 22px; font: 600 var(--t-2xs)/1.4 var(--font); color: var(--accent); background: transparent; border: 1.5px solid var(--accent); border-radius: 10px; cursor: pointer; }
@@ -248,6 +260,7 @@
     svg.loop { width: 100%; height: 100%; }
     svg.loop text { font-family: var(--font); fill: var(--ink); }
     .convert { display: grid; grid-template-columns: 440px 110px minmax(0, 1fr); row-gap: 22px; align-items: center; }
+    .convert.wide { grid-template-columns: 640px 110px minmax(0, 1fr); } /* a one-line sentence on the left */
     .convert > div { display: contents; }
     .convert .from { display: flex; flex-wrap: wrap; gap: 10px 14px; font-size: var(--t-xs); color: var(--muted); }
     .convert .from code { padding: 2px 12px; border: 1px solid var(--rule); border-radius: 8px; }
@@ -276,6 +289,7 @@
     .boxflow > .fbox.on { border-color: var(--accent); }
     .boxflow > .fbox strong { display: block; margin-bottom: 8px; font-size: var(--t-s); }
     .boxflow > .fbox .out { display: block; margin-top: 12px; font-size: var(--t-2xs); color: var(--muted); }
+    .boxflow > .fbox .out.swap { display: grid; } /* .out's display:block would beat .swap's grid and stack old over new */
     .boxflow > svg.links { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; z-index: 0; overflow: visible; pointer-events: none; }
     .boxflow > svg.links path { fill: none; stroke: var(--done); stroke-width: 3; }
     .boxflow > svg.links text { font-family: var(--font); font-size: var(--t-2xs); fill: var(--muted); text-anchor: middle; }
@@ -347,8 +361,38 @@
     .swap { display: inline-grid; }
     .swap > * { grid-area: 1 / 1; }
     .swap > :first-child { opacity: 0; }
-    /* .cursor: a mouse pointer resting on the bottom-right of a mockup button */
-    .browser-win .cursor { position: absolute; right: -22px; bottom: -30px; width: 40px; height: 40px; fill: #fff; stroke: #000; stroke-width: 1.5; }
+    /* .cursor: a mouse pointer resting on the bottom-right of a mockup button or phone icon */
+    .browser-win .cursor, .phone .cursor { position: absolute; right: -22px; bottom: -30px; width: 40px; height: 40px; fill: #fff; stroke: #000; stroke-width: 1.5; }
+
+    /* === PHONE MOCKUP: a mobile app screen in a phone frame, fictional content only ===
+       .phone > .app-top + content (.app-avatars, .app-card, .app-profile, .app-btn, .app-grid) + .app-tabs.
+       Default 320x540 fits under a title and a lead; inline width/height resize it; add role="img" and an aria-label. A deck adds its own app part as .app-<part>. */
+    .phone { position: relative; flex: none; width: 320px; height: 540px; display: flex; flex-direction: column; padding-top: 18px; background: var(--code-bg); color: var(--ink); border: 10px solid var(--rule); border-radius: 48px; overflow: hidden; font-size: 19px; line-height: 1.4; }
+    .phone svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; }
+    .phone svg.on { color: var(--accent); fill: currentColor; } /* an icon in its pressed state (liked, saved) */
+    .phone p { padding: 2px 16px; font-size: 19px; line-height: 1.4; }
+    .app-top { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 22px 12px; }
+    .app-top b { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+    .app-avatars { flex: none; display: flex; gap: 12px; padding: 6px 18px 14px; border-bottom: 1px solid var(--rule); overflow: hidden; }
+    .app-avatars i { flex: none; width: 52px; height: 52px; border-radius: 50%; border: 3px solid var(--accent); background: var(--well); }
+    .app-card { min-height: 0; overflow: hidden; } /* too much content clips here (render clip:), never under .app-tabs */
+    .app-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+    .app-head i { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); }
+    .app-media { height: 160px; background: var(--done); overflow: hidden; } /* image area; inline height resizes it, an img inside fills it */
+    .app-media img { width: 100%; height: 100%; max-height: none; object-fit: cover; }
+    .app-actions { display: flex; gap: 14px; padding: 12px 16px 4px; }
+    .app-actions > *, .app-tabs > *, .app-btn { position: relative; } /* a .cursor rests on the bottom-right of its icon or button */
+    .app-profile { flex: none; display: grid; grid-template-columns: 84px repeat(3, minmax(0, 1fr)); align-items: center; gap: 6px; padding: 10px 18px; text-align: center; font-size: 17px; color: var(--muted); }
+    .app-profile > i { width: 80px; height: 80px; border-radius: 50%; background: var(--accent); }
+    .app-profile b { display: block; font-size: 22px; color: var(--ink); }
+    .app-btn { flex: none; margin: 8px 18px 14px; padding: 8px; border-radius: 8px; background: var(--well); text-align: center; font-size: 18px; font-weight: 600; }
+    .app-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; align-content: start; overflow: hidden; }
+    .app-grid > * { aspect-ratio: 1; background: var(--done); }
+    .app-grid > :nth-child(even) { background: var(--rule); }
+    .app-grid img { width: 100%; height: 100%; max-height: none; object-fit: cover; }
+    .app-tabs { flex: none; margin-top: auto; display: flex; justify-content: space-around; padding: 14px 10px 22px; border-top: 1px solid var(--rule); background: var(--code-bg); }
+    .app-tabs i { width: 26px; height: 26px; border: 2.5px solid currentColor; border-radius: 7px; }
+    .app-tabs i.on { background: currentColor; }
 
     /* === MESSAGE LAYOUTS: statement, quote (slide-level), versus, hero-num, grid4 (on .body) === */
     /* Layout lives on containers only, so any child may carry data-anim and take GSAP transforms. */
@@ -584,7 +628,10 @@
         show(current + (p.clientX < innerWidth / 3 ? -1 : 1));
       }
     });
-    addEventListener("beforeprint", () => { closePanel(false); finishMotion(); });
+    addEventListener("beforeprint", () => {
+      closePanel(false); finishMotion();
+      document.querySelectorAll(".zoomed").forEach(f => f.classList.remove("zoomed")); // a zoomed figure would cover its printed page
+    });
     addEventListener("afterprint", () => {
       staticMotion = new URLSearchParams(location.search).has("static");
       playMotion(slides[current]);

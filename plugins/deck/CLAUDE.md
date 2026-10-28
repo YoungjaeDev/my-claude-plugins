@@ -22,19 +22,20 @@ Skills: `deck-ask`, `deck-new`, `deck-author`, `deck-assets`, `deck-check`, `dec
 ## Tools
 
 All take the deck directory (default `./deck`); the rule copies are read from `<deck>/../.claude/rules/`.
-In a deck repo every tool is also `sh .githooks/deck <build|copy|outline|check|kit|render|interaction|frames|dev|root> [args]`.
+In a deck repo every tool is also `sh .githooks/deck <build|copy|outline|assets|check|kit|render|interaction|frames|dev|root> [args]`.
 
 | Script | Does |
 |---|---|
 | `build.py [DECK]` | splice sections and motion script tags into the shell, write `index.html`, print `slides: N` |
 | `dev.py [DECK] [--port N]` | 127.0.0.1 dev server, rebuild per request, `E` edit mode, Cmd/Ctrl+S writes the section back |
-| `check_copy.py [DECK] [--rules F] [--selftest]` | banned patterns from the `### 금지 표기` table of `deck-copy.md`, plus comma-after-connective, native counting words, `p.source`/tag chips, slide labels |
+| `check_copy.py [DECK] [--rules F] [--selftest]` | banned patterns from the `### 금지 표기` table of `deck-copy.md` and the optional `### 덱 금지 표기` table of `deck-local.md`, plus comma-after-connective, native counting words, `p.source`/tag chips, slide labels; `alt` and `aria-label` text is checked against the banned patterns only |
+| `check_assets.py [DECK] [--staged] [--selftest]` | refuses raw OS screenshot names and archives anywhere in the commit, an image in a folder with a `captures.md` but no row for it, and a missing `assets/` path referenced by sections, shell or motions; warns on images nothing references. `--staged` reads the git index |
 | `check_outline.py [DECK] [--outline F] [--selftest]` | every h2, `p.lead`, `li` and `.fbox` text piece of the sections appears verbatim in `outline.md`; exit 2 on an unreadable deck or outline |
 | `kit.py new\|sync\|check\|prereq [REPO]` | scaffold, rule copies + vendor refresh, missing `.githooks/` files, drift report, frontend-slides detection |
 | `render-deck.cjs [--slides 12,S3-04] [--quick]` | `previews/slide-<NN>-<ID>.png` + `sheet-<N>.png` contact sheets + PDF; overflow / clip / bounds / footer / font-fallback checks at four viewports, one grouped line per problem; `--slides` (numbers or ids) skips the PDF, `--quick` runs 1920x1080 only |
 | `check-deck-interaction.cjs` | keyboard, hash, history, input focus, panel, resize, motion checks; `motion-early` for an element visible before its turn |
 | `motion-frames.cjs --slide N\|ID --at 0,800,end` | PNGs of one slide's motion at seeked times |
-| `deploy.sh [DECK] [PROJECT]` | stage a self-contained folder with noindex, `vercel deploy --prod`; `DECK_STAGE_ONLY=1` stops before deploying |
+| `deploy.sh [DECK] [PROJECT]` | stage a self-contained folder with noindex, `vercel deploy --prod`, keep the full log and print `log:` and `url:`, then compare the served slide count with the built one (`slides: built N, served N`, mismatch exits 1); `DECK_STAGE_ONLY=1` stops before deploying, `DECK_CREATE_PROJECT=1` adds `--create-if-missing` (only after the user agrees) |
 
 ## Design decisions worth not re-litigating
 
@@ -45,7 +46,10 @@ In a deck repo every tool is also `sh .githooks/deck <build|copy|outline|check|k
   change at the current version), `stale` (older stamp) and `missing` are exact, not heuristics.
   `sync` refuses to overwrite `edited`/`unstamped` copies without `--force`.
 - **`deck-local.md` is the deck's escape hatch.** Deck-specific exceptions go in
-  `.claude/rules/deck-local.md`; no tool reads or writes it.
+  `.claude/rules/deck-local.md`. No tool writes it; `check_copy.py` reads only its optional
+  `### 덱 금지 표기` table, so a deck adds its own banned wording without editing the stamped copy.
+- **Deck-specific commit checks plug in, they do not patch the hook.** The pre-commit hook runs
+  `.githooks/local-checks.sh` when it exists, so a deck's own check survives `sync`.
 - **The ban list lives in `deck-copy.md`, not in the checker.** `check_copy.py` parses the
   `| 쓰지 않는다 | 대신 | 검사식 |` table, so the rule text and the machine check cannot drift.
   Checks that are shell contract rather than wording (comma, counting words, labels) stay in code.
@@ -76,5 +80,7 @@ In a deck repo every tool is also `sh .githooks/deck <build|copy|outline|check|k
 
 ## Portability
 
-Python scripts are stdlib only and run with `python3` or `python` (skills pick whichever exists).
-`deploy.sh` uses `mktemp -d`, `cp -R`, `grep -o`, `sed -n`, which behave the same on GNU and BSD.
+Python scripts run with `python3` or `python` (skills pick whichever exists). The checkers in
+`scripts/` are stdlib only; the image helpers in `skills/deck-assets/scripts/` (`slice-sheet.py`,
+`redact-image.py`) need Pillow.
+`deploy.sh` uses `mktemp -d`, `cp -R`, `grep -o`, `sed -n`, `curl`, `wc`, `tr`, which behave the same on GNU and BSD.

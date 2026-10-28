@@ -1,11 +1,11 @@
 ---
 name: deck-assets
-description: "Prepare assets at the start of a house-format deck (deck/shell.html + deck/sections/*.html, assets in deck/assets/): inventory the outline, collect official logos (brand SVG, else the brand's PNG) with a sources.json record, generate pixel-style icon sheets and Ralph mascot variants through codex-image, slice sheets into cells, and gate where cuts may be used. Triggers: 덱 에셋, 로고 수집, 픽셀아트 아이콘, 아이콘 시트, 캐릭터 변형, deck assets, collect logos, icon sheet, mascot variants. For a one-off image request outside a deck, use codex-image directly. Generation spends quota and writes files, so confirm counts first."
+description: "Prepare assets at the start of a house-format deck (deck/shell.html + deck/sections/*.html, assets in deck/assets/): inventory the outline, collect official logos (brand SVG, else the brand's PNG) with a sources.json record, generate pixel-style icon sheets and Ralph mascot variants through codex-image, slice sheets into cells, capture real app screens and redact screenshots, and gate where cuts may be used. Triggers: 덱 에셋, 로고 수집, 픽셀아트 아이콘, 아이콘 시트, 캐릭터 변형, 화면 캡처, 스크린샷 마스킹, deck assets, collect logos, icon sheet, mascot variants, capture app screen, redact screenshot. For a one-off image request outside a deck, use codex-image directly. Generation spends quota and writes files, so confirm counts first."
 ---
 
 # deck-assets
 
-Run once at deck start, re-runnable. Leaves `deck/assets/` with logos, sliced icon cells, mascot cells, sidecars and a usage map. Never generate a brand logo, a screen/UI/terminal, or an image with readable text.
+Run once at deck start, re-runnable. Leaves `deck/assets/` with logos, sliced icon cells, mascot cells, sidecars and a usage map. Never generate a brand logo, a screen/UI/terminal, or an image with readable text; real screens are captured (step 7).
 
 Interaction gate: Claude uses `AskUserQuestion`; Codex asks in plain text and waits. Codex does not export `CLAUDE_PLUGIN_ROOT`, so resolve the root first:
 
@@ -106,6 +106,10 @@ SVG conversion is opt-in and not bundled. These sheets are pixel-style, not true
 
 Apply `references/usage.md` when a cut is placed on a slide. Record every placement in `deck/assets/sprites/README.md` (cell map + used-on table, layout in `references/usage.md`). Every logo on a slide must have a `sources.json` record.
 
+## 7. Captures (no quota)
+
+Real result screens and app UI are captured, never generated. Capture a running app with `"$SCRIPTS/capture-page.cjs"` (node), clean provided screenshots with `"$SCRIPTS/redact-image.py"`. Both write into `deck/assets/<source>/`, with a `captures.md` row per image (file, screen, capture date, redaction). Faces, names, IDs and private data are redacted first; personal-account originals stay outside the repo. Read each output image before logging it. Usage lines, row template and rules: `references/captures.md`.
+
 ## Output
 
-Report: files written, counts generated vs confirmed, `check-logos.py` result, any `official: false` logos and their reasons, tools left as text, sheets recovered or fell back.
+Report: files written (captures with their `captures.md` rows), counts generated vs confirmed, `check-logos.py` result, any `official: false` logos and their reasons, tools left as text, sheets recovered or fell back.

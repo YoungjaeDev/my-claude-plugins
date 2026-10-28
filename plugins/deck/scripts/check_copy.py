@@ -6,9 +6,13 @@
 Banned patterns come from the deck repo's rule copy, not from this file: the table under the
 heading "### 금지 표기" in <repo>/.claude/rules/deck-copy.md (repo = DECK_DIR/..), columns
 | 쓰지 않는다 | 대신 | 검사식 |, where 검사식 holds one or more regexes in backticks. Write a
-literal pipe inside a regex as \\|. The other checks (comma after a connective ending, native
-counting words, p.source / tag chips, slide labels) are shell-contract checks and live here.
-Text inside <pre>, <code>, <template>, <svg>, <style>, <script> is skipped.
+literal pipe inside a regex as \\|. A deck adds its own bans in the same table form under the
+heading "### 덱 금지 표기" in <repo>/.claude/rules/deck-local.md (the deck's file, which deck-sync
+never touches); the file and the heading are optional. The other checks (comma after a connective
+ending, native counting words, p.source / tag chips, slide labels) are shell-contract checks and
+live here. Text inside <pre>, <code>, <template>, <svg>, <style>, <script> is skipped. alt and
+aria-label text is read aloud by screen readers, so it is checked against the banned patterns only,
+not the sentence checks.
 """
 import argparse
 import html.parser
@@ -17,6 +21,7 @@ import sys
 from pathlib import Path
 
 TABLE_HEADING = "### 금지 표기"
+LOCAL_HEADING = "### 덱 금지 표기"
 TABLE_COLUMNS = ("쓰지 않는다", "대신", "검사식")
 COMMA = re.compile(r"([가-힣]*(?:고|며|지만|면서|어서|아서|해서)),")
 COMMA_OK = {"보고", "광고", "창고", "참고", "최고", "재고", "경고", "원고", "사고"}
@@ -52,13 +57,13 @@ def _cells(row: str) -> list:
     return cells
 
 
-def banned_patterns(md: str) -> list:
-    """(regex, label) pairs from the first table under TABLE_HEADING."""
+def banned_patterns(md: str, heading: str = TABLE_HEADING) -> list:
+    """(regex, label) pairs from the first table under heading."""
     lines = md.splitlines()
     try:
-        start = next(i for i, l in enumerate(lines) if l.strip() == TABLE_HEADING)
+        start = next(i for i, l in enumerate(lines) if l.strip() == heading)
     except StopIteration:
-        raise ValueError(f"heading '{TABLE_HEADING}' not found")
+        raise ValueError(f"heading '{heading}' not found")
     rows = []
     for line in lines[start + 1:]:
         if line.startswith("#"):
@@ -68,16 +73,17 @@ def banned_patterns(md: str) -> list:
         elif rows:
             break
     if len(rows) < 2 or tuple(rows[0][:3]) != TABLE_COLUMNS:
-        raise ValueError(f"table under '{TABLE_HEADING}' must start with columns {' | '.join(TABLE_COLUMNS)}")
+        raise ValueError(f"table under '{heading}' must start with columns {' | '.join(TABLE_COLUMNS)}")
     out = []
     for cells in rows[2:]:  # rows[1] is the |---| separator
-        if len(cells) < 3:
-            continue
-        for rx in re.findall(r"`([^`]+)`", cells[2]):
+        regexes = re.findall(r"`([^`]+)`", cells[2]) if len(cells) >= 3 else []
+        if not regexes:  # a row that bans nothing is a typo, not an intent
+            raise ValueError(f"table under '{heading}' has a row without a regex in backticks: {' | '.join(cells)}")
+        for rx in regexes:
             re.compile(rx)  # a bad regex should fail loudly, not silently match nothing
             out.append((rx, cells[0]))
     if not out:
-        raise ValueError(f"table under '{TABLE_HEADING}' has no regex in backticks")
+        raise ValueError(f"table under '{heading}' has no regex in backticks")
     return out
 
 
@@ -108,11 +114,14 @@ def labels(raw: str) -> list:
 class Text(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
-        self.skip, self.slide, self.out = 0, "?", []
+        self.skip, self.slide, self.out, self.attrs = 0, "?", [], []
 
     def handle_starttag(self, tag, attrs):
         if tag == "section":
             self.slide = (dict(attrs).get("aria-label") or "?").split(" ")[0]
+        if not self.skip:
+            self.attrs += [(self.slide, f'{k}="{v.strip()}"', v.strip())
+                           for k, v in attrs if k in ("alt", "aria-label") and v and v.strip()]
         if tag in SKIP:
             self.skip += 1
 
@@ -142,6 +151,8 @@ def check_file(name: str, raw: str, banned: list) -> list:
     p.feed(raw)
     for slide, text in p.out:
         out += [f"{name} {slide}: {h}: {text}" for h in text_hits(text, banned)]
+    for slide, attr, text in p.attrs:
+        out += [f"{name} {slide}: {why or rx}: {attr}" for rx, why in banned if re.search(rx, text)]
     return out
 
 
@@ -173,7 +184,14 @@ def selftest() -> None:
     assert labels(cover) == ["00-01: 라벨을 두지 않는 장표"]
     assert check_file("f", '<p class="source">x</p><template><p class="source">y</p></template>', banned) == \
         ["f: 출처 줄 금지(deck-copy 사실만)"]
-    for broken in ("# none", "### 금지 표기\n\n| a | b | c |\n|---|---|---|\n| x | y | `z` |"):
+    local = banned_patterns(md.replace("### 금지 표기", LOCAL_HEADING), LOCAL_HEADING)
+    assert local == banned, local
+    # alt / aria-label: banned patterns only, no comma rule; nothing inside <template>
+    attrs = check_file("f", '<section aria-label="S1-01 x"><img alt="모델에 대해 읽고, 쓴다">'
+                       '<a aria-label="파일을 읽고, 쓴다">a</a><template><img alt="에 대해"></template></section>', banned)
+    assert attrs == ['f S1-01: 에 대해: alt="모델에 대해 읽고, 쓴다"'], attrs
+    for broken in ("# none","### 금지 표기\n\n| a | b | c |\n|---|---|---|\n| x | y | `z` |",
+                   md.replace("| 따라 하기 | 실습 · 할 일 | `따라 ?하기` |", "| 따라 하기 | 실습 · 할 일 | 따라 하기 |")):
         try:
             banned_patterns(broken)
         except ValueError:
@@ -208,12 +226,21 @@ def main() -> int:
     except (OSError, ValueError, re.error) as exc:
         print(f"cannot read banned patterns from {rules}: {exc} (run deck-sync to restore the rule copy)", file=sys.stderr)
         return 2
+    local = rules.parent / "deck-local.md"  # next to the deck-copy.md in use
+    try:
+        local_md = local.read_text(encoding="utf-8") if local.is_file() else ""
+        has_local = any(l.strip() == LOCAL_HEADING for l in local_md.splitlines())
+        if has_local:
+            banned += banned_patterns(local_md, LOCAL_HEADING)
+    except (OSError, ValueError, re.error) as exc:
+        print(f"cannot read deck bans from {local}: {exc}", file=sys.stderr)
+        return 2
     bad = []
     for path in sorted((deck / "sections").glob("*.html")):
         bad += check_file(path.name, path.read_text(encoding="utf-8"), banned)
     for line in bad:
         print(line)
-    print(f"patterns: {len(banned)} from {rules}")
+    print(f"patterns: {len(banned)} from {rules}" + (f" and {local.name}" if has_local else ""))
     print("violations:", len(bad))
     return 1 if bad else 0
 

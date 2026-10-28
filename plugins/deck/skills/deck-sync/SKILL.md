@@ -7,7 +7,9 @@ description: "Update an existing house-format deck repo (deck/shell.html + deck/
 
 ## Overview
 
-Brings a deck repo's copies up to the plugin version. Rule copies and `deck/vendor/` are overwritten from the plugin; `deck/shell.html` belongs to the deck and is only diffed. Missing `.githooks/` files (`deck` launcher, `pre-commit`, `commit-msg`) are added; existing ones are kept. A rule copy edited by hand at the current version is left alone unless the user agrees to `--force`. `.claude/rules/deck-local.md` holds deck-specific exceptions and is never read or written.
+Brings a deck repo's copies up to the plugin version. Rule copies and `deck/vendor/` are overwritten from the plugin; `deck/shell.html` belongs to the deck and is only diffed. Missing `.githooks/` files (`deck` launcher, `pre-commit`, `commit-msg`) are added; existing ones are kept. A rule copy edited by hand at the current version is left alone unless the user agrees to `--force`. `.claude/rules/deck-local.md` holds deck-specific exceptions; sync never reads or writes it, and the copy check reads the deck's own bans from its `### 덱 금지 표기` table (same columns as the `deck-copy.md` table).
+
+Deck-specific commit checks belong in `.githooks/local-checks.sh`, which the plugin's `pre-commit` runs first on every commit and which sync never writes, so they survive. Since sync keeps existing `.githooks/` files, a deck gets a newer `pre-commit` or launcher only by deleting the old one and rerunning sync. Refresh `.githooks/deck` and `.githooks/pre-commit` together (the new hook calls `deck assets`, which an older launcher lacks), and move any lines added to the old `pre-commit` by hand into `local-checks.sh` first.
 
 ## When to use
 
@@ -53,8 +55,11 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 
 4. Shell diff. Summarize the `shell.html` diff for the user: which differences are this deck's own design (keep) and which are template fixes worth porting by hand (component CSS, runtime JS). Apply nothing to `shell.html` unless the user asks for a specific change.
 
+   A deck that drew its own phone or app mockup classes before the template had them ports them on request: take the template's `.phone` and `.app-*` CSS into the deck shell, map each old part to the template part that does the same job (top bar, avatar row, card with head, media and actions, profile header, button, image grid, tab bar), rename the classes in `deck/sections/*.html` in the same commit, rebuild and render. The template `.phone` defaults to 320x540, so a phone without inline width and height changes size; check the render for `footer-overlap` and `clip`. A part with no template match stays in the deck shell as `.app-<part>` and is noted in `deck-local.md`; the deck never keeps a second phone frame class beside `.phone`. Shell patches the template now covers (`.warn`, `.shot-row`, the zoom fixes) can be dropped from the deck shell.
+
 ## Verification
 
 - `kit.py check .` prints `ok` for every rule copy and `vendor: ok`.
 - `git diff --stat` shows changes only under `.claude/rules/`, `deck/vendor/` and new `.githooks/` files; `deck/shell.html` and `.claude/rules/deck-local.md` are unchanged.
 - Run `deck-check` afterwards: the copy check now reads the new `deck-copy.md` table, so new bans can surface as violations.
+- If `.githooks/local-checks.sh` exists, `sh .githooks/pre-commit` with nothing staged still runs it and exits 0.

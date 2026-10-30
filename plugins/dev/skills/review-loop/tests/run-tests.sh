@@ -1429,9 +1429,11 @@ is "CR silent, cap already spent -> dropped without a nudge" \
 # A nudge check that cannot read the PR comments is not "already nudged": CodeRabbit
 # is not dropped, and HEAD is left without its verdict.
 HWS=$(mktemp -d); cp -R "$SCRIPTS/." "$HWS/"; printf '#!/usr/bin/env bash\nexit 1\n' > "$HWS/cr-review-posted.sh"
-w=$(run_capped 9 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-none.json" HW_COMMENTS="$FIX/issue-comments-codex-summary-completed.json" \
-      PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME="$(hago 8)" \
-      TIMEOUT=10 INTERVAL=1 bash "$HWS/head-verdicts.sh" 2>/dev/null); rc=$?
+# Past half the cap with 8 s left, so a slow process start (Git Bash on Windows) still reaches
+# the nudge check before the cap runs out.
+w=$(run_capped 15 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-none.json" HW_COMMENTS="$FIX/issue-comments-codex-summary-completed.json" \
+      PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME="$(hago 12)" \
+      TIMEOUT=20 INTERVAL=1 bash "$HWS/head-verdicts.sh" 2>/dev/null); rc=$?
 is "nudge check unreadable -> CR not dropped, HEAD unjudged" \
    "$rc:$(hf .state):$(hf .cr):$(hf '.dropped | length')" 0:timeout:error:0
 rm -rf "$HWS"

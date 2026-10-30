@@ -16,6 +16,7 @@
 #   - Otherwise keep polling status.
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 : "${OWNER:?}"; : "${REPO:?}"; : "${SHA:?}"; : "${PR_NUM:?}"; : "${INTERVAL:=8}"; : "${PUSH_TIME:?}"
 : "${TIMEOUT:=1800}"
 EARLY_CHECK_WINDOW="${EARLY_CHECK_WINDOW:-30}"

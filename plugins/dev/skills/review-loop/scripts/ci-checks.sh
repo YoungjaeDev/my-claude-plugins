@@ -23,6 +23,7 @@
 # not get the short in-progress gap. Used by Step 14 and auto-merge-gate.sh.
 set -uo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 PR_NUM="${1:?pr required}"
 : "${CAP:=0}"; : "${INTERVAL:=30}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

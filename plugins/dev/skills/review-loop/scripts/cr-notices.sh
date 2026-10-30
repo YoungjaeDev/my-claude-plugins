@@ -5,6 +5,7 @@
 
 # Refill phrasings carry no rate-limit noun of their own; they appear alone in
 # Fair-Usage comments.
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 CR_REFILL_RE='More reviews will be available in|Next (included )?review available in'
 
 # A comment or review body that is a rate-limit or skip notice (sniff-cr-rate-limit.sh).

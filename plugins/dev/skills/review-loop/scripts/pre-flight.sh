@@ -10,6 +10,7 @@
 # values; the SKILL.md falls back to legacy Step 6 polling on gate=cr_wait.
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 : "${OWNER:?owner required}"
 : "${REPO:?repo required}"
 : "${PR_NUM:?pr required}"

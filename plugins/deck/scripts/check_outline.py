@@ -62,7 +62,9 @@ class Texts(HTMLParser):
         if tag in VOID:
             return
         self.flush_piece()
-        skip = tag in SKIP_TAGS or bool(classes & SKIP_CLASSES) or "data-outline-skip" in a
+        if tag == "math" and self.buf is not None and not self.skipping():
+            self.buf[2] += a.get("alttext") or ""  # the outline carries the LaTeX, not the MathML text
+        skip = tag in SKIP_TAGS or tag == "math" or bool(classes & SKIP_CLASSES) or "data-outline-skip" in a
         box = "fbox" in classes
         self.stack.append((tag, skip, box))
         if self.skipping():
@@ -132,6 +134,11 @@ def selftest() -> None:
                       "| S9-02 | 리드: 첫 문장 / 다음 문장 · 첫 문장 <br> 다음 문장 |")
     assert found == [], found
     assert outline_text("첫 문장 <br> 다음 문장") == "첫 문장다음 문장"
+    # MathML: the outline holds the LaTeX in alttext; the MathML text inside is skipped.
+    math = ('<section class="slide" aria-label="S9-03 t"><li>은닉 상태는 <math alttext="h_t = \\tanh(x_t)"><msub><mi>h</mi>'
+            '<mi>t</mi></msub></math> 로 이어진다.</li></section>')
+    found, total = misses([("m.html", math)], "| S9-03 | 은닉 상태는 h_t = \\tanh(x_t) 로 이어진다. |")
+    assert found == [] and total == 1, (found, total)
     # Unclosed tags and stray end tags must not raise.
     misses([("b.html", '<section class="slide" aria-label="X"><li>열림</div></p>')], "열림")
     # A section that is not UTF-8 exits 2 and names the file.

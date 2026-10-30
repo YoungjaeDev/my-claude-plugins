@@ -1,0 +1,22 @@
+/* ralphdev brand tokens: colours and fonts shared by every ralphdev surface (slide decks now, a detail page later).
+   Owned by the deck plugin: deck-new copies this folder to deck/brand/ and deck-sync overwrites it, so put a deck's own
+   exceptions in its shell.html, never here. Colours were measured from the ralphdev mockup; contrast is on --rd-bg. */
+@font-face { font-family: "Gasoek One"; src: url("fonts/GasoekOne-Regular.woff2") format("woff2"); font-weight: 400; font-display: block; }
+@font-face { font-family: "NanumSquareRound"; src: url("fonts/NanumSquareRoundR.woff2") format("woff2"); font-weight: 400; font-display: block; }
+@font-face { font-family: "NanumSquareRound"; src: url("fonts/NanumSquareRoundEB.woff2") format("woff2"); font-weight: 800; font-display: block; }
+@font-face { font-family: "Noto Sans Math"; src: url("fonts/NotoSansMath-Regular.woff2") format("woff2"); font-weight: 400; font-display: block; }
+
+:root {
+  --rd-bg: #fdfdfd;
+  --rd-ink: #050505;
+  --rd-sub: #3b3d41;         /* 10.7:1 */
+  --rd-muted: #6b6f74;       /* 4.97:1, the lightest grey for text */
+  --rd-rule: #dddee1;
+  --rd-well: #f3efed;
+  --rd-coral: #f25c45;       /* 3.23:1: large text, bars and fills only */
+  --rd-coral-text: #c03d29;  /* 5.24:1 (4.66:1 on --rd-well): coral for small text, links and code */
+  /* Gasoek One holds 2,780 Hangul syllables; a rarer one falls through to NanumSquareRound. */
+  --rd-display: "Gasoek One", "NanumSquareRound", sans-serif;
+  --rd-body: "NanumSquareRound", sans-serif;  /* 400 and 800 only, never synthesized */
+  --rd-math: "Noto Sans Math", math;
+}

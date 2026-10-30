@@ -7,7 +7,8 @@
     python3 kit.py --selftest
 
 REPO defaults to the current directory. A deck template is a folder under templates/decks/; its
-rules/ subfolder holds the template's own rule originals and is not copied into the deck. sync and
+rules/ subfolder holds the template's own rule originals and is not copied into the deck; its brand.txt names a
+folder under templates/brands/ that goes to deck/brand/ and that sync overwrites like vendor/. sync and
 check read the template name from the shell stamp; a stamp without a name is an older monitor deck.
 Rule templates are templates/rules/*.md plus templates/decks/NAME/rules/*.md; each copy in
 REPO/.claude/rules/ gets STAMP inserted right after its YAML frontmatter. A copy is compared by
@@ -26,6 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DECKS = ROOT / "templates" / "decks"
+TEMPLATE_BRANDS = ROOT / "templates" / "brands"
 DEFAULT_TEMPLATE = "monitor"
 TEMPLATE_RULES = ROOT / "templates" / "rules"
 TEMPLATE_HOOKS = ROOT / "templates" / "githooks"
@@ -131,6 +133,23 @@ def write_hooks(repo: Path) -> None:
     print("githooks: enable with `git config core.hooksPath .githooks`; tools: `sh .githooks/deck <command>`")
 
 
+def brand_of(template: str):
+    """The brand a template uses (its brand.txt), or None for a template that carries its own look."""
+    f = TEMPLATE_DECKS / template / "brand.txt"
+    return f.read_text(encoding="utf-8").strip() if f.is_file() else None
+
+
+def brand_drift(deck: Path) -> list:
+    """Brand files (paths relative to the brand folder) that deck/brand/ lacks or holds in another version."""
+    b = brand_of(deck_template(deck))
+    if not b:
+        return []
+    src = TEMPLATE_BRANDS / b
+    return [p.relative_to(src).as_posix() for p in sorted(src.rglob("*"))
+            if p.is_file() and (not (deck / "brand" / p.relative_to(src)).is_file()
+                                or (deck / "brand" / p.relative_to(src)).read_bytes() != p.read_bytes())]
+
+
 def vendor_drift(deck: Path) -> list:
     src = TEMPLATE_DECKS / deck_template(deck) / "vendor"
     return [p.name for p in sorted(src.iterdir())
@@ -179,9 +198,12 @@ def cmd_new(repo: Path, v: str, template: str) -> int:
         print(f"[abort] {deck} already exists. Use deck-sync to update rule copies instead.", file=sys.stderr)
         return 1
     src = TEMPLATE_DECKS / template
-    # rules/ holds the template's rule originals, which go to .claude/rules/ stamped, not into the deck.
+    # rules/ holds the template's rule originals, which go to .claude/rules/ stamped, not into the deck;
+    # brand.txt names the brand folder that goes to deck/brand/.
     skip = shutil.ignore_patterns("__pycache__", ".DS_Store")
-    shutil.copytree(src, deck, ignore=lambda d, names: set(skip(d, names)) | ({"rules"} if Path(d) == src else set()))
+    shutil.copytree(src, deck, ignore=lambda d, names: set(skip(d, names)) | ({"rules", "brand.txt"} if Path(d) == src else set()))
+    if brand_of(template):
+        shutil.copytree(TEMPLATE_BRANDS / brand_of(template), deck / "brand", ignore=skip)
     shell = deck / "shell.html"
     text = shell.read_text(encoding="utf-8")
     shell.write_text(text.replace("<!DOCTYPE html>\n", "<!DOCTYPE html>\n" + SHELL_STAMP.format(t=template, v=v) + "\n", 1), encoding="utf-8")
@@ -208,6 +230,10 @@ def cmd_sync(repo: Path, v: str, force: bool) -> int:
         (deck / "vendor").mkdir(exist_ok=True)
         shutil.copy2(TEMPLATE_DECKS / template / "vendor" / name, deck / "vendor" / name)
         print(f"vendor: {name} updated")
+    for rel in brand_drift(deck):
+        (deck / "brand" / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(TEMPLATE_BRANDS / brand_of(template) / rel, deck / "brand" / rel)
+        print(f"brand: {rel} updated")
     diff = shell_diff(deck)
     print(f"shell.html: {'same as template' if not diff else f'differs from template ({len(diff)} diff lines, not written)'}")
     sys.stdout.writelines(diff)
@@ -237,6 +263,10 @@ def cmd_check(repo: Path, v: str, show_diff: bool) -> int:
         drift = vendor_drift(deck)
         print(f"vendor: {'ok' if not drift else 'differs: ' + ', '.join(drift) + ' -> run deck-sync'}")
         bad += bool(drift)
+        if brand_of(template):
+            drift = brand_drift(deck)
+            print(f"brand: {'ok' if not drift else 'differs: ' + ', '.join(drift) + ' -> run deck-sync'}")
+            bad += bool(drift)
     else:
         print(f"vendor: no {deck / 'shell.html'} -> run deck-new")
         bad += 1
@@ -300,6 +330,20 @@ def selftest() -> None:
         (repo / "deck" / "shell.html").write_text(shell.replace(SHELL_STAMP.format(t=DEFAULT_TEMPLATE, v=version()), "<!-- deck shell base gone 9.9.9 -->"), encoding="utf-8")
         assert main(["kit.py", "sync", d]) == 1
         assert main(["kit.py", "check", d]) == 1
+    # A template naming a brand in its brand.txt gets that brand folder as deck/brand; sync restores it.
+    assert brand_of(DEFAULT_TEMPLATE) is None and brand_of("ralphdev-light") == "ralphdev"
+    with tempfile.TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()):
+        repo = Path(d)
+        assert main(["kit.py", "new", d, "--template", "ralphdev-light"]) == 0
+        deck = repo / "deck"
+        assert (deck / "brand" / "tokens.css").is_file()
+        assert not (deck / "brand.txt").exists() and not (deck / "rules").exists(), sorted(p.name for p in deck.iterdir())
+        assert not brand_drift(deck)
+        (deck / "brand" / "tokens.css").write_text("changed", encoding="utf-8")
+        assert brand_drift(deck) == ["tokens.css"]
+        assert main(["kit.py", "check", d]) == 1
+        main(["kit.py", "sync", d])
+        assert not brand_drift(deck)
     print("kit selftest OK")
 
 

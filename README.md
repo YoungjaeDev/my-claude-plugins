@@ -206,7 +206,7 @@ Playwright 가 없으면 graceful degrade 한다. Codex 에서는 역할 계약(
 | Skill | 하는 일 |
 |-------|---------|
 | `/deck:deck-ask` | 지금 상황에 맞는 다음 덱 스킬을 제안한다 (실행하지 않는다) |
-| `/deck:deck-new` | 빈 저장소에 덱 템플릿(`templates/decks/`, 기본 `monitor`)으로 `deck/` 스캐폴드와 규칙 사본을 만든다. `deck/` 가 있으면 거부한다 |
+| `/deck:deck-new` | 빈 저장소에 덱 템플릿(`templates/decks/`의 `monitor` 또는 `ralphdev-light`, 기본 `monitor`)으로 `deck/` 스캐폴드와 규칙 사본을 만든다. `deck/` 가 있으면 거부한다 |
 | `/deck:deck-author` | 섹션 HTML 형식, 클래스 어휘, 패널·모션 계약 |
 | `/deck:deck-assets` | 공식 로고 수집, 아이콘 시트, 마스코트 컷 |
 | `/deck:deck-check` | 빌드, 문구 검사, 규칙 사본 어긋남, PNG·PDF 렌더와 상호작용 검사 |

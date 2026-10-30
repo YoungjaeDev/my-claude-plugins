@@ -12,6 +12,7 @@ Generic presentations and PPTX conversion stay with `frontend-slides`.
 | Shared rule originals (korean-style, deck-copy, deck-authoring) | `templates/rules/*.md` | yes, stamped, by `deck-new` / `deck-sync` into `.claude/rules/` |
 | Deck templates (shell, sample cover, outline, motions, fonts, GSAP, brand, logo manifest), one folder each; `monitor` is the default | `templates/decks/<name>/` | once, by `deck-new --template <name>`; the deck owns it afterwards |
 | Template rule originals (deck-design: brand, fonts, footer, picture assets) | `templates/decks/<name>/rules/*.md` | yes, stamped, next to the shared rules; never into `deck/` |
+| Brand folders (colour tokens, self-hosted fonts, font sources); a template names its brand in `brand.txt` | `templates/brands/<brand>/` | into `deck/brand/` by `deck-new`; `deck-sync` overwrites it like `vendor/` |
 | Tool launcher `deck`, `pre-commit`, `commit-msg` | `templates/githooks/` | into `.githooks/` by `deck-new` / `deck-sync` when missing; never overwritten |
 | Tools | `scripts/` | never; skills run them from the plugin root |
 | Playwright for the render tools | `package.json` + `package-lock.json` | no |
@@ -32,7 +33,7 @@ In a deck repo every tool is also `sh .githooks/deck <build|copy|outline|assets|
 | `check_copy.py [DECK] [--rules F] [--selftest]` | banned patterns from the `### 금지 표기` table of `deck-copy.md` and the optional `### 덱 금지 표기` table of `deck-local.md`, plus comma-after-connective, native counting words, `p.source`/tag chips, slide labels; `alt` and `aria-label` text is checked against the banned patterns only |
 | `check_assets.py [DECK] [--staged] [--selftest]` | refuses raw OS screenshot names and archives anywhere in the commit, an image in a folder with a `captures.md` but no row for it, and a missing `assets/` path referenced by sections, shell or motions; warns on images nothing references. `--staged` reads the git index |
 | `check_outline.py [DECK] [--outline F] [--selftest]` | every h2, `p.lead`, `li` and `.fbox` text piece of the sections appears verbatim in `outline.md`; exit 2 on an unreadable deck or outline |
-| `kit.py new\|sync\|check\|prereq [REPO] [--template NAME]` | scaffold (`--template`, default `monitor`), rule copies + vendor refresh, missing `.githooks/` files, drift report, frontend-slides detection; `sync` and `check` take the template from the shell stamp |
+| `kit.py new\|sync\|check\|prereq [REPO] [--template NAME]` | scaffold (`--template`, default `monitor`), rule copies + vendor and brand refresh, missing `.githooks/` files, drift report, frontend-slides detection; `sync` and `check` take the template from the shell stamp |
 | `render-deck.cjs [--slides 12,S3-04] [--quick]` | `previews/slide-<NN>-<ID>.png` + `sheet-<N>.png` contact sheets + PDF; overflow / clip / bounds / footer / font-fallback checks at four viewports, one grouped line per problem; `--slides` (numbers or ids) skips the PDF, `--quick` runs 1920x1080 only |
 | `check-deck-interaction.cjs` | keyboard, hash, history, input focus, panel, resize, motion checks; `motion-early` for an element visible before its turn |
 | `motion-frames.cjs --slide N\|ID --at 0,800,end` | PNGs of one slide's motion at seeked times |
@@ -58,6 +59,10 @@ In a deck repo every tool is also `sh .githooks/deck <build|copy|outline|assets|
   `<!-- deck shell base <template> <version> -->` under the doctype; `sync` prints the diff against
   the current shell of that template and never writes `shell.html`. A stamp without a template
   name comes from a deck made before templates existed and means `monitor`.
+- **Brand tokens belong to the plugin, not the deck.** `templates/brands/<brand>/tokens.css` and its fonts are
+  copied to `deck/brand/` and overwritten by `deck-sync`, so a brand change reaches every deck (and, later, the
+  brand's other surfaces such as a detail page). A deck's own exceptions go in its `shell.html`. The marker file is
+  `brand.txt`, not `BRAND`: Windows and macOS file systems ignore case, so `BRAND` would collide with `brand/`.
 - **Design rules follow the template, copy rules do not.** `deck-copy.md`, `korean-style.md` and
   `deck-authoring.md` bind every deck. Brand, fonts, footer and picture assets differ per template,
   so they live in the template's `rules/deck-design.md`, stamped and synced like the shared rules.

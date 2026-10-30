@@ -1121,15 +1121,16 @@ is "reviews fetch failure -> exit 1"                    "$v_rc" 1
 # One wait formula for every caller: max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age).
 v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json)
 is "old push -> wait is CODEX_GRACE"                    "$(vf .wait_seconds)" 30
+# The floor allows for slow process start-up (Git Bash on Windows), as in the pre-flight checks.
 recent=$(jq -nr 'now - 100 | strftime("%Y-%m-%dT%H:%M:%SZ")')
 v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
 is "push 100s ago -> wait is timeout - age (~500)" \
-   "$(vf '.wait_seconds >= 495 and .wait_seconds <= 500')" true
+   "$(vf '.wait_seconds >= 470 and .wait_seconds <= 500')" true
 v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME= CODEX_PREFLIGHT_TIMEOUT=600)
 is "no push time -> age 0 -> full timeout"              "$(vf .wait_seconds)" 600
 v=$(verdict __FAIL__ __FAIL__ PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
 is "gh failure still reports the wait budget" \
-   "$(vf '.wait_seconds >= 495 and .wait_seconds <= 500')" true
+   "$(vf '.wait_seconds >= 470 and .wait_seconds <= 500')" true
 # The default budget sits above the slowest Codex turnaround ADR 0002 measured (726 s),
 # so a late but ordinary review is not dropped (ADR 0006).
 v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME=)

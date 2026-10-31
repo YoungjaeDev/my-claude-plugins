@@ -1,6 +1,6 @@
 ---
 name: deck-assets
-description: "Prepare assets at the start of a house-format deck (deck/shell.html + deck/sections/*.html, assets in deck/assets/): inventory the outline, collect official logos (brand SVG, else the brand's PNG) with a sources.json record, generate pixel-style icon sheets and Ralph mascot variants through codex-image, slice sheets into cells, capture real app screens and redact screenshots, and gate where cuts may be used. Triggers: 덱 에셋, 로고 수집, 픽셀아트 아이콘, 아이콘 시트, 캐릭터 변형, 화면 캡처, 스크린샷 마스킹, deck assets, collect logos, icon sheet, mascot variants, capture app screen, redact screenshot. For a one-off image request outside a deck, use codex-image directly. Generation spends quota and writes files, so confirm counts first."
+description: "Prepare assets at the start of a house-format deck (deck/shell.html + deck/sections/*.html, assets in deck/assets/): inventory the outline, collect official logos (brand SVG, else the brand's PNG) with a sources.json record, generate icon sheets (pixel style for monitor, soft 3D for ralphdev-light) and Ralph mascot variants through codex-image, slice sheets into cells, capture real app screens and redact screenshots, and gate where cuts may be used. Triggers: 덱 에셋, 로고 수집, 픽셀아트 아이콘, 아이콘 시트, 캐릭터 변형, 화면 캡처, 스크린샷 마스킹, deck assets, collect logos, icon sheet, mascot variants, capture app screen, redact screenshot. For a one-off image request outside a deck, use codex-image directly. Generation spends quota and writes files, so confirm counts first."
 ---
 
 # deck-assets
@@ -78,7 +78,7 @@ It checks file/record parity for `.svg` and `.png`, sha256, the PNG short side, 
 
 ## 3. Icon sheets (costs quota)
 
-Build the prompt from `references/style-lock.md` (STYLE LOCK block, deck palette on flat `#1F2226`, no transparency). One sheet per 9/16/25 concepts, 1920x1920 so cells divide evenly (3x3=640, 4x4=480, 5x5=384). One line per row naming each cell; one object per cell, generous margin, nothing crossing borders.
+Build the prompt from `references/style-lock.md`: the pixel STYLE LOCK on flat `#1F2226` for a `monitor` deck, the 3D STYLE LOCK on flat `#FDFDFD` for a `ralphdev-light` deck (the template is in the `deck/shell.html` stamp); no transparency. One sheet per 9/16/25 concepts, 1920x1920 so cells divide evenly (3x3=640, 4x4=480, 5x5=384). One line per row naming each cell; one object per cell, generous margin, nothing crossing borders.
 
 Generate through `codex-image` (`--size 1920x1920 --quality high --out deck/assets/generated/sprites`). Use the first approved sheet as `--ref` for later sheets to hold the style. Read the image and check: no letters, every cell inside its border, palette respected.
 
@@ -100,7 +100,7 @@ SVG conversion is opt-in and not bundled. These sheets are pixel-style, not true
 
 ## 5. Mascot variants (costs quota)
 
-`deck/assets/ralph.png` is the user's own Ralph character. Pass it with `--ref deck/assets/ralph.png`; never name or compare it to another franchise and never raise copyright. One style per role: pixel sheet for small cuts (expressions 4x3, poses 4x3), voxel single image for large concept illustrations (1920x1280, empty space reserved for slide text). Do not mix styles on one slide. Prompts in `references/style-lock.md`. Same sidecar and recovery rules.
+Only the `monitor` template has a mascot; a `ralphdev-light` deck skips this step and uses the 3D icon style lock in `references/style-lock.md` for its icon sheets. `deck/assets/ralph.png` is the user's own Ralph character. Pass it with `--ref deck/assets/ralph.png`; never name or compare it to another franchise and never raise copyright. One style per role: pixel sheet for small cuts (expressions 4x3, poses 4x3), voxel single image for large concept illustrations (1920x1280, empty space reserved for slide text). Do not mix styles on one slide. Prompts in `references/style-lock.md`. Same sidecar and recovery rules.
 
 ## 6. Usage gate
 

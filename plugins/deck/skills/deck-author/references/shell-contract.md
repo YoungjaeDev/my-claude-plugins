@@ -9,6 +9,7 @@ This file owns markup only.
 - Section files and inline style
 - One slide
 - Class vocabulary
+- ralphdev-light parts
 - Message layouts
 - Mockups and flow diagrams
 - Shell-filled reusable parts
@@ -49,7 +50,6 @@ Anything else repeated twice belongs in `shell.html` as a class.
 
 ```html
 <section class="slide" data-section="S2" aria-label="S2-04 메모 앱의 로그인 흐름">
-  <span class="kind">개념 · 인증 방식</span>
   <h2>메모 앱의 로그인 흐름</h2>
   <p class="lead">처음 로그인하면 앱이 기기마다 토큰을 따로 저장한다.</p>
   <div class="body split">
@@ -64,11 +64,12 @@ Anything else repeated twice belongs in `shell.html` as a class.
 ```
 
 - `aria-label` is the slide ID plus the `h2` text.
-- `data-section="S1".."Sn"` drives the footer progress line and the "S2 섹션명 2 / 5" text. Section
+- `data-section="S1".."Sn"` drives the footer progress line and its section text ("S2 섹션명 2 / 5" in `monitor`, "2부 섹션명" in `ralphdev-light`). Section
   names live only in the shell `SECTIONS` array. Which slides carry it is decided in deck-authoring
   ("디자인은 셸에"); a slide without it shows a dimmed progress line.
-- The shell injects the footer (progress, Ralph character, wordmark, page number), the section number
-  and big progress bar on section covers, and the section rows of the agenda. Never write them.
+- The shell injects the footer (progress, wordmark, page number; `monitor` adds the Ralph character), the
+  section number on section covers (`monitor` adds a big progress bar), and the section rows of the agenda.
+  Never write them.
 - Runtime elements are `deck-*` elements or classes with `data-runtime`. Never write `deck-` or
   `data-runtime` in a section file. Authoring classes have no prefix.
 
@@ -76,7 +77,7 @@ Anything else repeated twice belongs in `shell.html` as a class.
 
 | Slide type | Structure |
 |---|---|
-| Cover | `section.slide.cover > header.brandbar(img.monogram + img.wordmark + .logos) + h1 + p.subtitle + div.cover-ralph > img` |
+| Cover | `monitor`: `section.slide.cover > header.brandbar(img.monogram + img.wordmark + .logos) + h1 + p.subtitle + div.cover-ralph > img`. `ralphdev-light`: see below |
 | Agenda | `h2 + ol.agenda`. The shell adds one row per `SECTIONS` entry. Extra rows only: `li > span.no + h3`; a row before the sections is `li.pre`. Up to 5 rows stack in one column; 6–8 rows go to two columns of 4. Past 8 rows, or `li.pre` with 6 or more sections, the shell's agenda CSS has to change first |
 | Section cover | `section.slide.section-cover[data-section] > h2 + p.lead + .logos` |
 | Concept | `h2 + .body > ul.points`, or `.flow > .flow-step(strong + text)`; `.split` puts a figure beside it |
@@ -88,8 +89,9 @@ Anything else repeated twice belongs in `shell.html` as a class.
 | Prompt | `span.kind` "프롬프트" `+ h2 + .body > pre.code.scroll` (long text scrolls inside the box) |
 | Closing | no `data-section`, no `span.kind`; `h2 + .body > ul.points` or a `.statement` |
 
-Slide label: one `span.kind` immediately before `h2` on every content slide; wording and the slides that
-take none are in deck-copy ("듣는 사람 자리에서"). `deck-check` enforces both.
+Slide label: one `span.kind` immediately before `h2` on a practice slide ("실습 · …") or a checkpoint,
+misconception or prompt slide; concept and case slides take none. Wording is in deck-copy ("듣는 사람
+자리에서"). `deck-check` enforces both.
 
 Shared classes: `.lead` (one or two sentences under the title), `.body` (fills the remaining height; a
 text-only body is centered vertically), `.split` (`.even`, `.wide-text`), `code` (inline command or field),
@@ -112,6 +114,24 @@ Sources go in a panel.
 **Every copyable command or prompt is one `pre.code`**, on a slide or in a panel. The shell draws it as a
 terminal window and puts the copy button in its bar. Write only `<pre class="code">원문</pre>`; add
 `data-label="PowerShell"` to name the bar. `.term` is for expected-output mockups that are not copied.
+
+## ralphdev-light parts
+
+The `ralphdev-light` shell keeps every class above and adds or changes these. Its colours and fonts come from
+`deck/brand/tokens.css` (plugin-owned, overwritten by `deck-sync`); its brand rules are in
+`.claude/rules/deck-design.md`.
+
+| Part | Markup | Rule |
+|---|---|---|
+| Cover | `section.slide.cover > div.wordmark + h1 + p.subtitle`, optional `figure.cover-art > img` (one 3D icon or illustration) | `.key` on one phrase of the `h1`; the wordmark is text (`ralphdev`), the shell adds the coral dot |
+| Title with English | `<h2>검사와 렌더 <span class="en">Check</span></h2>` | the English half is light grey body text |
+| Section cover | `section.slide.section-cover[data-section] > figure.icon > img`, optional `h2` + `p.lead` | the shell writes "SECTION n" and the section name from `SECTIONS` (with its optional `en`); the icon goes above them |
+| Edge capture | `figure.shot.bleed > img` with a sibling `div.ask > small(프롬프트) + text` | the capture starts at x 420 and runs off the right edge; the prompt box sits over its top-left; one per slide |
+| Icon flow | `.body > .iconflow > .node(img + strong + p)` | 3D icon cells from `deck-assets`, 3-5 nodes, the shell draws the coral joins |
+| Math | `<math alttext="LaTeX">…</math>` inline, or `div.equation > math[display=block]` | `alttext` holds the LaTeX the outline carries; `check_outline` compares that, not the MathML text. Use `&#x2212;` for minus |
+
+The footer shows "N부 섹션명" over the progress line, then the text wordmark and the page number on one line.
+Labels are plain coral text above the `h2`, never a pill.
 
 ## Message layouts
 
@@ -138,7 +158,6 @@ y 900 when the counts below hold. These counts are the per-layout exceptions to 
 
 ```html
 <section class="slide" data-section="S3" aria-label="S3-10 사람은 완료 기준을 정하고 AI는 그 기준대로 만든다">
-  <span class="kind">개념 · 사람과 AI의 역할</span>
   <h2>사람은 완료 기준을 정하고 AI는 그 기준대로 만든다</h2>
   <div class="body versus">
     <div class="side on">

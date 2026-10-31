@@ -20,6 +20,24 @@ Output: one image, {N}x{N} grid, exactly 1920x1920 pixels, every cell exactly {c
 
 Cell lines name one object each ("a padlock", "a circular loop of two arrows (retry)"). Concepts, not brands.
 
+## STYLE LOCK (3D icon sheet, `ralphdev-light` template)
+
+The `ralphdev-light` template draws icons in soft 3D, not pixels, on its light canvas. Generate at `--size 1920x1920`; a
+sheet that comes back smaller (one came back 1254px and was upscaled) is fine for 220px cells but say so. Before slicing,
+match each cell's background to the slide background `#FDFDFD`, or a faint square shows around the icon.
+
+```text
+Icon sheet for a light-themed lecture slide deck. Soft 3D style.
+Style: soft 3D rendered icons, smooth clay-like material with a subtle satin sheen, rounded chunky forms, soft studio lighting from the upper left, a faint soft contact shadow under each object, consistent scale and camera, three-quarter front view, clean and friendly.
+Palette: coral #F25C45 as the single accent, charcoal #2A2A2A, warm light grey #F3EFED, white. No other saturated colors.
+Background: flat off-white #FDFDFD filling the whole image, fully opaque.
+Layout: strict {N} columns x {N} rows grid, square image, every cell exactly 1/{N} of the width and height, one object centered alone in each cell with generous empty margin, no cell borders or grid lines drawn, nothing crossing cell boundaries.
+Cells, row by row:
+Row 1: {cell} · {cell} · {cell}
+Row 2: ...
+Forbidden: any letters, numbers, words, labels, logos, watermarks, screens or user interfaces, people, extra objects.
+```
+
 ## Mascot pixel sheet (expressions / poses, 4x3)
 
 Same block with the character line instead of "no character", used with `--ref deck/assets/ralph.png`:

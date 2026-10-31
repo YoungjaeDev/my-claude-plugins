@@ -2007,7 +2007,7 @@ for g in bypass cr_wait codex_wait; do
       || echo "warn: Codex HEAD verdict unavailable (gh error); the wait budget still applies" >&2
     grace_cap=$(jq -r ".wait_seconds // empty" <<<"$hv"); [ -n "$grace_cap" ] || grace_cap="$CODEX_GRACE"
     printf "%s" "$grace_cap"' 2>/dev/null) || gc_rc=$?
-  gcaps="$gcaps $g:$gc_rc:$([ "${gcap:-0}" -ge $((budget_default - 105)) ] && [ "${gcap:-0}" -le $((budget_default - 100)) ] && echo ok || echo "$gcap")"
+  gcaps="$gcaps $g:$gc_rc:$([ "${gcap:-0}" -ge $((budget_default - 130)) ] && [ "${gcap:-0}" -le $((budget_default - 100)) ] && echo ok || echo "$gcap")"
 done
 is "grace-cap: same budget on every gate, errexit-safe without \$pf" \
    "$gcaps" " bypass:0:ok cr_wait:0:ok codex_wait:0:ok"

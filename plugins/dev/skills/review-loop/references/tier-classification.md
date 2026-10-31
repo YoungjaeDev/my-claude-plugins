@@ -4,13 +4,19 @@ Inputs: CR thread records (`source: "cr"`, Step 8), Codex inline records (`sourc
 
 ## CR / CLI record field extraction
 
-CodeRabbit opens every inline finding with a three-field header:
+CodeRabbit opens every inline finding with a three-field header, in one of two formats. The older one:
 
 ```text
 **🎯 Functional Correctness** | **🟠 Major** | **⚡ Quick win**
 ```
 
-The emphasis is not stable (bold today, italic `_…_` earlier, sometimes none), so the header is read by its emoji badges, not its formatting: the first body line that splits on `|` into two or three fields whose second field opens with a severity badge (`🔴` `🟠` `🟡` `🔵` `⚪`), with `*` / `_` / whitespace trimmed off each field. One jq definition does this for both the PR-bot and CLI paths: `scripts/cr-header.jq`. Documented badges: category `🔒` `🩺` `🗄️` `🎯` `🚀` `📐`, severity `🔴` `🟠` `🟡` `🔵` `⚪`.
+Since 2026-10 (first seen on PR #344) it is severity-first, `·`-separated, with `<img>` icons instead of emoji:
+
+```text
+**<picture><img src=".../review-comment-icons-v1/amber-16.svg" …></picture> Minor** · **Functional Correctness** · **Quick win**
+```
+
+The emphasis is not stable (bold today, italic `_…_` earlier, sometimes none), so the header is read by its emoji badges, not its formatting: the first body line that splits on `|` into two or three fields whose second field opens with a severity badge (`🔴` `🟠` `🟡` `🔵` `⚪`), with `*` / `_` / whitespace trimmed off each field. One jq definition does this for both the PR-bot and CLI paths: `scripts/cr-header.jq`. Documented badges: category `🔒` `🩺` `🗄️` `🎯` `🚀` `📐`, severity `🔴` `🟠` `🟡` `🔵` `⚪`. A line that is not an older-format header is tried as the newer format: HTML tags are stripped, the line must split on `·` into two or three fields, and the first must be exactly `Critical`, `Major`, `Minor`, `Trivial` or `Info` (any case). That word is mapped to the older badge string (`Minor` -> `🟡 Minor`) and the fields come out in the older order, so the record and the rules below do not change; the icon file name is never read. Category and effort then carry no emoji (`Functional Correctness`, `Quick win`), which the word-based rules below already match.
 
 | Field | Source |
 |------|--------|

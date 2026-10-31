@@ -15,6 +15,7 @@
 # past its slowest turnaround (age from PUSH_TIME; unknown without it).
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/codex-turnaround.sh"
 : "${OWNER:?}"; : "${REPO:?}"; : "${PR_NUM:?}"; : "${PROCESSED:=[]}"; : "${INTERVAL:=15}"

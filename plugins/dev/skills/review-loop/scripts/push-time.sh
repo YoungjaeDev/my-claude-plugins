@@ -5,6 +5,7 @@
 # See plugins/dev/CLAUDE.md "gh / jq Invariants" for why /statuses (plural) + --paginate.
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 OWNER="${1:?owner required}"; REPO="${2:?repo required}"; SHA="${3:?sha required}"
 
 t=$(gh api --paginate "repos/$OWNER/$REPO/commits/$SHA/statuses" 2>/dev/null \

@@ -31,6 +31,7 @@
 # This script does NOT call gh pr merge — separation of probe vs action.
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 OWNER="${1:?}"; REPO="${2:?}"; PR_NUM="${3:?}"; HEAD_SHA="${4:?}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${FINAL_STATE:=unknown}"; : "${FOLLOWUP_ISSUE:=}"

@@ -30,6 +30,7 @@
 #   max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age).
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 : "${OWNER:?owner required}"; : "${REPO:?repo required}"
 : "${PR_NUM:?pr required}"; : "${CUR_SHA:?sha required}"
 PUSH_TIME="${PUSH_TIME:-}"

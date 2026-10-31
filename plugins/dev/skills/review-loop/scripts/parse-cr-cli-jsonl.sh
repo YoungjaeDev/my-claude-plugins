@@ -15,6 +15,7 @@
 #     `around lines 11 - 23` / `at line 4`.
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 JSONL="${1:?jsonl path required}"
 [ -f "$JSONL" ] || { echo "error: $JSONL not found" >&2; exit 1; }
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"  # cr-header.jq lives beside this script

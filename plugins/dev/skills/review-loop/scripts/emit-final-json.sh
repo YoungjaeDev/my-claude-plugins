@@ -13,6 +13,7 @@
 # Designed to be hooked into bash `trap ... EXIT` so the JSON always emits even on early exit.
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 : "${ITER:=0}"; : "${APPLIED_TOTAL:=0}"; : "${DEFERRED_TOTAL:=0}"; : "${SKIPPED_TOTAL:=0}"
 : "${CODEX_STATE:=unknown}"; : "${FINAL_STATE:=unknown}"; : "${MERGED:=false}"
 : "${PR_NUM:=0}"; : "${LAST_SHA:=}"

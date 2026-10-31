@@ -23,15 +23,12 @@ paths:
 
 ## 디자인은 셸에
 
-토큰·컴포넌트·글꼴은 `deck/shell.html`에만 둔다. 섹션 파일에는 CSS를 넣지 않고 inline `style`은 `deck-author` 허용 목록만 쓴다.
+토큰·컴포넌트·글꼴은 `deck/shell.html`에만 둔다. 섹션 파일에는 CSS를 넣지 않고 inline `style`은 `deck-author` 허용 목록만 쓴다. 브랜드·글꼴·푸터·그림 에셋은 덱 템플릿마다 다르고 `deck-design.md`가 정한다.
 
-- RALPHDEV 브랜드를 쓴다. 글꼴은 직접 호스팅한 IBM Plex Sans KR Regular 400·SemiBold 600만 쓰고 합성 굵기를 만들지 않는다.
 - 1920×1080 고정 스테이지를 유지하고 작은 화면에서 내용을 재배치하지 않는다.
 - 표지 다음에 목표와 목차를 두고 섹션마다 섹션 표지를 둔다.
 - 섹션 안의 장에는 `data-section`을 단다. 첫 섹션 앞의 소개 장과 닫는 장에는 달지 않는다.
-- 셸 푸터가 RALPHDEV 워드마크와 Ralph 캐릭터를 넣는다. Ralph 캐릭터를 다른 마스코트로 바꾸지 않는다.
 - 장식은 넣지 않는다. 제목 옆 세로 accent bar, 짧은 장식 막대, 장식용 그라데이션, 내용 없이 반복되는 카드·패널, 반복되는 슬로건이 그렇다. 구분선과 강조색은 진행 표시나 데이터 비교처럼 뜻이 있는 곳에만 쓴다.
-- 마스코트와 픽셀 컷은 아껴 쓴다. 놓을 자리와 개수는 `deck-assets` 스킬이 정한다.
 
 ## 흐름은 움직임으로
 
@@ -77,7 +74,7 @@ paths:
 | frontend-slides 기본값 | 이 덱 |
 |---|---|
 | 단일 인라인 HTML, 빌드 없음 | `shell.html`·`sections/*.html`·`motions/*.js`·vendor GSAP를 빌드로 조립하고 폴더째 배포한다 |
-| Google Fonts·Fontshare 글꼴 | 직접 호스팅한 IBM Plex Sans KR 400·600 |
+| Google Fonts·Fontshare 글꼴 | `deck-design.md`가 정한 직접 호스팅 글꼴 |
 | 스타일 시안 3개를 먼저 만든다 | 셸이 고정이고 스타일을 묻지 않는다 |
 | 모든 장에 staggered reveal | 흐름을 보이는 장에만 GSAP `data-motion` |
 | 테마·글꼴·그라데이션을 바꿔 가며 쓴다 | 셸 토큰 한 벌, 장식 그라데이션 없음 |

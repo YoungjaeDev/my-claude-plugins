@@ -8,6 +8,7 @@ set -uo pipefail
 
 # Inherited from a pre-commit hook, these send the fixtures' git writes into the
 # calling repo (same guard as review-loop's runner).
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -249,7 +250,8 @@ is "base of an open PR -> reason"          "$(rbr_has r/stack 'base of open PR #
 is "gh failure -> not safe"                "$(rbr r/ghfail .safe)" false
 is "gh failure -> reason"                  "$(rbr_has r/ghfail 'gh lookup failed')" true
 is "checked out in a worktree -> not safe" "$(rbr feat/merged .safe)" false
-is "checked out -> reason names the path"  "$(rbr_has feat/merged "checked out in $T/merged")" true
+# The reason carries git's own path form, which is C:/... on Git for Windows, not $T.
+is "checked out -> reason names the path"  "$(rbr_has feat/merged "checked out in $(git -C "$T/merged" rev-parse --show-toplevel)")" true
 is "default branch known -> no remote_error" "$(jq -r '.remote_error // "none"' <<<"$out")" none
 
 # default branch unknown: nothing is listed, and the error says why

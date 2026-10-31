@@ -21,7 +21,7 @@ esac
 
 OUT="$(mktemp -d)"
 cp "$DECK/index.html" "$OUT/"
-for d in fonts vendor motions; do if [ -d "$DECK/$d" ]; then cp -R "$DECK/$d" "$OUT/"; fi; done
+for d in fonts vendor motions brand; do if [ -d "$DECK/$d" ]; then cp -R "$DECK/$d" "$OUT/"; fi; done
 # Literal asset paths in index.html (sections, footer). Logos are also built at runtime from the
 # shell's SECTIONS array, so the whole logos/ and brand/ folders go up as well.
 ASSETS="$(cd "$DECK/assets" 2>/dev/null && pwd -P || true)"

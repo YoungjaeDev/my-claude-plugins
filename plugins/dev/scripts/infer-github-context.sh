@@ -14,6 +14,7 @@
 set -euo pipefail
 
 # gh CLI 존재 확인
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 if ! command -v gh >/dev/null 2>&1; then
   echo "[infer-github-context] gh CLI not installed. Install: https://cli.github.com/" >&2
   exit 1

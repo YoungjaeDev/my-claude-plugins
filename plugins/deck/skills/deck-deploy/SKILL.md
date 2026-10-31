@@ -39,7 +39,7 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
    DECK_STAGE_ONLY=1 bash "$PLUGIN_ROOT/scripts/deploy.sh" deck
    ```
 
-   Observable result: `staged: <dir>`, `project: <name>`, `DECK_STAGE_ONLY=1: staged, not deployed`. List the staged folder and confirm it holds `index.html`, `fonts/`, `vendor/`, `motions/`, `assets/`, `robots.txt`, `vercel.json` and nothing else (no `sections/`, `outline.md`, `.claude/`).
+   Observable result: `staged: <dir>`, `project: <name>`, `DECK_STAGE_ONLY=1: staged, not deployed`. List the staged folder and confirm it holds `index.html`, `fonts/`, `vendor/`, `motions/`, `brand/` (when the deck has one), `assets/`, `robots.txt`, `vercel.json` and nothing else (no `sections/`, `outline.md`, `.claude/`).
 
 3. Deploy (same resolver block, then):
 

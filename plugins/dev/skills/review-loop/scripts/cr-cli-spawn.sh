@@ -6,6 +6,7 @@
 # Prints terminal JSON marker on stdout: {"jsonl":"<path>","exit":N,"emitted_complete":bool}
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 : "${BASE:?BASE base-branch required}"; : "${PR_NUM:?}"; : "${ITER:?}"
 : "${CONFIG_FILES:=CLAUDE.md AGENTS.md}"
 

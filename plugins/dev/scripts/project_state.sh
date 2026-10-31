@@ -16,6 +16,7 @@
 
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 STALE_DAYS="${WIRING_TMP_STALE_DAYS:-14}"
 # 비정수면 `find -mtime +$STALE_DAYS` 와 `jq --argjson` 이 둘 다 깨진다.
 # jq 의 usage dump 대신 원인을 말하고 죽는다.

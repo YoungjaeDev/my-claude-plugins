@@ -16,10 +16,11 @@ issue_comments=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 
 pr_reviews=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null \
   | jq -s 'add // []' || echo '[]')
 
-jq -n --arg t "$PUSH_TIME" \
-  --argjson comments "$issue_comments" \
-  --argjson reviews  "$pr_reviews" '
-  [ ($comments[]? | select((.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i"))
+# Comments and reviews go through stdin, not --argjson: a long PR outgrows ARG_MAX.
+{ printf '%s\n' "$issue_comments"; printf '%s\n' "$pr_reviews"; } \
+| jq -s --arg t "$PUSH_TIME" '
+  .[0] as $comments | .[1] as $reviews
+  | [ ($comments[]? | select((.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i"))
                   | select(.created_at > $t) | .body // ""),
     ($reviews[]?  | select((.user.login // "") | test("^coderabbitai(\\[bot\\])?$"; "i"))
                   | select(.submitted_at > $t) | .body // "") ]

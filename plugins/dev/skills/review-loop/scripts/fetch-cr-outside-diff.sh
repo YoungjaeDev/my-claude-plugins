@@ -39,7 +39,8 @@ fi
   # One review -> its outside-diff records. The block is the run of `>`-quoted
   # lines starting at the heading; each finding inside it is
   # `<summary>…</summary><blockquote>` + `path:start-end` + header + body,
-  # closed by `</blockquote></details>`.
+  # closed by `</blockquote></details>`. Since 2026-10 (PR #351, review 5707365239)
+  # the content after `<blockquote>` is wrapped in `<dl><dd>`.
   def outside_diff:
     .id as $rid
     | (.body // "" | split("\n")) as $L
@@ -59,7 +60,7 @@ fi
            | .out | join("\n")) as $block
         | [ $block | split("</blockquote></details>")[]
             | select(test("<blockquote>"))
-            | sub("^[\\s\\S]*?<blockquote>"; "") | sub("^\\s+|\\s+$"; "")
+            | sub("^[\\s\\S]*?<blockquote>(\\s*<dl>\\s*<dd>)?"; "") | sub("^\\s+|\\s+$"; "")
             | . as $body
             | ($body | split("\n") | map(select(test("\\S"))) | .[0] // ""
                | capture("^`(?<path>[^`]+):(?<start>\\d+)(?:-(?<end>\\d+))?`\\s*$")) as $loc
@@ -75,9 +76,13 @@ fi
       end;
 
   # Identity beyond path+line: header badges and title. null = cannot confirm.
+  # Category and effort compare without a leading emoji: the older header has one,
+  # the severity-first header does not, and the same finding shows up in both.
+  def id_text: if . == null then null else gsub("^[^\\p{L}\\p{N}]+"; "") end;
   def ident: (.body | cr_title) as $t
     | if $t == null then null
-      else [(.body | cr_header | .category_emoji, .severity_emoji, .effort_emoji), $t] end;
+      else (.body | cr_header) as $h
+        | [($h.category_emoji | id_text), $h.severity_emoji, ($h.effort_emoji | id_text), $t] end;
   def copy_of($o): .path == $o.path and .line == $o.line
     and (ident as $i | $i != null and $i == ($o | ident));
 

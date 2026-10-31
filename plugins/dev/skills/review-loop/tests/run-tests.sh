@@ -614,6 +614,18 @@ is "outside-diff: marked with origin + review id" \
    "$(jq -r '[.[] | "\(.source)/\(.origin)/\(.review_id)"] | unique | .[]' <<<"$out")" "cr/outside-diff/5427040251"
 is "outside-diff: Minor + Quick win -> auto" \
    "$(jq -c '.[0]' <<<"$out" | bash "$SCRIPTS/classify-item.sh" | jq -r '.tier')" auto
+# Since 2026-10 each finding sits in `<blockquote><dl><dd>` with the severity-first
+# header (issue #354). The fixture is review 5707365239 on PR #351.
+dl=$(od "$FIX/cr-reviews-outside-diff-dl.json" <<<'[]'); rc=$?
+is "outside-diff <dl>: exits 0"          "$rc" 0
+is "outside-diff <dl>: path:line" \
+   "$(jq -r '.[] | "\(.path):\(.startLine)-\(.line)"' <<<"$dl")" "plugins/dev/skills/review-loop/tests/run-tests.sh:1127-1127"
+is "outside-diff <dl>: header fields" \
+   "$(jq -r '.[] | [.category_emoji, .severity_emoji, .effort_emoji] | join(" / ")' <<<"$dl")" \
+   "Functional Correctness / 🟠 Major / Quick win"
+is "outside-diff <dl>: title" \
+   "$(jq -r '.[0].body' <<<"$dl" | jq -Rrs -L "$SCRIPTS" 'include "cr-header"; cr_title')" \
+   "Remove the remaining five-second timing assumptions."
 # A thread that is a confirmed copy of the finding (same path, line, header and
 # title; the header emphasis may differ) is one record, which carries the review
 # id so the review is still recorded as processed.
@@ -625,6 +637,13 @@ out=$(od "$ODF" <<<"$thr")
 is "outside-diff: confirmed copy of a thread -> merged" "$(jq 'length' <<<"$out")" 3
 is "outside-diff: merged record is the thread"   "$(jq -r '.[0].databaseId' <<<"$out")" 7
 is "outside-diff: merged thread keeps review id" "$(jq -r '.[0].review_id' <<<"$out")" 5427040251
+# The same finding as an older-header thread and a severity-first outside-diff item:
+# category and effort differ only by the leading emoji, so it is still one record.
+thr3=$(jq -nc --argjson b "$(thr_body '🟠 Major' 'Remove the remaining five-second timing assumptions.')" \
+  '[{"source":"cr","path":"plugins/dev/skills/review-loop/tests/run-tests.sh","line":1127,"startLine":1127,"body":$b,"databaseId":7}]')
+out3=$(od "$FIX/cr-reviews-outside-diff-dl.json" <<<"$thr3")
+is "outside-diff <dl>: older-header thread copy -> merged" \
+   "$(jq -r '[length, .[0].databaseId, .[0].review_id] | join(",")' <<<"$out3")" "1,7,5707365239"
 # A different finding on the same path and line is not a copy: both are judged
 # (issue #297). Same header, other title; and a thread with no header at all.
 thr2=$(jq -nc --argjson b "$(thr_body '🟡 Minor' 'Quote `$W` in the find call.')" \
@@ -776,6 +795,20 @@ rl2=$(PATH="$SSHIM:$PATH" bash "$SCRIPTS/sniff-cr-rate-limit.sh" o r 42 "2020-01
 is "quota refill -> not permanent" "$(jq -r '.permanent' <<<"$rl2" 2>/dev/null)" false
 is "'Next included review available in' -> reset parsed" \
    "$(jq -r '.reset_minutes_estimate' <<<"$rl2" 2>/dev/null)" 6
+
+# sniff-cr-inprogress.sh: a long PR's comments outgrow one argument (Windows caps
+# a command line at 32K chars, Linux one argument at 128K): they go through stdin.
+# An empty count read as "no review in progress" (issue #354).
+cat > "$SSHIM/gh" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"/issues/"*"/comments"*) jq -nc '[{user:{login:"coderabbitai[bot]"},created_at:"2030-01-01T00:00:00Z",body:("Come back again in a few minutes " + ("x" * 200000))}]' ;;
+  *"/pulls/"*"/reviews"*)   echo '[]' ;;
+  *) echo "unknown gh args: $*" >&2; exit 1 ;;
+esac
+SH
+n=$(PATH="$SSHIM:$PATH" bash "$SCRIPTS/sniff-cr-inprogress.sh" o r 42 "2020-01-01T00:00:00Z" 2>/dev/null)
+is "sniff-cr-inprogress: comments past one argument -> counted" "$n" 1
 rm -rf "$SSHIM"
 
 echo

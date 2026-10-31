@@ -1,12 +1,15 @@
 """Scaffold a deck repo and keep its rule copies in step with this plugin.
 
-    python3 kit.py new   [REPO]          # REPO/deck from templates/deck + stamped rule copies + .githooks; refuses if REPO/deck exists
+    python3 kit.py new   [REPO] [--template NAME] # REPO/deck from templates/decks/NAME (default monitor) + stamped rule copies + .githooks; refuses if REPO/deck exists
     python3 kit.py sync  [REPO] [--force] # rewrite rule copies + deck/vendor, add missing .githooks, print the shell.html diff (never writes shell)
     python3 kit.py check [REPO] [--diff]  # rule copies, vendor, shell base; exit 1 on drift
     python3 kit.py prereq                 # is the frontend-slides plugin installed? warning only, always exit 0
     python3 kit.py --selftest
 
-REPO defaults to the current directory. Rule templates are templates/rules/*.md; each copy in
+REPO defaults to the current directory. A deck template is a folder under templates/decks/; its
+rules/ subfolder holds the template's own rule originals and is not copied into the deck. sync and
+check read the template name from the shell stamp; a stamp without a name is an older monitor deck.
+Rule templates are templates/rules/*.md plus templates/decks/NAME/rules/*.md; each copy in
 REPO/.claude/rules/ gets STAMP inserted right after its YAML frontmatter. A copy is compared by
 re-stamping the template with the copy's own version, so no unstamping heuristics are needed.
 REPO/.claude/rules/deck-local.md is the deck's own file and is never read or written here.
@@ -22,14 +25,16 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TEMPLATE_DECK = ROOT / "templates" / "deck"
+TEMPLATE_DECKS = ROOT / "templates" / "decks"
+DEFAULT_TEMPLATE = "monitor"
 TEMPLATE_RULES = ROOT / "templates" / "rules"
 TEMPLATE_HOOKS = ROOT / "templates" / "githooks"
 LOCAL_RULE = "deck-local.md"
 STAMP = "> deck 플러그인 {v} 사본. 고칠 때는 플러그인 원본을 고친다."
 STAMP_RE = re.compile(r"^> deck 플러그인 (\S+) 사본\.", re.M)
-SHELL_STAMP = "<!-- deck shell base {v} -->"
-SHELL_STAMP_RE = re.compile(r"^<!-- deck shell base (\S+) -->\n", re.M)
+SHELL_STAMP = "<!-- deck shell base {t} {v} -->"
+# The template name is optional: decks scaffolded before templates existed carry only the version.
+SHELL_STAMP_RE = re.compile(r"^<!-- deck shell base (?:([a-z][a-z0-9-]*) )?(\S+) -->\n", re.M)
 FRONTEND_SLIDES_INSTALL = ("/plugin marketplace add zarazhangrui/frontend-slides",
                            "/plugin install frontend-slides@frontend-slides")
 
@@ -45,17 +50,34 @@ def stamp(text: str, v: str) -> str:
     return head + STAMP.format(v=v) + "\n" + (body if body.startswith("\n") else "\n" + body)
 
 
-def rule_templates() -> list:
-    return sorted(p for p in TEMPLATE_RULES.glob("*.md") if p.name != LOCAL_RULE)
+def templates() -> list:
+    return sorted(p.name for p in TEMPLATE_DECKS.iterdir() if (p / "shell.html").is_file())
 
 
-def rule_status(repo: Path, v: str) -> list:
+def shell_base(text: str):
+    """(template, version) from a shell stamp, or None when the shell has no stamp."""
+    m = SHELL_STAMP_RE.search(text)
+    return (m[1] or DEFAULT_TEMPLATE, m[2]) if m else None
+
+
+def deck_template(deck: Path) -> str:
+    """The template a deck was scaffolded from; an unstamped shell counts as the default."""
+    base = shell_base((deck / "shell.html").read_text(encoding="utf-8"))
+    return base[0] if base else DEFAULT_TEMPLATE
+
+
+def rule_templates(template: str) -> list:
+    rules = list(TEMPLATE_RULES.glob("*.md")) + list((TEMPLATE_DECKS / template / "rules").glob("*.md"))
+    return sorted((p for p in rules if p.name != LOCAL_RULE), key=lambda p: p.name)
+
+
+def rule_status(repo: Path, v: str, template: str) -> list:
     """(name, status, copy_version) per template: ok | missing | stale | edited | unstamped | bare.
 
     bare: no stamp, but otherwise the template itself (a copy made by hand); safe to stamp.
     """
     out = []
-    for tpl in rule_templates():
+    for tpl in rule_templates(template):
         copy = repo / ".claude" / "rules" / tpl.name
         if not copy.is_file():
             out.append((tpl.name, "missing", None))
@@ -74,12 +96,13 @@ def rule_status(repo: Path, v: str) -> list:
     return out
 
 
-def write_rules(repo: Path, v: str, force: bool) -> int:
+def write_rules(repo: Path, v: str, force: bool, template: str) -> int:
     """Write every rule copy except ones edited by hand at the current version (unless forced)."""
     dest = repo / ".claude" / "rules"
     dest.mkdir(parents=True, exist_ok=True)
+    sources = {p.name: p for p in rule_templates(template)}
     blocked = 0
-    for name, status, _ in rule_status(repo, v):
+    for name, status, _ in rule_status(repo, v, template):
         if status == "ok":
             print(f"rules: {name} ok ({v})")
             continue
@@ -87,7 +110,7 @@ def write_rules(repo: Path, v: str, force: bool) -> int:
             print(f"rules: {name} {status}: left as is. Move deck-specific lines to .claude/rules/{LOCAL_RULE}, then rerun with --force")
             blocked += 1
             continue
-        (dest / name).write_text(stamp((TEMPLATE_RULES / name).read_text(encoding="utf-8"), v), encoding="utf-8")
+        (dest / name).write_text(stamp(sources[name].read_text(encoding="utf-8"), v), encoding="utf-8")
         print(f"rules: {name} ok (stamped {v}, content was the template)" if status == "bare"
               else f"rules: {name} written ({status} -> {v})")
     return blocked
@@ -109,13 +132,13 @@ def write_hooks(repo: Path) -> None:
 
 
 def vendor_drift(deck: Path) -> list:
-    src = TEMPLATE_DECK / "vendor"
+    src = TEMPLATE_DECKS / deck_template(deck) / "vendor"
     return [p.name for p in sorted(src.iterdir())
             if not (deck / "vendor" / p.name).is_file() or (deck / "vendor" / p.name).read_bytes() != p.read_bytes()]
 
 
 def shell_diff(deck: Path) -> list:
-    tpl = (TEMPLATE_DECK / "shell.html").read_text(encoding="utf-8")
+    tpl = (TEMPLATE_DECKS / deck_template(deck) / "shell.html").read_text(encoding="utf-8")
     cur = SHELL_STAMP_RE.sub("", (deck / "shell.html").read_text(encoding="utf-8"))
     return list(difflib.unified_diff(tpl.splitlines(True), cur.splitlines(True), "template/shell.html", "deck/shell.html"))
 
@@ -147,17 +170,23 @@ def prereq() -> None:
             print(f"  {cmd}")
 
 
-def cmd_new(repo: Path, v: str) -> int:
+def cmd_new(repo: Path, v: str, template: str) -> int:
+    if template not in templates():
+        print(f"[abort] no deck template {template!r}. Templates: {', '.join(templates())}", file=sys.stderr)
+        return 2
     deck = repo / "deck"
     if deck.exists():
         print(f"[abort] {deck} already exists. Use deck-sync to update rule copies instead.", file=sys.stderr)
         return 1
-    shutil.copytree(TEMPLATE_DECK, deck, ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"))
+    src = TEMPLATE_DECKS / template
+    # rules/ holds the template's rule originals, which go to .claude/rules/ stamped, not into the deck.
+    skip = shutil.ignore_patterns("__pycache__", ".DS_Store")
+    shutil.copytree(src, deck, ignore=lambda d, names: set(skip(d, names)) | ({"rules"} if Path(d) == src else set()))
     shell = deck / "shell.html"
     text = shell.read_text(encoding="utf-8")
-    shell.write_text(text.replace("<!DOCTYPE html>\n", "<!DOCTYPE html>\n" + SHELL_STAMP.format(v=v) + "\n", 1), encoding="utf-8")
-    print(f"deck: scaffolded {deck} from templates/deck ({v})")
-    blocked = write_rules(repo, v, force=False)
+    shell.write_text(text.replace("<!DOCTYPE html>\n", "<!DOCTYPE html>\n" + SHELL_STAMP.format(t=template, v=v) + "\n", 1), encoding="utf-8")
+    print(f"deck: scaffolded {deck} from templates/decks/{template} ({v})")
+    blocked = write_rules(repo, v, force=False, template=template)
     write_hooks(repo)
     prereq()
     return 1 if blocked else 0
@@ -168,11 +197,16 @@ def cmd_sync(repo: Path, v: str, force: bool) -> int:
     if not (deck / "shell.html").is_file():
         print(f"[abort] no deck at {deck}. Use deck-new first.", file=sys.stderr)
         return 1
-    blocked = write_rules(repo, v, force)
+    template = deck_template(deck)
+    if template not in templates():
+        print(f"[abort] deck/shell.html names template {template!r}, not in this plugin. Templates: {', '.join(templates())}", file=sys.stderr)
+        return 1
+    print(f"template: {template}")
+    blocked = write_rules(repo, v, force, template)
     write_hooks(repo)
     for name in vendor_drift(deck):
         (deck / "vendor").mkdir(exist_ok=True)
-        shutil.copy2(TEMPLATE_DECK / "vendor" / name, deck / "vendor" / name)
+        shutil.copy2(TEMPLATE_DECKS / template / "vendor" / name, deck / "vendor" / name)
         print(f"vendor: {name} updated")
     diff = shell_diff(deck)
     print(f"shell.html: {'same as template' if not diff else f'differs from template ({len(diff)} diff lines, not written)'}")
@@ -182,8 +216,13 @@ def cmd_sync(repo: Path, v: str, force: bool) -> int:
 
 def cmd_check(repo: Path, v: str, show_diff: bool) -> int:
     deck = repo / "deck"
+    template = deck_template(deck) if (deck / "shell.html").is_file() else DEFAULT_TEMPLATE
+    if template not in templates():
+        print(f"shell.html: names template {template!r}, not in this plugin. Templates: {', '.join(templates())}")
+        return 1
+    sources = {p.name: p for p in rule_templates(template)}
     bad = 0
-    for name, status, cv in rule_status(repo, v):
+    for name, status, cv in rule_status(repo, v, template):
         hint = {"ok": "", "missing": " -> run deck-sync", "stale": f" (copy {cv}, plugin {v}) -> run deck-sync",
                 "edited": " (hand-edited at the current version) -> move deck lines to deck-local.md",
                 "unstamped": " (no stamp) -> run deck-sync --force after review",
@@ -191,19 +230,19 @@ def cmd_check(repo: Path, v: str, show_diff: bool) -> int:
         print(f"rules: {name} {status}{hint}")
         bad += status != "ok"
         if show_diff and status in ("edited", "stale", "unstamped"):
-            tpl = stamp((TEMPLATE_RULES / name).read_text(encoding="utf-8"), cv or v)
+            tpl = stamp(sources[name].read_text(encoding="utf-8"), cv or v)
             cur = (repo / ".claude" / "rules" / name).read_text(encoding="utf-8")
             sys.stdout.writelines(difflib.unified_diff(tpl.splitlines(True), cur.splitlines(True), f"template/{name}", f"copy/{name}"))
-    if deck.is_dir():
+    if (deck / "shell.html").is_file():
         drift = vendor_drift(deck)
         print(f"vendor: {'ok' if not drift else 'differs: ' + ', '.join(drift) + ' -> run deck-sync'}")
         bad += bool(drift)
     else:
-        print(f"vendor: no deck at {deck} -> run deck-new")
+        print(f"vendor: no {deck / 'shell.html'} -> run deck-new")
         bad += 1
     if (deck / "shell.html").is_file():
-        m = SHELL_STAMP_RE.search((deck / "shell.html").read_text(encoding="utf-8"))
-        print(f"shell.html: base {m[1] if m else 'unknown'}, {'same as' if not shell_diff(deck) else 'differs from'} template {v} (info only)")
+        base = shell_base((deck / "shell.html").read_text(encoding="utf-8"))
+        print(f"shell.html: base {' '.join(base) if base else 'unknown'}, {'same as' if not shell_diff(deck) else 'differs from'} template {template} {v} (info only)")
     prereq()
     return 1 if bad else 0
 
@@ -218,23 +257,67 @@ def selftest() -> None:
     import contextlib, io, tempfile
     with tempfile.TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()):
         repo = Path(d)
-        tpl = rule_templates()[0]
+        tpl = rule_templates(DEFAULT_TEMPLATE)[0]
         (repo / ".claude" / "rules").mkdir(parents=True)
         (repo / ".claude" / "rules" / tpl.name).write_text(tpl.read_text(encoding="utf-8"), encoding="utf-8")
-        assert dict((n, s) for n, s, _ in rule_status(repo, "9.9.9"))[tpl.name] == "bare"
-        assert write_rules(repo, "9.9.9", force=False) == 0
-        assert dict((n, s) for n, s, _ in rule_status(repo, "9.9.9"))[tpl.name] == "ok"
+        assert dict((n, s) for n, s, _ in rule_status(repo, "9.9.9", DEFAULT_TEMPLATE))[tpl.name] == "bare"
+        assert write_rules(repo, "9.9.9", False, DEFAULT_TEMPLATE) == 0
+        assert dict((n, s) for n, s, _ in rule_status(repo, "9.9.9", DEFAULT_TEMPLATE))[tpl.name] == "ok"
         write_hooks(repo)
         (repo / ".githooks" / "pre-commit").write_text("mine", encoding="utf-8")
         write_hooks(repo)
         assert (repo / ".githooks" / "pre-commit").read_text(encoding="utf-8") == "mine"
         assert (repo / ".githooks" / "deck").is_file()
+    # Template selection: the stamp names the template; a stamp without a name is an older monitor deck.
+    assert shell_base("<!DOCTYPE html>\n<!-- deck shell base 1.0.0 -->\n") == ("monitor", "1.0.0")
+    assert shell_base("<!DOCTYPE html>\n<!-- deck shell base ralphdev-light 1.4.0 -->\n") == ("ralphdev-light", "1.4.0")
+    assert shell_base("<!DOCTYPE html>\n<html>") is None
+    assert SHELL_STAMP_RE.sub("", "<!DOCTYPE html>\n<!-- deck shell base monitor 1.4.0 -->\n<html>") == "<!DOCTYPE html>\n<html>"
+    assert DEFAULT_TEMPLATE in templates()
+    assert "deck-design.md" in [p.name for p in rule_templates(DEFAULT_TEMPLATE)]
+    with tempfile.TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        repo = Path(d)
+        assert main(["kit.py", "new", d, "--template", "no-such-template"]) == 2
+        assert main(["kit.py", "new", d, "--template"]) == 2
+        (repo / "deck").mkdir()
+        assert main(["kit.py", "check", d]) == 1  # deck/ without shell.html is a failure, not a crash
+        (repo / "deck").rmdir()
+        assert not (repo / "deck").exists()
+        main(["kit.py", "new", d, f"--template={DEFAULT_TEMPLATE}"])
+        shell = (repo / "deck" / "shell.html").read_text(encoding="utf-8")
+        assert shell.splitlines()[1] == SHELL_STAMP.format(t=DEFAULT_TEMPLATE, v=version()), shell.splitlines()[1]
+        assert deck_template(repo / "deck") == DEFAULT_TEMPLATE
+        assert (repo / ".claude" / "rules" / "deck-design.md").is_file()
+        assert all(s == "ok" for _, s, _ in rule_status(repo, version(), DEFAULT_TEMPLATE))
+        # A deck scaffolded before templates existed: old stamp, no deck-design.md. sync adds the copy.
+        (repo / "deck" / "shell.html").write_text(shell.replace(SHELL_STAMP.format(t=DEFAULT_TEMPLATE, v=version()), "<!-- deck shell base 1.0.0 -->"), encoding="utf-8")
+        (repo / ".claude" / "rules" / "deck-design.md").unlink()
+        assert deck_template(repo / "deck") == DEFAULT_TEMPLATE
+        assert main(["kit.py", "sync", d]) == 0
+        assert (repo / ".claude" / "rules" / "deck-design.md").is_file()
+        assert not shell_diff(repo / "deck")
+        # A stamp naming a template this install lacks: refused before anything is written.
+        (repo / "deck" / "shell.html").write_text(shell.replace(SHELL_STAMP.format(t=DEFAULT_TEMPLATE, v=version()), "<!-- deck shell base gone 9.9.9 -->"), encoding="utf-8")
+        assert main(["kit.py", "sync", d]) == 1
+        assert main(["kit.py", "check", d]) == 1
     print("kit selftest OK")
 
 
 def main(argv: list) -> int:
-    args = [a for a in argv[1:] if not a.startswith("--")]
-    flags = {a for a in argv[1:] if a.startswith("--")}
+    rest, template = list(argv[1:]), DEFAULT_TEMPLATE
+    for i, a in enumerate(rest):
+        if a.startswith("--template="):
+            template = rest.pop(i).split("=", 1)[1]
+            break
+        if a == "--template":
+            if i + 1 == len(rest) or rest[i + 1].startswith("--"):
+                print(__doc__, file=sys.stderr)
+                return 2
+            template = rest[i + 1]
+            del rest[i:i + 2]
+            break
+    args = [a for a in rest if not a.startswith("--")]
+    flags = {a for a in rest if a.startswith("--")}
     if "--selftest" in flags:
         selftest()
         return 0
@@ -247,7 +330,7 @@ def main(argv: list) -> int:
     repo = Path(args[1] if len(args) > 1 else ".").resolve()
     v = version()
     if args[0] == "new":
-        return cmd_new(repo, v)
+        return cmd_new(repo, v, template)
     if args[0] == "sync":
         return cmd_sync(repo, v, "--force" in flags)
     return cmd_check(repo, v, "--diff" in flags)

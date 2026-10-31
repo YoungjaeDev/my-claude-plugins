@@ -7,7 +7,7 @@ description: "Scaffold a new lecture deck in the house format (deck/shell.html +
 
 ## Overview
 
-Creates `deck/` from the plugin template (neutral `shell.html`, a sample `sections/00-cover.html`, `outline.md`, `motions/basic.js`, fonts, `vendor/gsap.min.js`, brand assets, an empty `assets/logos/sources.json`, `deck/.gitignore`) and writes the three rule copies into `.claude/rules/`, each stamped with the plugin version, plus the tool launcher and commit hooks into `.githooks/` (an existing file there is never overwritten). The deck owns every copied file afterwards. Build, check, render and deploy tools stay in the plugin and are never copied.
+Creates `deck/` from a plugin deck template under `templates/decks/` (default `monitor`: neutral `shell.html`, a sample `sections/00-cover.html`, `outline.md`, `motions/basic.js`, fonts, `vendor/gsap.min.js`, brand assets, an empty `assets/logos/sources.json`, `deck/.gitignore`) and writes the rule copies into `.claude/rules/` (the shared `korean-style`, `deck-copy`, `deck-authoring` plus the template's `deck-design`), each stamped with the plugin version, plus the tool launcher and commit hooks into `.githooks/` (an existing file there is never overwritten). The deck owns every copied file afterwards. Build, check, render and deploy tools stay in the plugin and are never copied.
 
 ## When to use
 
@@ -38,10 +38,12 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
    fi
    [ -f "$PLUGIN_ROOT/scripts/kit.py" ] || { echo "deck plugin scripts not found; export PLUGIN_ROOT=<path to plugins/deck>"; exit 1; }
    PY=$(command -v python3 || command -v python)
-   "$PY" "$PLUGIN_ROOT/scripts/kit.py" new .
+   "$PY" "$PLUGIN_ROOT/scripts/kit.py" new .   # add --template <name> when the user picked one
    ```
 
-   Observable result: `deck: scaffolded <repo>/deck`, one `rules: <name> written (missing -> <version>)` line per rule, one `githooks: <file> written` (or `exists, left as is`) line each for `deck`, `pre-commit` and `commit-msg` in `.githooks/`, and a `frontend-slides:` line. On `[abort] ... already exists` stop and point the user to `deck-sync`.
+   Templates are the folders under `$PLUGIN_ROOT/templates/decks/`. Without `--template` the scaffold uses `monitor`; when more than one template exists and the user named none, ask which one first. An unknown name exits 2 and lists the templates.
+
+   Observable result: `deck: scaffolded <repo>/deck from templates/decks/<template>`, one `rules: <name> written (missing -> <version>)` line per rule, one `githooks: <file> written` (or `exists, left as is`) line each for `deck`, `pre-commit` and `commit-msg` in `.githooks/`, and a `frontend-slides:` line. On `[abort] ... already exists` stop and point the user to `deck-sync`.
 
    `.githooks/deck` is the deck's stable entry to the plugin tools (`sh .githooks/deck build`, `copy`, `outline`, `check`, `render`, `interaction`, `frames`, `dev`): it resolves the newest installed plugin on every run, so later skills use it instead of a cached plugin path.
 
@@ -60,7 +62,7 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 
 ## Verification
 
-- `deck/shell.html`, `deck/sections/00-cover.html`, `deck/outline.md` and `deck/vendor/gsap.min.js` exist, and the second line of `deck/shell.html` is `<!-- deck shell base <version> -->`.
+- `deck/shell.html`, `deck/sections/00-cover.html`, `deck/outline.md` and `deck/vendor/gsap.min.js` exist, and the second line of `deck/shell.html` is `<!-- deck shell base <template> <version> -->`.
 - `.githooks/deck`, `.githooks/pre-commit` and `.githooks/commit-msg` exist and are executable; `sh .githooks/deck root` prints the plugin root.
 - Every file in `.claude/rules/` written here contains `> deck 플러그인 <version> 사본.` right after its frontmatter.
 - Running `deck-check` on the fresh scaffold passes build, copy check and render.

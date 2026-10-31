@@ -53,8 +53,10 @@ node "$repo_root/scripts/check-skill-prose.mjs" || true
 # The plugin test suites run only when the commit stages files they can be broken by:
 # review-loop alone takes 11-15 minutes on Windows Git Bash, and a deck-only commit
 # waited for it every time. The AGENTS.md verify chain still runs all of them.
-staged=$(git diff --cached --name-only)
-touches() { printf '%s\n' "$staged" | grep -qE "$1"; }
+# --no-renames keeps a moved file's old path; quotePath=false keeps non-ASCII paths unquoted;
+# a here-string, not a pipe, so grep -q exiting early cannot SIGPIPE a pipefail failure.
+staged=$(git -c core.quotePath=false diff --cached --name-only --no-renames)
+touches() { grep -qE "$1" <<<"$staged"; }
 
 # review-loop's CLI-fallback and CR-state paths only execute after the primary path
 # fails, so nothing exercised them until they broke in production (issue #105).

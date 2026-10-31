@@ -11,10 +11,9 @@ OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr requir
 # default page size and no pagination knob — on long-lived PRs the in-progress
 # marker can be silently dropped past the cutoff. Use --paginate against the
 # REST endpoints and slurp via `jq -s 'add // []'` so nothing is missed.
-issue_comments=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" 2>/dev/null \
-  | jq -s 'add // []' || echo '[]')
-pr_reviews=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" 2>/dev/null \
-  | jq -s 'add // []' || echo '[]')
+# No `|| echo '[]'`: a failed fetch exits nonzero (pipefail) instead of reading as "0 in progress".
+issue_comments=$(gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/comments" | jq -s 'add // []')
+pr_reviews=$(gh api --paginate "repos/$OWNER/$REPO/pulls/$PR_NUM/reviews" | jq -s 'add // []')
 
 # Comments and reviews go through stdin, not --argjson: a long PR outgrows ARG_MAX.
 { printf '%s\n' "$issue_comments"; printf '%s\n' "$pr_reviews"; } \

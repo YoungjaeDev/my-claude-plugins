@@ -88,7 +88,7 @@ def banned_patterns(md: str, heading: str = TABLE_HEADING) -> list:
 
 
 def labels(raw: str) -> list:
-    """장 라벨: 내용 장표는 h2 바로 앞에 span.kind 하나, 실습·개념·사례 뒤는 16자 안팎 명사구."""
+    """장 라벨: 실습 장만 h2 바로 앞에 span.kind 하나("실습 · " 뒤 16자 안팎 명사구), 개념·사례 장은 라벨 없음."""
     tags = lambda t: re.sub(r"<[^>]+>", "", t).strip()
     out = []
     for m in re.finditer(r'<section\b([^>]*)>(.*?)</section>', raw, re.S):
@@ -100,12 +100,17 @@ def labels(raw: str) -> list:
             if n:
                 out.append(f"{sid}: 라벨을 두지 않는 장표")
             continue
+        if not n:
+            continue  # 개념·사례 장은 라벨을 두지 않는다
         k = re.search(r'<span class="kind">(.*?)</span>\s*<h2[^>]*>(.*?)</h2>', body, re.S)
         if n != 1 or not k:
-            out.append(f"{sid}: h2 바로 앞 span.kind 하나 필요")
+            out.append(f"{sid}: 라벨은 h2 바로 앞에 하나")
             continue
         label, h2 = tags(k[1]), tags(k[2])
-        tail = re.fullmatch(r"(?:실습|개념|사례) · (.+)", label)
+        if re.fullmatch(r"(?:개념|사례) · .+", label):
+            out.append(f"{sid}: 라벨은 실습 장에만 '{label}'")
+            continue
+        tail = re.fullmatch(r"실습 · (.+)", label)
         if label not in KINDS and not (tail and len(tail[1].replace(" ", "")) <= 16 and tail[1] != h2):
             out.append(f"{sid}: 라벨 형식 '{label}'")
     return out
@@ -174,13 +179,15 @@ def selftest() -> None:
     assert text_hits("셋이 남았다", banned) == ["고유어 수사:셋이"]
     assert text_hits("셋 다 본다", banned) == []
     assert text_hits("다나", banned) == ["둘 중 하나"]
-    ok = '<section class="slide" aria-label="S1-01 x"><span class="kind">개념 · 덱 제작 순서</span><h2>제목</h2></section>'
-    bad = '<section class="slide" aria-label="S1-02 x"><h2>제목</h2></section>'
-    cover = '<section class="slide cover" aria-label="00-01 x"><span class="kind">개념 · 표지</span><h1>t</h1></section>'
+    ok = '<section class="slide" aria-label="S1-01 x"><span class="kind">실습 · 덱 빌드하기</span><h2>제목</h2></section>'
+    bare = '<section class="slide" aria-label="S1-02 x"><h2>제목</h2></section>'
+    cover = '<section class="slide cover" aria-label="00-01 x"><span class="kind">실습 · 표지</span><h1>t</h1></section>'
     assert labels(ok) == []
-    assert labels(ok.replace("개념 · 덱 제작 순서", "사례 · 데이터센터 화재")) == []
-    assert labels(ok.replace("개념 · 덱 제작 순서", "사건 · 데이터센터 화재")) == ["S1-01: 라벨 형식 '사건 · 데이터센터 화재'"]
-    assert labels(bad) == ["S1-02: h2 바로 앞 span.kind 하나 필요"]
+    assert labels(bare) == []  # a concept or case slide carries no label
+    assert labels(ok.replace("실습 · 덱 빌드하기", "체크포인트")) == []
+    assert labels(ok.replace("실습 · 덱 빌드하기", "개념 · 덱 제작 순서")) == ["S1-01: 라벨은 실습 장에만 '개념 · 덱 제작 순서'"]
+    assert labels(ok.replace("실습 · 덱 빌드하기", "사건 · 데이터센터 화재")) == ["S1-01: 라벨 형식 '사건 · 데이터센터 화재'"]
+    assert labels(ok.replace('<h2>', '<p>x</p><h2>')) == ["S1-01: 라벨은 h2 바로 앞에 하나"]
     assert labels(cover) == ["00-01: 라벨을 두지 않는 장표"]
     assert check_file("f", '<p class="source">x</p><template><p class="source">y</p></template>', banned) == \
         ["f: 출처 줄 금지(deck-copy 사실만)"]

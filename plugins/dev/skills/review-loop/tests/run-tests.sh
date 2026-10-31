@@ -809,6 +809,9 @@ esac
 SH
 n=$(PATH="$SSHIM:$PATH" bash "$SCRIPTS/sniff-cr-inprogress.sh" o r 42 "2020-01-01T00:00:00Z" 2>/dev/null)
 is "sniff-cr-inprogress: comments past one argument -> counted" "$n" 1
+printf '#!/usr/bin/env bash\ncase "$*" in *"/reviews"*) echo "[]" ;; *) exit 1 ;; esac\n' > "$SSHIM/gh"
+PATH="$SSHIM:$PATH" bash "$SCRIPTS/sniff-cr-inprogress.sh" o r 42 "2020-01-01T00:00:00Z" >/dev/null 2>&1 && rc=0 || rc=$?
+is "sniff-cr-inprogress: comments fetch fails -> nonzero, not a count" "$([ "$rc" -ne 0 ] && echo nonzero)" nonzero
 rm -rf "$SSHIM"
 
 echo
@@ -1608,7 +1611,7 @@ rm -rf "$PSHIM"
 # /statuses empty on fetch #1 (→ sniff path), free-tier success on #2+. With
 # CR_SKIP_GRACE=0 the next loop's grace branch routes to rate_limited; the
 # pre-guard re-fetch emitted `success` outright. RED against that by construction.
-TMO4=""; command -v timeout >/dev/null 2>&1 && TMO4="timeout 10"
+TMO4=""; command -v timeout >/dev/null 2>&1 && TMO4="timeout 30"  # hang guard only; 10 s killed it under load
 FTSHIM=$(mktemp -d); FTCNT="$FTSHIM/n"; echo 0 > "$FTCNT"
 cat > "$FTSHIM/gh" <<SH
 #!/usr/bin/env bash

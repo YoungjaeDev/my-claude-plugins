@@ -41,7 +41,7 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
    "$PY" "$PLUGIN_ROOT/scripts/kit.py" new .   # add --template <name> when the user picked one
    ```
 
-   Templates are the folders under `$PLUGIN_ROOT/templates/decks/`. Without `--template` the scaffold uses `monitor`; when more than one template exists and the user named none, ask which one first. An unknown name exits 2 and lists the templates.
+   Templates are the folders under `$PLUGIN_ROOT/templates/decks/`: `monitor` (graphite canvas, RALPHDEV wordmark, Ralph character, IBM Plex Sans KR) and `ralphdev-light` (white canvas, coral accent, Gasoek One titles, NanumSquareRound body, 3D icons; it also gets the brand folder `deck/brand/`). Without `--template` the scaffold uses `monitor`; when more than one template exists and the user named none, ask which one first. An unknown name exits 2 and lists the templates.
 
    Observable result: `deck: scaffolded <repo>/deck from templates/decks/<template>`, one `rules: <name> written (missing -> <version>)` line per rule, one `githooks: <file> written` (or `exists, left as is`) line each for `deck`, `pre-commit` and `commit-msg` in `.githooks/`, and a `frontend-slides:` line. On `[abort] ... already exists` stop and point the user to `deck-sync`.
 

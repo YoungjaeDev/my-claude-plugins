@@ -126,6 +126,8 @@ async function preparePage(context, url, requestProblems) {
   });
   await page.goto(url, { waitUntil: "load" });
   await page.evaluate(async () => {
+    // A declared face no slide uses may never download; load each so only a real failure (status "error") reaches local-font-load.
+    await Promise.all([...document.fonts].map(face => face.load().catch(() => {})));
     await document.fonts.ready;
     // A broken image must not abort the run: the local-image-decode check reports it.
     await Promise.all([...document.images].map(image => image.decode().catch(() => {})));

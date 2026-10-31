@@ -131,7 +131,7 @@ git add -A \
 
 이 저장소는 PR 머지 전 자동 리뷰로 **CodeRabbit + ChatGPT-Codex** 를 사용한다. `/dev:review-loop` 스킬이 양쪽을 동시에 처리한다 (`plugins/dev/skills/review-loop/SKILL.md` + `references/` + `scripts/`). PR-bot rate-limit 시 `--cr-source auto` 가 로컬 `coderabbit` CLI 또는 Codex-only 로 silent fallback 한다.
 
-CodeRabbit inline 헤더는 `<카테고리> | <심각도> | <노력>` 세 필드다 (예: `🎯 Functional Correctness | 🟠 Major | ⚡ Quick win`). 굵게·기울임·무서식이 PR 마다 달라지므로 서식이 아니라 이모지 배지로 읽는다 (`scripts/cr-header.jq`). 첫 필드는 이슈 타입이 아니라 카테고리이므로 티어는 심각도 우선으로 정한다. 리뷰 본문의 "Outside diff range comments" 블록에만 있는 diff 밖 지적도 같은 레코드로 수집해 같은 판정을 거친다. Codex 는 GitHub 에서 주로 P1/P2 를 표면화하고, 파서는 P0-P3 을 모두 읽는다.
+CodeRabbit inline 헤더는 두 형식이다. 예전 형식은 `<카테고리> | <심각도> | <노력>` 세 필드이고 (예: `🎯 Functional Correctness | 🟠 Major | ⚡ Quick win`), 굵게·기울임·무서식이 PR 마다 달라지므로 서식이 아니라 이모지 배지로 읽는다. 2026-10 부터의 새 형식은 `<심각도> · <카테고리> · <노력>` 이고 배지가 `<img>` 아이콘이다 (예: `**<picture><img …amber-16.svg…></picture> Minor** · **Functional Correctness** · **Quick win**`). 태그를 걷어낸 첫 필드가 알려진 심각도 단어일 때만 헤더로 읽고, 아이콘 파일 이름은 보지 않는다. 두 형식 모두 `scripts/cr-header.jq` 가 같은 필드로 낸다. 첫 필드는 이슈 타입이 아니라 카테고리이므로 티어는 심각도 우선으로 정한다. 리뷰 본문의 "Outside diff range comments" 블록에만 있는 diff 밖 지적도 같은 레코드로 수집해 같은 판정을 거친다. Codex 는 GitHub 에서 주로 P1/P2 를 표면화하고, 파서는 P0-P3 을 모두 읽는다.
 
 finding 은 티어와 무관하게 사용자에게 묻지 않고 로컬 코드에 대어 자율 판정한다 (apply / defer / skip, 사유를 `auto_judge_log` 에 남긴다). defer 는 심각하면서(Critical/Major/Security/Codex P0·P1) 수정이 크거나 불분명한 것만이고, 후속 이슈로 간다. 나머지는 세션 안에서 apply 하거나 사유를 남기고 skip 한다. 새 플래그·엔트리포인트가 필요한 수정도 같은 기준으로 판정한다.
 

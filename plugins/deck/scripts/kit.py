@@ -198,6 +198,9 @@ def cmd_sync(repo: Path, v: str, force: bool) -> int:
         print(f"[abort] no deck at {deck}. Use deck-new first.", file=sys.stderr)
         return 1
     template = deck_template(deck)
+    if template not in templates():
+        print(f"[abort] deck/shell.html names template {template!r}, not in this plugin. Templates: {', '.join(templates())}", file=sys.stderr)
+        return 1
     print(f"template: {template}")
     blocked = write_rules(repo, v, force, template)
     write_hooks(repo)
@@ -214,6 +217,9 @@ def cmd_sync(repo: Path, v: str, force: bool) -> int:
 def cmd_check(repo: Path, v: str, show_diff: bool) -> int:
     deck = repo / "deck"
     template = deck_template(deck) if (deck / "shell.html").is_file() else DEFAULT_TEMPLATE
+    if template not in templates():
+        print(f"shell.html: names template {template!r}, not in this plugin. Templates: {', '.join(templates())}")
+        return 1
     sources = {p.name: p for p in rule_templates(template)}
     bad = 0
     for name, status, cv in rule_status(repo, v, template):
@@ -227,12 +233,12 @@ def cmd_check(repo: Path, v: str, show_diff: bool) -> int:
             tpl = stamp(sources[name].read_text(encoding="utf-8"), cv or v)
             cur = (repo / ".claude" / "rules" / name).read_text(encoding="utf-8")
             sys.stdout.writelines(difflib.unified_diff(tpl.splitlines(True), cur.splitlines(True), f"template/{name}", f"copy/{name}"))
-    if deck.is_dir():
+    if (deck / "shell.html").is_file():
         drift = vendor_drift(deck)
         print(f"vendor: {'ok' if not drift else 'differs: ' + ', '.join(drift) + ' -> run deck-sync'}")
         bad += bool(drift)
     else:
-        print(f"vendor: no deck at {deck} -> run deck-new")
+        print(f"vendor: no {deck / 'shell.html'} -> run deck-new")
         bad += 1
     if (deck / "shell.html").is_file():
         base = shell_base((deck / "shell.html").read_text(encoding="utf-8"))
@@ -272,6 +278,10 @@ def selftest() -> None:
     with tempfile.TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         repo = Path(d)
         assert main(["kit.py", "new", d, "--template", "no-such-template"]) == 2
+        assert main(["kit.py", "new", d, "--template"]) == 2
+        (repo / "deck").mkdir()
+        assert main(["kit.py", "check", d]) == 1  # deck/ without shell.html is a failure, not a crash
+        (repo / "deck").rmdir()
         assert not (repo / "deck").exists()
         main(["kit.py", "new", d, f"--template={DEFAULT_TEMPLATE}"])
         shell = (repo / "deck" / "shell.html").read_text(encoding="utf-8")
@@ -286,6 +296,10 @@ def selftest() -> None:
         assert main(["kit.py", "sync", d]) == 0
         assert (repo / ".claude" / "rules" / "deck-design.md").is_file()
         assert not shell_diff(repo / "deck")
+        # A stamp naming a template this install lacks: refused before anything is written.
+        (repo / "deck" / "shell.html").write_text(shell.replace(SHELL_STAMP.format(t=DEFAULT_TEMPLATE, v=version()), "<!-- deck shell base gone 9.9.9 -->"), encoding="utf-8")
+        assert main(["kit.py", "sync", d]) == 1
+        assert main(["kit.py", "check", d]) == 1
     print("kit selftest OK")
 
 
@@ -295,7 +309,10 @@ def main(argv: list) -> int:
         if a.startswith("--template="):
             template = rest.pop(i).split("=", 1)[1]
             break
-        if a == "--template" and i + 1 < len(rest):
+        if a == "--template":
+            if i + 1 == len(rest) or rest[i + 1].startswith("--"):
+                print(__doc__, file=sys.stderr)
+                return 2
             template = rest[i + 1]
             del rest[i:i + 2]
             break

@@ -62,8 +62,14 @@ class Texts(HTMLParser):
         if tag in VOID:
             return
         self.flush_piece()
-        if tag == "math" and self.buf is not None and not self.skipping():
-            self.buf[2] += a.get("alttext") or ""  # the outline carries the LaTeX, not the MathML text
+        if tag == "math" and not self.skipping():
+            alt = a.get("alttext") or ""  # the outline carries the LaTeX, not the MathML text
+            if self.buf is not None:
+                self.buf[2] += alt
+            elif self.piece is not None:
+                self.piece += alt
+            elif norm(alt):
+                self.found.append((self.slide, "math", norm(alt)))  # a standalone block equation
         skip = tag in SKIP_TAGS or tag == "math" or bool(classes & SKIP_CLASSES) or "data-outline-skip" in a
         box = "fbox" in classes
         self.stack.append((tag, skip, box))
@@ -139,6 +145,13 @@ def selftest() -> None:
             '<mi>t</mi></msub></math> 로 이어진다.</li></section>')
     found, total = misses([("m.html", math)], "| S9-03 | 은닉 상태는 h_t = \\tanh(x_t) 로 이어진다. |")
     assert found == [] and total == 1, (found, total)
+    box = ('<section class="slide" aria-label="S9-04 t"><div class="fbox"><strong>상태</strong>'
+           '<math alttext="x"><mi>x</mi></math></div>'
+           '<div class="equation"><math display="block" alttext="y = Wx"><mi>y</mi></math></div></section>')
+    found, total = misses([("m.html", box)], "| S9-04 | 상태 |")
+    assert [(k, t) for _, _, k, t in found] == [("fbox", "x"), ("math", "y = Wx")] and total == 3, (found, total)
+    found, _ = misses([("m.html", box)], "| S9-04 | 상태 x y = Wx |")
+    assert found == [], found
     # Unclosed tags and stray end tags must not raise.
     misses([("b.html", '<section class="slide" aria-label="X"><li>열림</div></p>')], "열림")
     # A section that is not UTF-8 exits 2 and names the file.

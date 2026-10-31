@@ -53,7 +53,10 @@ def stamp(text: str, v: str) -> str:
 
 
 def templates() -> list:
-    return sorted(p.name for p in TEMPLATE_DECKS.iterdir() if (p / "shell.html").is_file())
+    # Only names the stamp regex reads back, and shells new can stamp; anything else would sync as monitor.
+    return sorted(p.name for p in TEMPLATE_DECKS.iterdir()
+                  if re.fullmatch(r"[a-z][a-z0-9-]*", p.name) and (p / "shell.html").is_file()
+                  and (p / "shell.html").read_text(encoding="utf-8").startswith("<!DOCTYPE html>\n"))
 
 
 def shell_base(text: str):

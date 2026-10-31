@@ -317,7 +317,8 @@ fi
 ## Step 7: in-progress sniffer
 
 ```bash
-count=$(bash $SKILL_DIR/scripts/sniff-cr-inprogress.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME")
+count=$(bash $SKILL_DIR/scripts/sniff-cr-inprogress.sh "$OWNER" "$REPO" "$PR_NUM" "$PUSH_TIME") \
+  || { sleep "$INTERVAL"; continue; }  # fetch failed: unknown, not "none in progress"
 if [ "$count" -gt 0 ]; then sleep "$INTERVAL"; continue; fi  # counts toward iter budget
 ```
 

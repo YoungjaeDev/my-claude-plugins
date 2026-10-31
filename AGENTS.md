@@ -92,7 +92,7 @@ git add -A \
 - `git add -A` 가 먼저다: 가드는 git-tracked 파일만 스캔한다.
 - `bump-version.mjs --check` 는 `plugins/<name>/` 가 `origin/main` 대비 바뀌었는데 그 플러그인 버전이 `origin/main` 보다 크지 않으면 실패한다. 이 브랜치가 건드리지 않은 변경(앞서간 `origin/main`, 머지해 들인 base)은 세지 않는다. `origin/main` 이 없으면 실패하므로 먼저 `git fetch origin` 한다. review-loop 의 base 직행 push 도 base 쪽 pre-commit 으로 이 검사를 받는다.
 
-- `.githooks/pre-commit` 이 매 커밋마다 같은 가드를 돌린다. clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화한다.
+- `.githooks/pre-commit` 이 매 커밋마다 같은 가드를 돌린다. 플러그인 테스트 스위트(review-loop·post-merge, convene)만은 그 플러그인(`plugins/dev/`, `plugins/council/`)이나 훅 자체가 staged 일 때 돈다 (review-loop 하나가 Windows 에서 11-15분). clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화한다.
 - `check-shell-portability.mjs` 는 GNU 전용 셸 구문이 폴백도 capability probe 도 없이 쓰인 경우만 잡는다. 증거는 코드여야 하고 주석은 인정하지 않는다. 예외는 `# portability-ok: <사유>` 로 표시한다. 상세는 `README.md` 의 "CI 가드가 지키는 것".
 - CI(`validate-codex.yml`)는 릴리스 태그 `vX.Y.Z` push 와 수동 실행(`workflow_dispatch`)에서만 돈다. push·PR 마다 돌지 않으므로 평소 게이트는 pre-commit 훅이고, 훅은 Node 가 없으면 커밋을 거부한다. CI 는 릴리스를 막지 않는다: `/dev:release` 는 이 run 을 기다리지 않고 `gh release create` 를 하므로, 결과는 릴리스 뒤 Actions 탭에서 확인한다.
 - macOS CI 레그(`validate-codex.yml` 의 `macos` job)가 BSD 폴백이 CI 에서 실행되는 유일한 지점이다. `/bin/bash` 로 돌려 bash 3.2 를 강제한다. 릴리스 사이에는 Mac 에서 `/bin/bash plugins/dev/skills/review-loop/tests/run-tests.sh` 와 `/bin/bash plugins/dev/skills/post-merge/tests/run-tests.sh` 로 같은 확인을 한다.

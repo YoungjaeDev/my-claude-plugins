@@ -5,6 +5,7 @@
 # one installer per OS: the page lists every platform's installer and stays current.
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 if ! command -v coderabbit >/dev/null 2>&1; then
   jq -cn '{installed:false, authed:false, hint:"Install the CodeRabbit CLI for this platform per https://docs.coderabbit.ai/cli — then: coderabbit auth login"}'
   exit 1

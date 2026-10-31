@@ -15,6 +15,7 @@
 # never read as "none".
 set -uo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr required}"; HEAD_SHA="${4:?head sha required}"
 case "$HEAD_SHA" in *[!0-9a-f]*) echo "cr-head-verdict: HEAD_SHA is not a hex sha" >&2; exit 2 ;; esac
 

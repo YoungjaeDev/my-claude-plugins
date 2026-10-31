@@ -14,6 +14,7 @@ set -uo pipefail
 # (absolute paths in a linked worktree), these variables sent the fixtures' writes
 # into the calling repo: its index was replaced and its .git/config gained
 # core.bare=true and user.name=t.
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -1120,15 +1121,16 @@ is "reviews fetch failure -> exit 1"                    "$v_rc" 1
 # One wait formula for every caller: max(CODEX_GRACE, CODEX_PREFLIGHT_TIMEOUT - push_age).
 v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json)
 is "old push -> wait is CODEX_GRACE"                    "$(vf .wait_seconds)" 30
+# The floor allows for slow process start-up (Git Bash on Windows), as in the pre-flight checks.
 recent=$(jq -nr 'now - 100 | strftime("%Y-%m-%dT%H:%M:%SZ")')
 v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
 is "push 100s ago -> wait is timeout - age (~500)" \
-   "$(vf '.wait_seconds >= 495 and .wait_seconds <= 500')" true
+   "$(vf '.wait_seconds >= 470 and .wait_seconds <= 500')" true
 v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME= CODEX_PREFLIGHT_TIMEOUT=600)
 is "no push time -> age 0 -> full timeout"              "$(vf .wait_seconds)" 600
 v=$(verdict __FAIL__ __FAIL__ PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
 is "gh failure still reports the wait budget" \
-   "$(vf '.wait_seconds >= 495 and .wait_seconds <= 500')" true
+   "$(vf '.wait_seconds >= 470 and .wait_seconds <= 500')" true
 # The default budget sits above the slowest Codex turnaround ADR 0002 measured (726 s),
 # so a late but ordinary review is not dropped (ADR 0006).
 v=$(verdict issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME=)
@@ -1408,7 +1410,7 @@ hago() { jq -nr --argjson s "$1" 'now - $s | strftime("%Y-%m-%dT%H:%M:%SZ")'; }
 p6=$(hago 6)
 : > "$HW_LOG"
 w=$(hw "$HW/r-none.json" "$FIX/issue-comments-codex-summary-completed.json" CAP= TIMEOUT=10 PUSH_TIME="$p6")
-is "CR silent half its budget -> stuck at once, nudge decided" "$(hf .state):$(hf .cr_review_request):$(hf '.waited <= 1')" stuck:post:true
+is "CR silent half its budget -> stuck at once, nudge decided" "$(hf .state):$(hf .cr_review_request):$(hf '.waited <= 3')" stuck:post:true
 is "stuck reports the outer CR deadline (push + TIMEOUT)" \
    "$(hf .cr_deadline)" "$(jq -n --arg t "$p6" '$t | fromdateiso8601 + 10 | floor')"
 is "stuck: the script decides, it never posts" \
@@ -1428,9 +1430,11 @@ is "CR silent, cap already spent -> dropped without a nudge" \
 # A nudge check that cannot read the PR comments is not "already nudged": CodeRabbit
 # is not dropped, and HEAD is left without its verdict.
 HWS=$(mktemp -d); cp -R "$SCRIPTS/." "$HWS/"; printf '#!/usr/bin/env bash\nexit 1\n' > "$HWS/cr-review-posted.sh"
-w=$(run_capped 9 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-none.json" HW_COMMENTS="$FIX/issue-comments-codex-summary-completed.json" \
-      PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME="$(hago 8)" \
-      TIMEOUT=10 INTERVAL=1 bash "$HWS/head-verdicts.sh" 2>/dev/null); rc=$?
+# Past half the cap with 8 s left, so a slow process start (Git Bash on Windows) still reaches
+# the nudge check before the cap runs out.
+w=$(run_capped 15 env HW_LOG="$HW_LOG" HW_REVIEWS="$HW/r-none.json" HW_COMMENTS="$FIX/issue-comments-codex-summary-completed.json" \
+      PATH="$HW:$PATH" OWNER=o REPO=r PR_NUM=42 CUR_SHA="$CHEAD" PUSH_TIME="$(hago 12)" \
+      TIMEOUT=20 INTERVAL=1 bash "$HWS/head-verdicts.sh" 2>/dev/null); rc=$?
 is "nudge check unreadable -> CR not dropped, HEAD unjudged" \
    "$rc:$(hf .state):$(hf .cr):$(hf '.dropped | length')" 0:timeout:error:0
 rm -rf "$HWS"
@@ -1788,14 +1792,15 @@ waits=""
 for row in success pending ratelimited; do
   pf=$(pfv "$row" issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json \
          PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
-  waits="$waits $(pg .gate):$(pg '.codex_wait_seconds >= 495 and .codex_wait_seconds <= 500')"
+  # The floor allows for slow process start-up (Git Bash on Windows spends seconds per row).
+  waits="$waits $(pg .gate):$(pg '.codex_wait_seconds >= 470 and .codex_wait_seconds <= 500')"
 done
 is "pre-flight: every gate carries the same Codex wait budget" \
    "$waits" " codex_wait:true cr_wait:true rate_limited:true"
 pf=$(pfv success issue-comments-codex-summary-completed.json pr-reviews-codex-none.json \
        PUSH_TIME="$recent" CODEX_PREFLIGHT_TIMEOUT=600)
 is "pre-flight: proceed gate carries the same Codex wait budget" \
-   "$(pg '.gate + ":" + (.codex_wait_seconds >= 495 and .codex_wait_seconds <= 500 | tostring)')" "proceed:true"
+   "$(pg '.gate + ":" + (.codex_wait_seconds >= 470 and .codex_wait_seconds <= 500 | tostring)')" "proceed:true"
 # The default budget sits above the slowest Codex turnaround ADR 0002 measured (726 s).
 pf=$(pfv success issue-comments-codex-summary-running.json pr-reviews-codex-prior-only.json PUSH_TIME="$(jq -nr 'now | strftime("%Y-%m-%dT%H:%M:%SZ")')")
 is "pre-flight: default Codex budget is above the slowest turnaround" "$(pg '.codex_wait_seconds > 726')" true
@@ -2002,7 +2007,7 @@ for g in bypass cr_wait codex_wait; do
       || echo "warn: Codex HEAD verdict unavailable (gh error); the wait budget still applies" >&2
     grace_cap=$(jq -r ".wait_seconds // empty" <<<"$hv"); [ -n "$grace_cap" ] || grace_cap="$CODEX_GRACE"
     printf "%s" "$grace_cap"' 2>/dev/null) || gc_rc=$?
-  gcaps="$gcaps $g:$gc_rc:$([ "${gcap:-0}" -ge $((budget_default - 105)) ] && [ "${gcap:-0}" -le $((budget_default - 100)) ] && echo ok || echo "$gcap")"
+  gcaps="$gcaps $g:$gc_rc:$([ "${gcap:-0}" -ge $((budget_default - 130)) ] && [ "${gcap:-0}" -le $((budget_default - 100)) ] && echo ok || echo "$gcap")"
 done
 is "grace-cap: same budget on every gate, errexit-safe without \$pf" \
    "$gcaps" " bypass:0:ok cr_wait:0:ok codex_wait:0:ok"
@@ -2588,7 +2593,8 @@ is "home-relative rejected"          "$(pt '~/secrets')"            1
 # so a real regression fails the suite instead of being reported as skipped.
 if ln -s "$PT_OUT" "$PT_ROOT/link-dir" 2>/dev/null \
    && ln -s "$PT_OUT/secret.txt" "$PT_ROOT/link-file.md" 2>/dev/null \
-   && ln -s "sub/nested/deep.txt" "$PT_ROOT/link-inside.md" 2>/dev/null; then
+   && ln -s "sub/nested/deep.txt" "$PT_ROOT/link-inside.md" 2>/dev/null \
+   && [ -L "$PT_ROOT/link-dir" ] && [ -L "$PT_ROOT/link-file.md" ]; then  # Git Bash ln -s copies and still exits 0
   is "symlinked dir component escaping repo rejected"   "$(pt 'link-dir/x.md')"    1
   is "symlinked final component escaping repo rejected" "$(pt 'link-file.md')"     1
   is "symlink staying inside repo allowed"              "$(pt 'link-inside.md')"   0
@@ -3040,7 +3046,8 @@ ROOT=$(cd "$HERE/../../../../.." && pwd)
 SKILL_ROOT=$(cd "$HERE/.." && pwd)
 SCHEMA_STATES=$(jq -r '.properties.final_state.enum[]' "$SKILL_ROOT/assets/final-output.schema.json" | sort | tr '\n' ' ')
 enum_line() {
-  grep -F '`final_state` enum' "$1" | head -1 | sed -n 's/.*`final_state` enum\([^(.]*\).*/\1/p' \
+  # C locale: a UTF-8 sed on Git Bash mis-parses the emoji further along the same line.
+  grep -F '`final_state` enum' "$1" | head -1 | LC_ALL=C sed -n 's/.*`final_state` enum\([^(.]*\).*/\1/p' \
     | grep -oE '`[a-z_]+`' | tr -d '`' | sort -u | tr '\n' ' '
 }
 not_in_schema() {  # prints each stdin word the schema enum does not list

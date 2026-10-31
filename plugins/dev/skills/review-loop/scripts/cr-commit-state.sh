@@ -24,6 +24,7 @@
 # simulates a fetch failure (auth/network/rate-limit).
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 OWNER="${1:?owner required}"; REPO="${2:?repo required}"; SHA="${3:?sha required}"
 
 error_state() { printf '{"state":"error","description":"%s","target_url":"","created_at":"","channel":"%s"}\n' "$1" "$2"; }

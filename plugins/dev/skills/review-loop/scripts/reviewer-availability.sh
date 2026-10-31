@@ -22,6 +22,7 @@
 # may have come back since, cannot switch a reviewer off. Empty = no cut.
 set -uo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 OWNER="${1:?owner required}"; REPO="${2:?repo required}"; PR_NUM="${3:?pr required}"
 CR_SOURCE="${CR_SOURCE:-auto}"; NO_CODEX="${NO_CODEX:-false}"; SINCE="${SINCE:-}"
 

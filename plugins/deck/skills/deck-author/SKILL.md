@@ -19,6 +19,7 @@ fixed shell (`deck/shell.html`) plus section files plus motion files, built into
 
 - `.claude/rules/deck-copy.md`: what to write, labels, item count, banned wording.
 - `.claude/rules/deck-authoring.md`: procedure, design, motion, panel and deploy decisions.
+- `.claude/rules/deck-design.md`: the deck template's brand, palette and mascot rules (missing in an older deck: run `deck-sync`).
 - `.claude/rules/korean-style.md`: Korean sentence verdicts.
 - `deck/outline.md`: the header (deck thesis, sections, files, command source file) and the rows for
   the slides you touch.

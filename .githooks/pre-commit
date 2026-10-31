@@ -50,16 +50,25 @@ node "$repo_root/scripts/check-korean-copy.mjs"
 # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
 node "$repo_root/scripts/check-skill-prose.mjs" || true
 
+# The plugin test suites run only when the commit stages files they can be broken by:
+# review-loop alone takes 11-15 minutes on Windows Git Bash, and a deck-only commit
+# waited for it every time. The AGENTS.md verify chain still runs all of them.
+staged=$(git diff --cached --name-only)
+touches() { printf '%s\n' "$staged" | grep -qE "$1"; }
+
 # review-loop's CLI-fallback and CR-state paths only execute after the primary path
 # fails, so nothing exercised them until they broke in production (issue #105).
-# Fixture-driven, no network, sub-second.
-bash "$repo_root/plugins/dev/skills/review-loop/tests/run-tests.sh"
-
+# Fixture-driven, no network.
 # post-merge's worktree collector decides which worktrees are safe to delete.
 # Throwaway repo + gh shim, no network.
-bash "$repo_root/plugins/dev/skills/post-merge/tests/run-tests.sh"
+if touches '^(plugins/dev/|\.githooks/pre-commit$)'; then
+  bash "$repo_root/plugins/dev/skills/review-loop/tests/run-tests.sh"
+  bash "$repo_root/plugins/dev/skills/post-merge/tests/run-tests.sh"
+fi
 
 # convene has no bundled scripts — its runner contracts live as shell inside
 # SKILL.md, where nothing executes them. Dropping `< /dev/null` from the agy call
 # makes the seat block forever, and check-shell-portability does not cover it.
-bash "$repo_root/plugins/council/skills/convene/tests/run-tests.sh"
+if touches '^(plugins/council/|\.githooks/pre-commit$)'; then
+  bash "$repo_root/plugins/council/skills/convene/tests/run-tests.sh"
+fi

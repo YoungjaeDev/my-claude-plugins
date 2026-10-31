@@ -6,6 +6,7 @@
 # Uses --argjson because pull_request_review_id is a JSON number.
 set -euo pipefail
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 STATE="${1:?state file required}"
 RID="${2:?review id required}"
 KEY="${3:-codex_processed_reviews}"

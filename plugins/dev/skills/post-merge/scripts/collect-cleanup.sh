@@ -19,6 +19,7 @@
 # Needs: git, jq, gh (authenticated). Run after `git fetch origin` (post-merge Step 3).
 set -u
 
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 die() { echo "collect-cleanup: $*" >&2; exit 1; }
 command -v jq >/dev/null 2>&1 || die "jq not found"
 

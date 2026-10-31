@@ -21,6 +21,7 @@ set -euo pipefail
 # jq capture() yields NO OUTPUT on a non-match (it neither throws nor returns
 # null), so `capture(...).x // empty` collapses to empty and the var stays unset
 # -> normalized to null below. Rationale: docs/adr/0002-review-loop-waits-for-head-verdicts.md.
+jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
 parse_rate_limit_reply() {
   local body="$1" remaining reset
   remaining=$(jq -rn --arg b "$body" \

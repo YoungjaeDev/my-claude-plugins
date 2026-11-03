@@ -7,7 +7,8 @@
 //   data-from="x,y x,y ..." travels from those offsets (start, then each corner) to the authored spot; a travelling
 //   svg circle (packet dot, authored opacity="0") fades out at the end. A .swap hop hides its first child and shows
 //   its last. A .page.before hop (an earlier page over a .browser-win) fades out. An svg rect hop with data-width
-//   grows or shrinks from that width to its authored width. Any other hop fades in.
+//   grows or shrinks from that width to its authored width. A solid svg path hop draws itself from its first point
+//   (a dashed one, with a stroke-dasharray attribute, fades in like any other hop).
 window.DECK_MOTIONS = Object.assign(window.DECK_MOTIONS || {}, {
   loop(slide) {
     const q = name => slide.querySelectorAll(`[data-anim="${name}"]`);
@@ -57,6 +58,9 @@ window.DECK_MOTIONS = Object.assign(window.DECK_MOTIONS || {}, {
         tl.fromTo(el, { opacity: 1 }, { opacity: 0, duration: 0.6 }, "+=0.2");
       } else if (el.dataset.width) {
         tl.fromTo(el, { attr: { width: +el.dataset.width } }, { attr: { width: +el.getAttribute("width") }, duration: 2.5, ease: "none" });
+      } else if (el.tagName === "path" && !el.hasAttribute("stroke-dasharray")) {
+        const len = el.getTotalLength();
+        tl.fromTo(el, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 0.6, ease: "none" });
       } else {
         tl.from(el, { opacity: 0, y: 12 });
       }

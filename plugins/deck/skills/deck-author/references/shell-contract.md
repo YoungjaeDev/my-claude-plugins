@@ -91,12 +91,20 @@ Anything else repeated twice belongs in `shell.html` as a class.
 | Closing | no `data-section`, no `span.kind`; `h2 + .body > ul.points` or a `.statement` |
 
 Slide label: one `span.kind` immediately before `h2` on a practice slide ("실습 · …") or a checkpoint,
-misconception or prompt slide; concept and case slides take none. Wording is in deck-copy ("듣는 사람
-자리에서"). `deck-check` enforces both.
+misconception or prompt slide, or "강사 시연" on a slide the instructor shows and learners may repeat;
+concept and case slides take none. Wording is in deck-copy ("듣는 사람 자리에서"). `deck-check` enforces both,
+matching `<span class="kind">` literally, so the label takes no other attribute.
+
+Example tag: a slide whose result differs per learner (an example clone, a rehearsal run) shows a muted
+"예시" tag. With a label, put `ex` on the section (`<section class="slide ex" ...>`) and the shell draws the tag
+beside `.kind`; without one, put `<span class="tag">예시</span>` right before the `h2`. The tag is one word on
+the label line, not the banned chip row (`class="tags"`).
 
 Shared classes: `.lead` (one or two sentences under the title), `.body` (fills the remaining height; a
 paragraph-only body is centered vertically, a body whose only child is `ul.points`, `ol.steps` or
 `ol.checklist` sits right under the title with larger items), `.split` (`.even`, `.wide-text`), `code` (inline command or field),
+`.tname` (a table name over a `table.data` or inside an `.fbox`: `<p class="tname"><code>posts</code>게시물</p>`),
+`s` (an old value kept beside its replacement, e.g. the last child of a `.swap`: `<span><s>old</s> <span class="accent">new</span></span>`),
 `pre.code` (`span.k` highlight, `span.c` comment), `.accent` (the accent-colour text of deck-copy
 "표기는 하나로"), `.key` (the yellow emphasis of the same rule), `.mark` (see below), `.logos`,
 `.warn` (red text for a dangerous choice copied from a real menu or message, such as a "full access"
@@ -217,6 +225,8 @@ y 900 when the counts below hold. These counts are the per-layout exceptions to 
   carries an inline `width` equal to the viewBox width whenever it sits in a column narrower than 1680px
   (a `.split` side): otherwise the svg is scaled and centered and the paths drift off the boxes. Moving a box means
   recomputing its paths.
+- `svg.links` paints in DOM order with the positioned children. When a hop dot travels over a box or a
+  mockup (a `.phone` beside another), put the `svg.links` last in the `.boxflow`; first, it passes behind them.
 - More than 5 boxes: split the slide (deck-authoring). `.fbox.on` marks the box the slide is about.
   A shell-filled overview diagram (below) is exempt.
 - `.fbox.off` dims a box that is down in the end state; `.fbox.frame` drops the fill of a grouping box.
@@ -273,6 +283,8 @@ gh --version</pre>
 - `data-kind` is `prompt`, `qa` or `text`; `data-title` is the panel title.
 - Prompt and command panels open from a labelled button in the body flow. Two or more buttons on one
   slide go in `div.reveal-group`; loose buttons in a centered text body stack and cover the title.
+- A prompt sent as two separate messages stays one panel: the outline's source block separates the messages
+  with one blank line, and the panel holds one `pre.code` per message (each gets its own copy button).
 - Q&A uses `button.reveal-btn.qa` (`Q&amp;A`, small circle top-right) with an `aria-label`.
 - The shell gives every `pre.code` a copy button; the copied text is the original without `span.k`,
   `span.c` or button text. A `prompt` panel without `pre.code` copies its whole body from the title bar.

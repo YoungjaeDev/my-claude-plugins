@@ -80,6 +80,12 @@
     .slide a, .deck-panel-body a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
     code { font-family: var(--font); color: var(--accent); }
     .kind { align-self: flex-start; margin-bottom: 22px; padding: 4px 16px; border: 1.5px solid var(--accent); border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; color: var(--accent); }
+    /* Muted tag: span.tag right before the h2 of a slide without a label ("예시"), or section.ex to draw "예시" beside the
+       .kind label, on a slide whose result differs per learner. Not the banned chip row (class="tags"). */
+    .slide.ex > .kind { position: relative; }
+    .slide.ex > .kind::after, .tag { padding: 4px 14px; border: 1.5px solid var(--muted); border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .slide.ex > .kind::after { content: "예시"; position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%); }
+    .tag { align-self: flex-start; margin-bottom: 22px; }
 
     /* === LISTS === */
     ul.points { list-style: none; display: grid; gap: 20px; align-content: start; }
@@ -193,6 +199,11 @@
     table.data td { padding: 16px 18px; border-bottom: 1px solid var(--rule); vertical-align: top; }
     table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
     table.data tr.hl td { color: var(--accent); font-weight: 600; }
+    /* Table name tag above a table.data (or inside an .fbox): the table name as a code chip, then its gloss */
+    .tname { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; font-size: var(--t-xs); line-height: 1.3; color: var(--muted); }
+    .tname code { padding: 0 12px; line-height: 1.3; border: 1.5px solid var(--done); border-radius: 8px; font-family: var(--mono); font-weight: 600; color: var(--ink); }
+    .boxflow > .fbox .tname { justify-content: center; margin: 0; }
+    s { color: var(--muted); } /* the old value kept beside the new one after a .swap */
 
     /* === LOGOS === */
     .logos { display: flex; gap: 32px; align-items: center; }
@@ -234,7 +245,7 @@
     deck-bigbar { position: absolute; left: 120px; right: 120px; top: 800px; display: grid; grid-template-columns: repeat(var(--sections, 5), minmax(0, 1fr)); gap: 16px; }
     deck-bigbar div { display: grid; gap: 16px; align-content: start; }
     deck-bigbar i { display: block; height: 8px; background: var(--rule); }
-    deck-bigbar span { font-size: var(--t-2xs); line-height: 1.4; color: var(--muted); }
+    deck-bigbar span { font-size: var(--t-2xs); line-height: 1.4; color: var(--muted); white-space: nowrap; } /* a long name runs past its cell instead of leaving one syllable on a second line */
     deck-bigbar b { display: block; font-weight: 600; }
     deck-bigbar .done i { background: var(--done); }
     deck-bigbar .now i { background: var(--accent); }
@@ -425,7 +436,7 @@
     .body.stack { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; } /* tech-stack slide after the agenda: 3-6 cards */
     :is(.grid4, .stack) .card { display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 32px; align-content: start; padding: 36px 44px; background: var(--well); border: 1px solid var(--rule); border-radius: 12px; }
     :is(.grid4, .stack) .card:not(:has(> .icon)) { grid-template-columns: minmax(0, 1fr); }
-    :is(.grid4, .stack) .card > .icon { grid-row: span 2; width: 64px; height: 64px; color: var(--ink); }
+    :is(.grid4, .stack) .card > .icon { grid-row: span 3; /* name, category, one line */ width: 64px; height: 64px; color: var(--ink); }
     :is(.grid4, .stack) .card > .icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
     :is(.grid4, .stack) .card > .icon img { width: 100%; height: 100%; object-fit: contain; }
     :is(.grid4, .stack) .card > h3 { font-size: var(--t-m); }

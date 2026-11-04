@@ -43,6 +43,25 @@ read the originals in this plugin's `templates/rules/` and tell the user.
    The subagent skips the 금지 표기 table (`check_copy.py` covers it). Apply the fixes to the outline,
    then show the user. Each instructor correction adds one row (slide, before, after, rule hit) to the
    case table in `deck-local.md`, created on first use.
+   When the `humanize-korean` plugin is installed, run it after the content is settled, as a second
+   reviewer for what the regex checks miss (long chained clauses, stacked modifiers, vague verbs,
+   paired parallel clauses, transformation formulas):
+   - Input: only visible slide copy extracted from `deck/outline.md` (title, sub, lead, line under a
+     figure, list items, card text), one field per line, slides separated by a blank line. Panel prompts,
+     logos, buttons and mockup text stay out. A separate `map.json` ties each line to its slide ID and
+     field; never put IDs into the input text.
+   - Run strict (heavy) once for a whole-deck pass, fast (light) on a whole section after later edits.
+     Give `--run-dir` a scratch path so the repo stays clean.
+   - Priority when advice conflicts: facts and instructor instructions, then `deck-local.md`, then
+     `deck-copy.md` and its 금지 표기 table, then `korean-style.md`, then humanize-korean.
+   - Take: long clauses split (E-5), stacked modifiers (A-18), vague verbs (A-15), noun-clause subjects
+     (D-5), paired parallels (C-8), transformation formulas (D-7), parenthetical noise (J-4).
+   - Reject: lists turned into prose (C-2), long-sentence mixing (E-1, E-4), ending variety across list
+     items (E-2), removing a metaphor the outline fixes for the deck (D-14), title noun endings (A-13),
+     any change to product names, menu text, `==mark==` or ` / ` notation, and any line that no longer
+     fits one 1920px line.
+   - Show the instructor a per-slide take/reject table; apply only the chosen lines to the outline,
+     then to the sections, and re-run the copy and outline checks.
 3. **Write the section** per `references/shell-contract.md`, touching only the slides asked for.
 4. **Motion** only where deck-authoring "흐름은 움직임으로" allows it, registered as the contract's
    Motion section describes.

@@ -53,7 +53,7 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 
 5. Fill the deck identity. Ask for the deck title, the thesis sentence, the section list (id, name, goal) and the Vercel project name, then edit:
    - `deck/outline.md` header lines (`덱의 주장`, `섹션`, `Vercel 프로젝트`, `배포 주소`),
-   - `deck/shell.html`: `<title>`, the stage `aria-label`, and the `SECTIONS` array (keep `id`, `name`, `goal`, `logos`),
+   - `deck/shell.html`: `<title>`, the stage `aria-label`, and the `SECTIONS` array (keep `id`, `name`, `goal`; tool logos go on the tech-stack slide, not in `SECTIONS`),
    - `deck/sections/00-cover.html`: the cover `h1` and subtitle.
 
    Leave the sample S1-01 slide until real content replaces it.

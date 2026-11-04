@@ -36,7 +36,14 @@ function parseArgs(argv) {
   return { input: path.resolve(values.input), outputDir: path.resolve(values["output-dir"]), slide: values.slide, at, chrome: values.chrome || defaultChrome() };
 }
 
+const USAGE = "Usage: motion-frames.cjs --input deck.html --output-dir DIR --slide N|ID --at 0,800,end [--chrome PATH]";
+
 async function main() {
+  // --help or no arguments prints the usage instead of naming one missing flag at a time
+  if (process.argv.length <= 2 || process.argv.includes("--help")) {
+    console.log(USAGE);
+    return process.argv.includes("--help") ? 0 : 2;
+  }
   const args = parseArgs(process.argv.slice(2));
   if (!fs.existsSync(args.input)) throw new Error(`Input not found: ${args.input}`);
   fs.mkdirSync(args.outputDir, { recursive: true });

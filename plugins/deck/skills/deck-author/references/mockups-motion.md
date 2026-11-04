@@ -121,6 +121,8 @@ motion shows it from the first frame then hides it on its turn:
 | `data-anim="case"` | `p.flow-case` | shows last |
 
 What a hop does depends on the element: with `data-from` it travels; a `.swap` swaps old for new; a
-`.page.before` fades out; with `data-width` it resizes; anything else fades in. A `.cursor` with
+`.page.before` fades out; with `data-width` it resizes; a solid svg `path` (no `stroke-dasharray`
+attribute) draws itself from its first point, so author it from the source end; anything else fades in.
+Use either a drawn line or a travelling dot on one line, not both. A `.cursor` with
 `data-from` (authored `opacity="0"`) moves onto its button. `opacity="0"` is an SVG attribute, not inline
 `style`, so it is allowed on a `data-anim` element.

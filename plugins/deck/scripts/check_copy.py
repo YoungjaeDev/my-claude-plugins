@@ -28,7 +28,7 @@ COMMA_OK = {"보고", "광고", "창고", "참고", "최고", "재고", "경고"
 NATIVE = re.compile(r"(?<![가-힣])(셋|넷|다섯|여섯)(이|을|은|으로|에게|에|의|과|와|도|만|뿐|이다)?(?![가-힣])(?!\s*(?:다(?![가-힣])|번째))")
 SKIP = {"pre", "code", "template", "svg", "style", "script"}
 NO_LABEL = ("cover", "section-cover", "statement", "quote")  # 덱 표지·섹션 표지·핵심 주장·인용(닫는 장 포함)
-KINDS = {"체크포인트", "오해 바로잡기", "프롬프트"}
+KINDS = {"체크포인트", "오해 바로잡기", "프롬프트", "강사 시연"}
 MARKUP = ((r'<p class="source"', "출처 줄 금지(deck-copy 사실만)"),
           (r'class="tags"', "태그 칩 금지(deck-copy 문장으로)"))
 

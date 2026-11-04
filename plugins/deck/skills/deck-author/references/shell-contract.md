@@ -4,6 +4,10 @@ What a section file may contain and how `deck/shell.html` reads it. What to writ
 `.claude/rules/deck-copy.md`; design and procedure decisions are in `.claude/rules/deck-authoring.md`.
 This file owns markup only.
 
+A deck keeps its own `shell.html`: `deck-sync` only prints its diff against the template. A class this
+file names that the deck's shell lacks (`.ex`, `span.tag` and `.body.stack` came in 2.1.0) renders
+unstyled until its rules are ported from that diff, so check the deck's shell before using a new class.
+
 ## Contents
 
 - Section files and inline style
@@ -79,7 +83,7 @@ Anything else repeated twice belongs in `shell.html` as a class.
 |---|---|
 | Cover | `monitor`: `section.slide.cover > header.brandbar(img.monogram + img.wordmark) + h1 + p.subtitle + div.cover-ralph > img`. `ralphdev-light`: see below |
 | Agenda | `h2 + ol.agenda`. The shell adds one row per `SECTIONS` entry. Extra rows only: `li > span.no + h3`; a row before the sections is `li.pre`. Up to 5 rows stack in one column; 6–8 rows go to two columns of 4. Past 8 rows, or `li.pre` with 6 or more sections, the shell's agenda CSS has to change first |
-| Tech stack | right after the agenda, no `data-section`, no `span.kind`: `h2 + .body.stack > .card > span.icon > img + h3 + p` (3–6 cards, logo + name + one line). The only slide that lists tool logos |
+| Tech stack | right after the agenda, no `data-section`, no `span.kind`: `h2 + .body.stack > .card > span.icon(img) + h3 + p` (3–6 cards, logo + name + one line). The only slide that lists tool logos |
 | Section cover | `section.slide.section-cover[data-section] > h2 + p.lead`. No logos |
 | Concept | `h2 + .body > ul.points`, or `.flow > .flow-step(strong + text)`; `.split` puts a figure beside it |
 | Procedure | `h2 + .body > ol.steps > li`; a command goes in `pre.code` inside the `li` |
@@ -225,8 +229,9 @@ y 900 when the counts below hold. These counts are the per-layout exceptions to 
   carries an inline `width` equal to the viewBox width whenever it sits in a column narrower than 1680px
   (a `.split` side): otherwise the svg is scaled and centered and the paths drift off the boxes. Moving a box means
   recomputing its paths.
-- `svg.links` paints in DOM order with the positioned children. When a hop dot travels over a box or a
-  mockup (a `.phone` beside another), put the `svg.links` last in the `.boxflow`; first, it passes behind them.
+- `svg.links` (`z-index: 0`) always paints under `.fbox` (`z-index: 1`), so a hop dot passes behind a box.
+  Against a mockup with no `z-index` (a `.phone` beside another) it paints in DOM order: put the
+  `svg.links` last in the `.boxflow` when the dot travels over the mockup; first, it passes behind it.
 - More than 5 boxes: split the slide (deck-authoring). `.fbox.on` marks the box the slide is about.
   A shell-filled overview diagram (below) is exempt.
 - `.fbox.off` dims a box that is down in the end state; `.fbox.frame` drops the fill of a grouping box.

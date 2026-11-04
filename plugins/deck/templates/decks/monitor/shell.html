@@ -64,10 +64,14 @@
     .slide > h2 { font-size: var(--t-xl); line-height: 1.3; letter-spacing: -0.02em; max-width: 1680px; }
     h3 { font-size: var(--t-m); line-height: 1.3; letter-spacing: -0.01em; }
     p, li { font-size: var(--t-s); line-height: 1.5; }
-    .lead { margin-top: 18px; max-width: 1500px; font-size: var(--t-m); line-height: 1.5; color: var(--muted); }
+    .lead { margin-top: 18px; max-width: 1500px; font-size: var(--t-m); line-height: 1.5; color: var(--muted); text-wrap: balance; }
     .body { flex: 1; min-height: 0; margin-top: 44px; }
-    /* A text-only body is centered. :where keeps the specificity at 0,2,0 so .body.versus/.hero-num/.grid4 still win. */
+    /* A paragraph-only body is centered; a list body sits under the title (below). :where keeps the specificity at 0,2,0 so .body.versus/.hero-num/.grid4 still win. */
     .body:not(:where(.split, .compare)):not(:has(figure, svg, table, pre, .split, .flow, .compare, .convert, .loop, img, .browser-win, .phone)) { display: flex; flex-direction: column; justify-content: center; padding-bottom: 72px; }
+    /* A list-only body sits right under the title with larger text instead of floating mid-slide. */
+    .body:has(> :is(ul.points, ol.steps, ol.checklist):only-child) { justify-content: flex-start; padding-top: 8px; }
+    .body > :is(ul.points, ol.steps, ol.checklist):only-child { gap: 32px; }
+    .body > :is(ul.points, ol.steps, ol.checklist):only-child > li { font-size: var(--t-m); }
     .accent { color: var(--accent); }
     .key { color: var(--hl); font-weight: 600; }
     .warn { color: var(--warn); }
@@ -76,6 +80,12 @@
     .slide a, .deck-panel-body a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
     code { font-family: var(--font); color: var(--accent); }
     .kind { align-self: flex-start; margin-bottom: 22px; padding: 4px 16px; border: 1.5px solid var(--accent); border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; color: var(--accent); }
+    /* Muted tag: span.tag right before the h2 of a slide without a label ("예시"), or section.ex to draw "예시" beside the
+       .kind label, on a slide whose result differs per learner. Not the banned chip row (class="tags"). */
+    .slide.ex > .kind { position: relative; }
+    .slide.ex > .kind::after, .tag { padding: 4px 14px; border: 1.5px solid var(--muted); border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .slide.ex > .kind::after { content: "예시"; position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%); }
+    .tag { align-self: flex-start; margin-bottom: 22px; }
 
     /* === LISTS === */
     ul.points { list-style: none; display: grid; gap: 20px; align-content: start; }
@@ -88,8 +98,8 @@
     ol.steps > li > pre.code:first-child { margin-top: 0; }
     ol.steps > li:has(> pre.code:first-child)::before { top: 18px; }
     ol.checklist { list-style: none; counter-reset: check; display: grid; gap: 24px; align-content: start; }
-    ol.checklist > li { counter-increment: check; position: relative; padding-left: 72px; min-height: 50px; }
-    ol.checklist > li::before { content: counter(check); position: absolute; left: 0; top: 2px; width: 44px; height: 44px; border: 2px solid var(--accent); border-radius: 8px; display: grid; place-items: center; font-size: var(--t-2xs); font-weight: 600; color: var(--accent); }
+    ol.checklist > li { counter-increment: check; position: relative; padding-left: 88px; min-height: 60px; }
+    ol.checklist > li::before { content: counter(check); position: absolute; left: 0; top: 0; width: 56px; height: 56px; border: 2px solid var(--accent); border-radius: 10px; display: grid; place-items: center; font-size: var(--t-xs); font-weight: 600; color: var(--accent); }
 
     /* === LAYOUT === */
     .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 72px; align-items: start; }
@@ -111,7 +121,7 @@
 
     /* === CAPTURE === */
     /* The frame (border, well) sits on the img, so the box hugs the image instead of leaving well-colored gaps. */
-    figure.shot { position: relative; height: 100%; display: flex; align-items: flex-start; justify-content: flex-end; overflow: hidden; cursor: zoom-in; }
+    figure.shot { position: relative; height: 100%; display: flex; align-items: flex-start; justify-content: center; overflow: hidden; cursor: zoom-in; }
     figure.shot img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid var(--rule); border-radius: 12px; background: var(--well); }
     /* Small pixel-art cut (sprite cell) pinned bottom-right of a text-only slide; one per slide, see AUTHORING.md. */
     figure.cut { position: absolute; right: 120px; bottom: 120px; width: 180px; height: 180px; margin: 0; }
@@ -134,7 +144,7 @@
     figure.shot.brief ul.points { gap: 14px; }
     figure.shot.brief li { font-size: var(--t-xs); line-height: 1.45; }
     /* .shot-row: several captures side by side, each figure > img + figcaption; figure.off dims one. Inline max-height on the img shrinks the row. */
-    .shot-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 28px; align-items: start; }
+    .shot-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 28px; align-items: end; }
     .shot-row figure { display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; }
     .shot-row img { display: block; max-width: 100%; max-height: 560px; border: 1px solid var(--rule); border-radius: 12px; background: var(--well); }
     .shot-row figcaption { font-size: var(--t-xs); line-height: 1.4; color: var(--muted); text-align: center; }
@@ -189,6 +199,11 @@
     table.data td { padding: 16px 18px; border-bottom: 1px solid var(--rule); vertical-align: top; }
     table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
     table.data tr.hl td { color: var(--accent); font-weight: 600; }
+    /* Table name tag above a table.data (or inside an .fbox): the table name as a code chip, then its gloss */
+    .tname { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; font-size: var(--t-xs); line-height: 1.3; color: var(--muted); }
+    .tname code { padding: 0 12px; line-height: 1.3; border: 1.5px solid var(--done); border-radius: 8px; font-family: var(--mono); font-weight: 600; color: var(--ink); }
+    .boxflow > .fbox .tname { justify-content: center; margin: 0; }
+    s { color: var(--muted); } /* the old value kept beside the new one after a .swap */
 
     /* === LOGOS === */
     .logos { display: flex; gap: 32px; align-items: center; }
@@ -198,7 +213,6 @@
 
     /* === COVER === */
     .cover .brandbar { position: absolute; left: 120px; right: 120px; top: 72px; display: flex; align-items: center; gap: 22px; }
-    .cover .brandbar .logos { margin-left: auto; }
     .cover .monogram { width: 56px; height: 56px; }
     .cover .wordmark { height: 24px; }
     .cover h1 { position: absolute; left: 0; right: 0; top: 220px; text-align: center; font-size: var(--t-xxl); line-height: 1.25; letter-spacing: -0.03em; }
@@ -208,7 +222,7 @@
 
     /* === AGENDA === */
     ol.agenda { list-style: none; margin-top: 40px; }
-    ol.agenda li { display: grid; grid-template-columns: 120px 1fr auto; align-items: center; height: 108px; border-top: 1px solid var(--rule); }
+    ol.agenda li { display: grid; grid-template-columns: 120px 1fr; align-items: center; height: 108px; border-top: 1px solid var(--rule); }
     ol.agenda li:has(.goal) { height: 132px; }
     ol.agenda:has(> li.pre) li:has(.goal) { height: 112px; } /* a pre row plus five sections still ends above y 900 */
     ol.agenda:has(> li.pre) h3 { font-size: var(--t-m); }
@@ -218,14 +232,12 @@
     ol.agenda h3 { font-size: var(--t-l); line-height: 1.2; letter-spacing: -0.015em; }
     /* shortcut: six or more sections fill two columns of 4 rows, so up to 8 rows fit; past 8 or with an li.pre row, change repeat(4) and nth-child(4n) together */
     ol.agenda:has(> li:nth-child(6)) { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(4, auto); grid-auto-flow: column; column-gap: 64px; }
-    ol.agenda:has(> li:nth-child(6)) li { grid-template-columns: 80px 1fr auto; }
+    ol.agenda:has(> li:nth-child(6)) li { grid-template-columns: 80px 1fr; }
     ol.agenda:has(> li:nth-child(6)) li:nth-child(4n) { border-bottom: 1px solid var(--rule); }
 
     /* === SECTION COVER (deck-sechead / deck-bigbar injected) === */
     .section-cover > h2 { margin-top: 26px; max-width: 1500px; }
     .section-cover .lead { font-size: var(--t-s); }
-    .section-cover .logos { margin-top: 36px; }
-    .section-cover .logos img { width: 56px; height: 56px; }
     deck-sechead { display: block; margin-top: 60px; }
     deck-sechead .deck-sec-id { display: flex; gap: 26px; align-items: baseline; font-size: var(--t-l); font-weight: 600; color: var(--accent); }
     deck-sechead .deck-sec-id small { font-size: var(--t-s); font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -233,7 +245,7 @@
     deck-bigbar { position: absolute; left: 120px; right: 120px; top: 800px; display: grid; grid-template-columns: repeat(var(--sections, 5), minmax(0, 1fr)); gap: 16px; }
     deck-bigbar div { display: grid; gap: 16px; align-content: start; }
     deck-bigbar i { display: block; height: 8px; background: var(--rule); }
-    deck-bigbar span { font-size: var(--t-2xs); line-height: 1.4; color: var(--muted); }
+    deck-bigbar span { font-size: var(--t-2xs); line-height: 1.4; color: var(--muted); white-space: nowrap; } /* a long name runs past its cell instead of leaving one syllable on a second line */
     deck-bigbar b { display: block; font-weight: 600; }
     deck-bigbar .done i { background: var(--done); }
     deck-bigbar .now i { background: var(--accent); }
@@ -285,7 +297,7 @@
     .tr-win .msg.agent { color: var(--ink); }
     .tr-win .msg .who { display: block; font-size: var(--t-2xs); color: var(--muted); margin-bottom: 6px; }
     .boxflow { position: relative; display: flex; align-items: stretch; justify-content: space-between; gap: 64px; }
-    .boxflow > .fbox { position: relative; z-index: 1; flex: 1; padding: 24px 26px; background: var(--well); border: 1px solid var(--rule); border-radius: 8px; font-size: var(--t-xs); line-height: 1.45; }
+    .boxflow > .fbox { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 24px 26px; background: var(--well); border: 1px solid var(--rule); border-radius: 8px; font-size: var(--t-xs); line-height: 1.45; }
     .boxflow > .fbox.on { border-color: var(--accent); }
     .boxflow > .fbox strong { display: block; margin-bottom: 8px; font-size: var(--t-s); }
     .boxflow > .fbox .out { display: block; margin-top: 12px; font-size: var(--t-2xs); color: var(--muted); }
@@ -294,7 +306,8 @@
     .boxflow > svg.links path { fill: none; stroke: var(--done); stroke-width: 3; }
     .boxflow > svg.links text { font-family: var(--font); font-size: var(--t-2xs); fill: var(--muted); text-anchor: middle; }
     .boxflow > svg.links circle { fill: var(--accent); } /* a packet dot for the hops motion */
-    .boxflow > .fbox.frame { background: transparent; }
+    .boxflow > svg.links rect { fill: none; stroke: var(--accent); stroke-width: 4; } /* a highlight box (bbox) over a table or capture */
+    .boxflow > .fbox.frame { background: transparent; justify-content: flex-start; align-items: flex-start; text-align: left; } /* a grouping box keeps its name tag top-left */
     .boxflow > .fbox.off { opacity: 0.35; } /* a box that is down in the slide's end state */
     .boxflow > .fbox strong img { width: 34px; height: 34px; margin-right: 12px; vertical-align: -6px; }
     .boxflow > .fbox .logos { gap: 14px; margin-top: 12px; }
@@ -368,6 +381,7 @@
        .phone > .app-top + content (.app-avatars, .app-card, .app-profile, .app-btn, .app-grid) + .app-tabs.
        Default 320x540 fits under a title and a lead; inline width/height resize it; add role="img" and an aria-label. A deck adds its own app part as .app-<part>. */
     .phone { position: relative; flex: none; width: 320px; height: 540px; display: flex; flex-direction: column; padding-top: 18px; background: var(--code-bg); color: var(--ink); border: 10px solid var(--rule); border-radius: 48px; overflow: hidden; font-size: 19px; line-height: 1.4; }
+    .split > .phone { justify-self: center; align-self: start; } /* a phone beside text sits in the middle of its column */
     .phone svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; }
     .phone svg.on { color: var(--accent); fill: currentColor; } /* an icon in its pressed state (liked, saved) */
     .phone p { padding: 2px 16px; font-size: 19px; line-height: 1.4; }
@@ -399,14 +413,14 @@
     .slide.statement, .slide.quote { justify-content: center; }
     .slide.statement { align-items: center; text-align: center; }
     .slide.statement > h2 { max-width: 1560px; font-size: var(--t-xxl); line-height: 1.25; letter-spacing: -0.03em; text-wrap: balance; }
-    .slide.statement > .sub { margin-top: 40px; max-width: 1300px; font-size: var(--t-m); line-height: 1.5; color: var(--muted); }
+    .slide.statement > .sub { margin-top: 40px; max-width: 1300px; font-size: var(--t-m); line-height: 1.5; color: var(--muted); text-wrap: balance; }
     .slide.quote > blockquote { position: relative; max-width: 1500px; margin-left: 60px; }
     .slide.quote > blockquote p { font-size: var(--t-xl); line-height: 1.45; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }
     .slide.quote > blockquote p:first-child::before { content: "\201C"; position: absolute; left: -0.62em; color: var(--done); }
     .slide.quote > blockquote p:first-child::after { content: "\201D"; color: var(--done); }
     .slide.quote > blockquote p + p { margin-top: 24px; }
     .slide.quote > .cite { margin: 48px 0 0 60px; font-size: var(--t-s); color: var(--muted); }
-    .body.versus, .body.hero-num, .body.grid4 { display: grid; align-content: center; padding-bottom: 72px; }
+    .body.versus, .body.hero-num, .body.grid4, .body.stack { display: grid; align-content: center; padding-bottom: 72px; }
     /* The divider is a grid item (::before) in the middle column, so it is exactly as tall as the cards. */
     .body.versus { grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); gap: 56px; }
     .body.versus::before { content: ""; grid-column: 2; grid-row: 1; background: var(--rule); }
@@ -419,13 +433,14 @@
     .hero-num:has(> :nth-child(3)) strong { font-size: var(--t-xxl); }
     .hero-num p { margin-top: 20px; color: var(--muted); }
     .body.grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
-    .grid4 .card { display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 32px; align-content: start; padding: 36px 44px; background: var(--well); border: 1px solid var(--rule); border-radius: 12px; }
-    .grid4 .card:not(:has(> .icon)) { grid-template-columns: minmax(0, 1fr); }
-    .grid4 .card > .icon { grid-row: span 2; width: 64px; height: 64px; color: var(--ink); }
-    .grid4 .card > .icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-    .grid4 .card > .icon img { width: 100%; height: 100%; object-fit: contain; }
-    .grid4 .card > h3 { font-size: var(--t-m); }
-    .grid4 .card > p { margin-top: 8px; font-size: var(--t-xs); line-height: 1.45; color: var(--muted); }
+    .body.stack { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; } /* tech-stack slide after the agenda: 3-6 cards */
+    :is(.grid4, .stack) .card { display: grid; grid-template-columns: 64px minmax(0, 1fr); column-gap: 32px; align-content: start; padding: 36px 44px; background: var(--well); border: 1px solid var(--rule); border-radius: 12px; }
+    :is(.grid4, .stack) .card:not(:has(> .icon)) { grid-template-columns: minmax(0, 1fr); }
+    :is(.grid4, .stack) .card > .icon { grid-row: span 3; /* name, category, one line */ width: 64px; height: 64px; color: var(--ink); }
+    :is(.grid4, .stack) .card > .icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    :is(.grid4, .stack) .card > .icon img { width: 100%; height: 100%; object-fit: contain; }
+    :is(.grid4, .stack) .card > h3 { font-size: var(--t-m); }
+    :is(.grid4, .stack) .card > p { margin-top: 8px; font-size: var(--t-xs); line-height: 1.45; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -439,9 +454,9 @@
   <script>
     // The only definition of section names. data-section on a <section> refers to one of these ids; add as many as the deck has.
     const SECTIONS = [
-      { id: "S1", name: "섹션 1 이름", goal: "섹션 1에서 수강생이 하는 일", logos: [] },
-      { id: "S2", name: "섹션 2 이름", goal: "섹션 2에서 수강생이 하는 일", logos: [] },
-      { id: "S3", name: "섹션 3 이름", goal: "섹션 3에서 수강생이 하는 일", logos: [] },
+      { id: "S1", name: "섹션 1 이름", goal: "섹션 1에서 수강생이 하는 일" },
+      { id: "S2", name: "섹션 2 이름", goal: "섹션 2에서 수강생이 하는 일" },
+      { id: "S3", name: "섹션 3 이름", goal: "섹션 3에서 수강생이 하는 일" },
     ];
     document.documentElement.style.setProperty("--sections", SECTIONS.length);
 
@@ -461,7 +476,6 @@
     const state = (i, n) => (i + 1 < n ? "done" : i + 1 === n ? "now" : "");
     const progressCells = n => SECTIONS.map((s, i) =>
       `<div class="${state(i, n)}">${i + 1 === n ? `<span><b>${s.id}</b> ${s.name}&ensp;${n} / ${SECTIONS.length}</span>` : ""}<i></i></div>`).join("");
-    const logoImgs = s => s.logos.map(file => `<img src="assets/logos/${file}" alt="">`).join("");
 
     slides.forEach((slide, index) => {
       const n = SECTIONS.findIndex(s => s.id === slide.dataset.section) + 1;
@@ -471,7 +485,7 @@
         slide.insertAdjacentHTML("beforeend", `<deck-bigbar data-runtime>${SECTIONS.map((t, i) => `<div class="${state(i, n)}"><i></i><span><b>${t.id}</b>${t.name}</span></div>`).join("")}</deck-bigbar>`);
       }
       slide.querySelectorAll("ol.agenda").forEach(list => {
-        list.insertAdjacentHTML("afterbegin", SECTIONS.map(s => `<li data-runtime><span class="no">${s.id}</span><div><h3>${s.name}</h3>${s.goal ? `<span class="goal">${s.goal}</span>` : ""}</div><span class="logos">${logoImgs(s)}</span></li>`).join(""));
+        list.insertAdjacentHTML("afterbegin", SECTIONS.map(s => `<li data-runtime><span class="no">${s.id}</span><div><h3>${s.name}</h3>${s.goal ? `<span class="goal">${s.goal}</span>` : ""}</div></li>`).join(""));
         list.prepend(...list.querySelectorAll(":scope > li.pre")); // authored rows for slides before S1 stay on top
       });
       if (slide.classList.contains("cover")) return;

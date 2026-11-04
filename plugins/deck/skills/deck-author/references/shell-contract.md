@@ -4,6 +4,10 @@ What a section file may contain and how `deck/shell.html` reads it. What to writ
 `.claude/rules/deck-copy.md`; design and procedure decisions are in `.claude/rules/deck-authoring.md`.
 This file owns markup only.
 
+A deck keeps its own `shell.html`: `deck-sync` only prints its diff against the template. A class this
+file names that the deck's shell lacks (`.ex`, `span.tag` and `.body.stack` came in 2.1.0) renders
+unstyled until its rules are ported from that diff, so check the deck's shell before using a new class.
+
 ## Contents
 
 - Section files and inline style
@@ -77,9 +81,10 @@ Anything else repeated twice belongs in `shell.html` as a class.
 
 | Slide type | Structure |
 |---|---|
-| Cover | `monitor`: `section.slide.cover > header.brandbar(img.monogram + img.wordmark + .logos) + h1 + p.subtitle + div.cover-ralph > img`. `ralphdev-light`: see below |
+| Cover | `monitor`: `section.slide.cover > header.brandbar(img.monogram + img.wordmark) + h1 + p.subtitle + div.cover-ralph > img`. `ralphdev-light`: see below |
 | Agenda | `h2 + ol.agenda`. The shell adds one row per `SECTIONS` entry. Extra rows only: `li > span.no + h3`; a row before the sections is `li.pre`. Up to 5 rows stack in one column; 6–8 rows go to two columns of 4. Past 8 rows, or `li.pre` with 6 or more sections, the shell's agenda CSS has to change first |
-| Section cover | `section.slide.section-cover[data-section] > h2 + p.lead + .logos` |
+| Tech stack | right after the agenda, no `data-section`, no `span.kind`: `h2 + .body.stack > .card > span.icon(img) + h3 + p` (3–6 cards, logo + name + one line). The only slide that lists tool logos |
+| Section cover | `section.slide.section-cover[data-section] > h2 + p.lead`. No logos |
 | Concept | `h2 + .body > ul.points`, or `.flow > .flow-step(strong + text)`; `.split` puts a figure beside it |
 | Procedure | `h2 + .body > ol.steps > li`; a command goes in `pre.code` inside the `li` |
 | Capture | `.body.split > (ul.points, figure.shot > img)`. Text longer than the image: `.split.wide-text`. Wide capture: `figure.shot` (inline `height`) then `.notes > p + p`. Several captures side by side: `.shot-row > figure(.off) > img + figcaption`. Files and their `captures.md` log: deck-authoring "화면은 목업으로" |
@@ -90,11 +95,20 @@ Anything else repeated twice belongs in `shell.html` as a class.
 | Closing | no `data-section`, no `span.kind`; `h2 + .body > ul.points` or a `.statement` |
 
 Slide label: one `span.kind` immediately before `h2` on a practice slide ("실습 · …") or a checkpoint,
-misconception or prompt slide; concept and case slides take none. Wording is in deck-copy ("듣는 사람
-자리에서"). `deck-check` enforces both.
+misconception or prompt slide, or "강사 시연" on a slide the instructor shows and learners may repeat;
+concept and case slides take none. Wording is in deck-copy ("듣는 사람 자리에서"). `deck-check` enforces both,
+matching `<span class="kind">` literally, so the label takes no other attribute.
+
+Example tag: a slide whose result differs per learner (an example clone, a rehearsal run) shows a muted
+"예시" tag. With a label, put `ex` on the section (`<section class="slide ex" ...>`) and the shell draws the tag
+beside `.kind`; without one, put `<span class="tag">예시</span>` right before the `h2`. The tag is one word on
+the label line, not the banned chip row (`class="tags"`).
 
 Shared classes: `.lead` (one or two sentences under the title), `.body` (fills the remaining height; a
-text-only body is centered vertically), `.split` (`.even`, `.wide-text`), `code` (inline command or field),
+paragraph-only body is centered vertically, a body whose only child is `ul.points`, `ol.steps` or
+`ol.checklist` sits right under the title with larger items), `.split` (`.even`, `.wide-text`), `code` (inline command or field),
+`.tname` (a table name over a `table.data` or inside an `.fbox`: `<p class="tname"><code>posts</code>게시물</p>`),
+`s` (an old value kept beside its replacement, e.g. the last child of a `.swap`: `<span><s>old</s> <span class="accent">new</span></span>`),
 `pre.code` (`span.k` highlight, `span.c` comment), `.accent` (the accent-colour text of deck-copy
 "표기는 하나로"), `.key` (the yellow emphasis of the same rule), `.mark` (see below), `.logos`,
 `.warn` (red text for a dangerous choice copied from a real menu or message, such as a "full access"
@@ -135,13 +149,13 @@ Labels are plain coral text above the `h2`, never a pill.
 
 ## Message layouts
 
-`.statement` and `.quote` go on `section.slide`; `.versus`, `.hero-num`, `.grid4` go on `.body`. Layout is
+`.statement` and `.quote` go on `section.slide`; `.versus`, `.hero-num`, `.grid4` (and `.stack`, see the slide table) go on `.body`. Layout is
 on the containers only, so any child may carry `data-anim`. All five center vertically and end above
 y 900 when the counts below hold. These counts are the per-layout exceptions to the deck-copy 3–5 rule.
 
 | Layout | Use | Counts |
 |---|---|---|
-| `.statement` | one conclusion sentence, 98px, centered. `h2 + p.sub` (optional, one line). No `.body`, no `span.kind` | one per section at most; title within two lines; no `<br>` |
+| `.statement` | one conclusion sentence or an opening question, 98px, centered. `h2 + p.sub` (optional, one line). No `.body`, no `span.kind` | one per section at most; title within two lines; no `<br>`. When the balanced break splits a phrase, join its words with `&nbsp;` in the `h2` only (outline and aria-label keep plain spaces) and re-render |
 | `.versus` | two parties side by side. `.body.versus > .side > h3 + ul.points` | exactly 2 `.side`; 2–4 items per side; `.side.on` on one side or none |
 | `.hero-num` | a remembered word or a verified number. `.body.hero-num > div > strong + p` | 2–3 items; with 3, `strong` fits about 5 Hangul or 8 Latin characters |
 | `.quote` | a verified external quote. `blockquote > p` then sibling `p.cite > a` | within 3 lines; longer goes to a `data-kind="text"` panel |
@@ -203,10 +217,21 @@ y 900 when the counts below hold. These counts are the per-layout exceptions to 
 
 - Boxes are HTML (`.fbox`); lines are `path` elements in `svg.links`, which covers the whole `.boxflow`
   (`position:absolute; inset:0`). Arrowheads are short `path`s too, never a `→` glyph.
+- The shell centers box text horizontally and vertically; `.fbox.frame` keeps its name tag top-left.
+- Line convention: a request is a solid path with an arrowhead; a response is a dashed path
+  (`stroke-dasharray="8 8"`) with an arrowhead; a blocked request ends in an ✕ (two short crossing paths).
+  An arrow between tables points from the table that holds the number to the table whose id it names.
+- `svg.links rect` is a highlight box (no fill, accent stroke); `stroke-dasharray` makes it dashed and
+  `data-width` grows it in `hops`. A positioned child `div` may hold a `table.data` under such boxes.
 - A row of boxes flows by flex. For a free layout, set the outer `.boxflow` height and place each box
   in its own child `.boxflow` with inline `position:absolute;left;top;width;height`, in the same pixel
-  space as the `svg.links` `viewBox` (`viewBox="0 0 1680 350"` for a 1680×350 box). Moving a box means
+  space as the `svg.links` `viewBox` (`viewBox="0 0 1680 350"` for a 1680×350 box). The outer `.boxflow`
+  carries an inline `width` equal to the viewBox width whenever it sits in a column narrower than 1680px
+  (a `.split` side): otherwise the svg is scaled and centered and the paths drift off the boxes. Moving a box means
   recomputing its paths.
+- `svg.links` (`z-index: 0`) always paints under `.fbox` (`z-index: 1`), so a hop dot passes behind a box.
+  Against a mockup with no `z-index` (a `.phone` beside another) it paints in DOM order: put the
+  `svg.links` last in the `.boxflow` when the dot travels over the mockup; first, it passes behind it.
 - More than 5 boxes: split the slide (deck-authoring). `.fbox.on` marks the box the slide is about.
   A shell-filled overview diagram (below) is exempt.
 - `.fbox.off` dims a box that is down in the end state; `.fbox.frame` drops the fill of a grouping box.
@@ -263,6 +288,8 @@ gh --version</pre>
 - `data-kind` is `prompt`, `qa` or `text`; `data-title` is the panel title.
 - Prompt and command panels open from a labelled button in the body flow. Two or more buttons on one
   slide go in `div.reveal-group`; loose buttons in a centered text body stack and cover the title.
+- A prompt sent as two separate messages stays one panel: the outline's source block separates the messages
+  with one blank line, and the panel holds one `pre.code` per message (each gets its own copy button).
 - Q&A uses `button.reveal-btn.qa` (`Q&amp;A`, small circle top-right) with an `aria-label`.
 - The shell gives every `pre.code` a copy button; the copied text is the original without `span.k`,
   `span.c` or button text. A `prompt` panel without `pre.code` copies its whole body from the title bar.

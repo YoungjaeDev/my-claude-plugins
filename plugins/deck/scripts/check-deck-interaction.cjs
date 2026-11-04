@@ -257,7 +257,14 @@ async function scaleState(page) {
   });
 }
 
+const USAGE = "Usage: check-deck-interaction.cjs --input deck.html --output-dir DIR --expected-slides N [--chrome PATH]";
+
 async function main() {
+  // --help or no arguments prints the usage instead of naming one missing flag at a time
+  if (process.argv.length <= 2 || process.argv.includes("--help")) {
+    console.log(USAGE);
+    return process.argv.includes("--help") ? 0 : 2;
+  }
   const args = parseArgs(process.argv.slice(2));
   if (!fs.existsSync(args.input) || !fs.statSync(args.input).isFile() || path.extname(args.input).toLowerCase() !== ".html") throw new Error("--input must be an existing HTML file");
   if (!fs.existsSync(args.chrome)) throw new Error(`Chrome not found: ${args.chrome}`);

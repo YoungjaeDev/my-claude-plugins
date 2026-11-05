@@ -6,7 +6,7 @@ This file owns markup only.
 
 A deck keeps its own `shell.html`: `deck-sync` only prints its diff against the template. A class this
 file names that the deck's shell lacks (`.ex`, `span.tag` and `.body.stack` came in 2.1.0; `p.caution`,
-`.tag.suggest`, `.anno`, `.reveal-box`, `.cover.backdrop`, `--title-weight` and the `.shot-row` zoom came after 2.1.1) renders
+`.tag.suggest`, `.anno`, `.reveal-box`, `.cover.backdrop`, `--title-weight` and the `.shot-row` zoom came in 2.2.0) renders
 unstyled until its rules are ported from that diff, so check the deck's shell before using a new class.
 
 ## Contents

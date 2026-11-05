@@ -106,6 +106,9 @@ function closeEnough(actual, expected, tolerance = 1) {
   return Math.abs(actual - expected) <= tolerance;
 }
 
+// Two animation frames: enough for a slide change or a class toggle to reach layout.
+const frames = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
 async function preparePage(context, url, requestProblems) {
   await context.addInitScript(() => localStorage.clear());
   await context.route("**/*", async route => {
@@ -164,7 +167,7 @@ async function motionState(page, waitForEnd) {
   const reduced = await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
   if (index < 0) return { reduced, skipped: "no data-motion slide" };
   await page.evaluate(value => window.presentation.showSlide(value), index);
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await frames(page);
   const progressOnEntry = await page.evaluate(() => window.presentation.motionProgress());
   let reachedEnd = null;
   if (waitForEnd) {
@@ -246,10 +249,11 @@ async function motionStarts(page) {
   return results;
 }
 
-// P19: every capture opens full-slide on click, also from file:// (the deck is handed out as a file).
+// Every capture opens full-slide on click, also from file:// (the deck is handed out as a file).
 // Per slide, the first capture (figure.shot or a .shot-row figure, as check_assets requires) is clicked:
-// its figure must then cover most of the slide, and a second click must close it again.
+// its figure must then cover at least ZOOM_COVER of the slide, and a second click must close it again.
 const CAPTURE = "figure.shot:not(.brief):not(.pending) img, .shot-row figure img";
+const ZOOM_COVER = 0.8;
 
 async function zoomChecks(browser, input) {
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, reducedMotion: "reduce" });
@@ -261,7 +265,7 @@ async function zoomChecks(browser, input) {
   const results = [];
   for (const index of indexes) {
     await page.evaluate(value => window.presentation.showSlide(value), index);
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await frames(page);
     const measure = () => page.evaluate(({ value, selector }) => {
       const slide = document.querySelectorAll(".slide")[value];
       const image = slide.querySelector(selector);
@@ -274,15 +278,56 @@ async function zoomChecks(browser, input) {
     }, { value: index, selector: CAPTURE });
     const before = await measure();
     await page.mouse.click(...before.center);
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await frames(page);
     const zoomed = await measure();
     await page.mouse.click(...zoomed.center);
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await frames(page);
     const closed = await measure();
-    results.push({ index, id: before.id, src: before.src, before: before.cover, zoomed: zoomed.cover, closed: closed.cover, ok: zoomed.cover >= 0.8 && closed.cover < 0.8 });
+    results.push({ index, id: before.id, src: before.src, before: before.cover, zoomed: zoomed.cover, closed: closed.cover, ok: zoomed.cover >= ZOOM_COVER && closed.cover < ZOOM_COVER });
   }
   await context.close();
   return { results, errors };
+}
+
+// A .reveal-box (a demo prompt folded on the slide) arrives folded, opens on a click of its button with a
+// copy button on every pre.code, folds again after a slide change, and renders open under ?static=1 and in print.
+async function revealChecks(browser, page, baseUrl, lastIndex, requestProblems) {
+  const index = await page.evaluate(() => [...document.querySelectorAll(".slide")].findIndex(slide => slide.querySelector(".reveal-box")));
+  if (index < 0) return { skipped: "no reveal-box slide" };
+  const read = target => target.evaluate(value => {
+    const slide = document.querySelectorAll(".slide")[value];
+    const box = slide.querySelector(".reveal-box");
+    const body = box.querySelector(":scope > .reveal-body");
+    return {
+      id: (slide.getAttribute("aria-label") || "").split(" ")[0],
+      open: box.classList.contains("open"),
+      expanded: box.querySelector(":scope > button.reveal-btn")?.getAttribute("aria-expanded") ?? null,
+      shown: !!body && getComputedStyle(body).display !== "none",
+      code: body ? body.querySelectorAll("pre.code").length : 0,
+      copy: body ? body.querySelectorAll("pre.code > deck-copy button.deck-copy").length : 0,
+    };
+  }, index);
+  await page.evaluate(value => window.presentation.showSlide(value), index);
+  await frames(page);
+  const arrival = await read(page);
+  await page.locator(".slide.active .reveal-box > button.reveal-btn").first().click();
+  await frames(page);
+  const opened = await read(page);
+  await page.keyboard.press(index < lastIndex ? "ArrowRight" : "ArrowLeft");
+  await page.evaluate(value => window.presentation.showSlide(value), index);
+  await frames(page);
+  const revisit = await read(page);
+  const views = {};
+  for (const view of ["static", "print"]) {
+    const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, reducedMotion: "reduce" });
+    const other = await preparePage(context, view === "static" ? `${baseUrl}?static=1` : baseUrl, requestProblems);
+    if (view === "print") await other.emulateMedia({ media: "print" });
+    else await other.evaluate(value => window.presentation.showSlide(value), index);
+    await frames(other);
+    views[view] = await read(other);
+    await context.close();
+  }
+  return { index, arrival, opened, revisit, ...views };
 }
 
 async function scaleState(page) {
@@ -438,9 +483,24 @@ async function main() {
       checkState(afterClose, arrow === "ArrowRight" ? panelIndex + 1 : panelIndex - 1, "panel-arrow-after-close", failures);
     }
 
+    const reveal = observations.reveal = await revealChecks(browser, page, baseUrl, lastIndex, requestProblems);
+    if (!reveal.skipped) {
+      const folded = view => !view.open && view.expanded === "false" && !view.shown;
+      const where = `slide ${reveal.index + 1} ${reveal.arrival.id || "-"}`;
+      const expect = [
+        ["reveal-arrival", folded(reveal.arrival), "the reveal box is not folded on arrival (no open class, aria-expanded=\"false\", body hidden)"],
+        ["reveal-open", reveal.opened.open && reveal.opened.expanded === "true" && reveal.opened.shown, "a click on its button does not open the reveal box"],
+        ["reveal-copy", reveal.opened.code > 0 && reveal.opened.copy === reveal.opened.code, `${reveal.opened.copy} copy buttons for ${reveal.opened.code} pre.code in the open reveal box`],
+        ["reveal-refold", folded(reveal.revisit), "the reveal box is still open after leaving the slide and coming back"],
+        ["reveal-static", reveal.static.shown, "the reveal body is hidden under ?static=1 (the static render must show it open)"],
+        ["reveal-print", reveal.print.shown, "the reveal body is hidden in print (the PDF must show it open)"],
+      ];
+      for (const [check, ok, detail] of expect) if (!ok) failures.push({ check, detail: `${where}: ${detail}` });
+    }
+
     for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(viewport);
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await frames(page);
       const scale = await scaleState(page);
       const factor = Math.min(viewport.width / 1920, viewport.height / 1080);
       const expected = { width: 1920 * factor, height: 1080 * factor, left: (viewport.width - 1920 * factor) / 2, top: (viewport.height - 1080 * factor) / 2 };
@@ -505,7 +565,7 @@ async function main() {
 
     observations.zoom = await zoomChecks(browser, args.input);
     for (const result of observations.zoom.results) {
-      if (!result.ok) failures.push({ check: "capture-zoom", detail: `slide ${result.index + 1} ${result.id || "-"}: ${result.src} ${result.zoomed < 0.8 ? `covers ${Math.round(result.zoomed * 100)}% of the slide after a click on file:// (zoom needs 80%)` : "stays zoomed after a second click"}` });
+      if (!result.ok) failures.push({ check: "capture-zoom", detail: `slide ${result.index + 1} ${result.id || "-"}: ${result.src} ${result.zoomed < ZOOM_COVER ? `covers ${Math.round(result.zoomed * 100)}% of the slide after a click on file:// (zoom needs ${ZOOM_COVER * 100}%)` : "stays zoomed after a second click"}` });
     }
     for (const error of observations.zoom.errors) failures.push({ check: "capture-zoom", detail: `file:// pageerror ${error}` });
 
@@ -538,7 +598,7 @@ async function main() {
   };
   const reportPath = path.join(args.outputDir, "interaction-report.json");
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + "\n", "utf8");
-  console.log(JSON.stringify({ status: report.status, failures: failures.length, keyboardChecks: observations.keyboard.length, hashChecks: observations.hash.length, resizeChecks: observations.resize.length, motionSlides: (observations.motion.starts || []).length, zoomSlides: (observations.zoom?.results || []).length }));
+  console.log(JSON.stringify({ status: report.status, failures: failures.length, keyboardChecks: observations.keyboard.length, hashChecks: observations.hash.length, resizeChecks: observations.resize.length, motionSlides: (observations.motion.starts || []).length, zoomSlides: (observations.zoom?.results || []).length, revealSlide: observations.reveal?.skipped ? null : (observations.reveal?.index ?? -1) + 1 }));
   for (const failure of failures) console.log(`${failure.check}${failure.detail ? `: ${failure.detail}` : ""}`);
   return failures.length ? 1 : 0;
 }

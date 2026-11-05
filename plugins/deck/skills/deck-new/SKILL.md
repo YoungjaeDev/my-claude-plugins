@@ -47,7 +47,7 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 
    `.githooks/deck` is the deck's stable entry to the plugin tools (`sh .githooks/deck build`, `copy`, `outline`, `check`, `render`, `interaction`, `frames`, `dev`): it resolves the newest installed plugin on every run, so later skills use it instead of a cached plugin path.
 
-3. Commit hooks. `.githooks/pre-commit` runs build, the `index.html` staleness check, the copy check, the outline check and the rule-copy check on commits that touch `deck/` or `.claude/rules/`, and skips itself when no deck plugin is installed. `commit-msg` requires a blank line after the subject. Git ignores them until `core.hooksPath` points there, which changes the repo's git config: show the user the printed line `git config core.hooksPath .githooks` and run it only on a yes.
+3. Commit hooks. `.githooks/pre-commit` runs build, the `index.html` staleness check, the copy check, the outline check and the rule-copy check on commits that touch `deck/` or `.claude/rules/`, and skips itself when no deck plugin is installed. `commit-msg` requires a blank line after the subject. Git ignores them until `core.hooksPath` points there, which changes the repo's git config, so this step always asks and never ends without an answer: through the interaction gate ask "Enable the deck commit hooks now (`git config core.hooksPath .githooks`)?" and run the line only on a yes. Do not skip the question, fold it into the hand-off, or leave it to the user to notice the printed line: a deck whose hooks were never enabled ran no commit checks at all. On a no, tell the user the hooks stay off and that `deck-check` warns about it on every run. Observable result: `git config core.hooksPath` prints `.githooks`, or the user declined.
 
 4. Prerequisite check. The `frontend-slides:` line reports whether the frontend-slides plugin is installed. It is a warning only: the house deck builds without it. When it says `missing`, relay the printed install commands to the user and continue.
 
@@ -64,5 +64,6 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 
 - `deck/shell.html`, `deck/sections/00-cover.html`, `deck/outline.md` and `deck/vendor/gsap.min.js` exist, and the second line of `deck/shell.html` is `<!-- deck shell base <template> <version> -->`.
 - `.githooks/deck`, `.githooks/pre-commit` and `.githooks/commit-msg` exist and are executable; `sh .githooks/deck root` prints the plugin root.
+- The user answered the hooks question: `git config core.hooksPath` prints `.githooks`, or the hand-off says the hooks are off.
 - Every file in `.claude/rules/` written here contains `> deck 플러그인 <version> 사본.` right after its frontmatter.
 - Running `deck-check` on the fresh scaffold passes build, copy check and render.

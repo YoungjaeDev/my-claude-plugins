@@ -52,7 +52,7 @@ PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 만들기처럼 손이 �
 | `scout` | GitHub·Hugging Face·웹·공식 문서를 병렬로 찾아 보고서 1개로 합침 | `/scout:research-orchestrator` |
 | `ml` | ML·CV 작업 규율, Gradio 데모, 노트북 작성과 편집 | `/ml:cv-notebook` |
 | `wiki` | 저장소 밖의 지식(플랫폼·벤더·고객·도메인)을 출처가 달린 wiki 로 관리 | `/wiki:ingest` |
-| `deck` | house 형식 HTML 강의 덱 조립·검사·배포 | `/deck:deck-ask` |
+| `deck` | house 형식 HTML 강의·보고 덱 조립·검사·배포 | `/deck:deck-ask` |
 | `council` | GPT·Gemini·Claude 좌석 3개의 교차 심의 (Claude 전용) | `/council:convene` |
 | `codex-image` | OpenAI API key 없이 Codex 로 이미지 생성 (Claude 전용) | `/codex-image:codex-image` |
 | `aside` | 로그인된 Aside 브라우저로 웹 작업을 맡기고 로그인 뒤 같은 세션에서 이어 감 (Claude 전용) | `/aside:aside` |
@@ -199,7 +199,7 @@ Playwright 가 없으면 graceful degrade 한다. Codex 에서는 역할 계약(
 </details>
 
 <details>
-<summary><strong>deck</strong> - house 형식 HTML 강의 덱</summary>
+<summary><strong>deck</strong> - house 형식 HTML 강의·보고 덱</summary>
 
 `deck/shell.html` 과 `deck/sections/*.html` 을 GSAP 모션과 함께 1920×1080 덱으로 조립한다. 규칙 원본과 도구는 플러그인에 있다. 덱 저장소에는 버전 도장이 찍힌 규칙 사본(`.claude/rules/`)과 덱 내용만 남는다.
 
@@ -436,7 +436,7 @@ git config core.hooksPath .githooks   # clone 당 1회
 │   ├── scout/                # 리서치 orchestrator + DeepWiki
 │   ├── ml/                   # ML / CV 개발
 │   ├── wiki/                 # 바깥 지식 wiki (ingest / query / lint / plaud)
-│   ├── deck/                 # house 형식 HTML 강의 덱 (규칙 원본 + 도구 + 템플릿)
+│   ├── deck/                 # house 형식 HTML 강의·보고 덱 (규칙 원본 + 도구 + 템플릿)
 │   ├── council/              # 이종 벤더 3인 심의 (Claude 전용)
 │   ├── codex-image/          # Codex 로 이미지 생성 (Claude 전용)
 │   └── aside/                # Aside 브라우저 작업 위임 (Claude 전용)

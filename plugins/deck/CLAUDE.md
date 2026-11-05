@@ -1,6 +1,6 @@
 # deck
 
-House-format HTML lecture decks: `deck/shell.html` + `deck/sections/*.html` assembled into
+House-format HTML decks, lecture and report: `deck/shell.html` + `deck/sections/*.html` assembled into
 `deck/index.html`, 1920x1080 stage, GSAP motions, self-hosted IBM Plex Sans KR, RALPHDEV brand.
 This plugin holds the one canonical copy of the deck rules, the tools, and the scaffold template.
 Generic presentations and PPTX conversion stay with `frontend-slides`.
@@ -29,13 +29,13 @@ In a deck repo every tool is also `sh .githooks/deck <build|copy|outline|assets|
 | Script | Does |
 |---|---|
 | `build.py [DECK]` | splice sections and motion script tags into the shell, write `index.html`, print `slides: N` |
-| `dev.py [DECK] [--port N]` | 127.0.0.1 dev server, rebuild per request, `E` edit mode, Cmd/Ctrl+S writes the section back |
-| `check_copy.py [DECK] [--rules F] [--selftest]` | banned patterns from the `### 금지 표기` table of `deck-copy.md` and the optional `### 덱 금지 표기` table of `deck-local.md`, plus comma-after-connective, native counting words, `p.source`/tag chips, slide labels; `alt` and `aria-label` text is checked against the banned patterns only |
-| `check_assets.py [DECK] [--staged] [--selftest]` | refuses raw OS screenshot names and archives anywhere in the commit, an image in a folder with a `captures.md` but no row for it, and a missing `assets/` path referenced by sections, shell or motions; warns on images nothing references. `--staged` reads the git index |
-| `check_outline.py [DECK] [--outline F] [--selftest]` | every h2, `p.lead`, `li` and `.fbox` text piece of the sections appears verbatim in `outline.md`; exit 2 on an unreadable deck or outline |
+| `dev.py [DECK] [--port N] [--selftest]` | 127.0.0.1 dev server, rebuild per request, `E` edit mode, Cmd/Ctrl+S writes the section back with runtime state stripped (slide state, `zoomed`, an open `.reveal-box` saved folded) |
+| `check_copy.py [DECK] [--rules F] [--selftest]` | banned patterns from the `### 금지 표기` table of `deck-copy.md`, the `### 보고 덱 금지 표기` table of `deck-report.md` (report decks only) and the optional `### 덱 금지 표기` table of `deck-local.md`, plus comma-after-connective, native counting words, `p.source`/tag chips, slide labels; per slide a `figcaption` over 50 characters and more than 6 `.mark`; in a report deck the first person (내 / 나 / 저 and their particle forms; 내 only at the start of a phrase, so 기간 내 passes); `alt` and `aria-label` text is checked against the banned patterns only. The deck kind comes from `kit.deck_kind`, the one parser both tools share |
+| `check_assets.py [DECK] [--staged] [--selftest]` | refuses raw OS screenshot names and archives anywhere in the commit, an image in a folder with a `captures.md` but no row for it, and a missing `assets/` path referenced by sections, shell or motions, and a capture (an image under a `captures.md`) outside `figure.shot` or a `.shot-row` figure, which cannot zoom; warns on images nothing references. `--staged` reads the git index |
+| `check_outline.py [DECK] [--outline F] [--selftest]` | every h2, `p.lead`, `li` and `.fbox` text piece of the sections appears verbatim in `outline.md` (` / ` is the outline's line break); warns on a flow, order, structure or screen slide whose outline row has neither a mockup nor a motion; exit 2 on an unreadable deck or outline |
 | `kit.py new\|sync\|check\|prereq [REPO] [--template NAME]` | scaffold (`--template`, default `monitor`), rule copies + vendor and brand refresh, missing `.githooks/` files, drift report, frontend-slides detection; `sync` and `check` take the template from the shell stamp |
 | `render-deck.cjs [--slides 12,S3-04] [--quick]` | `previews/slide-<NN>-<ID>.png` + `sheet-<N>.png` contact sheets + PDF; overflow / clip / bounds / footer / font-fallback checks at four viewports, one grouped line per problem; `--slides` (numbers or ids) skips the PDF, `--quick` runs 1920x1080 only |
-| `check-deck-interaction.cjs` | keyboard, hash, history, input focus, panel, resize, motion checks; `motion-early` for an element visible before its turn |
+| `check-deck-interaction.cjs` | keyboard, hash, history, input focus, panel, resize, motion checks; `motion-early` for an element visible before its turn; `capture-zoom` clicks the first capture of each slide from `file://` and expects it to cover 80% of the slide; `reveal-*` (only with a `.reveal-box`): folded on arrival, opens on click, a copy button per `pre.code`, folded again after a slide change, open under `?static=1` and in print |
 | `motion-frames.cjs --slide N\|ID --at 0,800,end` | PNGs of one slide's motion at seeked times |
 | `deploy.sh [DECK] [PROJECT]` | stage a self-contained folder with noindex, `vercel deploy --prod`, keep the full log and print `log:` and `url:`, then compare the served slide count with the built one (`slides: built N, served N`, mismatch exits 1); `DECK_STAGE_ONLY=1` stops before deploying, `DECK_CREATE_PROJECT=1` adds `--create-if-missing` (only after the user agrees) |
 

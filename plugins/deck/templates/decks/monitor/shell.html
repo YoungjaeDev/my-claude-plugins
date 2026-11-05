@@ -77,9 +77,9 @@
     .accent { color: var(--accent); }
     .key { color: var(--hl); font-weight: 600; }
     .warn { color: var(--warn); }
-    /* .mark: highlighter band under one phrase on a text-heavy slide; text colour stays, so it never reads as a link */
+    /* .mark: highlighter band under a phrase the audience must read, up to six per slide (deck-copy); text colour stays, so it never reads as a link */
     .mark { background: linear-gradient(transparent 62%, rgba(245, 200, 66, 0.34) 62%); -webkit-box-decoration-break: clone; box-decoration-break: clone; padding: 0 2px; }
-    /* p.caution: a warning line under the body, starting with "※ " in the text and holding one .mark */
+    /* p.caution: a warning line under the body, starting with "※ " in the text; its .mark comes before any other on the slide */
     .caution { margin-top: 32px; }
     .slide a, .deck-panel-body a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
     code { font-family: var(--font); color: var(--accent); }

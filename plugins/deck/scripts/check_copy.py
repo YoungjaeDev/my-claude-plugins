@@ -10,9 +10,13 @@ literal pipe inside a regex as \\|. A deck adds its own bans in the same table f
 heading "### 덱 금지 표기" in <repo>/.claude/rules/deck-local.md (the deck's file, which deck-sync
 never touches); the file and the heading are optional. The other checks (comma after a connective
 ending, native counting words, p.source / tag chips, slide labels) are shell-contract checks and
-live here. Text inside <pre>, <code>, <template>, <svg>, <style>, <script> is skipped. alt and
+live here, and so do the per-slide limits: a figcaption longer than CAPTION_MAX (50) characters
+(a capture caption is one line; its conditions go in captures.md) and more than MARK_MAX (6)
+highlighter marks (.mark) on one slide, whatever the slide holds. Text inside <pre>, <code>, <template>, <svg>, <style>, <script> is skipped. alt and
 aria-label text is read aloud by screen readers, so it is checked against the banned patterns only,
-not the sentence checks.
+not the sentence checks. A report deck (the line "- deck_kind: report" in the header of DECK_DIR/outline.md, above its first ## heading; absent
+means a lecture) also bans the first person 내 / 나 / 저 (standalone, or 내가 나는 저는 제가 저희 and
+the like) in slide text: the PDF is read later without the presenter.
 """
 import argparse
 import html.parser
@@ -26,8 +30,13 @@ TABLE_COLUMNS = ("쓰지 않는다", "대신", "검사식")
 COMMA = re.compile(r"([가-힣]*(?:고|며|지만|면서|어서|아서|해서)),")
 COMMA_OK = {"보고", "광고", "창고", "참고", "최고", "재고", "경고", "원고", "사고"}
 NATIVE = re.compile(r"(?<![가-힣])(셋|넷|다섯|여섯)(이|을|은|으로|에게|에|의|과|와|도|만|뿐|이다)?(?![가-힣])(?!\s*(?:다(?![가-힣])|번째))")
+# 보고 덱(outline 머리 "- deck_kind: report")의 1인칭. 단독 어절과 흔한 조사 꼴만 본다(내용·저장·나중은 아니다).
+FIRST = re.compile(r"(?<![가-힣])(내가|내|나는|나도|나의|나를|나|저는|저도|저의|저를|저희|저|제가)(?![가-힣])")
+KIND = re.compile(r"^-\s*deck_kind:\s*(\S+)\s*$", re.M)
 SKIP = {"pre", "code", "template", "svg", "style", "script"}
 NO_LABEL = ("cover", "section-cover", "statement", "quote")  # 덱 표지·섹션 표지·핵심 주장·인용(닫는 장 포함)
+CAPTION_MAX = 50  # 1920 장의 캡처 캡션(--t-xs) 한 줄 분량. 8ground 덱 R2 뒤 가장 긴 한 줄 캡션이 46자였다
+MARK_MAX = 6  # 형광펜(.mark)은 청중이 집중할 곳에 장당 최대 6개. 목록 개수 조건은 없다(P9 P20)
 KINDS = {"체크포인트", "오해 바로잡기", "프롬프트", "강사 시연"}
 MARKUP = ((r'<p class="source"', "출처 줄 금지(deck-copy 사실만)"),
           (r'class="tags"', "태그 칩 금지(deck-copy 문장으로)"))
@@ -116,6 +125,21 @@ def labels(raw: str) -> list:
     return out
 
 
+def slide_parts(raw: str) -> list:
+    """Per-slide markup rules: caption length (P13), highlighter count (P9 P20)."""
+    plain = lambda t: re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", t))).strip()
+    out = []
+    for m in re.finditer(r'<section\b([^>]*)>(.*?)</section>', raw, re.S):
+        sid = (re.search(r'aria-label="(\S+)', m[1]) or [None, "?"])[1]
+        for cap in re.findall(r"<figcaption\b[^>]*>(.*?)</figcaption>", m[2], re.S):
+            if len(plain(cap)) > CAPTION_MAX:
+                out.append(f"{sid}: 캡션 {len(plain(cap))}자(최대 {CAPTION_MAX}자, 한 줄): {plain(cap)}")
+        marks = len(re.findall(r'class="(?:[^"]*\s)?mark(?:\s[^"]*)?"', m[2]))
+        if marks > MARK_MAX:
+            out.append(f"{sid}: 형광펜 {marks}개(장당 최대 {MARK_MAX}개)")
+    return out
+
+
 class Text(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
@@ -139,23 +163,32 @@ class Text(html.parser.HTMLParser):
             self.out.append((self.slide, data.strip()))
 
 
-def text_hits(text: str, banned: list) -> list:
+def deck_kind(outline: str) -> str:
+    """'report' or 'lecture' from the outline header line "- deck_kind: <kind>"; absent means lecture."""
+    m = KIND.search(re.split(r"^## ", outline, maxsplit=1, flags=re.M)[0])  # the header, as kit.py reads it
+    return m[1] if m else "lecture"
+
+
+def text_hits(text: str, banned: list, report: bool = False) -> list:
     hits = [f"{why or rx}" for rx, why in banned if re.search(rx, text)]
+    if report:
+        hits += [f"1인칭(보고 덱):{m.group(1)}" for m in FIRST.finditer(text)]
     hits += [f"쉼표:{m.group(1)}" for m in COMMA.finditer(text) if m.group(1) not in COMMA_OK]
     hits += [f"고유어 수사:{m.group(0)}" for m in NATIVE.finditer(text)]
     return hits
 
 
-def check_file(name: str, raw: str, banned: list) -> list:
+def check_file(name: str, raw: str, banned: list, report: bool = False) -> list:
     out = []
     no_tpl = re.sub(r"<template.*?</template>", "", raw, flags=re.S)
     for pat, why in MARKUP:
         out += [f"{name}: {why}" for _ in re.finditer(pat, no_tpl)]
     out += [f"{name} {h}" for h in labels(no_tpl)]
+    out += [f"{name} {h}" for h in slide_parts(no_tpl)]
     p = Text()
     p.feed(raw)
     for slide, text in p.out:
-        out += [f"{name} {slide}: {h}: {text}" for h in text_hits(text, banned)]
+        out += [f"{name} {slide}: {h}: {text}" for h in text_hits(text, banned, report)]
     for slide, attr, text in p.attrs:
         out += [f"{name} {slide}: {why or rx}: {attr}" for rx, why in banned if re.search(rx, text)]
     return out
@@ -211,6 +244,26 @@ def selftest() -> None:
         assert deixis(t), t
     for t in ("오늘날 웹", "착지금지 표시", "이야기서 나온다", "예제 앱"):
         assert not deixis(t), t
+    # P13: a capture caption is one line; the capture's conditions go in captures.md.
+    long_cap = "가" * 51
+    cap = (f'<section aria-label="S1-02 x"><figure><img alt=""><figcaption>{"나" * 30}'
+           f'<a href="#">{"다" * 20}</a></figcaption></figure>'
+           f'<figure><figcaption>{long_cap}</figcaption></figure></section>')
+    assert [h for h in check_file("f", cap, banned) if "캡션" in h] == [f"f S1-02: 캡션 51자(최대 50자, 한 줄): {long_cap}"]
+    # P9/P20: up to 6 highlighter marks per slide, with or without a list; a 7th is a violation.
+    marks = lambda n: '<section aria-label="S1-03 x"><p>※ ' + '<span class="mark">a</span>' * n + '</p></section>'
+    assert not [h for h in check_file("f", marks(6), banned) if "형광펜" in h]
+    assert [h for h in check_file("f", marks(7), banned) if "형광펜" in h] == ["f S1-03: 형광펜 7개(장당 최대 6개)"]
+    # P6: a report deck (outline header "- deck_kind: report") bans the first person in slide text.
+    assert deck_kind("# t\n\n- 덱의 주장: x\n- deck_kind: report\n") == "report"
+    assert deck_kind("# t\n- 강의: x\n") == "lecture"
+    assert deck_kind("# t\n\n## 0. 표지\n- deck_kind: report\n") == "lecture"  # below a ## heading: not the header (kit.py agrees)
+    first = '<section aria-label="S1-01 x"><p>내 계정을 옮긴다</p><li>저는 확인했다</li><p>제가 맡는다</p>' \
+            '<p>내용을 저장하고 나중에 본다</p><p>기간 안에 나누어 본다</p></section>'
+    hits = [h for h in check_file("f", first, banned, report=True) if "1인칭" in h]
+    assert hits == ["f S1-01: 1인칭(보고 덱):내: 내 계정을 옮긴다", "f S1-01: 1인칭(보고 덱):저는: 저는 확인했다",
+                    "f S1-01: 1인칭(보고 덱):제가: 제가 맡는다"], hits
+    assert not [h for h in check_file("f", first, banned) if "1인칭" in h]  # a lecture deck keeps its voice
     print("check_copy selftest OK")
 
 
@@ -242,12 +295,17 @@ def main() -> int:
     except (OSError, ValueError, re.error) as exc:
         print(f"cannot read deck bans from {local}: {exc}", file=sys.stderr)
         return 2
+    try:
+        kind = deck_kind((deck / "outline.md").read_text(encoding="utf-8")) if (deck / "outline.md").is_file() else "lecture"
+    except (OSError, UnicodeDecodeError) as exc:
+        print(f"cannot read {deck / 'outline.md'}: {exc}", file=sys.stderr)
+        return 2
     bad = []
     for path in sorted((deck / "sections").glob("*.html")):
-        bad += check_file(path.name, path.read_text(encoding="utf-8"), banned)
+        bad += check_file(path.name, path.read_text(encoding="utf-8"), banned, kind == "report")
     for line in bad:
         print(line)
-    print(f"patterns: {len(banned)} from {rules}" + (f" and {local.name}" if has_local else ""))
+    print(f"patterns: {len(banned)} from {rules}" + (f" and {local.name}" if has_local else "") + f"; deck_kind: {kind}")
     print("violations:", len(bad))
     return 1 if bad else 0
 

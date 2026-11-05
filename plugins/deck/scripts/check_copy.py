@@ -8,7 +8,8 @@ heading "### 금지 표기" in <repo>/.claude/rules/deck-copy.md (repo = DECK_DI
 | 쓰지 않는다 | 대신 | 검사식 |, where 검사식 holds one or more regexes in backticks. Write a
 literal pipe inside a regex as \\|. A deck adds its own bans in the same table form under the
 heading "### 덱 금지 표기" in <repo>/.claude/rules/deck-local.md (the deck's file, which deck-sync
-never touches); the file and the heading are optional. The other checks (comma after a connective
+never touches), and a report deck's stamped deck-report.md adds its "### 보고 덱 금지 표기" table;
+the files and the headings are optional. The other checks (comma after a connective
 ending, native counting words, p.source / tag chips, slide labels) are shell-contract checks and
 live here, and so do the per-slide limits: a figcaption longer than CAPTION_MAX (50) characters
 (a capture caption is one line; its conditions go in captures.md) and more than MARK_MAX (6)
@@ -26,6 +27,7 @@ from pathlib import Path
 
 TABLE_HEADING = "### 금지 표기"
 LOCAL_HEADING = "### 덱 금지 표기"
+REPORT_HEADING = "### 보고 덱 금지 표기"  # in deck-report.md, the stamped copy only a report deck gets
 TABLE_COLUMNS = ("쓰지 않는다", "대신", "검사식")
 COMMA = re.compile(r"([가-힣]*(?:고|며|지만|면서|어서|아서|해서)),")
 COMMA_OK = {"보고", "광고", "창고", "참고", "최고", "재고", "경고", "원고", "사고"}
@@ -264,6 +266,19 @@ def selftest() -> None:
     assert hits == ["f S1-01: 1인칭(보고 덱):내: 내 계정을 옮긴다", "f S1-01: 1인칭(보고 덱):저는: 저는 확인했다",
                     "f S1-01: 1인칭(보고 덱):제가: 제가 맡는다"], hits
     assert not [h for h in check_file("f", first, banned) if "1인칭" in h]  # a lecture deck keeps its voice
+    # A report deck's stamped deck-report.md adds its "### 보고 덱 금지 표기" table when the file is present.
+    import subprocess, tempfile
+    with tempfile.TemporaryDirectory() as t:
+        rules, deck = Path(t) / ".claude" / "rules", Path(t) / "deck"
+        rules.mkdir(parents=True)
+        (deck / "sections").mkdir(parents=True)
+        (rules / "deck-copy.md").write_text(md, encoding="utf-8")
+        (deck / "sections" / "a.html").write_text('<section aria-label="S1-01 x"><p>강의를 마친다</p></section>', encoding="utf-8")
+        run = lambda: subprocess.run([sys.executable, "-I", __file__, str(deck)], capture_output=True, text=True)
+        assert run().returncode == 0
+        (rules / "deck-report.md").write_text("# r\n" + md.replace(TABLE_HEADING, REPORT_HEADING).replace("에 대해", "강의"), encoding="utf-8")
+        r = run()
+        assert r.returncode == 1 and "S1-01: 강의" in r.stdout and "deck-report.md" in r.stdout, r.stdout + r.stderr
     print("check_copy selftest OK")
 
 
@@ -286,15 +301,18 @@ def main() -> int:
     except (OSError, ValueError, re.error) as exc:
         print(f"cannot read banned patterns from {rules}: {exc} (run deck-sync to restore the rule copy)", file=sys.stderr)
         return 2
-    local = rules.parent / "deck-local.md"  # next to the deck-copy.md in use
-    try:
-        local_md = local.read_text(encoding="utf-8") if local.is_file() else ""
-        has_local = any(l.strip() == LOCAL_HEADING for l in local_md.splitlines())
-        if has_local:
-            banned += banned_patterns(local_md, LOCAL_HEADING)
-    except (OSError, ValueError, re.error) as exc:
-        print(f"cannot read deck bans from {local}: {exc}", file=sys.stderr)
-        return 2
+    read_from = []
+    # Next to the deck-copy.md in use: the report copy's bans, then the deck's own; both optional.
+    for extra, heading in (("deck-report.md", REPORT_HEADING), ("deck-local.md", LOCAL_HEADING)):
+        local = rules.parent / extra
+        try:
+            local_md = local.read_text(encoding="utf-8") if local.is_file() else ""
+            if any(l.strip() == heading for l in local_md.splitlines()):
+                banned += banned_patterns(local_md, heading)
+                read_from.append(extra)
+        except (OSError, ValueError, re.error) as exc:
+            print(f"cannot read deck bans from {local}: {exc}", file=sys.stderr)
+            return 2
     try:
         kind = deck_kind((deck / "outline.md").read_text(encoding="utf-8")) if (deck / "outline.md").is_file() else "lecture"
     except (OSError, UnicodeDecodeError) as exc:
@@ -305,7 +323,7 @@ def main() -> int:
         bad += check_file(path.name, path.read_text(encoding="utf-8"), banned, kind == "report")
     for line in bad:
         print(line)
-    print(f"patterns: {len(banned)} from {rules}" + (f" and {local.name}" if has_local else "") + f"; deck_kind: {kind}")
+    print(f"patterns: {len(banned)} from {rules}" + "".join(f" and {n}" for n in read_from) + f"; deck_kind: {kind}")
     print("violations:", len(bad))
     return 1 if bad else 0
 

@@ -126,3 +126,15 @@ attribute) draws itself from its first point, so author it from the source end; 
 Use either a drawn line or a travelling dot on one line, not both. A `.cursor` with
 `data-from` (authored `opacity="0"`) moves onto its button. `opacity="0"` is an SVG attribute, not inline
 `style`, so it is allowed on a `data-anim` element.
+
+## Stack-diagram look
+
+A service or deploy flow (repo, build service, site, domain) is a `.boxflow` drawn like the
+`stack-diagram` skill's pictures, out of the shell's own parts:
+
+- each service is an `.fbox` with its logo inside `strong` (`<strong><img src="assets/logos/github.svg" alt="">GitHub</strong>`) and one plain line of what it does;
+- boxes that belong to one place (one account, one vendor) sit inside an `.fbox.frame` (no fill, name tag top-left);
+- lines are orthogonal `path`s (`M x y H x2 V y2`) that start and end on box edges, each with a short arrowhead `path`;
+- the `hops` motion draws each line from its source end in flow order (`data-anim="hop"` + `data-order`), with the boxes as `node`s.
+
+Logos come from `deck-assets` with a `sources.json` record; a white mark sits on a dark tile, never recoloured.

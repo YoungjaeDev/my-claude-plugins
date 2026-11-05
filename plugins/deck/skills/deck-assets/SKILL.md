@@ -1,6 +1,6 @@
 ---
 name: deck-assets
-description: "Prepare assets at the start of a house-format deck (deck/shell.html + deck/sections/*.html, assets in deck/assets/): inventory the outline, collect official logos (brand SVG, else the brand's PNG) with a sources.json record, generate icon sheets (pixel style for monitor, soft 3D for ralphdev-light) and Ralph mascot variants through codex-image, slice sheets into cells, capture real app screens and redact screenshots, and gate where cuts may be used. Triggers: 덱 에셋, 로고 수집, 픽셀아트 아이콘, 아이콘 시트, 캐릭터 변형, 화면 캡처, 스크린샷 마스킹, deck assets, collect logos, icon sheet, mascot variants, capture app screen, redact screenshot. For a one-off image request outside a deck, use codex-image directly. Generation spends quota and writes files, so confirm counts first."
+description: "Prepare assets at the start of a house-format deck (deck/shell.html + deck/sections/*.html, assets in deck/assets/): inventory the outline, collect logos in the stack-diagram source order (svgl, devicon, gilbarbara, the brand's own file; never Simple Icons) with a sources.json record, generate icon sheets (pixel style for monitor, soft 3D for ralphdev-light) and Ralph mascot variants through codex-image, slice sheets into cells, capture real app screens and web pages (fresh Playwright context; Google results by hand in incognito) and redact screenshots, and gate where cuts may be used. Triggers: 덱 에셋, 로고 수집, 픽셀아트 아이콘, 아이콘 시트, 캐릭터 변형, 화면 캡처, 스크린샷 마스킹, deck assets, collect logos, icon sheet, mascot variants, capture app screen, redact screenshot. For a one-off image request outside a deck, use codex-image directly. Generation spends quota and writes files, so confirm counts first."
 ---
 
 # deck-assets
@@ -39,15 +39,20 @@ Read `deck/outline.md`. List:
 
 Write the draft to `deck/assets/manifest.json` (`logos`, `icons`, `mascot` arrays). Show the counts to the user and get confirmation before steps 3 and 5. Sheets hold 9/16/25 cells, so round the icon count up to the next sheet size, or ask the user which concepts to drop.
 
-## 2. Official logos
+## 2. Logos
 
-Keep the format the brand ships: its SVG, else its own transparent PNG, else an unofficial file from source 3 below recorded `official: false`, else no logo (write the name as text, also for brands whose terms bar logo use in teaching material). Source order per tool, first hit wins:
+Use the source order of the `stack-diagram` skill's `scripts/fetch_icons.py`, so a deck and a diagram of the same stack carry the same marks. Per tool, first hit wins:
 
-1. The brand's own press/brand page, brand kit or product domain, or the brand's own GitHub repo pinned to a commit SHA.
-2. Simple Icons as an index, not a file source: its JSON `source` and `guidelines` fields point at the brand original and the trademark page. Download from that `source`. The Simple Icons file itself is a redrawn 24x24 mono glyph; CC0 covers that file, not the trademark.
-3. Unofficial helpers, `official: false`: svgl (`https://api.svgl.app/?search=<name>`, cache responses, the API is throttled), Wikimedia Commons, icon packs. svgl records no per-file origin, asks contributors to run SVGO, and some files are older Simple Icons glyphs or SVG Repo copies. Use its `brandUrl` only to find the brand page; a file is `official: true` only when it is fetched again from the brand itself.
+1. svgl: `https://api.svgl.app/?search=<name>`, taking only an item whose title equals the name after lowercasing and dropping non-alphanumerics (the search is fuzzy, so a loose hit ships another brand's logo). Its `route` is the file; a `{light, dark}` route gives both variants. Cache responses, the API is throttled.
+2. devicon: `https://raw.githubusercontent.com/devicons/devicon/master/icons/<slug>/<slug>-original.svg`.
+3. gilbarbara/logos: `https://cdn.jsdelivr.net/gh/gilbarbara/logos/logos/<slug>-icon.svg`, then `<slug>.svg`.
+4. The brand's own file: its press or brand page, its GitHub repo pinned to a commit SHA (`logo*.svg` in the root, docs or assets), or its site's `/logo.svg` or `/favicon.svg`.
 
-Save unmodified to `deck/assets/logos/<slug>[-mono].svg` or `.png`. Never redraw, recolor, crop, convert or generate a logo. Look up Claude Code/Codex marks at run time, do not assume.
+Simple Icons is never a file source: its glyphs are one-colour redraws, not the brand's marks. A brand with no hit anywhere, or whose terms bar logo use in teaching material, is written as text. A concept with no brand gets a Lucide line icon (`https://cdn.jsdelivr.net/npm/lucide-static/icons/<icon>.svg`) saved as `icon-<name>.svg`.
+
+When the `stack-diagram` skill is installed, `python3 <stack-diagram>/scripts/fetch_icons.py <scratch dir> <name> ...` runs this chain in one call; its `manifest.json` gives each logo's `source` and `url`. Pass that `url` to `fetch-logo.py` below so the file lands in the deck with its record. The scratch dir stays outside the repo.
+
+Save unmodified to `deck/assets/logos/<slug>[-mono|-dark].svg` or `.png`; take the light and dark variants together when the source has both. Never redraw, recolor, crop, convert or generate a logo; a white mark goes on a dark tile. Look up Claude Code/Codex marks at run time, do not assume.
 
 - PNG only when the brand ships no SVG of that mark, transparent background, short side at least 256 px. Card images with a filled background are not logos.
 - `-mono` marks a single-colour brand logo (the brand's mono file, or a brand whose only mark is one colour). Generic UI icons (Lucide and the like) are not brand logos: name them `icon-<name>.svg`, never `-mono`.
@@ -63,9 +68,9 @@ It writes the file and upserts the `deck/assets/logos/sources.json` record (arra
 
 `file, name, source_url, official (bool), license, guidelines_url, variant (color|mono|wordmark), sha256, retrieved (YYYY-MM-DD)`
 
-- `official: true` means the saved bytes came unmodified from a place the brand controls: its domain, its brand kit, or its own repo at a pinned commit. Anything fetched through svgl, Simple Icons, Commons or a pack is `false`, even when it renders the same.
+- `official: true` means the saved bytes came unmodified from svgl or from a place the brand controls: its domain, its brand kit, or its own repo at a pinned commit. svgl counts as official because `stack-diagram` treats it as the first official-mark source and both skills keep one standard. devicon, gilbarbara/logos, Wikimedia Commons and icon packs are `false`.
 - `source_url` is the URL actually downloaded; with `--member` it is `<zip url>#<member>`.
-- `guidelines_url` is the brand's logo/trademark guideline page (Simple Icons `guidelines` often has it). When the brand publishes none, use the brand home page.
+- `guidelines_url` is the brand's logo/trademark guideline page (svgl's `brandUrl` often leads to it). When the brand publishes none, use the brand home page.
 - `license` says the basis for use and how the file was obtained (for example a file saved from a logged-in browser session).
 
 Then verify:
@@ -108,7 +113,7 @@ Apply `references/usage.md` when a cut is placed on a slide. Record every placem
 
 ## 7. Captures (no quota)
 
-Real result screens and app UI are captured, never generated. Capture a running app with `"$SCRIPTS/capture-page.cjs"` (node), clean provided screenshots with `"$SCRIPTS/redact-image.py"`. Both write into `deck/assets/<source>/`, with a `captures.md` row per image (file, screen, capture date, redaction). Faces, names, IDs and private data are redacted first; personal-account originals stay outside the repo. Read each output image before logging it. Usage lines, row template and rules: `references/captures.md`.
+Real result screens and app UI are captured, never generated. Capture a running app with `"$SCRIPTS/capture-page.cjs"` (node), clean provided screenshots with `"$SCRIPTS/redact-image.py"`. Both write into `deck/assets/<source>/`, with a `captures.md` row per image (file, screen, capture date, redaction). Faces, names, IDs and private data are redacted first; personal-account originals stay outside the repo. Read each output image before logging it. A web page is captured in a fresh Playwright context before Claude in Chrome; a Google result page is captured by a person in an incognito window, since Google blocks automation with a CAPTCHA. Usage lines, row template, the web and search-result procedures and rules: `references/captures.md`.
 
 ## Output
 

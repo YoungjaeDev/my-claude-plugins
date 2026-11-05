@@ -30,6 +30,22 @@ node "$SCRIPTS/capture-page.cjs" --out deck/assets/<source> --base http://127.0.
 
 One run per theme or state: `--storage key=value` presets localStorage before load (repeatable), `--suffix` names the variant. `--blur` takes CSS selectors for avatar-like images. Output is `<slug>[-<suffix>].png`, one line per file. It tries bundled Chromium, then system Chrome. Playwright comes from the plugin root (`npm ci --ignore-scripts`) or `NODE_PATH`.
 
+## Web pages: fresh Playwright context first
+
+Capture a public web page with `capture-page.cjs` given a full URL (`--viewport 1440x900 --scale 2 https://...`). Each run opens a fresh Playwright context: exact viewport and pixel scale, no login, no history, no extension. Claude in Chrome captures at the window's own size and resolution and some sites refuse it, so keep it for a page that needs the user's own login, and redact that capture.
+
+## Search result pages
+
+Google answers an automated browser with a CAPTCHA, so a Google result page is captured by a person in an incognito window. Ask the user to follow these steps and hand over the files:
+
+1. Open an incognito window (no login, no personal history).
+2. Open the query as a URL with fixed parameters: `https://www.google.com/search?q=<query>&hl=ko&gl=kr&pws=0` (Korean interface, results for Korea, no personalisation).
+3. Fix the size: DevTools device toolbar (Cmd/Ctrl+Shift+M), Responsive, one width and height for every capture of the set (for example 1440x900).
+4. Switch to the light theme in Google's own settings on the result page (its settings menu, dark theme off). The OS and browser theme do not decide Google's theme.
+5. Scroll to the top and capture the viewport (device toolbar menu, Capture screenshot), so every capture of the set starts at the same line.
+
+Try another search engine with `capture-page.cjs` first and fall back to the same steps when it blocks. The `screen` column records the query URL and "incognito".
+
 ## Clean up a provided screenshot
 
 ```bash

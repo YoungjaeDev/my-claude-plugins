@@ -9,7 +9,7 @@ Generic presentations and PPTX conversion stay with `frontend-slides`.
 
 | Piece | Where | Copied into a deck repo? |
 |---|---|---|
-| Shared rule originals (korean-style, deck-copy, deck-authoring) | `templates/rules/*.md` | yes, stamped, by `deck-new` / `deck-sync` into `.claude/rules/` |
+| Shared rule originals (korean-style, deck-copy, deck-authoring; deck-report for report decks only) | `templates/rules/*.md` | yes, stamped, by `deck-new` / `deck-sync` into `.claude/rules/` |
 | Deck templates (shell, sample cover, outline, motions, fonts, GSAP, brand, logo manifest), one folder each; `monitor` is the default | `templates/decks/<name>/` | once, by `deck-new --template <name>`; the deck owns it afterwards |
 | Template rule originals (deck-design: brand, fonts, footer, picture assets) | `templates/decks/<name>/rules/*.md` | yes, stamped, next to the shared rules; never into `deck/` |
 | Brand folders (colour tokens, self-hosted fonts, font sources); a template names its brand in `brand.txt` | `templates/brands/<brand>/` | into `deck/brand/` by `deck-new`; `deck-sync` overwrites it like `vendor/` |
@@ -68,6 +68,10 @@ In a deck repo every tool is also `sh .githooks/deck <build|copy|outline|assets|
   so they live in the template's `rules/deck-design.md`, stamped and synced like the shared rules.
 - **Runtime files are copied into the deck.** Fonts, GSAP, motions and assets must be in the
   deployed folder and must open from disk without the plugin, so the deck carries them.
+- **The deck kind is one outline header line.** A report deck (work handed over to a company, read
+  later as a PDF without the presenter) has `- deck_kind: report` in the `deck/outline.md` header;
+  no line means a lecture deck. `kit.py` copies `deck-report.md` only into a report deck, so lecture
+  decks never load report vocabulary, and turning a deck into a report deck is that line plus `sync`.
 - **Deploy only on an explicit request**, after local review. Never as a follow-up to an edit.
 - **Decks call the tools through `.githooks/deck`, not a cache path.** Shell state does not survive
   between agent tool calls, so a multi-line resolver gets replaced by a hard-coded

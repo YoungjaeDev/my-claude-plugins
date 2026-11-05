@@ -33,6 +33,8 @@ import unicodedata
 from pathlib import Path
 from urllib.parse import unquote
 
+from check_outline import VOID  # one list of void HTML tags for both parsers
+
 IMAGE = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif")
 RAW = ("스크린샷", "screenshot", "screen shot")
 REF = re.compile(r"assets/[^\"'<>()?#\s`\\]+")
@@ -85,7 +87,7 @@ class Imgs(html.parser.HTMLParser):
             zoom = any(t == "figure" and ("shot" in c or any("shot-row" in o for _, o in self.stack[:i]))
                        for i, (t, c) in enumerate(self.stack))
             self.found.append((self.slide, a.get("src") or "", zoom))
-        elif tag not in ("br", "hr", "input", "meta", "link", "source", "wbr"):
+        elif tag not in VOID:
             self.stack.append((tag, classes))
 
     def handle_endtag(self, tag):
@@ -205,7 +207,7 @@ def selftest() -> None:
         "assets/shots/gone.png: referenced but missing",
     ]), fail
     assert unused == ["assets/Screenshot 2026.png", "assets/logos/vite.svg", "assets/shots/c.png", "assets/shots/c2.png"], unused
-    # P19: a capture (an image under a captures.md) must sit in a zoomable figure.shot or .shot-row figure;
+    # A capture (an image under a captures.md) must sit in a zoomable figure.shot or .shot-row figure;
     # logos, icons and cuts have no captures.md and are not captures.
     files, read = tree({
         "sections/01.html": '<section class="slide" aria-label="S1-01 t">'

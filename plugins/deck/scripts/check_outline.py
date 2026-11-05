@@ -192,7 +192,7 @@ def selftest() -> None:
     assert [(k, t) for _, _, k, t in found] == [("fbox", "x"), ("math", "y = Wx")] and total == 3, (found, total)
     found, _ = misses([("m.html", box)], "| S9-04 | 상태 x y = Wx |")
     assert found == [], found
-    # P1: a flow, order, structure or screen slide gets a motion or a mockup; both cells empty is a warning.
+    # A flow, order, structure or screen slide gets a motion or a mockup; both cells empty is a warning.
     table = "\n".join([
         "| ID | 유형 | 라벨 | 제목 | 본문 | 캡처·목업 | 패널 | 모션 |", "|---|---|---|---|---|---|---|---|",
         "| S1-01 | 흐름 | — | a | b | — | — | — |",

@@ -33,9 +33,9 @@ DEFAULT_TEMPLATE = "monitor"
 TEMPLATE_RULES = ROOT / "templates" / "rules"
 TEMPLATE_HOOKS = ROOT / "templates" / "githooks"
 LOCAL_RULE = "deck-local.md"
-# Copied only into a report deck: one whose deck/outline.md header (above the first ## heading) has this line.
+# Copied only into a report deck: one whose deck/outline.md header (above the first ## heading) has "- deck_kind: report".
 REPORT_RULE = "deck-report.md"
-REPORT_FLAG = re.compile(r"^- deck_kind: report[ \t]*$", re.M)
+DECK_KIND = re.compile(r"^-[ \t]+deck_kind:[ \t]*(\S+)[ \t]*$", re.M)
 STAMP = "> deck 플러그인 {v} 사본. 고칠 때는 플러그인 원본을 고친다."
 STAMP_RE = re.compile(r"^> deck 플러그인 (\S+) 사본\.", re.M)
 SHELL_STAMP = "<!-- deck shell base {t} {v} -->"
@@ -75,9 +75,18 @@ def deck_template(deck: Path) -> str:
     return base[0] if base else DEFAULT_TEMPLATE
 
 
+def deck_kind(outline: str) -> str:
+    """'report' or 'lecture' from the outline header line "- deck_kind: <kind>" above the first ## heading.
+
+    The one parser for the deck kind: check_copy.py imports it, so the rule copies and the copy check agree.
+    """
+    m = DECK_KIND.search(re.split(r"^## ", outline, maxsplit=1, flags=re.M)[0])
+    return m[1] if m else "lecture"
+
+
 def is_report(repo: Path) -> bool:
     outline = repo / "deck" / "outline.md"
-    return outline.is_file() and bool(REPORT_FLAG.search(re.split(r"^## ", outline.read_text(encoding="utf-8"), maxsplit=1, flags=re.M)[0]))
+    return outline.is_file() and deck_kind(outline.read_text(encoding="utf-8")) == "report"
 
 
 def rule_templates(template: str, report: bool = False) -> list:
@@ -362,6 +371,8 @@ def selftest() -> None:
         body = outline.read_text(encoding="utf-8")
         outline.write_text(body + "\n- deck_kind: report\n", encoding="utf-8")  # below a ## heading: not the header
         assert main(["kit.py", "check", d]) == 0
+        assert deck_kind("# t\n-deck_kind:report\n") == "lecture"  # not a list item: check_copy reads it the same way
+        assert deck_kind("# t\n- deck_kind: report \n\n## 1\n") == "report"
         outline.write_text(body.replace("\n- 덱의 주장", "\n- deck_kind: report\n- 덱의 주장", 1), encoding="utf-8")
         assert main(["kit.py", "check", d]) == 1
         assert main(["kit.py", "sync", d]) == 0

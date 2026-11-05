@@ -13,6 +13,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const http = require("http");
 const path = require("path");
+const { pathToFileURL } = require("url");
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -245,6 +246,45 @@ async function motionStarts(page) {
   return results;
 }
 
+// P19: every capture opens full-slide on click, also from file:// (the deck is handed out as a file).
+// Per slide, the first capture (figure.shot or a .shot-row figure, as check_assets requires) is clicked:
+// its figure must then cover most of the slide, and a second click must close it again.
+const CAPTURE = "figure.shot:not(.brief):not(.pending) img, .shot-row figure img";
+
+async function zoomChecks(browser, input) {
+  const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, reducedMotion: "reduce" });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", error => errors.push(`${error.name}: ${error.message.slice(0, 160)}`));
+  await page.goto(`${pathToFileURL(input).href}?static=1`, { waitUntil: "load" });
+  const indexes = await page.evaluate(selector => [...document.querySelectorAll(".slide")].flatMap((slide, index) => slide.querySelector(selector) ? [index] : []), CAPTURE);
+  const results = [];
+  for (const index of indexes) {
+    await page.evaluate(value => window.presentation.showSlide(value), index);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const measure = () => page.evaluate(({ value, selector }) => {
+      const slide = document.querySelectorAll(".slide")[value];
+      const image = slide.querySelector(selector);
+      const figure = image.closest("figure");
+      const a = slide.getBoundingClientRect();
+      const b = figure.getBoundingClientRect();
+      const cover = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)) / (a.width * a.height);
+      const box = image.getBoundingClientRect();
+      return { id: (slide.getAttribute("aria-label") || "").split(" ")[0], src: image.getAttribute("src"), cover, center: [box.left + box.width / 2, box.top + box.height / 2] };
+    }, { value: index, selector: CAPTURE });
+    const before = await measure();
+    await page.mouse.click(...before.center);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const zoomed = await measure();
+    await page.mouse.click(...zoomed.center);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const closed = await measure();
+    results.push({ index, id: before.id, src: before.src, before: before.cover, zoomed: zoomed.cover, closed: closed.cover, ok: zoomed.cover >= 0.8 && closed.cover < 0.8 });
+  }
+  await context.close();
+  return { results, errors };
+}
+
 async function scaleState(page) {
   return page.evaluate(() => {
     const stage = document.querySelector(".deck-stage");
@@ -463,6 +503,12 @@ async function main() {
       observations.history.push({ action: "skipped", reason: "single-slide deck has no adjacent history state" });
     }
 
+    observations.zoom = await zoomChecks(browser, args.input);
+    for (const result of observations.zoom.results) {
+      if (!result.ok) failures.push({ check: "capture-zoom", detail: `slide ${result.index + 1} ${result.id || "-"}: ${result.src} ${result.zoomed < 0.8 ? `covers ${Math.round(result.zoomed * 100)}% of the slide after a click on file:// (zoom needs 80%)` : "stays zoomed after a second click"}` });
+    }
+    for (const error of observations.zoom.errors) failures.push({ check: "capture-zoom", detail: `file:// pageerror ${error}` });
+
     const reducedContext = await browser.newContext({ viewport: { width: 1920, height: 1080 }, reducedMotion: "reduce" });
     const reducedPage = await preparePage(reducedContext, baseUrl, requestProblems);
     observations.motion.reduced = await motionState(reducedPage, false);
@@ -492,7 +538,7 @@ async function main() {
   };
   const reportPath = path.join(args.outputDir, "interaction-report.json");
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + "\n", "utf8");
-  console.log(JSON.stringify({ status: report.status, failures: failures.length, keyboardChecks: observations.keyboard.length, hashChecks: observations.hash.length, resizeChecks: observations.resize.length, motionSlides: (observations.motion.starts || []).length }));
+  console.log(JSON.stringify({ status: report.status, failures: failures.length, keyboardChecks: observations.keyboard.length, hashChecks: observations.hash.length, resizeChecks: observations.resize.length, motionSlides: (observations.motion.starts || []).length, zoomSlides: (observations.zoom?.results || []).length }));
   for (const failure of failures) console.log(`${failure.check}${failure.detail ? `: ${failure.detail}` : ""}`);
   return failures.length ? 1 : 0;
 }

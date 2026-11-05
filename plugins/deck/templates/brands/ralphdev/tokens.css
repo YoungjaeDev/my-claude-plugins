@@ -4,6 +4,7 @@
 @font-face { font-family: "Gasoek One"; src: url("fonts/GasoekOne-Regular.woff2") format("woff2"); font-weight: 400; font-display: block; }
 @font-face { font-family: "NanumSquareRound"; src: url("fonts/NanumSquareRoundR.woff2") format("woff2"); font-weight: 400; font-display: block; }
 @font-face { font-family: "NanumSquareRound"; src: url("fonts/NanumSquareRoundEB.woff2") format("woff2"); font-weight: 800; font-display: block; }
+@font-face { font-family: "NanumSquare"; src: url("fonts/NanumSquareEB.woff2") format("woff2"); font-weight: 800; font-display: block; }
 @font-face { font-family: "Noto Sans Math"; src: url("fonts/NotoSansMath-Regular.woff2") format("woff2"); font-weight: 400; font-display: block; }
 
 :root {
@@ -17,6 +18,8 @@
   --rd-coral-text: #c03d29;  /* 5.24:1 (4.66:1 on --rd-well): coral for small text, links and code */
   /* Gasoek One holds 2,780 Hangul syllables; a rarer one falls through to NanumSquareRound. */
   --rd-display: "Gasoek One", "NanumSquareRound", sans-serif;
+  /* Lighter title font than Gasoek One (ExtraBold 800 only); a shell picks one through its --display. */
+  --rd-title: "NanumSquare", "NanumSquareRound", sans-serif;
   --rd-body: "NanumSquareRound", sans-serif;  /* 400 and 800 only, never synthesized */
   --rd-math: "Noto Sans Math", math;
 }

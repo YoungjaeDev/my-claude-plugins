@@ -11,7 +11,9 @@ paths:
 
 - ralphdev 브랜드를 쓴다. 색과 글꼴은 `deck/brand/tokens.css`에만 있고 `deck-sync`가 덮어쓰므로 그 파일을 고치지 않는다. 덱만의 예외는 `deck/shell.html`에 둔다.
 - 흰 배경, 검정 글자, 코랄 강조 하나다. 큰 코랄(`--rd-coral`)은 큰 글자·막대·면에만 쓰고, 작은 글자의 코랄은 `--rd-coral-text`다.
-- 제목은 Gasoek One, 본문은 나눔스퀘어라운드 400과 800이다. 브라우저가 굵기를 흉내 내지 않게 셸이 `font-synthesis: none`을 둔다. 다른 굵기를 쓰지 않는다.
+- 제목은 나눔스퀘어 ExtraBold(800), 본문은 나눔스퀘어라운드 400과 800이다. 브라우저가 굵기를 흉내 내지 않게 셸이 `font-synthesis: none`을 둔다. 다른 굵기를 쓰지 않는다.
+- 제목 글꼴과 굵기는 셸 `:root`의 `--display`와 `--title-weight` 한 쌍이다. 기본은 한국어 보고에서도 무겁지 않은 나눔스퀘어 ExtraBold이고, 더 굵은 브랜드 모양이 필요한 덱만 `shell.html`에서 Gasoek One(`--display: var(--rd-display); --title-weight: 400`)으로 바꾼다. `ralphdev.` 워드마크는 어느 쪽이든 Gasoek One이다.
+- 표지 바탕은 흰 바탕이 기본이고, 바탕이 비어 보이면 `section.slide.cover.backdrop`(은은한 그라디언트 + 옅어지는 격자)을 쓴다. 네온·글로우·보라 그라디언트처럼 장식이 앞서는 효과는 쓰지 않는다.
 - 제목의 영문 반쪽은 `<span class="en">`으로 본문 글꼴의 회색으로 쓴다.
 - 셸 푸터가 섹션 진행선, 텍스트 워드마크 `ralphdev.`, 쪽 번호를 한 줄에 넣는다. 섹션 표기는 "N부 섹션명"이다. 캐릭터나 마스코트는 쓰지 않는다.
 - 태그·라벨을 알약 모양(둥근 테두리 칩, 둥근 배경 배지)으로 그리지 않는다. 실습 장 라벨은 제목 위 작은 코랄 글자다.

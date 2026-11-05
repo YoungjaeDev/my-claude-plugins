@@ -30,6 +30,7 @@
       --page-field: #fff;
       --page-rule: #c9ccd1;
       --font: "Plex KR", sans-serif;
+      --title-weight: 600; /* titles in SemiBold; 400 is the lighter option (Plex KR ships 400 and 600 only) */
       /* Chrome ignores ui-monospace; Menlo (macOS) / Consolas (Windows) carry Latin, Hangul falls through to Plex KR. */
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, var(--font), monospace;
       /* 1.25 scale, base 32 */
@@ -57,8 +58,9 @@
     }
 
     /* === TYPE === */
-    .slide h1, .slide h2, .slide h3, .slide p, .slide li, .slide td, .slide th, .slide .fbox { word-break: keep-all; overflow-wrap: break-word; }
-    h1, h2, h3, strong, th { font-weight: 600; }
+    .slide h1, .slide h2, .slide h3, .slide p, .slide li, .slide td, .slide th, .slide .fbox, .slide figcaption { word-break: keep-all; overflow-wrap: break-word; }
+    strong, th { font-weight: 600; }
+    h1, h2, h3 { font-weight: var(--title-weight); }
     h1, h2, h3 { padding-bottom: 0.15em; }
     .deck-sec-name { padding-bottom: 0.2em; }
     .slide > h2 { font-size: var(--t-xl); line-height: 1.3; letter-spacing: -0.02em; max-width: 1680px; }
@@ -77,6 +79,8 @@
     .warn { color: var(--warn); }
     /* .mark: highlighter band under one phrase on a text-heavy slide; text colour stays, so it never reads as a link */
     .mark { background: linear-gradient(transparent 62%, rgba(245, 200, 66, 0.34) 62%); -webkit-box-decoration-break: clone; box-decoration-break: clone; padding: 0 2px; }
+    /* p.caution: a warning line under the body, starting with "※ " in the text and holding one .mark */
+    .caution { margin-top: 32px; }
     .slide a, .deck-panel-body a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
     code { font-family: var(--font); color: var(--accent); }
     .kind { align-self: flex-start; margin-bottom: 22px; padding: 4px 16px; border: 1.5px solid var(--accent); border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; color: var(--accent); }
@@ -86,6 +90,8 @@
     .slide.ex > .kind::after, .tag { padding: 4px 14px; border: 1.5px solid var(--muted); border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; color: var(--muted); white-space: nowrap; }
     .slide.ex > .kind::after { content: "예시"; position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%); }
     .tag { align-self: flex-start; margin-bottom: 22px; }
+    /* span.tag.suggest "제안": a proposal the audience has not approved yet, in the accent colour */
+    .tag.suggest { border-color: var(--accent); color: var(--accent); }
 
     /* === LISTS === */
     ul.points { list-style: none; display: grid; gap: 20px; align-content: start; }
@@ -144,11 +150,24 @@
     figure.shot.brief ul.points { gap: 14px; }
     figure.shot.brief li { font-size: var(--t-xs); line-height: 1.45; }
     /* .shot-row: several captures side by side, each figure > img + figcaption; figure.off dims one. Inline max-height on the img shrinks the row. */
-    .shot-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 28px; align-items: end; }
-    .shot-row figure { display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; }
+    /* Top-aligned, so captures of different ratios and captions of different length start on one line. */
+    .shot-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 28px; align-items: start; }
+    .shot-row figure { display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 0; cursor: zoom-in; }
     .shot-row img { display: block; max-width: 100%; max-height: 560px; border: 1px solid var(--rule); border-radius: 12px; background: var(--well); }
     .shot-row figcaption { font-size: var(--t-xs); line-height: 1.4; color: var(--muted); text-align: center; }
     .shot-row figure.off { opacity: 0.35; }
+    /* A row capture zooms like figure.shot; !important beats the inline max-height a row sets on its images. */
+    .shot-row figure.zoomed { position: absolute; inset: 0; z-index: 20; justify-content: center; padding: 32px; background: var(--bg); opacity: 1; cursor: zoom-out; }
+    .shot-row figure.zoomed img { max-width: 1856px; max-height: 940px !important; border: 0; border-radius: 0; }
+    /* .anno: a box and arrow over a capture, in the capture's own pixels (svg viewBox = image size, preserveAspectRatio
+       none), so the mark stays on its spot at any size and when zoomed. In figure.shot the image is bounded by the
+       figure's size (container units), so that figure needs a definite width and height. */
+    .anno { position: relative; display: block; width: fit-content; max-width: 100%; line-height: 0; }
+    .anno > svg.anno-mark { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; overflow: visible; pointer-events: none; }
+    .anno-mark :is(rect, path) { fill: none; stroke: var(--hl); stroke-width: 5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+    .anno-mark polygon { fill: var(--hl); }
+    figure.shot:has(> .anno) { container-type: size; }
+    figure.shot > .anno > img { max-width: 100cqw; max-height: 100cqh; }
 
     /* === REVEAL PANEL (deck-panel injected) === */
     button.reveal-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 12px; padding: 10px 22px; font: 600 var(--t-2xs)/1.4 var(--font); color: var(--accent); background: transparent; border: 1.5px solid var(--accent); border-radius: 10px; cursor: pointer; }
@@ -170,7 +189,14 @@
     .deck-panel-body:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
     .deck-panel-body p, .deck-panel-body li { word-break: keep-all; overflow-wrap: break-word; }
     .deck-panel-body pre.code { font-size: var(--t-2xs); overflow: visible; }
-    @media print { button.reveal-btn, deck-panel, deck-copy { display: none !important; } }
+    /* .reveal-box: a block on the slide folded until its button is clicked (a demo prompt). ?static=1 renders it
+       open and print shows it open; the shell folds it again on every slide change. */
+    .reveal-box { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+    .reveal-box > .reveal-body { display: none; flex-direction: column; gap: 16px; }
+    .reveal-box.open > .reveal-body, html.static-view .reveal-box > .reveal-body { display: flex; }
+    .reveal-box.open > button.reveal-btn::after { transform: rotate(135deg); }
+    .reveal-box pre.code { font-size: var(--t-2xs); }
+    @media print { button.reveal-btn, deck-panel, deck-copy { display: none !important; } .reveal-box > .reveal-body { display: flex !important; } }
 
     /* === CODE & PROMPT === */
     /* Every pre.code (slide or panel) is one terminal window with the same 44px bar as the .term mockup: the bar (3 dots,
@@ -212,6 +238,12 @@
     .logos span img { width: 34px; height: 34px; }
 
     /* === COVER === */
+    /* section.slide.cover.backdrop: a soft gradient toward --well and a --rule grid that fades out behind the title.
+       No glow, neon or extra colour. The grid is a ::before under the content (isolation keeps it above the slide ground). */
+    .slide.cover.backdrop { isolation: isolate; background: linear-gradient(160deg, var(--bg) 30%, var(--well) 100%); }
+    .slide.cover.backdrop::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      background: linear-gradient(var(--rule) 1px, transparent 1px) 0 0 / 64px 64px, linear-gradient(90deg, var(--rule) 1px, transparent 1px) 0 0 / 64px 64px;
+      -webkit-mask-image: linear-gradient(105deg, transparent 22%, #000 70%); mask-image: linear-gradient(105deg, transparent 22%, #000 70%); }
     .cover .brandbar { position: absolute; left: 120px; right: 120px; top: 72px; display: flex; align-items: center; gap: 22px; }
     .cover .monogram { width: 56px; height: 56px; }
     .cover .wordmark { height: 24px; }
@@ -241,7 +273,7 @@
     deck-sechead { display: block; margin-top: 60px; }
     deck-sechead .deck-sec-id { display: flex; gap: 26px; align-items: baseline; font-size: var(--t-l); font-weight: 600; color: var(--accent); }
     deck-sechead .deck-sec-id small { font-size: var(--t-s); font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
-    deck-sechead .deck-sec-name { display: block; margin-left: -6px; font-size: var(--t-3xl); line-height: 1.15; font-weight: 600; letter-spacing: -0.035em; }
+    deck-sechead .deck-sec-name { display: block; margin-left: -6px; font-size: var(--t-3xl); line-height: 1.15; font-weight: var(--title-weight); letter-spacing: -0.035em; }
     deck-bigbar { position: absolute; left: 120px; right: 120px; top: 800px; display: grid; grid-template-columns: repeat(var(--sections, 5), minmax(0, 1fr)); gap: 16px; }
     deck-bigbar div { display: grid; gap: 16px; align-content: start; }
     deck-bigbar i { display: block; height: 8px; background: var(--rule); }
@@ -510,6 +542,7 @@
     // Reveal panel: button.reveal-btn[data-panel=id] opens <template class="panel" id=id> in a runtime deck-panel
     // on the stage (outside every <section>). Never opens under ?static=1 or print.
     const staticView = new URLSearchParams(location.search).has("static");
+    if (staticView) document.documentElement.classList.add("static-view"); // .reveal-box renders open, like print
     const PANEL_KINDS = { prompt: "프롬프트", qa: "세션 질문", text: "원문" };
     let panel = null;
     let panelTrigger = null;
@@ -574,6 +607,11 @@
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
 
+    function toggleReveal(box, open = !box.classList.contains("open")) {
+      box.classList.toggle("open", open);
+      box.querySelector(":scope > button.reveal-btn")?.setAttribute("aria-expanded", String(open));
+    }
+
     let current = 0;
     function show(index, fromHashChange) {
       closePanel(false);
@@ -584,6 +622,7 @@
         s.classList.toggle("visible", i === current);
         s.setAttribute("aria-hidden", String(i !== current));
         s.querySelectorAll(".zoomed").forEach(f => f.classList.remove("zoomed"));
+        s.querySelectorAll(".reveal-box.open").forEach(b => toggleReveal(b, false)); // every visit starts folded
       });
       playMotion(slides[current]);
       const h = `#slide-${current + 1}`;
@@ -622,7 +661,10 @@
       }
       const trigger = e.target.closest("button.reveal-btn[data-panel]");
       if (trigger) { openPanel(trigger); return; }
-      const f = e.target.closest("figure.shot:not(.pending):not(.brief)");
+      const reveal = e.target.closest(".reveal-box > button.reveal-btn");
+      if (reveal) { toggleReveal(reveal.parentElement); return; }
+      if (e.target.closest("a")) return; // a caption link opens its page instead of zooming
+      const f = e.target.closest("figure.shot:not(.pending):not(.brief), .shot-row figure");
       if (f) f.classList.toggle("zoomed");
     });
     // Touch: mobile has no arrow keys. A horizontal swipe moves one slide; a tap on empty

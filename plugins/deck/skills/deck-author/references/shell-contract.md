@@ -5,7 +5,8 @@ What a section file may contain and how `deck/shell.html` reads it. What to writ
 This file owns markup only.
 
 A deck keeps its own `shell.html`: `deck-sync` only prints its diff against the template. A class this
-file names that the deck's shell lacks (`.ex`, `span.tag` and `.body.stack` came in 2.1.0) renders
+file names that the deck's shell lacks (`.ex`, `span.tag` and `.body.stack` came in 2.1.0; `p.caution`,
+`.tag.suggest`, `.anno`, `.reveal-box`, `.cover.backdrop`, `--title-weight` and the `.shot-row` zoom came after 2.1.1) renders
 unstyled until its rules are ported from that diff, so check the deck's shell before using a new class.
 
 ## Contents
@@ -87,7 +88,7 @@ Anything else repeated twice belongs in `shell.html` as a class.
 | Section cover | `section.slide.section-cover[data-section] > h2 + p.lead`. No logos |
 | Concept | `h2 + .body > ul.points`, or `.flow > .flow-step(strong + text)`; `.split` puts a figure beside it |
 | Procedure | `h2 + .body > ol.steps > li`; a command goes in `pre.code` inside the `li` |
-| Capture | `.body.split > (ul.points, figure.shot > img)`. Text longer than the image: `.split.wide-text`. Wide capture: `figure.shot` (inline `height`) then `.notes > p + p`. Several captures side by side: `.shot-row > figure(.off) > img + figcaption`. Files and their `captures.md` log: deck-authoring "화면은 목업으로" |
+| Capture | `.body.split > (ul.points, figure.shot > img)`. Text longer than the image: `.split.wide-text`. Wide capture: `figure.shot` (inline `height`) then `.notes > p + p`. Several captures side by side: `.shot-row > figure(.off) > img + figcaption` (top-aligned). A box and arrow over a capture: `span.anno` (below). Every `figure.shot` and `.shot-row figure` zooms on click. Files and their `captures.md` log: deck-authoring "화면은 목업으로" |
 | Compare | `.body.compare > .col(.off/.on) > h3 + p`; `.on` on the column this deck uses. Numbers: `table.data` (`th.num`, `td.num`, `tr.hl`) |
 | Checkpoint | `span.kind` "체크포인트" `+ h2 + .body > ol.checklist > li` |
 | Misconception | `span.kind` "오해 바로잡기" `+ h2 + .body > ul.points` |
@@ -104,6 +105,9 @@ Example tag: a slide whose result differs per learner (an example clone, a rehea
 beside `.kind`; without one, put `<span class="tag">예시</span>` right before the `h2`. The tag is one word on
 the label line, not the banned chip row (`class="tags"`).
 
+Proposal tag: a slide whose content the audience has not approved yet (a proposed title, a plan awaiting a
+decision) takes `<span class="tag suggest">제안</span>` right before the `h2`, drawn in the accent colour.
+
 Shared classes: `.lead` (one or two sentences under the title), `.body` (fills the remaining height; a
 paragraph-only body is centered vertically, a body whose only child is `ul.points`, `ol.steps` or
 `ol.checklist` sits right under the title with larger items), `.split` (`.even`, `.wide-text`), `code` (inline command or field),
@@ -115,8 +119,13 @@ paragraph-only body is centered vertically, a body whose only child is `ul.point
 option the audience must not pick; never for emphasis), `.row` (mockups or figures side by side,
 centered as a group, each child keeping its own width; use it instead of a `.boxflow` without lines).
 
-`.mark` is a highlighter band under one phrase (`span` inside `p`/`li`) on a slide with 3 or more lines of
-list: one per slide, never with a `.key`. Outline notation: `==구절==`. The shell inverts every
+`.mark` is a highlighter band under a phrase (`span` inside `p`/`li`), never with a `.key`; how many and where is
+deck-copy's 형광펜 rule. Outline notation: `==구절==`.
+
+`p.caution` is a warning line: `<p class="caution">※ 조건 <span class="mark">놓치면 안 되는 결과</span>.</p>`,
+the last child of `.body` (or of a `.split` column). The `※ ` is typed in the text, so the outline and the copy
+check see it; the shell only spaces the line from the content above (no inline `margin-top`). In a table cell
+write `※` and the `.mark` inline without the class. The shell inverts every
 `img[src*="logos/icon-"]` (line icons stroked with `currentColor`); never name a brand logo `icon-*`.
 
 `figure.cut > img` is a small pixel-art cut pinned bottom-right, placed as the sibling after `.body`.
@@ -124,6 +133,46 @@ Where and how often is decided by the `deck-assets` skill.
 
 Not used: `p.source` (source line) and `ul.tags` (cover tag chips), even if the shell still styles them.
 Sources go in a panel.
+
+### Capture parts
+
+```html
+<div class="shot-row">
+  <figure><span class="anno"><img src="assets/demo/run-20261105.png" alt="... 입력창에 상자와 화살표 표시"><svg class="anno-mark" viewBox="0 0 1710 1006" preserveAspectRatio="none" aria-hidden="true"><rect x="338" y="898" width="574" height="66" rx="22"></rect><path d="M120 931 H300"></path><polygon points="298,909 334,931 298,953"></polygon></svg></span><figcaption>1. 사이트를 띄워 달라고 하자 오른쪽 창에 열렸다</figcaption></figure>
+  <figure><img src="assets/demo/pick-20261105.png" alt="..."><figcaption>2. 번호를 골라 고칠 내용을 썼다</figcaption></figure>
+</div>
+```
+
+- `span.anno > img + svg.anno-mark` marks where to click on a capture without editing the PNG. The `viewBox` is
+  the image's pixel size and `preserveAspectRatio="none"`, so `rect` (box), `path` (arrow shaft) and `polygon`
+  (arrowhead) take the capture's own pixel coordinates and stay on the spot at any size and when zoomed. The shell
+  strokes them in the highlight colour. Say the mark in the `alt` text. One or two marks per capture.
+- In `figure.shot` the annotated image is bounded by the figure's box, so that figure needs a definite size: a
+  `.split` column or `.body` gives one; inside a `.row` give it an inline `width` and `height`.
+- `.shot-row` captures start on one top line, whatever their ratio or caption length.
+- A click on any `figure.shot` (not `.brief` or `.pending`) or `.shot-row figure` toggles `.zoomed`: the capture
+  covers the slide, a second click closes it, and a slide change or print closes it. A link in a caption opens the
+  link instead. It is CSS and one click handler, so it works from `file://` too.
+
+### Reveal box
+
+A demo prompt the presenter opens on the slide itself, without a panel:
+
+```html
+<div class="reveal-box">
+  <button type="button" class="reveal-btn" aria-expanded="false">시연 프롬프트 펼치기</button>
+  <div class="reveal-body">
+    <pre class="code" data-label="1. 연습용 브랜치">연습용 브랜치를 새로 만들어서 그 브랜치로 옮겨 줘.</pre>
+    <pre class="code" data-label="2. 되돌리기">방금 바꾼 것 되돌려 줘.</pre>
+  </div>
+</div>
+```
+
+- The button has no `data-panel`; a click folds or unfolds `.reveal-body` and sets `aria-expanded`. Every
+  `pre.code` inside keeps its copy button. Each visit to the slide starts folded.
+- `?static=1` renders it open and print/PDF shows it open with the button hidden, so the handout carries the
+  prompts. Keep the open body inside the slide: two or three short `pre.code`; longer text goes to a panel.
+- Use it where the prompt must be on screen during the demo; a prompt read on its own stays a panel.
 
 **Every copyable command or prompt is one `pre.code`**, on a slide or in a panel. The shell draws it as a
 terminal window and puts the copy button in its bar. Write only `<pre class="code">원문</pre>`; add
@@ -137,12 +186,17 @@ The `ralphdev-light` shell keeps every class above and adds or changes these. It
 
 | Part | Markup | Rule |
 |---|---|---|
-| Cover | `section.slide.cover > div.wordmark + h1 + p.subtitle`, optional `figure.cover-art > img` (one 3D icon or illustration) | `.key` on one phrase of the `h1`; the wordmark is text (`ralphdev`), the shell adds the coral dot |
+| Cover | `section.slide.cover > div.wordmark + h1 + p.subtitle`, optional `figure.cover-art > img` (one 3D icon or illustration) | `.key` on one phrase of the `h1`; the wordmark is text (`ralphdev`) in Gasoek One whatever the title font, the shell adds the coral dot |
+| Title font | `--display` and `--title-weight` in the shell's `:root` | default NanumSquare ExtraBold 800 (`var(--rd-title)`); the heavier brand look is `--display: var(--rd-display); --title-weight: 400` (Gasoek One). Change both together, in `shell.html` only |
 | Title with English | `<h2>검사와 렌더 <span class="en">Check</span></h2>` | the English half is light grey body text |
 | Section cover | `section.slide.section-cover[data-section] > figure.icon > img`, optional `h2` + `p.lead` | the shell writes "SECTION n" and the section name from `SECTIONS` (with its optional `en`); the icon goes above them |
 | Edge capture | `figure.shot.bleed > img` with a sibling `div.ask > small(프롬프트) + text` | the capture starts at x 420 and runs off the right edge; the prompt box sits over its top-left; one per slide |
 | Icon flow | `.body > .iconflow > .node(img + strong + p)` | 3D icon cells from `deck-assets`, 3-5 nodes, the shell draws the coral joins |
 | Math | `<math alttext="LaTeX">…</math>` inline, or `div.equation > math[display=block]` | `alttext` holds the LaTeX the outline carries; `check_outline` compares that, not the MathML text. Use `&#x2212;` for minus |
+
+Both templates also take `section.slide.cover.backdrop`: a soft gradient toward `--well` with a `--rule` grid
+that fades out behind the title. No glow, neon or extra colour; one class, nothing to write inside. `monitor`
+sets `--title-weight: 600` (Plex KR SemiBold); 400 is its lighter option.
 
 The footer shows "N부 섹션명" over the progress line, then the text wordmark and the page number on one line.
 Labels are plain coral text above the `h2`, never a pill.

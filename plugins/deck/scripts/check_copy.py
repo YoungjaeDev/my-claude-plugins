@@ -36,7 +36,7 @@ COMMA_OK = {"보고", "광고", "창고", "참고", "최고", "재고", "경고"
 NATIVE = re.compile(r"(?<![가-힣])(셋|넷|다섯|여섯)(이|을|은|으로|에게|에|의|과|와|도|만|뿐|이다)?(?![가-힣])(?!\s*(?:다(?![가-힣])|번째))")
 # 보고 덱(outline 머리 "- deck_kind: report")의 1인칭. 단독 어절과 흔한 조사 꼴만 본다(내용·저장·나중은 아니다).
 # 단독 "내"는 구의 첫머리일 때만 센다. 낱말 뒤 띄어 쓴 "내"는 의존 명사다(기간 내, 1년 내, 사이트 내).
-FIRST_PERSON = re.compile(r"(?<![가-힣])(내가|내|나는|나도|나의|나를|나|저는|저도|저의|저를|저희|저|제가)(?![가-힣])")
+FIRST_PERSON = re.compile(r"(?<![가-힣])(내가|내|나는|나도|나의|나를|나|저는|저도|저의|저를|저희(?:는|가|의|도|를)?|저|제가)(?![가-힣])")
 SKIP = {"pre", "code", "template", "svg", "style", "script"}
 NO_LABEL = ("cover", "section-cover", "statement", "quote")  # 덱 표지·섹션 표지·핵심 주장·인용(닫는 장 포함)
 CAPTION_MAX = 50  # 1920 장의 캡처 캡션(--t-xs) 한 줄 분량. 캡처의 조건은 captures.md 에 둔다
@@ -100,8 +100,10 @@ def banned_patterns(md: str, heading: str = TABLE_HEADING) -> list:
     return out
 
 
-def labels(raw: str) -> list:
-    """장 라벨: 실습 장만 h2 바로 앞에 span.kind 하나("실습 · " 뒤 16자 안팎 명사구), 개념·사례 장은 라벨 없음."""
+def labels(raw: str, report: bool = False) -> list:
+    """장 라벨: 실습 장만 h2 바로 앞에 span.kind 하나("실습 · " 뒤 16자 안팎 명사구), 개념·사례 장은 라벨 없음.
+    보고 덱은 발표자가 보여 주는 장에 "시연"을 쓴다(deck-report.md)."""
+    kinds = KINDS | {"시연"} if report else KINDS
     tags = lambda t: re.sub(r"<[^>]+>", "", t).strip()
     out = []
     for m in re.finditer(r'<section\b([^>]*)>(.*?)</section>', raw, re.S):
@@ -124,7 +126,7 @@ def labels(raw: str) -> list:
             out.append(f"{sid}: 라벨은 실습 장에만 '{label}'")
             continue
         tail = re.fullmatch(r"실습 · (.+)", label)
-        if label not in KINDS and not (tail and len(tail[1].replace(" ", "")) <= 16 and tail[1] != h2):
+        if label not in kinds and not (tail and len(tail[1].replace(" ", "")) <= 16 and tail[1] != h2):
             out.append(f"{sid}: 라벨 형식 '{label}'")
     return out
 
@@ -182,7 +184,7 @@ def check_file(name: str, raw: str, banned: list, report: bool = False) -> list:
     no_tpl = re.sub(r"<template.*?</template>", "", raw, flags=re.S)
     for pat, why in MARKUP:
         out += [f"{name}: {why}" for _ in re.finditer(pat, no_tpl)]
-    out += [f"{name} {h}" for h in labels(no_tpl)]
+    out += [f"{name} {h}" for h in labels(no_tpl, report)]
     out += [f"{name} {h}" for h in caption_and_mark_limits(no_tpl)]
     p = Text()
     p.feed(raw)
@@ -217,6 +219,8 @@ def selftest() -> None:
     assert labels(ok) == []
     assert labels(bare) == []  # a concept or case slide carries no label
     assert labels(ok.replace("실습 · 덱 빌드하기", "체크포인트")) == []
+    demo = ok.replace("실습 · 덱 빌드하기", "시연")  # a report deck labels a slide the presenter shows "시연"
+    assert labels(demo, report=True) == [] and labels(demo) == ["S1-01: 라벨 형식 '시연'"]
     assert labels(ok.replace("실습 · 덱 빌드하기", "개념 · 덱 제작 순서")) == ["S1-01: 라벨은 실습 장에만 '개념 · 덱 제작 순서'"]
     assert labels(ok.replace("실습 · 덱 빌드하기", "사건 · 데이터센터 화재")) == ["S1-01: 라벨 형식 '사건 · 데이터센터 화재'"]
     assert labels(ok.replace('<h2>', '<p>x</p><h2>')) == ["S1-01: 라벨은 h2 바로 앞에 하나"]
@@ -268,7 +272,8 @@ def selftest() -> None:
     person = lambda t: [h for h in text_hits(t, [], report=True) if "1인칭" in h]
     for t in ("기간 내 처리한다", "1년 내 끝낸다", "사이트 내 검색", "A 내 B", "기간\n      내 처리한다"):
         assert not person(t), (t, person(t))
-    for t in ("내 계정을 옮긴다", "(내 판단) 맞다", "· 내 계정", "이번엔 내가 맡는다", "그 일은 제가 한다"):
+    for t in ("내 계정을 옮긴다", "(내 판단) 맞다", "· 내 계정", "이번엔 내가 맡는다", "그 일은 제가 한다",
+              "저희는 결과를 전달했다", "저희가 맡는다"):
         assert person(t), t
     # A report deck's stamped deck-report.md adds its "### 보고 덱 금지 표기" table when the file is present.
     import subprocess, tempfile

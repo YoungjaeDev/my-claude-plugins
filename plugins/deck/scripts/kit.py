@@ -246,6 +246,9 @@ def cmd_sync(repo: Path, v: str, force: bool) -> int:
         return 1
     print(f"template: {template}")
     blocked = write_rules(repo, v, force, template)
+    if not is_report(repo) and (repo / ".claude" / "rules" / REPORT_RULE).is_file():
+        # Not deleted: the copy may hold edits. A lecture deck would still load its deck/** rules.
+        print(f"rules: {REPORT_RULE} is present but deck/outline.md has no `- deck_kind: report`; delete it if this is a lecture deck")
     write_hooks(repo)
     for name in vendor_drift(deck):
         (deck / "vendor").mkdir(exist_ok=True)

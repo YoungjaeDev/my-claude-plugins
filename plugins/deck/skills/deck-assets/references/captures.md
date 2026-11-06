@@ -39,7 +39,7 @@ Capture a public web page with `capture-page.cjs` given a full URL (`--viewport 
 Google answers an automated browser with a CAPTCHA, so a Google result page is captured by a person in an incognito window. Ask the user to follow these steps and hand over the files:
 
 1. Open an incognito window (no login, no personal history).
-2. Open the query as a URL with fixed parameters: `https://www.google.com/search?q=<query>&hl=ko&gl=kr&pws=0` (Korean interface, results for Korea, no personalisation).
+2. Open the query as a URL with fixed parameters: `https://www.google.com/search?q=<query>&hl=ko&gl=kr&pws=0` (Korean interface, results for Korea, no personalisation). `<query>` is URL-encoded (Korean, spaces, `&` and `#` included), or the query is cut short.
 3. Fix the size: DevTools device toolbar (Cmd/Ctrl+Shift+M), Responsive, one width and height for every capture of the set (for example 1440x900).
 4. Switch to the light theme in Google's own settings on the result page (its settings menu, dark theme off). The OS and browser theme do not decide Google's theme.
 5. Scroll to the top and capture the viewport (device toolbar menu, Capture screenshot), so every capture of the set starts at the same line.

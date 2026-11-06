@@ -91,6 +91,8 @@ class Imgs(html.parser.HTMLParser):
             self.stack.append((tag, classes))
 
     def handle_endtag(self, tag):
+        if tag in VOID:
+            return  # <img ... /> also fires an end tag; popping here would drop its figure and .shot-row
         while self.stack:
             if self.stack.pop()[0] == tag:
                 break
@@ -212,8 +214,8 @@ def selftest() -> None:
     files, read = tree({
         "sections/01.html": '<section class="slide" aria-label="S1-01 t">'
                             '<figure class="shot"><img src="assets/shots/a.png"></figure>'
-                            '<div class="shot-row"><figure><span class="anno"><img src="assets/shots/b.png"></span>'
-                            '<figcaption>b</figcaption></figure></div>'
+                            '<div class="shot-row"><figure><span class="anno"><img src="assets/shots/b.png" /></span>'
+                            '<figcaption>b</figcaption></figure><figure><img src="assets/shots/e.png" /></figure></div>'
                             '<div class="split"><img src="assets/shots/c.png"></div>'
                             '<figure class="cut"><img src="assets/shots/d.png"></figure>'
                             '<span class="tile"><img src="assets/logos/react.svg"></span></section>',

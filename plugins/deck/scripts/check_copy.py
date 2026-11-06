@@ -38,6 +38,7 @@ NATIVE = re.compile(r"(?<![가-힣])(셋|넷|다섯|여섯)(이|을|은|으로|�
 # 단독 "내"는 구의 첫머리일 때만 센다. 낱말 뒤 띄어 쓴 "내"는 의존 명사다(기간 내, 1년 내, 사이트 내).
 FIRST_PERSON = re.compile(r"(?<![가-힣])(내가|내|나는|나도|나의|나를|나|저는|저도|저의|저를|저희(?:는|가|의|도|를)?|저|제가)(?![가-힣])")
 SKIP = {"pre", "code", "template", "svg", "style", "script"}
+INLINE = {"a", "b", "strong", "em", "i", "span", "mark", "small", "sub", "sup", "u", "abbr", "code"}  # no word break
 NO_LABEL = ("cover", "section-cover", "statement", "quote")  # 덱 표지·섹션 표지·핵심 주장·인용(닫는 장 포함)
 CAPTION_MAX = 50  # 1920 장의 캡처 캡션(--t-xs) 한 줄 분량. 캡처의 조건은 captures.md 에 둔다
 MARK_MAX = 6  # 형광펜(.mark)은 청중이 집중할 곳에 장당 최대 6개. 목록 개수 조건은 없고 주의 문구(※)가 먼저다
@@ -150,8 +151,11 @@ class Text(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
         self.skip, self.slide, self.out, self.attrs = 0, "?", [], []
+        self.run = ""  # raw text since the last block tag: a node's left context across inline tags
 
     def handle_starttag(self, tag, attrs):
+        if tag not in INLINE:
+            self.run = ""
         if tag == "section":
             self.slide = (dict(attrs).get("aria-label") or "?").split(" ")[0]
         if not self.skip:
@@ -161,19 +165,23 @@ class Text(html.parser.HTMLParser):
             self.skip += 1
 
     def handle_endtag(self, tag):
+        if tag not in INLINE:
+            self.run = ""
         if tag in SKIP and self.skip:
             self.skip -= 1
 
     def handle_data(self, data):
         if not self.skip and data.strip():
-            self.out.append((self.slide, data.strip()))
+            self.out.append((self.slide, data.strip(), self.run + data[:len(data) - len(data.lstrip())]))
+        self.run += data
 
 
-def text_hits(text: str, banned: list, report: bool = False) -> list:
+def text_hits(text: str, banned: list, report: bool = False, before: str = "") -> list:
+    """before: the text ahead of `text` in the same block, so `<a>사이트</a> 내` reads as 사이트 내."""
     hits = [f"{why or rx}" for rx, why in banned if re.search(rx, text)]
     if report:
         hits += [f"1인칭(보고 덱):{m[1]}" for m in FIRST_PERSON.finditer(text)
-                 if not (m[1] == "내" and re.search(r"\w\s+$", text[:m.start()]))]
+                 if not (m[1] == "내" and re.search(r"\w\s+$", before + text[:m.start()]))]
     hits += [f"쉼표:{m.group(1)}" for m in COMMA.finditer(text) if m.group(1) not in COMMA_OK]
     hits += [f"고유어 수사:{m.group(0)}" for m in NATIVE.finditer(text)]
     return hits
@@ -188,8 +196,8 @@ def check_file(name: str, raw: str, banned: list, report: bool = False) -> list:
     out += [f"{name} {h}" for h in caption_and_mark_limits(no_tpl)]
     p = Text()
     p.feed(raw)
-    for slide, text in p.out:
-        out += [f"{name} {slide}: {h}: {text}" for h in text_hits(text, banned, report)]
+    for slide, text, before in p.out:
+        out += [f"{name} {slide}: {h}: {text}" for h in text_hits(text, banned, report, before)]
     for slide, attr, text in p.attrs:
         out += [f"{name} {slide}: {why or rx}: {attr}" for rx, why in banned if re.search(rx, text)]
     return out
@@ -272,6 +280,10 @@ def selftest() -> None:
     person = lambda t: [h for h in text_hits(t, [], report=True) if "1인칭" in h]
     for t in ("기간 내 처리한다", "1년 내 끝낸다", "사이트 내 검색", "A 내 B", "기간\n      내 처리한다"):
         assert not person(t), (t, person(t))
+    # The left context crosses inline tags (a link, a highlight) but not a block boundary.
+    linked = '<section aria-label="S1-02 x"><p><a href="#">사이트</a> 내 검색</p><p><span class="mark">기간</span> 내 끝낸다</p>' \
+             '<li>목록</li><li>내 계정</li></section>'
+    assert [h for h in check_file("f", linked, banned, report=True) if "1인칭" in h] == ["f S1-02: 1인칭(보고 덱):내: 내 계정"]
     for t in ("내 계정을 옮긴다", "(내 판단) 맞다", "· 내 계정", "이번엔 내가 맡는다", "그 일은 제가 한다",
               "저희는 결과를 전달했다", "저희가 맡는다"):
         assert person(t), t

@@ -7,10 +7,14 @@ The outline is the copy source (deck-authoring: the outline wins); this catches 
 never reached it. Checked per slide: every h2, p.lead and li, and each text piece of a .fbox
 (its <strong>, its own text, its <span>), since outlines list box text as "name(label · note)".
 The match is a substring search over the whole outline, so the table layout does not matter.
-Outline markup is ignored: backticks, ==highlight== marks, <br> and runs of whitespace.
+Outline markup is ignored: backticks, ==highlight== marks and runs of whitespace. A line break reads
+as " / " on both sides (a <br> in the section, " / " or <br> in the outline), so a literal " / " in
+slide text needs no escape in the outline; the older &#47; escape still works.
 Not checked: <template> panels, <pre>, <svg>, mockups (.term, .tr-win, .browser-win) and
 anything under [data-outline-skip].
 Exit 1 and print file, slide id, kind and text per miss; exit 2 when a file cannot be read.
+Warns only (exit unchanged): an outline row whose 유형 names a flow, order, structure or screen
+(흐름, 순서, 구성, 화면) while both its 캡처·목업 and 모션 cells are empty (blank or a dash).
 """
 import argparse
 import html
@@ -21,6 +25,7 @@ from pathlib import Path
 
 SKIP_TAGS = {"template", "pre", "svg"}
 SKIP_CLASSES = {"term", "tr-win", "browser-win"}
+BREAK = "\x00"  # a <br> inside a lead or item; becomes " / " when the text is read
 VOID = {"img", "br", "input", "meta", "link", "hr", "source", "wbr", "area", "col", "embed", "track"}
 
 
@@ -58,7 +63,9 @@ class Texts(HTMLParser):
         if tag == "section" and "slide" in classes:
             self.slide = (a.get("aria-label") or "").split(" ")[0]
         if tag == "br":
-            self.flush_piece()  # a line break in a box splits pieces; a lead keeps joining its halves
+            self.flush_piece()  # a line break in a box splits pieces
+            if self.buf is not None and not self.skipping():
+                self.buf[2] += BREAK  # a lead or item keeps its halves, joined by " / " like the outline
         if tag in VOID:
             return
         self.flush_piece()
@@ -85,7 +92,8 @@ class Texts(HTMLParser):
             return
         self.flush_piece()
         if self.buf and len(self.stack) == self.buf[1] and tag == self.buf[0]:
-            text = norm(self.buf[2])
+            text = re.sub(r"\s*(?:\x00\s*)+", " / ", self.buf[2])
+            text = norm(text).strip(" /")
             if text:
                 self.found.append((self.slide, tag if tag != "p" else "lead", text))
             self.buf = None
@@ -105,8 +113,33 @@ class Texts(HTMLParser):
 
 
 def outline_text(text: str) -> str:
-    # A lead may break at <br> or the outline's " / " (deck-copy); the section text joins the halves without a space.
-    return norm(re.sub(r"\s*<br\s*/?>\s*|\s+/\s+", "", text.replace("==", "").replace("`", "")))
+    # The outline breaks a line with <br> or " / " (deck-copy); both read as " / ", as a section <br> does.
+    return norm(re.sub(r"\s*<br\s*/?>\s*", " / ", text.replace("==", "").replace("`", "")))
+
+
+MOVING = re.compile(r"흐름|순서|구성|화면")  # slide types that show a flow, an order, a structure or a screen
+EMPTY = {"", "—", "-", "–"}
+
+
+def motion_gaps(outline: str) -> list:
+    """(slide id, type) of outline rows whose 유형 is a flow/order/structure/screen kind and whose
+    캡처·목업 and 모션 cells are both empty (deck-authoring: a flow is shown by motion or a mockup)."""
+    out, cols = [], None
+    for line in outline.splitlines():
+        if not line.lstrip().startswith("|"):
+            cols = None
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if cols is None:
+            cols = cells if {"유형", "캡처·목업", "모션"} <= set(cells) else []
+            continue
+        if not cols or set("".join(cells)) <= set("-: "):
+            continue  # a table without those columns, or the |---| separator
+        row = dict(zip(cols, cells))
+        kind = row.get("유형", "")
+        if MOVING.search(kind) and row.get("캡처·목업", "") in EMPTY and row.get("모션", "") in EMPTY:
+            out.append((cells[0], kind))
+    return out
 
 
 def misses(sections: list, outline: str) -> tuple:
@@ -134,12 +167,19 @@ def selftest() -> None:
     assert found == [] and total == 7, (found, total)
     found, _ = misses([("a.html", section)], "| S9-01 | 제목 하나 | 도메인 |")
     assert [(k, t) for _, _, k, t in found] == [
-        ("lead", "리드 <a>둘째"), ("li", "항목 밑줄이다."), ("fbox", "moim.example.com"), ("fbox", "IP로"), ("fbox", "바꾼다")], found
+        ("lead", "리드 <a> / 둘째"), ("li", "항목 밑줄이다."), ("fbox", "moim.example.com"), ("fbox", "IP로"), ("fbox", "바꾼다")], found
     assert {s for _, s, _, _ in found} == {"S9-01"}
     found, _ = misses([("a.html", '<section class="slide" aria-label="S9-02 t"><p class="lead">첫 문장<br>다음 문장</p></section>')],
                       "| S9-02 | 리드: 첫 문장 / 다음 문장 · 첫 문장 <br> 다음 문장 |")
     assert found == [], found
-    assert outline_text("첫 문장 <br> 다음 문장") == "첫 문장다음 문장"
+    assert outline_text("첫 문장 <br> 다음 문장") == "첫 문장 / 다음 문장"
+    # A literal " / " in slide text needs no escape; a <br> in the section still matches the outline's " / ".
+    slash = ('<section class="slide" aria-label="S9-05 t"><p class="lead">홈과<br>메뉴의 ABOUT / BRAND 페이지</p>'
+             '<li>구글 / 네이버</li><li>끝<br></li></section>')
+    found, total = misses([("s.html", slash)], "| S9-05 | 리드: 홈과 / 메뉴의 ABOUT / BRAND 페이지<br>- 구글 / 네이버<br>- 끝 |")
+    assert found == [] and total == 3, (found, total)
+    found, _ = misses([("s.html", slash)], "| S9-05 | 홈과 / 메뉴의 ABOUT &#47; BRAND 페이지 / 구글 &#47; 네이버 / 끝 |")
+    assert found == [], found  # decks that escaped the slash as &#47; keep passing
     # MathML: the outline holds the LaTeX in alttext; the MathML text inside is skipped.
     math = ('<section class="slide" aria-label="S9-03 t"><li>은닉 상태는 <math alttext="h_t = \\tanh(x_t)"><msub><mi>h</mi>'
             '<mi>t</mi></msub></math> 로 이어진다.</li></section>')
@@ -152,6 +192,18 @@ def selftest() -> None:
     assert [(k, t) for _, _, k, t in found] == [("fbox", "x"), ("math", "y = Wx")] and total == 3, (found, total)
     found, _ = misses([("m.html", box)], "| S9-04 | 상태 x y = Wx |")
     assert found == [], found
+    # A flow, order, structure or screen slide gets a motion or a mockup; both cells empty is a warning.
+    table = "\n".join([
+        "| ID | 유형 | 라벨 | 제목 | 본문 | 캡처·목업 | 패널 | 모션 |", "|---|---|---|---|---|---|---|---|",
+        "| S1-01 | 흐름 | — | a | b | — | — | — |",
+        "| S1-02 | 개념(순서) | — | a | b | `.boxflow` 상자 | — | — |",
+        "| S1-03 | 목업(구성도) | — | a | b |  | — | `hops` |",
+        "| S1-04 | 화면 | — | a | b | - | — | - |",
+        "| S1-05 | 비교 | — | a | b | — | — | — |",
+        "| 장 | 패널 ID | 종류 |", "|---|---|---|", "| S1-01 | `p-1` | prompt |",
+    ])
+    assert motion_gaps(table) == [("S1-01", "흐름"), ("S1-04", "화면")], motion_gaps(table)
+    assert motion_gaps("| ID | 제목 |\n|---|---|\n| S1-01 | 흐름 |") == []  # no 유형/모션 columns: nothing to judge
     # Unclosed tags and stray end tags must not raise.
     misses([("b.html", '<section class="slide" aria-label="X"><li>열림</div></p>')], "열림")
     # A section that is not UTF-8 exits 2 and names the file.
@@ -194,6 +246,9 @@ def main() -> int:
     if total and len(found) == total:
         print(f"outline: none of the {total} texts is in {outline_path}. Section text must appear there verbatim "
               "(table cells, lists or prose all work); check the path or the outline format.")
+    for sid, kind in motion_gaps(outline):
+        print(f"outline: warning {sid} {kind}: no mockup and no motion; show a flow, order, structure or screen "
+              "with a motion or a mockup (캡처·목업 or 모션 column)")
     print(f"outline: {len(found)} missing of {total}")
     return 1 if found else 0
 

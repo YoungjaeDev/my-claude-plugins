@@ -21,6 +21,8 @@ fixed shell (`deck/shell.html`) plus section files plus motion files, built into
 - `.claude/rules/deck-authoring.md`: procedure, design, motion, panel and deploy decisions.
 - `.claude/rules/deck-design.md`: the deck template's brand, palette and mascot rules (missing in an older deck: run `deck-sync`).
 - `.claude/rules/korean-style.md`: Korean sentence verdicts.
+- `.claude/rules/deck-report.md`, present only in a report deck (`- deck_kind: report` in the outline
+  header): report vocabulary, presenter voice, statement slides.
 - `deck/outline.md`: the header (deck thesis, sections, files, command source file) and the rows for
   the slides you touch.
 - `references/shell-contract.md`: the markup contract. Read the parts for the slide types you write.
@@ -32,17 +34,32 @@ read the originals in this plugin's `templates/rules/` and tell the user.
 
 1. **Outline first** (deck-authoring "원고가 기준"): change `deck/outline.md`, then carry its title and
    body text into the section verbatim.
-2. **Copy review** before the draft goes to the user. Hand the target slide IDs to a subagent that
-   reads `.claude/rules/deck-copy.md`, `.claude/rules/korean-style.md` and, when present, the
-   before/after case table in `.claude/rules/deck-local.md` (the cases win where they and a principle
-   read differently). It judges every sentence of those slides: title, label, lead, items and the
-   text inside figures and mockups. It returns, per slide ID:
-   - each hit: the original sentence, the rule or case it hits, one fix;
+2. **Copy review** before the draft goes to the user, run by a separate reviewer agent so the author
+   does not grade its own draft. Who starts the reviewer depends on the session:
+   - A session that can spawn a subagent (the main session) starts the reviewer itself.
+   - A session that cannot (an author running as a subagent) finishes the draft in the outline, then
+     stops and returns `검토 대기: <slide IDs>` with the outline path. The caller starts the reviewer
+     with the brief below and hands the result back, or applies it itself.
+
+   Every draft reaches the user with a review result or under `검토 대기`; the report names which.
+   The reviewer reads `.claude/rules/deck-copy.md`, `.claude/rules/deck-authoring.md`,
+   `.claude/rules/korean-style.md`, `.claude/rules/deck-report.md` when present, and the
+   before/after case table in `.claude/rules/deck-local.md` when present (the cases win where they and
+   a principle read differently). It judges every sentence of those slides (title, label, lead, items
+   and the text inside figures and mockups) and the slide's form against these judgement rules:
+   an explanation slide drawn as a picture, mockup or motion before a text list; a service flow in the
+   stack-diagram look; a capture title naming the screen plainly; a chat capture redrawn as a mockup
+   when its content is the point; a gloss on each technical term and an everyday analogy for a
+   development concept when the audience has no development background; a number that says what it
+   counts; in a report deck, no `.statement` slide without evidence and no 1st-person narration.
+   It returns, per slide ID:
+   - each hit: the original sentence or slide form, the rule or case it hits, one fix;
    - the first question a newcomer would ask on that slide, and whether the slide answers it;
    - technical statements that need a source, and any that a second "why?" would show as wrong.
-   The subagent skips the 금지 표기 table (`check_copy.py` covers it). Apply the fixes to the outline,
-   then show the user. Each instructor correction adds one row (slide, before, after, rule hit) to the
-   case table in `deck-local.md`, created on first use.
+   The reviewer skips the 금지 표기 tables of `deck-copy.md` and `deck-local.md` (`check_copy.py`
+   covers them) and applies the `deck-report.md` vocabulary table itself. Apply the fixes to the
+   outline, then show the user. Each instructor correction adds one row (slide, before, after,
+   rule hit) to the case table in `deck-local.md`, created on first use.
    When the `humanize-korean` plugin is installed, run it after the content is settled, as a second
    reviewer for what the regex checks miss (long chained clauses, stacked modifiers, vague verbs,
    paired parallel clauses, transformation formulas):
@@ -53,7 +70,7 @@ read the originals in this plugin's `templates/rules/` and tell the user.
    - Run strict (heavy) once for a whole-deck pass, fast (light) on a whole section after later edits.
      Give `--run-dir` a scratch path so the repo stays clean.
    - Priority when advice conflicts: facts and instructor instructions, then `deck-local.md`, then
-     `deck-copy.md` and its 금지 표기 table, then `korean-style.md`, then humanize-korean.
+     `deck-report.md` in a report deck, then `deck-copy.md` and its 금지 표기 table, then `korean-style.md`, then humanize-korean.
    - Take: long clauses split (E-5), stacked modifiers (A-18), vague verbs (A-15), noun-clause subjects
      (D-5), paired parallels (C-8), transformation formulas (D-7), parenthetical noise (J-4).
    - Reject: lists turned into prose (C-2), long-sentence mixing (E-1, E-4), ending variety across list
@@ -67,7 +84,8 @@ read the originals in this plugin's `templates/rules/` and tell the user.
    Motion section describes.
 5. **Check** with `deck-check` (build, copy check, render) and fix every finding.
 6. **Look** at every rendered PNG of the changed slides against `references/qa.md`.
-7. **Report** the slide IDs changed, the files written, and anything not verified. Deployment is not
+7. **Report** the slide IDs changed, the files written, the copy review result (or the `검토 대기`
+   slide IDs), and anything not verified. Deployment is not
    part of this skill (deck-authoring "원고가 기준", `deck-deploy`).
 
 ## References

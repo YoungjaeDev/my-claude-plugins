@@ -52,7 +52,7 @@ PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 만들기처럼 손이 �
 | `scout` | GitHub·Hugging Face·웹·공식 문서를 병렬로 찾아 보고서 1개로 합침 | `/scout:research-orchestrator` |
 | `ml` | ML·CV 작업 규율, Gradio 데모, 노트북 작성과 편집 | `/ml:cv-notebook` |
 | `wiki` | 저장소 밖의 지식(플랫폼·벤더·고객·도메인)을 출처가 달린 wiki 로 관리 | `/wiki:ingest` |
-| `deck` | house 형식 HTML 강의 덱 조립·검사·배포 | `/deck:deck-ask` |
+| `deck` | house 형식 HTML 강의·보고 덱 조립·검사·배포 | `/deck:deck-ask` |
 | `council` | GPT·Gemini·Claude 좌석 3개의 교차 심의 (Claude 전용) | `/council:convene` |
 | `codex-image` | OpenAI API key 없이 Codex 로 이미지 생성 (Claude 전용) | `/codex-image:codex-image` |
 | `aside` | 로그인된 Aside 브라우저로 웹 작업을 맡기고 로그인 뒤 같은 세션에서 이어 감 (Claude 전용) | `/aside:aside` |
@@ -199,16 +199,16 @@ Playwright 가 없으면 graceful degrade 한다. Codex 에서는 역할 계약(
 </details>
 
 <details>
-<summary><strong>deck</strong> - house 형식 HTML 강의 덱</summary>
+<summary><strong>deck</strong> - house 형식 HTML 강의·보고 덱</summary>
 
 `deck/shell.html` 과 `deck/sections/*.html` 을 GSAP 모션과 함께 1920×1080 덱으로 조립한다. 규칙 원본과 도구는 플러그인에 있다. 덱 저장소에는 버전 도장이 찍힌 규칙 사본(`.claude/rules/`)과 덱 내용만 남는다.
 
 | Skill | 하는 일 |
 |-------|---------|
 | `/deck:deck-ask` | 지금 상황에 맞는 다음 덱 스킬을 제안한다 (실행하지 않는다) |
-| `/deck:deck-new` | 빈 저장소에 덱 템플릿(`templates/decks/`의 `monitor` 또는 `ralphdev-light`, 기본 `monitor`)으로 `deck/` 스캐폴드와 규칙 사본을 만든다. `deck/` 가 있으면 거부한다 |
+| `/deck:deck-new` | 빈 저장소에 덱 템플릿(`templates/decks/`의 `monitor` 또는 `ralphdev-light`, 기본 `monitor`)으로 `deck/` 스캐폴드와 규칙 사본을 만든다. 강의 덱인지 보고 덱인지 묻고 보고 덱이면 `deck-report` 규칙 사본을 더한다. `deck/` 가 있으면 거부한다 |
 | `/deck:deck-author` | 섹션 HTML 형식, 클래스 어휘, 패널·모션 계약 |
-| `/deck:deck-assets` | 공식 로고 수집, 아이콘 시트, 마스코트 컷 |
+| `/deck:deck-assets` | 로고 수집(stack-diagram 과 같은 svgl·devicon·gilbarbara 순서), 아이콘 시트, 마스코트 컷, 화면 캡처 |
 | `/deck:deck-check` | 빌드, 문구 검사, 규칙 사본 어긋남, PNG·PDF 렌더와 상호작용 검사 |
 | `/deck:deck-sync` | 규칙 사본과 `vendor/` 를 갱신한다. `shell.html` 은 차이만 보여 준다 |
 | `/deck:deck-deploy` | 명시 요청이 있을 때만 Vercel 에 배포한다 (noindex) |
@@ -436,7 +436,7 @@ git config core.hooksPath .githooks   # clone 당 1회
 │   ├── scout/                # 리서치 orchestrator + DeepWiki
 │   ├── ml/                   # ML / CV 개발
 │   ├── wiki/                 # 바깥 지식 wiki (ingest / query / lint / plaud)
-│   ├── deck/                 # house 형식 HTML 강의 덱 (규칙 원본 + 도구 + 템플릿)
+│   ├── deck/                 # house 형식 HTML 강의·보고 덱 (규칙 원본 + 도구 + 템플릿)
 │   ├── council/              # 이종 벤더 3인 심의 (Claude 전용)
 │   ├── codex-image/          # Codex 로 이미지 생성 (Claude 전용)
 │   └── aside/                # Aside 브라우저 작업 위임 (Claude 전용)

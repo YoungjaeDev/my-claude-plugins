@@ -1,6 +1,7 @@
 """Local dev server for the slide deck: live rebuild + in-browser text edit mode.
 
 Run: python3 dev.py [DECK_DIR] [--port N]   (DECK_DIR default ./deck, port default 8765)
+     python3 dev.py --selftest
 Serves http://127.0.0.1:<port> only. No file watcher -- refresh the page to see
 changes to sections/*.html. Sections are re-assembled on every request.
 
@@ -124,6 +125,16 @@ def _strip_class_tokens(text: str, tokens: set) -> str:
     return re.sub(r'(\s*)class="([^"]*)"', repl, text)
 
 
+def _fold_reveal(match: "re.Match[str]") -> str:
+    tag = match.group(0)
+    classes = (re.search(r'class="([^"]*)"', tag) or [None, ""])[1].split()
+    if "reveal-box" in classes:
+        tag = _strip_class_tokens(tag, {"open"})
+    if "reveal-btn" in classes:
+        tag = tag.replace('aria-expanded="true"', 'aria-expanded="false"')
+    return tag
+
+
 def _strip_runtime_artifacts(html: str) -> str:
     templates = []
 
@@ -154,6 +165,9 @@ def _strip_runtime_artifacts(html: str) -> str:
     # "zoomed" is toggled by a plain click handler on any figure.shot, so
     # it can appear on any element and is always safe to strip everywhere.
     html = _strip_class_tokens(html, {"zoomed"})
+    # A .reveal-box is opened by a click and folded by the shell on every slide change; save it folded.
+    # Scoped to the box and its button: "open" is also an ordinary class a mockup may author.
+    html = re.sub(r"<[A-Za-z][^>]*>", _fold_reveal, html)
     return _TEMPLATE_SLOT_RE.sub(lambda m: templates[int(m.group(1))], html)
 
 
@@ -278,11 +292,29 @@ def build_server(deck_dir: Path, host: str = "127.0.0.1", port: int = 8765) -> h
     return http.server.ThreadingHTTPServer((host, port), Handler)
 
 
+def selftest() -> None:
+    # A save made while a capture is zoomed or a reveal box is open writes the authored, folded state back.
+    live = ('<section class="slide active" aria-hidden="false"><figure class="shot zoomed"><img src="a.png"></figure>'
+            '<div class="reveal-box open"><button type="button" class="reveal-btn" aria-expanded="true">펼치기</button>'
+            '<div class="reveal-body"><pre class="code">x</pre></div></div>'
+            '<ul class="menu open"><li class="open">mockup</li></ul></section>')
+    saved = _strip_runtime_artifacts(live)
+    assert saved == ('<section class="slide"><figure class="shot"><img src="a.png"></figure>'
+                     '<div class="reveal-box"><button type="button" class="reveal-btn" aria-expanded="false">펼치기</button>'
+                     '<div class="reveal-body"><pre class="code">x</pre></div></div>'
+                     '<ul class="menu open"><li class="open">mockup</li></ul></section>'), saved
+    print("dev selftest OK")
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Serve a deck with live rebuild and edit mode.")
     ap.add_argument("deck_dir", nargs="?", default="deck")
     ap.add_argument("--port", type=int, default=8765)
+    ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
+    if args.selftest:
+        selftest()
+        raise SystemExit(0)
     deck = Path(args.deck_dir).resolve()
     if not (deck / "shell.html").is_file() or not (deck / "sections").is_dir():
         raise SystemExit(f"not a deck directory (needs shell.html and sections/): {deck}")

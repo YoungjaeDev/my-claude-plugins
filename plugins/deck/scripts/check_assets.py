@@ -8,7 +8,10 @@ Fails on:
   - an image under DECK/assets/ whose nearest captures.md (its own folder, or a parent folder up to
     assets/) has no table row naming the file by its path from that folder. captures.md is the
     deck's record of what a capture shows and what was blurred, so a folder opts in by holding one;
-  - an assets/... image path in sections/*.html, shell.html or motions/*.js that does not exist.
+  - an assets/... image path in sections/*.html, shell.html or motions/*.js that does not exist;
+  - a capture <img> in sections/*.html outside a zoomable figure (figure.shot, or a figure inside
+    .shot-row): every capture opens full-slide on click. A capture is an image under a captures.md
+    (as above); logos, icons and cuts live in folders without one and are exempt.
 Warns only: an image under assets/ that no section, shell or motion names by path or by file name
 (the shell builds logo paths from bare file names at runtime).
 
@@ -19,6 +22,7 @@ commit touches DECK.
 """
 import argparse
 import contextlib
+import html.parser
 import io
 import posixpath
 import re
@@ -28,6 +32,8 @@ import tempfile
 import unicodedata
 from pathlib import Path
 from urllib.parse import unquote
+
+from check_outline import VOID  # one list of void HTML tags for both parsers
 
 IMAGE = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif")
 RAW = ("스크린샷", "screenshot", "screen shot")
@@ -57,15 +63,48 @@ def sources_of(paths) -> list:
                   or re.fullmatch(r"sections/[^/]+\.html", p) or re.fullmatch(r"motions/[^/]+\.js", p))
 
 
+def log_folder(img: str, files: set):
+    """The folder of the nearest captures.md above img (up to assets/), or None: img is then no capture."""
+    folder = posixpath.dirname(img)
+    while folder.startswith("assets") and f"{folder}/captures.md" not in files:
+        folder = posixpath.dirname(folder)
+    return folder if folder.startswith("assets") else None
+
+
+class Imgs(html.parser.HTMLParser):
+    """(slide id, src, zoomable) per <img>; zoomable = inside figure.shot or a figure inside .shot-row."""
+
+    def __init__(self):
+        super().__init__()
+        self.stack, self.slide, self.found = [], "-", []
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        classes = set((a.get("class") or "").split())
+        if tag == "section" and "slide" in classes:
+            self.slide = (a.get("aria-label") or "-").split(" ")[0]
+        if tag == "img":
+            zoom = any(t == "figure" and ("shot" in c or any("shot-row" in o for _, o in self.stack[:i]))
+                       for i, (t, c) in enumerate(self.stack))
+            self.found.append((self.slide, a.get("src") or "", zoom))
+        elif tag not in VOID:
+            self.stack.append((tag, classes))
+
+    def handle_endtag(self, tag):
+        if tag in VOID:
+            return  # <img ... /> also fires an end tag; popping here would drop its figure and .shot-row
+        while self.stack:
+            if self.stack.pop()[0] == tag:
+                break
+
+
 def problems(files: set, read, sources: list) -> tuple:
     """(failures, unused) for deck-relative asset paths `files`; read(path) gives text or None."""
     fail = []
     text = "\n".join(read(s) or "" for s in sources)
     for img in sorted(p for p in files if is_image(p)):
-        folder = posixpath.dirname(img)
-        while folder.startswith("assets") and f"{folder}/captures.md" not in files:
-            folder = posixpath.dirname(folder)
-        if not folder.startswith("assets"):
+        folder = log_folder(img, files)
+        if folder is None:
             continue
         log = f"{folder}/captures.md"
         # The row names the image relative to the log's folder (./ allowed), so a parent log's a.png
@@ -73,6 +112,13 @@ def problems(files: set, read, sources: list) -> tuple:
         row = re.compile(r"(?<![\w./-])(?:\./)?" + re.escape(nfc(posixpath.relpath(img, folder))) + r"(?![\w.-])")
         if not any(l.lstrip().startswith("|") and row.search(l) for l in nfc(read(log) or "").splitlines()):
             fail.append(f"{img}: no row in {log} (what it shows, when, what was blurred)")
+    for src in (s for s in sources if s.startswith("sections/")):
+        p = Imgs()
+        p.feed(read(src) or "")
+        for slide, ref, zoom in p.found:
+            path = posixpath.normpath(unquote(ref)) if ref.startswith("assets/") else ""
+            if path in files and log_folder(path, files) and not zoom:
+                fail.append(f"{src} {slide}: {ref} is a capture outside figure.shot or .shot-row figure (it cannot zoom)")
     for ref in sorted(set(REF.findall(text))):
         path = posixpath.normpath(unquote(ref))
         if is_image(path) and path not in files:
@@ -143,7 +189,7 @@ def selftest() -> None:
         return set(files), files.get
     files, read = tree({
         "shell.html": '<img src="assets/logos/${f}"> SECTIONS logos: ["react.svg"]',
-        "sections/01.html": '<img src="assets/shots/a.png"><img src="assets/shots/gone.png">'
+        "sections/01.html": '<figure class="shot"><img src="assets/shots/a.png"></figure><img src="assets/shots/gone.png">'
                             '<img src="assets/x/%ED%95%9C.png">',
         "motions/m.js": "url('assets/shots/sub/b.png')",
         "assets/shots/captures.md": "| 파일 | 화면 |\n|---|---|\n| `a.png` | 피드 |\n| ./c2.png | 설정 |\nsub/b.png 는 표 밖",
@@ -163,6 +209,26 @@ def selftest() -> None:
         "assets/shots/gone.png: referenced but missing",
     ]), fail
     assert unused == ["assets/Screenshot 2026.png", "assets/logos/vite.svg", "assets/shots/c.png", "assets/shots/c2.png"], unused
+    # A capture (an image under a captures.md) must sit in a zoomable figure.shot or .shot-row figure;
+    # logos, icons and cuts have no captures.md and are not captures.
+    files, read = tree({
+        "sections/01.html": '<section class="slide" aria-label="S1-01 t">'
+                            '<figure class="shot"><img src="assets/shots/a.png"></figure>'
+                            '<div class="shot-row"><figure><span class="anno"><img src="assets/shots/b.png" /></span>'
+                            '<figcaption>b</figcaption></figure><figure><img src="assets/shots/e.png" /></figure></div>'
+                            '<div class="split"><img src="assets/shots/c.png"></div>'
+                            '<figure class="cut"><img src="assets/shots/d.png"></figure>'
+                            '<span class="tile"><img src="assets/logos/react.svg"></span></section>',
+        "motions/m.js": "url('assets/shots/e.png')",
+        "assets/shots/captures.md": "| 파일 |\n|---|\n| a.png |\n| b.png |\n| c.png |\n| d.png |\n| e.png |",
+        "assets/shots/a.png": "", "assets/shots/b.png": "", "assets/shots/c.png": "", "assets/shots/d.png": "",
+        "assets/shots/e.png": "", "assets/logos/react.svg": "",
+    })
+    fail, _ = problems({p for p in files if p.startswith("assets/")}, read, sources_of(files))
+    assert fail == [
+        "sections/01.html S1-01: assets/shots/c.png is a capture outside figure.shot or .shot-row figure (it cannot zoom)",
+        "sections/01.html S1-01: assets/shots/d.png is a capture outside figure.shot or .shot-row figure (it cannot zoom)",
+    ], fail
     assert raw_name(unicodedata.normalize("NFD", "x/스크린샷 2026-10-27.png")) and not raw_name("a/screen.png")
     # --staged reads the index: a row only in the working tree, or an unstaged image, does not count.
     with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
@@ -171,7 +237,7 @@ def selftest() -> None:
         g("init", "-q")
         (repo / "deck/sections").mkdir(parents=True)
         (repo / "deck/assets/shots").mkdir(parents=True)
-        (repo / "deck/sections/01.html").write_text('<img src="assets/shots/a.png">', encoding="utf-8")
+        (repo / "deck/sections/01.html").write_text('<figure class="shot"><img src="assets/shots/a.png"></figure>', encoding="utf-8")
         (repo / "deck/assets/shots/a.png").write_bytes(b"")
         (repo / "deck/assets/shots/captures.md").write_text("| 파일 |\n|---|\n", encoding="utf-8")
         g("add", "deck")

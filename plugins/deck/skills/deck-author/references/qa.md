@@ -49,4 +49,6 @@ them at runtime.
 When a subagent writes a section, its brief names the target slide IDs, the files it may change (one
 `sections/*.html` per agent), the files it must not touch (`shell.html`, `index.html`, other sections),
 the rules to read (`deck-copy.md`, `korean-style.md`, `deck-authoring.md`, this skill), and the done
-criteria above. The main session checks `git diff` and the PNGs itself before accepting the result.
+criteria above. The writing subagent returns `검토 대기: <slide IDs>` instead of reviewing its own
+copy; the main session starts the copy reviewer (SKILL.md step 2) on those IDs, then checks `git diff`
+and the PNGs itself before accepting the result.

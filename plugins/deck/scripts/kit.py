@@ -10,7 +10,8 @@ REPO defaults to the current directory. A deck template is a folder under templa
 rules/ subfolder holds the template's own rule originals and is not copied into the deck; its brand.txt names a
 folder under templates/brands/ that goes to deck/brand/ and that sync overwrites like vendor/. sync and
 check read the template name from the shell stamp; a stamp without a name is an older monitor deck.
-Rule templates are templates/rules/*.md plus templates/decks/NAME/rules/*.md; each copy in
+Rule templates are templates/rules/*.md plus templates/decks/NAME/rules/*.md (deck-report.md only when the
+outline header has `- deck_kind: report`); each copy in
 REPO/.claude/rules/ gets STAMP inserted right after its YAML frontmatter. A copy is compared by
 re-stamping the template with the copy's own version, so no unstamping heuristics are needed.
 REPO/.claude/rules/deck-local.md is the deck's own file and is never read or written here.
@@ -32,6 +33,9 @@ DEFAULT_TEMPLATE = "monitor"
 TEMPLATE_RULES = ROOT / "templates" / "rules"
 TEMPLATE_HOOKS = ROOT / "templates" / "githooks"
 LOCAL_RULE = "deck-local.md"
+# Copied only into a report deck: one whose deck/outline.md header (above the first ## heading) has "- deck_kind: report".
+REPORT_RULE = "deck-report.md"
+DECK_KIND = re.compile(r"^-[ \t]+deck_kind:[ \t]*(\S+)[ \t]*$", re.M)
 STAMP = "> deck 플러그인 {v} 사본. 고칠 때는 플러그인 원본을 고친다."
 STAMP_RE = re.compile(r"^> deck 플러그인 (\S+) 사본\.", re.M)
 SHELL_STAMP = "<!-- deck shell base {t} {v} -->"
@@ -71,9 +75,23 @@ def deck_template(deck: Path) -> str:
     return base[0] if base else DEFAULT_TEMPLATE
 
 
-def rule_templates(template: str) -> list:
+def deck_kind(outline: str) -> str:
+    """'report' or 'lecture' from the outline header line "- deck_kind: <kind>" above the first ## heading.
+
+    The one parser for the deck kind: check_copy.py imports it, so the rule copies and the copy check agree.
+    """
+    m = DECK_KIND.search(re.split(r"^## ", outline, maxsplit=1, flags=re.M)[0])
+    return m[1] if m else "lecture"
+
+
+def is_report(repo: Path) -> bool:
+    outline = repo / "deck" / "outline.md"
+    return outline.is_file() and deck_kind(outline.read_text(encoding="utf-8")) == "report"
+
+
+def rule_templates(template: str, report: bool = False) -> list:
     rules = list(TEMPLATE_RULES.glob("*.md")) + list((TEMPLATE_DECKS / template / "rules").glob("*.md"))
-    return sorted((p for p in rules if p.name != LOCAL_RULE), key=lambda p: p.name)
+    return sorted((p for p in rules if p.name != LOCAL_RULE and (report or p.name != REPORT_RULE)), key=lambda p: p.name)
 
 
 def rule_status(repo: Path, v: str, template: str) -> list:
@@ -82,7 +100,7 @@ def rule_status(repo: Path, v: str, template: str) -> list:
     bare: no stamp, but otherwise the template itself (a copy made by hand); safe to stamp.
     """
     out = []
-    for tpl in rule_templates(template):
+    for tpl in rule_templates(template, is_report(repo)):
         copy = repo / ".claude" / "rules" / tpl.name
         if not copy.is_file():
             out.append((tpl.name, "missing", None))
@@ -105,7 +123,7 @@ def write_rules(repo: Path, v: str, force: bool, template: str) -> int:
     """Write every rule copy except ones edited by hand at the current version (unless forced)."""
     dest = repo / ".claude" / "rules"
     dest.mkdir(parents=True, exist_ok=True)
-    sources = {p.name: p for p in rule_templates(template)}
+    sources = {p.name: p for p in rule_templates(template, is_report(repo))}
     blocked = 0
     for name, status, _ in rule_status(repo, v, template):
         if status == "ok":
@@ -228,6 +246,9 @@ def cmd_sync(repo: Path, v: str, force: bool) -> int:
         return 1
     print(f"template: {template}")
     blocked = write_rules(repo, v, force, template)
+    if not is_report(repo) and (repo / ".claude" / "rules" / REPORT_RULE).is_file():
+        # Not deleted: the copy may hold edits. A lecture deck would still load its deck/** rules.
+        print(f"rules: {REPORT_RULE} is present but deck/outline.md has no `- deck_kind: report`; delete it if this is a lecture deck")
     write_hooks(repo)
     for name in vendor_drift(deck):
         (deck / "vendor").mkdir(exist_ok=True)
@@ -249,7 +270,7 @@ def cmd_check(repo: Path, v: str, show_diff: bool) -> int:
     if template not in templates():
         print(f"shell.html: names template {template!r}, not in this plugin. Templates: {', '.join(templates())}")
         return 1
-    sources = {p.name: p for p in rule_templates(template)}
+    sources = {p.name: p for p in rule_templates(template, is_report(repo))}
     bad = 0
     for name, status, cv in rule_status(repo, v, template):
         hint = {"ok": "", "missing": " -> run deck-sync", "stale": f" (copy {cv}, plugin {v}) -> run deck-sync",
@@ -347,6 +368,19 @@ def selftest() -> None:
         assert main(["kit.py", "check", d]) == 1
         main(["kit.py", "sync", d])
         assert not brand_drift(deck)
+        # A report deck (outline header line `- deck_kind: report`) also gets deck-report.md; a lecture deck does not.
+        assert not (repo / ".claude" / "rules" / REPORT_RULE).exists()
+        outline = deck / "outline.md"
+        body = outline.read_text(encoding="utf-8")
+        outline.write_text(body + "\n- deck_kind: report\n", encoding="utf-8")  # below a ## heading: not the header
+        assert main(["kit.py", "check", d]) == 0
+        assert deck_kind("# t\n-deck_kind:report\n") == "lecture"  # not a list item: check_copy reads it the same way
+        assert deck_kind("# t\n- deck_kind: report \n\n## 1\n") == "report"
+        outline.write_text(body.replace("\n- 덱의 주장", "\n- deck_kind: report\n- 덱의 주장", 1), encoding="utf-8")
+        assert main(["kit.py", "check", d]) == 1
+        assert main(["kit.py", "sync", d]) == 0
+        assert (repo / ".claude" / "rules" / REPORT_RULE).is_file()
+        assert main(["kit.py", "check", d]) == 0
     print("kit selftest OK")
 
 

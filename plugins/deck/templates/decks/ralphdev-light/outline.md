@@ -6,6 +6,7 @@
 - 강의: <날짜·시간·길이·환경>
 - 섹션(셸 `SECTIONS`와 같다): S1 <이름> · S2 <이름> · S3 <이름>
 - 섹션 파일: `00-cover.html`
+- 아이콘: <섹션 표지 수 + 개념 장 수, 9칸 시트 단위. 예: 9개, 시트 1장 | 없음>
 - Vercel 프로젝트: `<project-name>`
 - 배포 주소: https://<project-name>.vercel.app
 

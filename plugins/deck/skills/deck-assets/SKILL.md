@@ -34,7 +34,9 @@ Scripts need Python 3; the slicer needs Pillow (`uv run --with pillow python3 ..
 Read `deck/outline.md`. List:
 
 - tools/products named (each needs a logo),
-- concept slides that could carry one icon cell,
+- concept slides that could carry one icon cell; in a `ralphdev-light` deck every section cover gets
+  one (`deck-design.md`), so start from the outline header's `- 아이콘:` line, or when it is missing
+  propose sections + concept slides and ask before step 3,
 - emotional beats that could carry one mascot cut (see `references/usage.md`).
 
 Write the draft to `deck/assets/manifest.json` (`logos`, `icons`, `mascot` arrays). Show the counts to the user and get confirmation before steps 3 and 5. Sheets hold 9/16/25 cells, so round the icon count up to the next sheet size, or ask the user which concepts to drop.

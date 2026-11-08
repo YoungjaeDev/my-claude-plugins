@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
   <title>덱 제목</title>
+  <!-- Link previews (messengers, Slack) read these: keep them equal to <title> and the cover subtitle. -->
+  <meta property="og:title" content="덱 제목">
+  <meta property="og:description" content="덱 부제">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%23f25c45%22/%3E%3C/svg%3E">
   <!-- ralphdev-light: white canvas, black ink, one coral accent (brand tokens in brand/tokens.css), NanumSquare titles
        (Gasoek One wordmark), NanumSquareRound body, 3D icons, section progress line in the injected footer. Authoring classes are unprefixed;
        everything the script injects at runtime is a deck-* element or class and carries data-runtime. -->
@@ -193,7 +198,13 @@
     deck-panel button:hover, deck-panel button:focus-visible { border-color: var(--accent); outline: none; }
     .deck-panel-body { overflow-y: auto; padding: 32px 40px 40px; display: grid; gap: 20px; align-content: start; scrollbar-width: thin; scrollbar-color: var(--done) transparent; }
     .deck-panel-body:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-    .deck-panel-body p, .deck-panel-body li { word-break: keep-all; overflow-wrap: break-word; }
+    .deck-panel-body p, .deck-panel-body li, .deck-panel-body td, .deck-panel-body th { word-break: keep-all; overflow-wrap: break-word; }
+    /* A table sizes columns by min-content, which break-word ignores: a long token in a cell would widen the panel. */
+    .deck-panel-body td, .deck-panel-body th { overflow-wrap: anywhere; }
+    /* A quoted source (blockquote > p) reads apart from the body: rule on the left, well background, smaller grey text. */
+    .deck-panel-body blockquote { padding: 16px 24px; border-left: 4px solid var(--rd-coral); border-radius: 0 8px 8px 0; background: var(--well); }
+    .deck-panel-body blockquote p { font-size: var(--t-xs); color: var(--muted); }
+    .deck-panel-body blockquote p + p { margin-top: 12px; }
     .deck-panel-body pre.code { font-size: var(--t-2xs); overflow: visible; }
     /* .reveal-box: a block on the slide folded until its button is clicked (a demo prompt). ?static=1 renders it
        open and print shows it open; the shell folds it again on every slide change. */
@@ -247,12 +258,17 @@
     /* section.slide.cover.backdrop: a soft gradient toward --well and a --rule grid that fades out behind the title.
        No glow, neon or extra colour. The grid is a ::before under the content (isolation keeps it above the slide ground). */
     .slide.cover.backdrop { isolation: isolate; background: linear-gradient(160deg, var(--bg) 30%, var(--well) 100%); }
+    /* The grid is one vector SVG with the fade in its stroke: a CSS mask made Chrome print it as a blurry bitmap in the PDF.
+       Lines sit every 64px; the stroke colour is --rule (#dddee1), written out because a data URI cannot read variables. */
     .slide.cover.backdrop::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-      background: linear-gradient(var(--rule) 1px, transparent 1px) 0 0 / 64px 64px, linear-gradient(90deg, var(--rule) 1px, transparent 1px) 0 0 / 64px 64px;
-      -webkit-mask-image: linear-gradient(105deg, transparent 22%, #000 70%); mask-image: linear-gradient(105deg, transparent 22%, #000 70%); }
+      background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080' viewBox='0 0 1920 1080'><defs><linearGradient id='f' gradientUnits='userSpaceOnUse' x1='0' y1='283' x2='1920' y2='797'><stop offset='.22' stop-color='%23dddee1' stop-opacity='0'/><stop offset='.7' stop-color='%23dddee1'/></linearGradient></defs><path d='M0 0V1080M64 0V1080M128 0V1080M192 0V1080M256 0V1080M320 0V1080M384 0V1080M448 0V1080M512 0V1080M576 0V1080M640 0V1080M704 0V1080M768 0V1080M832 0V1080M896 0V1080M960 0V1080M1024 0V1080M1088 0V1080M1152 0V1080M1216 0V1080M1280 0V1080M1344 0V1080M1408 0V1080M1472 0V1080M1536 0V1080M1600 0V1080M1664 0V1080M1728 0V1080M1792 0V1080M1856 0V1080M0 0H1920M0 64H1920M0 128H1920M0 192H1920M0 256H1920M0 320H1920M0 384H1920M0 448H1920M0 512H1920M0 576H1920M0 640H1920M0 704H1920M0 768H1920M0 832H1920M0 896H1920M0 960H1920M0 1024H1920' stroke='url(%23f)' stroke-width='1.5' fill='none'/></svg>") 0 0 / 1920px 1080px no-repeat; }
     .cover { padding: 96px 128px; }
     .cover h1 { margin-top: 150px; max-width: 1040px; font-size: 128px; line-height: 1.12; letter-spacing: -0.01em; }
-    .cover .subtitle { margin-top: 36px; max-width: 1040px; font-size: var(--t-m); color: var(--sub); }
+    /* One line across the cover; narrower only when the cover art sits on the right. */
+    .cover .subtitle { margin-top: 36px; max-width: 1664px; font-size: var(--t-m); color: var(--sub); }
+    .cover:has(.cover-art) .subtitle { max-width: 1040px; }
+    /* p.date: the report date, bottom right of the cover. */
+    .cover .date { position: absolute; right: 128px; bottom: 96px; margin: 0; font-size: var(--t-s); color: var(--sub); font-variant-numeric: tabular-nums; }
     /* Optional picture on the right: one 3D icon or illustration in a warm well. */
     .cover .cover-art { position: absolute; right: 128px; top: 300px; width: 560px; height: 560px; margin: 0; border-radius: 28px; background: var(--well); display: grid; place-items: center; overflow: hidden; }
     .cover .cover-art img { width: 78%; height: 78%; object-fit: contain; }
@@ -459,6 +475,8 @@
     .body.versus, .body.hero-num, .body.grid4, .body.stack { display: grid; align-content: center; padding-bottom: 72px; }
     /* The divider is a grid item (::before) in the middle column, so it is exactly as tall as the cards. */
     .body.versus { grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); gap: 56px; }
+    /* A lead right above boxes or columns needs more air than the 44px body gap, or the two read as one block. */
+    .lead + .body:is(.versus, .compare, :has(> .compare)) { margin-top: 72px; }
     .body.versus::before { content: ""; grid-column: 2; grid-row: 1; background: var(--rule); }
     .versus .side { padding: 36px 48px 44px; background: var(--well); border: 1px solid var(--rule); border-radius: 12px; }
     .versus .side > h3 { margin-bottom: 30px; padding-bottom: 22px; border-bottom: 1px solid var(--rule); }

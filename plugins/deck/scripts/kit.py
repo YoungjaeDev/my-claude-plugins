@@ -19,6 +19,7 @@ templates/githooks/* (the `deck` launcher, pre-commit, commit-msg) go to REPO/.g
 missing; an existing hook is never overwritten, and git config is left to the user.
 """
 import difflib
+import hashlib
 import json
 import os
 import re
@@ -36,8 +37,9 @@ LOCAL_RULE = "deck-local.md"
 # Copied only into a report deck: one whose deck/outline.md header (above the first ## heading) has "- deck_kind: report".
 REPORT_RULE = "deck-report.md"
 DECK_KIND = re.compile(r"^-[ \t]+deck_kind:[ \t]*(\S+)[ \t]*$", re.M)
-STAMP = "> deck 플러그인 {v} 사본. 고칠 때는 플러그인 원본을 고친다."
-STAMP_RE = re.compile(r"^> deck 플러그인 (\S+) 사본\.", re.M)
+STAMP = "> deck 플러그인 {v} 사본({h}). 고칠 때는 플러그인 원본을 고친다."
+# The hash (first 12 hex of the original's body_hash) is optional: copies stamped before 2.3.0 lack it.
+STAMP_RE = re.compile(r"^> deck 플러그인 (\S+) 사본(?:\(([0-9a-f]{12})\))?\..*\n?", re.M)
 SHELL_STAMP = "<!-- deck shell base {t} {v} -->"
 # The template name is optional: decks scaffolded before templates existed carry only the version.
 SHELL_STAMP_RE = re.compile(r"^<!-- deck shell base (?:([a-z][a-z0-9-]*) )?(\S+) -->\n", re.M)
@@ -49,11 +51,22 @@ def version() -> str:
     return json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
 
 
-def stamp(text: str, v: str) -> str:
-    """Insert the stamp line right after the frontmatter (or at the top when there is none)."""
+def body_hash(text: str) -> str:
+    """Hash of a rule text without its stamp line, blind to whitespace (the stamp adds a blank line)."""
+    return hashlib.sha256(" ".join(STAMP_RE.sub("", text).split()).encode("utf-8")).hexdigest()[:12]
+
+
+def stamp(text: str, v: str, legacy: bool = False) -> str:
+    """Insert the stamp line right after the frontmatter (or at the top when there is none).
+
+    legacy=True writes the pre-hash form, only to compare against copies stamped that way.
+    """
     m = re.match(r"---\n.*?\n---\n", text, re.S)
     head, body = (text[: m.end()], text[m.end():]) if m else ("", text)
-    return head + STAMP.format(v=v) + "\n" + (body if body.startswith("\n") else "\n" + body)
+    line = STAMP.format(v=v, h=body_hash(text))
+    if legacy:
+        line = re.sub(r"\([0-9a-f]{12}\)", "", line, count=1)
+    return head + line + "\n" + (body if body.startswith("\n") else "\n" + body)
 
 
 def templates() -> list:
@@ -98,6 +111,8 @@ def rule_status(repo: Path, v: str, template: str) -> list:
     """(name, status, copy_version) per template: ok | missing | stale | edited | unstamped | bare.
 
     bare: no stamp, but otherwise the template itself (a copy made by hand); safe to stamp.
+    A copy whose body still matches the hash in its stamp was never touched, so it is stale (safe to
+    overwrite) even at the current version, when the original changed without a version bump.
     """
     out = []
     for tpl in rule_templates(template, is_report(repo)):
@@ -110,12 +125,14 @@ def rule_status(repo: Path, v: str, template: str) -> list:
         if not m:
             same = text.strip() == tpl.read_text(encoding="utf-8").strip()
             out.append((tpl.name, "bare" if same else "unstamped", None))
-        elif m[1] != v:
-            out.append((tpl.name, "stale", m[1]))
-        elif text != stamp(tpl.read_text(encoding="utf-8"), v):
-            out.append((tpl.name, "edited", m[1]))
-        else:
+        elif text == stamp(tpl.read_text(encoding="utf-8"), v):
             out.append((tpl.name, "ok", m[1]))
+        elif m[1] != v or (m[2] and body_hash(text) == m[2]):
+            out.append((tpl.name, "stale", m[1]))
+        elif not m[2] and text == stamp(tpl.read_text(encoding="utf-8"), v, legacy=True):
+            out.append((tpl.name, "stale", m[1]))  # same content, pre-hash stamp: restamp
+        else:
+            out.append((tpl.name, "edited", m[1]))
     return out
 
 
@@ -304,9 +321,11 @@ def cmd_check(repo: Path, v: str, show_diff: bool) -> int:
 def selftest() -> None:
     fm = "---\npaths: deck/**\n---\n\n# 제목\n본문\n"
     s = stamp(fm, "1.2.3")
-    assert s == "---\npaths: deck/**\n---\n> deck 플러그인 1.2.3 사본. 고칠 때는 플러그인 원본을 고친다.\n\n# 제목\n본문\n", s
-    assert STAMP_RE.search(s)[1] == "1.2.3"
-    assert stamp("# 제목\n", "1.0.0") == "> deck 플러그인 1.0.0 사본. 고칠 때는 플러그인 원본을 고친다.\n\n# 제목\n"
+    h = body_hash(fm)
+    assert s == f"---\npaths: deck/**\n---\n> deck 플러그인 1.2.3 사본({h}). 고칠 때는 플러그인 원본을 고친다.\n\n# 제목\n본문\n", s
+    assert STAMP_RE.search(s)[1] == "1.2.3" and STAMP_RE.search(s)[2] == h == body_hash(s)
+    assert STAMP_RE.search(stamp(fm, "1.2.3", legacy=True))[2] is None
+    assert stamp("# 제목\n", "1.0.0", legacy=True) == "> deck 플러그인 1.0.0 사본. 고칠 때는 플러그인 원본을 고친다.\n\n# 제목\n"
     assert SHELL_STAMP_RE.sub("", "<!DOCTYPE html>\n<!-- deck shell base 1.0.0 -->\n<html>") == "<!DOCTYPE html>\n<html>"
     import contextlib, io, tempfile
     with tempfile.TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()):
@@ -317,6 +336,20 @@ def selftest() -> None:
         assert dict((n, s) for n, s, _ in rule_status(repo, "9.9.9", DEFAULT_TEMPLATE))[tpl.name] == "bare"
         assert write_rules(repo, "9.9.9", False, DEFAULT_TEMPLATE) == 0
         assert dict((n, s) for n, s, _ in rule_status(repo, "9.9.9", DEFAULT_TEMPLATE))[tpl.name] == "ok"
+        st = lambda: dict((n, s) for n, s, _ in rule_status(repo, "9.9.9", DEFAULT_TEMPLATE))[tpl.name]
+        copy = repo / ".claude" / "rules" / tpl.name
+        # Same version, original changed, copy untouched: the stamp hash still matches, so sync overwrites.
+        copy.write_text(stamp(tpl.read_text(encoding="utf-8") + "\nold line\n", "9.9.9"), encoding="utf-8")
+        assert st() == "stale" and write_rules(repo, "9.9.9", False, DEFAULT_TEMPLATE) == 0 and st() == "ok"
+        # Same version, copy edited by hand: blocked as before.
+        copy.write_text(copy.read_text(encoding="utf-8") + "\nmine\n", encoding="utf-8")
+        assert st() == "edited" and write_rules(repo, "9.9.9", False, DEFAULT_TEMPLATE) == 1
+        # Pre-hash stamp at the same version: same content is restamped; a different body stays edited.
+        copy.write_text(stamp(tpl.read_text(encoding="utf-8"), "9.9.9", legacy=True), encoding="utf-8")
+        assert st() == "stale"
+        copy.write_text(stamp(tpl.read_text(encoding="utf-8") + "\nx\n", "9.9.9", legacy=True), encoding="utf-8")
+        assert st() == "edited"
+        copy.write_text(stamp(tpl.read_text(encoding="utf-8"), "9.9.9"), encoding="utf-8")
         write_hooks(repo)
         (repo / ".githooks" / "pre-commit").write_text("mine", encoding="utf-8")
         write_hooks(repo)

@@ -42,6 +42,7 @@ INLINE = {"a", "b", "strong", "em", "i", "span", "mark", "small", "sub", "sup", 
 NO_LABEL = ("cover", "section-cover", "statement", "quote")  # 덱 표지·섹션 표지·핵심 주장·인용(닫는 장 포함)
 CAPTION_MAX = 50  # 1920 장의 캡처 캡션(--t-xs) 한 줄 분량. 캡처의 조건은 captures.md 에 둔다
 MARK_MAX = 6  # 형광펜(.mark)은 청중이 집중할 곳에 장당 최대 6개. 목록 개수 조건은 없고 주의 문구(※)가 먼저다
+DOT_MAX = 4  # 중간점(·)은 짧은 이름 묶음에만 쓴다. 장마다 이보다 많으면 나열을 쉼표나 문장으로 푼다
 KINDS = {"체크포인트", "오해 바로잡기", "프롬프트", "강사 시연"}
 MARKUP = ((r'<p class="source"', "출처 줄 금지(deck-copy 사실만)"),
           (r'class="tags"', "태그 칩 금지(deck-copy 문장으로)"))
@@ -133,7 +134,8 @@ def labels(raw: str, report: bool = False) -> list:
 
 
 def caption_and_mark_limits(raw: str) -> list:
-    """Per-slide limits: a figcaption over CAPTION_MAX characters, more than MARK_MAX .mark highlights."""
+    """Per-slide limits: a figcaption over CAPTION_MAX characters, more than MARK_MAX .mark highlights,
+    more than DOT_MAX middle dots in the slide text."""
     plain = lambda t: re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", t))).strip()
     out = []
     for m in re.finditer(r'<section\b([^>]*)>(.*?)</section>', raw, re.S):
@@ -144,6 +146,9 @@ def caption_and_mark_limits(raw: str) -> list:
         marks = len(re.findall(r'class="(?:[^"]*\s)?mark(?:\s[^"]*)?"', m[2]))
         if marks > MARK_MAX:
             out.append(f"{sid}: 형광펜 {marks}개(장당 최대 {MARK_MAX}개)")
+        dots = plain(re.sub(r"<(pre|code)\b.*?</\1>", "", m[2], flags=re.S)).count("·")
+        if dots > DOT_MAX:
+            out.append(f"{sid}: 중간점 {dots}개(장당 최대 {DOT_MAX}개, 나열은 쉼표나 문장으로)")
     return out
 
 
@@ -265,6 +270,10 @@ def selftest() -> None:
     marks = lambda n: '<section aria-label="S1-03 x"><p>※ ' + '<span class="mark">a</span>' * n + '</p></section>'
     assert not [h for h in check_file("f", marks(6), banned) if "형광펜" in h]
     assert [h for h in check_file("f", marks(7), banned) if "형광펜" in h] == ["f S1-03: 형광펜 7개(장당 최대 6개)"]
+    # Up to 4 middle dots per slide in visible text; code, pre and panel templates are not counted.
+    dots = lambda n: '<section aria-label="S1-04 x"><p>' + "가·" * n + '</p><code>a·b·c·d·e</code></section>'
+    assert not [h for h in check_file("f", dots(4), banned) if "중간점" in h]
+    assert [h for h in check_file("f", dots(5), banned) if "중간점" in h] == ["f S1-04: 중간점 5개(장당 최대 4개, 나열은 쉼표나 문장으로)"]
     # A report deck (outline header "- deck_kind: report") bans the first person in slide text.
     assert deck_kind("# t\n\n- 덱의 주장: x\n- deck_kind: report\n") == "report"
     assert deck_kind("# t\n- 강의: x\n") == "lecture"

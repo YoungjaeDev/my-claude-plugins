@@ -186,7 +186,7 @@ The `ralphdev-light` shell keeps every class above and adds or changes these. It
 
 | Part | Markup | Rule |
 |---|---|---|
-| Cover | `section.slide.cover > div.wordmark + h1 + p.subtitle`, optional `figure.cover-art > img` (one 3D icon or illustration) | `.key` on one phrase of the `h1`; the wordmark is text (`ralphdev`) in Gasoek One whatever the title font, the shell adds the coral dot |
+| Cover | `section.slide.cover > div.wordmark + h1 + p.subtitle`, optional `p.date` (the report date, placed bottom right) and `figure.cover-art > img` (one 3D icon or illustration) | `.key` on one phrase of the `h1`; the wordmark is text (`ralphdev`) in Gasoek One whatever the title font, the shell adds the coral dot |
 | Title font | `--display` and `--title-weight` in the shell's `:root` | default NanumSquare ExtraBold 800 (`var(--rd-title)`); the heavier brand look is `--display: var(--rd-display); --title-weight: 400` (Gasoek One). Change both together, in `shell.html` only |
 | Title with English | `<h2>검사와 렌더 <span class="en">Check</span></h2>` | the English half is light grey body text |
 | Section cover | `section.slide.section-cover[data-section] > figure.icon > img`, optional `h2` + `p.lead` | the shell writes "SECTION n" and the section name from `SECTIONS` (with its optional `en`); the icon goes above them |
@@ -211,7 +211,7 @@ y 900 when the counts below hold. These counts are the per-layout exceptions to 
 |---|---|---|
 | `.statement` | one conclusion sentence or an opening question, 98px, centered. `h2 + p.sub` (optional, one line). No `.body`, no `span.kind` | one per section at most; title within two lines; no `<br>`. When the balanced break splits a phrase, join its words with `&nbsp;` in the `h2` only (outline and aria-label keep plain spaces) and re-render |
 | `.versus` | two parties side by side. `.body.versus > .side > h3 + ul.points` | exactly 2 `.side`; 2–4 items per side; `.side.on` on one side or none |
-| `.hero-num` | a remembered word or a verified number. `.body.hero-num > div > strong + p` | 2–3 items; with 3, `strong` fits about 5 Hangul or 8 Latin characters |
+| `.hero-num` | a remembered word or a verified number. In a report deck only after a slide that shows what was counted (an example or a figure); audit counts go to the appendix. `.body.hero-num > div > strong + p` | 2–3 items; with 3, `strong` fits about 5 Hangul or 8 Latin characters |
 | `.quote` | a verified external quote. `blockquote > p` then sibling `p.cite > a` | within 3 lines; longer goes to a `data-kind="text"` panel |
 | `.grid4` | four items of equal weight, 2×2. `.body.grid4 > .card > span.icon + h3 + p` | exactly 4 cards; `span.icon` optional |
 

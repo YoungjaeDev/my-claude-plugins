@@ -25,6 +25,7 @@ import re
 import sys
 from pathlib import Path
 
+from check_outline import VOID as VOID_TAGS  # one void-tag list for both slide-text parsers
 from kit import deck_kind  # the one deck_kind parser, shared with the rule-copy tool
 
 TABLE_HEADING = "### 금지 표기"
@@ -38,9 +39,12 @@ NATIVE = re.compile(r"(?<![가-힣])(셋|넷|다섯|여섯)(이|을|은|으로|�
 # 단독 "내"는 구의 첫머리일 때만 센다. 낱말 뒤 띄어 쓴 "내"는 의존 명사다(기간 내, 1년 내, 사이트 내).
 FIRST_PERSON = re.compile(r"(?<![가-힣])(내가|내|나는|나도|나의|나를|나|저는|저도|저의|저를|저희(?:는|가|의|도|를)?|저|제가)(?![가-힣])")
 SKIP = {"pre", "code", "template", "svg", "style", "script"}
+MOCKUP = {"term", "tr-win", "browser-win"}  # product output drawn as a mockup, not deck copy (check_outline skips the same)
+INLINE = {"a", "b", "strong", "em", "i", "span", "mark", "small", "sub", "sup", "u", "abbr", "code"}  # no word break
 NO_LABEL = ("cover", "section-cover", "statement", "quote")  # 덱 표지·섹션 표지·핵심 주장·인용(닫는 장 포함)
 CAPTION_MAX = 50  # 1920 장의 캡처 캡션(--t-xs) 한 줄 분량. 캡처의 조건은 captures.md 에 둔다
 MARK_MAX = 6  # 형광펜(.mark)은 청중이 집중할 곳에 장당 최대 6개. 목록 개수 조건은 없고 주의 문구(※)가 먼저다
+DOT_MAX = 4  # 중간점(·)은 짧은 이름 묶음에만 쓴다. 장마다 이보다 많으면 나열을 쉼표나 문장으로 푼다
 KINDS = {"체크포인트", "오해 바로잡기", "프롬프트", "강사 시연"}
 MARKUP = ((r'<p class="source"', "출처 줄 금지(deck-copy 사실만)"),
           (r'class="tags"', "태그 칩 금지(deck-copy 문장으로)"))
@@ -149,9 +153,12 @@ def caption_and_mark_limits(raw: str) -> list:
 class Text(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
-        self.skip, self.slide, self.out, self.attrs = 0, "?", [], []
+        self.skip, self.mock, self.slide, self.out, self.attrs = 0, 0, "?", [], []
+        self.run = ""  # raw text since the last block tag: a node's left context across inline tags
 
     def handle_starttag(self, tag, attrs):
+        if tag not in INLINE:
+            self.run = ""
         if tag == "section":
             self.slide = (dict(attrs).get("aria-label") or "?").split(" ")[0]
         if not self.skip:
@@ -159,24 +166,41 @@ class Text(html.parser.HTMLParser):
                            for k, v in attrs if k in ("alt", "aria-label") and v and v.strip()]
         if tag in SKIP:
             self.skip += 1
+        if self.mock:
+            self.mock += tag not in VOID_TAGS
+        elif MOCKUP & set((dict(attrs).get("class") or "").split()):
+            self.mock = 1
 
     def handle_endtag(self, tag):
+        if tag not in INLINE:
+            self.run = ""
         if tag in SKIP and self.skip:
             self.skip -= 1
+        if self.mock and tag not in VOID_TAGS:
+            self.mock -= 1
 
     def handle_data(self, data):
-        if not self.skip and data.strip():
-            self.out.append((self.slide, data.strip()))
+        if not self.skip and not self.mock and data.strip():
+            self.out.append((self.slide, data.strip(), self.run + data[:len(data) - len(data.lstrip())]))
+        self.run += data
 
 
-def text_hits(text: str, banned: list, report: bool = False) -> list:
+def text_hits(text: str, banned: list, report: bool = False, before: str = "") -> list:
+    """before: the text ahead of `text` in the same block, so `<a>사이트</a> 내` reads as 사이트 내."""
     hits = [f"{why or rx}" for rx, why in banned if re.search(rx, text)]
     if report:
         hits += [f"1인칭(보고 덱):{m[1]}" for m in FIRST_PERSON.finditer(text)
-                 if not (m[1] == "내" and re.search(r"\w\s+$", text[:m.start()]))]
+                 if not (m[1] == "내" and re.search(r"\w\s+$", before + text[:m.start()]))]
     hits += [f"쉼표:{m.group(1)}" for m in COMMA.finditer(text) if m.group(1) not in COMMA_OK]
     hits += [f"고유어 수사:{m.group(0)}" for m in NATIVE.finditer(text)]
     return hits
+
+
+def asset_hits(name: str, raw: str, banned: list) -> list:
+    """Banned wording in an HTML source under assets/ (a diagram rendered to PNG): its text reaches the slide as an image."""
+    p = Text()
+    p.feed(raw)
+    return [f"{name}: {why or rx}: {text}" for _, text, _ in p.out for rx, why in banned if re.search(rx, text)]
 
 
 def check_file(name: str, raw: str, banned: list, report: bool = False) -> list:
@@ -188,8 +212,12 @@ def check_file(name: str, raw: str, banned: list, report: bool = False) -> list:
     out += [f"{name} {h}" for h in caption_and_mark_limits(no_tpl)]
     p = Text()
     p.feed(raw)
-    for slide, text in p.out:
-        out += [f"{name} {slide}: {h}: {text}" for h in text_hits(text, banned, report)]
+    for slide, text, before in p.out:
+        out += [f"{name} {slide}: {h}: {text}" for h in text_hits(text, banned, report, before)]
+    dots = {}
+    for slide, text, _ in p.out:
+        dots[slide] = dots.get(slide, 0) + text.count("·")
+    out += [f"{name} {slide}: 중간점 {n}개(장당 최대 {DOT_MAX}개, 나열은 쉼표나 문장으로)" for slide, n in dots.items() if n > DOT_MAX]
     for slide, attr, text in p.attrs:
         out += [f"{name} {slide}: {why or rx}: {attr}" for rx, why in banned if re.search(rx, text)]
     return out
@@ -257,6 +285,17 @@ def selftest() -> None:
     marks = lambda n: '<section aria-label="S1-03 x"><p>※ ' + '<span class="mark">a</span>' * n + '</p></section>'
     assert not [h for h in check_file("f", marks(6), banned) if "형광펜" in h]
     assert [h for h in check_file("f", marks(7), banned) if "형광펜" in h] == ["f S1-03: 형광펜 7개(장당 최대 6개)"]
+    # Up to 4 middle dots per slide in visible text; code, pre and panel templates are not counted.
+    dots = lambda n: '<section aria-label="S1-04 x"><p>' + "가·" * n + '</p><code>a·b·c·d·e</code></section>'
+    assert not [h for h in check_file("f", dots(4), banned) if "중간점" in h]
+    assert [h for h in check_file("f", dots(5), banned) if "중간점" in h] == ["f S1-04: 중간점 5개(장당 최대 4개, 나열은 쉼표나 문장으로)"]
+    # A diagram source under assets/ is checked for banned wording only (no comma or dot limits).
+    assert asset_hits("d.html", "<style>x{}</style><div>잠정 승인 3건</div><span>가, 하고, 나</span>", [("잠정 ?승인", "작업 용어")]) == ["d.html: 작업 용어: 잠정 승인 3건"]
+    # A chat or terminal mockup shows product output as it is: its arrows, dots and commas are not deck copy.
+    mock = ('<section aria-label="S1-05 x"><div class="tr-win"><div class="msg agent"><p>가·나·다·라·마·바를 정하고, 끝</p>'
+            '<br><p>둘째</p></div></div><p>장표를 정하고, 글</p></section>')
+    hits = check_file("f", mock, banned)
+    assert not [h for h in hits if "중간점" in h] and len([h for h in hits if "쉼표" in h]) == 1, hits
     # A report deck (outline header "- deck_kind: report") bans the first person in slide text.
     assert deck_kind("# t\n\n- 덱의 주장: x\n- deck_kind: report\n") == "report"
     assert deck_kind("# t\n- 강의: x\n") == "lecture"
@@ -272,6 +311,10 @@ def selftest() -> None:
     person = lambda t: [h for h in text_hits(t, [], report=True) if "1인칭" in h]
     for t in ("기간 내 처리한다", "1년 내 끝낸다", "사이트 내 검색", "A 내 B", "기간\n      내 처리한다"):
         assert not person(t), (t, person(t))
+    # The left context crosses inline tags (a link, a highlight) but not a block boundary.
+    linked = '<section aria-label="S1-02 x"><p><a href="#">사이트</a> 내 검색</p><p><span class="mark">기간</span> 내 끝낸다</p>' \
+             '<li>목록</li><li>내 계정</li></section>'
+    assert [h for h in check_file("f", linked, banned, report=True) if "1인칭" in h] == ["f S1-02: 1인칭(보고 덱):내: 내 계정"]
     for t in ("내 계정을 옮긴다", "(내 판단) 맞다", "· 내 계정", "이번엔 내가 맡는다", "그 일은 제가 한다",
               "저희는 결과를 전달했다", "저희가 맡는다"):
         assert person(t), t
@@ -335,6 +378,8 @@ def main() -> int:
     bad = []
     for path in sorted((deck / "sections").glob("*.html")):
         bad += check_file(path.name, path.read_text(encoding="utf-8"), banned, kind == "report")
+    for path in sorted((deck / "assets").rglob("*.html")) if (deck / "assets").is_dir() else []:
+        bad += asset_hits(str(path.relative_to(deck)), path.read_text(encoding="utf-8"), banned)
     for line in bad:
         print(line)
     print(f"patterns: {len(banned)} from {rules}" + "".join(f" and {n}" for n in read_from) + f"; deck_kind: {kind}")

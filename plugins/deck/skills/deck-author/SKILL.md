@@ -69,8 +69,7 @@ read the originals in this plugin's `templates/rules/` and tell the user.
    - technical statements that need a source, and any that a second "why?" would show as wrong.
    The reviewer skips the 금지 표기 tables of `deck-copy.md` and `deck-local.md` (`check_copy.py`
    covers them) and applies the `deck-report.md` vocabulary table itself. Apply the fixes to the
-   outline, then show the user. Each instructor correction adds one row (slide, before, after,
-   rule hit) to the case table in `deck-local.md`, created on first use.
+   outline, then show the user.
    When the `humanize-korean` plugin is installed, run it after the content is settled, as a second
    reviewer for what the regex checks miss (long chained clauses, stacked modifiers, vague verbs,
    paired parallel clauses, transformation formulas):
@@ -95,7 +94,12 @@ read the originals in this plugin's `templates/rules/` and tell the user.
    Motion section describes.
 5. **Check** with `deck-check` (build, copy check, render) and fix every finding.
 6. **Look** at every rendered PNG of the changed slides against `references/qa.md`.
-7. **Report** the slide IDs changed, the files written, the copy review result (or the `검토 대기`
+7. **Record corrections**: every wording or slide-form correction the user gives adds one row (slide,
+   before, after, rule hit) to the case table in `.claude/rules/deck-local.md`, created on first use, in
+   the same change that applies it. A correction that fits a fixed pattern also adds a row to that file's
+   `### 덱 금지 표기` table so `check_copy` catches it next time; one that would hold for every deck goes
+   to the plugin's rule originals instead.
+8. **Report** the slide IDs changed, the files written, the copy review result (or the `검토 대기`
    slide IDs), and anything not verified. Deployment is not
    part of this skill (deck-authoring "원고가 기준", `deck-deploy`).
 

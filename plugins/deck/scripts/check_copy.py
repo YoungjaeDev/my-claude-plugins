@@ -196,6 +196,13 @@ def text_hits(text: str, banned: list, report: bool = False, before: str = "") -
     return hits
 
 
+def asset_hits(name: str, raw: str, banned: list) -> list:
+    """Banned wording in an HTML source under assets/ (a diagram rendered to PNG): its text reaches the slide as an image."""
+    p = Text()
+    p.feed(raw)
+    return [f"{name}: {why or rx}: {text}" for _, text, _ in p.out for rx, why in banned if re.search(rx, text)]
+
+
 def check_file(name: str, raw: str, banned: list, report: bool = False) -> list:
     out = []
     no_tpl = re.sub(r"<template.*?</template>", "", raw, flags=re.S)
@@ -282,6 +289,8 @@ def selftest() -> None:
     dots = lambda n: '<section aria-label="S1-04 x"><p>' + "가·" * n + '</p><code>a·b·c·d·e</code></section>'
     assert not [h for h in check_file("f", dots(4), banned) if "중간점" in h]
     assert [h for h in check_file("f", dots(5), banned) if "중간점" in h] == ["f S1-04: 중간점 5개(장당 최대 4개, 나열은 쉼표나 문장으로)"]
+    # A diagram source under assets/ is checked for banned wording only (no comma or dot limits).
+    assert asset_hits("d.html", "<style>x{}</style><div>잠정 승인 3건</div><span>가, 하고, 나</span>", [("잠정 ?승인", "작업 용어")]) == ["d.html: 작업 용어: 잠정 승인 3건"]
     # A chat or terminal mockup shows product output as it is: its arrows, dots and commas are not deck copy.
     mock = ('<section aria-label="S1-05 x"><div class="tr-win"><div class="msg agent"><p>가·나·다·라·마·바를 정하고, 끝</p>'
             '<br><p>둘째</p></div></div><p>장표를 정하고, 글</p></section>')
@@ -369,6 +378,8 @@ def main() -> int:
     bad = []
     for path in sorted((deck / "sections").glob("*.html")):
         bad += check_file(path.name, path.read_text(encoding="utf-8"), banned, kind == "report")
+    for path in sorted((deck / "assets").rglob("*.html")) if (deck / "assets").is_dir() else []:
+        bad += asset_hits(str(path.relative_to(deck)), path.read_text(encoding="utf-8"), banned)
     for line in bad:
         print(line)
     print(f"patterns: {len(banned)} from {rules}" + "".join(f" and {n}" for n in read_from) + f"; deck_kind: {kind}")

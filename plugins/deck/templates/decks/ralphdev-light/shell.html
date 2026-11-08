@@ -252,7 +252,11 @@
       -webkit-mask-image: linear-gradient(105deg, transparent 22%, #000 70%); mask-image: linear-gradient(105deg, transparent 22%, #000 70%); }
     .cover { padding: 96px 128px; }
     .cover h1 { margin-top: 150px; max-width: 1040px; font-size: 128px; line-height: 1.12; letter-spacing: -0.01em; }
-    .cover .subtitle { margin-top: 36px; max-width: 1040px; font-size: var(--t-m); color: var(--sub); }
+    /* One line across the cover; narrower only when the cover art sits on the right. */
+    .cover .subtitle { margin-top: 36px; max-width: 1664px; font-size: var(--t-m); color: var(--sub); }
+    .cover:has(.cover-art) .subtitle { max-width: 1040px; }
+    /* p.date: the report date, bottom right of the cover. */
+    .cover .date { position: absolute; right: 128px; bottom: 96px; margin: 0; font-size: var(--t-s); color: var(--sub); font-variant-numeric: tabular-nums; }
     /* Optional picture on the right: one 3D icon or illustration in a warm well. */
     .cover .cover-art { position: absolute; right: 128px; top: 300px; width: 560px; height: 560px; margin: 0; border-radius: 28px; background: var(--well); display: grid; place-items: center; overflow: hidden; }
     .cover .cover-art img { width: 78%; height: 78%; object-fit: contain; }
@@ -459,6 +463,8 @@
     .body.versus, .body.hero-num, .body.grid4, .body.stack { display: grid; align-content: center; padding-bottom: 72px; }
     /* The divider is a grid item (::before) in the middle column, so it is exactly as tall as the cards. */
     .body.versus { grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr); gap: 56px; }
+    /* A lead right above boxes or columns needs more air than the 44px body gap, or the two read as one block. */
+    .lead + .body:is(.versus, .compare, :has(> .compare)) { margin-top: 72px; }
     .body.versus::before { content: ""; grid-column: 2; grid-row: 1; background: var(--rule); }
     .versus .side { padding: 36px 48px 44px; background: var(--well); border: 1px solid var(--rule); border-radius: 12px; }
     .versus .side > h3 { margin-bottom: 30px; padding-bottom: 22px; border-bottom: 1px solid var(--rule); }

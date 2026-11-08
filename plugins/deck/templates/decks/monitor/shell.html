@@ -193,6 +193,8 @@
     .deck-panel-body { overflow-y: auto; padding: 32px 40px 40px; display: grid; gap: 20px; align-content: start; scrollbar-width: thin; scrollbar-color: var(--done) transparent; }
     .deck-panel-body:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
     .deck-panel-body p, .deck-panel-body li, .deck-panel-body td, .deck-panel-body th { word-break: keep-all; overflow-wrap: break-word; }
+    /* A table sizes columns by min-content, which break-word ignores: a long token in a cell would widen the panel. */
+    .deck-panel-body td, .deck-panel-body th { overflow-wrap: anywhere; }
     /* A quoted source (blockquote > p) reads apart from the body: rule on the left, well background, smaller grey text. */
     .deck-panel-body blockquote { padding: 16px 24px; border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; background: var(--well); }
     .deck-panel-body blockquote p { font-size: var(--t-xs); color: var(--muted); }

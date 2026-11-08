@@ -118,9 +118,13 @@ BOLD = re.compile(r"\*\*(?=\S)(.+?)(?<=\S)\*\*|(?<!\w)__(?=\S)(.+?)(?<=\S)__(?!\
 
 def outline_text(text: str) -> str:
     # The outline breaks a line with <br> or " / " (deck-copy); both read as " / ", as a section <br> does.
-    # Bold marks drop outside code spans only (`__init__` stays); a table cell writes | as \|.
-    parts = text.replace("\\|", "|").replace("==", "").split("`")
-    text = "".join(p if i % 2 else BOLD.sub(lambda m: m[1] or m[2], p) for i, p in enumerate(parts))
+    # Bold marks drop outside code spans only (`__init__` stays), also when the bold wraps a code span
+    # (**`echo` 명령**): code spans are held out as placeholders first. A table cell writes | as \|.
+    codes = []
+    text = re.sub(r"`([^`]*)`", lambda m: codes.append(m[1]) or f"\0{len(codes) - 1}\0",
+                  text.replace("\\|", "|").replace("==", ""))
+    text = BOLD.sub(lambda m: m[1] or m[2], text).replace("`", "")
+    text = re.sub(r"\0(\d+)\0", lambda m: codes[int(m[1])], text)
     return norm(re.sub(r"\s*<br\s*/?>\s*", " / ", text))
 
 
@@ -182,6 +186,7 @@ def selftest() -> None:
     assert outline_text("첫 문장 <br> 다음 문장") == "첫 문장 / 다음 문장"
     assert outline_text("**프로젝트 밖 폴더**를 설명과 __키__") == "프로젝트 밖 폴더를 설명과 키"
     assert outline_text("`env \\| grep` 과 `__init__`, a**b") == "env | grep 과 __init__, a**b"
+    assert outline_text("**`echo` 명령**과 **`__init__` 파일**") == "echo 명령과 __init__ 파일"
     # A literal " / " in slide text needs no escape; a <br> in the section still matches the outline's " / ".
     slash = ('<section class="slide" aria-label="S9-05 t"><p class="lead">홈과<br>메뉴의 ABOUT / BRAND 페이지</p>'
              '<li>구글 / 네이버</li><li>끝<br></li></section>')

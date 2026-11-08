@@ -31,6 +31,20 @@ if [ ! -f "$PLUGIN_ROOT/scripts/kit.py" ]; then
   echo "deck: plugin scripts not found; export PLUGIN_ROOT=<path to plugins/deck>" >&2
   exit 3
 fi
+# A root without node_modules (a repo checkout, the Codex cache) borrows Playwright from the newest
+# cached copy that has it, so render, interaction and frames still run.
+if [ ! -d "$PLUGIN_ROOT/node_modules" ] && [ -z "${NODE_PATH:-}" ]; then
+  nm=$(find "$HOME/.claude/plugins/cache" "${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}" \
+    -mindepth 3 -maxdepth 3 -type d -path '*/deck/*' 2>/dev/null | while IFS= read -r d; do
+      [ -d "$d/node_modules" ] && printf '%s\t%s\n' "${d##*/}" "$d"
+    done)
+  if sort -V </dev/null >/dev/null 2>&1; then
+    nm=$(printf '%s\n' "$nm" | sort -V | tail -1 | cut -f2-)
+  else
+    nm=$(printf '%s\n' "$nm" | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -f2-)
+  fi
+  [ -n "$nm" ] && export NODE_PATH="$nm/node_modules"
+fi
 PY=$(command -v python3 || command -v python)
 S="$PLUGIN_ROOT/scripts"
 cmd="${1:-}"

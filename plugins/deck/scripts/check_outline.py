@@ -7,7 +7,8 @@ The outline is the copy source (deck-authoring: the outline wins); this catches 
 never reached it. Checked per slide: every h2, p.lead and li, and each text piece of a .fbox
 (its <strong>, its own text, its <span>), since outlines list box text as "name(label · note)".
 The match is a substring search over the whole outline, so the table layout does not matter.
-Outline markup is ignored: backticks, ==highlight== marks and runs of whitespace. A line break reads
+Outline markup is ignored: backticks, ==highlight== marks, **bold** and __bold__ outside code spans,
+the table escape backslash-pipe (read as |) and runs of whitespace. A line break reads
 as " / " on both sides (a <br> in the section, " / " or <br> in the outline), so a literal " / " in
 slide text needs no escape in the outline; the older &#47; escape still works.
 Not checked: <template> panels, <pre>, <svg>, mockups (.term, .tr-win, .browser-win) and
@@ -112,9 +113,15 @@ class Texts(HTMLParser):
             self.piece += data
 
 
+BOLD = re.compile(r"\*\*(?=\S)(.+?)(?<=\S)\*\*|(?<!\w)__(?=\S)(.+?)(?<=\S)__(?!\w)")  # __ only at word edges, as in Markdown
+
+
 def outline_text(text: str) -> str:
     # The outline breaks a line with <br> or " / " (deck-copy); both read as " / ", as a section <br> does.
-    return norm(re.sub(r"\s*<br\s*/?>\s*", " / ", text.replace("==", "").replace("`", "")))
+    # Bold marks drop outside code spans only (`__init__` stays); a table cell writes | as \|.
+    parts = text.replace("\\|", "|").replace("==", "").split("`")
+    text = "".join(p if i % 2 else BOLD.sub(lambda m: m[1] or m[2], p) for i, p in enumerate(parts))
+    return norm(re.sub(r"\s*<br\s*/?>\s*", " / ", text))
 
 
 MOVING = re.compile(r"흐름|순서|구성|화면")  # slide types that show a flow, an order, a structure or a screen
@@ -173,6 +180,8 @@ def selftest() -> None:
                       "| S9-02 | 리드: 첫 문장 / 다음 문장 · 첫 문장 <br> 다음 문장 |")
     assert found == [], found
     assert outline_text("첫 문장 <br> 다음 문장") == "첫 문장 / 다음 문장"
+    assert outline_text("**프로젝트 밖 폴더**를 설명과 __키__") == "프로젝트 밖 폴더를 설명과 키"
+    assert outline_text("`env \\| grep` 과 `__init__`, a**b") == "env | grep 과 __init__, a**b"
     # A literal " / " in slide text needs no escape; a <br> in the section still matches the outline's " / ".
     slash = ('<section class="slide" aria-label="S9-05 t"><p class="lead">홈과<br>메뉴의 ABOUT / BRAND 페이지</p>'
              '<li>구글 / 네이버</li><li>끝<br></li></section>')

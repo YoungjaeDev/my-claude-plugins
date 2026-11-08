@@ -35,6 +35,10 @@ TABLE_COLUMNS = ("쓰지 않는다", "대신", "검사식")
 COMMA = re.compile(r"([가-힣]*(?:고|며|지만|면서|어서|아서|해서)),")
 COMMA_OK = {"보고", "광고", "창고", "참고", "최고", "재고", "경고", "원고", "사고"}
 NATIVE = re.compile(r"(?<![가-힣])(셋|넷|다섯|여섯)(이|을|은|으로|에게|에|의|과|와|도|만|뿐|이다)?(?![가-힣])(?!\s*(?:다(?![가-힣])|번째))")
+# 개수 자리의 고유어 관형사 + 단위("세 가지", "두 개"). 단위 뒤는 조사만 받는다: "세 개념", "네 명령"은 개수가 아니다.
+# 줄·장·번은 넣지 않는다: "두 줄 안에", "두 번째"처럼 수량이 아닌 관용으로 더 자주 쓴다.
+NATIVE_UNIT = re.compile(r"(?<![가-힣])(두|세|네|다섯|여섯|일곱|여덟|아홉|열)\s*(가지|개|명|곳|군데|단계|건|종류)"
+                         r"(?:이|가|을|를|은|는|의|에|에서|과|와|도|만|으로|로|씩|뿐|이다)?(?![가-힣])")
 # 보고 덱(outline 머리 "- deck_kind: report")의 1인칭. 단독 어절과 흔한 조사 꼴만 본다(내용·저장·나중은 아니다).
 # 단독 "내"는 구의 첫머리일 때만 센다. 낱말 뒤 띄어 쓴 "내"는 의존 명사다(기간 내, 1년 내, 사이트 내).
 FIRST_PERSON = re.compile(r"(?<![가-힣])(내가|내|나는|나도|나의|나를|나|저는|저도|저의|저를|저희(?:는|가|의|도|를)?|저|제가)(?![가-힣])")
@@ -193,6 +197,7 @@ def text_hits(text: str, banned: list, report: bool = False, before: str = "") -
                  if not (m[1] == "내" and re.search(r"\w\s+$", before + text[:m.start()]))]
     hits += [f"쉼표:{m.group(1)}" for m in COMMA.finditer(text) if m.group(1) not in COMMA_OK]
     hits += [f"고유어 수사:{m.group(0)}" for m in NATIVE.finditer(text)]
+    hits += [f"고유어 수사:{m.group(0)}" for m in NATIVE_UNIT.finditer(text)]
     return hits
 
 
@@ -240,6 +245,8 @@ def selftest() -> None:
     assert text_hits("참고, 이것", banned) == []
     assert text_hits("셋이 남았다", banned) == ["고유어 수사:셋이"]
     assert text_hits("셋 다 본다", banned) == []
+    assert text_hits("세 가지를 본다. 두 개가 남는다", []) == ["고유어 수사:세 가지를", "고유어 수사:두 개가"]
+    assert text_hits("세 개념과 네 명령, 두 번째, 두 줄 안에, 3가지", []) == []
     assert text_hits("다나", banned) == ["둘 중 하나"]
     ok = '<section class="slide" aria-label="S1-01 x"><span class="kind">실습 · 덱 빌드하기</span><h2>제목</h2></section>'
     bare = '<section class="slide" aria-label="S1-02 x"><h2>제목</h2></section>'

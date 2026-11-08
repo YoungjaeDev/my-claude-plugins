@@ -345,6 +345,8 @@ gh --version</pre>
 - A prompt sent as two separate messages stays one panel: the outline's source block separates the messages
   with one blank line, and the panel holds one `pre.code` per message (each gets its own copy button).
 - Q&A uses `button.reveal-btn.qa` (`Q&amp;A`, small circle top-right) with an `aria-label`.
+- A quoted source inside a panel is `blockquote > p`; the shell draws it apart from the body text (left rule,
+  well background, smaller grey text), so do not restyle it.
 - The shell gives every `pre.code` a copy button; the copied text is the original without `span.k`,
   `span.c` or button text. A `prompt` panel without `pre.code` copies its whole body from the title bar.
 - `<template>` does not render, so it never affects overflow, captures or edit-mode saves. The shell

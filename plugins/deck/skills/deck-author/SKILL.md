@@ -55,7 +55,10 @@ read the originals in this plugin's `templates/rules/` and tell the user.
    stack-diagram look; a capture title naming the screen plainly; a chat capture redrawn as a mockup
    when its content is the point; a gloss on each technical term and an everyday analogy for a
    development concept when the audience has no development background; a number that says what it
-   counts; in a report deck, no `.statement` slide without evidence and no 1st-person narration.
+   counts; a deck title or section name that names what is learned ("does this title alone say what
+   the audience learns?"); a panel button name that says what opens; case-person voice only on case
+   slides, never on a section-cover lead or a practice goal; in a report deck, no `.statement` slide
+   without evidence and no 1st-person narration.
    A report deck is also judged as a whole against `deck-report.md`: the first section explains the
    domain (topic tree, question examples, what each source tells) before any result; a system or
    procedure is shown by one real input carried end to end; no `.hero-num` slide without a preceding

@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
   <title>덱 제목</title>
+  <!-- Link previews (messengers, Slack) read these: keep them equal to <title> and the cover subtitle. -->
+  <meta property="og:title" content="덱 제목">
+  <meta property="og:description" content="덱 부제">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="assets/brand/ralphdev-monogram.svg">
   <!-- Design B "Monitor": graphite canvas matching the dark Studio captures, one accent (Ralph shirt blue),
        5-segment progress line in the injected footer. Authoring classes are unprefixed; everything the
        script injects at runtime is a deck-* element or class and carries data-runtime. -->
@@ -187,7 +192,13 @@
     deck-panel button:hover, deck-panel button:focus-visible { border-color: var(--accent); outline: none; }
     .deck-panel-body { overflow-y: auto; padding: 32px 40px 40px; display: grid; gap: 20px; align-content: start; scrollbar-width: thin; scrollbar-color: var(--done) transparent; }
     .deck-panel-body:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-    .deck-panel-body p, .deck-panel-body li { word-break: keep-all; overflow-wrap: break-word; }
+    .deck-panel-body p, .deck-panel-body li, .deck-panel-body td, .deck-panel-body th { word-break: keep-all; overflow-wrap: break-word; }
+    /* A table sizes columns by min-content, which break-word ignores: a long token in a cell would widen the panel. */
+    .deck-panel-body td, .deck-panel-body th { overflow-wrap: anywhere; }
+    /* A quoted source (blockquote > p) reads apart from the body: rule on the left, well background, smaller grey text. */
+    .deck-panel-body blockquote { padding: 16px 24px; border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; background: var(--well); }
+    .deck-panel-body blockquote p { font-size: var(--t-xs); color: var(--muted); }
+    .deck-panel-body blockquote p + p { margin-top: 12px; }
     .deck-panel-body pre.code { font-size: var(--t-2xs); overflow: visible; }
     /* .reveal-box: a block on the slide folded until its button is clicked (a demo prompt). ?static=1 renders it
        open and print shows it open; the shell folds it again on every slide change. */

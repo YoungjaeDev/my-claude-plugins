@@ -287,7 +287,8 @@ async function auditActualTextFonts(page, index) {
         .filter(node => node.nodeType === Node.TEXT_NODE)
         .map(node => node.nodeValue || "")
         .join("");
-      if (!text.trim()) continue;
+      // A display:none element (or one inside it) lays out no glyphs, so it has no font evidence to give.
+      if (!text.trim() || !element.getClientRects().length) continue;
       const id = `actual-font-${slideIndex}-${serial++}`;
       element.setAttribute("data-actual-font-id", id);
       result.push({

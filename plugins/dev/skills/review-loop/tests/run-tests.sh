@@ -2378,6 +2378,94 @@ PATH="$FM:$PATH" STATE_FILE="$FM/state.json" BLOCK="$FM_BLOCK" bash -c '
 is "ci_failing follow-up issue names the failing checks" "$(grep -c 'CI checks failing on HEAD .*: policy, build' "$FM/body" 2>/dev/null)" 1
 rm -rf "$FM"
 
+# Step 14 sub-issue split (#389): more deferred findings than the threshold get the
+# parent issue plus one sub-issue each. The gh stub keeps the issues it creates, so a
+# re-run lists the sub-issues the first run made; LIST_FAIL / LINK_FAIL / GET_FAIL
+# fail one REST call.
+SI=$(mktemp -d)
+cat > "$SI/gh" <<'SH'
+#!/usr/bin/env bash
+d=$(dirname "$0"); printf '%s\n' "$*" >> "$d/calls"
+prev=""; bf=""; for a in "$@"; do [ "$prev" = --body-file ] && bf=$a; prev=$a; done
+case "$1 $2" in
+  "label create") exit 0 ;;
+  "issue create") cp "$bf" "$d/parent"; echo https://github.com/o/r/issues/9; exit 0 ;;
+  "issue comment") cp "$bf" "$d/comment"; exit 0 ;;
+  "issue edit") cp "$bf" "$d/parent"; exit 0 ;;
+esac
+[ "$1" = api ] || exit 1
+case "$2 $3 $4" in
+  "--paginate --slurp repos/o/r/issues/9/sub_issues?per_page=100")
+    [ -n "${LIST_FAIL:-}" ] && { echo "gh: Not Found (HTTP 404)" >&2; exit 1; }
+    jq -s '[.]' "$d"/sub-*.json 2>/dev/null || echo '[[]]' ;;
+  "repos/o/r/issues/9  ")
+    [ -n "${GET_FAIL:-}" ] && { echo "gh: Bad credentials (HTTP 401)" >&2; exit 1; }
+    jq -Rs '{number:9, body:.}' "$d/parent" ;;
+  "-X POST repos/o/r/issues")
+    n=$(( $(ls "$d" | grep -c '^new-') + 101 )); f=""
+    for a in "$@"; do case "$a" in body=@*) f=${a#body=@} ;; esac; done
+    jq -Rs --argjson n "$n" '{id:($n + 5000), number:$n, body:.}' "$f" > "$d/new-$n.json"
+    cat "$d/new-$n.json" ;;
+  "-X POST repos/o/r/issues/9/sub_issues")
+    [ -n "${LINK_FAIL:-}" ] && { echo "gh: Validation Failed (HTTP 422)" >&2; exit 1; }
+    id=${6#sub_issue_id=}; for f in "$d"/new-*.json; do
+      if [ "$(jq -r .id "$f")" = "$id" ]; then cp "$f" "$d/sub-$(jq -r .number "$f").json"; fi; done ;;
+  *) exit 1 ;;
+esac
+SH
+chmod +x "$SI/gh"
+si_state() { # N_DEFERRED [FOLLOWUP_JSON] -> a state file with N defer records
+  jq -n --argjson n "$1" --argjson fi "${2:-null}" '{followup_issue:$fi, auto_judge_log:[range(1; $n + 1) as $i |
+    {iter:1, src:"cr", path:"f\($i).sh", line:$i, comment_id:(1000 + $i), badge_or_sev:"🟠 Major",
+     action:"defer", reason:"needs design \($i)"}]}' > "$SI/state.json"
+}
+si_run() { # [ENV=...]... -> runs the Step 14 block; calls in $SI/calls, stderr in $SI/err
+  : > "$SI/calls"
+  env "$@" PATH="$SI:$PATH" STATE_FILE="$SI/state.json" SKILL_DIR="$HERE/.." BLOCK="$FM_BLOCK" bash -c '
+    OWNER=o REPO=r final_state=churn review_total=0 PR_NUM=1 HEAD_VERDICT=""
+    deferred_total=$(jq "[.auto_judge_log[] | select(.action == \"defer\")] | length" "$STATE_FILE")
+    eval "$BLOCK"' >/dev/null 2>"$SI/err"
+}
+si_count() { grep -c -- "$1" "$SI/calls"; }
+si_fi() { jq -c "$1" "$SI/state.json"; }
+
+si_state 5; si_run
+is "5 deferred -> one issue, no sub-issue calls" "$(si_count '^issue create'):$(si_count '^api')" "1:0"
+is "5 deferred -> followup_issue unchanged" "$(si_fi .followup_issue)" '{"number":9,"url":"https://github.com/o/r/issues/9"}'
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run
+is "6 deferred -> parent plus 6 sub-issues" \
+   "$(si_count '^issue create'):$(si_count '^api -X POST repos/o/r/issues -'):$(si_count '/sub_issues -F')" "1:6:6"
+is "6 deferred -> each sub-issue linked by its id, not its number" \
+   "$(grep -c 'sub_issue_id=510[1-6]$' "$SI/calls")" 6
+is "6 deferred -> state records the split" "$(si_fi '[.followup_issue.split, (.followup_issue.sub_issues | length)]')" '["sub_issues",6]'
+is "sub-issue body carries the deferred finding" "$(jq -r .body "$SI/new-103.json" | grep -c 'needs design 3')" 1
+
+si_state 7 "$(si_fi .followup_issue)"; si_run
+is "re-run reuses the parent and appends" "$(si_count '^issue create'):$(si_count '^issue comment')" "0:1"
+is "re-run files only the finding without a sub-issue" "$(si_count '^api -X POST repos/o/r/issues -')" 1
+is "re-run keeps every sub-issue number" "$(si_fi '.followup_issue.sub_issues | length')" 7
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run LIST_FAIL=1
+is "sub-issue listing fails -> nothing filed as if the list were empty" "$(si_count '^api -X POST')" 0
+is "sub-issue listing fails -> task list fallback recorded" "$(si_fi .followup_issue.split)" '"task_list"'
+is "task list fallback -> one unchecked item per finding in the parent body" "$(grep -c '^- \[ \] ' "$SI/parent")" 6
+is "task list fallback keeps the parent's table" "$(grep -c '^| Reviewer | Severity | Location | Why deferred |$' "$SI/parent")" 1
+is "task list fallback says why on stderr" "$(grep -c 'sub-issues' "$SI/err")" 1
+
+si_state 6 "$(si_fi .followup_issue)"; si_run LIST_FAIL=1
+is "re-run of a task list fallback adds no duplicate items" "$(si_count '^issue edit'):$(grep -c '^- \[ \] ' "$SI/parent")" "0:6"
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run LINK_FAIL=1
+is "link fails -> stop filing, rest go to the task list" \
+   "$(si_count '^api -X POST repos/o/r/issues -'):$(grep -c '^- \[ \] ' "$SI/parent"):$(si_fi .followup_issue.split)" '1:6:"task_list"'
+is "the unlinked sub-issue is named in its task item" "$(grep -c '^- \[ \] #101 ' "$SI/parent")" 1
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run GET_FAIL=1
+is "parent body unreadable -> no body edit, split failed" \
+   "$(si_count '^issue edit'):$(si_count '^api -X POST'):$(si_fi .followup_issue.split)" '0:0:"failed"'
+rm -rf "$SI"
+
 # Step 12: a noop Step 10 (every fix reverted, or none applied) pushes nothing.
 P12=$(mktemp -d); printf '#!/usr/bin/env bash\necho "$*" >> "%s/calls"\n' "$P12" > "$P12/git"; chmod +x "$P12/git"
 # The PR is still open (the merged-meanwhile case is under "retro #339"); no network.

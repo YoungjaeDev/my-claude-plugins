@@ -33,7 +33,9 @@
       "required": ["number", "url"],
       "properties": {
         "number": { "type": "integer", "minimum": 1 },
-        "url":    { "type": "string" }
+        "url":    { "type": "string" },
+        "split":  { "enum": ["sub_issues", "task_list", "failed"], "description": "Present when the run deferred more than SUB_ISSUE_THRESHOLD (5, scripts/file-sub-issues.sh) findings. sub_issues: one sub-issue per finding; task_list: the sub-issues API failed, so the findings are a task list in the issue body; failed: the issue body could not be read and nothing was filed. None of them blocks the merge." },
+        "sub_issues": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "description": "Sub-issue numbers filed under this issue, kept across re-runs on the same PR." }
       },
       "additionalProperties": true
     },

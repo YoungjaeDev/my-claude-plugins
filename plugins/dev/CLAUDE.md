@@ -23,8 +23,10 @@ dev owns the back half only: from a PR ready for review to merge and cleanup. Th
 
 ## review-loop
 
-The loop, its tiers, stop states, merge gate and PR-comment budget live in `skills/review-loop/SKILL.md` and its `references/`; the flags are in `skills/review-loop/references/arguments.md`.
+The loop and its bright lines live in `skills/review-loop/SKILL.md`; the CodeRabbit / Codex coordination (tiers, HEAD verdicts, stop states, merge gate, PR-comment budget) is in `skills/review-loop/references/coordination.md`, and the flags in `skills/review-loop/references/arguments.md`.
+
 `final_state` enum: `clean`, `user_declined`, `minor_floor`, `churn`, `iteration_cap`, `timeout`, `failure`, `cr_inactive`, `rate_limited`, `cli_failed`, `reviewers_unavailable`, `codex_failed`, `ci_failing`, `merged_externally`, `unknown` (triggers: `skills/review-loop/references/failure-modes.md`).
+
 The recommended `.coderabbit.yaml` keys and the CodeRabbit CLI install are in `docs/coderabbit-config.md`.
 
 ## Worktree Workflow (PR-based)

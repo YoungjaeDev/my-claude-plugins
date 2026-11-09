@@ -13,7 +13,7 @@ Items 3-8 of the Step 9c list in `procedure.md`. Items 1-2 (path-trust gate, san
    - Then Edit the smallest safe fix derived from the local content, `printf '%s\0' "$path" >> "$TRACK_FILE"`, run the bounded same-file generalization (9c.6, below), and update the counters.
    - With `VERIFICATION_GATE=on` the whole apply, siblings included, runs inside the "Step 9c.6: verify the fix" block in `references/run-blocks.md`. On `fail` the files are back at the snapshot and the counters move from apply to defer, logged as `action: "defer"`, `reason: "verification-failed"`.
 7. **Log entry**: one record per decision in `STATE_FILE.auto_judge_log` (shape below).
-8. **`review` tier** (a CodeRabbit finding with no parseable header, a Codex finding with no P0-P2 badge): shown in the Step 9a table only, with no edit and no judgment, but `review_this_cycle` goes up by one. Step 13 refuses to call that a floor or `clean`.
+8. **`review` tier** (a CodeRabbit finding with no parseable header and no usable inference, a Codex finding with no P0-P2 badge): shown in the Step 9a table only, with no edit and no judgment, but `review_this_cycle` goes up by one. Step 13 refuses to call that a floor or `clean`. A CodeRabbit finding whose header could not be read gets an inferred tier in Step 9a first (`tier-classification.md`, "Inferred tier for an unreadable CodeRabbit header") and is judged here like any other.
 
 ## Six judgment axes
 
@@ -58,7 +58,7 @@ These run before judgment and produce a `skip` whatever the matrix says:
 
 Every Step 9c decision appends one record to `STATE_FILE.auto_judge_log`. `comment_id` is the thread's `databaseId` for CodeRabbit, the comment id for Codex, and `null` for an outside-diff or CLI finding; Step 9a drops a thread this run already judged by it.
 
-`category` is the CodeRabbit/CLI header category as read (empty for Codex) and `badge_or_sev` the severity as read or the Codex badge `P0`-`P2`. `scripts/auto-merge-gate.sh` reads them and `severity_reassess` from this iteration's `apply` records to decide whether the fixes need a re-review (Step 12).
+`category` is the CodeRabbit/CLI header category as read (empty for Codex) and `badge_or_sev` the severity as read or the Codex badge `P0`-`P2`. A finding judged on an inferred tier also carries `tier_source: "inferred"`, `inferred_severity` and `inferred_effort`, with `badge_or_sev` empty. `scripts/auto-merge-gate.sh` reads them and `severity_reassess` from this iteration's `apply` records to decide whether the fixes need a re-review (Step 12).
 
 ```json
 {

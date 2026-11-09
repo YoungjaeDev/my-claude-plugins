@@ -104,7 +104,7 @@ Run block "Step 9a: classify". With a stop held by Step 13 it resolves that firs
 
 Drop `tier=="skip"` items before rendering and count them per `skip-minor-rules.md`. Render the rest as one table (`Source · Category/Badge · Severity · Effort · Path:Line · Tier`), with the footer when `skipped_total > 0`.
 
-Tiers are severity-first from CodeRabbit's header (`tier-classification.md`). Nothing is asked between 9a and 9c: go straight to 9c in severity order.
+Tiers are severity-first from CodeRabbit's header (`tier-classification.md`). A CR or CLI finding whose header could not be read gets the model's inferred severity and effort and is classified again before the table ("Inferred tier for an unreadable CodeRabbit header" there). Nothing is asked between 9a and 9c: go straight to 9c in severity order.
 
 ## Step 9c: per-finding judgment
 
@@ -135,7 +135,7 @@ A stop reached in a cycle that pushed is held (`HOLD_STATE`), not ended, because
 - A loop that exits at `ITER == MAX_ITER` with threads still actionable ends at `final_state=iteration_cap`; report the remaining thread count and `target_url`.
 - Run block "Step 14: last-push HEAD verdicts and follow-up trigger". When the last iteration pushed, it waits for that HEAD's verdicts; findings there have no round left, so the run ends at `iteration_cap` with `HEAD_VERDICT=unread`.
 - A run about to end at `clean`, `minor_floor` or `churn` with a fast line and `VERIFICATION_GATE=on` runs the full line once on HEAD (`scripts/verify-fix.sh full`; with held fixes that HEAD is their local commit). The result is `full_verification`, and `fail` blocks the merge and so the base push.
-- The same run then reads HEAD's CI checks (`scripts/ci-checks.sh`, pending checks waited on under `TIMEOUT`). A check in gh's `fail` or `cancel` bucket ends it at `ci_failing`, the names in `ci_failing_checks`.
+- The same run then reads HEAD's CI checks (`scripts/ci-checks.sh`, pending checks waited on under `TIMEOUT`). A check in gh's `fail` or `cancel` bucket ends it at `ci_failing`, the names in `ci_failing_checks`. Jobs that never started (`not_started`) keep `final_state`; Step 15 refuses the merge on them.
 - `followup_needed` is the gate's `file_issue`: true only when findings were left behind (deferred in any cycle, or unread). Then file one issue with the block under "Follow-up issue block (Step 14)" in `failure-modes.md`, whose body comes from the `defer` records through a file and which reuses `STATE_FILE.followup_issue` on a re-run.
 - A run that deferred more findings than `SUB_ISSUE_THRESHOLD` (`references/coordination.md`) also files one sub-issue per finding under that issue, skipping any finding that already has one. When the sub-issues API fails, the findings go into the issue body as a task list instead (`followup_issue.split`).
 - A creation failure does not end the run, but it blocks Step 15; the findings stay in the archived `auto_judge_log`. A HEAD without every verdict and failing CI go to the final report and final JSON (`head_verdict`, `ci_failing_checks`), never into an empty issue or a PR comment.
@@ -153,6 +153,8 @@ Then run block "Step 15: merge". A runner leaves the question in `pending_decisi
 The Step 2 EXIT trap runs `scripts/emit-final-json.sh`, which always prints one JSON line (schema `assets/final-output.schema.json`, field meanings there) and archives the state file to `.claude/state/archive/`. The final report states, from that line:
 
 - `head_verdict` when HEAD lacks a verdict, each `dropped_reviewers` entry (HEAD has no verdict from it), and `pending_decision` for the main session to ask.
+- `ci_state`, always: its `state`; for `none`, why (`reason=no_trigger`: no workflow triggers on this branch and event; null: unknown); for `not_started`, the quoted `annotation`; for `fail`, the `ci_failing_checks` names. Null: the run ended before CI was read.
+- `inferred_tiers` above 0: the count, and one line saying CodeRabbit's header format may have changed (`scripts/cr-header.jq` read none of those headers).
 - `verification_gate` other than `on` (fixes went in unverified), and a `full_verification=fail` with the line it ran (auto-merge stayed off).
 - `cr_review_requested_base`: one line suggesting the user add that base to the auto-review base-branch list in `.coderabbit.yaml`, naming the key as CodeRabbit's schema (`https://coderabbit.ai/integrations/schema.v2.json`) or docs give it at run time. Never edit the file.
 - The CLI install suggestion, when the Step 7c flip logged one.

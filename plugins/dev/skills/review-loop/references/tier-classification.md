@@ -59,10 +59,23 @@ Severity decides, because the category names the defect domain rather than its i
 | CR / CLI | severity `🔵 Trivial` / `⚪ Info` | skip |
 | CR / CLI | severity `🟡 Minor` + effort `🏗️ Heavy lift` | gated |
 | CR / CLI | severity `🟡 Minor` + effort `⚡ Quick win` or absent | auto |
-| CR / CLI | no parseable header | review (surface only) |
+| CR / CLI | no parseable header, with the model's inferred severity | the row above that the inferred severity and effort match, `tier_source: "inferred"` |
+| CR / CLI | no parseable header, nothing inferred | review (surface only) |
 | Codex | P0, P1, or P2, in any round | gated |
 | Codex | any other badge, or none | review (surface only) |
 
 A P2 from a later round is judged like any other finding. Step 12 is what keeps it from feeding another round: a fix from a Minor-or-lower finding goes to the base after the merge instead of back to the PR.
+
+## Inferred tier for an unreadable CodeRabbit header
+
+CodeRabbit has changed its header format twice. A CR or CLI record that comes out of the first classify pass as `review` is not left unjudged:
+
+- The model reads the record's body after sanitization (`references/sanitization-rules.md`; a flagged body stays `review`) and writes `inferred_severity` (`Critical`, `High`, `Major`, `Minor`, `Trivial` or `Info`) and, when the body says how big the fix is, `inferred_effort` (`Quick win` or `Heavy lift`) into the record.
+- It pipes the record through `scripts/classify-item.sh` again. The script reads the inference only where the parser left the severity empty, so a field the parser did read always wins, and it adds `tier_source: "inferred"`.
+- A word outside that list keeps the record at `review`. Codex records are never inferred: an unreadable badge stays `review`.
+- The Step 9c log entry keeps `badge_or_sev` empty (nothing was read) and carries `tier_source`, `inferred_severity` and `inferred_effort`. `scripts/auto-merge-gate.sh` reads `inferred_severity` too, so a fix from an inferred Critical, High or Major goes back to the PR for re-review.
+- The final JSON counts these decisions in `inferred_tiers`; above 0 the final report gives the count and one line saying the header format may have changed, so `scripts/cr-header.jq` needs a look.
+
+The bot identity anchor and the sanitization rules do not change for an inferred record: only the tier inputs come from the model.
 
 Security escalates on category alone, because a Minor-rated privacy leak is still a leak, and effort splits Minor because a heavy lift is a judgement call to surface rather than perform unattended. With `SKIP_MINOR=true` the demotion in `references/skip-minor-rules.md` runs after this table, and Step 9c takes gated items in the order Codex P0, CR/CLI Critical, High, Major, Minor, Codex P1, Codex P2.

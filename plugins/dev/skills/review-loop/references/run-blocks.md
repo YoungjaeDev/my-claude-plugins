@@ -181,7 +181,7 @@ trap 'ITER=${ITER:-0} APPLIED_TOTAL=$applied_total DEFERRED_TOTAL=$deferred_tota
   CR_SOURCE=$CR_SOURCE CLI_INVOCATIONS=$cli_invocations RATE_LIMIT_HITS=$rate_limit_hits \
   AUTO_JUDGE_APPLY=$auto_judge_apply AUTO_JUDGE_DEFER=$auto_judge_defer AUTO_JUDGE_SKIP=$auto_judge_skip \
   TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE VERIFICATION_GATE=$VERIFICATION_GATE FULL_VERIFICATION=$full_verification \
-  CI_FAILING_CHECKS=${ci_failing_checks:-[]} HEAD_VERDICT=$HEAD_VERDICT \
+  CI_FAILING_CHECKS=${ci_failing_checks:-[]} CI_STATE_JSON="${ci_state_json:-null}" HEAD_VERDICT=$HEAD_VERDICT \
   DROPPED_REVIEWERS="$dropped_reviewers" CR_BASE_REQUESTED="$CR_BASE_REQUESTED" PENDING_DECISION="$pending_decision" \
   bash $SKILL_DIR/scripts/emit-final-json.sh' EXIT
 ```
@@ -612,8 +612,13 @@ case "$final_state" in
     ci=$(CAP="$TIMEOUT" INTERVAL="$INTERVAL" \
          PUSH_TIME="$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "${REVIEWED_SHA:-$(git rev-parse HEAD)}")" \
          bash "$SKILL_DIR/scripts/ci-checks.sh" "$PR_NUM")
+    # The final report states CI with its reason whatever it is (#393); Step 15 re-reads it.
+    ci_state_json=$(jq -c '{state, reason, annotation}' <<<"$ci" 2>/dev/null) || ci_state_json=""
     case "$(jq -r '.state' <<<"$ci" 2>/dev/null | tr -d '\r')" in
       fail) final_state=ci_failing; ci_failing_checks=$(jq -c '.failing' <<<"$ci") ;;
+      # Jobs that never started (a billing lock, run 41364746682) are not a failing
+      # check: final_state is kept, and Step 15 still refuses the merge on them.
+      not_started) echo "review-loop: CI on HEAD never started: $(jq -r '.annotation // "no annotation"' <<<"$ci")" >&2 ;;
       error|"") echo "review-loop: CI checks on HEAD could not be read; final_state kept" >&2 ;;
     esac ;;
 esac
@@ -654,6 +659,9 @@ blocking=$(jq -r '.blocking_checks' <<<"$gate")
 proto=$(jq -r '.protection_http' <<<"$gate")
 base=$(jq -r '.base_branch' <<<"$gate")
 ci_state=$(jq -r '.ci_state' <<<"$gate" | tr -d '\r')
+# The latest CI look, with its reason, for the final JSON `ci_state` (#393).
+cs=$(jq -c '{state: .ci_state, reason: (.ci_reason // null), annotation: (.ci_annotation // null)}' <<<"$gate" 2>/dev/null) \
+  && ci_state_json=$cs
 # Merged or closed outside the run while it waited (PR #308): nothing to merge. Held
 # Minor fixes still reach an unprotected base after a merge (the Step 15 merge block).
 pr_state=$(gh pr view "$PR_NUM" --json state --jq '.state' 2>/dev/null) || pr_state=""
@@ -677,6 +685,8 @@ elif [ "$eligible" != "true" ]; then why=$(jq -r '.ineligible_reason' <<<"$gate"
 # (codex-only, cli) does not read its status: the HEAD verdict axis judged without it.
 elif [ "$cr_on" = true ] && [ "$cr_state" != success ] && [ "$cr_state" != pending ]; then
   why="cr_state=$cr_state is not a merge-approved state"
+elif [ "$ci_state" = not_started ]; then
+  why="CI on HEAD never started ($(jq -r '.ci_annotation // "no annotation"' <<<"$gate")); merge not attempted"
 elif [ "$blocking" != 0 ] && [ "$ci_state" = error ]; then why="CI checks on HEAD could not be read; merge not attempted"
 elif [ "$blocking" != 0 ]; then why="failing CI check(s) on HEAD: $(jq -r '.failing_checks | join(", ")' <<<"$gate")"
 # protection_http=0: the probe itself failed (network/auth/5xx) — never merge on an

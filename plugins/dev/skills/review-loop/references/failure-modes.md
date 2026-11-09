@@ -55,7 +55,7 @@ A state that files one, with findings left behind, sets `followup_needed=true` (
 
 Nothing left behind files nothing, so no issue says "0 deferred": a HEAD without every verdict and failing CI checks go to the final report. A filed body says why HEAD is unverified and names the failing CI checks on `ci_failing`, and `followup_issue`, inherited at Step 2, makes a re-run append instead of opening a second issue.
 
-More defers in this run than `SUB_ISSUE_THRESHOLD` (5, `scripts/file-sub-issues.sh`) add one sub-issue per finding under that issue, keyed so a re-run files none twice. A failed sub-issues call puts the rest into the issue body as a task list (`followup_issue.split=task_list`); an unreadable issue body edits nothing (`split=failed`).
+More defers in this run than `SUB_ISSUE_THRESHOLD` (`references/coordination.md`) add one sub-issue per finding under that issue, keyed so a re-run files none twice. A failed sub-issues call puts the rest into the issue body as a task list (`followup_issue.split=task_list`); an issue body that cannot be read or edited is `split=failed`, and an issue created but not linked stays in `followup_issue.unlinked` so the re-run links it instead of filing it again.
 
 Fires when the Step 14 block sets `followup_needed=true`:
 
@@ -134,7 +134,8 @@ if [ -n "$parent" ]; then
   jq -e '.split and .sub_issues' <<<"$split" >/dev/null 2>&1 || split='{"split":"failed","sub_issues":[]}'
   if [ "$(jq -r '.split' <<<"$split")" != none ]; then
     tmp=$(mktemp); jq --argjson s "$split" '.followup_issue.split = $s.split
-      | .followup_issue.sub_issues = ((.followup_issue.sub_issues // []) + $s.sub_issues | unique)' \
+      | .followup_issue.sub_issues = ((.followup_issue.sub_issues // []) + $s.sub_issues | unique)
+      | .followup_issue.unlinked = ($s.unlinked // .followup_issue.unlinked // [])' \
       "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
   fi
 fi

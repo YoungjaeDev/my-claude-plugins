@@ -65,8 +65,8 @@ let the caller decide.
   <https://developers.openai.com/codex/plugins/build.md>. A subagent fan-out may accelerate a phase
   whose inline sequential path stays primary and complete.
 - **`.claude/rules/` is Claude-only.** Codex cannot read the directory. Guidance that must bind both
-  runtimes lives in `AGENTS.md`; decisions live in `docs/adr/` and terms in `GLOSSARY.md`
-  (ADR 0003), which both runtimes read.
+  runtimes lives in `AGENTS.md`; decisions live in `docs/adr/` and terms in `GLOSSARY.md`,
+  which both runtimes read.
 
 ## Packaging obligations
 

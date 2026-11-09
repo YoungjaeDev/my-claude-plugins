@@ -5,7 +5,7 @@
 #        TRACK_FILE=/tmp/... STATE_FILE=.claude/state/... VERIFICATION_GATE=on|... \
 #        [CI_FAILING_CHECKS='["name",...]'] [HEAD_VERDICT=timeout|unread] \
 #        [DROPPED_REVIEWERS="coderabbit codex"] [CR_BASE_REQUESTED=<base>] [PENDING_DECISION='{...}'] \
-#        bash scripts/emit-final-json.sh
+#        [FULL_VERIFICATION=pass|fail] bash scripts/emit-final-json.sh
 #
 # Idempotent: archives STATE_FILE if present, removes TRACK_FILE, prints one JSON line
 # and writes the same line to review-loop-final-<PR>.json next to STATE_FILE, where
@@ -95,6 +95,7 @@ line=$(jq -nc \
   --argjson dropped   "$DROPPED_JSON" \
   --arg     req_base  "${CR_BASE_REQUESTED:-}" \
   --argjson pending   "$PENDING_DECISION" \
+  --arg     full_v    "${FULL_VERIFICATION:-}" \
   '{
     iterations: $iters,
     applied_total: $applied,
@@ -117,6 +118,7 @@ line=$(jq -nc \
     cr_review_requested_base: (if $req_base == "" then null else $req_base end),
     pending_decision: $pending,
     verification_gate: $vgate,
+    full_verification: (if $full_v == "pass" or $full_v == "fail" then $full_v else null end),
     pre_flight_last: $pf_last
   }')
 printf '%s\n' "$line"

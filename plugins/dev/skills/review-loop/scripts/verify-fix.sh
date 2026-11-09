@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 # Usage:
-#   NO_BUILD=true|false bash scripts/verify-fix.sh baseline "$VERIFY_CMD"
+#   NO_BUILD=true|false bash scripts/verify-fix.sh baseline "$VERIFY_CMD" ["$VERIFY_FAST_CMD"]
 #       -> on | baseline_failed | no_build_check | no_command
 #   bash scripts/verify-fix.sh snapshot
 #       -> tree id of the working tree (tracked + untracked, minus ignored)
-#   bash scripts/verify-fix.sh check SNAPSHOT "$VERIFY_CMD"
+#   bash scripts/verify-fix.sh check SNAPSHOT "$VERIFY_CMD" ["$VERIFY_FAST_CMD"]
 #       -> pass | fail; on fail every path changed since SNAPSHOT is put back
+#   NO_BUILD=true|false bash scripts/verify-fix.sh full "$VERIFY_CMD" "$VERIFY_FAST_CMD"
+#       -> pass | fail | not_run
 #
 # The Step 11 gate, run before the commit: baseline once at loop start, then
 # snapshot before each fix and check after it, so only fixes that pass reach the
 # commit. VERIFY_CMD is the repo's build + test line (from AGENTS.md), never
-# reviewer text. Its output goes to stderr so stdout stays one token. The real
+# reviewer text. VERIFY_FAST_CMD, when the repo names one, replaces it for the
+# baseline and every check, and `full` runs VERIFY_CMD once at the end of the loop;
+# without a fast line the checks already ran the full line, so `full` runs nothing.
+# Command output goes to stderr so stdout stays one token. The real
 # index is never touched: snapshots are written through a throwaway index.
 set -euo pipefail
 
@@ -41,7 +46,7 @@ tree_of_worktree() {
 
 case "${1:-}" in
   baseline)
-    cmd="${2:-}"
+    cmd="${3:-${2:-}}"
     if [ "${NO_BUILD:-false}" = true ]; then echo no_build_check
     elif [ -z "$cmd" ]; then echo no_command
     elif run_cmd "$cmd"; then echo on
@@ -50,7 +55,7 @@ case "${1:-}" in
   snapshot)
     tree_of_worktree ;;
   check)
-    snap="${2:?snapshot required}"; cmd="${3:?verify command required}"
+    snap="${2:?snapshot required}"; cmd="${4:-${3:?verify command required}}"
     if run_cmd "$cmd"; then echo pass; exit 0; fi
     now=$(tree_of_worktree)
     idx=$(mktemp); rm -f "$idx"
@@ -64,5 +69,10 @@ case "${1:-}" in
     done < <(git diff --no-renames --name-only -z "$snap" "$now")
     rm -f "$idx"
     echo fail ;;
-  *) echo "usage: verify-fix.sh baseline|snapshot|check ..." >&2; exit 2 ;;
+  full)
+    if [ "${NO_BUILD:-false}" = true ] || [ -z "${2:-}" ] || [ -z "${3:-}" ]; then echo not_run
+    elif run_cmd "$2"; then echo pass
+    else echo fail
+    fi ;;
+  *) echo "usage: verify-fix.sh baseline|snapshot|check|full ..." >&2; exit 2 ;;
 esac

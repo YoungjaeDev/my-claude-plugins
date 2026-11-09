@@ -436,6 +436,14 @@ is "build/test gate off -> rereview_push"                  "$(VG=baseline_failed
 is "--no-minor-stop -> rereview_push"                      "$(MINOR_STOP=false nxt)" rereview_push
 is "state file unreadable -> rereview_push" \
    "$(STATE_FILE="$SHIMDIR/missing.json" FIX_ITER=2 VERIFICATION_GATE=on amg | jq -r '.next_action')" rereview_push
+# The full line that runs once at the loop end (#370): a failure keeps the fixes off
+# the base and the PR unmerged; a pass or a run without one changes nothing.
+is "full line failed -> no direct base push"               "$(FULL_VERIFICATION=fail nxt)" rereview_push
+is "full line passed -> merge_then_main_push"              "$(FULL_VERIFICATION=pass nxt)" merge_then_main_push
+is "full line failed -> ineligible"        "$(FULL_VERIFICATION=fail DEFERRED_TOTAL=0 elig clean)" false
+is "full line passed -> eligible"          "$(FULL_VERIFICATION=pass DEFERRED_TOTAL=0 elig clean)" true
+is "full-line failure reason names it" \
+   "$(FULL_VERIFICATION=fail amg | jq -r '.ineligible_reason | test("full verification")')" true
 # One follow-up issue only when something was left behind; a HEAD without every
 # verdict, or failing CI, goes to the final report instead.
 fi_of() { FINAL_STATE=$1 DEFERRED_TOTAL=$2 amg | jq -r '.file_issue'; }
@@ -2245,6 +2253,10 @@ gate_env() { # DEFERRED REVIEW -> the env the gate saw
 }
 is "Step 15 gate counts unread findings as left behind" "$(gate_env 0 2)" "D=2 A=true"
 is "Step 15 gate with nothing left behind"              "$(gate_env 0 0)" "D=0 A=false"
+# #370: Step 14's loop-end full-line result reaches the gate, which refuses on a failure.
+printf '#!/usr/bin/env bash\njq -nc --arg f "$FULL_VERIFICATION" '"'"'{eligible:false,ineligible_reason:("F=\\($f)")}'"'"'\n' \
+  > "$G15/scripts/auto-merge-gate.sh"
+is "Step 15 gate sees the loop-end full line" "$(full_verification=fail gate_env 0 0)" "F=fail"
 # The cr_state allow-list speaks for CodeRabbit only: a run that dropped it (codex-only,
 # cli) must not be refused on its rate-limited status. Blocking checks stop the merge.
 printf '#!/usr/bin/env bash\njq -nc %s\n' "'{eligible:true,cr_state:\"rate_limited\",blocking_checks:1,ci_state:\"fail\",failing_checks:[\"policy\"],protection_http:200,base_branch:\"main\"}'" \
@@ -2828,6 +2840,35 @@ vfx check "$snap" 'git add -A' >/dev/null
 is "check's git add -A leaves the real index alone" \
    "$(cd "$VF" && git diff --cached --name-only | tr '\n' ' ')" ""
 rm -rf "$VF" "$TRK"
+
+# A repo that names a fast line beside the full one (#370): the baseline and every
+# fix run the fast line only, and the full line runs once at the end of the loop.
+VF=$(mktemp -d); VLOG="$VF.log"
+(cd "$VF" && git init -q . && git config user.email t@t && git config user.name t \
+   && printf 'old\n' > a.sh && git add -A && git commit -qm base) >/dev/null 2>&1
+FULLC="echo full >> '$VLOG'"; FASTC="echo fast >> '$VLOG'"
+ran() { tr '\n' ' ' < "$VLOG" 2>/dev/null; : > "$VLOG"; }
+: > "$VLOG"
+is "fast line set -> baseline runs it, gate on" "$(vfx baseline "$FULLC" "$FASTC"):$(ran)" "on:fast "
+snap=$(vfx snapshot); printf 'fixed\n' > "$VF/a.sh"
+is "fast line set -> a fix runs only the fast line" "$(vfx check "$snap" "$FULLC" "$FASTC"):$(ran)" "pass:fast "
+snap=$(vfx snapshot); printf 'BROKEN\n' > "$VF/a.sh"
+is "fast line fails -> fix reverted" \
+   "$(vfx check "$snap" "$FULLC" "! grep -q BROKEN a.sh"):$(cat "$VF/a.sh"):$(ran)" "fail:fixed:"
+is "fast line set -> loop end runs the full line once" "$(vfx full "$FULLC" "$FASTC"):$(ran)" "pass:full "
+is "full line fails at loop end -> fail"   "$(vfx full 'exit 1' "$FASTC")" fail
+# No fast line: the per-fix runs already were the full line, so nothing runs again.
+is "no fast line -> loop end runs nothing" "$(vfx full "$FULLC" ''):$(ran)" "not_run:"
+is "no fast line -> a fix runs the full line" \
+   "$(snap=$(vfx snapshot); vfx check "$snap" "$FULLC"):$(ran)" "pass:full "
+is "--no-build-check -> loop end runs nothing" "$(NO_BUILD=true vfx full "$FULLC" "$FASTC"):$(ran)" "not_run:"
+fo=$(FULL_VERIFICATION=fail bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output carries the full-line result"  "$(jq -r '.full_verification' <<<"$fo")" fail
+is "final output: full line not run -> null" \
+   "$(bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null | jq -r '.full_verification')" null
+is "schema lists the full-line result" \
+   "$(jq -r '.properties.full_verification.enum | index("fail") != null' "$HERE/../assets/final-output.schema.json")" true
+rm -rf "$VF" "$VLOG"
 
 echo
 echo "base-push.sh"

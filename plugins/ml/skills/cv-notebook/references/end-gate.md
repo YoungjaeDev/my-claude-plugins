@@ -10,8 +10,11 @@ Two validation paths for a generated notebook, run before it is handed back. `No
 ```bash
 NB="notebook.ipynb"           # the generated notebook
 # The interpreter name differs by platform; a missing one must not read as a broken cell.
-PY=$(command -v python3 || command -v python || command -v py) \
+PY3=""   # the Windows launcher `py` needs -3 to pick Python 3
+PY=$(command -v python3 || command -v python) || { PY=$(command -v py) && PY3=-3; } \
   || { echo "py_compile: no Python interpreter on PATH, notebook unverified"; exit 1; }
+# GNU and BSD take --decode, old macOS -D, BusyBox -d: probe instead of assuming.
+B64D=""; for f in --decode -D -d; do printf 'eA==' | base64 "$f" >/dev/null 2>&1 && { B64D=$f; break; }; done
 tmp=$(mktemp -d)
 jq -r '.cells[] | select(.cell_type=="code")
        | (.source | if type=="array" then join("") else . end) | @base64' "$NB" > "$tmp/cells.b64"
@@ -19,9 +22,12 @@ n=0; status=pass
 while IFS= read -r b64; do
   [ -n "$b64" ] || continue
   n=$((n+1))
-  printf '%s' "$b64" | base64 -d \
-    | sed 's/^[[:space:]]*[!%].*/pass  # magic stripped/' > "$tmp/cell_$n.py"
-  if ! "$PY" -m py_compile "$tmp/cell_$n.py" 2>"$tmp/err"; then
+  # An empty decode would compile clean, so a failed one stops the check instead.
+  if ! printf '%s' "$b64" | base64 "${B64D:---decode}" > "$tmp/raw"; then
+    echo "py_compile: base64 decode failed at code cell $n, notebook unverified"; status=fail; break
+  fi
+  sed 's/^[[:space:]]*[!%].*/pass  # magic stripped/' "$tmp/raw" > "$tmp/cell_$n.py"
+  if ! "$PY" $PY3 -m py_compile "$tmp/cell_$n.py" 2>"$tmp/err"; then
     echo "py_compile FAIL at code cell $n — unverified beyond cell $n:"; sed 's/^/    /' "$tmp/err"
     status=fail; break
   fi

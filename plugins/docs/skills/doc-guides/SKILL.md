@@ -39,7 +39,9 @@ are out of scope and keep their own tone.
   once over the prose of a Korean document. Code, commands, paths and numbers stay unchanged, and
   the tone rule above wins when its advice conflicts. When it is not installed, self-check the
   prose against the "Sentence patterns to avoid" table in global §2 instead, and say which path
-  ran. An English document gets the same §2 self-check.
+  ran. An English document gets the same §2 self-check. Without that table loaded, check for
+  translationese, filler or throat-clearing openers, inflated or invented claims, and mechanical
+  parallel lists.
 - A command that preserves existing wording (`/docs:deploy-doc rewrite`) applies tone and polish
   only to the lines it writes itself.
 

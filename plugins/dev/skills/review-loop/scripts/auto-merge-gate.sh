@@ -18,9 +18,9 @@
 # Security or Codex P0-P1 finding, or reassessed high, goes back to the PR for
 # re-review. When all are Minor or lower, the reviewed HEAD merges and the fixes go
 # straight to the base, which needs an unprotected base (404: a protected one takes
-# no direct push), the build/test gate on, MINOR_STOP not false and the loop-end full
-# build/test line (FULL_VERIFICATION, verify-fix.sh full) not failed. Anything
-# unreadable re-reviews.
+# no direct push), the build/test gate on and MINOR_STOP not false; a failed loop-end
+# full line blocks the merge itself through `eligible` (Step 15). Anything unreadable
+# re-reviews.
 # `file_issue`: a state that files the follow-up issue left something behind
 # (DEFERRED_TOTAL, deferred plus unread; unset reads as some). A HEAD without every
 # verdict and failing CI alone file none: the final report carries them.
@@ -142,8 +142,7 @@ if [ "$http" = 404 ]; then
   [ "$(gh api "repos/$OWNER/$REPO/branches/$base" --jq '.protected' 2>/dev/null || true)" = false ] && ruleset_free=true
 fi
 next_action=rereview_push
-if [ "$severe" = 0 ] && [ "$ruleset_free" = true ] && [ "${VERIFICATION_GATE:-}" = on ] && [ "${MINOR_STOP:-true}" != false ] \
-   && [ "${FULL_VERIFICATION:-}" != fail ]; then
+if [ "$severe" = 0 ] && [ "$ruleset_free" = true ] && [ "${VERIFICATION_GATE:-}" = on ] && [ "${MINOR_STOP:-true}" != false ]; then
   next_action=merge_then_main_push
 fi
 

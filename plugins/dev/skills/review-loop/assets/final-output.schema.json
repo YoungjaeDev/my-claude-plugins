@@ -117,7 +117,7 @@
     "full_verification": {
       "type": ["string", "null"],
       "enum": ["pass", "fail", null],
-      "description": "The full build/test line, run once at the end of the loop (scripts/verify-fix.sh full) when AGENTS.md also names a fast line, which the baseline and every fix ran instead. `fail` leaves the run ineligible for auto-merge and keeps held Minor fixes off the base. Null: no fast line (every fix already ran the full line), --no-build-check, or a final_state that cannot merge."
+      "description": "The full build/test line, run once at the end of the loop (scripts/verify-fix.sh full) when AGENTS.md also names a fast line, which the baseline and every fix ran instead. `fail` leaves the run ineligible for auto-merge and keeps held Minor fixes off the base. Null: no fast line (every fix already ran the full line), --no-build-check or another gate Step 3 left off (baseline_failed, no_command), or a final_state that cannot merge."
     },
     "pre_flight_last": {
       "description": "v2 Step 5 pre-flight decision blob from the LAST iteration (the archived state file preserves all iters). Null when CR_SOURCE bypassed pre-flight (cli / codex-only).",

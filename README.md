@@ -104,7 +104,7 @@ PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까�
 |-------|---------|
 | `/dev:flow` | 다음에 부를 스킬 안내 (Matt 앞단과 dev 뒷단, 버그·E2E·worktree 갈래, 제품 repo 준비). 직접 실행 없는 안내 전용 |
 | `/dev:commit-and-push` | 변경 분석, Conventional Commits 메시지로 커밋과 푸시 |
-| `/dev:review-loop` | CodeRabbit·Codex 지적을 사용자에게 묻지 않고 apply / defer / skip 으로 판정해 수정. 수렴·저심각도 바닥·churn 중 하나에서 정지, 남은 지적은 후속 이슈 1건. 켜진 리뷰어 전원의 HEAD 판정까지 대기하되 대기 상한까지 판정이 없는 리뷰어는 제외하고 남은 리뷰어의 판정으로 종료, 제외한 이름은 보고 (CodeRabbit 은 상한 절반에 1회 재촉). 한 사이클의 수정이 전부 Minor 이하 지적에서 왔으면 재리뷰 없이 판정받은 HEAD 를 머지한 뒤 build/test 와 pre-commit 가드를 거쳐 base 에 바로 push. 저장소 `AGENTS.md` 에 info string 이 `<언어> fast` 인 코드 블록(예: `` ```bash fast ``)으로 빠른 검증 줄이 있으면 기준선과 수정마다는 그 줄만, 전체 줄은 루프 끝 1회 (결과는 최종 JSON `full_verification` 과 최종 보고에 기록, 실패 시 auto-merge 자격과 Minor 수정의 base 직행 제외). 빠른 줄이 없으면 전체 줄 하나로 동작. `--auto-merge` 가 없으면 끝에 "auto-merge 할까요?" 질문, 리뷰어를 뺀 실행은 `--auto-merge` 가 있어도 질문. PR 댓글은 `@coderabbitai rate limit` 질의와 HEAD 당 1회의 `@coderabbitai review` 요청뿐. `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` (rate limit 이면 로컬 CLI 나 Codex-only 로 전환) |
+| `/dev:review-loop` | CodeRabbit·Codex 지적의 자율 판정 (apply / defer / skip) 과 수정, 켜진 리뷰어 전원의 HEAD 판정 대기, 수렴·저심각도 바닥·churn 에서 정지, 남은 지적은 후속 이슈 1건, 머지 전 "auto-merge 할까요?" 질문. 상세는 [`SKILL.md`](plugins/dev/skills/review-loop/SKILL.md). `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` |
 | `/dev:post-merge` | 머지 후 정리 전용: 남은 리뷰 지적 표시, base 전환, 안전 조건을 통과한 다른 worktree 를 한 번 확인받고 삭제, 브랜치 삭제, 안전 조건을 통과한 원격 브랜치를 한 번 확인받고 삭제, 남은 이슈 close, Project 상태 동기화, About 줄 점검, 커밋 |
 | `/dev:release` | 버전 태그와 GitHub Release 생성 (릴리스 노트 자동 생성) |
 | `/dev:session-handoff` | 컨텍스트를 비우기 전 새 에이전트용 인수인계 요약을 채팅에 작성 |
@@ -244,11 +244,11 @@ PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까�
 <details>
 <summary><strong>council</strong> - 이종 벤더 3인 심의</summary>
 
-`/council:convene` 은 질문 1개를 codex (GPT), agy (Gemini), Claude Opus 좌석에 동시에 던지는 심의 스킬. 좌석끼리 서로 반박한 뒤 합의한 것과 끝내 갈린 것을 `.council/<날짜>-<슬러그>/consensus.md` 에 기록. 질문·프롬프트·좌석별 답은 gitignore 된 `.tmp/council/<같은 이름>/` 에 보관. Claude 서브에이전트를 여러 개 띄워도 가중치가 같아 관점이 늘지 않는 한계를 다른 벤더 좌석으로 보완.
+`/council:convene` 은 질문 1개를 codex (GPT), agy (Gemini), Claude Opus 좌석에 동시에 던지는 심의 스킬. 좌석끼리 서로 반박한 뒤 합의한 것과 끝내 갈린 것을 `.council/<날짜>-<슬러그>/consensus.md` 에 기록. 질문·프롬프트·좌석별 답은 gitignore 된 `.tmp/council/<같은 이름>/` 에 보관. Claude 서브에이전트를 여러 개 띄워도 가중치가 같아 관점이 늘지 않는 문제를 다루는 스킬.
 
 - 진행 순서: 독립 의견, 사용자 재질문, 상호 반박, 의장 합성
 - 좌석 모델은 `~/.claude/council-models.json` 주간 TTL 레지스트리에 기록. 만료되면 자동 승급 대신 실제 목록을 근거로 사용자에게 질문
-- 결과는 참고용 (코드 자동 적용 제외), 결석한 좌석은 명시
+- 결과의 코드 자동 적용 없음, 결석한 좌석은 명시
 - Claude 전용 (Codex 를 좌석으로 앉히므로 Codex 에서 돌리면 순환)
 
 **Requirements:** `codex` / `agy` CLI (없는 좌석은 결석), `jq`
@@ -279,7 +279,7 @@ PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까�
 /aside:aside continue <request-id> — 로그인 완료했으니 기존 세션에서 계속해줘.
 ```
 
-- **한 번에 작업 하나**: 기록 루트의 공용 게이트 `$OPS_ROOT/bin/aside_gate.py` 가 예약을 잡고 다른 작업은 busy(75)로 거절. 게이트 런타임은 플러그인의 `runtime/` 에 포함되어 처음 한 번 기록 루트에 복사해 설치 (아래). 플러그인의 `scripts/aside_gate.py` 는 설치된 게이트로 넘기는 역할뿐. 같은 루트를 쓰는 Hermes·SSH 호출자도 이 게이트 경유 필수. 한계는 게이트를 우회한 직접 CLI 호출 (샌드박스와 달리 미차단)
+- **한 번에 작업 하나**: 기록 루트의 공용 게이트 `$OPS_ROOT/bin/aside_gate.py` 가 예약을 잡고 다른 작업은 busy(75)로 거절. 게이트 런타임은 플러그인의 `runtime/` 에 포함되어 처음 한 번 기록 루트에 복사해 설치 (아래). 플러그인의 `scripts/aside_gate.py` 는 설치된 게이트로 넘기는 역할뿐. 같은 루트를 쓰는 Hermes·SSH 호출자도 이 게이트 경유 필수. 게이트를 우회하는 직접 CLI 호출까지 막는 샌드박스는 아님
 - **로그인 대기**: 로그인·2FA·수동 승인에 막히면 `waiting_for_user` 와 실제 Aside 세션 ID 를 남기고 복귀. 계속하라고 하면 같은 Aside 세션에서 재개
 - **완료 판정**: 종료 코드 0 이나 Aside 의 성공 문구가 아니라 실제 페이지·파일 재확인
 - **기록 위치**: `ASIDE_OPS_ROOT` (기본 `~/aside-ops`) 의 `runs/<request-id>/`, `sites/<domain>/playbook.md`, `artifacts/`. 비밀번호·토큰·쿠키는 기록 제외

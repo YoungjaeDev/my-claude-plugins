@@ -436,10 +436,8 @@ is "build/test gate off -> rereview_push"                  "$(VG=baseline_failed
 is "--no-minor-stop -> rereview_push"                      "$(MINOR_STOP=false nxt)" rereview_push
 is "state file unreadable -> rereview_push" \
    "$(STATE_FILE="$SHIMDIR/missing.json" FIX_ITER=2 VERIFICATION_GATE=on amg | jq -r '.next_action')" rereview_push
-# The full line that runs once at the loop end (#370): a failure keeps the fixes off
-# the base and the PR unmerged; a pass or a run without one changes nothing.
-is "full line failed -> no direct base push"               "$(FULL_VERIFICATION=fail nxt)" rereview_push
-is "full line passed -> merge_then_main_push"              "$(FULL_VERIFICATION=pass nxt)" merge_then_main_push
+# The full line that runs once at the loop end (#370): a failure leaves the PR
+# unmerged (Step 15 eligibility), which keeps held fixes off the base.
 is "full line failed -> ineligible"        "$(FULL_VERIFICATION=fail DEFERRED_TOTAL=0 elig clean)" false
 is "full line passed -> eligible"          "$(FULL_VERIFICATION=pass DEFERRED_TOTAL=0 elig clean)" true
 is "full-line failure reason names it" \
@@ -2290,7 +2288,7 @@ s15() { # GATE_JSON -> final_state|ci_failing_checks|merged|calls ; env FS AM AN
 $(rb_block "Step 15: merge")" bash -c '
     reviewers_on() { cr_on=true; codex_on=auto; }
     final_state=${FS:-clean} deferred_total=0 review_total=0 OWNER=o REPO=r PR_NUM=1 ITER=1 merged=false
-    AUTO_MERGE=${AM:-false} MERGE_ANSWER=${ANS:-} REVIEWED_SHA=${RS:-} VERIFY_CMD=true verification_blocking=false
+    AUTO_MERGE=${AM:-false} MERGE_ANSWER=${ANS:-} REVIEWED_SHA=${RS:-} VERIFY_CMD=true VERIFY_FAST_CMD=${VF:-} verification_blocking=false
     dropped_reviewers=${DR:-} pending_decision=""
     eval "$BLOCK"
     printf "%s|%s|%s|%s" "$final_state" "${ci_failing_checks:-}" "$merged" "$(tr "\n" ";" < "$CALLS")"
@@ -2312,6 +2310,9 @@ is "Step 15: --auto-merge, unprotected base, nobody answered -> not merged" "$(A
 # merge_then_main_push: the reviewed HEAD merges, then the held fixes go to the base.
 is "Step 15: held Minor fixes, merged -> pushed to the base" \
    "$(RS=r3v ANS=yes s15 "$ok404")" 'clean||true|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;base-push main r3v f1x true;'
+# With a fast line, Step 14 already ran the full line on these fixes: the base runs the fast one.
+is "Step 15: held Minor fixes, fast line -> base push runs the fast line" \
+   "$(VF=fastc RS=r3v ANS=yes s15 "$ok404")" 'clean||true|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;base-push main r3v f1x fastc;'
 is "Step 15: base push recorded for the final output" \
    "$(jq -c '[.base_push.branch, .base_push.sha, .base_push.fixes[0].path]' "$G15/state.json")" '["main","pu5h","a.sh"]'
 is "Step 15: held Minor fixes, not merged -> pushed to the PR instead" "$(RS=r3v s15 "$ok404")" 'clean||false|git push;'
@@ -2325,6 +2326,8 @@ out=$(RUNNER=true RS=r3v SHOW_PENDING=1 s15 "$ok404")
 is "Step 15 runner: merge question pending, no merge, no push" "${out%|*}" 'clean||false|'
 is "Step 15 runner: pending decision carries the merge inputs" \
    "$(jq -c '[.question, .pr, .base, .protection_http, .reviewed_sha, .fix_sha, .iter]' <<<"${out##*|}")" '["merge",1,"main",404,"r3v","f1x",1]'
+is "Step 15 runner: pending decision carries the fast line for the base push" \
+   "$(VF=fastc RUNNER=true RS=r3v SHOW_PENDING=1 s15 "$ok404" | sed 's/.*|//' | jq -r '.verify_fast_cmd')" fastc
 # The main session's answer runs the Step 15 merge block with the pending inputs.
 s15m() { # WHY -> merged|calls
   : > "$G15/calls"; echo '{"auto_judge_log":[{"iter":1,"src":"cr","path":"a.sh","line":3,"badge_or_sev":"🟡 Minor","action":"apply"}]}' > "$G15/state.json"
@@ -2408,6 +2411,7 @@ CI14=$(mktemp -d); mkdir -p "$CI14/scripts" "$CI14/bin"
 printf '#!/usr/bin/env bash\necho "$CI_OUT"; echo "CAP=$CAP" >> "%s/cap"\n' "$CI14" > "$CI14/scripts/ci-checks.sh"
 cp "$SCRIPTS/auto-merge-gate.sh" "$SCRIPTS/words-json.sh" "$CI14/scripts/"
 printf '#!/usr/bin/env bash\necho 2026-10-06T10:00:00Z\n' > "$CI14/scripts/push-time.sh"
+printf '#!/usr/bin/env bash\necho "$1" >> "%s/vf"; echo pass\n' "$CI14" > "$CI14/scripts/verify-fix.sh"
 printf '#!/usr/bin/env bash\nexit 1\n' > "$CI14/bin/gh"; chmod +x "$CI14/bin/gh"
 CI_PASS='{"state":"pass","failing":[],"pending":[]}'
 last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:HEAD_VERDICT:followup
@@ -2419,7 +2423,8 @@ last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:
     OWNER=o REPO=r PR_NUM=1 TIMEOUT=1800 INTERVAL=30
     eval "$BLOCK"
     printf "%s:%s:%s" "$final_state" "$HEAD_VERDICT" "$followup_needed"
-    [ -z "${SHOW_CI:-}" ] || printf ":%s" "${ci_failing_checks:-}"'
+    [ -z "${SHOW_CI:-}" ] || printf ":%s" "${ci_failing_checks:-}"
+    [ -z "${SHOW_FV:-}" ] || printf ":%s" "${full_verification:-}"'
 }
 CI_FAIL='{"state":"fail","failing":["policy"],"pending":[]}'
 # A failing check alone files no issue (minimal-issue policy, #325): the final
@@ -2457,6 +2462,14 @@ is "timeout with earlier defers -> follow-up issue" "$(last_push false timeout t
 # A finding nobody could read (`review` tier) is left behind too: user_declined on it
 # alone must still file the issue failure-modes.md points the user to.
 is "only unread review-tier items -> follow-up issue" "$(last_push false user_declined ready false 0 1)" "user_declined::true"
+# The loop-end full line runs only where the build/test gate is on (Step 3): a
+# baseline that failed leaves full_verification null.
+: > "$CI14/vf"
+is "fast line, gate on -> loop end runs the full line" \
+   "$(VERIFY_FAST_CMD=f VERIFICATION_GATE=on SHOW_FV=1 last_push false clean ready false 0):$(cat "$CI14/vf")" "clean::false:pass:full"
+: > "$CI14/vf"
+is "fast line, baseline failed -> full line not run, null" \
+   "$(VERIFY_FAST_CMD=f VERIFICATION_GATE=baseline_failed SHOW_FV=1 last_push false clean ready false 0):$(cat "$CI14/vf")" "clean::false::"
 rm -rf "$CI14"
 
 # await_head_verdicts on a paused CodeRabbit: one request, then the same budget.

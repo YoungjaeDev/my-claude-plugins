@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Usage: bash scripts/base-push.sh BASE REVIEWED_SHA FIX_SHA "$VERIFY_CMD"
+# Usage: bash scripts/base-push.sh BASE REVIEWED_SHA FIX_SHA "${VERIFY_FAST_CMD:-$VERIFY_CMD}"
+# (with a fast line, Step 14 already ran the full line on the fixes)
 # merge_then_main_push, after the PR merged (ADR 0006): cherry-picks the commits
 # REVIEWED_SHA..FIX_SHA one by one onto origin/BASE in a throwaway worktree (each
 # keeps its own message), runs VERIFY_CMD there, runs the repo's pre-commit guard

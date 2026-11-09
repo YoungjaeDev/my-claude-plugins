@@ -587,10 +587,11 @@ if [ "$pushed_this_cycle" = true ]; then
 fi
 # The fixes passed only the fast line: a run that can still merge runs the full line
 # once on HEAD (with held fixes, the local commit Step 15 would push to the base).
-# A failure leaves auto-merge off (the Step 15 gate); no fast line runs nothing (#370).
-[ -z "${VERIFY_FAST_CMD:-}" ] || case "$final_state" in
+# A failure leaves auto-merge off (the Step 15 gate); no fast line, or a gate Step 3
+# left off, runs nothing and full_verification stays null (#370).
+[ -z "${VERIFY_FAST_CMD:-}" ] || [ "${VERIFICATION_GATE:-}" != on ] || case "$final_state" in
   clean|minor_floor|churn)
-    # Bash(run_in_background=true) + Monitor when the full line is slow: one token.
+    # Run it in the background where the runtime supports it when the full line is slow: one token.
     full_verification=$(NO_BUILD="${NO_BUILD:-false}" bash "$SKILL_DIR/scripts/verify-fix.sh" full "${VERIFY_CMD:-}" "${VERIFY_FAST_CMD:-}")
     [ "$full_verification" != not_run ] || full_verification=""
     [ "$full_verification" != fail ] \
@@ -689,9 +690,9 @@ if [ -z "$why" ] && { [ "$AUTO_MERGE" != true ] || [ "$proto" = 404 ] || [ -n "$
   if [ "${RUNNER:-false}" = true ] && [ -z "${MERGE_ANSWER:-}" ]; then
     pending_decision=$(jq -nc --argjson pr "$PR_NUM" --arg base "$base" --argjson proto "$proto" \
       --arg rs "$REVIEWED_SHA" --arg fs "$FIX_SHA" --argjson iter "${ITER:-0}" --arg vc "${VERIFY_CMD:-}" \
-      --argjson dr "$(bash "$SKILL_DIR/scripts/words-json.sh" "${dropped_reviewers:-}")" \
+      --arg vf "${VERIFY_FAST_CMD:-}" --argjson dr "$(bash "$SKILL_DIR/scripts/words-json.sh" "${dropped_reviewers:-}")" \
       '{question:"merge", pr:$pr, base:$base, protection_http:$proto, reviewed_sha:$rs, fix_sha:$fs,
-        iter:$iter, verify_cmd:$vc, dropped_reviewers:$dr}')
+        iter:$iter, verify_cmd:$vc, verify_fast_cmd:$vf, dropped_reviewers:$dr}')
     why="the merge question waits for the main session"
   elif [ "${MERGE_ANSWER:-}" != yes ]; then why="not merged: the user did not choose to merge"; fi
 fi
@@ -700,7 +701,7 @@ fi
 
 ## Step 15: merge
 
-Runs right after the gate block. The main session also runs it on its own, after it asked a runner's pending `merge` question (SKILL.md "Runner"), with `PR_NUM`, `base`, `proto` (`protection_http`), `REVIEWED_SHA`, `FIX_SHA`, `ITER` and `VERIFY_CMD` from `pending_decision`, `STATE_FILE` set to the newest `.claude/state/archive/review-loop-<PR>-*.json`, `pending_decision` empty, and `why` empty on "Merge" or `not merged: the user did not choose to merge` otherwise.
+Runs right after the gate block. The main session also runs it on its own, after it asked a runner's pending `merge` question (SKILL.md "Runner"), with `PR_NUM`, `base`, `proto` (`protection_http`), `REVIEWED_SHA`, `FIX_SHA`, `ITER`, `VERIFY_CMD` and `VERIFY_FAST_CMD` from `pending_decision`, `STATE_FILE` set to the newest `.claude/state/archive/review-loop-<PR>-*.json`, `pending_decision` empty, and `why` empty on "Merge" or `not merged: the user did not choose to merge` otherwise.
 
 ```bash
 if [ -z "$why" ]; then
@@ -717,14 +718,15 @@ if [ -z "$why" ]; then
   fi
 fi
 # Minor fixes Step 12 held back (merge_then_main_push): onto the base once the merge
-# has landed (scripts/base-push.sh: the full build/test line and pre-commit there first), else back
+# has landed (scripts/base-push.sh: build/test and pre-commit there first; the fast line when
+# there is one, since Step 14 already ran the full line on these fixes), else back
 # to the PR, whose review this run does not wait for. While the main session has not
 # answered a runner's merge question they stay on the local commit.
 if [ -n "$REVIEWED_SHA" ] && [ -n "${pending_decision:-}" ]; then
   echo "review-loop: Minor fixes stay on local commit $FIX_SHA until the merge question is answered" >&2
 elif [ -n "$REVIEWED_SHA" ]; then
   if [ "${merged:-false}" = true ] && [ "$proto" = 404 ]; then
-    if pushed=$(bash "$SKILL_DIR/scripts/base-push.sh" "$base" "$REVIEWED_SHA" "$FIX_SHA" "$VERIFY_CMD"); then
+    if pushed=$(bash "$SKILL_DIR/scripts/base-push.sh" "$base" "$REVIEWED_SHA" "$FIX_SHA" "${VERIFY_FAST_CMD:-$VERIFY_CMD}"); then
       tmp=$(mktemp); jq --arg b "$base" --arg s "$pushed" --argjson it "$ITER" \
         '.base_push = {branch:$b, sha:$s, fixes:[.auto_judge_log[]? | select(.iter == $it and .action == "apply")
            | {src, path, line, badge_or_sev}]}' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"

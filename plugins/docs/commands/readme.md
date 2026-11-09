@@ -9,6 +9,7 @@ allowed-tools:
   - Grep
   - Task
   - Skill
+  - AskUserQuestion
 ---
 
 # README Command
@@ -35,22 +36,26 @@ Generate or analyze README files using patterns from awesome-readme.
 
 ### For `generate`
 
-0. Load `Skill("docs:doc-guides")` and follow its `## README` section
+0. Load `Skill("docs:doc-guides")` and follow its `## Human-read documents` and `## README` sections
 1. Determine project type from argument or by analyzing project structure
 2. Read the appropriate template from `references/TEMPLATES.md`
 3. Gather project info:
    - Package name from package.json, setup.py, Cargo.toml, etc.
    - Description from package config
    - Existing commands/API
-4. **Generate visual assets** with `/codex-image:codex-image`, following `## Visual Assets Generation`
-   below: a text-free banner pair (`assets/banner-light.png`, `assets/banner-dark.png`) by default,
-   or a logo (`assets/logo.png`) when the user wants a logo header instead.
-5. Generate README customized for the project
+4. **Propose figures, then generate only what the user confirms** (the `Figures` gate in
+   `## Human-read documents`): a text-free banner pair (`assets/banner-light.png`,
+   `assets/banner-dark.png`) with `/codex-image:codex-image` by default, or a logo
+   (`assets/logo.png`) when the user wants a logo header instead, following
+   `## Visual Assets Generation` below; plus a `stack-diagram` structure diagram when the project
+   has service connections, an architecture or a data flow.
+5. Generate README customized for the project: tone and TOC per `## Human-read documents`
 6. Apply CRO best practices from `references/CRO_CHECKLIST.md`
+7. Run the final polish step of `## Human-read documents` and report which path ran
 
 ### For `analyze`
 
-0. Load `Skill("docs:doc-guides")` and follow its `## README` section
+0. Load `Skill("docs:doc-guides")` and follow its `## Human-read documents` and `## README` sections
 1. Read existing README.md
 2. Check against patterns in `references/README_PATTERNS.md`
 3. Evaluate using `references/CRO_CHECKLIST.md`
@@ -62,6 +67,9 @@ Generate or analyze README files using patterns from awesome-readme.
    - Features (benefit-oriented)
    - Examples (progressive complexity)
    - Trust signals (social proof, transparency)
+   - TOC (present right after the top summary when there are 4 or more `##` headings)
+   - Tone (noun-ending list items and table cells; 합니다체 only for sentences asking the reader to act)
+   - Figures (a structure diagram where the text describes service connections, architecture or data flow; banner in the house style)
 
 ## Output Format
 
@@ -157,7 +165,7 @@ Asset type: GitHub README banner, light theme; will be cropped to a 3:1 strip; t
 Primary request: calm, corporate visual for <project domain, e.g. edge AI video analytics>
 Scene/backdrop: flat off-white background with a very subtle soft gradient, no horizon
 Subject: <one simple object that stands for the domain, e.g. a small compute board and a camera as clean geometric shapes>
-Style/medium: clean flat-3D product illustration, soft even lighting, precise geometry, matte surfaces
+Style/medium: soft 3D product illustration, smooth clay-like rounded forms, soft even studio lighting, matte surfaces
 Composition/framing: very wide landscape; all objects inside the middle 50% of the image height; objects in the right 40%, the left 60% left empty for the headline
 Color palette: white, light grey and charcoal neutrals, plus <brand accent hex> as the only accent, on one element
 Constraints: no text, no letters, no numbers, no logos or trademarks, no mascot, no watermark

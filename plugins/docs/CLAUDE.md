@@ -6,7 +6,7 @@ Generate and analyze README/CHANGELOG files using CRO best practices from awesom
 
 | Skill | Description |
 |-------|-------------|
-| `doc-guides` | README/CHANGELOG/deploy-doc/MOC authoring reference cards, one per `/docs:*` document command (absorbed `readme-guide`, `changelog-guide`, `deploy-doc-guide`, `moc-guide`) |
+| `doc-guides` | README/CHANGELOG/deploy-doc/MOC authoring reference cards, one per `/docs:*` document command, plus the common human-read document rule (tone, TOC, figures, polish) they all follow (absorbed `readme-guide`, `changelog-guide`, `deploy-doc-guide`, `moc-guide`) |
 | `write-rules` | CLAUDE.md + `.claude/rules/` generation with auto mode detection (absorbed from `rules-forge`) |
 | `interview-methodology` | Confirm the open points of a small, ambiguous request: breadth-first sweep, inline-summary close (absorbed from `interview`); also carries the TCREI reusable-prompt template (absorbed from `tcrei-prompt`). Pressing an existing plan hard is Matt `grilling`; large work goes to `/grill-with-docs` |
 | `vp` | Voice-dictated prompt gate: normalize misheard terms against `.agents/voice-terms.md`, restate and proceed, or ask 2-3 questions when ambiguous |

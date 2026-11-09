@@ -46,7 +46,7 @@
     "inferred_tiers": {
       "type": "integer",
       "minimum": 0,
-      "description": "Step 9c decisions on a CodeRabbit finding whose header scripts/cr-header.jq could not read, judged on the model's inferred severity and effort (`tier_source: \"inferred\"` in auto_judge_log, references/tier-classification.md). Above 0, the final report gives the count and one line saying CodeRabbit's header format may have changed."
+      "description": "Step 9c decisions on a CodeRabbit finding whose header scripts/cr-header.jq could not read, judged on the model's inferred severity and effort (`tier_source: \"inferred\"` in auto_judge_log, references/tier-classification.md), plus the ones inferred as Trivial or Info, which end at tier skip with no log record (state `inferred_skips`). Above 0, the final report gives the count and one line saying CodeRabbit's header format may have changed."
     },
     "followup_issue": {
       "description": "The issue Step 14 filed for the findings this run left behind. Null when nothing was left behind, or when creation failed (in which case auto-merge stays blocked).",

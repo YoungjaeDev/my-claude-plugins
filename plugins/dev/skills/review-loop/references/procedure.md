@@ -100,7 +100,7 @@ The caps, the nudge, the drop rules and the 👍 rule are in `coordination.md` (
 
 ## Step 9a: classify
 
-Run block "Step 9a: classify". With a stop held by Step 13 it resolves that first: no finding that needs a decision (`gated`, `defer`, `review`) on the new HEAD ends the run at the held state, and one or more earns another round.
+Run block "Step 9a: classify". Its first fence classifies, the inference for unreadable headers runs between the fences, and the second resolves a stop held by Step 13 on the tiers after inference. No finding that needs a decision (`gated`, `defer`, `review`) on the new HEAD ends the run at the held state, and one or more earns another round.
 
 Drop `tier=="skip"` items before rendering and count them per `skip-minor-rules.md`. Render the rest as one table (`Source · Category/Badge · Severity · Effort · Path:Line · Tier`), with the footer when `skipped_total > 0`.
 

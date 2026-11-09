@@ -209,8 +209,12 @@ case "$*" in
   "pr view"*) echo "d21f513f902ac18a09ade85a92d403870568ae19"; exit 0 ;;
   "run list"*) echo "${CI_RUNS:-[]}"; exit 0 ;;
   *"/actions/jobs/"*) id=${2##*/}; case " ${CI_STARTED:-} " in
-       *" $id "*) cat "$CI_FIX/actions-job-started.json" ;; *) cat "$CI_FIX/actions-job-not-started.json" ;; esac; exit 0 ;;
-  *"/check-runs/"*"/annotations"*) cat "$CI_FIX/check-run-annotations-not-started.json"; exit 0 ;;
+       *" $id "*) cat "$CI_FIX/actions-job-started.json" ;;
+       *) case " ${CI_CANCELLED:-} " in
+            *" $id "*) jq -c '.conclusion = "cancelled"' "$CI_FIX/actions-job-not-started.json" ;;
+            *) cat "$CI_FIX/actions-job-not-started.json" ;; esac ;; esac; exit 0 ;;
+  *"/check-runs/"*"/annotations"*) [ -z "${CI_ANN_FAIL:-}" ] || { echo "HTTP 502" >&2; exit 1; }
+       cat "$CI_FIX/check-run-annotations-not-started.json"; exit 0 ;;
 esac
 [ "$1 $2" = "pr checks" ] || { echo "unknown gh args: $*" >&2; exit 1; }
 echo "$*" > "$CI_COUNT.args"
@@ -272,6 +276,14 @@ is "never-started run -> annotation quoted" \
    "$(jq -r '.annotation' <<<"$c")" "The job was not started because your account is locked due to a billing issue."
 c=$(CI_STARTED=125022415690 ci 0 "$FIX/pr-checks-not-started-and-failing.json")
 is "one job never started, one ran and failed -> fail" "$(jq -r '.state' <<<"$c")" fail
+# The same "never started" predicate as release's ci-run-check.sh: completed with no
+# step and no runner, and neither skipped nor cancelled. A job cancelled before a
+# runner was assigned was stopped by someone, not locked out: a real `fail`.
+c=$(CI_CANCELLED="125022415689 125022415818" ci 0 "$FIX/pr-checks-not-started.json")
+is "job cancelled before a runner was assigned -> fail, not not_started" "$(jq -r '"\(.state)/\(.annotation)"' <<<"$c")" fail/null
+# An annotation read that fails is not "no annotation": say it was not read.
+c=$(CI_ANN_FAIL=1 ci 0 "$FIX/pr-checks-not-started.json")
+is "annotation API failure -> not_started, annotation unread" "$(jq -r '"\(.state)/\(.annotation)"' <<<"$c")" "not_started/annotation unread"
 c=$(ci 0 "$FIX/pr-checks-failing.json")
 is "failing checks without an Actions job link -> fail, no reason" "$(jq -r '"\(.state)/\(.reason)/\(.annotation)"' <<<"$c")" fail/null/null
 is "passing checks -> no reason" "$(jq -r '.reason' <<<"$(ci 0 "$FIX/pr-checks-passing.json")")" null
@@ -460,14 +472,18 @@ is "a Codex P2 fix -> merge_then_main_push" "$(nxt)" merge_then_main_push
 st "$(fix 2 cr '🎯 Functional Correctness' '🟡 Minor' apply high)"
 is "a Minor reassessed high -> rereview_push" "$(nxt)" rereview_push
 # #392: a headerless finding logs no severity as read; the model's inference is in
-# its own field, and an inferred Critical/Major sends the fix back for re-review.
+# its own field, and any fix judged on an inferred tier goes back for re-review.
 inferred() { jq -c --arg s "$1" '. + {badge_or_sev:"", tier_source:"inferred", inferred_severity:$s}' <<<"$(fix 2 cr '' '' apply low)"; }
 st "$minor,$(inferred Major)"
 is "an inferred Major fix -> rereview_push" "$(nxt)" rereview_push
 st "$(inferred Critical)"
 is "an inferred Critical fix -> rereview_push" "$(nxt)" rereview_push
+# An inferred tier is a guess no header backs, so its fix never goes straight to the
+# base: even an inferred Minor goes back for re-review.
 st "$(inferred Minor)"
-is "an inferred Minor fix -> merge_then_main_push" "$(nxt)" merge_then_main_push
+is "an inferred Minor fix -> rereview_push" "$(nxt)" rereview_push
+st "$minor,$(inferred Trivial)"
+is "an inferred Trivial fix beside a read Minor -> rereview_push" "$(nxt)" rereview_push
 # Only fixes no reviewer has seen count: an earlier iteration's Major was re-reviewed,
 # and a deferred Major changed no code.
 st "$(fix 1 cr '🎯 Functional Correctness' '🟠 Major' apply high),$minor"
@@ -1993,6 +2009,11 @@ echo '{"auto_judge_log":[{"tier_source":"inferred","action":"apply"},{"action":"
 fo_inf=$(FINAL_STATE=clean STATE_FILE="$BPS/s/inf.json" PR_NUM=43 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
 is "final output: inferred tiers counted"         "$(jq -r '.inferred_tiers' <<<"$fo_inf")" 2
 is "final output: inferred_tiers passes the schema" "$(schema_ok "$fo_inf")" true
+# An inferred Trivial/Info ends at tier skip, never reaches Step 9c and so has no log
+# record; Step 9a keeps its key in inferred_skips, and the count includes those.
+echo '{"auto_judge_log":[{"tier_source":"inferred","action":"apply"}],"inferred_skips":["4303460001","a.sh:7"]}' > "$BPS/s/inf2.json"
+fo_inf=$(FINAL_STATE=clean STATE_FILE="$BPS/s/inf2.json" PR_NUM=44 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: inferred skips counted with the logged ones" "$(jq -r '.inferred_tiers' <<<"$fo_inf")" 3
 # The runner's line is also a file next to the state, so the main session reads it
 # on any wake instead of waiting on a completion notification.
 is "final output: written to the state dir too"   "$(cat "$BPS/s/review-loop-final-42.json" 2>/dev/null)" "$fo"
@@ -3232,6 +3253,30 @@ judged() { # HOLD_STATE RECORDS -> final_state:classified databaseIds
 }
 is "Step 9a: a thread judged earlier this run is not judged again" "$(judged "" "[$old_major,$new_minor]")" ":[4303469999]"
 is "Step 9a: held stop, only an already-judged Major back -> ends as held" "$(judged minor_floor "[$old_major]")" "minor_floor:[]"
+# #392: Step 9a as the model runs it. Fence 1 classifies, the model infers a tier for
+# each unreadable CodeRabbit header and classifies it again, fence 2 resolves a held
+# stop. A headerless finding inferred Trivial is a skip: it must not earn the round.
+rb_fence() { awk -v h="## $1" -v n="$2" '$0 == h {f=1; next} f && /^## / {exit}
+  f && /^```bash$/ {k++; c=(k == n); next} c && /^```$/ {c=0; next} c {print}' "$RB"; }
+headerless='{"source":"cr","path":"a.sh","line":7,"databaseId":4303460001,"body":"no header here"}'
+infer_round() { # HOLD_STATE INFERRED_SEVERITY -> final_state:HOLD_STATE:round:inferred_skips
+  echo '{"auto_judge_log":[]}' > "$R9/state.json"
+  HS=$1 SEV=$2 REC=$headerless STATE_FILE="$R9/state.json" SKILL_DIR="$HERE/.." \
+  F1="$(rb_fence "Step 9a: classify" 1)" F2="$(rb_fence "Step 9a: classify" 2)" bash -c '
+    cr_records="[$REC]" codex_records="[]" ITER=3 SKIP_MINOR=false HOLD_STATE=$HS final_state="" round=""
+    eval "for i in 1; do $F1
+      classified=\$(jq -c --arg s \"\$SEV\" \".[] | if .tier == \\\"review\\\" and .source != \\\"codex\\\" then . + {inferred_severity: \\\$s} else . end\" <<<\"\$classified\" \
+        | while IFS= read -r r; do printf \"%s\n\" \"\$r\" | SKIP_MINOR=false bash \$SKILL_DIR/scripts/classify-item.sh; done | jq -s .)
+      $F2
+      round=yes; done"
+    printf "%s:%s:%s:%s" "$final_state" "$HOLD_STATE" "$round" "$(jq -c ".inferred_skips // []" "$STATE_FILE")"' 2>/dev/null
+}
+is "Step 9a: held stop, headerless finding inferred Trivial -> ends as held" \
+   "$(infer_round minor_floor Trivial)" 'minor_floor:minor_floor::["4303460001"]'
+is "Step 9a: held stop, headerless finding inferred Major -> one more round" \
+   "$(infer_round minor_floor Major)" '::yes:[]'
+is "Step 9a: no held stop, inferred Trivial still kept for inferred_tiers" \
+   "$(infer_round "" Info)" '::yes:["4303460001"]'
 is "log shape: the comment id is a state schema field" \
    "$(jq -r '.properties.auto_judge_log.items.properties | has("comment_id")' "$HERE/../assets/state.schema.json")" true
 

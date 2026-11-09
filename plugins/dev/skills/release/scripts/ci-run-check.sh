@@ -30,9 +30,10 @@ billing=0
 while IFS=$'\x1f' read -r id name status conclusion url; do
   echo "ci: $TAG: $name run $id $status${conclusion:+/$conclusion} $url"
   jobs=$(api "repos/{owner}/{repo}/actions/runs/$id/jobs?filter=latest&per_page=100") || exit 1
-  # Never started: completed with no step and no runner. Queued jobs are not there yet; skipped ones were meant not to run.
+  # Never started: completed with no step and no runner. Queued jobs are not there yet, skipped ones were
+  # meant not to run, cancelled ones were stopped by someone. review-loop's ci-checks.sh uses the same predicate.
   dead=$(jq -r '[.[].jobs[]] | .[]
-      | select(.status == "completed" and .conclusion != "skipped"
+      | select(.status == "completed" and (.conclusion | IN("skipped", "cancelled") | not)
                and ((.steps // []) | length) == 0 and ((.runner_id // 0) == 0))
       | [.name, (.check_run_url // "" | sub("^.*/check-runs/"; ""))] | @tsv' <<<"$jobs") \
     || unknown "unreadable jobs response for run $id"

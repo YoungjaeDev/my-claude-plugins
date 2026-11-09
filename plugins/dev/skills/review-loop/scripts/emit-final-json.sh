@@ -47,7 +47,9 @@ BASE_PUSH='null'
 INFERRED_TIERS=0
 if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
   PRE_FLIGHT_LAST=$(jq -c '.pre_flight_decisions // [] | .[-1] // null' "$STATE_FILE" 2>/dev/null || echo 'null')
-  INFERRED_TIERS=$(jq '[.auto_judge_log[]? | select(.tier_source == "inferred")] | length' "$STATE_FILE" 2>/dev/null || echo 0)
+  # Judged ones from the log, plus the inferred skips Step 9a kept (they never reach the log).
+  INFERRED_TIERS=$(jq '([.auto_judge_log[]? | select(.tier_source == "inferred")] | length) + (.inferred_skips // [] | length)' \
+    "$STATE_FILE" 2>/dev/null || echo 0)
   FOLLOWUP_ISSUE=$(jq -c '.followup_issue // null' "$STATE_FILE" 2>/dev/null || echo 'null')
   BASE_PUSH=$(jq -c '.base_push // null' "$STATE_FILE" 2>/dev/null || echo 'null')
 fi

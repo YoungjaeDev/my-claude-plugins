@@ -49,6 +49,10 @@ node "$repo_root/scripts/check-korean-copy.mjs"
 # e2e-setup's Step 0 PLUGIN_ROOT resolver, extracted from SKILL.md and run against a
 # fixture cache. Under a tenth of a second, so it runs on every commit.
 bash "$repo_root/plugins/dev/tests/resolver_smoke.sh"
+# dev:new's Step 0 guard and its recovery entry, and release's never-started CI
+# check against a gh shim. Each under a second, so they run on every commit too.
+bash "$repo_root/plugins/dev/tests/new_guard_smoke.sh"
+bash "$repo_root/plugins/dev/skills/release/tests/run-tests.sh"
 # Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
 # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
 node "$repo_root/scripts/check-skill-prose.mjs" || true

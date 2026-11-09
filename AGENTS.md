@@ -83,16 +83,18 @@ git add -A \
   && node scripts/check-plugin-cache.mjs --selftest \
   && node scripts/check-korean-copy.mjs \
   && bash plugins/dev/tests/resolver_smoke.sh \
+  && bash plugins/dev/tests/new_guard_smoke.sh \
+  && bash plugins/dev/skills/release/tests/run-tests.sh \
   && bash plugins/dev/skills/review-loop/tests/run-tests.sh \
   && bash plugins/dev/skills/post-merge/tests/run-tests.sh \
   && bash plugins/council/skills/convene/tests/run-tests.sh \
   && echo "verify: ok"
 ```
 
-review-loop 가 수정마다 도는 빠른 줄 (가드만, 약 1초). 전체 줄은 루프 끝에 한 번 돈다.
+review-loop 가 수정마다 도는 빠른 줄 (가드와 각 1초 안쪽인 스모크 테스트 3개, macOS 에서 약 1.5초). 전체 줄은 루프 끝에 한 번 돈다.
 
 ```bash fast
-git add -A && node scripts/check-doc-consistency.mjs && node scripts/check-shell-portability.mjs && node scripts/check-skill-contract.mjs && node scripts/bump-version.mjs --check && node scripts/check-korean-copy.mjs && bash plugins/dev/tests/resolver_smoke.sh
+git add -A && node scripts/check-doc-consistency.mjs && node scripts/check-shell-portability.mjs && node scripts/check-skill-contract.mjs && node scripts/bump-version.mjs --check && node scripts/check-korean-copy.mjs && bash plugins/dev/tests/resolver_smoke.sh && bash plugins/dev/tests/new_guard_smoke.sh && bash plugins/dev/skills/release/tests/run-tests.sh
 ```
 
 - `git add -A` 가 먼저다: 가드는 git-tracked 파일만 스캔한다.

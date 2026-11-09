@@ -9,11 +9,11 @@ Use this to check which elements a prompt already has before adding more:
 
 | Element | Present if... | Missing if... |
 |---------|--------------|---------------|
-| **Task** | Has 2+ of: action verb, output format, constraints | Only a vague verb ("do this", "write something") |
-| **Context** | Specifies 1+ of: audience, purpose, source material | No background information at all |
-| **References** | Includes samples, format specs, schemas, or tone examples | No hint about desired output shape |
-| **Evaluate** | Has 1+ of: must-have, must-not, verification criteria | No quality standards defined |
-| **Iterate** | Mentions improvement direction or version requests | One-shot request only |
+| Task | Has 2+ of: action verb, output format, constraints | Only a vague verb ("do this", "write something") |
+| Context | Specifies 1+ of: audience, purpose, source material | No background information at all |
+| References | Includes samples, format specs, schemas, or tone examples | No hint about desired output shape |
+| Evaluate | Has 1+ of: must-have, must-not, verification criteria | No quality standards defined |
+| Iterate | Mentions improvement direction or version requests | One-shot request only |
 
 ## Output Template
 
@@ -95,8 +95,8 @@ Common gaps by domain with default remediation:
 
 | Domain | Commonly missing | Default remediation |
 |--------|-----------------|-------------------|
-| **Development** | References (code style), Evaluate (test criteria) | Match existing codebase patterns, include test cases |
-| **Marketing** | Context (target persona), Evaluate (conversion criteria) | Define persona, add CTA verification |
-| **Education** | References (difficulty samples), Iterate (learning progression) | Separate beginner/intermediate, add step-by-step deepening |
-| **Documents** | Context (reader level), References (existing templates) | Distinguish exec/practitioner, reference company templates |
-| **Translation** | References (glossary), Evaluate (consistency) | Unify technical terms, verify tone consistency |
+| Development | References (code style), Evaluate (test criteria) | Match existing codebase patterns, include test cases |
+| Marketing | Context (target persona), Evaluate (conversion criteria) | Define persona, add CTA verification |
+| Education | References (difficulty samples), Iterate (learning progression) | Separate beginner/intermediate, add step-by-step deepening |
+| Documents | Context (reader level), References (existing templates) | Distinguish exec/practitioner, reference company templates |
+| Translation | References (glossary), Evaluate (consistency) | Unify technical terms, verify tone consistency |

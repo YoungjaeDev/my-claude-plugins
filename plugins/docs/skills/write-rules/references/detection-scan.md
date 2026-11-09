@@ -1,6 +1,6 @@
 # Detection Logic: State Scan Script
 
-Step 1 of Detection Logic Execution (see `SKILL.md`). Run this to populate
+Step 1 of `## Execution` in `SKILL.md`. Run this to populate
 `state` before computing `mode`.
 
 ```bash

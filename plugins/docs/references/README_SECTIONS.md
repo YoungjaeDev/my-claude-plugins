@@ -9,7 +9,7 @@ names and slugs below are from it, and the "Core" column paraphrases each templa
 copying it.
 
 The "Internal slot" column refers to the numbered order in `README_PATTERNS.md`
-`## Internal Repo Structure` (1 Banner, 2 Name + summary, 3 Badges, 4 Demo or Results, 5 Current
+`## Internal Repo Structure` (1 Top image, 2 Name + summary, 3 Badges, 4 Demo or Results, 5 Current
 status, 6 Quick start, 7 Structure, 8 Verification, 9 Risks, 10 Docs map, 11 Owner).
 
 ## Project sections (29)
@@ -17,7 +17,7 @@ status, 6 Quick start, 7 Structure, 8 Verification, 9 Risks, 10 Docs map, 11 Own
 | Section (slug) | Core | Include when | Internal slot |
 |----------------|------|--------------|---------------|
 | Title and Description (`title-and-description`) | H1 plus one line on what it does and for whom | always | 2 |
-| Logo (`logo`) | one image at the top | the project has an identity mark and no banner | 1, replaced by the banner; never stack both |
+| Logo (`logo`) | one image at the top | the project has an identity mark, no real UI or result screenshot, and no banner | 1, replaced by the screenshot or banner; never stack two |
 | Badges (`badges`) | shields.io badge row | always, 3-5 badges | 3, static badges |
 | Demo (`demo`) | GIF or link to a demo | UI or demo material exists | 4 |
 | Screenshots (`screenshots`) | `## Screenshots` with an app image | UI exists | 4, folded into Demo |

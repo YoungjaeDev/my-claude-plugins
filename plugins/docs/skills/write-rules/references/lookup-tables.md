@@ -29,7 +29,7 @@ target `.claude/rules/<name>.md` file.
 
 Index of the files each mode's execution steps already cite. The
 single source of truth for *when* to Read each file is the numbered
-step list inside each Mode Execution section; this table is just
+step list for each mode in `procedure.md`; this table is just
 a quick lookup.
 
 | Mode | Always Read | Read if `contentSignals` matches |

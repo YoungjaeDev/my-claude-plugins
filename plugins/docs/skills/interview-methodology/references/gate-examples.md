@@ -1,9 +1,9 @@
-# Interactive-Input Gate Best Practices (Claude: AskUserQuestion)
+# Question Option Examples
 
-Worked examples for the "Interactive-Input Gate Best Practices"
-section of `SKILL.md`.
+Two worked examples for the question tool in `SKILL.md` (`AskUserQuestion` on Claude Code, `request_user_input` on Codex). Each option explains its implication, not just the choice.
 
-### Structure Questions with Options
+## Structure questions with options
+
 ```
 Question: "How should the system handle authentication failures?"
 Options:
@@ -13,7 +13,8 @@ Options:
 4. Custom handling...
 ```
 
-### Use multiSelect for Non-Exclusive Choices
+## Use multiSelect for non-exclusive choices
+
 ```
 Question: "Which platforms need to be supported?"
 multiSelect: true
@@ -23,6 +24,3 @@ Options:
 3. Android app
 4. Desktop app
 ```
-
-### Provide Context in Descriptions
-Each option should explain implications, not just the choice itself.

@@ -1,15 +1,51 @@
 ---
 name: doc-guides
-description: "README/CHANGELOG/deploy-doc/MOC 저작 참조 카드 4종 통합 — 해당 command(/docs:readme 등)가 결정적으로 로드. Triggers: readme template, changelog format, 배포 문서/procedure doc, MOC 생성/wiki index/문서 한 줄 요약."
+description: "README/CHANGELOG/deploy-doc/MOC 저작 참조 카드 4종과 사람이 읽는 문서 공통 규칙(톤·TOC·그림·윤문) — 해당 command(/docs:readme 등)가 결정적으로 로드. Triggers: readme template, changelog format, 배포 문서/procedure doc, MOC 생성/wiki index/문서 한 줄 요약."
 ---
 
 # Doc Guides
 
-Four writing-reference cards for the `docs` document commands, one per output type. Each
-`/docs:*` command loads the matching section below deterministically: this skill is not
-meant to be browsed top to bottom.
+Four writing-reference cards for the `docs` document commands, one per output type, plus the
+common rule they all follow. Each `/docs:*` command loads `## Human-read documents` and the
+matching section below deterministically: this skill is not meant to be browsed top to bottom.
+
+## Human-read documents
+
+The one rule every document a person reads follows: README, deployment / procedure doc,
+CHANGELOG, MOC. Agent-facing documents (AGENTS.md, CLAUDE.md, skill bodies, `.claude/rules/`)
+are out of scope and keep their own tone.
+
+- **Tone**: list items, table cells and feature lines end in a noun (`~지원`, `~제공`, `~기록`).
+  Only a sentence that asks the reader to act uses 합니다체 (`실행하세요`, `확인하세요`). No
+  개조식 `~음` / `~함`, no 한다체 `~다` in a Korean document. An English document uses short
+  noun phrases in lists and the imperative for actions.
+- **Attention**: follow the user's global guidance §2 "Write so the point lands first"
+  (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`): conclusion first, exact numbers and conditions,
+  each warning next to what it guards and never trimmed. Do not restate it here.
+- **TOC**: a document with 4 or more `##` headings gets a linked table of contents right after
+  the top summary (README: after the badges and Demo). CHANGELOG and MOC are exempt: their
+  headings are already the index.
+- **Figures**: service connections, architecture and data flow get a structure diagram from the
+  `stack-diagram` skill (logos, grouped containers, orthogonal arrows). A banner or concept
+  picture goes through `codex-image` in the house style: soft 3D by default (smooth clay-like
+  rounded forms, soft studio light, one accent color), pixel style (crisp hard-edged pixels, no
+  anti-aliasing) only when the user asks.
+  - **Confirm before generating**: generation spends quota and writes files. Name each figure,
+    its tool, style and output path, then ask: Claude `AskUserQuestion`, Codex
+    `request_user_input` when exposed. With neither, or when the needed skill is not installed,
+    generate nothing: write the document without the figure and list the proposed figures in the
+    final report.
+- **Final polish**: once the content is settled, run `humanize-korean` (`Skill("humanize-korean:humanize-korean")`)
+  once over the prose of a Korean document. Code, commands, paths and numbers stay unchanged, and
+  the tone rule above wins when its advice conflicts. When it is not installed, self-check the
+  prose against the "Sentence patterns to avoid" table in global §2 instead, and say which path
+  ran. An English document gets the same §2 self-check.
+- A command that preserves existing wording (`/docs:deploy-doc rewrite`) applies tone and polish
+  only to the lines it writes itself.
 
 ## README
+
+Follow `## Human-read documents` above first.
 
 Patterns and best practices derived from awesome-readme examples.
 
@@ -104,7 +140,8 @@ For detailed patterns, see:
 
 ## CHANGELOG
 
-Writing patterns based on Keep a Changelog and Conventional Commits.
+Writing patterns based on Keep a Changelog and Conventional Commits. Entry tone and polish
+follow `## Human-read documents` above.
 
 ### Triggers
 
@@ -182,7 +219,7 @@ For detailed patterns, see:
 
 The cross-runtime SSOT for client-facing deployment / procedure documents. The `### Quick
 Reference` skeleton below is binding: the `deploy-doc` command and any agent must self-verify
-against it before writing.
+against it before writing. Tone, TOC, figures and polish follow `## Human-read documents` above.
 
 ### Triggers
 
@@ -223,7 +260,8 @@ contiguous `### N.`? summary count == `### N.` count? contracts linked not inlin
 ## MOC
 
 The cross-runtime SSOT for generating a Map of Content index over an arbitrary docs folder. The
-`### Quick Reference` below is binding for the `moc` command and any agent.
+`### Quick Reference` below is binding for the `moc` command and any agent. Hook tone follows
+`## Human-read documents` above.
 
 ### Triggers
 

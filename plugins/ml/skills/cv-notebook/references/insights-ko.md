@@ -37,9 +37,13 @@ code_here()
 
 ## Section-Specific Insights
 
-### 1. Setup (환경 설정)
+Insight samples for 8 notebook sections, each split into 초급, 중급 and 고급 blocks.
+Sections 1-5 cover the shared pipeline (setup, model loading, inference, training, evaluation).
+Sections 6-8 cover the task-specific parts (detection, segmentation, VLM).
 
-#### 초급 (Beginner)
+## 1. Setup (환경 설정)
+
+### 초급 (Beginner)
 ```python
 # # [개념] GPU 사용 가능 여부를 먼저 확인하여 학습 속도를 극대화합니다
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -67,7 +71,7 @@ DataLoader의 shuffle=True는 매 epoch마다 데이터 순서를 섞어
 train_loader = DataLoader(train_dataset, shuffle=True)
 ```
 
-#### 중급 (Intermediate)
+### 중급 (Intermediate)
 ```python
 # # [성능] persistent_workers=True로 worker 재생성 오버헤드 제거
 dataloader = DataLoader(dataset, num_workers=4, persistent_workers=True)
@@ -84,15 +88,15 @@ val_transform = transforms.Compose([Resize(), CenterCrop()])
 dataloader = DataLoader(dataset, prefetch_factor=3, num_workers=4)
 ```
 
-#### 고급 (Advanced)
+### 고급 (Advanced)
 ```python
 # # [성능] multiprocessing_context='spawn'으로 Linux CUDA 메모리 누수 방지
 dataloader = DataLoader(dataset, num_workers=4, multiprocessing_context='spawn')
 ```
 
-### 2. Model Loading (모델 로딩)
+## 2. Model Loading (모델 로딩)
 
-#### 초급 (Beginner)
+### 초급 (Beginner)
 ```python
 """
 [Note] [개념]
@@ -118,7 +122,7 @@ model.fc = nn.Linear(model.fc.in_features, num_classes)
 model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
 ```
 
-#### 중급 (Intermediate)
+### 중급 (Intermediate)
 ```python
 """
 [Note] [실무]
@@ -138,7 +142,7 @@ with torch.no_grad():
     predictions = model(images)
 ```
 
-#### 고급 (Advanced)
+### 고급 (Advanced)
 ```python
 # # [성능] torch.cuda.amp로 혼합 정밀도 학습 시 메모리 40% 절감, 속도 2배 향상
 scaler = torch.cuda.amp.GradScaler()
@@ -147,9 +151,9 @@ scaler = torch.cuda.amp.GradScaler()
 ema_model = torch.optim.swa_utils.AveragedModel(model)
 ```
 
-### 3. Inference (추론)
+## 3. Inference (추론)
 
-#### 초급 (Beginner)
+### 초급 (Beginner)
 ```python
 """
 [Note] [주의]
@@ -177,7 +181,7 @@ outputs = model(batch_images)  # (N, C) 형태
 result = predictions.cpu().numpy()
 ```
 
-#### 중급 (Intermediate)
+### 중급 (Intermediate)
 ```python
 # # [성능] @torch.inference_mode()는 no_grad()보다 5-10% 빠름
 @torch.inference_mode()
@@ -196,7 +200,7 @@ torch.cuda.synchronize()
 start = time.time()
 ```
 
-#### 고급 (Advanced)
+### 고급 (Advanced)
 ```python
 # # [성능] TensorRT로 컴파일 시 추론 속도 5-10배 향상 (NVIDIA GPU)
 import torch_tensorrt
@@ -205,9 +209,9 @@ import torch_tensorrt
 torch.utils.checkpoint.checkpoint(model, inputs)
 ```
 
-### 4. Training (학습)
+## 4. Training (학습)
 
-#### 초급 (Beginner)
+### 초급 (Beginner)
 ```python
 """
 [Note] [개념]
@@ -245,7 +249,7 @@ model.train()
 criterion = nn.CrossEntropyLoss()
 ```
 
-#### 중급 (Intermediate)
+### 중급 (Intermediate)
 ```python
 """
 [Note] [성능]
@@ -276,7 +280,7 @@ with torch.cuda.amp.autocast():
     loss = criterion(outputs, labels)
 ```
 
-#### 고급 (Advanced)
+### 고급 (Advanced)
 ```python
 # # [성능] torch.backends.cudnn.benchmark=True로 최적 알고리즘 자동 선택 (입력 크기 고정 시)
 torch.backends.cudnn.benchmark = True
@@ -285,9 +289,9 @@ torch.backends.cudnn.benchmark = True
 from torch.optim import SAM
 ```
 
-### 5. Evaluation (평가)
+## 5. Evaluation (평가)
 
-#### 초급 (Beginner)
+### 초급 (Beginner)
 ```python
 """
 [Note] [개념]
@@ -316,7 +320,7 @@ if val_loss > best_val_loss:
     print("Overfitting 징후 감지!")
 ```
 
-#### 중급 (Intermediate)
+### 중급 (Intermediate)
 ```python
 """
 [Note] [실무]
@@ -337,7 +341,7 @@ from sklearn.metrics import roc_auc_score
 auc = roc_auc_score(y_true, y_prob, multi_class='ovr')
 ```
 
-#### 고급 (Advanced)
+### 고급 (Advanced)
 ```python
 # # [실무] Calibration plot으로 모델 신뢰도 보정 필요성 파악
 from sklearn.calibration import calibration_curve
@@ -348,55 +352,9 @@ for transform in tta_transforms:
     predictions.append(model(transform(image)))
 ```
 
-## Injection Points Matrix
+## 6. Detection (객체 탐지)
 
-**Per-Notebook Totals** (all sections combined):
-- 초급: 15-20 insights total
-- 중급: 8-12 insights total
-- 고급: 3-5 insights total
-
-| Section | 초급 Density | 중급 Density | 고급 Density | Priority Locations |
-|---------|-------------|-------------|-------------|-------------------|
-| Setup | 4-5 | 2-3 | 1 | DataLoader, transforms, device |
-| Model Loading | 4-5 | 2-3 | 1 | weights parameter, .to(device), layer replacement |
-| Inference | 3-4 | 2 | 1 | torch.no_grad(), softmax, argmax |
-| Training | 4-5 | 2-3 | 1 | zero_grad(), backward(), step(), learning rate |
-| Evaluation | 3-4 | 2 | 1 | model.eval(), metrics calculation |
-| Detection | 4-5 | 2-3 | 1 | YOLO/RT-DETR NMS, anchors, supervision |
-| Segmentation | 4-5 | 2-3 | 1 | SAM prompts, YOLO-Seg masks, supervision |
-| VLM | 4-5 | 2-3 | 1 | Florence-2/PaliGemma/Qwen prompts, multimodal |
-
-## Usage Guidelines
-
-### 1. Inline vs Block Decision
-- **Inline**: Single-line concepts, quick tips, warnings
-- **Block**: Multi-step processes, complex explanations, best practices
-
-### 2. Category Selection
-```
-개념 (Concept)   → Fundamental understanding, "what is this?"
-성능 (Performance) → Speed, memory, optimization
-실무 (Practice)  → Real-world application, industry patterns
-디버깅 (Debugging) → Troubleshooting, common errors
-주의 (Caution)   → Pitfalls, what NOT to do
-팁 (Tip)        → Pro tips, shortcuts, quality-of-life
-```
-
-### 3. Placement Strategy
-- **Before code**: Context, explanation
-- **After code**: Rationale, expected outcome
-- **Within loop**: Per-iteration explanation
-
-### 4. Level Adaptation
-```
-초급 → Explain everything, use analogies, show alternatives
-중급 → Assume basic knowledge, focus on best practices
-고급 → Edge cases, performance tuning, research-level insights
-```
-
-### 6. Detection (객체 탐지)
-
-#### 초급 (Beginner)
+### 초급 (Beginner)
 ```python
 """
 [Note] [개념]
@@ -423,7 +381,7 @@ import supervision as sv
 detections = sv.Detections.from_ultralytics(results[0])
 ```
 
-#### 중급 (Intermediate)
+### 중급 (Intermediate)
 ```python
 """
 [Note] [실무]
@@ -447,7 +405,7 @@ box_annotator = sv.BoxAnnotator(thickness=2, color=sv.Color.RED)
 annotated = box_annotator.annotate(scene=image, detections=detections)
 ```
 
-#### 고급 (Advanced)
+### 고급 (Advanced)
 ```python
 # # [성능] SAHI(Slicing Aided Hyper Inference)로 고해상도 이미지 탐지 정확도 30% 향상
 from sahi import AutoDetectionModel
@@ -457,9 +415,9 @@ from sahi.predict import get_sliced_prediction
 results = model.track(source='video.mp4', tracker='botsort.yaml', persist=True)
 ```
 
-### 7. Segmentation (분할)
+## 7. Segmentation (분할)
 
-#### 초급 (Beginner)
+### 초급 (Beginner)
 ```python
 """
 [Note] [개념]
@@ -486,7 +444,7 @@ model = YOLO('yolov8n-seg.pt')
 results = model.predict(image)
 ```
 
-#### 중급 (Intermediate)
+### 중급 (Intermediate)
 ```python
 """
 [Note] [팁]
@@ -511,7 +469,7 @@ SAM의 vit_b < vit_l < vit_h 순으로 정확도 증가, 속도 감소
 """
 ```
 
-#### 고급 (Advanced)
+### 고급 (Advanced)
 ```python
 # # [성능] SAM2는 동영상 세그멘테이션 지원, temporal consistency 유지
 from sam2.build_sam import build_sam2_video_predictor
@@ -521,9 +479,9 @@ from ultralytics import FastSAM
 model = FastSAM('FastSAM-x.pt')
 ```
 
-### 8. Vision-Language Models (비전-언어 모델)
+## 8. Vision-Language Models (비전-언어 모델)
 
-#### 초급 (Beginner)
+### 초급 (Beginner)
 ```python
 """
 [Note] [개념]
@@ -548,7 +506,7 @@ from transformers import PaliGemmaForConditionalGeneration
 model = PaliGemmaForConditionalGeneration.from_pretrained("google/paligemma-3b-pt-224")
 ```
 
-#### 중급 (Intermediate)
+### 중급 (Intermediate)
 ```python
 """
 [Note] [팁]
@@ -573,7 +531,7 @@ task에 맞게 선택하여 추론 시간 단축
 inputs = processor(text="<DETAILED_CAPTION>", images=image, return_tensors="pt")
 ```
 
-#### 고급 (Advanced)
+### 고급 (Advanced)
 ```python
 # # [성능] VLM의 batch inference로 다중 이미지 처리 속도 5-10배 향상
 inputs = processor(text=prompts, images=images, return_tensors="pt", padding=True)
@@ -581,6 +539,53 @@ inputs = processor(text=prompts, images=images, return_tensors="pt", padding=Tru
 # # [실무] LLaVA-NeXT는 고해상도 이미지 처리에 특화 (최대 4096px)
 from transformers import LlavaNextForConditionalGeneration
 model = LlavaNextForConditionalGeneration.from_pretrained("llava-hf/llava-v1.6-mistral-7b-hf")
+```
+
+## Injection Points Matrix
+
+Per-notebook totals, all sections combined:
+- 초급: 15-20 insights total
+- 중급: 8-12 insights total
+- 고급: 3-5 insights total
+
+| Section | 초급 Density | 중급 Density | 고급 Density | Priority Locations |
+|---------|-------------|-------------|-------------|-------------------|
+| Setup | 4-5 | 2-3 | 1 | DataLoader, transforms, device |
+| Model Loading | 4-5 | 2-3 | 1 | weights parameter, .to(device), layer replacement |
+| Inference | 3-4 | 2 | 1 | torch.no_grad(), softmax, argmax |
+| Training | 4-5 | 2-3 | 1 | zero_grad(), backward(), step(), learning rate |
+| Evaluation | 3-4 | 2 | 1 | model.eval(), metrics calculation |
+| Detection | 4-5 | 2-3 | 1 | YOLO/RT-DETR NMS, anchors, supervision |
+| Segmentation | 4-5 | 2-3 | 1 | SAM prompts, YOLO-Seg masks, supervision |
+| VLM | 4-5 | 2-3 | 1 | Florence-2/PaliGemma/Qwen prompts, multimodal |
+
+## Usage Guidelines
+
+Inline vs block decision:
+
+- **Inline**: Single-line concepts, quick tips, warnings
+- **Block**: Multi-step processes, complex explanations, best practices
+
+### Category Selection
+```
+개념 (Concept)   → Fundamental understanding, "what is this?"
+성능 (Performance) → Speed, memory, optimization
+실무 (Practice)  → Real-world application, industry patterns
+디버깅 (Debugging) → Troubleshooting, common errors
+주의 (Caution)   → Pitfalls, what NOT to do
+팁 (Tip)        → Pro tips, shortcuts, quality-of-life
+```
+
+### Placement Strategy
+- **Before code**: Context, explanation
+- **After code**: Rationale, expected outcome
+- **Within loop**: Per-iteration explanation
+
+### Level Adaptation
+```
+초급 → Explain everything, use analogies, show alternatives
+중급 → Assume basic knowledge, focus on best practices
+고급 → Edge cases, performance tuning, research-level insights
 ```
 
 ## Additional Insights Pool
@@ -641,10 +646,3 @@ Vision Transformer(ViT)는 ResNet보다 큰 데이터셋에서 성능이 좋지�
 작은 데이터셋(<100k)에서는 ResNet/EfficientNet 권장
 """
 ```
-
----
-
-**Total Insights**: 80+ Korean insights across all sections and levels (including Detection, Segmentation, VLM)
-
-**Version**: 1.1.0
-**Last Updated**: 2026-02-07

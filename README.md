@@ -17,7 +17,7 @@ Claude Code 용 9개 플러그인 모음. 그중 6개는 Codex CLI 겸용.
 
 PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 제작처럼 손이 많이 가는 일을 슬래시 명령 하나로 위임.
 
-- **리뷰 자동 반영**: `/dev:review-loop` 가 CodeRabbit·Codex 지적을 판정하고 수정해 push. 새 지적이 나오지 않을 때까지 반복하고 남은 지적은 후속 이슈 1건으로 정리
+- **리뷰 자동 반영**: `/dev:review-loop` 가 CodeRabbit·Codex 지적을 판정하고 수정해 push. 새 지적이 나오지 않을 때까지 반복하고 남은 지적은 `tbd` 후속 이슈로 정리 (6건 이상이면 지적마다 sub-issue)
 - **다음 단계 안내**: `/dev:flow` 가 아이디어부터 머지·정리까지 지금 단계에서 부를 스킬을 제안
 - **두 런타임, 한 소스**: Codex CLI 가 `plugins/` 트리와 `.claude-plugin/` 매니페스트를 그대로 사용. 생성 단계·별도 사본 불필요
 - **짧은 호출**: 스킬 호출 형식은 `/plugin:skill`. 슬래시 메뉴에서 `/rev` 만 입력해도 `/dev:review-loop` 매칭 (Claude Code 2.1.236 이상)
@@ -33,7 +33,6 @@ PR 리뷰 반영, 리서치, 문서 작성, 강의 덱 제작처럼 손이 많�
 - [요구사항](#요구사항)
 - [옛 버전에서 옮겨 오기](#옛-버전에서-옮겨-오기)
 - [기여하기](#기여하기)
-- [License](#license)
 
 ## 플러그인 구성
 
@@ -72,7 +71,7 @@ marketplace 를 추가하고 필요한 플러그인만 설치하세요.
 /dev:flow
 ```
 
-**You should see:** 슬래시 메뉴의 `/dev:` 스킬 목록과 지금 단계에서 부를 스킬을 알려 주는 `/dev:flow` 응답. 메뉴에 없으면 Claude Code 를 재시작하세요. 그래도 옛 버전이 뜨면 [업데이트](#업데이트)의 캐시 삭제 절차를 따르세요.
+정상이면 슬래시 메뉴에 `/dev:` 스킬 목록이 뜨고 `/dev:flow` 가 다음에 부를 스킬을 알려 줍니다. 메뉴에 없으면 Claude Code 를 재시작하세요. 그래도 옛 버전이 뜨면 [업데이트](#업데이트)의 캐시 삭제 절차를 따르세요.
 
 ## 업데이트
 
@@ -89,7 +88,7 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 /plugin marketplace update my-claude-plugins
 ```
 
-2.54.0 이전 버전에서 올라온다면 [옛 버전에서 옮겨 오기](#옛-버전에서-옮겨-오기)도 확인하세요.
+2.86.0 이전 버전에서 올라온다면 [옛 버전에서 옮겨 오기](#옛-버전에서-옮겨-오기)도 확인하세요.
 
 ## 플러그인 상세
 
@@ -98,26 +97,26 @@ rm -rf ~/.claude/plugins/cache/my-claude-plugins/
 
 PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까지는 Matt 스킬(`mattpocock/skills`)의 `/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement-spec`(또는 `/implement`) 순서. 버그 진단은 `/diagnosing-bugs`, 교훈 정리는 빌드한 세션의 `/retro` 담당.
 
-**GitHub 워크플로우**
+| 분류 | Skill | 하는 일 |
+|------|-------|---------|
+| GitHub | `/dev:flow` | 다음에 부를 스킬 안내 (Matt 앞단과 dev 뒷단, 버그·E2E·worktree 갈래, 제품 repo 준비). 직접 실행 없는 안내 전용 |
+| GitHub | `/dev:commit-and-push` | 변경 분석, Conventional Commits 메시지로 커밋과 푸시 |
+| GitHub | `/dev:review-loop` | CodeRabbit·Codex 지적의 자율 판정 (apply / defer / skip) 과 수정, 켜진 리뷰어 전원의 HEAD 판정 대기, 수렴·저심각도 바닥·churn 에서 정지, 남은 지적은 `tbd` 후속 이슈 (6건 이상이면 지적마다 sub-issue), 머지 전 "auto-merge 할까요?" 질문. 상세는 [`SKILL.md`](plugins/dev/skills/review-loop/SKILL.md). `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` |
+| GitHub | `/dev:post-merge` | 머지 후 정리 전용: 남은 리뷰 지적 표시, base 전환, 안전 조건을 통과한 다른 worktree 를 한 번 확인받고 삭제, 브랜치 삭제, 안전 조건을 통과한 원격 브랜치를 한 번 확인받고 삭제, 남은 이슈 close, Project 상태 동기화, About 줄 점검, 커밋 |
+| GitHub | `/dev:release` | 버전 태그와 GitHub Release 생성 (릴리스 노트 자동 생성) |
+| GitHub | `/dev:session-handoff` | 컨텍스트를 비우기 전 새 에이전트용 인수인계 요약을 채팅에 작성 |
+| GitHub | `/dev:orchestrate` | 메인 에이전트의 오케스트레이터 전환: 슬라이스별 job card, 워커 프리셋 `dev:worker-standard/deep/max`, 경로당 writer 1개, 오케스트레이터의 직접 검증. 파일을 쓰는 슬라이스는 worktree 격리. Codex 에는 `Agent` 도구가 없어 인라인 실행 |
+| 셋업 | `/dev:new` | 빈 디렉터리에서 인터뷰, `.claude/` 스캐폴드, CLAUDE.md 와 AGENTS.md (general / ml / web), README·CHANGELOG 시드, `gh repo create` 와 초기 푸시까지 처리. 비어 있지 않은 디렉터리는 거부 |
+| 셋업 | `/dev:wiring` | 기존 repo 하네스 배선의 14축 진단 (`core.hooksPath`, `.claude/rules` 스코핑을 무력화하는 `@import`, MCP 중복 등록, Codex `AGENTS.md` 바이트 예산 등). 승인 전까지 read-only |
+| E2E | `/dev:e2e-setup` | 에이전트 생성, 인증 분리, `page.route` 모킹 스캐폴드, CI 워크플로우 생성. 기존 `playwright.config` 는 덮어쓰지 않고 머지 제안과 백업만 |
+| E2E | `/dev:e2e-author` | critical flow 선정, 계획서와 사용자 검토를 거친 스펙 생성, `--repeat-each` 번인 |
+| E2E | `/dev:e2e-debug` | 실패한 CI run 의 트레이스 분석, healer 로 최대 3회 수리 후 재실행 |
 
-| Skill | 하는 일 |
-|-------|---------|
-| `/dev:flow` | 다음에 부를 스킬 안내 (Matt 앞단과 dev 뒷단, 버그·E2E·worktree 갈래, 제품 repo 준비). 직접 실행 없는 안내 전용 |
-| `/dev:commit-and-push` | 변경 분석, Conventional Commits 메시지로 커밋과 푸시 |
-| `/dev:review-loop` | CodeRabbit·Codex 지적의 자율 판정 (apply / defer / skip) 과 수정, 켜진 리뷰어 전원의 HEAD 판정 대기, 수렴·저심각도 바닥·churn 에서 정지, 남은 지적은 후속 이슈 1건, 머지 전 "auto-merge 할까요?" 질문. 상세는 [`SKILL.md`](plugins/dev/skills/review-loop/SKILL.md). `--auto-merge`, `--cr-source <auto\|pr-bot\|cli\|codex-only>` |
-| `/dev:post-merge` | 머지 후 정리 전용: 남은 리뷰 지적 표시, base 전환, 안전 조건을 통과한 다른 worktree 를 한 번 확인받고 삭제, 브랜치 삭제, 안전 조건을 통과한 원격 브랜치를 한 번 확인받고 삭제, 남은 이슈 close, Project 상태 동기화, About 줄 점검, 커밋 |
-| `/dev:release` | 버전 태그와 GitHub Release 생성 (릴리스 노트 자동 생성) |
-| `/dev:session-handoff` | 컨텍스트를 비우기 전 새 에이전트용 인수인계 요약을 채팅에 작성 |
-| `/dev:orchestrate` | 메인 에이전트의 오케스트레이터 전환: 슬라이스별 job card, 워커 프리셋 `dev:worker-standard/deep/max`, 경로당 writer 1개, 오케스트레이터의 직접 검증. 파일을 쓰는 슬라이스는 worktree 격리. Codex 에는 `Agent` 도구가 없어 인라인 실행 |
+- **E2E 하네스**: Playwright 공식 AI 에이전트(planner / generator / healer)를 감싼 자가개선 루프. Playwright 가 없으면 graceful degrade
+- Codex 에서는 E2E 역할 계약(`references/role-contracts.md`)을 generic subagent 나 순차 실행으로 유지
+- **Requirements**: `gh`, `git`, `jq`; E2E 는 Node.js 와 Playwright
 
-**프로젝트 셋업**
-
-| Skill | 하는 일 |
-|-------|---------|
-| `/dev:new` | 빈 디렉터리에서 인터뷰, `.claude/` 스캐폴드, CLAUDE.md 와 AGENTS.md (general / ml / web), README·CHANGELOG 시드, `gh repo create` 와 초기 푸시까지 처리. 비어 있지 않은 디렉터리는 거부 |
-| `/dev:wiring` | 기존 repo 하네스 배선의 14축 진단 (`core.hooksPath`, `.claude/rules` 스코핑을 무력화하는 `@import`, MCP 중복 등록, Codex `AGENTS.md` 바이트 예산 등). 승인 전까지 read-only |
-
-**제품 repo 준비 (repo 당 1회)**: Matt 스킬을 설치한 뒤 `/setup-matt-pocock-skills` 로 이슈 트래커·triage 라벨·도메인 문서를 연결하고 triage 라벨 5개를 만드세요. 라벨이 없으면 첫 `/to-spec` 부터 실패. 아래 명령은 없는 라벨만 만들기 때문에 다시 돌려도 기존 라벨 유지.
+제품 repo 준비(repo 당 1회): Matt 스킬을 설치한 뒤 `/setup-matt-pocock-skills` 로 이슈 트래커·triage 라벨·도메인 문서를 연결하고 triage 라벨 5개를 만드세요. 라벨이 없으면 첫 `/to-spec` 부터 실패. 아래 명령은 없는 라벨만 만들기 때문에 다시 돌려도 기존 라벨 유지.
 
 ```bash
 ( have=$(gh label list --limit 1000 --json name --jq '.[].name') || exit 1
@@ -126,49 +125,27 @@ PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까�
   done )
 ```
 
-**Playwright E2E 하네스**: Playwright 공식 AI 에이전트(planner / generator / healer)를 감싼 자가개선 루프.
-
-| Skill | 하는 일 |
-|-------|---------|
-| `/dev:e2e-setup` | 에이전트 생성, 인증 분리, `page.route` 모킹 스캐폴드, CI 워크플로우 생성. 기존 `playwright.config` 는 덮어쓰지 않고 머지 제안과 백업만 |
-| `/dev:e2e-author` | critical flow 선정, 계획서와 사용자 검토를 거친 스펙 생성, `--repeat-each` 번인 |
-| `/dev:e2e-debug` | 실패한 CI run 의 트레이스 분석, healer 로 최대 3회 수리 후 재실행 |
-
-- Playwright 가 없으면 graceful degrade
-- Codex 에서는 역할 계약(`references/role-contracts.md`)을 generic subagent 나 순차 실행으로 유지
-
-**Requirements:** `gh`, `git`, `jq`; E2E 는 Node.js 와 Playwright
-
 </details>
 
 <details>
 <summary><strong>docs</strong> - 문서 작성과 내보내기</summary>
 
-**프로젝트 문서 (commands, Claude 전용)**: `doc-guides` 스킬의 참조 카드에서 필요한 섹션만 로드.
+| 분류 | 명령 | 하는 일 |
+|------|------|---------|
+| 프로젝트 문서 | `/docs:readme generate` / `analyze` | 템플릿(CLI, Library, React Component, MCP Plugin, SaaS, Desktop, Internal)으로 README 생성, 기존 README 분석 |
+| 프로젝트 문서 | `/docs:changelog init` | Keep a Changelog 형식 CHANGELOG |
+| 프로젝트 문서 | `/docs:deploy-doc generate` | 배포·절차 문서 (요약, 전제조건, 번호 단계) |
+| 프로젝트 문서 | `/docs:moc docs/` | 문서 폴더 MOC 인덱스 (경량 / `--strict`) |
+| 에이전트 문서 | `/docs:write-rules` | CLAUDE.md 와 `.claude/rules/*.md` 를 공식 패턴(200줄 root cap, `paths:` 스코핑)으로 생성·재구조화 |
+| 에이전트 문서 | `/docs:interview-methodology` | 작은 요청의 모호한 점 확인, 대화 안 요약으로 마무리 (재사용 프롬프트는 TCREI 형식). 큰 일은 `/grill-with-docs` 로 이관 |
+| 에이전트 문서 | `/docs:vp` | 음성 전사 프롬프트 게이트. `.agents/voice-terms.md` 사전으로 오인식 교정, 뜻이 명확하면 진행, 모호하면 질문 2~3개 |
+| 에이전트 문서 | `/docs:skill-forge` | Claude Code 와 Codex 양쪽에서 동작하는 스킬 작성·개정 (프론트매터, 작성 레버, 패키징 계약) |
+| 에이전트 문서 | `/docs:md-audit` | 사용자 호출 전용. md 문서의 바이트·문단·헤딩·굵은 글씨를 스크립트로 측정하고 채팅으로 보고, 고른 파일만 다시 씀 (스킬 7축 진단 포함) |
+| 내보내기 | `/docs:translate-web-article` | 웹 페이지의 한국어 마크다운 번역 (이미지 분석, 코드·테이블 보존) |
+| 내보내기 | `/docs:gws-sync` | 로컬 파일의 Google Drive 단방향 동기화 (`gws` CLI). 업로드 위치는 승인 필요, 삭제는 제안만, 파일 ID·공유 링크 유지 |
 
-| Command | 하는 일 |
-|---------|---------|
-| `/docs:readme generate` / `analyze` | 템플릿(CLI, Library, React Component, MCP Plugin, SaaS, Desktop, Internal)으로 README 생성, 기존 README 분석 |
-| `/docs:changelog init` | Keep a Changelog 형식 CHANGELOG |
-| `/docs:deploy-doc generate` | 배포·절차 문서 (요약, 전제조건, 번호 단계) |
-| `/docs:moc docs/` | 문서 폴더 MOC 인덱스 (경량 / `--strict`) |
-
-**에이전트가 읽는 문서**
-
-| Skill | 하는 일 |
-|-------|---------|
-| `/docs:write-rules` | CLAUDE.md 와 `.claude/rules/*.md` 를 공식 패턴(200줄 root cap, `paths:` 스코핑)으로 생성·재구조화 |
-| `/docs:interview-methodology` | 작은 요청의 모호한 점 확인, 대화 안 요약으로 마무리 (재사용 프롬프트는 TCREI 형식). 큰 일은 `/grill-with-docs` 로 이관 |
-| `/docs:vp` | 음성 전사 프롬프트 게이트. `.agents/voice-terms.md` 사전으로 오인식 교정, 뜻이 명확하면 진행, 모호하면 질문 2~3개 |
-| `/docs:skill-forge` | Claude Code 와 Codex 양쪽에서 동작하는 스킬 작성·개정 (프론트매터, 작성 레버, 패키징 계약) |
-| `/docs:md-audit` | 사용자 호출 전용. md 문서의 바이트·문단·헤딩·굵은 글씨를 스크립트로 측정하고 채팅으로 보고, 고른 파일만 다시 씀 (스킬 7축 진단 포함) |
-
-**내보내기**
-
-| Skill | 하는 일 |
-|-------|---------|
-| `/docs:translate-web-article` | 웹 페이지의 한국어 마크다운 번역 (이미지 분석, 코드·테이블 보존) |
-| `/docs:gws-sync` | 로컬 파일의 Google Drive 단방향 동기화 (`gws` CLI). 업로드 위치는 승인 필요, 삭제는 제안만, 파일 ID·공유 링크 유지 |
+- 프로젝트 문서 4개는 Claude 전용 command. `doc-guides` 스킬의 참조 카드에서 필요한 섹션만 로드
+- `/docs:readme`·`/docs:deploy-doc`·`/docs:moc`·`/docs:write-rules` 가 만드는 문서는 [`writing-standard.md`](plugins/docs/references/writing-standard.md) 의 모양·톤 기준을 따름
 
 </details>
 
@@ -184,8 +161,7 @@ PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까�
 - **Agent team (Claude Code 전용)**: `scout:github-scout`, `scout:hf-scout`, `scout:web-scout` (exa·brightdata·insane-search 순서의 4단계 fetch), `scout:docs-scout` (Context7, DeepWiki), `scout:synthesis-scout`
 - Codex 에서는 orchestrator 가 generic subagent 나 순차 실행으로 같은 축을 실행
 - 정책·시장·역사처럼 코드와 무관한 주제는 `/deep-research` 직접 호출
-
-**Requirements:** `gh`, `uvx` (hf)
+- **Requirements**: `gh`, `uvx` (hf)
 
 </details>
 
@@ -235,22 +211,21 @@ PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까�
 - 덱별 예외는 `.claude/rules/deck-local.md` 에 기록, 동기화 대상에서 제외
 - Codex 는 `.claude/rules/` 를 읽지 못해 규칙 사본은 Claude 에만 적용. 도구와 스킬은 Claude Code 와 Codex 양쪽 지원
 - 일반 발표 자료와 PPTX 변환은 `frontend-slides` 담당
-
-**Requirements:** Python 3, Node 20+, Chrome, `pdfinfo`, 배포 시 Vercel 계정
+- **Requirements**: Python 3, Node 20+, Chrome, `pdfinfo`, 배포 시 Vercel 계정
 
 </details>
 
 <details>
 <summary><strong>council</strong> - 이종 벤더 3인 심의</summary>
 
-`/council:convene` 은 질문 1개를 codex (GPT), agy (Gemini), Claude Opus 좌석에 동시에 던지는 심의 스킬. 좌석끼리 서로 반박한 뒤 합의한 것과 끝내 갈린 것을 `.council/<날짜>-<슬러그>/consensus.md` 에 기록. 질문·프롬프트·좌석별 답은 gitignore 된 `.tmp/council/<같은 이름>/` 에 보관. Claude 서브에이전트를 여러 개 띄워도 가중치가 같아 관점이 늘지 않는 문제를 다루는 스킬.
+`/council:convene` 은 질문 1개를 codex (GPT), agy (Gemini), Claude Opus 좌석에 동시에 던지는 심의 스킬. Claude 서브에이전트를 여러 개 띄워도 가중치가 같아 관점이 늘지 않는 문제를 다루는 스킬.
 
 - 진행 순서: 독립 의견, 사용자 재질문, 상호 반박, 의장 합성
+- **기록 위치**: 합의한 것과 끝내 갈린 것은 `.council/<날짜>-<슬러그>/consensus.md`, 질문·프롬프트·좌석별 답은 gitignore 된 `.tmp/council/<같은 이름>/`
 - 좌석 모델은 `~/.claude/council-models.json` 주간 TTL 레지스트리에 기록. 만료되면 자동 승급 대신 실제 목록을 근거로 사용자에게 질문
 - 결과의 코드 자동 적용 없음, 결석한 좌석은 명시
 - Claude 전용 (Codex 를 좌석으로 앉히므로 Codex 에서 돌리면 순환)
-
-**Requirements:** `codex` / `agy` CLI (없는 좌석은 결석), `jq`
+- **Requirements**: `codex` / `agy` CLI (없는 좌석은 결석), `jq`
 
 </details>
 
@@ -263,8 +238,7 @@ PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까�
 - 기본 출력은 `assets/generated/codex-image/`, 기존 파일을 덮지 않는 파일명
 - `--size` / `--quality` / `--out` / `-n` / `--variants` (서로 다른 시안 최대 4장) / `--verbatim` / `--edit` / `--ref`, opt-in `--model` / `--reasoning` / `--sandbox`
 - Claude 전용 (Codex 에서 돌리면 순환)
-
-**Requirements:** Codex CLI, ChatGPT OAuth 로그인
+- **Requirements**: Codex CLI, ChatGPT OAuth 로그인
 
 </details>
 
@@ -278,7 +252,8 @@ PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까�
 /aside:aside continue <request-id> — 로그인 완료했으니 기존 세션에서 계속해줘.
 ```
 
-- **한 번에 작업 하나**: 기록 루트의 공용 게이트 `$OPS_ROOT/bin/aside_gate.py` 가 예약을 잡고 다른 작업은 busy(75)로 거절. 게이트 런타임은 플러그인의 `runtime/` 에 포함되어 처음 한 번 기록 루트에 복사해 설치 (아래). 플러그인의 `scripts/aside_gate.py` 는 설치된 게이트로 넘기는 역할뿐. 같은 루트를 쓰는 Hermes·SSH 호출자도 이 게이트 경유 필수. 게이트를 우회하는 직접 CLI 호출까지 막는 샌드박스는 아님
+- **한 번에 작업 하나**: 기록 루트의 공용 게이트 `$OPS_ROOT/bin/aside_gate.py` 가 예약을 잡고 다른 작업은 busy(75)로 거절. 같은 루트를 쓰는 Hermes·SSH 호출자도 이 게이트 경유 필수. 게이트를 우회하는 직접 CLI 호출까지 막는 샌드박스는 아님
+- **게이트 런타임**: 플러그인의 `runtime/` 에 포함되어 처음 한 번 기록 루트에 복사해 설치 (아래). 플러그인의 `scripts/aside_gate.py` 는 설치된 게이트로 넘기는 역할뿐
 - **로그인 대기**: 로그인·2FA·수동 승인에 막히면 `waiting_for_user` 와 실제 Aside 세션 ID 를 남기고 복귀. 계속하라고 하면 같은 Aside 세션에서 재개
 - **완료 판정**: 종료 코드 0 이나 Aside 의 성공 문구가 아니라 실제 페이지·파일 재확인
 - **기록 위치**: `ASIDE_OPS_ROOT` (기본 `~/aside-ops`) 의 `runs/<request-id>/`, `sites/<domain>/playbook.md`, `artifacts/`. 비밀번호·토큰·쿠키는 기록 제외
@@ -293,7 +268,7 @@ SRC=~/.claude/plugins/marketplaces/my-claude-plugins/plugins/aside/runtime   # �
 mkdir -p "$OPS_ROOT" && cp -R "$SRC/." "$OPS_ROOT/"
 ```
 
-**Requirements:** 로그인된 Aside CLI (`aside` 또는 `ASIDE_BIN`), Python 3, macOS/Linux (게이트가 POSIX `fcntl` 사용), 문서 조회용 `mcpdocs` (선택)
+- **Requirements**: 로그인된 Aside CLI (`aside` 또는 `ASIDE_BIN`), Python 3, macOS/Linux (게이트가 POSIX `fcntl` 사용), 문서 조회용 `mcpdocs` (선택)
 
 </details>
 
@@ -314,7 +289,7 @@ codex plugin marketplace add ~/.claude/plugins/marketplaces/my-claude-plugins
 codex plugin add dev@my-claude-plugins
 ```
 
-- **`council` 과 `codex-image` 는 Codex 에 설치하지 마세요** (순환). **`aside` 도 설치하지 마세요** (플러그인 agent 의존).
+- **설치 제외**: `council`·`codex-image` (순환)와 `aside` (플러그인 agent 의존)는 Codex 에 설치하지 마세요.
 - Codex 는 `commands` / `agents` 를 무시하고 skill 만 노출. `docs` 의 커맨드 4개와 `scout` 의 agent 팀은 Claude 전용
 - 이 marketplace 의 플러그인은 현재 모두 Codex 훅 미포함
 
@@ -330,7 +305,7 @@ codex plugin add dev@my-claude-plugins
 git clone git@github.com:YoungjaeDev/my-claude-plugins.git && cd my-claude-plugins && claude
 ```
 
-**전역 지침 (선택)**: `CLAUDE.md.global` 은 한국어 응답, 검증한 것과 추측한 것의 구분 같은 전역 지침의 정본 (Claude 와 Codex 공통). marketplace 업데이트는 이 파일을 설치하지 않으니 직접 복사하세요. `/plugin marketplace add` 가 저장소를 `~/.claude/plugins/marketplaces/my-claude-plugins/` 에 체크아웃해 두므로 따로 clone 하지 않았다면 그 경로가 원본.
+전역 지침(선택): `CLAUDE.md.global` 은 한국어 응답, 검증한 것과 추측한 것의 구분 같은 전역 지침의 정본 (Claude 와 Codex 공통). marketplace 업데이트는 이 파일을 설치하지 않으니 직접 복사하세요. `/plugin marketplace add` 가 저장소를 `~/.claude/plugins/marketplaces/my-claude-plugins/` 에 체크아웃해 두므로 따로 clone 하지 않았다면 그 경로가 원본.
 
 ```bash
 SRC=~/.claude/plugins/marketplaces/my-claude-plugins/CLAUDE.md.global   # 저장소를 clone 했다면 그쪽 경로
@@ -352,6 +327,15 @@ cp "$SRC" ~/.codex/AGENTS.md       # Codex
 ## 옛 버전에서 옮겨 오기
 
 먼저 [업데이트](#업데이트) 절차(캐시 삭제, marketplace update, 재시작)로 새 버전을 받으세요. 건너뛴 버전이 여러 개면 오래된 것부터 차례로 적용하세요.
+
+<details>
+<summary>2.86.0: 스킬 점검 스킬 2개를 <code>/docs:md-audit</code> 로 통합</summary>
+
+- docs 의 skill-audit 과 skill-fleet-review 스킬 삭제 (docs 3.0.0). 스킬 하나 진단과 전체 검토 모두 `/docs:md-audit` 담당이고 스킬 밖 md 문서도 점검. 사용자 호출 전용이며 보고는 파일이 아니라 채팅
+- **덱 저장소는 `/deck:deck-sync` 를 한 번 실행하세요** (deck 2.5.0 의 규칙 템플릿 문장 변경). 실행 전에는 `/deck:deck-check` 가 규칙 사본을 stale 로 보고
+- `CLAUDE.md.global` 의 문서 작성 절 변경. 이 파일을 쓰고 있다면 [전역 지침](#설치-옵션)의 `cp` 명령 2줄로 다시 복사하세요.
+
+</details>
 
 <details>
 <summary>2.54.0: <code>cr-fix</code> 이름을 <code>/dev:review-loop</code> 로 변경</summary>
@@ -428,26 +412,33 @@ git config core.hooksPath .githooks   # clone 당 1회
 ```
 
 - **pre-commit**: `.githooks/pre-commit` 이 커밋마다 아래 가드를 실행. Node 가 없으면 커밋 거부 (`--no-verify` 로 우회하면 가드 미실행)
-- **CI**: `.github/workflows/validate-codex.yml` 은 **릴리스 태그(`vX.Y.Z`, `/dev:release` 가 push) push 와 Actions 탭의 수동 실행에서만** 실행. CI 는 릴리스를 막지 않으니 릴리스 뒤 Actions 탭에서 결과를 확인하세요.
+- **CI**: `.github/workflows/validate-codex.yml` 은 릴리스 태그(`vX.Y.Z`, `/dev:release` 가 push) push 와 Actions 탭의 수동 실행에서만 실행. CI 는 릴리스를 막지 않으니 릴리스 뒤 Actions 탭에서 결과를 확인하세요.
 - **한 번에 검증**: 가드 전체를 돌리는 명령은 `AGENTS.md` 의 `## 검증`
 - **캐시 지연 경고**: 이 저장소를 clone 해 열면 SessionStart 훅(`scripts/check-plugin-cache.mjs`)이 설치 캐시가 소스 버전보다 뒤처졌을 때 경고
 
 ### CI 가드가 지키는 것
 
 - `check-doc-consistency.mjs`: README 구조 트리·`## 플러그인 상세` 의 `<summary>` 이름 집합·AGENTS `## Plugins` 표·배지와 카운트 문자열과 `marketplace.json` 의 일치 검사. 트리와 `<details>` 는 같은 문서의 다른 표면이라 둘 다 대조
-- `check-shell-portability.mjs`: GNU 전용 셸 구문 (`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등) 이 폴백도 capability probe 도 없이 쓰인 경우 차단. `||` 는 우변에 BSD 대응물이 있을 때만 폴백으로, probe 도 대응물과 짝일 때만 인정. BSD 대응물이 없는 구문 (`grep -P`·`timeout`·bash 4 문법) 은 `# portability-ok: <사유>` 명시 예외만 허용 (사유 필수). 판정은 정규식이 아닌 셸 워드 토크나이저 기반이라 GNU 긴 옵션 (`--perl-regexp`·`--date`·`--in-place`) 까지 탐지. 인용 문자열·`command -v` 인자·`case` 패턴은 호출 집계에서 제외. 스캔 대상은 `*.sh`·`*.bash`·`*.md` 의 bash 펜스와 shebang 이 sh/bash 인 확장자 없는 tracked 파일. 회귀 케이스 30건 (`check-shell-portability.test.mjs`) 동시 실행
-- `check-skill-contract.mjs`: Claude Code 나 Codex 중 한쪽에서만 조용히 깨지는 스킬 위반 차단. 대상은 `description` 1024자 초과, 인용 없는 `: `, resolver 없는 펜스 블록의 bare `${CLAUDE_PLUGIN_ROOT}`, 비-kebab `name`, byte 0 에서 시작하지 않는 frontmatter, `name` 과 디렉터리명 불일치. stale 스킬 참조도 차단: git 이 추적하는 live 파일에서 이 marketplace 플러그인 이름으로 시작하는 `<plugin>:<skill>` 참조(슬래시 형태 포함)가 없는 스킬을 가리키면 실패. 과거 기록 폴더(`docs/audit`·`docs/prd`·`docs/superpowers`·`.claude/spec`)와 `.llmwiki` 는 검사 제외. 그 밖의 파일은 change log 안이라도 지운 스킬을 `<plugin>:<skill>` 형태가 아닌 산문으로 표기 (예외는 ml 참조 문서 머리의 `Migrated from` 출처 줄 1개). 외부 플러그인(Matt 등) 이름은 검사 제외. 스캔 전에 RED/GREEN 픽스처 선행 실행
-- `bump-version.mjs --selftest`: 버전 범프 도우미의 base 기준 계산, 재실행 시 무변경, base 추월, 틀린 이름이 하나라도 섞이면 어떤 파일도 쓰지 않는지를 임시 git 저장소에서 확인. 모르는 플래그와 겹친 레벨 플래그(`--minor --major`) 거부도 검사
-- `bump-version.mjs --check`: `plugins/<name>/` 아래 파일이 `origin/main` 대비 바뀌었는데 그 플러그인의 `plugin.json`·`marketplace.json` 버전이 `origin/main` 보다 크지 않거나 `metadata.version` 이 오르지 않았으면 실패. 집계 대상은 이 브랜치가 건드린 경로뿐이라 앞서간 `origin/main` 이나 머지해 들인 base 의 변경은 실패 원인에서 제외. review-loop 가 base 에 바로 넣는 커밋도 base 쪽 pre-commit 에서 같은 검사 대상. 검사 케이스는 `--selftest` 가 임시 저장소에서 함께 실행
+- `check-shell-portability.mjs`: GNU 전용 셸 구문 (`md5sum`·`sed -i`·`grep -P`·`date -d`·`stat -c`·`timeout`·`${VAR,,}`·`mapfile`·`declare -A` 등) 이 폴백도 capability probe 도 없이 쓰인 경우 차단. 회귀 케이스 41건 (`check-shell-portability.test.mjs`) 동시 실행
+  - `||` 는 우변에 BSD 대응물이 있을 때만 폴백으로, probe 도 대응물과 짝일 때만 인정. BSD 대응물이 없는 구문 (`grep -P`·`timeout`·bash 4 문법) 은 `# portability-ok: <사유>` 명시 예외만 허용 (사유 필수)
+  - 판정은 정규식이 아닌 셸 워드 토크나이저 기반이라 GNU 긴 옵션 (`--perl-regexp`·`--date`·`--in-place`) 까지 탐지. 인용 문자열·`command -v` 인자·`case` 패턴은 호출 집계에서 제외
+  - 스캔 대상은 `*.sh`·`*.bash`·`*.md` 의 bash 펜스와 shebang 이 sh/bash 인 확장자 없는 tracked 파일
+- `check-skill-contract.mjs`: Claude Code 나 Codex 중 한쪽에서만 조용히 깨지는 스킬 위반 차단. 스캔 전에 RED/GREEN 픽스처 선행 실행
+  - 대상은 `description` 1024자 초과, 인용 없는 `: `, resolver 없는 펜스 블록의 bare `${CLAUDE_PLUGIN_ROOT}`, 비-kebab `name`, byte 0 에서 시작하지 않는 frontmatter, `name` 과 디렉터리명 불일치
+  - stale 스킬 참조도 차단: 추적 중인 live 파일에서 이 marketplace 플러그인 이름으로 시작하는 `<plugin>:<skill>` 참조(슬래시 형태 포함)가 없는 스킬을 가리키면 실패. 외부 플러그인(Matt 등) 이름은 검사 제외
+  - 과거 기록 폴더(`docs/audit`·`docs/prd`·`docs/superpowers`·`.claude/spec`)와 `.llmwiki` 는 검사 제외. 그 밖의 파일은 change log 안이라도 지운 스킬을 `<plugin>:<skill>` 형태가 아닌 산문으로 표기 (예외는 ml 참조 문서 머리의 `Migrated from` 출처 줄 1개)
+- `bump-version.mjs --selftest`: 버전 범프 도우미의 base 기준 계산, 재실행 시 무변경, base 추월, 틀린 이름이 하나라도 섞이면 어떤 파일도 쓰지 않는지를 임시 저장소에서 확인. 모르는 플래그와 겹친 레벨 플래그(`--minor --major`) 거부도 검사
+- `bump-version.mjs --check`: `plugins/<name>/` 아래 파일이 `origin/main` 대비 바뀌었는데 그 플러그인의 `plugin.json`·`marketplace.json` 버전이 `origin/main` 보다 크지 않거나 `metadata.version` 이 오르지 않았으면 실패. 집계 대상은 이 브랜치가 건드린 경로뿐이라 앞서간 `origin/main` 이나 머지해 들인 base 의 변경은 실패 원인에서 제외. review-loop 가 base 에 바로 넣는 커밋도 base 쪽 pre-commit 에서 같은 검사 대상
 - `check-plugin-cache.mjs --selftest`: SessionStart 훅의 캐시 지연 경고와 `core.hooksPath` 경고를 가짜 캐시와 임시 저장소로 확인
-- `check-korean-copy.mjs`: README.md 의 번역투 차단. 기준은 `plugins/deck/templates/rules/deck-copy.md` 의 `### 금지 표기` 표 (실행 시점에 로드), 연결어미 뒤 쉼표, 개수 자리의 고유어 수사. 코드 펜스·인라인 코드·HTML 태그 밖의 글자만 검사하고 덱 전용 행 (슬라이드 라벨·강사 소개) 은 허용 목록으로 제외. 스캔 전에 RED/GREEN 픽스처 선행 실행
-- `check-skill-prose.mjs`: 500줄 초과와 깊은 참조 경로의 정보성 경고 (비차단)
+- `check-korean-copy.mjs`: README.md 의 번역투 차단. 기준은 `plugins/deck/templates/rules/deck-copy.md` 의 `### 금지 표기` 표 (실행 시점에 로드), 연결어미 뒤 쉼표, 개수 자리의 고유어 수사. 코드 펜스·인라인 코드·HTML 태그 밖의 글자만 검사하고 덱 전용 행 (슬라이드 라벨·강사 소개) 은 허용 목록으로 제외
+- `check-skill-prose.mjs`: SKILL.md 10KB(10,000바이트) 초과와 깊은 참조 경로의 정보성 경고 (비차단)
 
-픽스처 스위트 3개도 같은 자리에서 실행.
+테스트 스위트 4개도 같은 자리에서 실행. pre-commit 은 resolver 스모크를 매번, 나머지 3개는 해당 플러그인이나 훅이 staged 일 때만 실행.
 
+- `plugins/dev/tests/resolver_smoke.sh`: `dev:e2e-setup` Step 0 의 `PLUGIN_ROOT` resolver 를 SKILL.md 에서 꺼내 가짜 Codex 캐시와 소스 트리에서 실행
 - `plugins/dev/skills/review-loop/tests/run-tests.sh`: 1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로
 - `plugins/dev/skills/post-merge/tests/run-tests.sh`: 지워도 되는 worktree 와 원격 브랜치를 고르는 수집 스크립트 (일회용 저장소와 gh shim)
-- `plugins/council/skills/convene/tests/run-tests.sh`: 스킬 본문에만 있는 codex / agy 호출 계약
+- `plugins/council/skills/convene/tests/run-tests.sh`: `SKILL.md` 와 `references/` 에 셸로 적힌 codex / agy 호출 계약 검사, 레지스트리 블록은 꺼내서 일회용 HOME 에서 실행
 
 BSD 폴백이 실제로 실행되는 곳은 macOS CI 레그뿐이며 이 레그는 `/bin/bash` 로 bash 3.2 강제. 가드는 검사 전용 (소스 자동 수정 제외).
 
@@ -480,7 +471,3 @@ BSD 폴백이 실제로 실행되는 곳은 macOS CI 레그뿐이며 이 레그�
 ├── code_review.md            # Codex cloud reviewer 상세 룰
 └── README.md
 ```
-
-## License
-
-MIT

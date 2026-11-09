@@ -1,21 +1,20 @@
 # Code Review Guidelines
 
-> 이 저장소의 상세 코드 리뷰 룰. `AGENTS.md`의 `## Code Review Rules`가 이 파일을 참조하고, Codex 리뷰어는 참조를 따라 이 파일을 읽을 수 있다 (소프트 개런티, <https://learn.chatgpt.com/guides/best-practices>). GitHub cloud reviewer는 P0/P1만 코멘트로 표면화한다.
+> 이 저장소의 상세 코드 리뷰 룰. `AGENTS.md` 의 `## Code Review Rules` 가 이 파일을 참조하고 리뷰어는 따라 읽을 수 있다 (소프트 개런티). P0/P1 규칙을 추가·삭제하면 그쪽 하드 최소본도 함께 고치고, 설명·예시는 이 파일에만 둔다.
 >
 > 한국어로 리뷰한다. 발견사항은 영향, 근거(파일/라인), 수정 방향 순서로 쓴다. 근거가 부족하면 `unverified`로 표시한다.
->
-> 유지보수: P0/P1 규칙을 추가·삭제하면 `AGENTS.md`의 하드 최소본에도 반영한다. 설명·예시는 이 파일에만 둔다.
 
 ## Do not flag
 
 - 들여쓰기, 따옴표 스타일, trailing whitespace, import 순서, 단순 typo, Markdown 줄바꿈.
-- 루트 `CLAUDE.md`가 `@AGENTS.md` 한 줄인 것. "내용이 없다"는 지적은 오탐이다. 역방향도 오탐이다: 이 규칙은 루트 한정이고, `plugins/<name>/CLAUDE.md`가 내용을 갖는 것은 정상이다.
+- 루트 `CLAUDE.md`가 `@AGENTS.md` 한 줄인 것. "내용이 없다"는 지적은 오탐이다.
+- `plugins/<name>/CLAUDE.md`가 내용을 갖는 것. 위 규칙은 루트 한정이라 역방향 지적도 오탐이다.
 
 ## P0 — must block
 
-- **Secret 노출.** GitHub PAT, OpenAI/Anthropic key, token이 코드·문서·로그에 나타나면 차단.
-- **확인 없는 destructive `gh`.** `gh pr merge`, `gh repo create`, 상태를 바꾸는 `gh api`가 사용자 확인 없이 실행되는 흐름.
-- **Shell injection.** 사용자 입력이 셸에 코드로 도달하는 경우. quote 유무가 기준이 아니다: 값이 명령문 텍스트로 치환되면 값 안의 `'`, 백틱, `$(...)`는 이미 코드다. 값은 데이터 채널로 넘긴다 — 변수에 바인딩해 `"$VAR"`로 쓰거나, quoted heredoc(`<<'EOF'`)에 써서 파일로 읽는다.
+- **Secret 노출**: GitHub PAT, OpenAI/Anthropic key, token이 코드·문서·로그에 나타나면 차단.
+- **확인 없는 destructive `gh`**: `gh pr merge`, `gh repo create`, 상태를 바꾸는 `gh api`가 사용자 확인 없이 실행되는 흐름.
+- **Shell injection**: 사용자 입력이 셸에 코드로 도달하는 경우. quote 유무가 기준이 아니다: 값이 명령문 텍스트로 치환되면 값 안의 `'`, 백틱, `$(...)`는 이미 코드다. 값은 데이터 채널로 넘긴다 (변수에 바인딩해 `"$VAR"`로 쓰거나, quoted heredoc(`<<'EOF'`)에 써서 파일로 읽는다).
 
 ## P1 — should block
 
@@ -39,7 +38,7 @@
 - zsh는 인용 없는 파라미터를 단어 분리하지 않는다. `cmd $MULTI_VALUE`가 한 인자로 넘어가 조용히 아무것도 안 한다. `set -o shwordsplit 2>/dev/null || true`로 요청한다.
 - 이식성 수정은 양방향으로 확인한다. `python` → `python3`는 macOS를 고치고 Windows(python.org 설치, `python` + `py`만 존재)를 깬다. 이름 고정이 아니라 후보 탐지(`python3` → `python` → `py -3`)가 정답이다.
 - 이식성 검증은 stock 유저랜드에서 한다. 대화형 셸의 `grep` shim(ugrep)이 `grep -P`를 통과시켜도 훅·Codex의 stock grep에서는 깨진다. `env -i PATH=/usr/bin:/bin`로 재확인한다.
-- `git diff`의 `+++` 헤더를 경로로 쓰려면 정규화한다. 기본값에서 비ASCII 이름은 `"b/\355\225\234…"`처럼 따옴표+octal escape로 나오고, 공백이 든 이름 뒤에는 탭이 붙는다. `-c core.quotePath=false`로 escape를 끄고 탭 이후를 잘라야 원래 경로와 비교된다. 정규화 없이 비교하면 해당 파일의 모든 판정이 조용히 한쪽으로 쏠린다.
+- `git diff`의 `+++` 헤더를 경로로 쓰려면 정규화한다. 기본값에서 비ASCII 이름은 `"b/\355\225\234…"`처럼 따옴표+octal escape로 나오고, 공백이 든 이름 뒤에는 탭이 붙는다. `-c core.quotePath=false`로 escape를 끄고 탭 이후를 잘라야 원래 경로와 비교되며, 정규화 없는 비교는 그 파일의 판정을 조용히 한쪽으로 쏠리게 한다.
 
 ### 종료 상태
 
@@ -52,9 +51,10 @@
 
 - `gh api --paginate` + `--jq` 조합에 `--slurp` 누락. 단 `gh`는 둘의 동시 사용을 거부하므로 `gh api --paginate ENDPOINT | jq -s 'add'` 패턴을 쓴다.
 - `gh api ... || echo "[]"`는 네트워크·rate-limit·권한 에러를 "결과 없음"으로 삼킨다. 실패는 명시적 exit 또는 stderr 통보로 구분한다.
-- 출력과 종료 상태가 독립인 `gh` 하위 명령에 `|| <기본값>`을 붙이지 않는다. `gh pr checks`는 `--json` 없이 돌리면 pending에서 8, 실패에서 1로 끝나면서도 필터 결과를 정상 출력하므로 (`--json` 을 주면 체크 상태로 인한 8·1 은 나오지 않는다. 그러니 체크 결과 상태를 이유로 든 `--json` 호출의 errexit 지적은 오탐이다. 단 네트워크·인증·API 오류는 `--json` 이어도 1 이므로, `set -e` 아래 command substitution 이 그 실패로 스크립트를 끝내는 지적은 유효하다) `$(gh pr checks … || echo 0)`은 `0\n0`이 되어 뒤의 `jq --argjson`이 깨진다. stdout과 rc를 따로 받아 rc를 분류하고, 값이 정수인지 확인한다.
+- 출력과 종료 상태가 독립인 `gh` 하위 명령에 `|| <기본값>`을 붙이지 않는다. `gh pr checks`는 `--json` 없이 돌리면 pending에서 8, 실패에서 1로 끝나면서도 필터 결과를 정상 출력하므로 `$(gh pr checks … || echo 0)`은 `0\n0`이 되어 뒤의 `jq --argjson`이 깨진다. stdout과 rc를 따로 받아 rc를 분류하고, 값이 정수인지 확인한다.
+- `--json` 을 준 `gh pr checks` 는 체크 상태로 8·1 을 내지 않으므로, 체크 결과를 이유로 든 errexit 지적은 오탐이다. 네트워크·인증·API 오류는 `--json` 이어도 1 이라, `set -e` 아래 command substitution 이 그 실패로 스크립트를 끝낸다는 지적은 유효하다.
 - 읽기 실패 삼킴의 write 쌍도 잡는다: 변환 결과를 검사 없이 `gh issue/pr edit --body "$NEW"`로 내보내면 변환 실패가 원격 본문을 공백으로 파괴한다. 원격 write 앞에는 빈 값 가드.
-- `sed` replacement의 사용자 입력은 정화한다: `&`는 매치 전체로 확장되고 `\`와 구분자도 escape가 필요하다 (`sed 's/[\\&|]/\\&/g'`). `AskUserQuestion` 라벨을 그대로 경로/플래그 토큰으로 쓰지 않는다 — case-match로 도메인 토큰을 추출한다.
+- `sed` replacement의 사용자 입력은 정화한다: `&`는 매치 전체로 확장되고 `\`와 구분자도 escape가 필요하다 (`sed 's/[\\&|]/\\&/g'`). `AskUserQuestion` 라벨을 그대로 경로/플래그 토큰으로 쓰지 않고, case-match로 도메인 토큰을 추출한다.
 
 ### 스킬·의존성
 
@@ -65,7 +65,7 @@
 ## Domain-specific (plugin marketplace)
 
 - **플러그인 제거 PR**: `git grep -niE '<name>'`로 저장소 전체(다른 플러그인 skill 본문, `docs/` 포함)에서 살아남은 참조를 제거한다. count 파일만으로는 부족하다. 제거된 플러그인이 생성하던 tracked 산출물도 같은 PR에서 지운다.
-- **`metadata.version`은 릴리스 카운터다.** semver가 아니므로 플러그인 제거 같은 breaking 변경도 MINOR로 올린다. semver 규칙은 per-plugin `version`에만 적용된다. "breaking → MAJOR" 지적은 오탐.
-- **도입-버전 마커는 bump하지 않는다.** `스킬 3종 (0.7.0)`, `0.7.0부터 ...` 같은 표기는 기능이 언제 들어왔는지의 이력이다. 현재 버전을 추적하는 것은 per-plugin `version`, `metadata.version`, description 카운트 문자열뿐이다.
-- **run-block 테스트는 상태를 넘겨받는 블록을 이어서 돌린다.** `references/run-blocks.md` 의 블록이 앞 블록이 세운 변수(`HOLD_STATE`, `records_n`, `res` 같은)로 분기하면, 그 분기의 테스트는 두 블록을 한 셸에서 순서대로 실행해야 한다. 블록 하나만 떼어 돌리는 테스트는 앞 블록의 `break`·`continue` 가 뒤 블록을 건너뛰는 버그를 통과시킨다 (Step 8c 의 무조건 break 가 9a 분류를 막은 사례).
-- **캐시 안내 유지.** version bump만으로 사용자 캐시가 갱신되지 않는다 ([#17361](https://github.com/anthropics/claude-code/issues/17361), [#19197](https://github.com/anthropics/claude-code/issues/19197)). 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차를 유지한다.
+- **`metadata.version`**: 릴리스 카운터라 semver가 아니므로 플러그인 제거 같은 breaking 변경도 MINOR로 올린다. semver 규칙은 per-plugin `version`에만 적용되고, "breaking → MAJOR" 지적은 오탐.
+- **도입-버전 마커**: `스킬 3종 (0.7.0)`, `0.7.0부터 ...` 같은 표기는 기능이 언제 들어왔는지의 이력이라 bump하지 않는다. 현재 버전을 추적하는 것은 per-plugin `version`, `metadata.version`, description 카운트 문자열뿐이다.
+- **run-block 테스트**: `references/run-blocks.md` 의 블록이 앞 블록이 세운 변수(`HOLD_STATE`, `records_n`, `res` 같은)로 분기하면, 그 분기의 테스트는 두 블록을 한 셸에서 순서대로 실행해야 한다. 블록 하나만 떼어 돌리는 테스트는 앞 블록의 `break`·`continue` 가 뒤 블록을 건너뛰는 버그를 통과시킨다.
+- **캐시 안내 유지**: version bump만으로 사용자 캐시가 갱신되지 않는다 ([#17361](https://github.com/anthropics/claude-code/issues/17361), [#19197](https://github.com/anthropics/claude-code/issues/19197)). 사용자 안내에 `rm -rf ~/.claude/plugins/cache/my-claude-plugins/` 절차를 유지한다.

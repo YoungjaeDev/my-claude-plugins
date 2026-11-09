@@ -46,6 +46,9 @@ node "$repo_root/scripts/check-plugin-cache.mjs" --selftest
 node "$repo_root/scripts/bump-version.mjs" --check
 # Translationese in README.md, judged by deck-copy.md's forbidden-phrase table.
 node "$repo_root/scripts/check-korean-copy.mjs"
+# e2e-setup's Step 0 PLUGIN_ROOT resolver, extracted from SKILL.md and run against a
+# fixture cache. Under a tenth of a second, so it runs on every commit.
+bash "$repo_root/plugins/dev/tests/resolver_smoke.sh"
 # Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY. It exits 0
 # regardless, but the `|| true` keeps it non-blocking even if node itself errors.
 node "$repo_root/scripts/check-skill-prose.mjs" || true

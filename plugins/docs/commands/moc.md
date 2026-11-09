@@ -16,14 +16,11 @@ Generate a Map of Content (MOC) index for a docs folder: a one-line hook per fil
 
 ## Arguments
 
-- `folder` - Scan root. Default `docs/`.
-
-## Options
-
-- `--strict` - Wiki style (domain groups, `[[id]]`, typed cross-ref scaffolding). Default OFF (lightweight).
-- `--out FILE` - Output path. Default `<folder>/MOC.md`. If the basename case-insensitively matches `readme.md` or `index.md`, refuse (or confirm, then route to `MOC.md`) — never clobber a protected entry document (case-insensitive filesystems alias `INDEX.md` to `index.md`).
-- `--depth N` - Domain-group depth. Default `2`.
-- `--lang ko|en` - Output language. Default `ko`.
+- `folder`: scan root. Default `docs/`.
+- `--strict`: wiki style (domain groups, `[[id]]`, typed cross-ref scaffolding). Default OFF (lightweight).
+- `--out FILE`: output path. Default `<folder>/MOC.md`. If the basename case-insensitively matches `readme.md` or `index.md`, refuse (or confirm, then route to `MOC.md`): never clobber a protected entry document (case-insensitive filesystems alias `INDEX.md` to `index.md`).
+- `--depth N`: domain-group depth. Default `2`.
+- `--lang ko|en`: output language. Default `ko`.
 
 ## Instructions
 
@@ -37,7 +34,9 @@ Generate a Map of Content (MOC) index for a docs folder: a one-line hook per fil
    4. fallback: humanized filename + hook = `(요약 없음)` flag
    Link text = frontmatter `title:` -> first `# H1` -> filename. In strict mode, prefer `[[id]]` when frontmatter `id` exists.
 5. **Lightweight only** — build Output 1 (per-file hook bullets) and Output 2 (per-domain MOC table) into the single output file. Do not fan out per-file hook files. Skip this step entirely in `--strict` mode (Step 6 produces the sole strict output — do not also emit the lightweight bullets, or the file list duplicates).
-6. If `--strict`: produce ONLY the strict format (intro paragraph + typed-cross-ref legend + per-domain wiki bullets), in place of Output 1/2. Read optional frontmatter (`id` / `title` / `summary`) where present and add typed cross-ref scaffolding. Do NOT enforce the wiki frontmatter/staleness schema — a frontmatter-less plain-Markdown folder must not produce failures. Lightweight mode (no `--strict`) uses Step 5 only and omits all wiki machinery (no frontmatter reads, no `[[id]]`, no typed cross-refs).
+6. If `--strict`: produce ONLY the strict format (intro paragraph + typed-cross-ref legend + per-domain wiki bullets), in place of Output 1/2, reading optional frontmatter (`id` / `title` / `summary`) where present to add typed cross-ref scaffolding. Do NOT enforce the wiki frontmatter/staleness schema: a frontmatter-less plain-Markdown folder must not produce failures.
+   Lightweight mode (no `--strict`) uses Step 5 only and omits all wiki machinery (no frontmatter reads, no `[[id]]`, no typed cross-refs).
+7. Lines this command writes itself (the strict intro paragraph, a hook it synthesizes) follow `references/writing-standard.md` through `## Human-read documents`: a hook is a noun phrase or 개조식 line, not a 한다체 sentence. A hook copied from a file keeps its wording apart from the truncation, as `## Human-read documents` preserves existing text.
 
 ## Output Format
 
@@ -63,6 +62,8 @@ Write to `--out` (default `<folder>/MOC.md`), subject to the protected-name guar
 
 ### Strict mode
 
-Replaces Output 1 AND Output 2 (not added alongside them): an MOC intro paragraph, a typed-cross-ref legend, and per-domain wiki bullets (`- [title](domain/slug.md) — hook`). See `doc-guides` (`## MOC`) and `references/MOC_PATTERNS.md`.
+Replaces Output 1 AND Output 2 (not added alongside them): an MOC intro paragraph, a typed-cross-ref legend, and per-domain wiki bullets (`- [title](domain/slug.md) — hook`).
+The intro paragraph is at most 3 sentences and 600 bytes, per the writing standard.
+See `doc-guides` (`## MOC`) and `references/MOC_PATTERNS.md`.
 
 Report what was written: output path, file count, domains detected, and how many files fell back to `(요약 없음)`.

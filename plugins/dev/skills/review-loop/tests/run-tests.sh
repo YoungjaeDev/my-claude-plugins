@@ -2333,9 +2333,12 @@ s15m() { # WHY -> merged|calls
   : > "$G15/calls"; echo '{"auto_judge_log":[{"iter":1,"src":"cr","path":"a.sh","line":3,"badge_or_sev":"🟡 Minor","action":"apply"}]}' > "$G15/state.json"
   W=$1 PATH="$G15/bin:$PATH" SKILL_DIR="$G15" STATE_FILE="$G15/state.json" CALLS="$G15/calls" \
     BLOCK="$(rb_block "Step 15: merge")" bash -c '
-    why=$W PR_NUM=1 base=main proto=404 REVIEWED_SHA=r3v FIX_SHA=f1x ITER=1 VERIFY_CMD=true pending_decision="" merged=false
+    why=$W PR_NUM=1 base=main proto=404 REVIEWED_SHA=r3v FIX_SHA=f1x ITER=1 VERIFY_CMD=true pending_decision="" merged=${MG:-false}
+    final_state=${FS:-} full_verification=${FV:-}
     eval "$BLOCK"; printf "%s|%s" "$merged" "$(tr "\n" ";" < "$CALLS")"' 2>/dev/null
 }
+is "merged outside the run after a failed full line -> held fixes stay local" \
+   "$(MG=true FS=merged_externally FV=fail s15m "PR #1 was MERGED outside the run")" 'true|'
 is "main session, user said merge -> merged, fixes to the base" \
    "$(s15m "")" 'true|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;base-push main r3v f1x true;'
 is "main session, user said no -> fixes to the PR" \
@@ -2411,7 +2414,7 @@ CI14=$(mktemp -d); mkdir -p "$CI14/scripts" "$CI14/bin"
 printf '#!/usr/bin/env bash\necho "$CI_OUT"; echo "CAP=$CAP" >> "%s/cap"\n' "$CI14" > "$CI14/scripts/ci-checks.sh"
 cp "$SCRIPTS/auto-merge-gate.sh" "$SCRIPTS/words-json.sh" "$CI14/scripts/"
 printf '#!/usr/bin/env bash\necho 2026-10-06T10:00:00Z\n' > "$CI14/scripts/push-time.sh"
-printf '#!/usr/bin/env bash\necho "$1" >> "%s/vf"; echo pass\n' "$CI14" > "$CI14/scripts/verify-fix.sh"
+printf '#!/usr/bin/env bash\necho "$1:$2:$3" >> "%s/vf"; echo "${VF_OUT-pass}"\n' "$CI14" > "$CI14/scripts/verify-fix.sh"
 printf '#!/usr/bin/env bash\nexit 1\n' > "$CI14/bin/gh"; chmod +x "$CI14/bin/gh"
 CI_PASS='{"state":"pass","failing":[],"pending":[]}'
 last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:HEAD_VERDICT:followup
@@ -2466,10 +2469,12 @@ is "only unread review-tier items -> follow-up issue" "$(last_push false user_de
 # baseline that failed leaves full_verification null.
 : > "$CI14/vf"
 is "fast line, gate on -> loop end runs the full line" \
-   "$(VERIFY_FAST_CMD=f VERIFICATION_GATE=on SHOW_FV=1 last_push false clean ready false 0):$(cat "$CI14/vf")" "clean::false:pass:full"
+   "$(VERIFY_CMD=v VERIFY_FAST_CMD=f VERIFICATION_GATE=on SHOW_FV=1 last_push false clean ready false 0):$(cat "$CI14/vf")" "clean::false:pass:full:v:f"
+is "fast line, full check printed nothing -> fail, not null" \
+   "$(VF_OUT='' VERIFY_CMD=v VERIFY_FAST_CMD=f VERIFICATION_GATE=on SHOW_FV=1 last_push false clean ready false 0 2>/dev/null)" "clean::false:fail"
 : > "$CI14/vf"
 is "fast line, baseline failed -> full line not run, null" \
-   "$(VERIFY_FAST_CMD=f VERIFICATION_GATE=baseline_failed SHOW_FV=1 last_push false clean ready false 0):$(cat "$CI14/vf")" "clean::false::"
+   "$(VERIFY_CMD=v VERIFY_FAST_CMD=f VERIFICATION_GATE=baseline_failed SHOW_FV=1 last_push false clean ready false 0):$(cat "$CI14/vf")" "clean::false::"
 rm -rf "$CI14"
 
 # await_head_verdicts on a paused CodeRabbit: one request, then the same budget.

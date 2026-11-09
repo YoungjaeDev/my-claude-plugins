@@ -593,7 +593,8 @@ fi
   clean|minor_floor|churn)
     # Run it in the background where the runtime supports it when the full line is slow: one token.
     full_verification=$(NO_BUILD="${NO_BUILD:-false}" bash "$SKILL_DIR/scripts/verify-fix.sh" full "${VERIFY_CMD:-}" "${VERIFY_FAST_CMD:-}")
-    [ "$full_verification" != not_run ] || full_verification=""
+    # A check that died printed nothing, which fails: only `pass` lets the run merge.
+    case "$full_verification" in pass|fail) : ;; not_run) full_verification="" ;; *) full_verification=fail ;; esac
     [ "$full_verification" != fail ] \
       || echo "review-loop: the full build/test line failed on HEAD $(git rev-parse HEAD); auto-merge stays off" >&2 ;;
 esac
@@ -725,7 +726,8 @@ fi
 if [ -n "$REVIEWED_SHA" ] && [ -n "${pending_decision:-}" ]; then
   echo "review-loop: Minor fixes stay on local commit $FIX_SHA until the merge question is answered" >&2
 elif [ -n "$REVIEWED_SHA" ]; then
-  if [ "${merged:-false}" = true ] && [ "$proto" = 404 ]; then
+  # A failed full line keeps them off the base even when someone else merged the PR.
+  if [ "${merged:-false}" = true ] && [ "$proto" = 404 ] && [ "${full_verification:-}" != fail ]; then
     if pushed=$(bash "$SKILL_DIR/scripts/base-push.sh" "$base" "$REVIEWED_SHA" "$FIX_SHA" "${VERIFY_FAST_CMD:-$VERIFY_CMD}"); then
       tmp=$(mktemp); jq --arg b "$base" --arg s "$pushed" --argjson it "$ITER" \
         '.base_push = {branch:$b, sha:$s, fixes:[.auto_judge_log[]? | select(.iter == $it and .action == "apply")

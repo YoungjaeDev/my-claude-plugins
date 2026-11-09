@@ -3,7 +3,8 @@
 #        FINAL_STATE=... MERGED=true|false PR_NUM=N LAST_SHA=... \
 #        CR_SOURCE=auto|pr-bot|cli|codex-only CLI_INVOCATIONS=N RATE_LIMIT_HITS=N \
 #        TRACK_FILE=/tmp/... STATE_FILE=.claude/state/... VERIFICATION_GATE=on|... \
-#        [CI_FAILING_CHECKS='["name",...]'] [HEAD_VERDICT=timeout|unread] \
+#        [CI_FAILING_CHECKS='["name",...]'] [CI_STATE_JSON='{"state":...,"reason":...,"annotation":...}'] \
+#        [HEAD_VERDICT=timeout|unread] \
 #        [DROPPED_REVIEWERS="coderabbit codex"] [CR_BASE_REQUESTED=<base>] [PENDING_DECISION='{...}'] \
 #        [FULL_VERIFICATION=pass|fail] bash scripts/emit-final-json.sh
 #
@@ -24,6 +25,10 @@ jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh";
 CI_FAILING_CHECKS=$(jq -c 'if type == "array" then map(tostring) else [] end' <<<"${CI_FAILING_CHECKS:-[]}" 2>/dev/null) \
   || CI_FAILING_CHECKS='[]'
 [ -n "$CI_FAILING_CHECKS" ] || CI_FAILING_CHECKS='[]'
+# Steps 14-15 set it from ci-checks.sh (#393); anything but an object reads as not read.
+CI_STATE_JSON=$(jq -c 'if type == "object" then {state, reason, annotation} else null end' <<<"${CI_STATE_JSON:-null}" 2>/dev/null) \
+  || CI_STATE_JSON='null'
+[ -n "$CI_STATE_JSON" ] || CI_STATE_JSON='null'
 # A decision the runner left for the main session (SKILL.md "Runner"); anything but an object reads as none.
 PENDING_DECISION=$(jq -c 'if type == "object" then . else null end' <<<"${PENDING_DECISION:-null}" 2>/dev/null) \
   || PENDING_DECISION='null'
@@ -92,6 +97,7 @@ line=$(jq -nc \
   --argjson followup  "$FOLLOWUP_ISSUE" \
   --arg     vgate     "$VERIFICATION_GATE" \
   --argjson ci_fail   "$CI_FAILING_CHECKS" \
+  --argjson ci_st     "$CI_STATE_JSON" \
   --arg     hv        "${HEAD_VERDICT:-}" \
   --argjson base_push "$BASE_PUSH" \
   --argjson dropped   "$DROPPED_JSON" \
@@ -116,6 +122,7 @@ line=$(jq -nc \
     inferred_tiers: $inferred,
     followup_issue: $followup,
     ci_failing_checks: $ci_fail,
+    ci_state: $ci_st,
     head_verdict: (if $hv == "" then null else $hv end),
     base_push: $base_push,
     dropped_reviewers: $dropped,

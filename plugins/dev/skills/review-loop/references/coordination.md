@@ -79,6 +79,8 @@ A protected base, the verification gate off, or `--no-minor-stop` re-reviews ins
 - Without `--auto-merge`, an eligible run does not stop silently: it asks "auto-merge 할까요?" through `AskUserQuestion` on Claude Code or `request_user_input` on Codex, and with neither available it does not merge and says so. A yes takes the same merge path.
 - **CI checks**: a HEAD about to end at `clean`, `minor_floor` or `churn` with a failing CI check (CodeRabbit's and Codex's own checks excluded, pending checks waited on within `TIMEOUT`) ends at `final_state=ci_failing`, and so does a failure the Step 15 gate finds late.
 - The failing names go into the final JSON `ci_failing_checks` and the report. A failing check alone files no follow-up issue, and `ci_failing` never auto-merges.
+- Jobs that never started (no step and no runner, such as a billing lock) are `not_started`, not `ci_failing`: the state is kept, and the merge is refused as for a failing check. The report quotes the check run's failure annotation.
+- The report always states CI from the final JSON `ci_state`: none, pending, pass, fail or not_started, and for none with `reason=no_trigger` that no workflow triggers on this branch and event (no run on the head commit).
 
 ## PR comments
 

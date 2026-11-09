@@ -200,8 +200,18 @@ echo "ci-checks.sh"
 # HEAD's CI conclusions (issue #317). The gh stub answers `gh pr checks` from a
 # sequence file, one line per call: a fixture path, FAIL (lookup error) or NONE.
 CIS=$(mktemp -d)
+# #393: why there is no check (`gh run list` on HEAD: CI_RUNS, default none) and
+# whether a failing Actions job ever started (the jobs API: a job id listed in
+# CI_STARTED has steps and a runner; any other id has neither, like run 41364746682).
 cat > "$CIS/gh" <<'SH'
 #!/usr/bin/env bash
+case "$*" in
+  "pr view"*) echo "d21f513f902ac18a09ade85a92d403870568ae19"; exit 0 ;;
+  "run list"*) echo "${CI_RUNS:-[]}"; exit 0 ;;
+  *"/actions/jobs/"*) id=${2##*/}; case " ${CI_STARTED:-} " in
+       *" $id "*) cat "$CI_FIX/actions-job-started.json" ;; *) cat "$CI_FIX/actions-job-not-started.json" ;; esac; exit 0 ;;
+  *"/check-runs/"*"/annotations"*) cat "$CI_FIX/check-run-annotations-not-started.json"; exit 0 ;;
+esac
 [ "$1 $2" = "pr checks" ] || { echo "unknown gh args: $*" >&2; exit 1; }
 echo "$*" > "$CI_COUNT.args"
 n=$(cat "$CI_COUNT" 2>/dev/null || echo 0); echo $((n+1)) > "$CI_COUNT"
@@ -217,7 +227,7 @@ chmod +x "$CIS/gh"
 ci() { # CAP SEQ... -> the script's JSON line
   local cap=$1; shift
   printf '%s\n' "$@" > "$CIS/seq"; rm -f "$CIS/count"
-  CI_SEQ="$CIS/seq" CI_COUNT="$CIS/count" PATH="$CIS:$PATH" CAP="$cap" INTERVAL=0 \
+  CI_SEQ="$CIS/seq" CI_COUNT="$CIS/count" CI_FIX="$FIX" PATH="$CIS:$PATH" CAP="$cap" INTERVAL=0 \
     bash "$SCRIPTS/ci-checks.sh" 42 2>/dev/null
 }
 c=$(ci 0 "$FIX/pr-checks-failing.json")
@@ -248,6 +258,23 @@ is "JSON with exit 1 -> still read as fail"       "$(jq -r '.state' <<<"$(ci 0 "
 is "JSON with exit 8 -> still read as pending"    "$(jq -r '.state' <<<"$(ci 0 "RC8:$FIX/pr-checks-pending.json")")" pending
 is "lookup failure -> error, not fail"            "$(jq -r '.state' <<<"$(ci 0 FAIL)")" error
 is "no checks at all -> none"                     "$(jq -r '.state' <<<"$(ci 0 NONE)")" none
+# #393: the state always comes with its reason. PR #387 had no check because no
+# workflow triggers on a PR (validate-codex.yml runs on tags and by hand).
+is "no check and no workflow run on HEAD -> reason no_trigger" "$(jq -r '.reason' <<<"$(ci 0 NONE)")" no_trigger
+is "no check but a run on HEAD -> no reason claimed" \
+   "$(jq -r '.reason' <<<"$(CI_RUNS='[{"databaseId":1}]' ci 0 NONE)")" null
+# Run 41364746682: jobs with 0 steps and no runner, the reason only in the
+# check-run annotation. A run that never started is not a failing check.
+c=$(ci 0 "$FIX/pr-checks-not-started.json")
+is "never-started jobs -> not_started, not fail"  "$(jq -r '.state' <<<"$c")" not_started
+is "never-started jobs still listed (they block the merge)" "$(jq -c '.failing' <<<"$c")" '["check","macos"]'
+is "never-started run -> annotation quoted" \
+   "$(jq -r '.annotation' <<<"$c")" "The job was not started because your account is locked due to a billing issue."
+c=$(CI_STARTED=125022415690 ci 0 "$FIX/pr-checks-not-started-and-failing.json")
+is "one job never started, one ran and failed -> fail" "$(jq -r '.state' <<<"$c")" fail
+c=$(ci 0 "$FIX/pr-checks-failing.json")
+is "failing checks without an Actions job link -> fail, no reason" "$(jq -r '"\(.state)/\(.reason)/\(.annotation)"' <<<"$c")" fail/null/null
+is "passing checks -> no reason" "$(jq -r '.reason' <<<"$(ci 0 "$FIX/pr-checks-passing.json")")" null
 rm -rf "$CIS"
 
 echo
@@ -313,6 +340,8 @@ is "gh pr checks failure -> ci_state error"   "$(jq -r '.ci_state' <<<"$g" 2>/de
 cat > "$SHIMDIR/gh" <<'SH'
 #!/usr/bin/env bash
 case "$*" in
+  *"/actions/jobs/"*) cat "$AMG_FIX/actions-job-not-started.json";;
+  *"/check-runs/"*"/annotations"*) cat "$AMG_FIX/check-run-annotations-not-started.json";;
   *"/check-runs"*) echo '{"check_runs":[{"name":"CodeRabbit","status":"completed","conclusion":"success","started_at":"2025-01-01T00:00:00Z"}]}';;
   *"/statuses"*)   if [ -n "${AMG_STATUSES:-}" ]; then cat "$AMG_STATUSES"; else echo '[]'; fi;;
   *"/reactions"*)  if [ -n "${AMG_REACTIONS:-}" ]; then cat "$AMG_REACTIONS"; else echo '[]'; fi;;
@@ -329,7 +358,7 @@ SH
 jq '[.[0] | .commit_id = "deadbeef" | .body = "**Actionable comments posted: 0**"]' \
   "$FIX/pr-reviews-cr-older-commit.json" > "$SHIMDIR/reviews.json"
 sed 's/95ab2f6/deadbee/' "$FIX/issue-comments-codex-summary-completed.json" > "$SHIMDIR/comments.json"
-export AMG_REVIEWS="$SHIMDIR/reviews.json" AMG_COMMENTS="$SHIMDIR/comments.json"
+export AMG_REVIEWS="$SHIMDIR/reviews.json" AMG_COMMENTS="$SHIMDIR/comments.json" AMG_FIX="$FIX"
 chmod +x "$SHIMDIR/gh"
 g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "check-run-only CR -> cr_state success" "$(jq -r '.cr_state' <<<"$g" 2>/dev/null)" success
@@ -362,6 +391,13 @@ is "ci_failing reason names CI" \
 g=$(AMG_CHECKS="$FIX/pr-checks-failing.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "gate: failing checks counted without CodeRabbit" "$(jq -r '.blocking_checks' <<<"$g")" 3
 is "gate: failing check names carried"        "$(jq -c '.failing_checks' <<<"$g")" '["policy","coderabbit-lint","deploy"]'
+# #393: a run that never started is reported apart from a failing check, and still
+# blocks the merge exactly as a failing check does.
+g=$(AMG_CHECKS="$FIX/pr-checks-not-started.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
+is "gate: never-started run -> ci_state not_started" "$(jq -r '.ci_state' <<<"$g")" not_started
+is "gate: never-started run still blocks the merge" "$(jq -r '.blocking_checks' <<<"$g")" 2
+is "gate: never-started run's annotation carried" \
+   "$(jq -r '.ci_annotation' <<<"$g")" "The job was not started because your account is locked due to a billing issue."
 is "gate: pending check is not blocking" \
    "$(AMG_CHECKS="$FIX/pr-checks-pending.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.blocking_checks')" 0
 is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false
@@ -1931,6 +1967,16 @@ fo=$(FINAL_STATE=ci_failing CI_FAILING_CHECKS='["policy"]' PR_NUM=42 LAST_SHA="$
 is "final output: ci_failing passes the schema"   "$(schema_ok "$fo")" true
 is "final output: ci_failing_checks carried"      "$(jq -c '.ci_failing_checks' <<<"$fo")" '["policy"]'
 is "final output: verdicts complete -> head_verdict null" "$(jq -c '.head_verdict' <<<"$fo")" null
+is "final output: CI never read -> ci_state null" "$(jq -c '.ci_state' <<<"$fo")" null
+# #393: the CI state always reaches the final output with its reason.
+for cs in '{"state":"none","reason":"no_trigger","annotation":null}' \
+          '{"state":"not_started","reason":null,"annotation":"The job was not started because your account is locked due to a billing issue."}'; do
+  fo_ci=$(FINAL_STATE=clean CI_STATE_JSON="$cs" PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+  is "final output: ci_state $(jq -r .state <<<"$cs") carried" "$(jq -c '.ci_state' <<<"$fo_ci")" "$(jq -c . <<<"$cs")"
+  is "final output: ci_state $(jq -r .state <<<"$cs") passes the schema" "$(schema_ok "$fo_ci")" true
+done
+is "final output: ci_state garbage -> null" \
+   "$(FINAL_STATE=clean CI_STATE_JSON='nope' PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null | jq -c '.ci_state')" null
 # A HEAD left without every verdict files no issue (#327); the final output says so.
 fo=$(FINAL_STATE=minor_floor HEAD_VERDICT=timeout PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
 is "final output: unverified HEAD reported"       "$(jq -r '.head_verdict' <<<"$fo")" timeout
@@ -2339,6 +2385,20 @@ ok200=$(jq -c '.protection_http = 200' <<<"$ok404")
 cifail='{"eligible":true,"cr_state":"success","blocking_checks":1,"ci_state":"fail","failing_checks":["policy"],"protection_http":404,"base_branch":"main"}'
 # #336: a check that failed after Step 14 looked reaches final_state and ci_failing_checks.
 is "Step 15: CI failing at the gate -> ci_failing + names, no merge" "$(AM=true ANS=yes s15 "$cifail")" 'ci_failing|["policy"]|false|'
+# #393: a run that never started is not ci_failing, still is not merged, and the
+# final output gets the CI state with its quoted annotation.
+nostart=$(jq -c '.ci_state = "not_started" | .failing_checks = ["check"] | .ci_reason = null
+  | .ci_annotation = "The job was not started because your account is locked due to a billing issue."' <<<"$cifail")
+is "Step 15: never-started CI -> not ci_failing, not merged" "$(AM=true ANS=yes s15 "$nostart")" 'clean||false|'
+g15_ci() { # GATE_JSON -> "<refusal line>|<ci_state_json>"
+  GATE_JSON=$1 PATH="$G15/bin:$PATH" SKILL_DIR="$G15" STATE_FILE="$G15/state.json" ERRF="$G15/err" \
+    BLOCK="$(rb_block "Step 15: auto-merge gate")" bash -c '
+    reviewers_on() { cr_on=true; codex_on=auto; }
+    final_state=clean deferred_total=0 review_total=0 OWNER=o REPO=r PR_NUM=1 AUTO_MERGE=true
+    eval "$BLOCK" 2>"$ERRF"; printf "%s|%s" "$(sed -n "s/^auto-merge: //p" "$ERRF")" "$ci_state_json"' 2>/dev/null
+}
+is "Step 15: never-started CI -> refusal quotes the annotation, ci_state for the final output" "$(g15_ci "$nostart")" \
+   'CI on HEAD never started (The job was not started because your account is locked due to a billing issue.); merge not attempted|{"state":"not_started","reason":null,"annotation":"The job was not started because your account is locked due to a billing issue."}'
 is "Step 15: CI failing does not rewrite iteration_cap" \
    "$(FS=iteration_cap s15 "$(jq -c '.eligible = false | .ineligible_reason = "x"' <<<"$cifail")")" 'iteration_cap||false|'
 # Without --auto-merge a finished review asks; no answer (no interaction tool) is no merge.
@@ -2585,6 +2645,8 @@ is "CI wait runs under TIMEOUT"                          "$(grep -q 'CAP=1800' "
 is "iteration_cap is not rewritten by CI"  "$(CI_OUT=$CI_FAIL last_push false iteration_cap ready false 1)" "iteration_cap::true"
 is "clean HEAD, checks still pending at the cap -> clean" \
    "$(CI_OUT='{"state":"pending","failing":[],"pending":["build"]}' last_push false clean ready false 0)" "clean::false"
+is "clean HEAD, CI never started -> clean, not ci_failing (#393)" \
+   "$(CI_OUT='{"state":"not_started","failing":["check"],"pending":[],"reason":null,"annotation":"locked"}' last_push false clean ready false 0 2>/dev/null)" "clean::false"
 is "clean HEAD, checks unreadable -> clean (gate re-reads)" \
    "$(CI_OUT='{"state":"error","failing":[],"pending":[]}' last_push false clean ready false 0 2>/dev/null)" "clean::false"
 is "clean HEAD, CI script printed nothing -> clean + warning" \

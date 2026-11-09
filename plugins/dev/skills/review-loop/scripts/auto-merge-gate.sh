@@ -6,7 +6,8 @@
 #        bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
 # The loop's end-of-cycle and end-of-run decisions, as one JSON line on stdout:
 #   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N,
-#    "ci_state":"<ci-checks.sh state>", "failing_checks":[names], "base_branch":"...",
+#    "ci_state":"<ci-checks.sh state>", "ci_reason":..., "ci_annotation":...,
+#    "failing_checks":[names], "base_branch":"...",
 #    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null,
 #    "next_action":"rereview_push|merge_then_main_push", "file_issue":bool,
 #    "dropped_reviewers":[names]}
@@ -105,6 +106,9 @@ cr_state="${cr_state:-unknown}"
 ci=$(CAP=0 bash "$SCRIPT_DIR/ci-checks.sh" "$PR_NUM" 2>/dev/null) || ci=""
 ci_state=$(jq -r '.state // "error"' <<<"$ci" 2>/dev/null | tr -d '\r') || ci_state=error
 failing=$(jq -c '.failing // []' <<<"$ci" 2>/dev/null) || failing='[]'
+# Why there is no check, or why the jobs never started (#393): for the final report only.
+ci_reason=$(jq -r '.reason // empty' <<<"$ci" 2>/dev/null) || ci_reason=""
+ci_annotation=$(jq -r '.annotation // empty' <<<"$ci" 2>/dev/null) || ci_annotation=""
 [ -n "$failing" ] || failing='[]'
 blocking=$(jq 'length' <<<"$failing" | tr -d '\r')
 # A lookup we could not make reports 1 so the caller refuses to merge on an
@@ -152,6 +156,8 @@ jq -nc \
   --arg cr "$cr_state" \
   --argjson bc "$blocking" \
   --arg ci "$ci_state" \
+  --arg ci_reason "$ci_reason" \
+  --arg ci_ann "$ci_annotation" \
   --argjson failing "$failing" \
   --arg base "$base" \
   --argjson http "$http" \
@@ -160,6 +166,8 @@ jq -nc \
   --arg next "$next_action" \
   --argjson file_issue "$file_issue" \
   --argjson dropped "$(bash "$SCRIPT_DIR/words-json.sh" "${DROPPED_REVIEWERS:-}")" \
-  '{cr_state:$cr, blocking_checks:$bc, ci_state:$ci, failing_checks:$failing, base_branch:$base,
+  '{cr_state:$cr, blocking_checks:$bc, ci_state:$ci,
+    ci_reason:(if $ci_reason == "" then null else $ci_reason end),
+    ci_annotation:(if $ci_ann == "" then null else $ci_ann end), failing_checks:$failing, base_branch:$base,
     protection_http:$http, eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end),
     next_action:$next, file_issue:$file_issue, dropped_reviewers:$dropped}'

@@ -102,7 +102,10 @@ while true; do
   # polling until it flips to `Review completed`, or grace expires.
   if [ "$s" = "success" ] && printf '%s' "$desc" | grep -qiE '^Review skipped: free tier disabled'; then
     now_ts=$(date +%s)
-    : "${skip_first_ts:=$now_ts}"
+    # Age the row from its own created_at, as pre-flight does, so a re-run with the
+    # remaining cap keeps the grace instead of restarting it; first sight otherwise.
+    row_ts=$(jq -r 'try (.created_at | fromdateiso8601 | floor) catch empty' <<<"$cr_obj" 2>/dev/null || true)
+    : "${skip_first_ts:=${row_ts:-$now_ts}}"
     if [ "$((now_ts - skip_first_ts))" -ge "$CR_SKIP_GRACE" ]; then
       emit_rate_limited
     fi

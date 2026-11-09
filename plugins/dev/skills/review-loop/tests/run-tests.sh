@@ -1639,6 +1639,15 @@ ftier=$(PATH="$FTSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 \
   $TMO4 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
 is "re-fetch free-tier success -> held for grace, not terminal success" \
    "$(jq -r '.state' <<<"$ftier" 2>/dev/null)" rate_limited
+# A re-run with the remaining cap must not restart the grace: it ages the row from
+# its created_at (months old here), so CR_SKIP_GRACE=300 is already spent. Aged from
+# first sight instead, it holds past TIMEOUT=5 and prints timeout.
+echo 1 > "$FTCNT"
+ftre=$(PATH="$FTSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 TIMEOUT=5 \
+  EARLY_CHECK_WINDOW=0 CR_SKIP_GRACE=300 PUSH_TIME=2020-01-01T00:00:00Z \
+  $TMO4 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
+is "re-run on an aged free-tier row -> grace from created_at, rate_limited" \
+   "$(jq -r '.state' <<<"$ftre" 2>/dev/null)" rate_limited
 rm -rf "$FTSHIM"
 
 # The poller keeps its own deadline: run in the background, no harness timeout

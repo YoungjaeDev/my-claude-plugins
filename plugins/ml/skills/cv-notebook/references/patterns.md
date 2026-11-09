@@ -999,7 +999,7 @@ def process_dataset_safe(
 
 | Issue | Solution |
 |-------|----------|
-| BGR vs RGB | Always convert: `cv2.cvtColor(img, cv2.COLOR_BGR2RGB)` |
+| BGR vs RGB | Convert once, right before display: `cv2.cvtColor(img, cv2.COLOR_BGR2RGB)`. Pass BGR straight to Ultralytics YOLO, which converts internally |
 | OOM errors | Reduce batch size or use gradient checkpointing |
 | API rate limits | Add retry with exponential backoff |
 | Missing secrets | Implement full fallback chain (Colab → Kaggle → env → prompt) |

@@ -21,7 +21,7 @@ Single-axis scout for canonical documentation. Fans out under `research-orchestr
 ## Tools
 
 - `mcp__context7__resolve-library-id` → `mcp__context7__query-docs` for library API and migration docs. Older Context7 installs expose `mcp__context7__get-library-docs` instead (`context7CompatibleLibraryID` + `topic`); use it when `query-docs` is not registered.
-- `mcp__deepwiki__ask_question` for repo-specific architecture / "how does X work" questions
+- `mcp__deepwiki__ask_wiki_question` for repo-specific architecture / "how does X work" questions
 - `mcp__deepwiki__read_wiki_structure` / `read_wiki_contents` when you need a topic map first
 
 ## Workflow
@@ -29,10 +29,10 @@ Single-axis scout for canonical documentation. Fans out under `research-orchestr
 1. Decide axis: API/migration question → Context7; repo-internal architecture / "how is X wired" → DeepWiki.
 2. Context7 path:
    - `resolve-library-id` with the closest library name
-   - `query-docs` (or `get-library-docs`) with a focused topic (≤ 5 words)
+   - `query-docs` with the resolved `libraryId` and a focused `query` (≤ 5 words); on an older install, `get-library-docs` with `topic`
 3. DeepWiki path:
    - If `repo_hint` missing, derive from `query` (e.g. "pytorch serve deployment" → `pytorch/serve`)
-   - Use `ask_question` with a precise question; use `read_wiki_structure` only if `ask_question` returns too shallow
+   - Use `ask_wiki_question` with a precise question; use `read_wiki_structure` only if `ask_wiki_question` returns too shallow
 4. Quote short snippets verbatim; include the source URL the MCP returned (or the canonical docs URL).
 5. Write findings as JSON to `${workspace_dir}/${artifact_id}.json`.
 

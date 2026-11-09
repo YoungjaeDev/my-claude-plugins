@@ -18,7 +18,7 @@ Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when
 
 1. `gws --version`: **if missing, stop** and print install guidance: "gws CLI가 필요합니다. 설치: `npm install -g @googleworkspace/cli` 또는 공식 문서 github.com/googleworkspace/cli 참조. 설치 후 첫 사용이면 `gws auth setup`(1회) → `gws auth login`으로 인증하세요(`gcloud` 미설치 환경은 공식 README의 수동 OAuth 설정 참조)." (Do not install automatically, propose only.)
 2. Confirm auth and scope: if a light read call (`gws drive files list --params '{"pageSize": 1}'`) fails, print auth guidance and stop: `gws auth setup` on first use, `gws auth login` thereafter. **A successful read does not guarantee write scope**: if the upload/update step hits a permission error, guide the user to re-authenticate with the drive write scope (e.g. `gws auth login --scopes drive`; confirm the exact flag with `gws auth --help`). Never assume write access from a read check alone.
-3. Suggest useful skills (optional): if the task matches another gws skill/recipe in the catalog (e.g. share with the team after upload → recipe-share-folder-with-team), find it in `references/gws-skills-llms.txt` and print an **install-suggestion line** alongside. Confirm the exact install command form with the current `skills` CLI before presenting it (use the form in `references/gws-skills-llms.txt` verbatim, or if unconfirmed just say "설치 방법은 skills CLI로 확인하세요"). Suggest only, never force.
+3. Suggest useful skills (optional): if the task matches another gws skill/recipe in the catalog (e.g. share with the team after upload → recipe-share-folder-with-team), find it in the live catalog (`gh api repos/googleworkspace/cli/contents/skills --jq '.[].name'`, descriptions in the repo's `docs/skills.md`) and print an **install-suggestion line** alongside. Confirm the exact install command form with the current `skills` CLI before presenting it, or if unconfirmed just say "설치 방법은 skills CLI로 확인하세요". Suggest only, never force.
 
 ## 1. Mapping config file: `.gws-sync.json`
 
@@ -78,4 +78,4 @@ Read `references/procedure.md` before this section: it holds every step's comman
 
 - `references/procedure.md`: the full §3 steps, read before running §3.
 - `gws` CLI (required; if missing, print install guidance and stop): global flags, auth, and output format live in the gws-shared skill (if installed) or `gws --help`.
-- `references/gws-skills-llms.txt`: a catalog of the 95 official skills/recipes (54 services + 41 recipes). An index for situational suggestions.
+- Official gws skills and recipes: the `skills/` directory and `docs/skills.md` of github.com/googleworkspace/cli, read live for situational suggestions.

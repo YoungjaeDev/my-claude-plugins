@@ -1,6 +1,6 @@
 ---
 name: ask
-description: Use when the user asks an in-depth question about a GitHub repository's internals, architecture, or implementation details — anything that benefits from AI-summarized repo documentation rather than raw code reading. Triggers on phrases like "how does <repo> handle X", "explain the architecture of <repo>", "what's inside <owner/repo>", or "compare <repoA> and <repoB>". Wraps the DeepWiki MCP (`mcp__deepwiki__read_wiki_structure` / `read_wiki_contents` / `ask_question`).
+description: Use when the user asks an in-depth question about a GitHub repository's internals, architecture, or implementation details — anything that benefits from AI-summarized repo documentation rather than raw code reading. Triggers on phrases like "how does <repo> handle X", "explain the architecture of <repo>", "what's inside <owner/repo>", or "compare <repoA> and <repoB>". Wraps the DeepWiki MCP (`mcp__deepwiki__read_wiki_structure` / `read_wiki_contents` / `ask_wiki_question`).
 ---
 
 # DeepWiki ask

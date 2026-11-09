@@ -74,7 +74,7 @@ Envelope rules that hold on **every** path:
 ### `04_docs` — Docs axis (`platform: docs`)
 - **Role**: official library API / migration docs + repo-internal architecture Q&A.
 - **Optional inputs**: `library_hint`, `repo_hint`, `topic`.
-- **Tool order**: API / migration → `mcp__context7__resolve-library-id` → `mcp__context7__query-docs` (older installs expose `mcp__context7__get-library-docs` instead; use it when `query-docs` is not registered). Repo architecture → `mcp__deepwiki__ask_question` (escalate to `read_wiki_structure` / `read_wiki_contents` only if too shallow). Quote snippets verbatim with the source URL.
+- **Tool order**: API / migration → `mcp__context7__resolve-library-id` → `mcp__context7__query-docs` (older installs expose `mcp__context7__get-library-docs` instead; use it when `query-docs` is not registered). Repo architecture → `mcp__deepwiki__ask_wiki_question` (escalate to `read_wiki_structure` / `read_wiki_contents` only if too shallow). Quote snippets verbatim with the source URL.
 - **Finding fields**: `topic`, `answer`, `source_type` (`official_docs`|`deepwiki_qa`|`deepwiki_wiki`|`other`), plus shared. Top-level `sources_used`.
 - **Reliability**: `high` = official docs / DeepWiki verbatim quote; `medium` = inferred from docs; `low` = uncertain / stale MCP content.
 - **Fallback**: if both MCPs fail / return empty write `findings: []` + `error`.

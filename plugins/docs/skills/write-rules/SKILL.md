@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Glob Grep Bash
 
 Scan a project, pick one of 4 modes (NEW, TIGHTEN, SPLIT, REORGANIZE), confirm it with the user, then generate or restructure `CLAUDE.md` plus `.claude/rules/*.md`: `paths:` glob scoping for auto-loaded rules, a root at or under 200 lines, each rule at or under 150, Do/Don't structure, and no `@import` of rules. Templates in `assets/templates/` and examples in `assets/examples/` ground the output.
 
-`assets/references/claude-code-memory.md` is a 2026-05-12 snapshot of the official memory docs, so confirm a platform fact against `https://code.claude.com/docs/llms.txt` before relying on it.
+Read platform facts (CLAUDE.md placement, `.claude/rules/` loading, auto memory, `AGENTS.md` coexistence) live from the official memory page, `https://code.claude.com/docs/en/memory.md` (index: `https://code.claude.com/docs/llms.txt`).
 
 Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, stop and report the detected state and the recommended mode without writing any file.
 

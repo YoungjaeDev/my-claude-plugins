@@ -29,8 +29,8 @@ code_here()
 
 ## Level-Based Density Guide
 
-| Level | Insights/Section | Style | Focus |
-|-------|------------------|-------|-------|
+| Level | Insights/Notebook | Style | Focus |
+|-------|-------------------|-------|-------|
 | 초급 (Beginner) | 15-20 | Block + Inline | Concepts, explanations, safety |
 | 중급 (Intermediate) | 8-12 | Mixed | Best practices, optimization |
 | 고급 (Advanced) | 3-5 | Inline | Edge cases, performance |
@@ -543,21 +543,21 @@ model = LlavaNextForConditionalGeneration.from_pretrained("llava-hf/llava-v1.6-m
 
 ## Injection Points Matrix
 
-Per-notebook totals, all sections combined:
+Per-notebook totals, all sections combined. A notebook has the five shared sections (Setup through Evaluation) plus its one task section (Detection, Segmentation or VLM); a classification notebook has the shared sections only:
 - 초급: 15-20 insights total
 - 중급: 8-12 insights total
 - 고급: 3-5 insights total
 
 | Section | 초급 Density | 중급 Density | 고급 Density | Priority Locations |
 |---------|-------------|-------------|-------------|-------------------|
-| Setup | 4-5 | 2-3 | 1 | DataLoader, transforms, device |
-| Model Loading | 4-5 | 2-3 | 1 | weights parameter, .to(device), layer replacement |
-| Inference | 3-4 | 2 | 1 | torch.no_grad(), softmax, argmax |
-| Training | 4-5 | 2-3 | 1 | zero_grad(), backward(), step(), learning rate |
-| Evaluation | 3-4 | 2 | 1 | model.eval(), metrics calculation |
-| Detection | 4-5 | 2-3 | 1 | YOLO/RT-DETR NMS, anchors, supervision |
-| Segmentation | 4-5 | 2-3 | 1 | SAM prompts, YOLO-Seg masks, supervision |
-| VLM | 4-5 | 2-3 | 1 | Florence-2/PaliGemma/Qwen prompts, multimodal |
+| Setup | 3 | 2 | - | DataLoader, transforms, device |
+| Model Loading | 3-4 | 2 | 1 | weights parameter, .to(device), layer replacement |
+| Inference | 3 | 1-2 | 1 | torch.no_grad(), softmax, argmax |
+| Training | 3-4 | 2 | 1 | zero_grad(), backward(), step(), learning rate |
+| Evaluation | 3 | 1 | - | model.eval(), metrics calculation |
+| Detection | 3 | 1-3 | 0-2 | YOLO/RT-DETR NMS, anchors, supervision |
+| Segmentation | 3 | 1-3 | 0-2 | SAM prompts, YOLO-Seg masks, supervision |
+| VLM | 3 | 1-3 | 0-2 | Florence-2/PaliGemma/Qwen prompts, multimodal |
 
 ## Usage Guidelines
 

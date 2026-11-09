@@ -5,7 +5,7 @@ detected state. Each hint is informational only: no auto-modification.
 
 | Detected state | Hint shown to user |
 |---|---|
-| `AGENTS.md` exists | "Detected `AGENTS.md` ({LINES} lines). Consider adding `@AGENTS.md` as the first line of CLAUDE.md so Claude reads both without duplication. See `assets/references/claude-code-memory.md` AGENTS.md section." |
+| `AGENTS.md` exists | "Detected `AGENTS.md` ({LINES} lines). Consider adding `@AGENTS.md` as the first line of CLAUDE.md so Claude reads both without duplication. See the AGENTS.md section of https://code.claude.com/docs/en/memory." |
 | No `.gitignore` mentions `CLAUDE.local.md` | "Tip: 개인 프로젝트별 선호도는 `CLAUDE.local.md` 에 두고 `.gitignore` 에 추가하면 버전 제어 영향 없이 사용 가능." |
 | Root file is `./.claude/CLAUDE.md` (not `./CLAUDE.md`) | "Note: `./.claude/CLAUDE.md` 와 `./CLAUDE.md` 둘 다 유효 — 둘 다 있으면 둘 다 로드되니 하나만 유지 권장." |
 | Generated 3+ rules files | "참고: 자동 메모리는 `~/.claude/projects/<proj>/memory/` 에서 Claude 가 직접 관리. write-rules 가 만든 `.claude/rules/` 와 무관." |
@@ -38,7 +38,7 @@ a quick lookup.
 | TIGHTEN | `templates/root-claude-md.md` | same example-tag mapping as above |
 | SPLIT | `templates/rule-categories.md`, `templates/rule-file.md` | same example-tag mapping as above |
 | REORGANIZE | `templates/rule-file.md`, `templates/rule-categories.md` | same example-tag mapping as above |
-| Any (when user asks "why this structure") | `references/claude-code-memory.md` | - |
+| Any (when user asks "why this structure") | `https://code.claude.com/docs/en/memory.md`, read live | - |
 
 `contentSignals` are emitted by the Detection Logic bash scan
 (`grep -liE`). Tags: `clean-arch`, `nextjs-framework`, `supabase`,

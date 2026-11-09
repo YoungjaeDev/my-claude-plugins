@@ -78,6 +78,7 @@ plugins/dev/assets/**
 plugins/docs/skills/write-rules/assets/**
 plugins/ml/skills/cv-notebook/references/templates/**
 plugins/ml/skills/cv-notebook/references/diagrams.md
+plugins/ml/skills/gradio-cv-app/references/task-templates.md
 plugins/wiki/skills/plaud-note-taking/references/terminology.md
 plugins/wiki/skills/plaud-note-taking/templates/**
 # Stamped rule copies in a user's deck repository (deck-sync owns them)

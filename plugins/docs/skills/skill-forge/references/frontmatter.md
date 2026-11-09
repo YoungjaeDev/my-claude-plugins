@@ -44,7 +44,7 @@ doc states: the policy this repo applies.
 |---|---|
 | `allowed-tools` | allowed; see the portability note below |
 | `disable-model-invocation` | `true` on a user-invoked skill, paired with `agents/openai.yaml` |
-| `argument-hint` | not in a Codex-eligible plugin; allowed, low value, in `codex-image` and `council` |
+| `argument-hint` | not in a Codex-eligible plugin; allowed, low value, in the Claude-only `codex-image` and `aside` |
 | `version` | do not add; `plugin.json` owns versions |
 | `license` | no-op here |
 | any other documented field | add only when you can state its runtime effect from the doc, and record that evidence |

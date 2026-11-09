@@ -10,16 +10,15 @@
 ## 2. Write so the point lands first
 
 - A document is only used if skimming it still leaves the point behind, so put the conclusion, the decision, and the required action first.
-- Carry one point per bullet, and finish it in one sentence where possible.
-- Split a sentence into a sub-bullet or the next paragraph when it carries an explanation, an exception, and a follow-up action at once.
+- Carry one point per bullet or paragraph in at most three sentences; move an explanation, exception, or follow-up into the next one.
 - Use a heading or a list only when it exposes the structure of the content, not to decorate a short paragraph.
+- When editing, rewrite the sentence that already covers the point instead of appending a new one, and leave a clear sentence alone.
 - Preserve the meaning, tone, and confidence level of the source when translating or editing, and invent no new claim or example.
-- Leave a sentence that is already clear and distinctive alone, and fix only what obscures the meaning.
 - Prefer verifiable information such as names, numbers, dates, behavior, and outcomes over abstract importance.
 - A reader acts on a rounded number or a dropped condition as written, so state numbers, thresholds, and the conditions a rule applies under exactly.
 - A warning read apart from what it guards gets skipped, so place each caveat or precondition next to the step it protects and never trim it for length.
-- A long document still has to serve the reader who stops early, so put the essentials first and keep the rest reachable further down or behind a link instead of cutting it.
-- Do not mechanically ban a particular word or sentence shape; fix it when it delays the point, hides the evidence, or inflates the meaning.
+- A long document still has to serve the reader who stops early, so put the essentials first, move detail behind a link, and delete history git already holds.
+- In a Korean user document, list items and table cells end in a noun or `~음`/`~함`, never `~다`; fix any other shape only when it delays the point, hides the evidence, or inflates the meaning.
 
 ### Sentence patterns to avoid
 

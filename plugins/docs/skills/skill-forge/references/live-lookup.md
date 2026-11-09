@@ -11,9 +11,11 @@ limits, hook and settings schemas, CLI flags and accepted values, subcommand lis
 reasoning levels, output paths and formats, version floors. If an agent can learn it by running a
 command or opening a page, it is a platform fact.
 
-## Notes on the lookup order
+## Lookup order
 
-The order itself is in SKILL.md's "Look it up live". What each step needs to get right:
+For what an installed tool accepts or lists (flags, values, subcommands, model names, versions), read the installed tool first, since only it is pinned to the version on the machine, then the vendor docs. For a schema no tool prints (frontmatter fields, hook or settings schema), use the docs MCP if the session has one, else the vendor's `llms.txt` or doc URL fetched directly.
+
+When every lookup fails, report which ones were tried, then take the skill's documented safe default if it has one (omit an optional field, keep an encoded check), and otherwise stop rather than guess a value. What each step needs to get right:
 
 - **Installed tool**: `<tool> --help`, `<tool> <sub> --help`, `<tool> --version`, a listing command,
   or a file the tool ships with (a bundled skill, a schema). Check what the command printed, not

@@ -161,8 +161,7 @@ PR 부터 리뷰 루프, 머지, 정리까지 담당. 아이디어부터 PR 까�
 | `/docs:interview-methodology` | 작은 요청의 모호한 점 확인, 대화 안 요약으로 마무리 (재사용 프롬프트는 TCREI 형식). 큰 일은 `/grill-with-docs` 로 이관 |
 | `/docs:vp` | 음성 전사 프롬프트 게이트. `.agents/voice-terms.md` 사전으로 오인식 교정, 뜻이 명확하면 진행, 모호하면 질문 2~3개 |
 | `/docs:skill-forge` | Claude Code 와 Codex 양쪽에서 동작하는 스킬 작성·개정 (프론트매터, 작성 레버, 패키징 계약) |
-| `/docs:skill-audit` | 스킬 1개의 7축 진단과 P0/P1/P2 수정안 |
-| `/docs:skill-fleet-review` | 플러그인 트리 전체 검토, `docs/audit/<date>-fleet.md` 와 CSV 기록 |
+| `/docs:md-audit` | 사용자 호출 전용. md 문서의 바이트·문단·헤딩·굵은 글씨를 스크립트로 측정하고 채팅으로 보고, 고른 파일만 다시 씀 (스킬 7축 진단 포함) |
 
 **내보내기**
 

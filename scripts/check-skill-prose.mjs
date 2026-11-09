@@ -2,9 +2,9 @@
 // Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY.
 //
 // Two post-measurement warnings, never a failure:
-//   1. A skill SKILL.md or bundled reference/asset doc over 10000 bytes, the 10KB
-//      cap in plugins/docs/references/writing-standard.md (1KB = 1000 bytes, `wc -c`).
-//      Over it, a body is almost certainly carrying material it should offload.
+//   1. A SKILL.md over 10000 bytes, the 10KB cap in plugins/docs/references/writing-standard.md
+//      (1KB = 1000 bytes, `wc -c`). The standard budgets only SKILL.md, so references are
+//      not measured. Over it, a body is almost certainly carrying material it should offload.
 //   2. A SKILL.md that points at a bundled file nested deeper than one directory
 //      level (e.g. references/templates/base.md) — the flat-references convention
 //      is exactly one level (files directly under references/).
@@ -58,15 +58,15 @@ export function collectSkillProseWarnings({ root, byteCeiling = BYTE_CEILING }) 
   const skillsRoot = join(root, 'plugins');
   const rel = (abs) => relative(root, abs).split(sep).join('/');
 
-  // 1. Byte-size sweep over every markdown doc under a plugin's skills/ tree.
-  for (const abs of walkFiles(skillsRoot, (n) => n.endsWith('.md'))) {
+  // 1. Byte-size sweep over every SKILL.md under a plugin's skills/ tree.
+  for (const abs of walkFiles(skillsRoot, (n) => n === 'SKILL.md')) {
     const r = rel(abs);
     if (!r.includes('/skills/')) continue;
     const content = safeRead(abs);
     if (content === null) continue;
     const bytes = Buffer.byteLength(content, 'utf8');
     if (bytes > byteCeiling) {
-      warnings.push(`size-ceiling: ${r} is ${bytes} bytes (> ${byteCeiling}) — consider offloading reference-grade detail`);
+      warnings.push(`size-ceiling: ${r} is ${bytes} bytes (> ${byteCeiling}); consider offloading reference-grade detail`);
     }
   }
 

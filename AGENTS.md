@@ -92,7 +92,7 @@ git add -A \
 review-loop 가 수정마다 도는 빠른 줄 (가드만, 약 1초). 전체 줄은 루프 끝에 한 번 돈다.
 
 ```bash fast
-node scripts/check-doc-consistency.mjs && node scripts/check-shell-portability.mjs && node scripts/check-skill-contract.mjs && node scripts/bump-version.mjs --check && node scripts/check-korean-copy.mjs && bash plugins/dev/tests/resolver_smoke.sh
+git add -A && node scripts/check-doc-consistency.mjs && node scripts/check-shell-portability.mjs && node scripts/check-skill-contract.mjs && node scripts/bump-version.mjs --check && node scripts/check-korean-copy.mjs && bash plugins/dev/tests/resolver_smoke.sh
 ```
 
 - `git add -A` 가 먼저다: 가드는 git-tracked 파일만 스캔한다.

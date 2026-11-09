@@ -11,7 +11,7 @@ Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when
 
 ## Step 1: Fetch the page
 
-Use the Bright Data MCP tool `mcp__brightdata__scrape_as_markdown` with `url` and the default `format` (markdown). Current servers return JSON (`url`, `title`, `format`, `content`); older ones take only `url` and return the markdown itself, so read `content` when the result is JSON and the text as-is otherwise. Either way it is the whole page with no main-content switch, so strip site chrome (nav, footer, share widgets) while translating and read links off the inline markdown (`[text](url)`, `![alt](src)`).
+Use the Bright Data MCP tool `mcp__brightdata__scrape_as_markdown` with `url` and the default `format` (markdown). Current servers return JSON (`url`, `title`, `format`, `content`); older ones take only `url` and return the markdown itself, so read `content` when the result is JSON and the text as-is otherwise. When the JSON has a `note` saying the content was truncated, or a `format` other than markdown, tell the user and stop before translating. Either way it is the whole page with no main-content switch, so strip site chrome (nav, footer, share widgets) while translating and read links off the inline markdown (`[text](url)`, `![alt](src)`).
 
 - **Fallback**: without the MCP tools, run `bdata scrape <url> -f markdown` in the terminal.
 - **Neither works**: check four gates in order (Bright Data MCP tools present, `bdata` installed, `bdata` authenticated, a default zone set; confirm the commands with `bdata --help`), report the first that failed, and stop. Do not substitute a plain built-in fetch, which the blocked pages this skill targets will defeat.
@@ -45,7 +45,7 @@ def train(model, data):
 ## Step 4: Image processing
 
 1. Extract image URLs from the markdown.
-2. Download each to `/tmp` with `scripts/download_image.sh "<url>"` (prints `/tmp/img_<hash>.<ext>`).
+2. Download each to `/tmp` with `scripts/download_image.sh -`, passing the URL on stdin through a quoted heredoc (`<<'URL'`), never inside the command text where `$()` or backticks would run (prints `/tmp/img_<hash>.<ext>`).
 3. Read the file with the Read tool (the VLM applies automatically).
 4. Write a Korean caption of about 2 sentences on the image's meaning and role in its surrounding context, as a blockquote below the image, since alt text is hidden in preview.
 

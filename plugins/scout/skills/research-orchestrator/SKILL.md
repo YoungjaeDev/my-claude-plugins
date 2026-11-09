@@ -26,7 +26,7 @@ The entry point for scout: it picks a mode, fans a code, ML, docs or web query o
 Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, proceed with the safe default and say so. The two questions are the `.gitignore` append in Phase 2 (default: leave it alone) and a retry after every axis failed (default: no retry).
 
 - **Phase 0, context check**: pick fresh run, partial re-execution of named axes, or fresh re-run on the same workspace by the rules in `references/procedure.md`. Tell the user the mode picked in one sentence so they can correct it.
-- **1. Mode detection**: default `quick`. Upgrade to `deep` when the caller passed `mode: "deep"` or the query says 깊이, 심층, 자세히, 비교, 모범사례, deep, thorough, comprehensive, compare, "best practices", "trade-offs" or "vs".
+- **1. Mode detection**: default `quick`. Upgrade to `deep` when the caller passed `mode: "deep"` or the query says 조사, 깊이, 심층, 자세히, 비교, 모범사례, research, deep, "deep dive", thorough, comprehensive, compare, "best practices", "trade-offs", "vs" or "should I use" (the trigger list in `references/agent-routing.md`).
 
 ### 2. Workspace setup
 
@@ -88,7 +88,7 @@ Pick the execution path once, before dispatch. All three paths consume the query
 ## Done
 
 - The report exists at `$REPORT`, or a quick-mode single axis ended with the inline summary `references/procedure.md` allows, or the all-axes-failed report was surfaced as `BLOCKED`.
-- The user has the report path, the workspace path and the top-3 picks.
+- The user has the workspace path, the top-3 picks, and the report path whenever a report was written.
 - The user was told the Phase 0 mode and the Phase 3.5 execution path.
 
 ## References

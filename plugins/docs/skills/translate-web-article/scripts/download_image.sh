@@ -1,11 +1,13 @@
 #!/bin/bash
 # Download image from URL to /tmp directory
-# Usage: download_image.sh <image_url> [output_dir]
+# Usage: download_image.sh - [output_dir] < url-on-stdin   (or <image_url> as $1)
 # Output: Prints the local file path
+# `-` reads the URL from stdin so a page-supplied URL never becomes shell text.
 
 set -e
 
 IMAGE_URL="$1"
+if [ "$IMAGE_URL" = "-" ]; then IFS= read -r IMAGE_URL || [ -n "$IMAGE_URL" ]; fi
 OUTPUT_DIR="${2:-/tmp}"
 
 if [ -z "$IMAGE_URL" ]; then

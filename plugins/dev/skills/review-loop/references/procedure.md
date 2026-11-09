@@ -144,7 +144,7 @@ A stop reached in a cycle that pushed is held (`HOLD_STATE`), not ended, because
 
 Runs on every run that reaches it, with or without `--auto-merge`. Run block "Step 15: auto-merge gate": `scripts/auto-merge-gate.sh` owns eligibility (state, the follow-up issue, every reviewer's verdict on HEAD), and the block also refuses on CodeRabbit's status, a failing or unreadable CI check, or an unverified protection probe. A check that failed after Step 14 looked moves the run to `ci_failing`.
 
-When the PR can merge without `--auto-merge`, ask "auto-merge 할까요?" (Merge / Don't merge) and set `MERGE_ANSWER=yes` on Merge, which takes the same path. `--auto-merge` on a protected base merges with `gh pr merge --auto`; an unprotected base (an immediate merge) and a run that dropped a reviewer ask even then.
+When the PR can merge without `--auto-merge`, ask "auto-merge 할까요?" (Merge / Don't merge) and set `MERGE_ANSWER=yes` on Merge, which takes the same path. Run inline, the gate block cannot ask mid-block: when it stops on `not merged: the user did not choose to merge`, ask, then run the gate block again with `MERGE_ANSWER=yes` on Merge. `--auto-merge` on a protected base merges with `gh pr merge --auto`; an unprotected base (an immediate merge) and a run that dropped a reviewer ask even then.
 
 Then run block "Step 15: merge". A runner leaves the question in `pending_decision` and the block merges and pushes nothing. With fixes Step 12 held (`REVIEWED_SHA`), a landed merge sends them to the base through `scripts/base-push.sh` (`base_push`); otherwise they go to the PR, unreviewed, and the report says to re-run.
 

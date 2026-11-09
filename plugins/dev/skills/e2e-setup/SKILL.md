@@ -8,7 +8,8 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 Stand up Playwright's official AI test harness (planner -> generator -> healer) plus auth separation, deterministic mocking, an E2E SSOT doc and gated CI, in 8 steps. It does not re-implement the roles. The official agents alone skip auth setup and lack codebase context; Steps 3-7 give them that context.
 
-- **Two runtime paths (Step 2)**: on Claude Code, `init-agents --loop=claude` generates registerable `.claude/agents/*.md` that `e2e-author` / `e2e-debug` dispatch by name (Path A). On Codex those files are not registerable, so setup skips them and the later skills run each role as a generic subagent carrying `references/role-contracts.md` (Path B), or sequentially (Path C). Steps 3-7 and every gate are identical on both.
+- **Two runtime paths (Step 2)**: Path A generates named agents on Claude Code; on Codex, Path B/C skips them and the later skills carry `references/role-contracts.md`. Steps 3-7 and every gate are identical on both.
+- **Asking**: ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, install and overwrite nothing, print the proposed command or diff, and stop and report.
 - **Check the installed Playwright, not this file**: `npx playwright init-agents --help` and `npx playwright trace --help` must print that subcommand's own usage. Read `init-agents --help` and `npx playwright --version` before relying on any flag or output filename below, and re-run init-agents after a Playwright upgrade.
 - **Bundled files** resolve through Step 0's `PLUGIN_ROOT`, never a bare `${CLAUDE_PLUGIN_ROOT}`, which Codex does not export.
 

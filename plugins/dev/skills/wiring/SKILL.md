@@ -30,17 +30,7 @@ Read `references/procedure.md` before Step 2. It explains the efficacy, codex an
 
 ## Answers file
 
-`ASK` answers live in gitignored `.claude/state/wiring.json`, because values such as a Drive folder id are machine-local. `CLAUDE.md` carries only a pointer to this path, never the values.
-
-```json
-{
-  "schema": 1,
-  "answers": {
-    "git_remote": { "value": "none-intended", "answered_at": "2026-07-10" },
-    "gws_sync":   { "value": "not-for-this-repo", "answered_at": "2026-07-10" }
-  }
-}
-```
+`ASK` answers live in gitignored `.claude/state/wiring.json`, because values such as a Drive folder id are machine-local. `CLAUDE.md` carries only a pointer to this path, never the values. The file shape is in `references/procedure.md` "Recording `ASK` answers".
 
 `project_state.sh` surfaces the `answers` object verbatim under `.answers`. Before raising an `ASK`, check whether its key holds a terminal value; if so, report `OK` or `SKIP`. `gws_sync: "pending-install"` is not terminal: re-ask once its precondition is met.
 
@@ -55,8 +45,13 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
 [ -z "$PLUGIN_ROOT" ] && [ -d plugins/dev/scripts ] && PLUGIN_ROOT=plugins/dev
 if [ -z "$PLUGIN_ROOT" ]; then
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-  if sort -V </dev/null >/dev/null 2>&1; then vsort="sort -V"; else vsort="sort -t. -k1,1n -k2,2n -k3,3n"; fi
-  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/dev/* 2>/dev/null | awk -F/ '{print $NF "\t" $(0)}' | $vsort | tail -1 | cut -f2-)
+  # Newest version first; the first one that has scripts/ wins.
+  if sort -V </dev/null >/dev/null 2>&1; then
+    candidates=$(ls -1d "$cache_root"/*/dev/* 2>/dev/null | awk -F/ '{print $NF "\t" $(0)}' | sort -rV | cut -f2-)
+  else
+    candidates=$(ls -1d "$cache_root"/*/dev/* 2>/dev/null | awk -F/ '{print $NF "\t" $(0)}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2-)
+  fi
+  while IFS= read -r d; do [ -d "$d/scripts" ] && { PLUGIN_ROOT="$d"; break; }; done <<< "$candidates"
 fi
 [ -d "$PLUGIN_ROOT/scripts" ] || { echo "dev scripts not found"; exit 1; }
 ```
@@ -135,5 +130,3 @@ Ask once about the mechanical fixes: "Apply all mechanical fixes (Recommended)" 
 - **Never fixed here, delegated by name**: legacy wiki migration, CLAUDE.md authoring, spec relocation, Serena onboarding, mem0 changes, the codex doc budget, and MCP config collapse (it edits a user-scope file holding credentials).
 - **Stale `.tmp/` deletion is destructive**: list the files, confirm separately, and never widen the glob beyond `.tmp/`.
 - **Answers file**: write answered `ASK`s even when "apply all" is declined, and only after `git check-ignore -q .claude/state/wiring.json` passes. Never edit `~/.claude/settings.json` as part of "apply all".
-
-`new` and `wiring` share `scripts/project_state.sh`, but not `new`'s preflight guard, which stays inline and dependency-free.

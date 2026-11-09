@@ -1,6 +1,6 @@
 # Wiring procedure
 
-Detail for `SKILL.md` Steps 2 to 4: why the efficacy axes read the way they do, how the codex and memory axes are reported, the report shape, and how `ASK` answers are recorded. The verdict tables and bright lines stay in `SKILL.md`.
+Detail for `SKILL.md` Steps 2 to 4: why the efficacy axes read the way they do, how the codex and memory axes are reported, the report shape, and how `ASK` answers are recorded. The verdict tables and bright lines stay in `SKILL.md`. `new` and `wiring` share `scripts/project_state.sh`, but not `new`'s preflight guard, which stays inline and dependency-free.
 
 ## The four efficacy axes (Step 2)
 
@@ -73,7 +73,18 @@ State that the scan is filesystem-only, and name what it leaves to other owners:
 
 ## Recording `ASK` answers (Step 3.5, Step 4)
 
-- Write every answered `ASK` to `.claude/state/wiring.json` under `answers.<key>` with `value` and `answered_at` (UTC `YYYY-MM-DD`), creating the file if absent.
+- Write every answered `ASK` to `.claude/state/wiring.json` under `answers.<key>` with `value` and `answered_at` (UTC `YYYY-MM-DD`), creating the file if absent:
+
+  ```json
+  {
+    "schema": 1,
+    "answers": {
+      "git_remote": { "value": "none-intended", "answered_at": "2026-07-10" },
+      "gws_sync":   { "value": "not-for-this-repo", "answered_at": "2026-07-10" }
+    }
+  }
+  ```
+
 - Write it even when the rest of "apply all" is declined, and never write an answer the user did not give.
 - Run `git check-ignore -q .claude/state/wiring.json` before writing. If it fails, add `.claude/state/` to `.gitignore` as a precondition, not as part of "apply all".
 - If the user declines that line, do not create the file: report the answer as unrecorded and say why. Outside a git repository the check does not apply.

@@ -9,6 +9,8 @@ Conduct a task through subagents without giving up ownership of the result, in 7
 
 Read `references/procedure.md` before step 1. It holds each step's detail, the worktree and path rules, and a pitfalls table.
 
+Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, proceed with the safe default (keep the job on a `dev:worker-*` preset, never another vendor's agent) and say so.
+
 ## When to use
 
 Delegate when at least one of these holds:
@@ -17,7 +19,7 @@ Delegate when at least one of these holds:
 - one slice would pull so many files into the main context that coordination afterwards suffers
 - the task mixes cheap mechanical work with accuracy-critical work that deserves a stronger model
 
-Work inline when the change is one known file or location, or when writing the job card would take longer than the job. A written plan with numbered tasks goes to `superpowers:subagent-driven-development`. An under-specified task first goes through `docs:interview-methodology`, with the decisions asked through `AskUserQuestion`.
+Work inline when the change is one known file or location, or when writing the job card would take longer than the job. A written plan with numbered tasks goes to `superpowers:subagent-driven-development`. An under-specified task first goes through `docs:interview-methodology`, with the decisions asked through it.
 
 ## Worker presets
 
@@ -40,7 +42,7 @@ Volume pushes a slice toward standard, accuracy toward deep or max. A slice that
 | slices must exchange results or run long | named agents plus `SendMessage`; `ListAgents` shows who is idle |
 | a slice writes files | `isolation: worktree` on the `Agent` call: one branch per writer makes the step 5 scope check possible, and step 7 merges only the branches that passed it |
 | many-stage pipeline with no user judgment mid-way, or resume is needed, and the user typed `/dev:orchestrate` or "ultracode" | `Workflow`, after loading `workflow-authoring` |
-| another vendor's agent (codex-rescue, agy-rescue, sidekick) looks like a better fit | ask through `AskUserQuestion` first, every time |
+| another vendor's agent (codex-rescue, agy-rescue, sidekick) looks like a better fit | ask first, every time |
 | one slice with a known location | inline, no delegation |
 
 A description-triggered run uses `Agent` only; `Workflow` needs the user's own `/dev:orchestrate` call or "ultracode". A slice inside a running `Workflow` that needs a user question returns to the `Agent` loop.

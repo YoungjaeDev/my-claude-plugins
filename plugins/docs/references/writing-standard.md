@@ -61,15 +61,15 @@ docs/adr/**
 docs/audit/**
 docs/prd/**
 docs/superpowers/**
+# dated design specs kept as written, like docs/prd
 .claude/spec/**
 **/CHANGELOG.md
 # Matt-generated or Matt-format, read by heading name
 docs/agents/**
 GLOSSARY.md
 AGENTS.md#Agent skills
-# Runtime files copied into ~/aside-ops
-plugins/aside/runtime/**
-# Seeded templates and code-heavy references
+# Seeded templates and code-heavy references (aside runtime README.md and SSH.md are measured)
+plugins/aside/runtime/templates/**
 plugins/aside/skills/browser-ops/templates/**
 plugins/deck/templates/brands/**
 plugins/deck/templates/decks/*/outline.md

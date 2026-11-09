@@ -2381,7 +2381,7 @@ rm -rf "$FM"
 # Step 14 sub-issue split (#389): more deferred findings than the threshold get the
 # parent issue plus one sub-issue each. The gh stub keeps the issues it creates, so a
 # re-run lists the sub-issues the first run made; LIST_FAIL / LINK_FAIL / GET_FAIL
-# fail one REST call.
+# fail one REST call, EDIT_FAIL the parent body edit.
 SI=$(mktemp -d)
 cat > "$SI/gh" <<'SH'
 #!/usr/bin/env bash
@@ -2391,7 +2391,7 @@ case "$1 $2" in
   "label create") exit 0 ;;
   "issue create") cp "$bf" "$d/parent"; echo https://github.com/o/r/issues/9; exit 0 ;;
   "issue comment") cp "$bf" "$d/comment"; exit 0 ;;
-  "issue edit") cp "$bf" "$d/parent"; exit 0 ;;
+  "issue edit") [ -n "${EDIT_FAIL:-}" ] && exit 1; cp "$bf" "$d/parent"; exit 0 ;;
 esac
 [ "$1" = api ] || exit 1
 case "$2 $3 $4" in
@@ -2454,9 +2454,22 @@ is "sub-issue listing fails -> task list fallback recorded" "$(si_fi .followup_i
 is "task list fallback -> one unchecked item per finding in the parent body" "$(grep -c '^- \[ \] ' "$SI/parent")" 6
 is "task list fallback keeps the parent's table" "$(grep -c '^| Reviewer | Severity | Location | Why deferred |$' "$SI/parent")" 1
 is "task list fallback says why on stderr" "$(grep -c 'sub-issues' "$SI/err")" 1
+is "task list edit names the repo it read the parent from" "$(si_count '^issue edit 9 --repo o/r ')" 1
 
 si_state 6 "$(si_fi .followup_issue)"; si_run LIST_FAIL=1
 is "re-run of a task list fallback adds no duplicate items" "$(si_count '^issue edit'):$(grep -c '^- \[ \] ' "$SI/parent")" "0:6"
+
+si_state 7 "$(si_fi .followup_issue)"; si_run LIST_FAIL=1
+is "task list re-run with a new finding adds one item under one header" \
+   "$(grep -c '^- \[ \] ' "$SI/parent"):$(grep -c '^Deferred findings (the sub-issues API was unavailable):$' "$SI/parent")" "7:1"
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run LINK_FAIL=1 EDIT_FAIL=1
+is "link and task list both fail -> split failed, the unlinked issue recorded" \
+   "$(si_fi '[.followup_issue.split, (.followup_issue.unlinked | map(.number))]')" '["failed",[101]]'
+si_state 6 "$(si_fi .followup_issue)"; si_run
+is "re-run links the earlier unlinked issue instead of filing it again" \
+   "$(si_count '^api -X POST repos/o/r/issues -'):$(grep -c 'sub_issue_id=5101$' "$SI/calls")" "5:1"
+is "re-run clears the unlinked record once linked" "$(si_fi '[.followup_issue.split, (.followup_issue.unlinked | length)]')" '["sub_issues",0]'
 
 rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run LINK_FAIL=1
 is "link fails -> stop filing, rest go to the task list" \

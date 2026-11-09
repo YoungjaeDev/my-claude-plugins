@@ -15,6 +15,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 ## Precondition check
 
 - Need `gh` CLI authenticated to fetch CI artifacts.
+- Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, stop and report what you would have asked, and never patch a suspected real regression to pass.
 - **Path A only**: confirm the named healer exists (`.claude/agents/playwright-test-healer.md`). If missing **and you are on Claude Code**, route to `dev:e2e-setup`. **Do not** demand this Claude agent file under Codex; there the bundled healer contract stands in (see Step 0).
 - **Probe the headless trace CLI** used in Step 2: run `npx playwright trace --help` and check that it printed the `trace` subcommand's own usage, not the top-level help (an unknown subcommand can answer with the top-level help and exit 0). When it is missing: fall back to the GUI viewer `npx playwright show-trace <trace.zip>`.
 

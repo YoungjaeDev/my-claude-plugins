@@ -1,6 +1,6 @@
 # Codex State Machine
 
-Two related state caches live alongside the iteration loop: `codex_active` (per-iteration engagement decision) and `codex_processed_reviews` (cross-iteration / cross-run dedupe of Codex review ids).
+Two caches track Codex across the loop: `codex_active` (4 values, the per-iteration engagement decision) and `codex_processed_reviews` (the dedupe of Codex review ids across iterations and runs). The HEAD verdict and the Step 6 and 6b blocks follow.
 
 ## codex_active values
 
@@ -17,37 +17,25 @@ Two related state caches live alongside the iteration loop: `codex_active` (per-
 - **Subsequent iters (Step 6)**: re-probe only if cache is `inactive`. `active` and `disabled` never flip back. This catches the common case where a PR opens just before its first Codex review arrives — without the mid-run re-probe the run would skip Codex output entirely.
 - **Step 6b entry**: `inactive` is probed once more after the CR poll, since Step 6 ran before it. Then the value holds for the rest of the iteration.
 - **Mid-iter constancy**: `codex_active` is cached within an iteration so Step 6b grace polling and Step 8b inline-fetch both see a fixed value. Within a single iteration the resolution is fixed.
-- **Probe error handling**: if `gh api` fails, the `inactive` decision is non-sticky (treats failure as "unknown, retry next iter"). The earlier bug pattern was `gh api ... | wc -l` returning 0 on failure, silently locking `codex_active` to `inactive` — fixed by separating the gh call from the count.
+- **Probe error handling**: a failed `gh api` gives a non-sticky `inactive`, retried next iteration; the gh call is kept apart from the count so a failure never reads as 0 reviews.
 
 ## codex_processed_reviews
 
-A JSON array of Codex review ids (numbers) that have been **surfaced to the user** in some prior iter / run on this PR. Persisted in `.claude/state/review-loop-${PR_NUM}.json`. Inherited from the prior session's archived state at Step 2.
+A JSON array of Codex review ids already surfaced on this PR, persisted in `.claude/state/review-loop-${PR_NUM}.json` and inherited from the prior run's archived state at Step 2. Step 9c.7 appends each surfaced id whatever was applied, deferred or skipped under it, so no later iteration or run judges that review again.
 
-### What "processed" means
+Discovery joins on the review `id`, never on `commit_id`: a Codex review stays pinned to the SHA it was submitted on, so a `commit_id == CUR_SHA` filter hides a finished review of an earlier push. `pull_request_review_id` is the comment-to-review join key in Step 8b.
 
-The semantic is "this review has been surfaced to the user this iter", NOT "we wrote code for it". Step 9c.7 appends the id regardless of whether the user applied, deferred, or skipped each item under that review. Without this, the next iter / next review-loop run would re-discover the same review via Step 6b and re-prompt for items the user already decided on.
-
-### Why filter by review id, not by commit_id
-
-Codex review wrapper `commit_id` does NOT forward-shift on subsequent pushes. A review submitted on SHA `A` stays pinned to `A` forever, even after the user pushes SHA `B`. A `select(.commit_id == $sha)` filter has a structural blind spot: when Step 6b probes with `$CUR_SHA == B`, an already-finished Codex review on `A` is invisible and the grace poller spins until timeout.
-
-Step 6b discovers Codex work via review `id` instead — robust to SHA progression — and uses `codex_processed_reviews` for dedupe. `pull_request_review_id` is the stable comment→review join key used in Step 8b regardless of GitHub's `commit_id` propagation rules.
-
-### Manual override
-
-If the user wants to re-surface an already-processed review, they can delete the relevant id from `codex_processed_reviews` in the state file by hand. The next iter will re-discover it as unprocessed.
-
-## Re-review triggers
-
-Codex states its own triggers as PR open, draft marked ready, and a `@codex review` comment. Repositories that enable automatic reviews also get one on every push, which is what the loop relies on: Step 12's push is the re-review trigger, and the skill never posts a trigger comment of its own.
+To re-surface a processed review, delete its id from `codex_processed_reviews` in the state file by hand. Re-review needs no comment: Step 12's push triggers it on a repo with automatic Codex reviews.
 
 ## HEAD verdict (`scripts/codex-head-verdict.sh`)
 
-Codex's result for the commit the PR points at now (`GLOSSARY.md` "HEAD 판정", ADR 0002). Three sources:
+Codex's result for the commit the PR points at now, from three sources:
 
-- **Summary comment.** Codex keeps one `<!-- codex-pull-request-review-summary -->` issue comment and edits it in place: a table row per review with `**Running**` / `**Completed**` / `**Failed**`, a `<relative-time datetime>` and a backticked short SHA. Only the newest row for HEAD (by that datetime, wherever it sits in the table; a tie takes the later row) decides, so a re-run's Completed row overrides an earlier Failed one. The newest such comment by `updated_at` from the anchored Codex login wins; a lookalike login is ignored.
+- **Summary comment.** Codex keeps one `<!-- codex-pull-request-review-summary -->` issue comment and edits it in place: a table row per review with `**Running**` / `**Completed**` / `**Failed**`, a `<relative-time datetime>` and a backticked short SHA.
+- Only the newest row for HEAD decides (by that datetime, wherever it sits; a tie takes the later row), so a re-run's Completed row overrides an earlier Failed one. The newest such comment by `updated_at` from the anchored Codex login wins, and a lookalike login is ignored.
 - **HEAD review.** A Codex review with `commit_id == CUR_SHA`. Codex submits one only when it has findings, a few seconds before it flips the summary to Completed.
-- **👍 reaction.** With nothing to say, Codex may leave only a `+1` reaction on the PR (`issues/{pr}/reactions`; PR #320, three minutes after the push). One from the anchored Codex login created after `PUSH_TIME` is `clean` where no HEAD row and no HEAD review decide, and only when the summary's `<!-- codex-review-state:v1 {json} -->` marker (shape read from PR #320 and #334) has `code_review.commit_sha` equal to `CUR_SHA` and `code_review.status` `completed`: a review of the previous commit that finishes after a new push leaves a 👍 newer than the push too (#338). No `PUSH_TIME` or no such marker, no reaction verdict. An unreadable reaction list only withholds it, and is `error` only where the marker could have let a 👍 decide.
+- **👍 reaction.** With nothing to say, Codex may leave only a `+1` reaction on the PR (`issues/{pr}/reactions`). One from the anchored Codex login created after `PUSH_TIME` is `clean` where no HEAD row and no HEAD review decide, and only while the summary's `<!-- codex-review-state:v1 {json} -->` marker has `code_review.commit_sha` equal to `CUR_SHA` and `code_review.status` `completed`.
+- The marker check exists because a review of the previous commit that finishes after a new push leaves a 👍 newer than the push too. No `PUSH_TIME` or no marker gives no reaction verdict, and an unreadable reaction list is `error` only where the marker could have let a 👍 decide.
 
 Interface: env `OWNER REPO PR_NUM CUR_SHA [PUSH_TIME] [CODEX_GRACE=30] [CODEX_PREFLIGHT_TIMEOUT=900]` (default from `scripts/codex-turnaround.sh`), one JSON line on stdout, exit 0 (exit 1 only with `verdict=error`). `reactions` says whether the PR's reactions were `read` or `unreadable`; unreadable where only a 👍 could give the verdict (no HEAD row, no HEAD review, `PUSH_TIME` known) is `verdict=error`, never "no 👍", so no wait drops Codex over a failed read.
 

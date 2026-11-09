@@ -1,16 +1,8 @@
 # Codex Parsing Rules
 
-How review-loop reads Codex review state without relying on PR timeline body order. Used by Step 5 pre-flight and Step 6b grace polling.
+How review-loop reads Codex review state in 3 tiers, never by PR timeline order, for Step 5 pre-flight and Step 6b. `chatgpt-codex-connector*` posts PR reviews like a human reviewer plus an emoji marker that moves through in progress, clean and findings.
 
-## Background
-
-`chatgpt-codex-connector*` posts the same review surface as a human reviewer (`pulls/$PR/reviews`) plus an opaque emoji marker that flips through three states:
-
-- "in progress" (working)
-- "clean" (no findings)
-- "findings" (review submitted with comments)
-
-The emoji marker is visible on the PR page but its API surface is **not fully nailed down** — channel A returns `[]` in practice, and channel B sometimes carries check-runs with no state hint. Until a confirmed signal channel is found, treat emoji as a HINT for early routing, never as a definitive gate.
+The marker has no confirmed API surface: channel A usually returns `[]`, and channel B can carry check-runs with no state. Emoji is a hint for early routing, never a gate.
 
 ## Three-tier reading
 
@@ -20,7 +12,7 @@ The emoji marker is visible on the PR page but its API surface is **not fully na
 
 ## Channel A: PR-level reactions (`issues/$PR/reactions`)
 
-GitHub treats PRs as issues for the reactions endpoint. Codex sometimes (per user observation, unconfirmed by Explore) reacts with a thumbs-up / eyes / etc. to its own PR shell when state transitions.
+GitHub treats a PR as an issue for the reactions endpoint, and Codex can react to the PR (thumbs-up, eyes) as its state changes.
 
 ```bash
 gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/reactions" 2>/dev/null \
@@ -29,7 +21,7 @@ gh api --paginate "repos/$OWNER/$REPO/issues/$PR_NUM/reactions" 2>/dev/null \
            | sort_by(.created_at) | last // {}'
 ```
 
-Mapping (provisional, refine as signal-capture PRs land):
+Mapping (provisional):
 
 | reaction `content` | `emoji_state` |
 |---|---|
@@ -59,9 +51,11 @@ Mapping:
 
 ## Channel C: review-level reactions (`pulls/$PR/reviews/$RID/reactions`)
 
-Reactions are filtered by `.user.login` with Channel A's anchored regex: anyone who can see the PR can react to the Codex review. Same mapping as Channel A.
+Tried only when channels A and B both gave `unknown`, at 1 call per Codex review id; it returns `404` in most repos.
 
-Returns `404` in most cases observed. Try only when channels A + B both produced `unknown`. Cheap probe (1 call per Codex review id) — keep enabled to opportunistically catch unusual repo configurations.
+Reactions are filtered by `.user.login` with Channel A's anchored regex, since anyone who can see the PR can react to the review.
+
+The mapping is Channel A's.
 
 ## Fallback: timeout-based logic
 
@@ -70,7 +64,7 @@ When all three channels return `unknown`:
 - If `push_age < codex_timeout_seconds` (default `900`) → treat as `in_progress` (Codex may still post).
 - Otherwise → treat as `clean` (Codex never posted; assume nothing to add).
 
-The 15-minute default sits above the slowest Codex turnaround ADR 0002 measured (726 s; `scripts/codex-turnaround.sh`). Override via `CODEX_PREFLIGHT_TIMEOUT` env var when a repo shows consistently slower turnaround.
+The 15-minute default sits above the slowest Codex turnaround measured so far (726 s, `scripts/codex-turnaround.sh`). Override via `CODEX_PREFLIGHT_TIMEOUT` env var when a repo shows consistently slower turnaround.
 
 ## False-emoji warning
 
@@ -79,33 +73,23 @@ A reaction can report clean BEFORE the review submission is created. To avoid pr
 - A `clean` emoji_state alone (no review submission AND no past `processed` review) still gates on `push_age >= 60s` minimum. Pre-flight emits `gate=codex_wait` for the first minute even on `clean` emoji.
 - A `findings` emoji_state without a review submission falls through to `codex_wait` — never `proceed`. The review is mandatory for fetching the actual comments.
 
-## Mid-action re-review (`review.id` dedupe)
-
-CR re-review on each push is well-understood. Codex does the SAME: across iterations it submits distinct reviews, each with its own `id`. State file's `codex_processed_reviews` array tracks ids surfaced to the user; pre-flight + Step 6b filter against it; Step 9c.7 appends each surfaced id.
-
-**Important nuance**: Codex review `commit_id` is pinned to the SHA where the review was *submitted*. It does NOT shift forward on subsequent pushes. A naive `select(.commit_id == $CUR_SHA)` filter blinds Step 6b to legitimate reviews submitted on a prior iter SHA that the user has not yet seen. Always join on `id` instead.
-
 ## Timestamp-only sorting (never trust PR timeline order)
 
 PR pages render Codex emoji flips and CR review submissions interleaved with the user's commits in a renderer-specific order. The API returns `submitted_at` / `created_at` which is monotonic and authoritative.
 
-```bash
+```text
 | sort_by(.submitted_at)   # for reviews
 | sort_by(.created_at)     # for statuses / comments / reactions
 ```
 
-`last` picks the newest. The `reverse | .[0]` form is equivalent and equally acceptable.
+`last` picks the newest. A review's `commit_id` stays pinned to the SHA it was submitted on, so join on `id` and dedupe with `codex_processed_reviews` (`codex-state-machine.md`).
 
-## Probe script entry point
+## Probe scripts
 
-`scripts/probe-codex-state.sh` wraps channels A + B + C and emits one line:
+`scripts/probe-codex-state.sh` wraps channels A, B and C and prints one line, whose `emoji_state` `scripts/pre-flight.sh` reads (`source` is for debugging):
 
 ```json
 {"emoji_state":"clean|in_progress|findings|unknown","source":"reactions|check-runs|review-reactions|none"}
 ```
 
-Callers (`scripts/pre-flight.sh`) consume the `emoji_state` field and ignore `source` unless debugging.
-
-## Engagement-only probe vs state probe
-
-The original `scripts/probe-codex-engagement.sh` (returns `active` / `inactive`) is retained — it answers "has Codex EVER reviewed this PR?", used by the small-diff codex-only heuristic (Step 5b) and the codex_active state machine (`references/codex-state-machine.md`). `probe-codex-state.sh` is the new function: "what is Codex doing RIGHT NOW on the current SHA?".
+`scripts/probe-codex-engagement.sh` (`active` / `inactive`) answers a different question, whether Codex ever reviewed this PR, for the Step 5b heuristic and the `codex_active` cache (`codex-state-machine.md`).

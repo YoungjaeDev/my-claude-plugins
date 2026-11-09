@@ -69,6 +69,8 @@ A protected base, the verification gate off, or `--no-minor-stop` re-reviews ins
 - When `final_state` is `churn`, `minor_floor`, `iteration_cap`, `user_declined`, `clean`, `timeout`, `ci_failing` or `merged_externally`, and any cycle deferred or left unread a finding (even when a later cycle is `clean`), the run files one issue with `gh issue create --label tbd` (the gate's `file_issue`).
 - With nothing left behind it files no issue, even when a HEAD verdict is missing; that goes into the final report. A re-run on the same PR appends a comment to the same issue.
 - The body is built from the `defer` records and passed through a file (`failure-modes.md`), and a failed `gh issue create` keeps the PR from merging.
+- **Sub-issues**: a run that deferred more than five findings (`SUB_ISSUE_THRESHOLD`, `scripts/file-sub-issues.sh`) files one sub-issue per finding under the follow-up issue. A re-run reuses the same issue and files only the findings that have no sub-issue yet.
+- When the sub-issues API fails, the findings go into the issue body as a task list and the report says so. A failed split never blocks the merge, because the issue's table already holds every finding.
 
 ## Merge
 

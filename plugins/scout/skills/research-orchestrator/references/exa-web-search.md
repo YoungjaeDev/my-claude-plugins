@@ -46,7 +46,7 @@ mcp__exa__web_search_exa({
 | Person / company background | `"Anthropic researcher Dario Amodei interview 2026"` | named entity + recency |
 | Comparison | `"RAG eval framework comparison ragas vs deepeval"` | named candidates |
 
-Do **not** use Google operators (`site:`, `intitle:`, `OR`). Exa is semantic — phrase the query like you'd ask a person. For domain restriction, prefer adding the platform name to the query ("on reddit", "stackoverflow answer") rather than `site:`.
+Do not use Google operators (`site:`, `intitle:`, `OR`). Exa is semantic, so phrase the query like you'd ask a person. For domain restriction, prefer adding the platform name to the query ("on reddit", "stackoverflow answer") rather than `site:`.
 
 ## When to follow up with `web_fetch_exa`
 
@@ -76,7 +76,7 @@ Avoid `numResults > 10` — return diminishes fast and the response gets unwield
 | Mode | Pattern |
 |---|---|
 | `quick` | exa primary; `WebSearch` only as fallback when exa is unavailable, quota-exhausted, or returns empty. Record `tool_used: "websearch"` + the exa error in the artifact. |
-| `deep` | run exa and `WebSearch` **in parallel** as co-searches and merge before fetching. They are complementary — exa wins on semantic intent + official sources, `WebSearch` wins on `site:`-scoped community results (Reddit threads, niche SO answers, GitHub issue discussions). The +30%-ish token cost is worth the ~2× long-tail coverage on deep mode. |
+| `deep` | run exa and `WebSearch` in parallel as co-searches and merge before fetching. exa wins on semantic intent and official sources, `WebSearch` on `site:`-scoped community results (Reddit threads, niche SO answers, GitHub issue discussions). |
 
 Drop obvious duplicates by canonical URL before the fetch phase; synthesis-scout will canonicalize again downstream, but pre-filtering saves fetch budget.
 
@@ -91,19 +91,13 @@ WebSearch({
 
 ## Fetch fallback — `scrape_as_markdown`
 
-`web_fetch_exa` is the default extractor (cheaper, returns the same canonical URL space as the search). Switch to `mcp__brightdata__scrape_as_markdown` **only** when `web_fetch_exa` fails: timeout, 403, empty body, JS-heavy SPA, or Cloudflare / anti-bot interstitial. Record `brightdata_scrape` in `fetch_tools_used`.
-
-Bright Data occupies the fetch slot only — stay inside it:
-- `mcp__brightdata__search_engine` / `search_engine_batch` — do **not** use as a search axis here. Search belongs to exa and `WebSearch` above; a third partial-coverage axis adds cost without enough lift.
-- `web_data_*` structured extractors — structured-field extraction (prices, ratings, profiles) is a different domain, and these need Pro groups this skill does not assume.
-- `scraping_browser_*` — browser automation is out of scope for a research scout.
-- `scrape_batch` — site-wide or list-wide fetching is out of scope; this skill retries one failed URL at a time.
-
-If Bright Data is not configured, do not quietly drop to a weaker fetch. Follow the `brightdata-guide.md` preflight (MCP tools → CLI installed → authenticated → default zone), report the failing gate, and record it in `errors[]`.
+- **When**: `web_fetch_exa` is the default extractor (cheaper, same canonical URL space as the search). Switch to `mcp__brightdata__scrape_as_markdown` only when it fails: timeout, 403, empty body, JS-heavy SPA, or a Cloudflare / anti-bot interstitial.
+- **Recording**: add `brightdata_scrape` to `fetch_tools_used`.
+- **Scope**: Bright Data occupies the fetch slot only. The scope list (no `search_engine*`, `web_data_*`, `scraping_browser_*` or `scrape_batch`) and the unconfigured-Bright-Data rule are in `axis-contracts.md` under `03_web`: follow the `brightdata-guide.md` preflight, report the failing gate, and record it in `errors[]` rather than dropping to a weaker fetch.
 
 ## Tier-4 fetch fallback — `insane-search`
 
-When `web_fetch_exa` returns 403/challenge **and** `scrape_as_markdown` also fails (typical pattern: X/Twitter, Reddit, Coupang, gated dashboards behind WAF), retry once with `Skill("insane-search:insane-search", url=...)`. **`insane-search` is an optional plugin** (see `plugins/scout/CLAUDE.md` requirements section): if the skill is not installed, or the invocation errors with skill-not-found / load failure, skip the tier-4 retry entirely and emit the finding from `Highlights` alone, recording `insane_search: not_installed` (or the error string) in `errors[]`. Otherwise it runs its own 5-phase transport escalation internally (official API index → lightweight probes → TLS impersonation → real browser → parallel) and returns a single verdict — caller only consumes it:
+When `web_fetch_exa` returns 403/challenge and `scrape_as_markdown` also fails (typical pattern: X/Twitter, Reddit, Coupang, gated dashboards behind WAF), retry once with `Skill("insane-search:insane-search", url=...)`. It runs its own transport escalation internally and returns one verdict, which the caller only consumes:
 
 | verdict | meaning | action |
 |---|---|---|
@@ -112,7 +106,9 @@ When `web_fetch_exa` returns 403/challenge **and** `scrape_as_markdown` also fai
 | `challenge` | WAF interstitial returned | terminal; emit finding from `Highlights` only |
 | `blocked` | hard block, no body | terminal; emit finding from `Highlights` only |
 
-Record `insane_search` in `fetch_tools_used` and append the verdict to `errors[]` when it's `challenge` / `blocked`. `insane-search` is a **transport** fallback, not a search axis — it does not surface new URLs, only fetches a URL you already have. Do not call it instead of exa / WebSearch.
+- **Recording**: add `insane_search` to `fetch_tools_used`, and append the verdict to `errors[]` when it is `challenge` / `blocked`.
+- **Not installed**: `insane-search` is a separate, optional plugin. When the skill is missing or fails to load, skip tier 4, emit the finding from `Highlights` alone, and record `insane_search: not_installed` (or the error string) in `errors[]`.
+- **Transport only**: it fetches a URL you already have and surfaces no new URLs, so never call it instead of exa / WebSearch.
 
 ## Citation hygiene
 
@@ -121,17 +117,10 @@ Every finding emitted from an exa-fetched page must include:
 - `published` — the `Published` field (or `null` if `"N/A"`)
 - `source_type` — derived from the URL host (reddit / stackoverflow / blog / news / official_blog / twitter / other)
 
-Do **not** synthesize URLs that weren't in an exa response. If a highlight refers to an upstream page that exa didn't return, run a follow-up `web_search_exa` for that page rather than guessing the URL.
+Do not synthesize URLs that weren't in an exa response. If a highlight refers to an upstream page that exa didn't return, run a follow-up `web_search_exa` for that page rather than guessing the URL.
 
 ## Common pitfalls
 
 - **Don't include year in every query** — only when recency matters. Many queries get worse with a year suffix (older canonical content gets demoted).
 - **Don't treat `Highlights` as the full page** — they are highlighter excerpts; numeric tables and code blocks may be missing or partial.
-- **Don't request `numResults` > 10** — synthesis cost climbs and the long tail is noisy.
 - **Don't call `web_fetch_exa` speculatively** — confirm the `Highlights` insufficient first.
-
-## Cross-references
-
-- `web-scout` agent — the primary consumer; see `agents/web-scout.md` for how exa output maps into its artifact schema
-- `research-orchestrator` skill (this skill) — owns when web-scout fires
-- `resource-finder.md` (sibling reference in this directory) — companion doc for GitHub/HF axis hygiene

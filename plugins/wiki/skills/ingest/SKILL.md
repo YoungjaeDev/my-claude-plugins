@@ -22,9 +22,9 @@ Mixed input (a meeting that produced a decision and surfaced a vendor fact) is s
 
 ## No `.llmwiki/`: report, do not scaffold
 
-Check `[ -d .llmwiki ]` before writing anything. A repository without `.llmwiki/` keeps no outside knowledge (ADR 0003: outside knowledge lives in a product repo's `.llmwiki/`), so ingest creates nothing there:
+Check `[ -d .llmwiki ]` before writing anything. A repository without `.llmwiki/` keeps no outside knowledge (that lives in a product repository's `.llmwiki/`), so ingest creates nothing there:
 
-- List the outside-knowledge candidates with their paths and one line: "this repository has no .llmwiki (ADR 0003: outside knowledge goes in the product repository's .llmwiki)". Copy nothing, create no directory.
+- List the outside-knowledge candidates with their paths and one line: "this repository has no .llmwiki (outside knowledge goes in the product repository's .llmwiki)". Copy nothing, create no directory.
 - Route only decisions and terms: list them with their paths and point at the `domain-modeling` skill, as below. Mistakes still go to `/retro`.
 - Stop. The skeleton below is for a repo whose `.llmwiki/` already exists.
 
@@ -38,7 +38,7 @@ When called with nothing to ingest, list candidates instead of asking what to in
 Show each candidate with its path and one line on what it is, then sort it with the routing table:
 
 - **Outside knowledge** (platform, vendor, customer, domain facts): copy to `.llmwiki/raw/` per step 2 and continue with the normal steps. Ingest only what the user picked.
-- **Decision or term candidates**: never written by ingest. List them with their path and point the user at the `domain-modeling` skill, which owns `docs/adr/` and `GLOSSARY.md`. Promotion stays explicit (ADR 0003).
+- **Decision or term candidates**: never written by ingest. List them with their path and point the user at the `domain-modeling` skill, which owns `docs/adr/` and `GLOSSARY.md`. Promotion stays explicit.
 - If nothing is outside knowledge, or the repo has no `.llmwiki/`, do not scaffold it; report the routing and stop.
 
 ## Structure
@@ -53,7 +53,7 @@ Show each candidate with its path and one line on what it is, then sort it with 
     └── <topic>/<concept>.md  concept pages, one level of topic folders, kebab-case names
 ```
 
-In a repo that has `.llmwiki/`, if `.llmwiki/wiki/index.md` or `.llmwiki/wiki/log.md` is missing, create the skeleton first. Check the files, not the directory: `/dev:new` seeds an empty `.llmwiki/wiki/` holding only a `.gitkeep`. The block is idempotent:
+In a repo that has `.llmwiki/`, if `.llmwiki/wiki/index.md` or `.llmwiki/wiki/log.md` is missing, create the skeleton first with this idempotent block. Check the files, not the directory, which may hold only a `.gitkeep`:
 
 ```bash
 mkdir -p .llmwiki/raw .llmwiki/wiki
@@ -88,17 +88,16 @@ links, e.g. [rate limits](../vendor-x/rate-limits.md).>
 
 ## Writing rules
 
-- **Current state only.** The body says what is true now. History, PR narratives and "changed in" stories stay out; provenance lives in `## Sources`.
-- **Consolidate, don't append.** Search `index.md`, page titles and `aliases` first. If a page covers the concept, edit it. Add a page only for a concept no page covers.
-- **Generalize to the property, not past it.** Record the fact the case is an instance of ("vendor X rejects payloads over 8 KB"), not the one call that showed it, and keep what to check concrete.
-- **Match the page's language.** Write in the language the page (or its topic folder) already uses.
-- **Synthesize, never copy.** Raw stays in `raw/`; the page cites it.
-- **Raw is never edited.** A changed source is a new dated raw file.
+- **Current state only**: the body says what is true now. History, PR narratives and "changed in" stories stay out; provenance lives in `## Sources`.
+- **Consolidate, don't append**: search `index.md`, page titles and `aliases` first, edit the page that covers the concept, and add a page only for a concept no page covers.
+- **Generalize to the property, not past it**: record the fact the case is an instance of ("vendor X rejects payloads over 8 KB"), not the one call that showed it, and keep what to check concrete.
+- **Match the page's language**: write in the language the page (or its topic folder) already uses.
+- **Synthesize, never copy; never edit raw**: raw stays in `raw/` and the page cites it. A changed source is a new dated raw file.
 
 ## Steps
 
 1. **Route** the input with the table above.
-2. **Save originals.** A document that arrived from outside goes under `.llmwiki/raw/` as `YYYY-MM-DD-<slug>.<ext>`, unchanged. If that name is taken, reuse it only when the bytes are identical (`cmp -s`); otherwise pick the next free `YYYY-MM-DD-<slug>-2.<ext>`, `-3`, and so on. Never overwrite a raw file: pages already cite it. Skip this step for facts learned while working.
+2. **Save originals.** A document that arrived from outside goes under `.llmwiki/raw/` as `YYYY-MM-DD-<slug>.<ext>`, unchanged; skip this step for facts learned while working. If that name is taken, reuse it only when the bytes are identical (`cmp -s`), otherwise pick the next free `YYYY-MM-DD-<slug>-2.<ext>`, `-3`, and so on. Never overwrite a raw file: pages already cite it.
 3. **Find the pages.** Search `index.md` and page bodies; list every page the input touches (usually one primary page, sometimes a few that link to it).
 4. **Log first.** Prepend to `log.md` (below its header) before editing pages, so one commit carries both and `git revert` undoes both:
 
@@ -115,11 +114,11 @@ links, e.g. [rate limits](../vendor-x/rate-limits.md).>
 
 ## Ask before
 
-Use the interactive-input gate (Claude: `AskUserQuestion`; Codex: `request_user_input` when exposed, otherwise one short blocking question) before:
+Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, proceed with the safe default and say so. Ask before:
 
-- deleting or merging pages,
-- one ingest touching more than ~10 pages,
-- picking a winner when two sources contradict each other (record both in the page until then).
+- deleting or merging pages (default: keep them separate),
+- one ingest touching more than ~10 pages (default: stop and report the page list),
+- picking a winner when two sources contradict each other (default: record both in the page).
 
 Everything else (editing a page, adding a page or topic folder, updating index and log) proceeds without asking.
 

@@ -26,7 +26,7 @@
       "name": "scout",
       "source": "./plugins/scout",
       "description": "Research and search. research-orchestrator routes a query to the github / hf / web / docs scout agents in parallel and synthesis-scout dedups, trust-ranks, and writes the report (exa MCP first, WebSearch fallback, brightdata tier-3, insane-search tier-4). ask and generate-llmstxt query a GitHub repository through the DeepWiki MCP. Non-code/ML topics go to the sibling /deep-research.",
-      "version": "2.0.3",
+      "version": "2.0.4",
       "category": "research"
     },
     {
@@ -40,7 +40,7 @@
       "name": "wiki",
       "source": "./plugins/wiki",
       "description": "Outside-knowledge wiki under .llmwiki/: facts about what the repo does not control (platforms, vendors, customers, the domain), kept as untouched originals in raw/ and concept pages with a ## Sources section in wiki/. ingest (a source document or a fact learned while working into concept pages, updates index.md and log.md, writes only into an existing .llmwiki/ (no scaffold), turns decisions, terms and repeated mistakes away to docs/adr, GLOSSARY.md and /retro), query (cited answers from index -> pages -> raw, saves a new answer only after approval), lint (stale pages, broken links and Sources, orphans, index drift), plaud-note-taking (PLAUD Whisper transcript correction into .llmwiki/raw/transcripts/, hands facts to ingest). No hooks, no scripts.",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "category": "memory"
     },
     {

@@ -1,6 +1,6 @@
 # Agent Routing Matrix
 
-Detailed routing decisions for `research-orchestrator`. Keep this table in sync with each scout's `## When NOT to use` block.
+Routing decisions for `research-orchestrator`: 8 single-axis triggers, the deep-mode triggers, and the near-miss cases that belong to another tool. Each scout's `## Coordination` block names the same axis boundaries.
 
 ## Single-axis triggers (quick mode)
 
@@ -27,7 +27,7 @@ Any of these forces deep fan-out:
 
 ## should / should-NOT for `research-orchestrator`
 
-**Should trigger:**
+Should trigger:
 1. "ML 모델 조사" — research request
 2. "PyTorch 베스트프랙티스 검색" — best-practices is a deep trigger
 3. "Llama 4 deployment 모범사례" — multi-axis (docs + web + HF)
@@ -37,31 +37,20 @@ Any of these forces deep fan-out:
 7. "Research RAG eval frameworks 2026" — deep
 8. "리액트 상태관리 라이브러리 비교" — comparison
 
-**Should NOT trigger (route elsewhere):**
+Should NOT trigger (route elsewhere):
 1. "단순 GitHub PR 검색 / merge" → `gh` directly, or `dev:review-loop` for an open PR's review
 2. "Ask a single question about pytorch/serve repo" → `scout:ask` directly
 3. "Resolve library ID for langchain" → `context7` MCP directly
-4. "한국 대선 정책 리서치" / "tesla market share history" / "general policy / biography / market trend" — anything **outside the code/ML domain** → `/deep-research` directly. Its 7-phase + adversarial verify + state machine is built for generic topics; scout's routes are tuned for code/ML and would mis-route. **Orchestrator does NOT delegate to /deep-research** — boundary is intentional, user invokes it themselves.
+4. "한국 대선 정책 리서치" / "tesla market share history" / "general policy / biography / market trend": anything outside the code/ML domain → `/deep-research` directly. Scout's routes are tuned for code/ML and would mis-route; the orchestrator does not delegate to it, the user invokes it.
 5. "Translate this article" → `docs:translate-web-article`
 6. "Generate a CHANGELOG entry" → `docs:changelog`
 
 ## Near-miss disambiguation
 
-### vs. `/deep-research`
-
-`/deep-research` is the sibling plugin for **non-code/ML** topics — politics, market, policy, history, biographies, general knowledge. It runs a 7-phase pipeline with adversarial verify and a state-machine for long sessions. `scout`'s routing is tuned for code/ML/docs and would mis-route on generic topics (e.g., a github-scout pass on a political-policy query returns junk). Pick by domain: code/ML → scout; everything else → `/deep-research`. The orchestrator does **not** delegate to `/deep-research`; the user calls each tool directly. This boundary keeps each harness focused on the domain it was tuned for.
-
-### vs. `scout:ask`
-
-`scout:ask` is a single-question wrapper around DeepWiki MCP. If the user asks one focused question about one repo, use it. `docs-scout` (within orchestrator) bundles Context7 + DeepWiki across topics — use it when the user wants a researched answer, not a quick lookup.
-
-### vs. `dev:*`
-
-`dev:*` skills act on GitHub state — issues, PRs, reviews, releases. `github-scout` is read-only discovery. If the user is editing repo state, never route through orchestrator.
-
-### vs. direct exa MCP
-
-If the user has a very narrow factual web query ("what was Anthropic's Opus 4.7 release date") they can hit exa directly via the MCP. `web-scout` is for queries that benefit from 2-3 query variants + synthesis with other axes.
+- **vs. `/deep-research`**: pick by domain. Code, ML and docs go to scout; politics, markets, policy, history, biographies and general knowledge go to `/deep-research`, because a github-scout pass on a policy query returns junk.
+- **vs. `scout:ask`**: `scout:ask` is a single-question wrapper around DeepWiki MCP, so one focused question about one repo goes there. `docs-scout` bundles Context7 + DeepWiki across topics for a researched answer.
+- **vs. `dev:*`**: `dev:*` skills act on GitHub state (issues, PRs, reviews, releases), while `github-scout` is read-only discovery. Never route repo-state edits through the orchestrator.
+- **vs. direct exa MCP**: a narrow factual web query ("what was Anthropic's Opus 4.7 release date") can go straight to exa. `web-scout` is for queries that gain from 2-3 query variants and synthesis with other axes.
 
 ## Axis selection cheat-sheet
 

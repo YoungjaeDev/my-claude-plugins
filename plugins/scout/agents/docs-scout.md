@@ -20,7 +20,7 @@ Single-axis scout for canonical documentation. Fans out under `research-orchestr
 
 ## Tools
 
-- `mcp__context7__resolve-library-id` → `mcp__context7__get-library-docs` (public Context7 canonical: takes `context7CompatibleLibraryID` + `topic` args) for library API and migration docs; some local Context7 installs expose the older variant `mcp__context7__query-docs` (takes `libraryId` + `query`) — try the public name first, fall back to the variant if not registered
+- `mcp__context7__resolve-library-id` → `mcp__context7__query-docs` for library API and migration docs. Older Context7 installs expose `mcp__context7__get-library-docs` instead (`context7CompatibleLibraryID` + `topic`); use it when `query-docs` is not registered.
 - `mcp__deepwiki__ask_question` for repo-specific architecture / "how does X work" questions
 - `mcp__deepwiki__read_wiki_structure` / `read_wiki_contents` when you need a topic map first
 
@@ -29,7 +29,7 @@ Single-axis scout for canonical documentation. Fans out under `research-orchestr
 1. Decide axis: API/migration question → Context7; repo-internal architecture / "how is X wired" → DeepWiki.
 2. Context7 path:
    - `resolve-library-id` with the closest library name
-   - `query-docs` with a focused topic (≤ 5 words)
+   - `query-docs` (or `get-library-docs`) with a focused topic (≤ 5 words)
 3. DeepWiki path:
    - If `repo_hint` missing, derive from `query` (e.g. "pytorch serve deployment" → `pytorch/serve`)
    - Use `ask_question` with a precise question; use `read_wiki_structure` only if `ask_question` returns too shallow
@@ -66,10 +66,4 @@ Reliability rubric: `high` = official docs / DeepWiki verbatim quote, `medium` =
 
 - If your `${artifact_id}.json` already exists from a prior run, overwrite it. Partial re-execution intentionally re-runs only the targeted scout's slot; sibling artifacts in the same workspace are left untouched by the orchestrator.
 - If both MCPs fail or return empty, write `findings: []` with an `error` field — synthesis can still proceed with other axes.
-- Do not call other scouts.
-
-## When NOT to use
-
-- General community sentiment (`web-scout`)
-- GitHub repo discovery (`github-scout`)
-- HF models/datasets (`hf-scout`)
+- Do not call other scouts. Stay in your axis: community sentiment belongs to `web-scout`, GitHub repo discovery to `github-scout`, HF models and datasets to `hf-scout`.

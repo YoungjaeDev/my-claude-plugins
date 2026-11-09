@@ -12,7 +12,7 @@
 #
 # Hang-fix design (Step 6, replaces 1800s unilateral spin):
 #   - After EARLY_CHECK_WINDOW seconds of wall-clock without seeing status, probe rate-limit body.
-#   - If rate-limit detected, emit rate_limited JSON and exit 0 → SKILL.md Step 7c.
+#   - If rate-limit detected, emit rate_limited JSON and exit 0 → Step 7c (references/procedure.md).
 #   - Otherwise keep polling status.
 set -euo pipefail
 
@@ -102,7 +102,10 @@ while true; do
   # polling until it flips to `Review completed`, or grace expires.
   if [ "$s" = "success" ] && printf '%s' "$desc" | grep -qiE '^Review skipped: free tier disabled'; then
     now_ts=$(date +%s)
-    : "${skip_first_ts:=$now_ts}"
+    # Age the row from its own created_at, as pre-flight does, so a re-run with the
+    # remaining cap keeps the grace instead of restarting it; first sight otherwise.
+    row_ts=$(jq -r 'try (.created_at | fromdateiso8601 | floor) catch empty' <<<"$cr_obj" 2>/dev/null || true)
+    : "${skip_first_ts:=${row_ts:-$now_ts}}"
     if [ "$((now_ts - skip_first_ts))" -ge "$CR_SKIP_GRACE" ]; then
       emit_rate_limited
     fi

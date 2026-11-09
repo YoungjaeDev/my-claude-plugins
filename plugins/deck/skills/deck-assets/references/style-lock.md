@@ -23,7 +23,7 @@ Cell lines name one object each ("a padlock", "a circular loop of two arrows (re
 ## STYLE LOCK (3D icon sheet, `ralphdev-light` template)
 
 The `ralphdev-light` template draws icons in soft 3D, not pixels, on its light canvas. Generate at `--size 1920x1920`; a
-sheet that comes back smaller (one came back 1254px and was upscaled) is fine for 220px cells but say so. Before slicing,
+sheet that comes back smaller is fine for 220px cells but say so. Before slicing,
 match each cell's background to the slide background `#FDFDFD`, or a faint square shows around the icon.
 
 ```text

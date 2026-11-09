@@ -1,6 +1,10 @@
 # review-loop run blocks
 
-The shell each step of `SKILL.md` runs, in run order. SKILL.md keeps the step sequence and each step's decision rule; each section below is named in the step that runs it and is run verbatim. Later blocks read variables earlier ones set, so the run needs one shell: a runtime whose shell calls do not share state (Claude Code's Bash tool, a zsh default) runs each block under `bash` and carries the variables in a file: it sources the file at the top of every call and writes back every variable the block set before the call ends (sourcing alone saves nothing); the Step 2 functions go in a file sourced the same way. The Step 5 `for` loop cannot span calls either, so the agent drives it: it runs Steps 5a-13 once per iteration, leaves out the Step 5 `for` line and the Step 13 `done`, ends a block where it reaches a loop-level `continue` or `break` (a standalone shell does not stop there), reads a loop-level `continue` as "start the next iteration" (the Step 9c.1 `continue` only moves on to the next finding) and `break` as "leave the loop for Step 14". The Step 2 EXIT trap would fire when its own call ends, so it is set in the call that ends the run. It still runs every step in order — skipping Step 5 pre-flight on a later iteration hides a rate limit until the Step 7e wait has spent its whole budget. Every `scripts/` path resolves against `SKILL_DIR` from Step 1.
+The shell of each review-loop step, in run order, as 30 blocks. `procedure.md` holds each step's rule and names the block it runs; run each verbatim, with every `scripts/` path against `SKILL_DIR` from Step 1.
+
+- **One shell**: later blocks read variables earlier ones set. A runtime whose shell calls share no state (Claude Code's Bash tool, a zsh default) runs each block under `bash` and carries the variables in a file: source it at the top of every call and write back every variable the block set before the call ends. The Step 2 functions go in a file sourced the same way.
+- **The loop**: the Step 5 `for` cannot span calls, so the agent runs Steps 5a-13 once per iteration without the Step 5 `for` line and the Step 13 `done`. It ends a block at a loop-level `continue` (start the next iteration) or `break` (leave for Step 14); the Step 9c.1 `continue` only moves to the next finding.
+- **The trap**: the Step 2 EXIT trap would fire when its own call ends, so set it in the call that ends the run. Every step still runs in order: skipping Step 5 pre-flight on a later iteration hides a rate limit until the Step 7e wait has spent its budget.
 
 ## Step 2: repo, PR and counters
 
@@ -13,6 +17,7 @@ PR_NUM=$(gh pr list --head "$(git branch --show-current)" --state open --json nu
 applied_total=0; deferred_total=0; skipped_total=0
 review_total=0  # `review`-tier findings nobody could read; Step 14 files them too
 verification_blocking=false; VERIFICATION_GATE=unknown
+full_verification=""  # Step 14: the full line's loop-end result, when a fast line stood in for it
 codex_active=unknown; codex_review_id_to_process=""
 cli_invocations=0; rate_limit_hits=0
 auto_judge_apply=0; auto_judge_defer=0; auto_judge_skip=0
@@ -175,8 +180,8 @@ trap 'ITER=${ITER:-0} APPLIED_TOTAL=$applied_total DEFERRED_TOTAL=$deferred_tota
   MERGED=${merged:-false} PR_NUM=$PR_NUM LAST_SHA=$(git rev-parse HEAD 2>/dev/null) \
   CR_SOURCE=$CR_SOURCE CLI_INVOCATIONS=$cli_invocations RATE_LIMIT_HITS=$rate_limit_hits \
   AUTO_JUDGE_APPLY=$auto_judge_apply AUTO_JUDGE_DEFER=$auto_judge_defer AUTO_JUDGE_SKIP=$auto_judge_skip \
-  TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE VERIFICATION_GATE=$VERIFICATION_GATE \
-  CI_FAILING_CHECKS=${ci_failing_checks:-[]} HEAD_VERDICT=$HEAD_VERDICT \
+  TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE VERIFICATION_GATE=$VERIFICATION_GATE FULL_VERIFICATION=$full_verification \
+  CI_FAILING_CHECKS=${ci_failing_checks:-[]} CI_STATE_JSON="${ci_state_json:-null}" HEAD_VERDICT=$HEAD_VERDICT \
   DROPPED_REVIEWERS="$dropped_reviewers" CR_BASE_REQUESTED="$CR_BASE_REQUESTED" PENDING_DECISION="$pending_decision" \
   bash $SKILL_DIR/scripts/emit-final-json.sh' EXIT
 ```
@@ -208,8 +213,10 @@ fi
 ```bash
 # VERIFY_CMD: the repo's build + test line, from AGENTS.md (Step 3) or the project's
 # own entry points; empty when the repo names none. Lint is not part of it.
-VERIFY_CMD="${VERIFY_CMD:-}"
-VERIFICATION_GATE=$(NO_BUILD="$NO_BUILD" bash "$SKILL_DIR/scripts/verify-fix.sh" baseline "$VERIFY_CMD")
+# VERIFY_FAST_CMD: the AGENTS.md fast line (SKILL.md Step 3), empty when there is none.
+# When set, the baseline and every fix run it, and Step 14 runs VERIFY_CMD once.
+VERIFY_CMD="${VERIFY_CMD:-}"; VERIFY_FAST_CMD="${VERIFY_FAST_CMD:-}"
+VERIFICATION_GATE=$(NO_BUILD="$NO_BUILD" bash "$SKILL_DIR/scripts/verify-fix.sh" baseline "$VERIFY_CMD" "$VERIFY_FAST_CMD")
 [ "$VERIFICATION_GATE" = on ] \
   || echo "review-loop: verification gate off ($VERIFICATION_GATE) — fixes will be committed unverified" >&2
 ```
@@ -418,8 +425,21 @@ all=$(printf '%s\n%s\n' "$cr_records" "$codex_records" | jq -c -s --argjson j "$
 classified=$(echo "$all" | jq -c '.[]' \
   | while IFS= read -r rec; do printf '%s\n' "$rec" | SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
   | jq -s '.')
-# A stop Step 13 held resolves here, on the new HEAD's findings: only one that needs
-# a decision (gated, or unreadable) earns the extra round.
+```
+
+Now each CR or CLI record left at `review` gets its inferred tier (`tier-classification.md`, "Inferred tier for an unreadable CodeRabbit header"): write `inferred_severity` and `inferred_effort` into it, pipe it through `scripts/classify-item.sh` again, and put the result back in `classified`. Then run:
+
+```bash
+# An inferred Trivial or Info ends at skip and never reaches the Step 9c log, so its
+# key is kept here for the final JSON's inferred_tiers, once across rounds.
+skips=$(jq -c '[.[] | select(.tier_source == "inferred" and .tier == "skip")
+  | (.databaseId // .comment_id // "\(.path):\(.line)") | tostring]' <<<"$classified") || skips='[]'
+if [ "$skips" != '[]' ]; then
+  tmp=$(mktemp); jq --argjson k "$skips" '.inferred_skips = ((.inferred_skips // []) + $k | unique)' \
+    "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+fi
+# A stop Step 13 held resolves here, on the new HEAD's findings after inference: only
+# one that needs a decision (gated, or still unreadable) earns the extra round.
 if [ -n "$HOLD_STATE" ]; then
   if [ "$(jq '[.[] | select(.tier == "gated" or .tier == "review")] | length' <<<"$classified")" = 0 ]; then
     final_state="$HOLD_STATE"; break
@@ -461,7 +481,7 @@ Wraps each `apply`: `snap` before the first Edit of the finding, `check` after i
 # ... Edit the fix and its same-file siblings ...
 # Anything but `pass` fails: a check that died mid-revert prints nothing.
 if [ "$VERIFICATION_GATE" = on ] \
-   && [ "$(bash "$SKILL_DIR/scripts/verify-fix.sh" check "$snap" "$VERIFY_CMD")" != pass ]; then
+   && [ "$(bash "$SKILL_DIR/scripts/verify-fix.sh" check "$snap" "$VERIFY_CMD" "$VERIFY_FAST_CMD")" != pass ]; then
   # Reverted to $snap (or partly, if the check died). The apply becomes a defer, reason `verification-failed`.
   applied_this_cycle=$((applied_this_cycle-1)); auto_judge_apply=$((auto_judge_apply-1))
   deferred_this_cycle=$((deferred_this_cycle+1)); auto_judge_defer=$((auto_judge_defer+1))
@@ -582,6 +602,19 @@ if [ "$pushed_this_cycle" = true ]; then
       esac ;;
   esac
 fi
+# The fixes passed only the fast line: a run that can still merge runs the full line
+# once on HEAD (with held fixes, the local commit Step 15 would push to the base).
+# A failure leaves auto-merge off (the Step 15 gate); no fast line, or a gate Step 3
+# left off, runs nothing and full_verification stays null (#370).
+[ -z "${VERIFY_FAST_CMD:-}" ] || [ "${VERIFICATION_GATE:-}" != on ] || case "$final_state" in
+  clean|minor_floor|churn)
+    # Run it in the background where the runtime supports it when the full line is slow: one token.
+    full_verification=$(NO_BUILD="${NO_BUILD:-false}" bash "$SKILL_DIR/scripts/verify-fix.sh" full "${VERIFY_CMD:-}" "${VERIFY_FAST_CMD:-}")
+    # A check that died printed nothing, which fails: only `pass` lets the run merge.
+    case "$full_verification" in pass|fail) : ;; not_run) full_verification="" ;; *) full_verification=fail ;; esac
+    [ "$full_verification" != fail ] \
+      || echo "review-loop: the full build/test line failed on HEAD $(git rev-parse HEAD); auto-merge stays off" >&2 ;;
+esac
 # A converged HEAD whose CI checks fail has not converged (#317). Pending checks are
 # waited on under TIMEOUT; a lookup that fails keeps the state, and Step 15 re-reads.
 case "$final_state" in
@@ -592,8 +625,13 @@ case "$final_state" in
     ci=$(CAP="$TIMEOUT" INTERVAL="$INTERVAL" \
          PUSH_TIME="$(bash "$SKILL_DIR/scripts/push-time.sh" "$OWNER" "$REPO" "${REVIEWED_SHA:-$(git rev-parse HEAD)}")" \
          bash "$SKILL_DIR/scripts/ci-checks.sh" "$PR_NUM")
+    # The final report states CI with its reason whatever it is (#393); Step 15 re-reads it.
+    ci_state_json=$(jq -c '{state, reason, annotation}' <<<"$ci" 2>/dev/null) || ci_state_json=""
     case "$(jq -r '.state' <<<"$ci" 2>/dev/null | tr -d '\r')" in
       fail) final_state=ci_failing; ci_failing_checks=$(jq -c '.failing' <<<"$ci") ;;
+      # Jobs that never started (a billing lock, run 41364746682) are not a failing
+      # check: final_state is kept, and Step 15 still refuses the merge on them.
+      not_started) echo "review-loop: CI on HEAD never started: $(jq -r '.annotation // "no annotation"' <<<"$ci")" >&2 ;;
       error|"") echo "review-loop: CI checks on HEAD could not be read; final_state kept" >&2 ;;
     esac ;;
 esac
@@ -625,7 +663,7 @@ reviewers_on
 # Unread (`review`-tier) findings need the follow-up issue as much as deferred ones.
 left_behind=$((deferred_total + ${review_total:-0}))
 gate=$(FINAL_STATE="$final_state" CR_ON="$cr_on" CODEX_ON="$codex_on" DROPPED_REVIEWERS="${dropped_reviewers:-}" \
-       FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$left_behind" \
+       FULL_VERIFICATION="${full_verification:-}" FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$left_behind" \
        FOLLOWUP_APPEND_FAILED="$([ "$left_behind" -gt 0 ] && jq -r '.followup_issue.append_failed // false' "$STATE_FILE" || echo false)" \
        bash $SKILL_DIR/scripts/auto-merge-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$HEAD_SHA")
 eligible=$(jq -r '.eligible' <<<"$gate")
@@ -634,6 +672,9 @@ blocking=$(jq -r '.blocking_checks' <<<"$gate")
 proto=$(jq -r '.protection_http' <<<"$gate")
 base=$(jq -r '.base_branch' <<<"$gate")
 ci_state=$(jq -r '.ci_state' <<<"$gate" | tr -d '\r')
+# The latest CI look, with its reason, for the final JSON `ci_state` (#393).
+cs=$(jq -c '{state: .ci_state, reason: (.ci_reason // null), annotation: (.ci_annotation // null)}' <<<"$gate" 2>/dev/null) \
+  && ci_state_json=$cs
 # Merged or closed outside the run while it waited (PR #308): nothing to merge. Held
 # Minor fixes still reach an unprotected base after a merge (the Step 15 merge block).
 pr_state=$(gh pr view "$PR_NUM" --json state --jq '.state' 2>/dev/null) || pr_state=""
@@ -657,6 +698,8 @@ elif [ "$eligible" != "true" ]; then why=$(jq -r '.ineligible_reason' <<<"$gate"
 # (codex-only, cli) does not read its status: the HEAD verdict axis judged without it.
 elif [ "$cr_on" = true ] && [ "$cr_state" != success ] && [ "$cr_state" != pending ]; then
   why="cr_state=$cr_state is not a merge-approved state"
+elif [ "$ci_state" = not_started ]; then
+  why="CI on HEAD never started ($(jq -r '.ci_annotation // "no annotation"' <<<"$gate")); merge not attempted"
 elif [ "$blocking" != 0 ] && [ "$ci_state" = error ]; then why="CI checks on HEAD could not be read; merge not attempted"
 elif [ "$blocking" != 0 ]; then why="failing CI check(s) on HEAD: $(jq -r '.failing_checks | join(", ")' <<<"$gate")"
 # protection_http=0: the probe itself failed (network/auth/5xx) — never merge on an
@@ -675,9 +718,9 @@ if [ -z "$why" ] && { [ "$AUTO_MERGE" != true ] || [ "$proto" = 404 ] || [ -n "$
   if [ "${RUNNER:-false}" = true ] && [ -z "${MERGE_ANSWER:-}" ]; then
     pending_decision=$(jq -nc --argjson pr "$PR_NUM" --arg base "$base" --argjson proto "$proto" \
       --arg rs "$REVIEWED_SHA" --arg fs "$FIX_SHA" --argjson iter "${ITER:-0}" --arg vc "${VERIFY_CMD:-}" \
-      --argjson dr "$(bash "$SKILL_DIR/scripts/words-json.sh" "${dropped_reviewers:-}")" \
+      --arg vf "${VERIFY_FAST_CMD:-}" --argjson dr "$(bash "$SKILL_DIR/scripts/words-json.sh" "${dropped_reviewers:-}")" \
       '{question:"merge", pr:$pr, base:$base, protection_http:$proto, reviewed_sha:$rs, fix_sha:$fs,
-        iter:$iter, verify_cmd:$vc, dropped_reviewers:$dr}')
+        iter:$iter, verify_cmd:$vc, verify_fast_cmd:$vf, dropped_reviewers:$dr}')
     why="the merge question waits for the main session"
   elif [ "${MERGE_ANSWER:-}" != yes ]; then why="not merged: the user did not choose to merge"; fi
 fi
@@ -686,7 +729,7 @@ fi
 
 ## Step 15: merge
 
-Runs right after the gate block. The main session also runs it on its own, after it asked a runner's pending `merge` question (SKILL.md "Runner"), with `PR_NUM`, `base`, `proto` (`protection_http`), `REVIEWED_SHA`, `FIX_SHA`, `ITER` and `VERIFY_CMD` from `pending_decision`, `STATE_FILE` set to the newest `.claude/state/archive/review-loop-<PR>-*.json`, `pending_decision` empty, and `why` empty on "Merge" or `not merged: the user did not choose to merge` otherwise.
+Runs right after the gate block. The main session also runs it on its own, after it asked a runner's pending `merge` question (SKILL.md "Runner"), with `PR_NUM`, `base`, `proto` (`protection_http`), `REVIEWED_SHA`, `FIX_SHA`, `ITER`, `VERIFY_CMD` and `VERIFY_FAST_CMD` from `pending_decision`, `STATE_FILE` set to the newest `.claude/state/archive/review-loop-<PR>-*.json`, `pending_decision` empty, and `why` empty on "Merge" or `not merged: the user did not choose to merge` otherwise.
 
 ```bash
 if [ -z "$why" ]; then
@@ -703,14 +746,16 @@ if [ -z "$why" ]; then
   fi
 fi
 # Minor fixes Step 12 held back (merge_then_main_push): onto the base once the merge
-# has landed (scripts/base-push.sh: build/test and pre-commit there first), else back
+# has landed (scripts/base-push.sh: build/test and pre-commit there first; the fast line when
+# there is one, since Step 14 already ran the full line on these fixes), else back
 # to the PR, whose review this run does not wait for. While the main session has not
 # answered a runner's merge question they stay on the local commit.
 if [ -n "$REVIEWED_SHA" ] && [ -n "${pending_decision:-}" ]; then
   echo "review-loop: Minor fixes stay on local commit $FIX_SHA until the merge question is answered" >&2
 elif [ -n "$REVIEWED_SHA" ]; then
-  if [ "${merged:-false}" = true ] && [ "$proto" = 404 ]; then
-    if pushed=$(bash "$SKILL_DIR/scripts/base-push.sh" "$base" "$REVIEWED_SHA" "$FIX_SHA" "$VERIFY_CMD"); then
+  # A failed full line keeps them off the base even when someone else merged the PR.
+  if [ "${merged:-false}" = true ] && [ "$proto" = 404 ] && [ "${full_verification:-}" != fail ]; then
+    if pushed=$(bash "$SKILL_DIR/scripts/base-push.sh" "$base" "$REVIEWED_SHA" "$FIX_SHA" "${VERIFY_FAST_CMD:-$VERIFY_CMD}"); then
       tmp=$(mktemp); jq --arg b "$base" --arg s "$pushed" --argjson it "$ITER" \
         '.base_push = {branch:$b, sha:$s, fixes:[.auto_judge_log[]? | select(.iter == $it and .action == "apply")
            | {src, path, line, badge_or_sev}]}' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"

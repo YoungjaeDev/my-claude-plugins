@@ -43,6 +43,11 @@
       },
       "additionalProperties": false
     },
+    "inferred_tiers": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Step 9c decisions on a CodeRabbit finding whose header scripts/cr-header.jq could not read, judged on the model's inferred severity and effort (`tier_source: \"inferred\"` in auto_judge_log, references/tier-classification.md), plus the ones inferred as Trivial or Info, which end at tier skip with no log record (state `inferred_skips`). Above 0, the final report gives the count and one line saying CodeRabbit's header format may have changed."
+    },
     "followup_issue": {
       "description": "The issue Step 14 filed for the findings this run left behind. Null when nothing was left behind, or when creation failed (in which case auto-merge stays blocked).",
       "oneOf": [
@@ -52,7 +57,9 @@
           "required": ["number", "url"],
           "properties": {
             "number": { "type": "integer", "minimum": 1 },
-            "url":    { "type": "string" }
+            "url":    { "type": "string" },
+            "split":  { "enum": ["sub_issues", "task_list", "failed"], "description": "Present when the run deferred more than SUB_ISSUE_THRESHOLD (references/coordination.md) findings. sub_issues: one sub-issue per finding; task_list: the sub-issues API failed, so the findings are a task list in the issue body; failed: the parent body could not be read or edited; sub-issues already filed stay in unlinked and are linked on a re-run. None of them blocks the merge." },
+            "sub_issues": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "description": "Sub-issue numbers filed under this issue, kept across re-runs on the same PR." }
           },
           "additionalProperties": true
         }
@@ -62,6 +69,22 @@
       "type": "array",
       "items": { "type": "string" },
       "description": "Names of the CI checks that failed on the final HEAD when final_state is ci_failing (CodeRabbit and Codex checks left out, scripts/ci-checks.sh). Empty otherwise."
+    },
+    "ci_state": {
+      "description": "HEAD's CI as Step 15's gate last read it (scripts/ci-checks.sh, CodeRabbit and Codex checks left out), Step 14's read when the run ended before Step 15. The final report always states it with its reason. Null when the run ended before either step read CI.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["state", "reason", "annotation"],
+          "properties": {
+            "state":      { "type": "string", "enum": ["pass", "fail", "not_started", "pending", "none", "error"], "description": "not_started: every failing check is an Actions job that never started (no step, no runner, e.g. a billing lock). It is not ci_failing, but it blocks the merge as a failing check does." },
+            "reason":     { "oneOf": [ { "type": "null" }, { "type": "string", "enum": ["no_trigger"] } ], "description": "no_trigger: state none and no workflow run on the PR's head commit, so no workflow triggers on this branch and event." },
+            "annotation": { "type": ["string", "null"], "description": "For not_started, the check run's failure annotation quoted as GitHub gave it." }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "head_verdict": {
       "description": "Why the final HEAD was left without every reviewer's verdict: timeout (the wait budget ran out) or unread (findings arrived after the last round). Null when every verdict came in. It files no follow-up issue by itself and keeps auto-merge off.",
@@ -113,6 +136,11 @@
       "type": "string",
       "enum": ["on", "baseline_failed", "no_build_check", "no_command", "unknown"],
       "description": "Step 3 baseline result for the pre-commit build/test gate (scripts/verify-fix.sh). Anything but `on` means fixes were committed unverified: the repo failed before the loop touched it, --no-build-check was passed, or the repo names no build/test command."
+    },
+    "full_verification": {
+      "type": ["string", "null"],
+      "enum": ["pass", "fail", null],
+      "description": "The full build/test line, run once at the end of the loop (scripts/verify-fix.sh full) when AGENTS.md also names a fast line, which the baseline and every fix ran instead. `fail` leaves the run ineligible for auto-merge and keeps held Minor fixes off the base. Null: no fast line (every fix already ran the full line), --no-build-check or another gate Step 3 left off (baseline_failed, no_command), or a final_state that cannot merge."
     },
     "pre_flight_last": {
       "description": "v2 Step 5 pre-flight decision blob from the LAST iteration (the archived state file preserves all iters). Null when CR_SOURCE bypassed pre-flight (cli / codex-only).",

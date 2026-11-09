@@ -51,7 +51,9 @@ templates/{request.json,result.json,site-playbook.md}
 6. 안전한 종료를 확인한 뒤 release/status를 수행해 결과에 반영한다. 새 사이트 노하우는 candidate로 남기고 독립 재실행 후 verified로 승격한다.
 
 ## 인증·승인 재개
-로그인·2FA·수동 승인에 막히면 `waiting_for_user`, `executor`, 실제 `aside_session_id` 또는 null과 이유, `blocked_step`, `required_user_action`, `resume_hint`를 기록하고 사용자에게 돌아간다. 실제 세션이 시작됐다면 예약을 유지한다. 사용자의 명시적 계속 요청 후 같은 Aside 세션과 현재 사이트 상태를 조정하고 재개한다. 세션 만료·결과불명은 중복 변경 전에 실제 상태부터 확인한다. 자동 로그인 감시는 없다. 명령 승인을 피하려고 인라인 실행 계층에 숨기거나 전역 허용·권한 우회를 켜지 않는다.
+- 로그인·2FA·수동 승인에 막히면 `waiting_for_user`, `executor`, 실제 `aside_session_id` 또는 null과 이유, `blocked_step`, `required_user_action`, `resume_hint`를 기록하고 사용자에게 돌아간다. 실제 세션이 시작됐다면 예약을 유지한다.
+- 사용자의 명시적 계속 요청 후 같은 Aside 세션과 현재 사이트 상태를 조정하고 재개한다. 세션 만료·결과불명은 중복 변경 전에 실제 상태부터 확인한다.
+- 자동 로그인 감시는 없다. 명령 승인을 피하려고 인라인 실행 계층에 숨기거나 전역 허용·권한 우회를 켜지 않는다.
 
 ## 상태와 기록 보안
 - 상태: accepted / running / waiting_for_user / succeeded / failed / unknown / cancelled.

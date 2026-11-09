@@ -2,10 +2,12 @@
 # Usage: [FINAL_STATE=clean] [FOLLOWUP_ISSUE=<number>] [DEFERRED_TOTAL=N] \
 #        [CR_ON=true|false] [CODEX_ON=auto|true|false] [FOLLOWUP_APPEND_FAILED=true|false] \
 #        [STATE_FILE=<state json>] [FIX_ITER=N] [VERIFICATION_GATE=on|...] [MINOR_STOP=true|false] \
-#        [DROPPED_REVIEWERS="coderabbit codex"] bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
+#        [DROPPED_REVIEWERS="coderabbit codex"] [FULL_VERIFICATION=pass|fail] \
+#        bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
 # The loop's end-of-cycle and end-of-run decisions, as one JSON line on stdout:
 #   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N,
-#    "ci_state":"<ci-checks.sh state>", "failing_checks":[names], "base_branch":"...",
+#    "ci_state":"<ci-checks.sh state>", "ci_reason":..., "ci_annotation":...,
+#    "failing_checks":[names], "base_branch":"...",
 #    "protection_http":200|404|0, "eligible":bool, "ineligible_reason":"..."|null,
 #    "next_action":"rereview_push|merge_then_main_push", "file_issue":bool,
 #    "dropped_reviewers":[names]}
@@ -15,10 +17,13 @@
 # `next_action` (ADR 0006): who reviews the fixes iteration FIX_ITER applied (its
 # `apply` records in STATE_FILE's auto_judge_log). One from a Critical/High/Major,
 # Security or Codex P0-P1 finding, or reassessed high, goes back to the PR for
-# re-review. When all are Minor or lower, the reviewed HEAD merges and the fixes go
+# re-review, and so does one whose tier the model inferred from an unreadable header
+# (`tier_source: "inferred"`, #392), whatever severity it inferred: no header backs
+# it. When all are Minor or lower, the reviewed HEAD merges and the fixes go
 # straight to the base, which needs an unprotected base (404: a protected one takes
-# no direct push), the build/test gate on and MINOR_STOP not false. Anything
-# unreadable re-reviews.
+# no direct push), the build/test gate on and MINOR_STOP not false; a failed loop-end
+# full line blocks the merge itself through `eligible` (Step 15). Anything unreadable
+# re-reviews.
 # `file_issue`: a state that files the follow-up issue left something behind
 # (DEFERRED_TOTAL, deferred plus unread; unset reads as some). A HEAD without every
 # verdict and failing CI alone file none: the final report carries them.
@@ -26,7 +31,8 @@
 # qualify once the follow-up issue exists whenever one is due. HEAD verdicts: every
 # reviewer that is on (CR_ON, CODEX_ON, as scripts/head-verdicts.sh reads them) gave
 # HEAD_SHA findings or clean; a HEAD with no verdict, or only a rate-limit notice,
-# does not qualify (ADR 0002). The caller still enforces cr_state / blocking_checks /
+# does not qualify (ADR 0002). A failed loop-end full build/test line
+# (FULL_VERIFICATION=fail) disqualifies too. The caller still enforces cr_state / blocking_checks /
 # protection_http before merging (references/run-blocks.md, Step 15).
 # This script does NOT call gh pr merge — separation of probe vs action.
 set -euo pipefail
@@ -65,6 +71,8 @@ esac
 # A re-run that could not append its new defers to the inherited issue has findings
 # recorded nowhere a person will look; that blocks the merge like a failed create.
 if [ "${FOLLOWUP_APPEND_FAILED:-false}" = true ]; then eligible=false; reason="follow-up issue append failed"; fi
+# The fixes passed only the fast line; the full one failed on them at the loop end (#370).
+if [ "${FULL_VERIFICATION:-}" = fail ]; then eligible=false; reason="full verification failed on HEAD (the full build/test line)"; fi
 
 # HEAD verdict axis: one look (CAP=0), never a wait — the loop already waited.
 # PUSH_TIME too: without it a Codex 👍-only clean verdict cannot be read (codex-head-verdict.sh).
@@ -99,6 +107,9 @@ cr_state="${cr_state:-unknown}"
 ci=$(CAP=0 bash "$SCRIPT_DIR/ci-checks.sh" "$PR_NUM" 2>/dev/null) || ci=""
 ci_state=$(jq -r '.state // "error"' <<<"$ci" 2>/dev/null | tr -d '\r') || ci_state=error
 failing=$(jq -c '.failing // []' <<<"$ci" 2>/dev/null) || failing='[]'
+# Why there is no check, or why the jobs never started (#393): for the final report only.
+ci_reason=$(jq -r '.reason // empty' <<<"$ci" 2>/dev/null) || ci_reason=""
+ci_annotation=$(jq -r '.annotation // empty' <<<"$ci" 2>/dev/null) || ci_annotation=""
 [ -n "$failing" ] || failing='[]'
 blocking=$(jq 'length' <<<"$failing" | tr -d '\r')
 # A lookup we could not make reports 1 so the caller refuses to merge on an
@@ -129,6 +140,7 @@ severe=$(jq --argjson it "${FIX_ITER:-0}" '[.auto_judge_log[]?
     | select(.iter == $it and .action == "apply")
     | select(((.category // "") | test("Security"; "i"))
              or ((.badge_or_sev // "") | tostring | test("^P?[01]$|Critical|High|Major"; "i"))
+             or (.tier_source == "inferred")
              or (.judgment.severity_reassess? == "high"))] | length' "${STATE_FILE:-/nonexistent}" 2>/dev/null) || severe=""
 # The protection endpoint 404s on a base guarded only by a ruleset; the branch's
 # `protected` flag covers both, so a direct push needs it false too.
@@ -145,6 +157,8 @@ jq -nc \
   --arg cr "$cr_state" \
   --argjson bc "$blocking" \
   --arg ci "$ci_state" \
+  --arg ci_reason "$ci_reason" \
+  --arg ci_ann "$ci_annotation" \
   --argjson failing "$failing" \
   --arg base "$base" \
   --argjson http "$http" \
@@ -153,6 +167,8 @@ jq -nc \
   --arg next "$next_action" \
   --argjson file_issue "$file_issue" \
   --argjson dropped "$(bash "$SCRIPT_DIR/words-json.sh" "${DROPPED_REVIEWERS:-}")" \
-  '{cr_state:$cr, blocking_checks:$bc, ci_state:$ci, failing_checks:$failing, base_branch:$base,
+  '{cr_state:$cr, blocking_checks:$bc, ci_state:$ci,
+    ci_reason:(if $ci_reason == "" then null else $ci_reason end),
+    ci_annotation:(if $ci_ann == "" then null else $ci_ann end), failing_checks:$failing, base_branch:$base,
     protection_http:$http, eligible:$eligible, ineligible_reason:(if $reason == "" then null else $reason end),
     next_action:$next, file_issue:$file_issue, dropped_reviewers:$dropped}'

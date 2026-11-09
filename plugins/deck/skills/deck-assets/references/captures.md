@@ -28,11 +28,11 @@ node "$SCRIPTS/capture-page.cjs" --out deck/assets/<source> --base http://127.0.
   --viewport 390x844 --scale 2 --storage theme=light --blur '.avatar,.story-ring img' --suffix light / /users/me
 ```
 
-One run per theme or state: `--storage key=value` presets localStorage before load (repeatable), `--suffix` names the variant. `--blur` takes CSS selectors for avatar-like images. Output is `<slug>[-<suffix>].png`, one line per file. It tries bundled Chromium, then system Chrome. Playwright comes from the plugin root (`npm ci --ignore-scripts`) or `NODE_PATH`.
-
-## Web pages: fresh Playwright context first
-
-Capture a public web page with `capture-page.cjs` given a full URL (`--viewport 1440x900 --scale 2 https://...`). Each run opens a fresh Playwright context: exact viewport and pixel scale, no login, no history, no extension. Claude in Chrome captures at the window's own size and resolution and some sites refuse it, so keep it for a page that needs the user's own login, and redact that capture.
+- One run per theme or state: `--storage key=value` presets localStorage before load (repeatable), `--suffix` names the variant.
+- `--blur` takes CSS selectors for avatar-like images. Output is `<slug>[-<suffix>].png`, one line per file.
+- It tries bundled Chromium, then system Chrome. Playwright comes from the plugin root (`npm ci --ignore-scripts`) or `NODE_PATH`.
+- A public web page is captured the same way given a full URL (`--viewport 1440x900 --scale 2 https://...`). Each run opens a fresh Playwright context: exact viewport and pixel scale, no login, no history, no extension.
+- Claude in Chrome captures at the window's own size, so keep it for a page that needs the user's own login, and redact that capture.
 
 ## Search result pages
 
@@ -55,6 +55,4 @@ Try another search engine with `capture-page.cjs` first and fall back to the sam
 
 Coordinates are source pixels of the original; blur runs first, then the crop, so crop boxes and blur coordinates share one coordinate system. Prints the output size. Self-test: `"$PY" "$SCRIPTS/redact-image.py" --selftest`.
 
-## Verify before logging
-
-Read every output image (the Read tool shows it) and confirm no face, name, ID or private text remains and the crop is right. Only then add the `captures.md` row.
+Before logging any capture, read every output image (the Read tool shows it) and confirm no face, name, ID or private text remains and the crop is right. Only then add the `captures.md` row.

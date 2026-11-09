@@ -9,59 +9,61 @@ allowed-tools:
   - Grep
   - Task
   - Skill
+  - AskUserQuestion
 ---
 
 # README Command
 
-Generate or analyze README files using patterns from awesome-readme.
+Generate a README.md from one of 7 templates, or score an existing one in 9 categories, using patterns from 9 analyzed awesome-readme projects.
 
 ## Arguments
 
-- `generate` - Create new README from template
-- `analyze` - Analyze existing README and suggest improvements
-
-## Options
-
-- `--type TYPE` - Project type for generation:
-  - `cli` - Command-line tool
-  - `library` - npm/pip package
-  - `react-component` - React UI component
-  - `mcp-plugin` - Claude Code plugin
-  - `saas` - Web application
-  - `desktop` - Desktop application
-  - `internal` - Company-internal repository: R&D or PoC, edge hardware, ML training
+- `generate`: create a new README from a template.
+- `analyze`: score an existing README and suggest improvements.
+- `--type TYPE`: project type for `generate`. `cli` (command-line tool), `library` (npm or pip package), `react-component` (React UI component), `mcp-plugin` (Claude Code plugin), `saas` (web application), `desktop` (desktop application), `internal` (company-internal repository: R&D or PoC, edge hardware, ML training).
 
 ## Instructions
 
 ### For `generate`
 
-0. Load `Skill("docs:doc-guides")` and follow its `## README` section
+0. Load `Skill("docs:doc-guides")` and follow its `## Human-read documents` and `## README` sections
 1. Determine project type from argument or by analyzing project structure
 2. Read the appropriate template from `references/TEMPLATES.md`
 3. Gather project info:
    - Package name from package.json, setup.py, Cargo.toml, etc.
    - Description from package config
    - Existing commands/API
-4. **Generate visual assets** with `/codex-image:codex-image`, following `## Visual Assets Generation`
-   below: a text-free banner pair (`assets/banner-light.png`, `assets/banner-dark.png`) by default,
-   or a logo (`assets/logo.png`) when the user wants a logo header instead.
-5. Generate README customized for the project
+4. Propose figures, then generate only what the user confirms (the `Figures` gate in
+   `## Human-read documents`):
+   - Top image: a real UI or result screenshot when one exists. Look for one in the repository
+     (`assets/`, `docs/`, `images/`, an existing demo GIF) or ask the user for the file.
+   - Only when none exists: a text-free banner pair (`assets/banner-light.png`,
+     `assets/banner-dark.png`) with `/codex-image:codex-image`, or a logo (`assets/logo.png`) when
+     the user wants a logo header, following `## Visual Assets Generation` below.
+   - A `stack-diagram` structure diagram when the project has service connections, an architecture
+     or a data flow.
+5. Generate the README for the project: shape, tone and TOC per `## Human-read documents`, which
+   applies `references/writing-standard.md` to every line written
 6. Apply CRO best practices from `references/CRO_CHECKLIST.md`
+7. Run the final polish step of `## Human-read documents` and report which path ran
 
 ### For `analyze`
 
-0. Load `Skill("docs:doc-guides")` and follow its `## README` section
+0. Load `Skill("docs:doc-guides")` and follow its `## Human-read documents` and `## README` sections
 1. Read existing README.md
 2. Check against patterns in `references/README_PATTERNS.md`
 3. Evaluate using `references/CRO_CHECKLIST.md`
 4. Provide specific improvement suggestions with examples
 5. Score each category:
-   - Header (banner or logo, badges, tagline; banner against the `CRO_CHECKLIST.md` Banner Check)
+   - Header (top image, badges, tagline): a real UI or result screenshot when one exists, otherwise a banner checked against the `CRO_CHECKLIST.md` Banner Check
    - Demo (directly under the badges; result image or measured table when there is no UI)
    - Quick Start (time to first success)
    - Features (benefit-oriented)
    - Examples (progressive complexity)
    - Trust signals (social proof, transparency)
+   - TOC (present right after the top summary when there are 4 or more `##` headings)
+   - Tone and shape (`writing-standard.md`: list items and table cells end in a noun or 개조식 `~음`/`~함`, 합니다체 only for a request to act or a complete summary; paragraphs at or under 600 bytes, no section under 3 body lines)
+   - Figures (a structure diagram where the text describes service connections, architecture or data flow; banner in the house style)
 
 ## Output Format
 
@@ -71,6 +73,7 @@ Write README.md to project root with:
 - Appropriate template structure
 - Placeholder comments for user to fill
 - All CRO elements included
+- The real UI or result screenshot on top when one exists, otherwise the confirmed banner
 
 ### For analyze
 
@@ -99,7 +102,7 @@ Facts and sources behind these steps: `references/README_PATTERNS.md` `## Banner
 
 ### Banner
 
-Default goal: corporate trust and one clear message. Use the pop style (one object or mascot,
+Used only when the project has no real UI or result screenshot for the top image. Default goal: corporate trust and one clear message. Use the pop style (one object or mascot,
 2-3 saturated colors, thick outlines) only when the user asks for it.
 
 1. **Write the message first.** A headline of one sentence, 8 words or fewer, that states the value
@@ -157,7 +160,7 @@ Asset type: GitHub README banner, light theme; will be cropped to a 3:1 strip; t
 Primary request: calm, corporate visual for <project domain, e.g. edge AI video analytics>
 Scene/backdrop: flat off-white background with a very subtle soft gradient, no horizon
 Subject: <one simple object that stands for the domain, e.g. a small compute board and a camera as clean geometric shapes>
-Style/medium: clean flat-3D product illustration, soft even lighting, precise geometry, matte surfaces
+Style/medium: soft 3D product illustration, smooth clay-like rounded forms, soft even studio lighting, matte surfaces
 Composition/framing: very wide landscape; all objects inside the middle 50% of the image height; objects in the right 40%, the left 60% left empty for the headline
 Color palette: white, light grey and charcoal neutrals, plus <brand accent hex> as the only accent, on one element
 Constraints: no text, no letters, no numbers, no logos or trademarks, no mascot, no watermark
@@ -178,7 +181,7 @@ Only when the user wants a logo header instead of a banner.
 
 ### Asset Placement
 
-Banner (default):
+Banner (when no real UI or result screenshot exists):
 
 ```html
 <picture>

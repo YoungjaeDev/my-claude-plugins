@@ -4,7 +4,7 @@ Shared hygiene reference for `github-scout` and `hf-scout`. Tool-specific call p
 
 ## Tool priority
 
-Primary tools are **portable CLIs on `$PATH`**, not skill-internal scripts. Prefer the direct tools first:
+Primary tools are portable CLIs on `$PATH`, not skill-internal scripts. Prefer the direct tools first:
 
 | Platform | Primary (cwd-free, no Python) | Fallback (structured JSON) |
 |---|---|---|
@@ -21,7 +21,7 @@ Primary tools are **portable CLIs on `$PATH`**, not skill-internal scripts. Pref
 date +%Y-%m-%d
 ```
 
-Use the **current year** in queries for recency filtering. Don't hard-code last year.
+Use the current year in queries for recency filtering. Don't hard-code last year.
 
 ### 2. Natural query formulation
 
@@ -131,32 +131,19 @@ Download into `$WORKSPACE/dl/` (under the gitignored `.tmp/research/` run direct
 
 ## Optional Python wrappers
 
-Use only when you want JSON filtering beyond what `gh` flags / `curl + jq` support. PEP 723 inline metadata lets `uv` run them from anywhere:
+Use them only when you want JSON filtering beyond what `gh` flags or `curl + jq` support. PEP 723 inline metadata lets `uv` run them from anywhere, with `<abs>` resolved as in "Tool priority" above:
 
 ```bash
-# Claude Code
-uv run plugins/scout/skills/research-orchestrator/scripts/search_github.py \
-    "fastapi boilerplate" --limit 10 --detailed
-
-uv run plugins/scout/skills/research-orchestrator/scripts/search_huggingface.py \
-    "object detection" --type models --limit 10
+uv run "<abs>/scripts/search_github.py" "fastapi boilerplate" --limit 10 --detailed
+uv run "<abs>/scripts/search_huggingface.py" "object detection" --type models --limit 10
 ```
 
-First HF wrapper run installs `huggingface_hub` in an ephemeral venv via `uv`.
+- **`search_github.py`**: stdlib only.
+- **`search_huggingface.py`**: the first run installs `huggingface_hub` in an ephemeral venv via `uv`.
+- **Citation discipline**: every result a scout emits carries the canonical URL the user can click (`https://github.com/<owner>/<repo>` or `https://huggingface.co/<repo_id>`). Never paraphrase a finding without its source.
 
-## Citation discipline
+## Requirements and flag reference
 
-Every result a scout emits must carry the canonical URL the user can click — `https://github.com/<owner>/<repo>` or `https://huggingface.co/<repo_id>`. Never paraphrase a finding without its source.
-
-## Requirements
-
-- `gh` CLI authenticated — primary for GitHub
-- `uv` — auto-installs HF deps, runs wrapper scripts portably
-- `jq` — JSON parsing for REST responses
-- Python 3.11+ (resolved via `uv run`; no direct `python` call needed)
-
-## Resources (siblings in this directory)
-
-- `../scripts/search_github.py` — optional wrapper (stdlib only, PEP 723)
-- `../scripts/search_huggingface.py` — optional wrapper (`huggingface_hub`, PEP 723)
-- `github_api.md`, `huggingface_api.md` — CLI flag references
+- `gh` CLI authenticated (primary for GitHub), `uv` (HF deps and the wrappers), `jq` (REST responses), Python 3.11+ through `uv run`.
+- For flags and JSON fields not shown here, read the live help rather than a copy: `gh search repos --help`, `gh repo view --help`, `uvx hf <command> --help`, <https://cli.github.com/manual/> and <https://huggingface.co/docs/huggingface_hub/en/guides/cli>.
+- JSON field names differ by command: `gh search repos --json` takes `stargazersCount`, `gh repo view --json` takes `stargazerCount`.

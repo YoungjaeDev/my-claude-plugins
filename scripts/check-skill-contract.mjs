@@ -23,7 +23,7 @@
 // so deleting or renaming a skill cannot leave dead pointers behind.
 //
 // Not covered here, on purpose — each already has an owner:
-//   check-skill-prose.mjs            informational only: 500-line ceiling, references depth
+//   check-skill-prose.mjs            informational only: 10000-byte ceiling, references depth
 //   check-doc-consistency.mjs        blocking: README/AGENTS name-sets and count strings
 //   check-shell-portability.mjs      blocking: GNU-only shell constructs without a fallback
 // This guard adds no overlap with any of them.

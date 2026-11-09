@@ -33,13 +33,15 @@
       "required": ["number", "url"],
       "properties": {
         "number": { "type": "integer", "minimum": 1 },
-        "url":    { "type": "string" }
+        "url":    { "type": "string" },
+        "split":  { "enum": ["sub_issues", "task_list", "failed"], "description": "Present when the run deferred more than SUB_ISSUE_THRESHOLD (references/coordination.md) findings. sub_issues: one sub-issue per finding; task_list: the sub-issues API failed, so the findings are a task list in the issue body; failed: the parent body could not be read or edited; sub-issues already filed stay in unlinked and are linked on a re-run. None of them blocks the merge." },
+        "sub_issues": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "description": "Sub-issue numbers filed under this issue, kept across re-runs on the same PR." }
       },
       "additionalProperties": true
     },
     "auto_judge_log": {
       "type": "array",
-      "description": "One record per Step 9c decision (references/autonomous-judgment.md, \"Log entry shape\"). scripts/auto-merge-gate.sh reads the current iteration's apply records to pick next_action.",
+      "description": "One record per Step 9c decision (references/autonomous-judgment.md, \"Log entry and counters\"). scripts/auto-merge-gate.sh reads the current iteration's apply records to pick next_action.",
       "items": {
         "type": "object",
         "required": ["iter", "src", "action"],
@@ -51,6 +53,9 @@
           "comment_id":   { "type": ["integer", "null"], "description": "The finding's databaseId (CR thread) or comment_id (Codex); Step 9a skips a thread this run already judged." },
           "category":     { "type": "string", "description": "CR/CLI header category as read (e.g. \"🔒 Security & Privacy\"); empty for Codex." },
           "badge_or_sev": { "type": "string", "description": "CR/CLI severity as read (e.g. \"🟡 Minor\") or the Codex badge (\"P1\")." },
+          "tier_source":  { "type": "string", "enum": ["inferred"], "description": "Present when the CR/CLI header was unreadable and the tier came from the model's inference (Step 9a, #392)." },
+          "inferred_severity": { "type": "string", "description": "The model's severity word for an unreadable header (Critical, High, Major, Minor, Trivial, Info); badge_or_sev stays empty." },
+          "inferred_effort":   { "type": "string", "description": "The model's effort for an unreadable header (Quick win, Heavy lift)." },
           "judgment":     { "type": ["object", "null"] },
           "action":       { "type": "string", "enum": ["apply", "defer", "skip"] },
           "reason":       { "type": "string" },
@@ -62,6 +67,12 @@
     "base_push": {
       "type": ["object", "null"],
       "description": "Set by Step 15 when the held Minor-or-lower fixes were pushed straight to the base after the merge (ADR 0006): {branch, sha, fixes}."
+    },
+    "inferred_skips": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "description": "Keys (databaseId, comment_id, or path:line) of findings Step 9a inferred as Trivial or Info: tier skip, so no auto_judge_log record. Counted into the final JSON inferred_tiers (#392)."
     }
   },
   "additionalProperties": true

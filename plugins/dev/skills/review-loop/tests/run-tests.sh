@@ -200,8 +200,22 @@ echo "ci-checks.sh"
 # HEAD's CI conclusions (issue #317). The gh stub answers `gh pr checks` from a
 # sequence file, one line per call: a fixture path, FAIL (lookup error) or NONE.
 CIS=$(mktemp -d)
+# #393: why there is no check (`gh run list` on HEAD: CI_RUNS, default none) and
+# whether a failing Actions job ever started (the jobs API: a job id listed in
+# CI_STARTED has steps and a runner; any other id has neither, like run 41364746682).
 cat > "$CIS/gh" <<'SH'
 #!/usr/bin/env bash
+case "$*" in
+  "pr view"*) echo "d21f513f902ac18a09ade85a92d403870568ae19"; exit 0 ;;
+  "run list"*) echo "${CI_RUNS:-[]}"; exit 0 ;;
+  *"/actions/jobs/"*) id=${2##*/}; case " ${CI_STARTED:-} " in
+       *" $id "*) cat "$CI_FIX/actions-job-started.json" ;;
+       *) case " ${CI_CANCELLED:-} " in
+            *" $id "*) jq -c '.conclusion = "cancelled"' "$CI_FIX/actions-job-not-started.json" ;;
+            *) cat "$CI_FIX/actions-job-not-started.json" ;; esac ;; esac; exit 0 ;;
+  *"/check-runs/"*"/annotations"*) [ -z "${CI_ANN_FAIL:-}" ] || { echo "HTTP 502" >&2; exit 1; }
+       cat "$CI_FIX/check-run-annotations-not-started.json"; exit 0 ;;
+esac
 [ "$1 $2" = "pr checks" ] || { echo "unknown gh args: $*" >&2; exit 1; }
 echo "$*" > "$CI_COUNT.args"
 n=$(cat "$CI_COUNT" 2>/dev/null || echo 0); echo $((n+1)) > "$CI_COUNT"
@@ -217,7 +231,7 @@ chmod +x "$CIS/gh"
 ci() { # CAP SEQ... -> the script's JSON line
   local cap=$1; shift
   printf '%s\n' "$@" > "$CIS/seq"; rm -f "$CIS/count"
-  CI_SEQ="$CIS/seq" CI_COUNT="$CIS/count" PATH="$CIS:$PATH" CAP="$cap" INTERVAL=0 \
+  CI_SEQ="$CIS/seq" CI_COUNT="$CIS/count" CI_FIX="$FIX" PATH="$CIS:$PATH" CAP="$cap" INTERVAL=0 \
     bash "$SCRIPTS/ci-checks.sh" 42 2>/dev/null
 }
 c=$(ci 0 "$FIX/pr-checks-failing.json")
@@ -248,6 +262,31 @@ is "JSON with exit 1 -> still read as fail"       "$(jq -r '.state' <<<"$(ci 0 "
 is "JSON with exit 8 -> still read as pending"    "$(jq -r '.state' <<<"$(ci 0 "RC8:$FIX/pr-checks-pending.json")")" pending
 is "lookup failure -> error, not fail"            "$(jq -r '.state' <<<"$(ci 0 FAIL)")" error
 is "no checks at all -> none"                     "$(jq -r '.state' <<<"$(ci 0 NONE)")" none
+# #393: the state always comes with its reason. PR #387 had no check because no
+# workflow triggers on a PR (validate-codex.yml runs on tags and by hand).
+is "no check and no workflow run on HEAD -> reason no_trigger" "$(jq -r '.reason' <<<"$(ci 0 NONE)")" no_trigger
+is "no check but a run on HEAD -> no reason claimed" \
+   "$(jq -r '.reason' <<<"$(CI_RUNS='[{"databaseId":1}]' ci 0 NONE)")" null
+# Run 41364746682: jobs with 0 steps and no runner, the reason only in the
+# check-run annotation. A run that never started is not a failing check.
+c=$(ci 0 "$FIX/pr-checks-not-started.json")
+is "never-started jobs -> not_started, not fail"  "$(jq -r '.state' <<<"$c")" not_started
+is "never-started jobs still listed (they block the merge)" "$(jq -c '.failing' <<<"$c")" '["check","macos"]'
+is "never-started run -> annotation quoted" \
+   "$(jq -r '.annotation' <<<"$c")" "The job was not started because your account is locked due to a billing issue."
+c=$(CI_STARTED=125022415690 ci 0 "$FIX/pr-checks-not-started-and-failing.json")
+is "one job never started, one ran and failed -> fail" "$(jq -r '.state' <<<"$c")" fail
+# The same "never started" predicate as release's ci-run-check.sh: completed with no
+# step and no runner, and neither skipped nor cancelled. A job cancelled before a
+# runner was assigned was stopped by someone, not locked out: a real `fail`.
+c=$(CI_CANCELLED="125022415689 125022415818" ci 0 "$FIX/pr-checks-not-started.json")
+is "job cancelled before a runner was assigned -> fail, not not_started" "$(jq -r '"\(.state)/\(.annotation)"' <<<"$c")" fail/null
+# An annotation read that fails is not "no annotation": say it was not read.
+c=$(CI_ANN_FAIL=1 ci 0 "$FIX/pr-checks-not-started.json")
+is "annotation API failure -> not_started, annotation unread" "$(jq -r '"\(.state)/\(.annotation)"' <<<"$c")" "not_started/annotation unread"
+c=$(ci 0 "$FIX/pr-checks-failing.json")
+is "failing checks without an Actions job link -> fail, no reason" "$(jq -r '"\(.state)/\(.reason)/\(.annotation)"' <<<"$c")" fail/null/null
+is "passing checks -> no reason" "$(jq -r '.reason' <<<"$(ci 0 "$FIX/pr-checks-passing.json")")" null
 rm -rf "$CIS"
 
 echo
@@ -313,6 +352,8 @@ is "gh pr checks failure -> ci_state error"   "$(jq -r '.ci_state' <<<"$g" 2>/de
 cat > "$SHIMDIR/gh" <<'SH'
 #!/usr/bin/env bash
 case "$*" in
+  *"/actions/jobs/"*) cat "$AMG_FIX/actions-job-not-started.json";;
+  *"/check-runs/"*"/annotations"*) cat "$AMG_FIX/check-run-annotations-not-started.json";;
   *"/check-runs"*) echo '{"check_runs":[{"name":"CodeRabbit","status":"completed","conclusion":"success","started_at":"2025-01-01T00:00:00Z"}]}';;
   *"/statuses"*)   if [ -n "${AMG_STATUSES:-}" ]; then cat "$AMG_STATUSES"; else echo '[]'; fi;;
   *"/reactions"*)  if [ -n "${AMG_REACTIONS:-}" ]; then cat "$AMG_REACTIONS"; else echo '[]'; fi;;
@@ -329,7 +370,7 @@ SH
 jq '[.[0] | .commit_id = "deadbeef" | .body = "**Actionable comments posted: 0**"]' \
   "$FIX/pr-reviews-cr-older-commit.json" > "$SHIMDIR/reviews.json"
 sed 's/95ab2f6/deadbee/' "$FIX/issue-comments-codex-summary-completed.json" > "$SHIMDIR/comments.json"
-export AMG_REVIEWS="$SHIMDIR/reviews.json" AMG_COMMENTS="$SHIMDIR/comments.json"
+export AMG_REVIEWS="$SHIMDIR/reviews.json" AMG_COMMENTS="$SHIMDIR/comments.json" AMG_FIX="$FIX"
 chmod +x "$SHIMDIR/gh"
 g=$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "check-run-only CR -> cr_state success" "$(jq -r '.cr_state' <<<"$g" 2>/dev/null)" success
@@ -362,6 +403,13 @@ is "ci_failing reason names CI" \
 g=$(AMG_CHECKS="$FIX/pr-checks-failing.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
 is "gate: failing checks counted without CodeRabbit" "$(jq -r '.blocking_checks' <<<"$g")" 3
 is "gate: failing check names carried"        "$(jq -c '.failing_checks' <<<"$g")" '["policy","coderabbit-lint","deploy"]'
+# #393: a run that never started is reported apart from a failing check, and still
+# blocks the merge exactly as a failing check does.
+g=$(AMG_CHECKS="$FIX/pr-checks-not-started.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null)
+is "gate: never-started run -> ci_state not_started" "$(jq -r '.ci_state' <<<"$g")" not_started
+is "gate: never-started run still blocks the merge" "$(jq -r '.blocking_checks' <<<"$g")" 2
+is "gate: never-started run's annotation carried" \
+   "$(jq -r '.ci_annotation' <<<"$g")" "The job was not started because your account is locked due to a billing issue."
 is "gate: pending check is not blocking" \
    "$(AMG_CHECKS="$FIX/pr-checks-pending.json" FINAL_STATE=clean PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.blocking_checks')" 0
 is "unset FINAL_STATE -> ineligible"         "$(PATH="$SHIMDIR:$PATH" bash "$SCRIPTS/auto-merge-gate.sh" o r 42 deadbeef 2>/dev/null | jq -r '.eligible')" false
@@ -423,6 +471,19 @@ st "$(fix 2 codex '' P2 apply)"
 is "a Codex P2 fix -> merge_then_main_push" "$(nxt)" merge_then_main_push
 st "$(fix 2 cr '🎯 Functional Correctness' '🟡 Minor' apply high)"
 is "a Minor reassessed high -> rereview_push" "$(nxt)" rereview_push
+# #392: a headerless finding logs no severity as read; the model's inference is in
+# its own field, and any fix judged on an inferred tier goes back for re-review.
+inferred() { jq -c --arg s "$1" '. + {badge_or_sev:"", tier_source:"inferred", inferred_severity:$s}' <<<"$(fix 2 cr '' '' apply low)"; }
+st "$minor,$(inferred Major)"
+is "an inferred Major fix -> rereview_push" "$(nxt)" rereview_push
+st "$(inferred Critical)"
+is "an inferred Critical fix -> rereview_push" "$(nxt)" rereview_push
+# An inferred tier is a guess no header backs, so its fix never goes straight to the
+# base: even an inferred Minor goes back for re-review.
+st "$(inferred Minor)"
+is "an inferred Minor fix -> rereview_push" "$(nxt)" rereview_push
+st "$minor,$(inferred Trivial)"
+is "an inferred Trivial fix beside a read Minor -> rereview_push" "$(nxt)" rereview_push
 # Only fixes no reviewer has seen count: an earlier iteration's Major was re-reviewed,
 # and a deferred Major changed no code.
 st "$(fix 1 cr '🎯 Functional Correctness' '🟠 Major' apply high),$minor"
@@ -436,6 +497,12 @@ is "build/test gate off -> rereview_push"                  "$(VG=baseline_failed
 is "--no-minor-stop -> rereview_push"                      "$(MINOR_STOP=false nxt)" rereview_push
 is "state file unreadable -> rereview_push" \
    "$(STATE_FILE="$SHIMDIR/missing.json" FIX_ITER=2 VERIFICATION_GATE=on amg | jq -r '.next_action')" rereview_push
+# The full line that runs once at the loop end (#370): a failure leaves the PR
+# unmerged (Step 15 eligibility), which keeps held fixes off the base.
+is "full line failed -> ineligible"        "$(FULL_VERIFICATION=fail DEFERRED_TOTAL=0 elig clean)" false
+is "full line passed -> eligible"          "$(FULL_VERIFICATION=pass DEFERRED_TOTAL=0 elig clean)" true
+is "full-line failure reason names it" \
+   "$(FULL_VERIFICATION=fail amg | jq -r '.ineligible_reason | test("full verification")')" true
 # One follow-up issue only when something was left behind; a HEAD without every
 # verdict, or failing CI, goes to the final report instead.
 fi_of() { FINAL_STATE=$1 DEFERRED_TOTAL=$2 amg | jq -r '.file_issue'; }
@@ -591,6 +658,22 @@ is "PR #344 title after the new header" \
    "Fix the \`error.filename\` access for \`UnicodeDecodeError\`."
 is "unknown severity word is not read off the icon" "$(jq -r '.[2].severity_emoji' <<<"$th")" null
 is "unknown severity word -> review"     "$(tier_at 2)" review
+
+# #392: a header the parser cannot read gets the model's inferred severity/effort
+# (Step 9a), marked tier_source "inferred"; a field the parser did read still wins.
+inf() { jq -c ". + $2" <<<"$1" | bash "$SCRIPTS/classify-item.sh" | jq -r "$3"; }
+hl='{"source":"cr","path":"a.sh","line":3,"body":"no header here"}'
+is "inferred Major on a headerless CR finding -> gated" "$(inf "$hl" '{inferred_severity:"Major"}' .tier)" gated
+is "inferred tier is marked inferred"   "$(inf "$hl" '{inferred_severity:"Major"}' .tier_source)" inferred
+is "inferred Minor + Quick win -> auto" "$(inf "$hl" '{inferred_severity:"Minor",inferred_effort:"Quick win"}' .tier)" auto
+is "inferred Minor + Heavy lift -> gated" "$(inf "$hl" '{inferred_severity:"Minor",inferred_effort:"Heavy lift"}' .tier)" gated
+is "inferred Trivial -> skip"           "$(inf "$hl" '{inferred_severity:"Trivial"}' .tier)" skip
+is "inferred CLI finding -> gated"      "$(inf "$hl" '{source:"cli",inferred_severity:"Critical"}' .tier)" gated
+is "unknown inferred word -> review"    "$(inf "$hl" '{inferred_severity:"Severe"}' .tier)" review
+is "unknown inferred word is not marked inferred" "$(inf "$hl" '{inferred_severity:"Severe"}' '.tier_source // "none"')" none
+is "parsed header wins over an inference" \
+   "$(inf "$hl" '{severity_emoji:"🟡 Minor",effort_emoji:"⚡ Quick win",inferred_severity:"Major"}' '"\(.tier)/\(.tier_source // "header")"')" auto/header
+is "Codex findings are never inferred"  "$(inf '{"source":"codex","p_badge":"none"}' '{inferred_severity:"Major"}' .tier)" review
 
 echo
 echo "fetch-cr-outside-diff.sh"
@@ -1633,6 +1716,15 @@ ftier=$(PATH="$FTSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 \
   $TMO4 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
 is "re-fetch free-tier success -> held for grace, not terminal success" \
    "$(jq -r '.state' <<<"$ftier" 2>/dev/null)" rate_limited
+# A re-run with the remaining cap must not restart the grace: it ages the row from
+# its created_at (months old here), so CR_SKIP_GRACE=300 is already spent. Aged from
+# first sight instead, it holds past TIMEOUT=5 and prints timeout.
+echo 1 > "$FTCNT"
+ftre=$(PATH="$FTSHIM:$PATH" OWNER=o REPO=r SHA=s PR_NUM=42 INTERVAL=0 TIMEOUT=5 \
+  EARLY_CHECK_WINDOW=0 CR_SKIP_GRACE=300 PUSH_TIME=2020-01-01T00:00:00Z \
+  $TMO4 bash "$SCRIPTS/poll-cr-status.sh" 2>/dev/null) || true
+is "re-run on an aged free-tier row -> grace from created_at, rate_limited" \
+   "$(jq -r '.state' <<<"$ftre" 2>/dev/null)" rate_limited
 rm -rf "$FTSHIM"
 
 # The poller keeps its own deadline: run in the background, no harness timeout
@@ -1891,6 +1983,16 @@ fo=$(FINAL_STATE=ci_failing CI_FAILING_CHECKS='["policy"]' PR_NUM=42 LAST_SHA="$
 is "final output: ci_failing passes the schema"   "$(schema_ok "$fo")" true
 is "final output: ci_failing_checks carried"      "$(jq -c '.ci_failing_checks' <<<"$fo")" '["policy"]'
 is "final output: verdicts complete -> head_verdict null" "$(jq -c '.head_verdict' <<<"$fo")" null
+is "final output: CI never read -> ci_state null" "$(jq -c '.ci_state' <<<"$fo")" null
+# #393: the CI state always reaches the final output with its reason.
+for cs in '{"state":"none","reason":"no_trigger","annotation":null}' \
+          '{"state":"not_started","reason":null,"annotation":"The job was not started because your account is locked due to a billing issue."}'; do
+  fo_ci=$(FINAL_STATE=clean CI_STATE_JSON="$cs" PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+  is "final output: ci_state $(jq -r .state <<<"$cs") carried" "$(jq -c '.ci_state' <<<"$fo_ci")" "$(jq -c . <<<"$cs")"
+  is "final output: ci_state $(jq -r .state <<<"$cs") passes the schema" "$(schema_ok "$fo_ci")" true
+done
+is "final output: ci_state garbage -> null" \
+   "$(FINAL_STATE=clean CI_STATE_JSON='nope' PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null | jq -c '.ci_state')" null
 # A HEAD left without every verdict files no issue (#327); the final output says so.
 fo=$(FINAL_STATE=minor_floor HEAD_VERDICT=timeout PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
 is "final output: unverified HEAD reported"       "$(jq -r '.head_verdict' <<<"$fo")" timeout
@@ -1901,6 +2003,17 @@ echo '{"base_push":{"branch":"main","sha":"abc","fixes":[{"src":"cr","path":"a.s
 fo=$(FINAL_STATE=minor_floor MERGED=true STATE_FILE="$BPS/s/st.json" PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
 is "final output: base push carried"              "$(jq -r '.base_push.fixes[0].path' <<<"$fo")" a.sh
 is "final output: base_push passes the schema"    "$(schema_ok "$fo")" true
+is "final output: no inferred tiers -> 0"         "$(jq -r '.inferred_tiers' <<<"$fo")" 0
+# #392: findings judged on an inferred tier are counted from the log before it is archived.
+echo '{"auto_judge_log":[{"tier_source":"inferred","action":"apply"},{"action":"skip"},{"tier_source":"inferred","action":"skip"}]}' > "$BPS/s/inf.json"
+fo_inf=$(FINAL_STATE=clean STATE_FILE="$BPS/s/inf.json" PR_NUM=43 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: inferred tiers counted"         "$(jq -r '.inferred_tiers' <<<"$fo_inf")" 2
+is "final output: inferred_tiers passes the schema" "$(schema_ok "$fo_inf")" true
+# An inferred Trivial/Info ends at tier skip, never reaches Step 9c and so has no log
+# record; Step 9a keeps its key in inferred_skips, and the count includes those.
+echo '{"auto_judge_log":[{"tier_source":"inferred","action":"apply"}],"inferred_skips":["4303460001","a.sh:7"]}' > "$BPS/s/inf2.json"
+fo_inf=$(FINAL_STATE=clean STATE_FILE="$BPS/s/inf2.json" PR_NUM=44 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: inferred skips counted with the logged ones" "$(jq -r '.inferred_tiers' <<<"$fo_inf")" 3
 # The runner's line is also a file next to the state, so the main session reads it
 # on any wake instead of waiting on a completion notification.
 is "final output: written to the state dir too"   "$(cat "$BPS/s/review-loop-final-42.json" 2>/dev/null)" "$fo"
@@ -2245,6 +2358,10 @@ gate_env() { # DEFERRED REVIEW -> the env the gate saw
 }
 is "Step 15 gate counts unread findings as left behind" "$(gate_env 0 2)" "D=2 A=true"
 is "Step 15 gate with nothing left behind"              "$(gate_env 0 0)" "D=0 A=false"
+# #370: Step 14's loop-end full-line result reaches the gate, which refuses on a failure.
+printf '#!/usr/bin/env bash\njq -nc --arg f "$FULL_VERIFICATION" '"'"'{eligible:false,ineligible_reason:("F=\\($f)")}'"'"'\n' \
+  > "$G15/scripts/auto-merge-gate.sh"
+is "Step 15 gate sees the loop-end full line" "$(full_verification=fail gate_env 0 0)" "F=fail"
 # The cr_state allow-list speaks for CodeRabbit only: a run that dropped it (codex-only,
 # cli) must not be refused on its rate-limited status. Blocking checks stop the merge.
 printf '#!/usr/bin/env bash\njq -nc %s\n' "'{eligible:true,cr_state:\"rate_limited\",blocking_checks:1,ci_state:\"fail\",failing_checks:[\"policy\"],protection_http:200,base_branch:\"main\"}'" \
@@ -2278,7 +2395,7 @@ s15() { # GATE_JSON -> final_state|ci_failing_checks|merged|calls ; env FS AM AN
 $(rb_block "Step 15: merge")" bash -c '
     reviewers_on() { cr_on=true; codex_on=auto; }
     final_state=${FS:-clean} deferred_total=0 review_total=0 OWNER=o REPO=r PR_NUM=1 ITER=1 merged=false
-    AUTO_MERGE=${AM:-false} MERGE_ANSWER=${ANS:-} REVIEWED_SHA=${RS:-} VERIFY_CMD=true verification_blocking=false
+    AUTO_MERGE=${AM:-false} MERGE_ANSWER=${ANS:-} REVIEWED_SHA=${RS:-} VERIFY_CMD=true VERIFY_FAST_CMD=${VF:-} verification_blocking=false
     dropped_reviewers=${DR:-} pending_decision=""
     eval "$BLOCK"
     printf "%s|%s|%s|%s" "$final_state" "${ci_failing_checks:-}" "$merged" "$(tr "\n" ";" < "$CALLS")"
@@ -2289,6 +2406,20 @@ ok200=$(jq -c '.protection_http = 200' <<<"$ok404")
 cifail='{"eligible":true,"cr_state":"success","blocking_checks":1,"ci_state":"fail","failing_checks":["policy"],"protection_http":404,"base_branch":"main"}'
 # #336: a check that failed after Step 14 looked reaches final_state and ci_failing_checks.
 is "Step 15: CI failing at the gate -> ci_failing + names, no merge" "$(AM=true ANS=yes s15 "$cifail")" 'ci_failing|["policy"]|false|'
+# #393: a run that never started is not ci_failing, still is not merged, and the
+# final output gets the CI state with its quoted annotation.
+nostart=$(jq -c '.ci_state = "not_started" | .failing_checks = ["check"] | .ci_reason = null
+  | .ci_annotation = "The job was not started because your account is locked due to a billing issue."' <<<"$cifail")
+is "Step 15: never-started CI -> not ci_failing, not merged" "$(AM=true ANS=yes s15 "$nostart")" 'clean||false|'
+g15_ci() { # GATE_JSON -> "<refusal line>|<ci_state_json>"
+  GATE_JSON=$1 PATH="$G15/bin:$PATH" SKILL_DIR="$G15" STATE_FILE="$G15/state.json" ERRF="$G15/err" \
+    BLOCK="$(rb_block "Step 15: auto-merge gate")" bash -c '
+    reviewers_on() { cr_on=true; codex_on=auto; }
+    final_state=clean deferred_total=0 review_total=0 OWNER=o REPO=r PR_NUM=1 AUTO_MERGE=true
+    eval "$BLOCK" 2>"$ERRF"; printf "%s|%s" "$(sed -n "s/^auto-merge: //p" "$ERRF")" "$ci_state_json"' 2>/dev/null
+}
+is "Step 15: never-started CI -> refusal quotes the annotation, ci_state for the final output" "$(g15_ci "$nostart")" \
+   'CI on HEAD never started (The job was not started because your account is locked due to a billing issue.); merge not attempted|{"state":"not_started","reason":null,"annotation":"The job was not started because your account is locked due to a billing issue."}'
 is "Step 15: CI failing does not rewrite iteration_cap" \
    "$(FS=iteration_cap s15 "$(jq -c '.eligible = false | .ineligible_reason = "x"' <<<"$cifail")")" 'iteration_cap||false|'
 # Without --auto-merge a finished review asks; no answer (no interaction tool) is no merge.
@@ -2300,6 +2431,9 @@ is "Step 15: --auto-merge, unprotected base, nobody answered -> not merged" "$(A
 # merge_then_main_push: the reviewed HEAD merges, then the held fixes go to the base.
 is "Step 15: held Minor fixes, merged -> pushed to the base" \
    "$(RS=r3v ANS=yes s15 "$ok404")" 'clean||true|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;base-push main r3v f1x true;'
+# With a fast line, Step 14 already ran the full line on these fixes: the base runs the fast one.
+is "Step 15: held Minor fixes, fast line -> base push runs the fast line" \
+   "$(VF=fastc RS=r3v ANS=yes s15 "$ok404")" 'clean||true|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;base-push main r3v f1x fastc;'
 is "Step 15: base push recorded for the final output" \
    "$(jq -c '[.base_push.branch, .base_push.sha, .base_push.fixes[0].path]' "$G15/state.json")" '["main","pu5h","a.sh"]'
 is "Step 15: held Minor fixes, not merged -> pushed to the PR instead" "$(RS=r3v s15 "$ok404")" 'clean||false|git push;'
@@ -2313,14 +2447,19 @@ out=$(RUNNER=true RS=r3v SHOW_PENDING=1 s15 "$ok404")
 is "Step 15 runner: merge question pending, no merge, no push" "${out%|*}" 'clean||false|'
 is "Step 15 runner: pending decision carries the merge inputs" \
    "$(jq -c '[.question, .pr, .base, .protection_http, .reviewed_sha, .fix_sha, .iter]' <<<"${out##*|}")" '["merge",1,"main",404,"r3v","f1x",1]'
+is "Step 15 runner: pending decision carries the fast line for the base push" \
+   "$(VF=fastc RUNNER=true RS=r3v SHOW_PENDING=1 s15 "$ok404" | sed 's/.*|//' | jq -r '.verify_fast_cmd')" fastc
 # The main session's answer runs the Step 15 merge block with the pending inputs.
 s15m() { # WHY -> merged|calls
   : > "$G15/calls"; echo '{"auto_judge_log":[{"iter":1,"src":"cr","path":"a.sh","line":3,"badge_or_sev":"🟡 Minor","action":"apply"}]}' > "$G15/state.json"
   W=$1 PATH="$G15/bin:$PATH" SKILL_DIR="$G15" STATE_FILE="$G15/state.json" CALLS="$G15/calls" \
     BLOCK="$(rb_block "Step 15: merge")" bash -c '
-    why=$W PR_NUM=1 base=main proto=404 REVIEWED_SHA=r3v FIX_SHA=f1x ITER=1 VERIFY_CMD=true pending_decision="" merged=false
+    why=$W PR_NUM=1 base=main proto=404 REVIEWED_SHA=r3v FIX_SHA=f1x ITER=1 VERIFY_CMD=true pending_decision="" merged=${MG:-false}
+    final_state=${FS:-} full_verification=${FV:-}
     eval "$BLOCK"; printf "%s|%s" "$merged" "$(tr "\n" ";" < "$CALLS")"' 2>/dev/null
 }
+is "merged outside the run after a failed full line -> held fixes stay local" \
+   "$(MG=true FS=merged_externally FV=fail s15m "PR #1 was MERGED outside the run")" 'true|'
 is "main session, user said merge -> merged, fixes to the base" \
    "$(s15m "")" 'true|gh pr merge 1 --squash --delete-branch --match-head-commit r3v;base-push main r3v f1x true;'
 is "main session, user said no -> fixes to the PR" \
@@ -2350,6 +2489,109 @@ PATH="$FM:$PATH" STATE_FILE="$FM/state.json" BLOCK="$FM_BLOCK" bash -c '
   eval "$BLOCK"' >/dev/null 2>&1
 is "ci_failing follow-up issue names the failing checks" "$(grep -c 'CI checks failing on HEAD .*: policy, build' "$FM/body" 2>/dev/null)" 1
 rm -rf "$FM"
+
+# Step 14 sub-issue split (#389): more deferred findings than the threshold get the
+# parent issue plus one sub-issue each. The gh stub keeps the issues it creates, so a
+# re-run lists the sub-issues the first run made; LIST_FAIL / LINK_FAIL / GET_FAIL
+# fail one REST call, EDIT_FAIL the parent body edit.
+SI=$(mktemp -d)
+cat > "$SI/gh" <<'SH'
+#!/usr/bin/env bash
+d=$(dirname "$0"); printf '%s\n' "$*" >> "$d/calls"
+prev=""; bf=""; for a in "$@"; do [ "$prev" = --body-file ] && bf=$a; prev=$a; done
+case "$1 $2" in
+  "label create") exit 0 ;;
+  "issue create") cp "$bf" "$d/parent"; echo https://github.com/o/r/issues/9; exit 0 ;;
+  "issue comment") cp "$bf" "$d/comment"; exit 0 ;;
+  "issue edit") [ -n "${EDIT_FAIL:-}" ] && exit 1; cp "$bf" "$d/parent"; exit 0 ;;
+esac
+[ "$1" = api ] || exit 1
+case "$2 $3 $4" in
+  "--paginate --slurp repos/o/r/issues/9/sub_issues?per_page=100")
+    [ -n "${LIST_FAIL:-}" ] && { echo "gh: Not Found (HTTP 404)" >&2; exit 1; }
+    jq -s '[.]' "$d"/sub-*.json 2>/dev/null || echo '[[]]' ;;
+  "repos/o/r/issues/9  ")
+    [ -n "${GET_FAIL:-}" ] && { echo "gh: Bad credentials (HTTP 401)" >&2; exit 1; }
+    jq -Rs '{number:9, body:.}' "$d/parent" ;;
+  "-X POST repos/o/r/issues")
+    n=$(( $(ls "$d" | grep -c '^new-') + 101 )); f=""
+    for a in "$@"; do case "$a" in body=@*) f=${a#body=@} ;; esac; done
+    jq -Rs --argjson n "$n" '{id:($n + 5000), number:$n, body:.}' "$f" > "$d/new-$n.json"
+    cat "$d/new-$n.json" ;;
+  "-X POST repos/o/r/issues/9/sub_issues")
+    [ -n "${LINK_FAIL:-}" ] && { echo "gh: Validation Failed (HTTP 422)" >&2; exit 1; }
+    id=${6#sub_issue_id=}; for f in "$d"/new-*.json; do
+      if [ "$(jq -r .id "$f")" = "$id" ]; then cp "$f" "$d/sub-$(jq -r .number "$f").json"; fi; done ;;
+  *) exit 1 ;;
+esac
+SH
+chmod +x "$SI/gh"
+si_state() { # N_DEFERRED [FOLLOWUP_JSON] -> a state file with N defer records
+  jq -n --argjson n "$1" --argjson fi "${2:-null}" '{followup_issue:$fi, auto_judge_log:[range(1; $n + 1) as $i |
+    {iter:1, src:"cr", path:"f\($i).sh", line:$i, comment_id:(1000 + $i), badge_or_sev:"🟠 Major",
+     action:"defer", reason:"needs design \($i)"}]}' > "$SI/state.json"
+}
+si_run() { # [ENV=...]... -> runs the Step 14 block; calls in $SI/calls, stderr in $SI/err
+  : > "$SI/calls"
+  # STATE_FILE is a plain shell variable in the run (run-blocks.md), never exported.
+  env "$@" PATH="$SI:$PATH" SI_STATE="$SI/state.json" SKILL_DIR="$HERE/.." BLOCK="$FM_BLOCK" bash -c '
+    STATE_FILE=$SI_STATE; unset SI_STATE
+    OWNER=o REPO=r final_state=churn review_total=0 PR_NUM=1 HEAD_VERDICT=""
+    deferred_total=$(jq "[.auto_judge_log[] | select(.action == \"defer\")] | length" "$STATE_FILE")
+    eval "$BLOCK"' >/dev/null 2>"$SI/err"
+}
+si_count() { grep -c -- "$1" "$SI/calls"; }
+si_fi() { jq -c "$1" "$SI/state.json"; }
+
+si_state 5; si_run
+is "5 deferred -> one issue, no sub-issue calls" "$(si_count '^issue create'):$(si_count '^api')" "1:0"
+is "5 deferred -> followup_issue unchanged" "$(si_fi .followup_issue)" '{"number":9,"url":"https://github.com/o/r/issues/9"}'
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run
+is "6 deferred -> parent plus 6 sub-issues" \
+   "$(si_count '^issue create'):$(si_count '^api -X POST repos/o/r/issues -'):$(si_count '/sub_issues -F')" "1:6:6"
+is "6 deferred -> each sub-issue linked by its id, not its number" \
+   "$(grep -c 'sub_issue_id=510[1-6]$' "$SI/calls")" 6
+is "6 deferred -> state records the split" "$(si_fi '[.followup_issue.split, (.followup_issue.sub_issues | length)]')" '["sub_issues",6]'
+is "sub-issue body carries the deferred finding" "$(jq -r .body "$SI/new-103.json" | grep -c 'needs design 3')" 1
+
+si_state 7 "$(si_fi .followup_issue)"; si_run
+is "re-run reuses the parent and appends" "$(si_count '^issue create'):$(si_count '^issue comment')" "0:1"
+is "re-run files only the finding without a sub-issue" "$(si_count '^api -X POST repos/o/r/issues -')" 1
+is "re-run keeps every sub-issue number" "$(si_fi '.followup_issue.sub_issues | length')" 7
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run LIST_FAIL=1
+is "sub-issue listing fails -> nothing filed as if the list were empty" "$(si_count '^api -X POST')" 0
+is "sub-issue listing fails -> task list fallback recorded" "$(si_fi .followup_issue.split)" '"task_list"'
+is "task list fallback -> one unchecked item per finding in the parent body" "$(grep -c '^- \[ \] ' "$SI/parent")" 6
+is "task list fallback keeps the parent's table" "$(grep -c '^| Reviewer | Severity | Location | Why deferred |$' "$SI/parent")" 1
+is "task list fallback says why on stderr" "$(grep -c 'sub-issues' "$SI/err")" 1
+is "task list edit names the repo it read the parent from" "$(si_count '^issue edit 9 --repo o/r ')" 1
+
+si_state 6 "$(si_fi .followup_issue)"; si_run LIST_FAIL=1
+is "re-run of a task list fallback adds no duplicate items" "$(si_count '^issue edit'):$(grep -c '^- \[ \] ' "$SI/parent")" "0:6"
+
+si_state 7 "$(si_fi .followup_issue)"; si_run LIST_FAIL=1
+is "task list re-run with a new finding adds one item under one header" \
+   "$(grep -c '^- \[ \] ' "$SI/parent"):$(grep -c '^Deferred findings (the sub-issues API was unavailable):$' "$SI/parent")" "7:1"
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run LINK_FAIL=1 EDIT_FAIL=1
+is "link and task list both fail -> split failed, the unlinked issue recorded" \
+   "$(si_fi '[.followup_issue.split, (.followup_issue.unlinked | map(.number))]')" '["failed",[101]]'
+si_state 6 "$(si_fi .followup_issue)"; si_run
+is "re-run links the earlier unlinked issue instead of filing it again" \
+   "$(si_count '^api -X POST repos/o/r/issues -'):$(grep -c 'sub_issue_id=5101$' "$SI/calls")" "5:1"
+is "re-run clears the unlinked record once linked" "$(si_fi '[.followup_issue.split, (.followup_issue.unlinked | length)]')" '["sub_issues",0]'
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run LINK_FAIL=1
+is "link fails -> stop filing, rest go to the task list" \
+   "$(si_count '^api -X POST repos/o/r/issues -'):$(grep -c '^- \[ \] ' "$SI/parent"):$(si_fi .followup_issue.split)" '1:6:"task_list"'
+is "the unlinked sub-issue is named in its task item" "$(grep -c '^- \[ \] #101 ' "$SI/parent")" 1
+
+rm -f "$SI"/new-* "$SI"/sub-*; si_state 6; si_run GET_FAIL=1
+is "parent body unreadable -> no body edit, split failed" \
+   "$(si_count '^issue edit'):$(si_count '^api -X POST'):$(si_fi .followup_issue.split)" '0:0:"failed"'
+rm -rf "$SI"
 
 # Step 12: a noop Step 10 (every fix reverted, or none applied) pushes nothing.
 P12=$(mktemp -d); printf '#!/usr/bin/env bash\necho "$*" >> "%s/calls"\n' "$P12" > "$P12/git"; chmod +x "$P12/git"
@@ -2396,6 +2638,7 @@ CI14=$(mktemp -d); mkdir -p "$CI14/scripts" "$CI14/bin"
 printf '#!/usr/bin/env bash\necho "$CI_OUT"; echo "CAP=$CAP" >> "%s/cap"\n' "$CI14" > "$CI14/scripts/ci-checks.sh"
 cp "$SCRIPTS/auto-merge-gate.sh" "$SCRIPTS/words-json.sh" "$CI14/scripts/"
 printf '#!/usr/bin/env bash\necho 2026-10-06T10:00:00Z\n' > "$CI14/scripts/push-time.sh"
+printf '#!/usr/bin/env bash\necho "$1:$2:$3" >> "%s/vf"; echo "${VF_OUT-pass}"\n' "$CI14" > "$CI14/scripts/verify-fix.sh"
 printf '#!/usr/bin/env bash\nexit 1\n' > "$CI14/bin/gh"; chmod +x "$CI14/bin/gh"
 CI_PASS='{"state":"pass","failing":[],"pending":[]}'
 last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:HEAD_VERDICT:followup
@@ -2407,7 +2650,8 @@ last_push() { # PUSHED FINAL HV_STATE FINDINGS DEFERRED [UNREAD] -> final_state:
     OWNER=o REPO=r PR_NUM=1 TIMEOUT=1800 INTERVAL=30
     eval "$BLOCK"
     printf "%s:%s:%s" "$final_state" "$HEAD_VERDICT" "$followup_needed"
-    [ -z "${SHOW_CI:-}" ] || printf ":%s" "${ci_failing_checks:-}"'
+    [ -z "${SHOW_CI:-}" ] || printf ":%s" "${ci_failing_checks:-}"
+    [ -z "${SHOW_FV:-}" ] || printf ":%s" "${full_verification:-}"'
 }
 CI_FAIL='{"state":"fail","failing":["policy"],"pending":[]}'
 # A failing check alone files no issue (minimal-issue policy, #325): the final
@@ -2422,6 +2666,8 @@ is "CI wait runs under TIMEOUT"                          "$(grep -q 'CAP=1800' "
 is "iteration_cap is not rewritten by CI"  "$(CI_OUT=$CI_FAIL last_push false iteration_cap ready false 1)" "iteration_cap::true"
 is "clean HEAD, checks still pending at the cap -> clean" \
    "$(CI_OUT='{"state":"pending","failing":[],"pending":["build"]}' last_push false clean ready false 0)" "clean::false"
+is "clean HEAD, CI never started -> clean, not ci_failing (#393)" \
+   "$(CI_OUT='{"state":"not_started","failing":["check"],"pending":[],"reason":null,"annotation":"locked"}' last_push false clean ready false 0 2>/dev/null)" "clean::false"
 is "clean HEAD, checks unreadable -> clean (gate re-reads)" \
    "$(CI_OUT='{"state":"error","failing":[],"pending":[]}' last_push false clean ready false 0 2>/dev/null)" "clean::false"
 is "clean HEAD, CI script printed nothing -> clean + warning" \
@@ -2445,6 +2691,16 @@ is "timeout with earlier defers -> follow-up issue" "$(last_push false timeout t
 # A finding nobody could read (`review` tier) is left behind too: user_declined on it
 # alone must still file the issue failure-modes.md points the user to.
 is "only unread review-tier items -> follow-up issue" "$(last_push false user_declined ready false 0 1)" "user_declined::true"
+# The loop-end full line runs only where the build/test gate is on (Step 3): a
+# baseline that failed leaves full_verification null.
+: > "$CI14/vf"
+is "fast line, gate on -> loop end runs the full line" \
+   "$(VERIFY_CMD=v VERIFY_FAST_CMD=f VERIFICATION_GATE=on SHOW_FV=1 last_push false clean ready false 0):$(cat "$CI14/vf")" "clean::false:pass:full:v:f"
+is "fast line, full check printed nothing -> fail, not null" \
+   "$(VF_OUT='' VERIFY_CMD=v VERIFY_FAST_CMD=f VERIFICATION_GATE=on SHOW_FV=1 last_push false clean ready false 0 2>/dev/null)" "clean::false:fail"
+: > "$CI14/vf"
+is "fast line, baseline failed -> full line not run, null" \
+   "$(VERIFY_CMD=v VERIFY_FAST_CMD=f VERIFICATION_GATE=baseline_failed SHOW_FV=1 last_push false clean ready false 0):$(cat "$CI14/vf")" "clean::false::"
 rm -rf "$CI14"
 
 # await_head_verdicts on a paused CodeRabbit: one request, then the same budget.
@@ -2829,6 +3085,35 @@ is "check's git add -A leaves the real index alone" \
    "$(cd "$VF" && git diff --cached --name-only | tr '\n' ' ')" ""
 rm -rf "$VF" "$TRK"
 
+# A repo that names a fast line beside the full one (#370): the baseline and every
+# fix run the fast line only, and the full line runs once at the end of the loop.
+VF=$(mktemp -d); VLOG="$VF.log"
+(cd "$VF" && git init -q . && git config user.email t@t && git config user.name t \
+   && printf 'old\n' > a.sh && git add -A && git commit -qm base) >/dev/null 2>&1
+FULLC="echo full >> '$VLOG'"; FASTC="echo fast >> '$VLOG'"
+ran() { tr '\n' ' ' < "$VLOG" 2>/dev/null; : > "$VLOG"; }
+: > "$VLOG"
+is "fast line set -> baseline runs it, gate on" "$(vfx baseline "$FULLC" "$FASTC"):$(ran)" "on:fast "
+snap=$(vfx snapshot); printf 'fixed\n' > "$VF/a.sh"
+is "fast line set -> a fix runs only the fast line" "$(vfx check "$snap" "$FULLC" "$FASTC"):$(ran)" "pass:fast "
+snap=$(vfx snapshot); printf 'BROKEN\n' > "$VF/a.sh"
+is "fast line fails -> fix reverted" \
+   "$(vfx check "$snap" "$FULLC" "! grep -q BROKEN a.sh"):$(cat "$VF/a.sh"):$(ran)" "fail:fixed:"
+is "fast line set -> loop end runs the full line once" "$(vfx full "$FULLC" "$FASTC"):$(ran)" "pass:full "
+is "full line fails at loop end -> fail"   "$(vfx full 'exit 1' "$FASTC")" fail
+# No fast line: the per-fix runs already were the full line, so nothing runs again.
+is "no fast line -> loop end runs nothing" "$(vfx full "$FULLC" ''):$(ran)" "not_run:"
+is "no fast line -> a fix runs the full line" \
+   "$(snap=$(vfx snapshot); vfx check "$snap" "$FULLC"):$(ran)" "pass:full "
+is "--no-build-check -> loop end runs nothing" "$(NO_BUILD=true vfx full "$FULLC" "$FASTC"):$(ran)" "not_run:"
+fo=$(FULL_VERIFICATION=fail bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output carries the full-line result"  "$(jq -r '.full_verification' <<<"$fo")" fail
+is "final output: full line not run -> null" \
+   "$(bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null | jq -r '.full_verification')" null
+is "schema lists the full-line result" \
+   "$(jq -r '.properties.full_verification.enum | index("fail") != null' "$HERE/../assets/final-output.schema.json")" true
+rm -rf "$VF" "$VLOG"
+
 echo
 echo "base-push.sh"
 # merge_then_main_push (ADR 0006): after the reviewed HEAD merged, the held Minor
@@ -2968,6 +3253,30 @@ judged() { # HOLD_STATE RECORDS -> final_state:classified databaseIds
 }
 is "Step 9a: a thread judged earlier this run is not judged again" "$(judged "" "[$old_major,$new_minor]")" ":[4303469999]"
 is "Step 9a: held stop, only an already-judged Major back -> ends as held" "$(judged minor_floor "[$old_major]")" "minor_floor:[]"
+# #392: Step 9a as the model runs it. Fence 1 classifies, the model infers a tier for
+# each unreadable CodeRabbit header and classifies it again, fence 2 resolves a held
+# stop. A headerless finding inferred Trivial is a skip: it must not earn the round.
+rb_fence() { awk -v h="## $1" -v n="$2" '$0 == h {f=1; next} f && /^## / {exit}
+  f && /^```bash$/ {k++; c=(k == n); next} c && /^```$/ {c=0; next} c {print}' "$RB"; }
+headerless='{"source":"cr","path":"a.sh","line":7,"databaseId":4303460001,"body":"no header here"}'
+infer_round() { # HOLD_STATE INFERRED_SEVERITY -> final_state:HOLD_STATE:round:inferred_skips
+  echo '{"auto_judge_log":[]}' > "$R9/state.json"
+  HS=$1 SEV=$2 REC=$headerless STATE_FILE="$R9/state.json" SKILL_DIR="$HERE/.." \
+  F1="$(rb_fence "Step 9a: classify" 1)" F2="$(rb_fence "Step 9a: classify" 2)" bash -c '
+    cr_records="[$REC]" codex_records="[]" ITER=3 SKIP_MINOR=false HOLD_STATE=$HS final_state="" round=""
+    eval "for i in 1; do $F1
+      classified=\$(jq -c --arg s \"\$SEV\" \".[] | if .tier == \\\"review\\\" and .source != \\\"codex\\\" then . + {inferred_severity: \\\$s} else . end\" <<<\"\$classified\" \
+        | while IFS= read -r r; do printf \"%s\n\" \"\$r\" | SKIP_MINOR=false bash \$SKILL_DIR/scripts/classify-item.sh; done | jq -s .)
+      $F2
+      round=yes; done"
+    printf "%s:%s:%s:%s" "$final_state" "$HOLD_STATE" "$round" "$(jq -c ".inferred_skips // []" "$STATE_FILE")"' 2>/dev/null
+}
+is "Step 9a: held stop, headerless finding inferred Trivial -> ends as held" \
+   "$(infer_round minor_floor Trivial)" 'minor_floor:minor_floor::["4303460001"]'
+is "Step 9a: held stop, headerless finding inferred Major -> one more round" \
+   "$(infer_round minor_floor Major)" '::yes:[]'
+is "Step 9a: no held stop, inferred Trivial still kept for inferred_tiers" \
+   "$(infer_round "" Info)" '::yes:["4303460001"]'
 is "log shape: the comment id is a state schema field" \
    "$(jq -r '.properties.auto_judge_log.items.properties | has("comment_id")' "$HERE/../assets/state.schema.json")" true
 
@@ -3115,8 +3424,9 @@ for doc in "$SKILL_ROOT/SKILL.md" "$ROOT/plugins/dev/CLAUDE.md" "$ROOT/AGENTS.md
   is "enum line in ${doc#"$ROOT"/} = schema enum" "$(enum_line "$doc")" "$SCHEMA_STATES"
 done
 # Every literal the run assigns must be a schema value.
-is "every final_state=<literal> in SKILL.md and run-blocks.md is in the schema" \
-   "$(grep -ohE 'final_state=[a-z_]+' "$SKILL_ROOT/SKILL.md" "$SKILL_ROOT/references/run-blocks.md" \
+is "every final_state=<literal> in SKILL.md, procedure.md, coordination.md and run-blocks.md is in the schema" \
+   "$(grep -ohE 'final_state=[a-z_]+' "$SKILL_ROOT/SKILL.md" "$SKILL_ROOT/references/procedure.md" \
+      "$SKILL_ROOT/references/coordination.md" "$SKILL_ROOT/references/run-blocks.md" \
       | cut -d= -f2 | sort -u | not_in_schema)" ""
 
 echo

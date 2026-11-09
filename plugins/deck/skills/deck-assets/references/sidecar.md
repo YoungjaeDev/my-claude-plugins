@@ -11,7 +11,7 @@ One `.md` per generated image, same basename, next to it (per sheet, not per cel
 - Reference images: {paths or none}
 - Post-processing: {none | resize method + sizes}; slicing: slice-sheet.py --trim {N} -> cells/{prefix}-rRcC.png
 - Review notes: {letters? cells inside borders? palette? faint cells at small size?}
-- Fallback used: {none | agy -> codex-image -> Higgsfield, why}
+- Fallback used: {none | codex-image -> agy -> Higgsfield, why}
 
 ## Prompt
 

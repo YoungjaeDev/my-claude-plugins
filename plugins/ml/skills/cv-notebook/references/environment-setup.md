@@ -310,9 +310,7 @@ TORCH_HOME=/path/to/torch/cache
 HF_HOME=/path/to/huggingface/cache
 ```
 
-### Virtual Environment Setup
-
-#### Using venv
+### Virtual Environment Setup: venv
 ```bash
 # Create virtual environment with whichever interpreter this machine has on PATH
 # (detect it: the interpreter name differs by platform)
@@ -329,7 +327,7 @@ pip install -r requirements.txt
 python -c "import torch; print(torch.cuda.is_available())"
 ```
 
-#### Using uv (fast)
+### Virtual Environment Setup: uv (fast)
 ```bash
 # Install uv (if not installed) for this platform per
 # https://docs.astral.sh/uv/getting-started/installation/

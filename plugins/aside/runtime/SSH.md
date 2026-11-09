@@ -43,4 +43,6 @@ ssh -o BatchMode=yes -o StrictHostKeyChecking=yes macbook 'OPS_ROOT="$HOME/aside
 - 비대화형 명령 승인에 막히면 승인을 요청한다. TTY가 필요하면 사용자와 대화형 경로를 선택한다. 전역 allow/bypass 또는 다른 실행 계층으로 승인을 우회하지 않는다.
 
 ## 선택적 전문 에이전트 경로
-Mac의 Hermes `aside-operator`나 Claude 플러그인을 SSH로 시작할 수도 있지만, 그때는 해당 모델 인증과 명령 승인도 별도로 필요하다. 이 선택적 경로의 Claude `Not logged in`은 위 직접 Aside 경로의 필수 장애가 아니다. 새 서버/MCP/peer/watcher는 필요하지 않다.
+- Mac의 Hermes `aside-operator`나 Claude 플러그인을 SSH로 시작할 수도 있지만, 그때는 해당 모델 인증과 명령 승인도 별도로 필요하다.
+- 이 선택적 경로의 Claude `Not logged in`은 위 직접 Aside 경로의 필수 장애가 아니다.
+- 새 서버/MCP/peer/watcher는 필요하지 않다.

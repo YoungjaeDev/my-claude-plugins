@@ -2,36 +2,30 @@
 
 Where text and files go. `writing-levers.md` covers why a line stays; this file covers shape.
 
-## Section order
+## Skill shape
 
-Use the sections a skill actually needs, in this order. Omit any with nothing to say — an empty
-heading is a promise the body does not keep.
+A SKILL.md holds five things, under headings named for what the reader does with them. Omit any
+with nothing to say, since an empty heading is a promise the body does not keep.
 
-1. `# Title` — what the skill is, one line under the heading.
-2. `## Overview` — the problem and the shape of the answer, in a short paragraph.
-3. `## When to use` — entry conditions, plus the conditions that mean *not* this skill. The
-   negative branch is what stops a general skill from swallowing every adjacent request.
-4. `## Prerequisites` — state or tools the procedure assumes. Omit when there are none.
-5. `## How to run` — the invocation, including a bundled-script call if there is one.
-6. `## Quick reference` — the table or checklist an experienced user comes back for.
-7. `## Procedure` — numbered steps, each ending in an observable result.
-8. `## Pitfalls` — the failures seen in practice, each with its symptom.
-9. `## Verification` — how the caller knows the run succeeded.
+1. `# Title` and a first paragraph: what the skill is, with a number (a budget, a count, a limit).
+2. Core model: the problem and the shape of the answer, including the conditions that mean *not*
+   this skill, which stop a general skill from swallowing every adjacent request.
+3. Output shape: what the run produces and where.
+4. Bright lines: what the run never does, each next to the step it guards.
+5. Done condition: how the caller knows the run succeeded.
 
-A skill under about 60 lines usually collapses to Title, Overview, When to use, Procedure.
+Step prose goes to `references/procedure.md`, keyed by step number, and SKILL.md says to read it
+before the first step. Code goes to `references/run-blocks.md` or `scripts/`.
 
 ## Length
 
-- Simple skill: around 100 lines.
-- Complex skill: around 200 lines.
-- 300 lines is the ceiling used for new skills in this repository.
-- `scripts/check-skill-prose.mjs` warns above 500 lines. That is an upper bound on damage, not a
-  target. Anything approaching it is carrying reference-grade material that belongs in
-  `references/`.
+The budget is bytes of the whole file, frontmatter included: 5KB target, 10KB cap, both measured
+by `docs:md-audit` (`../../../references/writing-standard.md` has the rules). Length is a symptom,
+not the disease: an oversized body is usually one skill doing several jobs, or a body that inlined
+a reference.
 
-Length is a symptom, not the disease. A 400-line body is usually one skill doing three jobs, or a
-body that inlined a reference. Split by *invocation moment*: two procedures a person calls at
-different times are two skills, even when they share subject matter.
+Split by *invocation moment*: two procedures a person calls at different times are two skills,
+even when they share subject matter.
 
 ## Bundled directories
 
@@ -41,8 +35,8 @@ different times are two skills, even when they share subject matter.
 | `references/` | bulky or branch-specific material | read on demand by the body |
 | `assets/` | files that end up in the output (templates, examples) | copied or filled |
 
-`references/` is exactly one level deep — files sit directly under it. A nested path is both a
-`check-skill-prose.mjs` warning and a sign that a reference has become its own skill.
+`references/` is exactly one level deep: files sit directly under it. A nested path is a sign that
+a reference has become its own skill.
 
 Prefer a script over prose whenever the logic is deterministic. Prose that describes an algorithm
 gets re-derived, slightly differently, on every run; a script gets the same answer twice.
@@ -79,6 +73,3 @@ The skill name is the pointer a person reads in a menu. Two rules:
   away. Name the object: `bootstrap-project`, not `new`.
 - Two skills in one plugin must not need their descriptions read to tell them apart. If the names
   do not separate them, either the names or the split is wrong.
-
-A name that exists to avoid colliding with a command of the same name is a justified exception —
-`docs`'s `-guide` suffixes are that case, not drift.

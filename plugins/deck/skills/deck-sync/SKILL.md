@@ -5,11 +5,15 @@ description: "Update an existing house-format deck repo (deck/shell.html + deck/
 
 # deck-sync
 
-## Overview
+Brings a deck repo's copies up to the plugin version. The deck's template comes from the `<!-- deck shell base ... -->` stamp in `deck/shell.html` (no template name means `monitor`), and its rules, vendor files and shell come from `templates/decks/<template>/`.
 
-Brings a deck repo's copies up to the plugin version. The deck's template is read from the `<!-- deck shell base ... -->` stamp in `deck/shell.html` (a stamp without a template name, from decks made before templates existed, means `monitor`); its rules, vendor files and shell come from `templates/decks/<template>/`. Rule copies and `deck/vendor/` are overwritten from the plugin; `deck/shell.html` belongs to the deck and is only diffed. Missing `.githooks/` files (`deck` launcher, `pre-commit`, `commit-msg`) are added; existing ones are kept. A deck whose `deck/outline.md` header has `- deck_kind: report` also gets `.claude/rules/deck-report.md`; adding that line to an existing deck and syncing turns it into a report deck. A rule copy edited by hand at the current version is left alone unless the user agrees to `--force`. The stamp carries a hash of the original it was copied from, so a copy nobody touched is overwritten even when the original changed without a version bump; a stamp without the hash (before 2.3.0) is compared with the original as before. `.claude/rules/deck-local.md` holds deck-specific exceptions; sync never reads or writes it, and the copy check reads the deck's own bans from its `### 덱 금지 표기` table (same columns as the `deck-copy.md` table).
+- **Overwritten**: the rule copies and `deck/vendor/`. A copy edited by hand at the current version is left alone unless the user agrees to `--force`.
+- **Diffed only**: `deck/shell.html`, which belongs to the deck.
+- **Added when missing, never replaced**: the `.githooks/` files (`deck` launcher, `pre-commit`, `commit-msg`).
+- **Report deck**: a deck whose `deck/outline.md` header has `- deck_kind: report` also gets `.claude/rules/deck-report.md`, so adding that line and syncing turns a deck into a report deck.
+- **Never touched**: `.claude/rules/deck-local.md` (deck-specific exceptions; the copy check reads its `### 덱 금지 표기` table) and `.githooks/local-checks.sh` (deck-specific commit checks, which the plugin's `pre-commit` runs first).
 
-Deck-specific commit checks belong in `.githooks/local-checks.sh`, which the plugin's `pre-commit` runs first on every commit and which sync never writes, so they survive. Since sync keeps existing `.githooks/` files, a deck gets a newer `pre-commit` or launcher only by deleting the old one and rerunning sync. Refresh `.githooks/deck` and `.githooks/pre-commit` together (the new hook calls `deck assets`, which an older launcher lacks), and move any lines added to the old `pre-commit` by hand into `local-checks.sh` first.
+To get a newer `pre-commit` or launcher, delete both `.githooks/deck` and `.githooks/pre-commit` and rerun sync: the new hook calls `deck assets`, which an older launcher lacks. Move any lines added to the old `pre-commit` by hand into `local-checks.sh` first.
 
 ## When to use
 
@@ -19,7 +23,7 @@ Deck-specific commit checks belong in `.githooks/local-checks.sh`, which the plu
 
 ## Procedure
 
-Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input` when exposed, otherwise asks in plain text and waits. Shell state does not persist between tool calls, so keep the resolver in the same call as each command.
+Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, sync without `--force` and say which copies were left as is. Shell state does not persist between tool calls, so keep the resolver in the same call as each command.
 
 1. Inspect first, from the repo root.
 
@@ -43,7 +47,7 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 
    Observable result: one `rules:` line per copy with its status, unified diffs for `stale`, `edited` and `unstamped` copies, and `vendor:` / `shell.html:` / `frontend-slides:` lines.
 
-2. Decide on hand edits. For each `edited` or `unstamped` copy, show the diff and ask the user. Lines that are specific to this deck move into `.claude/rules/deck-local.md` (create it if needed; it keeps its own content across syncs). A fix that every deck should get belongs in the plugin original under `templates/rules/`, followed by a plugin version bump. Only after the user agrees, add `--force` in step 3.
+2. Decide on hand edits. For each `edited` or `unstamped` copy, show the diff and ask the user. Lines that are specific to this deck move into `.claude/rules/deck-local.md` (create it if needed; it keeps its own content across syncs). A fix that every deck should get belongs in the deck plugin's rule originals (a plugin change). Only after the user agrees, add `--force` in step 3.
 
 3. Sync (same resolver block, then):
 
@@ -55,7 +59,11 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 
 4. Shell diff. Summarize the `shell.html` diff for the user: which differences are this deck's own design (keep) and which are template fixes worth porting by hand (component CSS, runtime JS). Apply nothing to `shell.html` unless the user asks for a specific change.
 
-   A deck that drew its own phone or app mockup classes before the template had them ports them on request: take the template's `.phone` and `.app-*` CSS into the deck shell, map each old part to the template part that does the same job (top bar, avatar row, card with head, media and actions, profile header, button, image grid, tab bar), rename the classes in `deck/sections/*.html` in the same commit, rebuild and render. The template `.phone` defaults to 320x540, so a phone without inline width and height changes size; check the render for `footer-overlap` and `clip`. A part with no template match stays in the deck shell as `.app-<part>` and is noted in `deck-local.md`; the deck never keeps a second phone frame class beside `.phone`. Shell patches the template now covers (`.warn`, `.shot-row`, the zoom fixes) can be dropped from the deck shell.
+   A deck that drew its own phone or app mockup classes before the template had them ports them on request:
+   - Take the template's `.phone` and `.app-*` CSS into the deck shell and map each old part to the template part that does the same job (top bar, avatar row, card with head, media and actions, profile header, button, image grid, tab bar).
+   - Rename the classes in `deck/sections/*.html` in the same commit, rebuild and render. The template `.phone` defaults to 320x540, so a phone without inline width and height changes size; check the render for `footer-overlap` and `clip`.
+   - A part with no template match stays in the deck shell as `.app-<part>` and is noted in `deck-local.md`; the deck never keeps a second phone frame class beside `.phone`.
+   - Shell patches the template now covers (`.warn`, `.shot-row`, the zoom fixes) can be dropped from the deck shell.
 
 ## Verification
 

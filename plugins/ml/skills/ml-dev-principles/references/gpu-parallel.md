@@ -1,16 +1,9 @@
-<!-- Migrated from ml:gpu-parallel-pipeline (skill removed, 2026-08 restructure,
-     see docs/audit/2026-08-26-restructure-audit.md). One item excluded per the §5
-     conflict: the source skill listed "model batching" as a hand-rolled single-GPU
-     optimization technique; §5 instead delegates batching for parallel-model inference
-     to an engine (e.g. vLLM) rather than a custom launcher, so that line is dropped here. -->
-
 # GPU Parallel Processing Patterns
 
-Supporting reference for `ml-dev-principles` §5 (GPU 처리량). These patterns are for
-fanning a *dataset-processing* workload out across multiple GPUs (e.g. running one
-model over millions of images) — not for serving several models in parallel, where §5
-already tells you CUDA_VISIBLE_DEVICES isolation + per-process, batched by an inference
-engine, beats a hand-rolled launcher.
+Three patterns for `ml-dev-principles` §5 (GPU throughput) that fan one *dataset-processing*
+workload out across multiple GPUs, for example one model over millions of images. Serving
+several models in parallel is out of scope: there §5 prefers CUDA_VISIBLE_DEVICES isolation
+with one process per model, batched by an inference engine, over a hand-rolled launcher.
 
 ## Quick reference
 

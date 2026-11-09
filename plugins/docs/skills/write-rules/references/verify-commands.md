@@ -1,7 +1,7 @@
 # Verify Commands (per mode)
 
-Deterministic verify commands for each Mode Execution's Verify step
-(see `SKILL.md`).
+Deterministic verify commands for each mode's Verify step
+(see `procedure.md`).
 
 ## NEW / SPLIT / REORGANIZE
 

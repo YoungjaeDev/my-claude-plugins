@@ -1,7 +1,7 @@
 # Question Framework by Category
 
-Supporting detail for the Core Principle (Non-Obvious Questions) and
-Phase 2 (Deep Dive) of the interview flow in `SKILL.md`.
+Supporting detail for the non-obvious and repo-first bright lines and the
+deep-dive phase of the interview flow in `SKILL.md`.
 
 ### Bad Questions (Obvious)
 - "What feature do you want?" (they already told you)

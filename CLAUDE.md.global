@@ -10,13 +10,15 @@
 ## 2. Write so the point lands first
 
 - A document is only used if skimming it still leaves the point behind, so put the conclusion, the decision, and the required action first.
-- Carry one point per bullet, and finish it in one sentence where possible.
-- Split a sentence into a sub-bullet or the next paragraph when it carries an explanation, an exception, and a follow-up action at once.
+- Carry one point per bullet or paragraph in at most three sentences; move an explanation, exception, or follow-up into the next one.
 - Use a heading or a list only when it exposes the structure of the content, not to decorate a short paragraph.
+- When editing, rewrite the sentence that already covers the point instead of appending a new one, and leave a clear sentence alone.
 - Preserve the meaning, tone, and confidence level of the source when translating or editing, and invent no new claim or example.
-- Leave a sentence that is already clear and distinctive alone, and fix only what obscures the meaning.
 - Prefer verifiable information such as names, numbers, dates, behavior, and outcomes over abstract importance.
-- Do not mechanically ban a particular word or sentence shape; fix it when it delays the point, hides the evidence, or inflates the meaning.
+- A reader acts on a rounded number or a dropped condition as written, so state numbers, thresholds, and the conditions a rule applies under exactly.
+- A warning read apart from what it guards gets skipped, so place each caveat or precondition next to the step it protects and never trim it for length.
+- A long document still has to serve the reader who stops early, so put the essentials first, move detail behind a link, and delete history git already holds.
+- In a Korean user document, list items and table cells end in a noun or `~음`/`~함`, never `~다`; fix any other shape only when it delays the point, hides the evidence, or inflates the meaning.
 
 ### Sentence patterns to avoid
 
@@ -44,6 +46,8 @@
 - A change record and a test-first cycle can only be reviewed if the work produces them along the way, so start qualifying work on the issue and PR flow.
 - In a repository with a GitHub remote where `gh auth status` succeeds, work that changes behavior or edits two or more files gets an issue, a working branch, and a PR.
 - Work that changes behavior gets a failing test or a reproduction first, and confirms it passes after the fix.
+- A test that takes minutes (real video, GPU inference, browser e2e) stalls the work for hours when the full set runs after every edit, so run the fast tests plus one related slow sample of your choosing per edit, and the full set once before the PR after the code settles.
+- Record in the PR which slow tests were skipped and why.
 - Record in the PR why a runnable test does not apply and what verification was used instead.
 - Request automated review on the PR where the repository has it, and do not stop the work because it is unavailable.
 - Opening the issue and the PR directly satisfies the flow, and a skill such as `dev` is not a precondition.
@@ -58,13 +62,17 @@
 - Use no decorative emoji in code, docs, commits, issues, or PRs.
 - Use no em dash in prose you write or rewrite, and split with a period, comma, colon, or parentheses to match the sentence structure.
 
-## 6. Reply in Korean, and read the repository's memory before reasoning
+## 6. Reply in Korean, read the repository's memory, and prefer a CLI and a script
 
 - Write the final reply to the user in Korean unless told otherwise; internal workflows, subagents, and English skills do not override this.
 - When the working directory has `.llmwiki/wiki/index.md`, read it before answering a question about outside knowledge (platforms, vendors, customers, the domain), and prefer the dated, sourced page over memory. Decisions live in `docs/adr/`, terms in `GLOSSARY.md`. This pointer lives here because Codex carries a per-turn rule only through `AGENTS.md` or a hook, never a skill (<https://learn.chatgpt.com/docs/agent-configuration/agents-md>).
+- Outside knowledge confirmed during a session is lost when the session ends, so when work newly confirms a fact about a platform, vendor, customer, or the domain in a repository with `.llmwiki/`, suggest `/wiki:ingest`.
 - Change only the lines the request calls for, with no drive-by refactor or unrelated cleanup.
-
-## 7. Prefer a CLI and a script over reading and counting by eye
-
 - A tool schema and a long tool output both stay in the context, so use the CLI when a CLI and an MCP server do the same job.
 - Judge a quantitative result by writing a small script fitted to the domain and running it as a command, not by counting or comparing by eye.
+
+## 7. Keep agent guidance in one file, and enforce what recurs
+
+- Codex reads `AGENTS.md` and never expands `@`, so two files with their own content give the two runtimes different instructions: `AGENTS.md` is the canonical file and `CLAUDE.md` is the single line `@AGENTS.md`.
+- Propose a merge, without editing either file, when a `CLAUDE.md` holds instructions of its own beyond the `@AGENTS.md` line next to an `AGENTS.md` in the same directory; a `CLAUDE.md` that is only that line is the canonical import, not a reason to merge.
+- A sentence rule gets forgotten while a hook or guard runs every time, so when the same review finding or mistake appears a second time, propose a hook or guard script before adding more guidance text, and stop at the proposal without installing it.

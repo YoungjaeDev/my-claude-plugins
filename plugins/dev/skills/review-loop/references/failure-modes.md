@@ -130,7 +130,7 @@ fi
 # the record either way, so a failed split is reported, not a merge blocker.
 parent=$(jq -r '.followup_issue.number // empty' "$STATE_FILE")
 if [ -n "$parent" ]; then
-  split=$(bash "$SKILL_DIR/scripts/file-sub-issues.sh" "$OWNER" "$REPO" "$parent" "$PR_NUM")
+  split=$(STATE_FILE="$STATE_FILE" bash "$SKILL_DIR/scripts/file-sub-issues.sh" "$OWNER" "$REPO" "$parent" "$PR_NUM")
   jq -e '.split and .sub_issues' <<<"$split" >/dev/null 2>&1 || split='{"split":"failed","sub_issues":[]}'
   if [ "$(jq -r '.split' <<<"$split")" != none ]; then
     tmp=$(mktemp); jq --argjson s "$split" '.followup_issue.split = $s.split

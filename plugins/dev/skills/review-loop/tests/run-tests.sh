@@ -2421,7 +2421,9 @@ si_state() { # N_DEFERRED [FOLLOWUP_JSON] -> a state file with N defer records
 }
 si_run() { # [ENV=...]... -> runs the Step 14 block; calls in $SI/calls, stderr in $SI/err
   : > "$SI/calls"
-  env "$@" PATH="$SI:$PATH" STATE_FILE="$SI/state.json" SKILL_DIR="$HERE/.." BLOCK="$FM_BLOCK" bash -c '
+  # STATE_FILE is a plain shell variable in the run (run-blocks.md), never exported.
+  env "$@" PATH="$SI:$PATH" SI_STATE="$SI/state.json" SKILL_DIR="$HERE/.." BLOCK="$FM_BLOCK" bash -c '
+    STATE_FILE=$SI_STATE; unset SI_STATE
     OWNER=o REPO=r final_state=churn review_total=0 PR_NUM=1 HEAD_VERDICT=""
     deferred_total=$(jq "[.auto_judge_log[] | select(.action == \"defer\")] | length" "$STATE_FILE")
     eval "$BLOCK"' >/dev/null 2>"$SI/err"

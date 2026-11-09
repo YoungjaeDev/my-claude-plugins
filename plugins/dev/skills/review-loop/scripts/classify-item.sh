@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Usage: echo '<record json>' | SKIP_MINOR=true bash scripts/classify-item.sh
 # Reads one record on stdin, prints the same record + {"tier":"auto|gated|skip|review"} on stdout.
+# A CR/CLI record whose header the parser could not read may carry the model's
+# `inferred_severity` (Critical|High|Major|Minor|Trivial|Info) and `inferred_effort`
+# (Quick win|Heavy lift), set in Step 9a. They stand in only for a severity the
+# parser left empty, and the record then also gets {"tier_source":"inferred"} (#392).
 # See references/tier-classification.md and references/skip-minor-rules.md.
 set -euo pipefail
 
@@ -11,8 +15,10 @@ jq -c --argjson skip_minor "$( [ "$SKIP_MINOR" = "true" ] && echo true || echo f
   . as $r
   | (.source // "") as $src
   | (.category_emoji // "") as $cat
-  | (.severity_emoji // "") as $sev
-  | (.effort_emoji // "") as $eff
+  | ($src != "codex" and (.severity_emoji // "") == ""
+     and ((.inferred_severity // "") | test("^(Critical|High|Major|Minor|Trivial|Info)$"; "i"))) as $inferred
+  | (if $inferred then .inferred_severity else (.severity_emoji // "") end) as $sev
+  | (if $inferred then (.inferred_effort // "") else (.effort_emoji // "") end) as $eff
   | ((.p_badge // "") | tostring) as $pb
   | (
       # Base tier. CR/CLI is severity-first: the header category names the defect
@@ -46,5 +52,5 @@ jq -c --argjson skip_minor "$( [ "$SKIP_MINOR" = "true" ] && echo true || echo f
         $base_tier
       end
     ) as $tier
-  | $r + { tier: $tier }
+  | $r + { tier: $tier } + (if $inferred then { tier_source: "inferred" } else {} end)
 '

@@ -423,6 +423,15 @@ st "$(fix 2 codex '' P2 apply)"
 is "a Codex P2 fix -> merge_then_main_push" "$(nxt)" merge_then_main_push
 st "$(fix 2 cr '🎯 Functional Correctness' '🟡 Minor' apply high)"
 is "a Minor reassessed high -> rereview_push" "$(nxt)" rereview_push
+# #392: a headerless finding logs no severity as read; the model's inference is in
+# its own field, and an inferred Critical/Major sends the fix back for re-review.
+inferred() { jq -c --arg s "$1" '. + {badge_or_sev:"", tier_source:"inferred", inferred_severity:$s}' <<<"$(fix 2 cr '' '' apply low)"; }
+st "$minor,$(inferred Major)"
+is "an inferred Major fix -> rereview_push" "$(nxt)" rereview_push
+st "$(inferred Critical)"
+is "an inferred Critical fix -> rereview_push" "$(nxt)" rereview_push
+st "$(inferred Minor)"
+is "an inferred Minor fix -> merge_then_main_push" "$(nxt)" merge_then_main_push
 # Only fixes no reviewer has seen count: an earlier iteration's Major was re-reviewed,
 # and a deferred Major changed no code.
 st "$(fix 1 cr '🎯 Functional Correctness' '🟠 Major' apply high),$minor"
@@ -597,6 +606,22 @@ is "PR #344 title after the new header" \
    "Fix the \`error.filename\` access for \`UnicodeDecodeError\`."
 is "unknown severity word is not read off the icon" "$(jq -r '.[2].severity_emoji' <<<"$th")" null
 is "unknown severity word -> review"     "$(tier_at 2)" review
+
+# #392: a header the parser cannot read gets the model's inferred severity/effort
+# (Step 9a), marked tier_source "inferred"; a field the parser did read still wins.
+inf() { jq -c ". + $2" <<<"$1" | bash "$SCRIPTS/classify-item.sh" | jq -r "$3"; }
+hl='{"source":"cr","path":"a.sh","line":3,"body":"no header here"}'
+is "inferred Major on a headerless CR finding -> gated" "$(inf "$hl" '{inferred_severity:"Major"}' .tier)" gated
+is "inferred tier is marked inferred"   "$(inf "$hl" '{inferred_severity:"Major"}' .tier_source)" inferred
+is "inferred Minor + Quick win -> auto" "$(inf "$hl" '{inferred_severity:"Minor",inferred_effort:"Quick win"}' .tier)" auto
+is "inferred Minor + Heavy lift -> gated" "$(inf "$hl" '{inferred_severity:"Minor",inferred_effort:"Heavy lift"}' .tier)" gated
+is "inferred Trivial -> skip"           "$(inf "$hl" '{inferred_severity:"Trivial"}' .tier)" skip
+is "inferred CLI finding -> gated"      "$(inf "$hl" '{source:"cli",inferred_severity:"Critical"}' .tier)" gated
+is "unknown inferred word -> review"    "$(inf "$hl" '{inferred_severity:"Severe"}' .tier)" review
+is "unknown inferred word is not marked inferred" "$(inf "$hl" '{inferred_severity:"Severe"}' '.tier_source // "none"')" none
+is "parsed header wins over an inference" \
+   "$(inf "$hl" '{severity_emoji:"🟡 Minor",effort_emoji:"⚡ Quick win",inferred_severity:"Major"}' '"\(.tier)/\(.tier_source // "header")"')" auto/header
+is "Codex findings are never inferred"  "$(inf '{"source":"codex","p_badge":"none"}' '{inferred_severity:"Major"}' .tier)" review
 
 echo
 echo "fetch-cr-outside-diff.sh"
@@ -1916,6 +1941,12 @@ echo '{"base_push":{"branch":"main","sha":"abc","fixes":[{"src":"cr","path":"a.s
 fo=$(FINAL_STATE=minor_floor MERGED=true STATE_FILE="$BPS/s/st.json" PR_NUM=42 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
 is "final output: base push carried"              "$(jq -r '.base_push.fixes[0].path' <<<"$fo")" a.sh
 is "final output: base_push passes the schema"    "$(schema_ok "$fo")" true
+is "final output: no inferred tiers -> 0"         "$(jq -r '.inferred_tiers' <<<"$fo")" 0
+# #392: findings judged on an inferred tier are counted from the log before it is archived.
+echo '{"auto_judge_log":[{"tier_source":"inferred","action":"apply"},{"action":"skip"},{"tier_source":"inferred","action":"skip"}]}' > "$BPS/s/inf.json"
+fo_inf=$(FINAL_STATE=clean STATE_FILE="$BPS/s/inf.json" PR_NUM=43 LAST_SHA="$CHEAD" bash "$SCRIPTS/emit-final-json.sh" 2>/dev/null)
+is "final output: inferred tiers counted"         "$(jq -r '.inferred_tiers' <<<"$fo_inf")" 2
+is "final output: inferred_tiers passes the schema" "$(schema_ok "$fo_inf")" true
 # The runner's line is also a file next to the state, so the main session reads it
 # on any wake instead of waiting on a completion notification.
 is "final output: written to the state dir too"   "$(cat "$BPS/s/review-loop-final-42.json" 2>/dev/null)" "$fo"

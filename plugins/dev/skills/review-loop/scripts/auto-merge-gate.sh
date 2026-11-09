@@ -16,7 +16,8 @@
 # `next_action` (ADR 0006): who reviews the fixes iteration FIX_ITER applied (its
 # `apply` records in STATE_FILE's auto_judge_log). One from a Critical/High/Major,
 # Security or Codex P0-P1 finding, or reassessed high, goes back to the PR for
-# re-review. When all are Minor or lower, the reviewed HEAD merges and the fixes go
+# re-review, and so does one whose header was unreadable and whose severity the
+# model inferred as Critical/High/Major (`inferred_severity`, #392). When all are Minor or lower, the reviewed HEAD merges and the fixes go
 # straight to the base, which needs an unprotected base (404: a protected one takes
 # no direct push), the build/test gate on and MINOR_STOP not false; a failed loop-end
 # full line blocks the merge itself through `eligible` (Step 15). Anything unreadable
@@ -134,6 +135,7 @@ severe=$(jq --argjson it "${FIX_ITER:-0}" '[.auto_judge_log[]?
     | select(.iter == $it and .action == "apply")
     | select(((.category // "") | test("Security"; "i"))
              or ((.badge_or_sev // "") | tostring | test("^P?[01]$|Critical|High|Major"; "i"))
+             or ((.inferred_severity // "") | tostring | test("Critical|High|Major"; "i"))
              or (.judgment.severity_reassess? == "high"))] | length' "${STATE_FILE:-/nonexistent}" 2>/dev/null) || severe=""
 # The protection endpoint 404s on a base guarded only by a ruleset; the branch's
 # `protected` flag covers both, so a direct push needs it false too.

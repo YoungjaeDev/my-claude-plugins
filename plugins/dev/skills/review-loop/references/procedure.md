@@ -104,7 +104,7 @@ Run block "Step 9a: classify". With a stop held by Step 13 it resolves that firs
 
 Drop `tier=="skip"` items before rendering and count them per `skip-minor-rules.md`. Render the rest as one table (`Source · Category/Badge · Severity · Effort · Path:Line · Tier`), with the footer when `skipped_total > 0`.
 
-Tiers are severity-first from CodeRabbit's header (`tier-classification.md`). Nothing is asked between 9a and 9c: go straight to 9c in severity order.
+Tiers are severity-first from CodeRabbit's header (`tier-classification.md`). A CR or CLI finding whose header could not be read gets the model's inferred severity and effort and is classified again before the table ("Inferred tier for an unreadable CodeRabbit header" there). Nothing is asked between 9a and 9c: go straight to 9c in severity order.
 
 ## Step 9c: per-finding judgment
 
@@ -153,6 +153,7 @@ Then run block "Step 15: merge". A runner leaves the question in `pending_decisi
 The Step 2 EXIT trap runs `scripts/emit-final-json.sh`, which always prints one JSON line (schema `assets/final-output.schema.json`, field meanings there) and archives the state file to `.claude/state/archive/`. The final report states, from that line:
 
 - `head_verdict` when HEAD lacks a verdict, each `dropped_reviewers` entry (HEAD has no verdict from it), and `pending_decision` for the main session to ask.
+- `inferred_tiers` above 0: the count, and one line saying CodeRabbit's header format may have changed (`scripts/cr-header.jq` read none of those headers).
 - `verification_gate` other than `on` (fixes went in unverified), and a `full_verification=fail` with the line it ran (auto-merge stayed off).
 - `cr_review_requested_base`: one line suggesting the user add that base to the auto-review base-branch list in `.coderabbit.yaml`, naming the key as CodeRabbit's schema (`https://coderabbit.ai/integrations/schema.v2.json`) or docs give it at run time. Never edit the file.
 - The CLI install suggestion, when the Step 7c flip logged one.

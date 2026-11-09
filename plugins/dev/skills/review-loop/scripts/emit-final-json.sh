@@ -39,8 +39,10 @@ FINAL_FILE=""
 PRE_FLIGHT_LAST='null'
 FOLLOWUP_ISSUE='null'
 BASE_PUSH='null'
+INFERRED_TIERS=0
 if [ -n "$STATE_FILE" ] && [ -f "$STATE_FILE" ]; then
   PRE_FLIGHT_LAST=$(jq -c '.pre_flight_decisions // [] | .[-1] // null' "$STATE_FILE" 2>/dev/null || echo 'null')
+  INFERRED_TIERS=$(jq '[.auto_judge_log[]? | select(.tier_source == "inferred")] | length' "$STATE_FILE" 2>/dev/null || echo 0)
   FOLLOWUP_ISSUE=$(jq -c '.followup_issue // null' "$STATE_FILE" 2>/dev/null || echo 'null')
   BASE_PUSH=$(jq -c '.base_push // null' "$STATE_FILE" 2>/dev/null || echo 'null')
 fi
@@ -96,6 +98,7 @@ line=$(jq -nc \
   --arg     req_base  "${CR_BASE_REQUESTED:-}" \
   --argjson pending   "$PENDING_DECISION" \
   --arg     full_v    "${FULL_VERIFICATION:-}" \
+  --argjson inferred  "${INFERRED_TIERS:-0}" \
   '{
     iterations: $iters,
     applied_total: $applied,
@@ -110,6 +113,7 @@ line=$(jq -nc \
     cli_invocations: $cli_inv,
     rate_limit_hits: $rl_hits,
     auto_judge_stats: { apply: $aj_apply, defer: $aj_defer, skip: $aj_skip },
+    inferred_tiers: $inferred,
     followup_issue: $followup,
     ci_failing_checks: $ci_fail,
     head_verdict: (if $hv == "" then null else $hv end),

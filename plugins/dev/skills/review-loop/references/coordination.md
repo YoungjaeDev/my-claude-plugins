@@ -14,7 +14,8 @@ How review-loop runs two automatic PR reviewers, CodeRabbit and ChatGPT-Codex, s
 
 - **Tiers** (`tier-classification.md` holds the table): the Security & Privacy category is gated whatever its severity. Critical and Major are gated, Minor with Heavy lift is gated, and Minor with Quick win (or no effort field) is auto-applied.
 - Trivial, Info and the summary-only Nitpick are skipped. Codex P0, P1 and P2 are gated in every round, so a P2 from the second round on is judged like any other finding.
-- A CodeRabbit finding whose header cannot be read, or a Codex finding with no badge, is `review`: shown, and never counted as `clean`.
+- A CodeRabbit finding whose header cannot be read gets the model's inferred severity and effort from its sanitized body, marked `tier_source: "inferred"`, and is judged like the rest. An inferred Critical or Major fix goes back for re-review, and the final report counts these (`inferred_tiers`) as a sign the header format changed.
+- A Codex finding with no badge, or a CodeRabbit one whose inference is unusable, is `review`: shown, and never counted as `clean`.
 - **Judgment**: every finding, whatever its tier, is judged against the local code without asking the user, as apply, defer or skip, with the reason in `auto_judge_log` (`autonomous-judgment.md`).
 - Defer is only for a severe finding (Critical, Major, Security, Codex P0 or P1) whose fix is large or unclear, and it goes to the follow-up issue. Everything else is applied or skipped with its reason inside the session, including a fix that needs a new flag or entry point.
 

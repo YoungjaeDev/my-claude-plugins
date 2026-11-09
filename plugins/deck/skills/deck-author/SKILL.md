@@ -34,6 +34,8 @@ read the originals in this plugin's `templates/rules/` and tell the user.
    slide that opens a topic, rounded up to a 9-cell sheet) and ask the user before the draft is
    settled; `deck-design.md` gives the rule. Record the answer in the outline header
    (`- 아이콘: <N개, 시트 M장 | 없음>`) so `deck-assets` step 1 starts from it.
+   - Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is
+     available, leave the icon line out of the header and report the proposed count.
 2. **Copy review** before the draft goes to the user, run by a separate reviewer agent so the author
    does not grade its own draft. Who starts the reviewer depends on the session:
    - A session that can spawn a subagent (the main session) starts the reviewer itself.

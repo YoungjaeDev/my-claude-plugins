@@ -55,7 +55,8 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
 [ -z "$PLUGIN_ROOT" ] && [ -d plugins/dev/scripts ] && PLUGIN_ROOT=plugins/dev
 if [ -z "$PLUGIN_ROOT" ]; then
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/dev/* 2>/dev/null | sort | tail -1)
+  if sort -V </dev/null >/dev/null 2>&1; then vsort="sort -V"; else vsort="sort -t. -k1,1n -k2,2n -k3,3n"; fi
+  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/dev/* 2>/dev/null | awk -F/ '{print $NF "\t" $(0)}' | $vsort | tail -1 | cut -f2-)
 fi
 [ -d "$PLUGIN_ROOT/scripts" ] || { echo "dev scripts not found"; exit 1; }
 ```

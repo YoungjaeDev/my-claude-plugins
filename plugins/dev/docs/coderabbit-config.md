@@ -10,8 +10,8 @@ This file is reference only — drop the snippet into your repo's `.coderabbit.y
 reviews:
   enable_prompt_for_ai_agents: true   # default true; our fetch path parses "🤖 Prompt for AI Agents" blocks
   commit_status: true                 # default true; review-loop polls this status check
-auto_review:
-  enabled: true                       # default true; review fires on PR open + push
+  auto_review:
+    enabled: true                     # default true; review fires on PR open + push
 ```
 
 `enable_prompt_for_ai_agents` is the load-bearing key — if disabled, the GraphQL fetch returns thread bodies without the `<details><summary>🤖 Prompt for AI Agents</summary>` block, and the per-issue fix workflow has no machine-readable guidance.
@@ -22,12 +22,12 @@ auto_review:
 reviews:
   profile: chill                      # chill | assertive ; chill = default, lower noise
   request_changes_workflow: false     # auto-merge gating is out of scope for this plugin
-auto_review:
-  drafts: false                       # don't burn rate on draft PRs
-  auto_incremental_review: true       # review each new push, not just initial PR
-  base_branches:                      # restrict review to branches that matter
-    - main
-    - master
+  auto_review:
+    drafts: false                     # don't burn rate on draft PRs
+    auto_incremental_review: true     # review each new push, not just initial PR
+    base_branches:                    # restrict review to branches that matter
+      - main
+      - master
 ```
 
 ## Rate-limit sanity
@@ -36,7 +36,8 @@ CodeRabbit Pro has per-seat hourly review quotas. To avoid hitting them in the r
 
 ```yaml
 reviews:
-  auto_pause_after_reviewed_commits: 5   # pause after 5 incremental reviews per PR
+  auto_review:
+    auto_pause_after_reviewed_commits: 5   # pause after 5 incremental reviews per PR
 ```
 
 Combined with the plugin defaults (`/dev:review-loop --timeout 1800`), this keeps long iteration loops within free-tier limits.

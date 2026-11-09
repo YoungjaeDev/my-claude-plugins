@@ -41,7 +41,7 @@ mcp__deepwiki__read_wiki_contents({ repoName: "[owner/repo]" })
 Query with the gathered context:
 
 ```
-mcp__deepwiki__ask_question({
+mcp__deepwiki__ask_wiki_question({
   repoName: "[owner/repo]",
   question: "[QUESTION]"
 })
@@ -52,7 +52,7 @@ mcp__deepwiki__ask_question({
 If the initial response is insufficient:
 
 1. **Decompose** the question into sub-questions.
-2. **Query in parallel** using multiple `ask_question` calls.
+2. **Query in parallel** using multiple `ask_wiki_question` calls.
 3. **Synthesize** the results into a comprehensive answer.
 
 Example decomposition:
@@ -70,7 +70,7 @@ Sub-questions:
 
 | Question type | Strategy |
 |---------------|----------|
-| Specific ("How does X function work?") | Skip Phase 2, direct `ask_question`. |
+| Specific ("How does X function work?") | Skip Phase 2, direct `ask_wiki_question`. |
 | Broad ("Explain the architecture") | Full workflow with contents. |
 | Comparative ("X vs Y in this repo") | Structure → targeted asks. |
 | Exploratory ("What can this do?") | Structure → contents → summary. |
@@ -80,7 +80,7 @@ Sub-questions:
 DeepWiki supports querying multiple repos at once:
 
 ```
-mcp__deepwiki__ask_question({
+mcp__deepwiki__ask_wiki_question({
   repoName: ["facebook/react", "vuejs/vue"],
   question: "Compare the reactivity systems"
 })

@@ -115,6 +115,7 @@ plugins/dev/
 ├── assets/                                # seed templates + e2e scaffolds
 ├── docs/coderabbit-config.md              # recommended .coderabbit.yaml + CLI install
 ├── references/
+│   ├── e2e-setup-scaffolds.md             # e2e-setup: seed spec, specs/README.md, config, auth.setup.ts
 │   ├── new-procedure.md                   # new: Phase 0-7
 │   └── role-contracts.md                  # e2e planner / generator / healer contracts
 ├── scripts/                               # project_state.sh, idempotent-seed.sh, infer-github-context.sh, jq-lf.sh

@@ -36,7 +36,7 @@ Builds a ready-to-run Gradio CV app for one of 7 task types, combining PRITHIVSA
 ## Output requirements
 
 - **app.py**: complete and ready to run, ending with the execution pattern below.
-- **requirements.txt**: `gradio>=5.50.0,<6.0` (required version range) plus the other packages the app needs.
+- **requirements.txt**: `gradio>=5.50.0,<6.0` (required version range: the references pass `theme` and `css` to `gr.Blocks()`, which Gradio 6 moved to `launch()`) plus the other packages the app needs.
 - **Code quality**: type hints, error handling with `gr.Error`, memory management (`torch.cuda.empty_cache()`), inference mode when loading models (`model.train(False)`), appropriate comments.
 
 ```python

@@ -65,5 +65,5 @@ The orchestrator's tool guides (`exa-web-search.md`, `resource-finder.md`, `brig
 |------|---------|
 | `mcp__deepwiki__read_wiki_structure` | Documentation topics |
 | `mcp__deepwiki__read_wiki_contents` | Full documentation |
-| `mcp__deepwiki__ask_question` | AI-powered Q&A |
+| `mcp__deepwiki__ask_wiki_question` | AI-powered Q&A |
 | `mcp__brightdata__scrape_as_markdown` / `scrape_batch` | URL-mode `generate-llmstxt` (sitemap discovery runs on `curl`; `bdata` CLI is the terminal fallback) |

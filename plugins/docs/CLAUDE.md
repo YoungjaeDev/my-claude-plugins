@@ -12,7 +12,7 @@ Documents people and agents read, plus publishing them elsewhere: 8 skills, 4 co
 | `vp` | Voice-dictated prompt gate: normalize misheard terms against `.agents/voice-terms.md`, restate and proceed, or ask 2-3 questions |
 | `skill-forge` | Write or revise a skill: frontmatter schema, writing levers, skill shape, two-runtime packaging contract |
 | `md-audit` | User-invoked: measure markdown shape with the bundled script, judge, report in chat, rewrite only the files the user picks |
-| `translate-web-article` | Web page to Korean markdown with image captions. Needs Bright Data MCP or the `bdata` CLI (see the `brightdata-guide` preflight) |
+| `translate-web-article` | Web page to Korean markdown with image captions. Needs Bright Data MCP or the `bdata` CLI (its Step 1 holds the four-gate preflight) |
 | `gws-sync` | One-way, approval-gated sync from a local folder to Google Drive through the `gws` CLI |
 
 ## Commands

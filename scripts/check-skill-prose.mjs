@@ -2,9 +2,9 @@
 // Skill-prose progressive-disclosure smell detector — INFORMATIONAL ONLY.
 //
 // Two post-measurement warnings, never a failure:
-//   1. A skill SKILL.md or bundled reference/asset doc over ~500 lines — the
-//      widely-cited progressive-disclosure ceiling. Over it, a body is almost
-//      certainly carrying reference-grade material it should offload.
+//   1. A skill SKILL.md or bundled reference/asset doc over 10000 bytes, the 10KB
+//      cap in plugins/docs/references/writing-standard.md (1KB = 1000 bytes, `wc -c`).
+//      Over it, a body is almost certainly carrying material it should offload.
 //   2. A SKILL.md that points at a bundled file nested deeper than one directory
 //      level (e.g. references/templates/base.md) — the flat-references convention
 //      is exactly one level (files directly under references/).
@@ -19,7 +19,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const LINE_CEILING = 500;
+const BYTE_CEILING = 10000;
 
 // Match a bundled-path reference with a subdirectory under references/ / assets/ /
 // scripts/ (i.e. depth >= 2). One capture per whole path so the warning can quote it.
@@ -53,20 +53,20 @@ function safeRead(abs) {
 }
 
 // Pure, testable core. Returns an array of warning strings.
-export function collectSkillProseWarnings({ root, lineCeiling = LINE_CEILING }) {
+export function collectSkillProseWarnings({ root, byteCeiling = BYTE_CEILING }) {
   const warnings = [];
   const skillsRoot = join(root, 'plugins');
   const rel = (abs) => relative(root, abs).split(sep).join('/');
 
-  // 1. Line-count sweep over every markdown doc under a plugin's skills/ tree.
+  // 1. Byte-size sweep over every markdown doc under a plugin's skills/ tree.
   for (const abs of walkFiles(skillsRoot, (n) => n.endsWith('.md'))) {
     const r = rel(abs);
     if (!r.includes('/skills/')) continue;
     const content = safeRead(abs);
     if (content === null) continue;
-    const lines = content.split('\n').length;
-    if (lines > lineCeiling) {
-      warnings.push(`line-ceiling: ${r} is ${lines} lines (> ${lineCeiling}) — consider offloading reference-grade detail`);
+    const bytes = Buffer.byteLength(content, 'utf8');
+    if (bytes > byteCeiling) {
+      warnings.push(`size-ceiling: ${r} is ${bytes} bytes (> ${byteCeiling}) — consider offloading reference-grade detail`);
     }
   }
 

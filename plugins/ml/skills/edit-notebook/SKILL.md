@@ -1,6 +1,6 @@
 ---
 name: edit-notebook
-description: Safely edit Jupyter Notebook (.ipynb) files. Use when (1) adding/modifying/deleting cells in .ipynb files, (2) working with notebook structure, (3) any .ipynb file modification. Triggered by notebook editing requests.
+description: Safely edit an existing Jupyter Notebook (.ipynb) file. Use when (1) adding/modifying/deleting cells in an .ipynb file, (2) working with notebook structure. Triggered by notebook editing requests. Not for generating a new CV notebook (ml:cv-notebook).
 ---
 
 # Notebook Editing

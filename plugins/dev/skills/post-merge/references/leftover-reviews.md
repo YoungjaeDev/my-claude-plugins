@@ -1,6 +1,6 @@
 # Leftover-review surface blocks (Step 1.5)
 
-The three blocks Step 1.5 of `SKILL.md` runs, in order. The decision rules around them stay in the skill body.
+The three blocks Step 1.5 runs, in order; the decision rules around them are in `procedure.md` Step 1.5. The `final_state` enum and the `auto_judge_stats` fields are defined in this plugin's `skills/review-loop/assets/final-output.schema.json`.
 
 ## Primary signal: the review-loop state file
 

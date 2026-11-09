@@ -9,6 +9,9 @@ Two validation paths for a generated notebook, run before it is handed back. `No
 
 ```bash
 NB="notebook.ipynb"           # the generated notebook
+# The interpreter name differs by platform; a missing one must not read as a broken cell.
+PY=$(command -v python3 || command -v python || command -v py) \
+  || { echo "py_compile: no Python interpreter on PATH, notebook unverified"; exit 1; }
 tmp=$(mktemp -d)
 jq -r '.cells[] | select(.cell_type=="code")
        | (.source | if type=="array" then join("") else . end) | @base64' "$NB" > "$tmp/cells.b64"
@@ -18,7 +21,7 @@ while IFS= read -r b64; do
   n=$((n+1))
   printf '%s' "$b64" | base64 -d \
     | sed 's/^[[:space:]]*[!%].*/pass  # magic stripped/' > "$tmp/cell_$n.py"
-  if ! python3 -m py_compile "$tmp/cell_$n.py" 2>"$tmp/err"; then
+  if ! "$PY" -m py_compile "$tmp/cell_$n.py" 2>"$tmp/err"; then
     echo "py_compile FAIL at code cell $n — unverified beyond cell $n:"; sed 's/^/    /' "$tmp/err"
     status=fail; break
   fi

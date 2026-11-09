@@ -78,7 +78,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 4. **Verify**:
    - Re-run the specific test, then burn it in:
      ```bash
-     npx playwright test e2e/<flow>.spec.ts --repeat-each=3
+     npx playwright test <path of the patched spec> --repeat-each=3
      ```
    - Green on every repeat -> the fix holds. A pass-then-fail = still flaky -> back to step 3 (within the attempt budget).
 

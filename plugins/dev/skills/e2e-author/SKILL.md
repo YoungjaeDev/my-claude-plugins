@@ -14,6 +14,7 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
 
 - Read the E2E SSOT doc (`e2e/AGENTS.md` or `.claude/e2e-guidelines.md`) for the CUF list and conventions. If absent, run `e2e-setup` Step 5 or capture the CUFs inline.
 - The environment seed (`seed.spec.ts`, wherever `e2e-setup` put it) must exist on every path.
+- `<testDir>` below is the `testDir` in `playwright.config.*`; Playwright finds no spec outside it.
 - Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, stop and report: the flow pick (Step 1) and the plan review (Step 2) have no safe default.
 - For app exploration the planner and generator need `playwright-cli` (re-run the `e2e-setup` Step 1 probe) or, as the fallback, the `.mcp.json` `playwright-test` entry; one of the two is enough. Route the user to `dev:e2e-setup` first only when `seed.spec.ts` is missing or both are unavailable.
 - **Path A only**: confirm the named agents exist (`.claude/agents/playwright-test-planner.md`, `playwright-test-generator.md`). If they are missing **and you are on Claude Code**, run `e2e-setup`. Do not hand-roll them. **Do not** demand these Claude agent files under Codex; there the bundled contracts stand in (see Step 0).
@@ -53,22 +54,22 @@ Two runtime families, three execution paths, same gates: on **Claude Code** the 
    - **MANDATORY user review gate** (all paths): present the plan and get explicit approval before generating any code. The plan is cheap to fix; generated specs are not. Incorporate edits into `specs/<flow>.md` before proceeding.
 
 3. **Generate (generator role)**. Dispatch via the Step 0 path. The generator also verifies selectors/assertions live via `playwright-cli` (falling back to MCP the same way as the planner):
-   - **Path A**: `Agent(subagent_type="playwright-test-generator", prompt="Turn specs/<flow>.md into Playwright spec files under e2e/. Verify every selector and assertion live with <the playwright-cli invocation e2e-setup's probe found> as you go.")`.
-   - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright generator role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'generator'): turn specs/<flow>.md into e2e/<flow>.spec.ts, verifying every selector/assertion live via <the playwright-cli invocation e2e-setup's probe found>; semantic getByRole/getByLabel/getByText only, no CSS/XPath, no waitForTimeout.")`. Paste the `generator` contract inline.
+   - **Path A**: `Agent(subagent_type="playwright-test-generator", prompt="Turn specs/<flow>.md into Playwright spec files under <testDir>. Verify every selector and assertion live with <the playwright-cli invocation e2e-setup's probe found> as you go.")`.
+   - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright generator role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'generator'): turn specs/<flow>.md into <testDir>/<flow>.spec.ts, verifying every selector/assertion live via <the playwright-cli invocation e2e-setup's probe found>; semantic getByRole/getByLabel/getByText only, no CSS/XPath, no waitForTimeout.")`. Paste the `generator` contract inline.
    - **Path C**: run the generator role yourself per the contract.
    - The generator verifies selectors/assertions against the running app as it writes.
    - **Enforce semantic locators** (all paths): specs must use `getByRole(role, { name })` / `getByLabel` / `getByText`, not CSS/XPath. If brittle selectors are emitted, send the role back to fix them (Playwright's own best-practice is role-first locators).
 
 4. **Burn-in (flake gate)**:
    ```bash
-   npx playwright test e2e/<flow>.spec.ts --repeat-each=3
+   npx playwright test <testDir>/<flow>.spec.ts --repeat-each=3
    ```
    - `--repeat-each=N` runs each test N times unconditionally: it surfaces intermittent flakiness *before* merge.
    - **A single failure across the repeats = flaky = blocked.** Do not merge a spec that is not green on every repeat. If it flakes, hand it to `dev:e2e-debug` (or the healer) and re-burn. Catching flakes at authoring time is far cheaper than in CI.
 
 5. **Convention cleanup**:
    - Split long flows into `test.step("...")` blocks for readable traces.
-   - Match the project's conventions from the SSOT doc (step-name language: English or Korean, file layout `e2e/<feature>.spec.ts`, fixture naming). Learn from existing specs rather than imposing a new style.
+   - Match the project's conventions from the SSOT doc (step-name language: English or Korean, file layout `<testDir>/<feature>.spec.ts`, fixture naming). Learn from existing specs rather than imposing a new style.
    - Ensure no arbitrary `waitForTimeout`: use web-first assertions (`expect(locator).toBeVisible()`).
 
 6. **Report**: list the spec files written, the burn-in result (N/N green), and the locator/convention state. Stage only the new/changed E2E files.

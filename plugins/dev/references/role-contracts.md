@@ -12,12 +12,14 @@ Keep these contracts in sync with the behavior of the init-agents-generated agen
 
 ## Gates that hold on every path
 
+`<testDir>` is the `testDir` of the project's `playwright.config.*` (the config's directory when it sets none, `e2e/` when `e2e-setup` wrote the config). Playwright collects specs only from there, so every spec below is written and run under it.
+
 The runtime branch only changes *how* a role is executed, never *which* gates apply. Path B and Path C enforce the identical gates Path A does:
 
 - **CUF selection** — author only the critical user flows (a regression breaks revenue, data integrity, or user trust). Breadth is a cost; confirm 1-3 flows, never auto-pick everything.
 - **User review gate between plan and generation** — the planner's Markdown plan is presented and explicitly approved before any spec code is generated. The plan is cheap to fix; generated specs are not.
 - **Semantic locators** — generated specs use `getByRole(role, { name })` / `getByLabel` / `getByText`, never CSS/XPath. Send brittle selectors back to be fixed.
-- **Burn-in flake gate** — every new/changed spec runs `npx playwright test e2e/<flow>.spec.ts --repeat-each=3`; a single failure across the repeats = flaky = blocked. (`--repeat-each` is an authoring-time gate, not a full-suite CI flag.)
+- **Burn-in flake gate** — every new/changed spec runs `npx playwright test <testDir>/<flow>.spec.ts --repeat-each=3`; a single failure across the repeats = flaky = blocked. (`--repeat-each` is an authoring-time gate, not a full-suite CI flag.)
 - **Trace-first diagnosis** — a failure is diagnosed from its trace (headless `npx playwright trace` subcommands) before any patch, classifying it as real regression / selector drift / environment-data / genuine flake.
 - **Bounded healer retries** — at most 3 heal attempts; do not loop indefinitely.
 - **Skip-after-3 with reason** — if still red after 3 attempts, quarantine honestly (`test.skip` / `test.fixme`) with a comment stating the reason and a tracking link. Never leave the suite red or silently drop coverage.
@@ -75,8 +77,8 @@ The planner and generator drive the app through `playwright-cli` (`playwright-cl
 ### generator
 - **Role**: turn an approved `specs/<flow>.md` into Playwright spec files.
 - **Inputs**: the approved plan; the SSOT conventions (step-name language, file layout, fixtures).
-- **Tool order**: read `specs/<flow>.md` → write specs under `e2e/` → verify every selector and assertion live against the running app with `playwright-cli` (`snapshot`/`find`/`click`/`eval`) as you go.
-- **Output**: `e2e/<flow>.spec.ts` using semantic `getByRole` / `getByLabel` / `getByText` locators; no CSS/XPath, no arbitrary `waitForTimeout` (web-first assertions only). Split long flows into `test.step("...")` blocks.
+- **Tool order**: read `specs/<flow>.md` → write specs under `<testDir>` → verify every selector and assertion live against the running app with `playwright-cli` (`snapshot`/`find`/`click`/`eval`) as you go.
+- **Output**: `<testDir>/<flow>.spec.ts` using semantic `getByRole` / `getByLabel` / `getByText` locators; no CSS/XPath, no arbitrary `waitForTimeout` (web-first assertions only). Split long flows into `test.step("...")` blocks.
 - **Gate**: burn-in with `--repeat-each=3` before the spec is considered done; a single failing repeat blocks it.
 - **Independence**: when flows share a long common prefix, set the branch start state via a test API rather than replaying the prefix through the UI (distinct from `storageState`, which is auth only).
 
@@ -84,5 +86,5 @@ The planner and generator drive the app through `playwright-cli` (`playwright-cl
 - **Role**: diagnose a failing/flaky spec from its trace and patch it to green, or quarantine it.
 - **Inputs**: the failing test name(s) + the trace findings (failing action, 4xx/5xx requests, console/errors).
 - **Tool order**: replay the failing steps through the `playwright-test` MCP server → find equivalent current elements → patch the test → re-run until green, then burn-in with `--repeat-each=3`.
-- **Output**: a patched `e2e/<flow>.spec.ts`, or a `test.skip`/`test.fixme` quarantine with a reason comment.
+- **Output**: a patched `<testDir>/<flow>.spec.ts`, or a `test.skip`/`test.fixme` quarantine with a reason comment.
 - **Gate**: bounded to 3 attempts; skip-after-3 with a stated reason and tracking link. Never auto-patch a suspected real regression to pass — surface it instead.

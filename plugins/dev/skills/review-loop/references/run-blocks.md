@@ -13,6 +13,7 @@ PR_NUM=$(gh pr list --head "$(git branch --show-current)" --state open --json nu
 applied_total=0; deferred_total=0; skipped_total=0
 review_total=0  # `review`-tier findings nobody could read; Step 14 files them too
 verification_blocking=false; VERIFICATION_GATE=unknown
+full_verification=""  # Step 14: the full line's loop-end result, when a fast line stood in for it
 codex_active=unknown; codex_review_id_to_process=""
 cli_invocations=0; rate_limit_hits=0
 auto_judge_apply=0; auto_judge_defer=0; auto_judge_skip=0
@@ -175,7 +176,7 @@ trap 'ITER=${ITER:-0} APPLIED_TOTAL=$applied_total DEFERRED_TOTAL=$deferred_tota
   MERGED=${merged:-false} PR_NUM=$PR_NUM LAST_SHA=$(git rev-parse HEAD 2>/dev/null) \
   CR_SOURCE=$CR_SOURCE CLI_INVOCATIONS=$cli_invocations RATE_LIMIT_HITS=$rate_limit_hits \
   AUTO_JUDGE_APPLY=$auto_judge_apply AUTO_JUDGE_DEFER=$auto_judge_defer AUTO_JUDGE_SKIP=$auto_judge_skip \
-  TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE VERIFICATION_GATE=$VERIFICATION_GATE \
+  TRACK_FILE=$TRACK_FILE STATE_FILE=$STATE_FILE VERIFICATION_GATE=$VERIFICATION_GATE FULL_VERIFICATION=$full_verification \
   CI_FAILING_CHECKS=${ci_failing_checks:-[]} HEAD_VERDICT=$HEAD_VERDICT \
   DROPPED_REVIEWERS="$dropped_reviewers" CR_BASE_REQUESTED="$CR_BASE_REQUESTED" PENDING_DECISION="$pending_decision" \
   bash $SKILL_DIR/scripts/emit-final-json.sh' EXIT
@@ -208,8 +209,10 @@ fi
 ```bash
 # VERIFY_CMD: the repo's build + test line, from AGENTS.md (Step 3) or the project's
 # own entry points; empty when the repo names none. Lint is not part of it.
-VERIFY_CMD="${VERIFY_CMD:-}"
-VERIFICATION_GATE=$(NO_BUILD="$NO_BUILD" bash "$SKILL_DIR/scripts/verify-fix.sh" baseline "$VERIFY_CMD")
+# VERIFY_FAST_CMD: the AGENTS.md fast line (SKILL.md Step 3), empty when there is none.
+# When set, the baseline and every fix run it, and Step 14 runs VERIFY_CMD once.
+VERIFY_CMD="${VERIFY_CMD:-}"; VERIFY_FAST_CMD="${VERIFY_FAST_CMD:-}"
+VERIFICATION_GATE=$(NO_BUILD="$NO_BUILD" bash "$SKILL_DIR/scripts/verify-fix.sh" baseline "$VERIFY_CMD" "$VERIFY_FAST_CMD")
 [ "$VERIFICATION_GATE" = on ] \
   || echo "review-loop: verification gate off ($VERIFICATION_GATE) — fixes will be committed unverified" >&2
 ```
@@ -461,7 +464,7 @@ Wraps each `apply`: `snap` before the first Edit of the finding, `check` after i
 # ... Edit the fix and its same-file siblings ...
 # Anything but `pass` fails: a check that died mid-revert prints nothing.
 if [ "$VERIFICATION_GATE" = on ] \
-   && [ "$(bash "$SKILL_DIR/scripts/verify-fix.sh" check "$snap" "$VERIFY_CMD")" != pass ]; then
+   && [ "$(bash "$SKILL_DIR/scripts/verify-fix.sh" check "$snap" "$VERIFY_CMD" "$VERIFY_FAST_CMD")" != pass ]; then
   # Reverted to $snap (or partly, if the check died). The apply becomes a defer, reason `verification-failed`.
   applied_this_cycle=$((applied_this_cycle-1)); auto_judge_apply=$((auto_judge_apply-1))
   deferred_this_cycle=$((deferred_this_cycle+1)); auto_judge_defer=$((auto_judge_defer+1))
@@ -582,6 +585,17 @@ if [ "$pushed_this_cycle" = true ]; then
       esac ;;
   esac
 fi
+# The fixes passed only the fast line: a run that can still merge runs the full line
+# once on HEAD (with held fixes, the local commit Step 15 would push to the base).
+# A failure leaves auto-merge off (the Step 15 gate); no fast line runs nothing (#370).
+[ -z "${VERIFY_FAST_CMD:-}" ] || case "$final_state" in
+  clean|minor_floor|churn)
+    # Bash(run_in_background=true) + Monitor when the full line is slow: one token.
+    full_verification=$(NO_BUILD="${NO_BUILD:-false}" bash "$SKILL_DIR/scripts/verify-fix.sh" full "${VERIFY_CMD:-}" "${VERIFY_FAST_CMD:-}")
+    [ "$full_verification" != not_run ] || full_verification=""
+    [ "$full_verification" != fail ] \
+      || echo "review-loop: the full build/test line failed on HEAD $(git rev-parse HEAD); auto-merge stays off" >&2 ;;
+esac
 # A converged HEAD whose CI checks fail has not converged (#317). Pending checks are
 # waited on under TIMEOUT; a lookup that fails keeps the state, and Step 15 re-reads.
 case "$final_state" in
@@ -625,7 +639,7 @@ reviewers_on
 # Unread (`review`-tier) findings need the follow-up issue as much as deferred ones.
 left_behind=$((deferred_total + ${review_total:-0}))
 gate=$(FINAL_STATE="$final_state" CR_ON="$cr_on" CODEX_ON="$codex_on" DROPPED_REVIEWERS="${dropped_reviewers:-}" \
-       FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$left_behind" \
+       FULL_VERIFICATION="${full_verification:-}" FOLLOWUP_ISSUE="$(jq -r '.followup_issue.number // empty' "$STATE_FILE")" DEFERRED_TOTAL="$left_behind" \
        FOLLOWUP_APPEND_FAILED="$([ "$left_behind" -gt 0 ] && jq -r '.followup_issue.append_failed // false' "$STATE_FILE" || echo false)" \
        bash $SKILL_DIR/scripts/auto-merge-gate.sh "$OWNER" "$REPO" "$PR_NUM" "$HEAD_SHA")
 eligible=$(jq -r '.eligible' <<<"$gate")
@@ -703,7 +717,7 @@ if [ -z "$why" ]; then
   fi
 fi
 # Minor fixes Step 12 held back (merge_then_main_push): onto the base once the merge
-# has landed (scripts/base-push.sh: build/test and pre-commit there first), else back
+# has landed (scripts/base-push.sh: the full build/test line and pre-commit there first), else back
 # to the PR, whose review this run does not wait for. While the main session has not
 # answered a runner's merge question they stay on the local commit.
 if [ -n "$REVIEWED_SHA" ] && [ -n "${pending_decision:-}" ]; then

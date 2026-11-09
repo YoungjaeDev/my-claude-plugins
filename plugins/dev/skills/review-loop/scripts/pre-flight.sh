@@ -7,7 +7,7 @@
 # See references/pre-flight-rules.md for the decision matrix and field contract.
 #
 # Exits 0 always. Per-channel failures are absorbed and surface as "unknown"
-# values; the SKILL.md falls back to legacy Step 6 polling on gate=cr_wait.
+# values; the caller falls back to Step 6 polling (references/procedure.md) on gate=cr_wait.
 set -euo pipefail
 
 jq_lf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../scripts/jq-lf.sh"; if [ -f "$jq_lf" ]; then . "$jq_lf"; fi  # drops CR from Windows jq output; absent in test copies
@@ -115,7 +115,7 @@ if [ "$rate_limit_source" = "none" ] \
 fi
 
 # ── 3. Codex review submission (unprocessed id) ─────────────────────────────
-# Honor NO_CODEX from the SKILL.md per-iter cache so --no-codex shuts off the
+# Honor NO_CODEX from the caller (references/run-blocks.md) so --no-codex shuts off the
 # Codex probe entirely. Without this guard, codex_latest_id gets populated and
 # downstream codex_actionable=true revives Codex paths the user explicitly
 # disabled. (references/arguments.md contract)

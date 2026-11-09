@@ -12,7 +12,7 @@
 #
 # Hang-fix design (Step 6, replaces 1800s unilateral spin):
 #   - After EARLY_CHECK_WINDOW seconds of wall-clock without seeing status, probe rate-limit body.
-#   - If rate-limit detected, emit rate_limited JSON and exit 0 → SKILL.md Step 7c.
+#   - If rate-limit detected, emit rate_limited JSON and exit 0 → Step 7c (references/procedure.md).
 #   - Otherwise keep polling status.
 set -euo pipefail
 

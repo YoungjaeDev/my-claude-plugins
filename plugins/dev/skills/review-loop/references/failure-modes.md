@@ -55,6 +55,8 @@ A state that files one, with findings left behind, sets `followup_needed=true` (
 
 Nothing left behind files nothing, so no issue says "0 deferred": a HEAD without every verdict and failing CI checks go to the final report. A filed body says why HEAD is unverified and names the failing CI checks on `ci_failing`, and `followup_issue`, inherited at Step 2, makes a re-run append instead of opening a second issue.
 
+More defers in this run than `SUB_ISSUE_THRESHOLD` (5, `scripts/file-sub-issues.sh`) add one sub-issue per finding under that issue, keyed so a re-run files none twice. A failed sub-issues call puts the rest into the issue body as a task list (`followup_issue.split=task_list`); an unreadable issue body edits nothing (`split=failed`).
+
 Fires when the Step 14 block sets `followup_needed=true`:
 
 ```bash
@@ -121,6 +123,19 @@ else
       '.followup_issue = {number:$n, url:$u}' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
   else
     echo "review-loop: follow-up issue creation failed — auto-merge stays blocked" >&2
+  fi
+fi
+# More defers than file-sub-issues.sh's threshold: one sub-issue each under the issue,
+# or a task list in its body when the sub-issues API fails. The issue's table stays
+# the record either way, so a failed split is reported, not a merge blocker.
+parent=$(jq -r '.followup_issue.number // empty' "$STATE_FILE")
+if [ -n "$parent" ]; then
+  split=$(bash "$SKILL_DIR/scripts/file-sub-issues.sh" "$OWNER" "$REPO" "$parent" "$PR_NUM")
+  jq -e '.split and .sub_issues' <<<"$split" >/dev/null 2>&1 || split='{"split":"failed","sub_issues":[]}'
+  if [ "$(jq -r '.split' <<<"$split")" != none ]; then
+    tmp=$(mktemp); jq --argjson s "$split" '.followup_issue.split = $s.split
+      | .followup_issue.sub_issues = ((.followup_issue.sub_issues // []) + $s.sub_issues | unique)' \
+      "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
   fi
 fi
 ```

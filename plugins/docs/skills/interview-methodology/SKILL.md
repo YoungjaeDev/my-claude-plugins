@@ -22,7 +22,7 @@ Between asking nothing and a full interview, ask 2-3 targeted questions that res
 
 ## Bright lines
 
-These govern a full interview once one is warranted; the 2-3 question middle path above relaxes rules 3 and 4.
+These govern a full interview once one is warranted; the 2-3 question middle path above relaxes rule 4 only.
 
 1. **Use the question tool**: every question goes through the tool named above when one is exposed, never as plain text.
 2. **Non-obvious only**: never ask what the user already answered, explicitly or implicitly.

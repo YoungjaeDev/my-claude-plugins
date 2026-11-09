@@ -1,18 +1,11 @@
 # DeepWiki ask — procedure
 
-Shared procedure body for `/scout:ask` (command) and the `ask` skill. Both surfaces resolve this file via `references/ask-procedure.md` relative to the plugin's installed root (`${CLAUDE_PLUGIN_ROOT}/...` under Claude Code; the same relative path under the Codex plugin cache) so the workflow stays single-sourced.
+The workflow behind the `ask` skill (`/scout:ask`): up to 4 DeepWiki MCP phases, then one answer in the output format below. The skill resolves this file at `references/ask-procedure.md` under the plugin's installed root.
 
 ## Input shape
 
-The caller passes a repository spec and a question. Two arrival paths:
+The caller supplies a repository spec and a question, in conversational form or as `owner/repo "question"` / `owner/repo question text` (the repository is the first `owner/repo` pattern, the question everything after it). Restate both before querying so the parse is auditable.
 
-- **Command (`/scout:ask`)**: `$ARGUMENTS` is the raw user text. Parse:
-  - Format: `owner/repo "question"` or `owner/repo question text`.
-  - Repository: extract the first `owner/repo` pattern.
-  - Question: everything after the repository.
-- **Skill (`ask`)**: caller already supplies the repo + question in conversational form. Restate back to the user before querying so the parse is auditable.
-
-Examples:
 - `facebook/react` + "How does the reconciliation algorithm work?"
 - `vercel/next.js` + "Explain the app router architecture."
 - `pytorch/pytorch` + "What are the autograd internals?"
@@ -40,15 +33,8 @@ If the question requires deep understanding or spans multiple topics:
 mcp__deepwiki__read_wiki_contents({ repoName: "[owner/repo]" })
 ```
 
-Use this when:
-- Question is broad (architecture, design philosophy).
-- Multiple topics from the structure look relevant.
-- A comprehensive answer needs full context.
-
-Skip this when:
-- Question is narrow and specific.
-- The structure clearly points to one topic.
-- A quick answer is sufficient.
+- **Use it when** the question is broad (architecture, design philosophy), several topics from the structure look relevant, or a comprehensive answer needs full context.
+- **Skip it when** the question is narrow, the structure points to one topic, or a quick answer is enough.
 
 ### Phase 3 — Ask the question
 
@@ -84,10 +70,10 @@ Sub-questions:
 
 | Question type | Strategy |
 |---------------|----------|
-| **Specific** ("How does X function work?") | Skip Phase 2, direct `ask_question`. |
-| **Broad** ("Explain the architecture") | Full workflow with contents. |
-| **Comparative** ("X vs Y in this repo") | Structure → targeted asks. |
-| **Exploratory** ("What can this do?") | Structure → contents → summary. |
+| Specific ("How does X function work?") | Skip Phase 2, direct `ask_question`. |
+| Broad ("Explain the architecture") | Full workflow with contents. |
+| Comparative ("X vs Y in this repo") | Structure → targeted asks. |
+| Exploratory ("What can this do?") | Structure → contents → summary. |
 
 ## Multi-repository queries
 
@@ -100,10 +86,7 @@ mcp__deepwiki__ask_question({
 })
 ```
 
-Use for:
-- Framework comparisons.
-- Finding common patterns.
-- Cross-project analysis.
+Use it for framework comparisons, common patterns and cross-project analysis.
 
 ## Output format
 
@@ -136,16 +119,3 @@ Use for:
 | Empty question | Ask the user for a specific question. |
 | DeepWiki MCP unavailable | Fall back to direct GitHub exploration via `gh` CLI; surface the MCP setup link (`https://mcp.deepwiki.com/`). |
 | Insufficient answer | Trigger multi-query expansion (Phase 4). |
-
-## Tips
-
-1. **Be specific**: "How does useEffect cleanup work?" beats "Tell me about hooks".
-2. **Use structure first**: understand what docs exist before diving deep.
-3. **Compare repos**: DeepWiki excels at cross-repository analysis.
-4. **Iterate**: if the first answer is shallow, ask follow-up questions.
-
-## Guidelines
-
-- Follow the host project's CLAUDE.md / AGENTS.md guidelines.
-- Cite specific documentation sections when possible.
-- Provide actionable insights, not just summaries.

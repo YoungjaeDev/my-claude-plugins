@@ -5,17 +5,16 @@ description: Use when generating an llms.txt index file from a URL or local dire
 
 # Generate llms.txt
 
-Generate a well-structured `llms.txt` from a URL (via sitemap discovery + Bright Data scrape) or a local directory (via Glob + Read). Invoke it as `/scout:generate-llmstxt` or let the model reach for it on matching requests.
+Generate an `llms.txt` (title, optional description, link sections with 10-15 word descriptions) from a URL, through sitemap discovery and a Bright Data scrape of at most about 50 URLs, or from a local directory through Glob + Read. Invoke it as `/scout:generate-llmstxt` or let the model reach for it on matching requests.
 
-1. Confirm the input source: URL or local path. If ambiguous, ask.
+1. Confirm the input source: URL or local path.
 2. Follow the workflow in the procedure file for the matched input type.
 3. Write `llms.txt` to the current directory and report sources processed, sections created, and any errors.
 
-See `references/generate-llmstxt-procedure.md` in this plugin's installed root for the full workflow and guidelines. Under Claude Code this resolves to `${CLAUDE_PLUGIN_ROOT}/references/generate-llmstxt-procedure.md`; under Codex the equivalent path lives next to `skills/` in the plugin cache.
+When the input source is ambiguous, ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, stop and report.
 
-## Requirements
+## Procedure file and requirements
 
-This skill does NOT call the DeepWiki MCP: the procedure only uses Bright Data (URL mode) or Glob + Read (local mode). Pick the row for the input you pass:
-
-- **URL mode**: Bright Data MCP must be available; `mcp__brightdata__scrape_as_markdown` is the one hard requirement; `scrape_batch` is used when present and otherwise stood in for by looping `scrape_as_markdown` per URL (it may sit in a Pro group a default Rapid/Free MCP does not load). The `bdata` CLI is the terminal fallback for both. If none is reachable, run the `brightdata-guide` four-gate preflight, report the failing gate, and stop instead of degrading to a plain fetch. Internet connection required (the scrape hits external sites).
-- **Local directory mode**: read permission on the target directory. No MCP or network required.
+- **Procedure**: `references/generate-llmstxt-procedure.md` in this plugin's installed root. Under Claude Code it resolves to `${CLAUDE_PLUGIN_ROOT}/references/generate-llmstxt-procedure.md`; under Codex the same path sits next to `skills/` in the plugin cache.
+- **URL mode**: needs `mcp__brightdata__scrape_as_markdown` or the `bdata` CLI, and internet access. When neither is reachable, run the four-gate preflight in this plugin's `skills/research-orchestrator/references/brightdata-guide.md`, report the failing gate, and stop instead of degrading to a plain fetch.
+- **Local directory mode**: read permission on the target directory; no MCP or network. Neither mode calls the DeepWiki MCP.

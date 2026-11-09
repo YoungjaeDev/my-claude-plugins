@@ -1,25 +1,17 @@
-# Registry: Step 0 detail
+# Registry: Step 0
 
-Full procedure for the model registry (Step 0), pulled out of SKILL.md so the body keeps only
-the decision rule. Referenced from SKILL.md's Step 0.
+The 6 bash blocks for Step 0 of `SKILL.md`: read the registry, check the pins against the candidate
+lists, print the lists for the pin question, write confirmed pins, keep the codex update setting,
+and probe codex. Seat models are pinned in `~/.claude/council-models.json` so they survive across
+repos and are confirmed at most once a week.
 
-## Step 0 — resolve the model registry
+## Read the registry
 
-Seat models are pinned in `~/.claude/council-models.json` so they survive across repos and are
-confirmed at most once a week.
-
-The seven-day window is a **constant here, never a field read back from the registry.** A TTL
-taken from the file it governs is not a guarantee: one hand-edited `ttl_days` and the pins never
-come up for confirmation again, which is exactly the "always ask on expiry" property this design
-was chosen for. A timestamp that is missing, non-numeric, or in the future is treated as expired
-for the same reason: those are the shapes a corrupted or tampered registry takes, and none of
-them should buy indefinite freshness.
-
-Freshness also requires the pins to actually be there. A registry whose `checked_at_epoch` is
-recent but whose `seats` block is missing, malformed, or empty would otherwise read as `fresh`,
-and the seats would then run with a model name of `null`. Anything that fails to parse or is
-missing a seat pin is `expired`, which routes it back through confirmation instead of forward
-into a broken call.
+The seven-day window is a constant in this block, never a field read back from the registry: a TTL
+taken from the file it governs would let one hand-edited `ttl_days` stop the pins from ever coming
+up again. A missing, non-numeric or future timestamp is expired, and so is a registry whose `seats`
+block fails to parse or lacks a pin, so a broken file routes back through confirmation instead of
+into a call with a model of `null`.
 
 ```bash
 REG="$HOME/.claude/council-models.json"
@@ -47,36 +39,26 @@ else
 fi
 ```
 
-- `STATE=fresh`: the pins are still current; run the validity check below and, if it passes, go
-  to Step 1 without asking anything.
-- `STATE=missing` or `STATE=expired`: confirm the pins with the user before convening. Expiry
-  **always** asks, even when nothing changed. Deciding whether a newer model is actually better
-  belongs to the user, and a silent upgrade drifts into unintended spend.
+- **`STATE=fresh`**: run the candidate-list check below and, if it prints nothing, go to Step 1
+  without asking anything.
+- **`STATE=missing` or `STATE=expired`**: confirm the pins with the user before convening. Expiry
+  always asks, even when nothing changed, because judging whether a newer model is better belongs to
+  the user.
 
-### Fresh does not mean valid
+## Check the pins against the candidate lists
 
-A CLI update can retire a model inside the seven-day window. The failure table says a pin that
-has vanished from the candidate list is asked about **before** expiry, so `fresh` cannot skip
-straight to Step 1: otherwise the run reaches Round 1 with a dead pin and merely records the
-seat as absent, which reads as "the seat failed" rather than "your pin is gone". The check is
-local and cheap:
+A CLI update can retire a model inside the seven-day window, so `fresh` never skips straight to Step
+1. Each list is read once into a variable, and only a successful, non-empty read may accuse a pin; a
+truncated catalog or a failed `agy` call must not look like a retired model.
 
-**Read the list first, then test membership against what you read.** Folding both steps into one
-negated command makes a truncated catalog or a failed `agy` call indistinguishable from a retired
-model, and the user gets sent to pick a replacement with no trustworthy list in front of them.
-Each list is fetched exactly once, into a variable, and only a *successful, non-empty* read is
-allowed to accuse a pin.
-
-Neither list's output format is encoded beyond what the check needs. codex's catalog comes from
-`codex debug models` (JSON, `.models[].slug`; see `codex debug --help`), with the internal
-`models_cache.json` only as the fallback for a CLI that predates the subcommand. For agy only the
-first tab-separated field of each line is read: that is the slug whether `agy models` prints bare
-slugs or `slug<TAB>Display Name`. When a pin you just saw in the listing still comes back as
-`STALE_PIN`, run `agy models` (or `codex debug models`) once and look at the format before asking
-the user anything.
+codex's catalog comes from `codex debug models` (JSON, `.models[].slug`; see `codex debug --help`),
+with `models_cache.json` only as the fallback for a CLI that predates the subcommand. For agy only
+the first field of each line is the slug, whether `agy models` prints bare slugs or
+`slug<TAB>Display Name`. When a pin you just saw in a listing still comes back as `STALE_PIN`, run
+that listing once and look at its format before asking the user anything.
 
 ```bash
-CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"   # codex honors CODEX_HOME; see project_state.sh
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"   # codex honors CODEX_HOME
 REG="$HOME/.claude/council-models.json"
 CM=$(jq -r '.seats.codex.model' "$REG"); AM=$(jq -r '.seats.agy.model' "$REG")
 
@@ -98,9 +80,9 @@ elif ! printf '%s\n' "$codex_slugs" | grep -qxF "$CM"; then
   echo "STALE_PIN=codex:$CM"
 fi
 
-# agy — one invocation, captured; the earlier version called `agy models` twice
-# and let the second call's failure read as a missing pin. Only field 1 is the slug:
-# agy 1.2.9 separates it with a tab, the headless docs show aligned spaces.
+# agy: one invocation, captured, so a failed listing never reads as a missing pin.
+# Only field 1 is the slug: agy 1.2.9 separates it with a tab, the headless docs
+# show aligned spaces.
 if ! command -v agy >/dev/null 2>&1; then
   echo "LIST_UNREAD=agy reason=binary-absent"
 elif ! agy_out=$(agy models 2>/dev/null); then
@@ -113,21 +95,19 @@ fi
 ```
 
 A `STALE_PIN=` line means: tell the user which pin disappeared and ask for a replacement, even
-though the TTL has not elapsed. A `LIST_UNREAD=` line means the opposite: say nothing about that
-seat's pin, because a list you could not read is not evidence of anything.
+though the TTL has not elapsed. A `LIST_UNREAD=` line means say nothing about that seat's pin,
+because a list you could not read is not evidence of anything.
 
-Gather the real candidate lists first so the question carries evidence rather than guesses:
+## Ask with the real candidate lists
+
+Print the lists first so the pin question carries evidence rather than guesses. Absence and failure
+are different answers: an expired agy login or an unparseable cache must not read as "not
+installed".
 
 ```bash
-# Absence and failure are different answers and must not collapse into one.
-# `cmd && list || echo absent` swallows every non-zero exit — an expired agy
-# login or an unparseable cache would be reported as "not installed", and the
-# pin question would then be asked with no real candidate list behind it.
-
 # codex: slugs, the reasoning levels each one accepts, speed tiers.
-# Source is `codex debug models`; the cache file is the fallback for an older CLI.
-# Resolve the cache through CODEX_HOME — on a machine that sets it, `$HOME/.codex`
-# is a directory the running CLI never reads (plugins/dev/scripts/project_state.sh).
+# Source is `codex debug models`; the cache file is the fallback for an older CLI,
+# resolved through CODEX_HOME because that is the directory the running CLI reads.
 CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
 codex_json=""
 if command -v codex >/dev/null 2>&1 && codex_json=$(codex debug models 2>/dev/null); then
@@ -152,24 +132,20 @@ elif ! agy models; then
 fi
 ```
 
-When either list comes back as a *failure* rather than an absence, say so in the pin question and
-do not present the missing side as "no models available". A pin confirmed against a list that
-failed to load is a pin confirmed against nothing.
+When a list fails rather than being absent, say so in the pin question and never present that side
+as "no models available". Show the current pins next to the lists and ask with `AskUserQuestion`
+whether to keep or change them.
 
-Show the current pins next to those lists and ask through the interactive-input gate whether to
-keep or change them. Accept a natural-language answer ("codex를 luna로 바꿔줘"), and resolve it
-against the candidate list you just printed: a name that is not on the list goes back to the
-user rather than into the registry. Then write the file; `checked_at_epoch` is what keeps the TTL
-arithmetic off `date -d` and portable.
+Accept a natural-language answer ("codex를 luna로 바꿔줘") and resolve it against the list you just
+printed; a name not on the list goes back to the user, not into the registry. First-run proposals:
+the first visible codex entry (`visibility != "hide"`) at effort `xhigh` when it lists it, else its
+highest level, plus its first speed tier; the first agy slug; claude `opus`.
 
-**The confirmed pins never pass through shell source.** Two failure modes sit on either side of
-that rule: hard-coding defaults into the block throws the user's actual choice away, and pasting
-their answer into a quoted string hands `$(…)` and stray quotes to the shell. Neither is
-necessary: the pins are data, so write them as data.
+## Write confirmed pins
 
-First record the confirmed answer with the **`Write` tool** (not a heredoc, not `echo`) to
-`.claude/state/council-pins.json`. Nothing in that path is parsed by a shell, so no value the
-user typed can become a command:
+The confirmed pins never pass through shell source. Record the answer with the `Write` tool (not a
+heredoc, not `echo`) to `.claude/state/council-pins.json`, so no value the user typed can become a
+command:
 
 ```json
 {
@@ -179,9 +155,9 @@ user typed can become a command:
 }
 ```
 
-Then this block reads that file, checks every pin against a conservative charset, and hands the
-values to `jq` through `--arg` (argv, never re-parsed). A pin outside the charset or missing
-altogether stops the write rather than landing a registry that looks valid:
+This block reads that file, checks every pin against a conservative charset and the Claude seat's
+enum, and hands the values to `jq` through `--slurpfile`. A bad pin stops the write, and the temp
+file keeps a failing `jq` from truncating a good registry:
 
 ```bash
 PINS=".claude/state/council-pins.json"
@@ -198,9 +174,8 @@ done
 
 # The Claude seat has no CLI to query, so its candidate list is a fixed policy enum of
 # model aliases (the Agent tool also takes full model IDs and `inherit`; see
-# https://code.claude.com/docs/en/sub-agents#choose-a-model). Without this, a
-# plausible-looking answer like "claude-opus-4" is charset-clean, gets written, and
-# only fails when the seat launches.
+# https://code.claude.com/docs/en/sub-agents#choose-a-model). A charset-clean name
+# like "claude-opus-4" would otherwise only fail when the seat launches.
 case "$(jq -r '.claude.model' "$PINS")" in
   sonnet|opus|haiku|fable) ;;
   *) echo "council: claude pin must be one of sonnet|opus|haiku|fable" >&2; exit 1 ;;
@@ -227,56 +202,34 @@ else
 fi
 ```
 
-Write it through the temp file, as above. A bare `>` truncates the registry before `jq` runs, so
-a failing `jq` would destroy a perfectly good set of pins and silently send the next run back to
-first-run defaults.
+A Claude value outside the enum is a policy change to this skill, not a per-run choice: re-read
+<https://code.claude.com/docs/en/sub-agents#choose-a-model> before answering the user.
 
-Defaults on first run come from the candidate lists, not from this file: propose the first codex
-entry of the visible list above (`visibility != "hide"`) with effort `xhigh` when that model lists
-it, else the highest level it lists (deliberation policy, not the model's `default`), and its first
-speed tier; the first agy slug; and claude `opus`.
-The user's confirmation still decides. When the user asks for a Claude value outside the enum,
-re-read <https://code.claude.com/docs/en/sub-agents#choose-a-model> before answering; widening
-the enum is a policy change to this skill, not a per-run choice.
+## Keep the codex update setting
 
-### codex update setting
+With the registry write, make sure `${CODEX_HOME:-$HOME/.codex}/config.toml` carries a top-level
+`check_for_update_on_startup = true`, and offer to run `codex update` with the weekly pin question.
+Never run it mid-council: it replaces the running binary, so a seat can vanish in the middle of a
+debate.
 
-When writing the registry, also make sure `${CODEX_HOME:-$HOME/.codex}/config.toml` carries
-`check_for_update_on_startup = true`. Only write it when the key is absent; never rewrite keys
-the user set. In the same breath as the weekly pin question, offer to run `codex update`.
-**Never run it mid-council**: it replaces the running binary, so a seat can vanish in the middle
-of a debate.
-
-**Insert before the first table header, never append.** `check_for_update_on_startup` is a
-top-level key, and a real `config.toml` ends inside a table (`[projects."…"]`,
-`[hooks.state."…"]`). A line appended to the end belongs to that last table, so the setting
-silently does nothing and `--strict-config` may reject the file outright.
-
-A machine with no `config.toml` yet still needs the setting, so create the file rather than
-skipping. And **verify after writing**: a write that failed while the run continued would let
-the probe below pass with the key still absent, which reads as "configured" when it is not.
-
-Both the presence check and the verification must be **TOML-scope aware**. A plain `grep` for the
-key matches one nested under `[projects."…"]` just as happily as a top-level one, so it would
-report "already configured" while the effective setting is still absent, and it would accept
-`= false` as success. The `awk` below only counts a `true` assignment that appears before the
-first table header.
-
-**"Not true" and "not there" are different, and only one of them may be written.** A user who
-deliberately set `check_for_update_on_startup = false` has made a decision; inserting a second
-assignment above it leaves a duplicate key in their global Codex config: invalid TOML that can
-break every later `codex` invocation, and it survives even when the verification aborts. Absent
-means insert; present-but-not-true means report and leave it alone.
+- **Insert, never append**: the key is top-level, and a real `config.toml` ends inside a table
+  (`[projects."…"]`), so an appended line would belong to that table and do nothing.
+- **Scope-aware checks**: the `awk` below counts only an assignment above the first table header, so
+  a nested key or `= false` never reads as configured.
+- **Absent vs not true**: absent means insert. Present but not `true` is the user's decision: report
+  it and leave the file alone, because a second assignment is a duplicate key that breaks every
+  later `codex` call.
+- **Missing file and verification**: a machine with no `config.toml` gets one created, and the block
+  re-checks after writing so a failed write never reads as configured.
 
 ```bash
-CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"   # codex honors CODEX_HOME (project_state.sh)
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"   # codex honors CODEX_HOME
 CFG="$CODEX_DIR/config.toml"
 KEY='check_for_update_on_startup'
 
 # top_level_true -> exit 0 only when the key is set to true ABOVE the first [table].
 # The status is decided in a single END exit: an `exit 0` inside a main rule jumps
-# to END, and an `exit` there would overwrite it — the awk trap that made an
-# earlier version reject a correctly-configured file every time.
+# to END, and an `exit` there would overwrite it.
 top_level_true() {
   awk -v key="$KEY" '
     done_scan { next }
@@ -326,17 +279,12 @@ else
 fi
 ```
 
-Confirm the result parses before relying on it: `codex exec --strict-config` rejects a malformed
-or unknown-key config, so one probe call proves the edit landed as a top-level key.
+## Probe codex before Step 1
 
-Verify a pin is still valid on the installed CLI before relying on it. This costs one fast call
-and catches a config key that a codex upgrade removed:
-
-Three things this block must get right, each of which was wrong in an earlier draft. It
-re-reads the pins (this is a separate tool call, so nothing from the write block survives). It
-guards on `codex` being installed: the failure policy makes a missing binary an absent seat, and
-an unguarded probe would kill the run with `command not found` before that path is reached. And
-it **branches on the probe's exit status**: a probe whose result is never checked is not a check.
+One fast call proves the pins work on the installed CLI: `--strict-config` rejects a malformed or
+unknown-key config, and an unknown model fails in seconds with an HTTP 400. The block re-reads the
+pins (a separate tool call keeps nothing), treats a missing binary as an absent seat rather than a
+dead run, and branches on the probe's exit status.
 
 ```bash
 REG="$HOME/.claude/council-models.json"
@@ -345,10 +293,8 @@ CODEX_EFFORT=$(jq -r '.seats.codex.effort'      "$REG")
 CODEX_TIER=$(jq -r '.seats.codex.service_tier'  "$REG")
 out=$(mktemp "${TMPDIR:-/tmp}/council-probe-XXXXXX")
 
-# The probe must carry the SAME configuration the Round 1 call will use, service
-# tier included. Leaving the tier out lets a pin whose model and effort are still
-# accepted pass here and fail at the seat, which is the one thing a preflight is
-# supposed to prevent.
+# The probe carries the SAME configuration the Round 1 call will use, service
+# tier included, so a pin that fails at the seat also fails here.
 if ! command -v codex >/dev/null 2>&1; then
   echo "SEAT=codex ABSENT reason=binary-not-on-path"
 elif codex exec --strict-config -s read-only --skip-git-repo-check \
@@ -365,7 +311,6 @@ fi
 rm -f "$out"
 ```
 
-`SEAT=codex FAILED` is **not** the same as absent: the binary is there and rejected the pinned
-model or the config. Surface it and offer the registry question rather than silently seating a
-model that will fail again in Round 1. An unknown key fails with `unknown configuration field`;
-an unknown model fails in seconds with an HTTP 400. Neither hangs.
+`SEAT=codex FAILED` is not the same as absent: the binary is there and rejected the pinned model or
+config (`unknown configuration field`, or an HTTP 400). Surface it and offer the registry question
+rather than seating a model that will fail again in Round 1.

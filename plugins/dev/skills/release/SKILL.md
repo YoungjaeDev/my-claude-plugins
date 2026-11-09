@@ -44,6 +44,7 @@ Create a versioned GitHub release: detect the current version, update the versio
        - Tag a specific commit as baseline
        - Abort and let user set up tags manually
      - After baseline created, re-run detection
+   - Read the CI the previous tag's push started: `scripts/ci-run-check.sh <PREV_TAG>` (resolver and reading rules in `references/ci-check.md`). Show its lines in the Step 5 preview; a job that never started is a warning, not a stop.
 
 3. **Detect Version Files**
 
@@ -189,6 +190,8 @@ Create a versioned GitHub release: detect the current version, update the versio
     ```
     Release created: https://github.com/<owner>/<repo>/releases/tag/v<NEW_VERSION>
     ```
+
+    Then run `scripts/ci-run-check.sh v<NEW_VERSION>` once and add its lines: whether the tag's run was created and started. Do not wait for it to finish.
 
 ## First release
 

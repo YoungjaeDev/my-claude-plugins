@@ -5,71 +5,31 @@ description: Convert web pages to Korean markdown documents. Fetches page via Br
 
 # Web Article Translator
 
-Converts web pages to Korean markdown while analyzing images with VLM to generate context-aware Korean captions.
+Convert a web page into one Korean markdown file in 6 steps: fetch, ask 2 options, translate, caption images with the VLM, write, and pass a 2-count structure gate (image refs and section headings) before declaring it done.
 
-## Workflow
+Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, proceed with the safe default (save to the current directory, keep image URLs as references) and say so.
 
-```
-URL Input
-    |
-    +-- Fetch page via Bright Data (markdown)
-    |
-    +-- Ask user options via AskUserQuestion
-    |   +-- Output directory
-    |   +-- Download images locally or not
-    |
-    +-- Process content
-    |   +-- Text: Translate to Korean (keep tech terms)
-    |   +-- Images: Download -> VLM analysis -> Korean caption
-    |   +-- Code/Tables: Keep original + add explanation
-    |
-    +-- Generate markdown file
-```
+## Step 1: Fetch the page
 
-## Step 1: Fetch Web Page
+Use the Bright Data MCP tool `mcp__brightdata__scrape_as_markdown` with `url` and the default `format` (markdown). Current servers return JSON (`url`, `title`, `format`, `content`); older ones take only `url` and return the markdown itself, so read `content` when the result is JSON and the text as-is otherwise. When the JSON has a `note` saying the content was truncated, or a `format` other than markdown, tell the user and stop before translating. Either way it is the whole page with no main-content switch, so strip site chrome (nav, footer, share widgets) while translating and read links off the inline markdown (`[text](url)`, `![alt](src)`).
 
-Use Bright Data MCP:
+- **Fallback**: without the MCP tools, run `bdata scrape <url> -f markdown` in the terminal.
+- **Neither works**: check four gates in order (Bright Data MCP tools present, `bdata` installed, `bdata` authenticated, a default zone set; confirm the commands with `bdata --help`), report the first that failed, and stop. Do not substitute a plain built-in fetch, which the blocked pages this skill targets will defeat.
+- **Inaccessible page** (login required, paywall, blocked site): return the error and stop.
 
-```
-mcp__brightdata__scrape_as_markdown
-- url: target URL
-```
+## Step 2: User options
 
-The tool takes only `url` and always returns the whole page as markdown: there is no format list and no main-content switch. Two consequences for the steps below: strip site chrome (nav, footer, share widgets) while translating rather than expecting the fetcher to have removed it, and read links off the inline markdown (`[text](url)`, image `![alt](src)`) instead of a separate links array.
+Confirm with the question tool:
 
-When the Bright Data MCP tools are absent, fall back to the terminal: `bdata scrape <url> -f markdown`. If neither path is available, run the `brightdata-guide` four-gate preflight (MCP tools → CLI installed → authenticated → default zone), report the gate that failed, and stop. Do not substitute a plain built-in fetch, which the blocked and JS-heavy pages this skill targets will simply defeat.
+1. **Output directory**: where to save the translated markdown.
+2. **Download images**: save locally, or keep URL references.
 
-Return error for inaccessible pages:
-- Login required
-- Paywall content
-- Blocked sites
+## Step 3: Translation rules
 
-## Step 2: User Options
-
-Use AskUserQuestion to confirm:
-
-1. **Output directory**: Where to save translated markdown
-2. **Download images**: Save locally or keep URL references
-
-## Step 3: Translation Rules
-
-### General Text
-
-Translate to natural Korean.
-
-### Technical Terms
-
-Keep original English. See `references/tech-terms.md`.
-
-```
-Transformer, Fine-tuning, API, GPU, CUDA, Tokenizer,
-Embedding, Attention, Backbone, Checkpoint, Epoch,
-Batch Size, Learning Rate, Loss, Gradient, Weight...
-```
-
-### Code Blocks
-
-Keep original + add Korean explanation below:
+- **Text**: natural Korean.
+- **Technical terms**: keep the original English (Transformer, Fine-tuning, API, GPU, Tokenizer, Checkpoint, Learning Rate and so on); the full list is in `references/tech-terms.md`.
+- **Code blocks and tables**: keep the original and add a one-line Korean explanation below as a blockquote.
+- **Links**: keep the URL, translate only the link text.
 
 ````markdown
 ```python
@@ -82,45 +42,13 @@ def train(model, data):
 > 이 코드는 모델 학습의 한 스텝을 수행합니다. gradient 초기화, forward pass, backward pass, weight 업데이트 순으로 진행됩니다.
 ````
 
-### Tables
+## Step 4: Image processing
 
-Keep original + add Korean explanation below:
+1. Extract image URLs from the markdown.
+2. Download each to `/tmp` with `scripts/download_image.sh -`, passing the URL on stdin through a quoted heredoc (`<<'URL'`), never inside the command text where `$()` or backticks would run (prints `/tmp/img_<hash>.<ext>`).
+3. Read the file with the Read tool (the VLM applies automatically).
+4. Write a Korean caption of about 2 sentences on the image's meaning and role in its surrounding context, as a blockquote below the image, since alt text is hidden in preview.
 
-```markdown
-| Model | Params | Score |
-|-------|--------|-------|
-| BERT  | 110M   | 89.3  |
-| GPT-2 | 1.5B   | 91.2  |
-
-> 이 테이블은 모델별 파라미터 수와 성능 점수를 비교합니다.
-```
-
-### Links
-
-Keep URL, translate link text only:
-
-```markdown
-자세한 내용은 [공식 문서](https://example.com/docs)를 참고하세요.
-```
-
-## Step 4: Image Processing
-
-### Process Flow
-
-1. Extract image URLs from markdown
-2. Download to `/tmp` (use scripts/download_image.sh)
-3. Analyze with Read tool (VLM auto-applied)
-4. Generate Korean caption considering surrounding context
-5. Add VLM analysis as blockquote below image (alt text is hidden in preview)
-
-### Caption Guidelines
-
-- Around 2 sentences
-- Describe image meaning and role
-- Reflect surrounding context
-- Use blockquote format for visibility in markdown preview
-
-Example:
 ```markdown
 ![Transformer 아키텍처](image_url)
 *원문 캡션*
@@ -128,30 +56,11 @@ Example:
 > Transformer 아키텍처의 전체 구조를 보여주는 다이어그램입니다. Encoder와 Decoder가 병렬로 배치되어 있으며, Multi-Head Attention 레이어가 핵심 구성요소입니다.
 ```
 
-### Error Handling
+When an image fails to load, keep the original URL, write `![이미지 로드 실패](original_url)` with `> [경고] 이미지를 불러올 수 없습니다: {error_message}` below it, and continue.
 
-When image load fails:
+## Step 5: Output
 
-```markdown
-![이미지 로드 실패](original_url)
-> [경고] 이미지를 불러올 수 없습니다: {error_message}
-```
-
-Show warning and continue translation.
-
-## Step 5: Output Generation
-
-### File Structure
-
-```
-{output_dir}/
-├── {article_name}.md          # Translated markdown
-└── images/                    # Downloaded images (if selected)
-    ├── image_001.png
-    └── image_002.png
-```
-
-### Markdown Header
+Write `{output_dir}/{article_name}.md`, plus `{output_dir}/images/image_001.png` and onward when images are downloaded. The file opens with this header:
 
 ```markdown
 # 번역된 제목
@@ -160,18 +69,15 @@ Show warning and continue translation.
 번역일: {YYYY-MM-DD}
 
 ---
-
-(Body starts here)
 ```
 
-## Step 6: Final Checklist Gate (MANDATORY)
+## Step 6: Final checklist gate (MANDATORY)
 
-A long translation can silently drop a section or lose an image: the model summarizes instead of translating, or skips a figure. Before declaring the file done, diff the **source** against the **generated output** on two deterministic axes: image-ref count and section-heading count. This is a machine check, not a "remember to verify" note: run it and act on the result.
+A long translation can silently drop a section or an image, so diff the source against the output on two deterministic counts and act on the result.
 
-Save as the source temp file the **main-content markdown you set out to translate, with the site chrome already stripped** (nav, footer, share widgets, cookie banners), not the raw whole-page dump Bright Data returned. `scrape_as_markdown` returns the entire page, so its nav headings and widget images would inflate the source counts and fail this gate against a correctly chrome-free translation. Both sides must count the same body.
-
-- **Image-ref count** must match exactly. Fewer in the output = a dropped image (content loss); more = a hallucinated image. Rewriting a URL to a local `images/…` path keeps the `![…](…)` count unchanged, so the count is stable across the download step.
-- **Section-heading count** must match. The output's own header block (title + `원문`/`번역일`, ended by `---`) is stripped before counting, so the added title never offsets the comparison: the body must carry every source section, translated in place.
+- **Source file**: save as the source temp file the main-content markdown you set out to translate, with the site chrome already stripped, not the raw whole-page dump; nav headings and widget images would otherwise fail the gate against a correct translation.
+- **Image-ref count** must match exactly: fewer means a dropped image, more a hallucinated one. Rewriting a URL to a local `images/` path keeps the count.
+- **Section-heading count** must match, after stripping the output's own header block (title, `원문`, `번역일`, through the first `---`).
 
 ```bash
 SRC="/tmp/source-article.md"          # main-content markdown from Step 1 (chrome already stripped)
@@ -194,9 +100,9 @@ echo "images: source=$s_img output=$o_img | body headings: source=$s_head output
 exit $fail
 ```
 
-On any FAIL, re-translate the missing section / restore the dropped image and re-run until the gate is silent (`PASS`, exit 0). A legitimately merged or split heading (rare) is the one case to override consciously: state it, don't skip the gate.
+On any FAIL, re-translate the missing section or restore the dropped image and re-run until it prints `PASS` (exit 0). A legitimately merged or split heading is the one case to override, and only by stating it; never skip the gate.
 
-## Edge Cases
+## Edge cases and limits
 
 | Scenario | Handling |
 |----------|----------|
@@ -205,24 +111,5 @@ On any FAIL, re-translate the missing section / restore the dropped image and re
 | Document > 10,000 chars | Chunk by sections, process sequentially |
 | No images | Translate text only |
 | Non-English source | Translate from that language to Korean |
-
-## Scripts
-
-### download_image.sh
-
-Downloads image URL to /tmp:
-
-```bash
-scripts/download_image.sh "https://example.com/image.png"
-# Output: /tmp/img_<hash>.png
-```
-
-## References
-
-- `references/tech-terms.md` - Technical terms to keep in English
-
-## Limitations
-
-- Cannot process PDF directly
-- Cannot process video content
-- Dynamic JS-rendered content (if the Bright Data scrape fails)
+| PDF or video | Not supported |
+| Dynamic JS-rendered page | Not rendered: `scrape_as_markdown` runs no JavaScript, so report the content that did not load |

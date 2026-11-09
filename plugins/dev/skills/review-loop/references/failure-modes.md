@@ -1,6 +1,6 @@
 # Failure Modes
 
-Exhaustive table of `final_state` values and their triggers. Step 16's emitted JSON always carries `final_state`.
+The 15 `final_state` values with their triggers, merge eligibility and user action, then the failure cases that leave `final_state` alone. Step 16's JSON always carries `final_state`.
 
 | `final_state` | Trigger | Auto-merge eligible? | User action |
 |---------------|---------|----------------------|-------------|
@@ -39,27 +39,25 @@ Exhaustive table of `final_state` values and their triggers. Step 16's emitted J
 | Fixes held for the base (`merge_then_main_push`), PR not merged (ineligible, declined, no interaction tool, or `gh pr merge` failed) | Step 15 pushes them to the PR instead and says the new HEAD is unreviewed; re-run review-loop to judge it. |
 | Fixes held for the base, `scripts/base-push.sh` refuses (no build/test command, fixes do not apply on the merged base, build/test or a pre-commit guard fails, push rejected) | Nothing reaches the base. The PR is already merged; the fixes stay on the local commit Step 15 names, for a new PR. `base_push` stays `null`. |
 
-## Build / verification failure (Steps 3, 9c.6)
+## Build / verification failure (Steps 3, 9c.6, 14)
 
-Does NOT change `final_state` directly. Build and test run before the commit, per fix: a fix that fails is reverted and becomes a `defer` with reason `verification-failed`, so only passing fixes are committed and pushed, and a cycle whose every fix failed commits and pushes nothing (it then ends at `user_declined`, which files the follow-up issue). A repo whose baseline already fails at Step 3 skips the gate (`verification_gate=baseline_failed` in the final JSON). With an `AGENTS.md` fast line (SKILL.md Step 3) the baseline and per-fix checks run it, and Step 14 runs the full line once on a HEAD about to end at `clean`, `minor_floor` or `churn`: a failure keeps `final_state`, sets `full_verification=fail` in the final JSON, and makes `auto-merge-gate.sh` refuse the merge (`ineligible_reason` names it), so fixes Step 12 held go to the PR, not the base. `verification_blocking=true` now comes only from a merge-conflict resolution that breaks the checks (`references/merge-conflicts.md`); it disables auto-merge for the run.
+These leave `final_state` alone. A fix that fails build/test is reverted and deferred with reason `verification-failed`, so only passing fixes are committed, and a cycle whose every fix failed pushes nothing and ends at `user_declined`, which files the follow-up issue.
 
-## HEAD verdict wait (Steps 7e, 13, 14)
+A baseline that already fails at Step 3 turns the gate off (`verification_gate=baseline_failed`). With a fast line, a failed loop-end full line keeps `final_state`, sets `full_verification=fail`, and makes `auto-merge-gate.sh` refuse the merge (`ineligible_reason` names it), so held fixes go to the PR, not the base.
 
-A stop reached right after a push (`minor_floor`, `churn` with fixes, `iteration_cap`) has not seen the new HEAD's verdicts. Step 13 holds it (`HOLD_STATE`) and the next iteration's Step 7e waits; on the last iteration Step 14 waits. The wait is `scripts/head-verdicts.sh`, bounded by the existing caps, each reviewer by its own: one `TIMEOUT` for CodeRabbit, counted from the newer of the push and the latest `@coderabbitai review` comment's server time (a stuck nudge does not restart it), and the Codex wait budget for Codex, counted from the push. It stops itself at them and picks each next look with `scripts/next-check.sh`. Outcomes:
+`verification_blocking=true` comes from a merge-conflict resolution that breaks the checks (`references/merge-conflicts.md`), and it disables auto-merge for the run.
 
-| Outcome | Behavior |
-|---------|----------|
-| Every reviewer that is on gave findings or clean, nothing new needs a decision | The held state stands. |
-| A new gated or unreadable finding on the held HEAD | One more round (Step 9a clears `HOLD_STATE`). On the last iteration there is no round: `final_state=iteration_cap`, `HEAD_VERDICT=unread`. |
-| Budget spent with no verdict from anyone (every reviewer dropped, or one that cannot be read) | The held state stands (or `timeout` with none held), `HEAD_VERDICT=timeout`: the Step 15 gate finds no verdict on HEAD, so nothing merges. Step 14 reports it (final JSON `head_verdict`) and files the follow-up issue only when something was deferred. |
-| CodeRabbit paused automatic reviews | One `@coderabbitai review` for this HEAD (`cr-review-posted.sh` dedupes), then the wait resumes with the CodeRabbit budget counted from that request. |
-| CodeRabbit silent past its budget (no review, no status, no pause; PR #315) | Stuck (ADR 0006): one `@coderabbitai review` for this HEAD when it has none, the same dedupe and budget as a pause. Silent again, or HEAD already had a request: CodeRabbit is dropped for the run (`CR_SOURCE=codex-only`), named in `dropped_reviewers`, and Codex's verdict carries HEAD. Step 15 then asks before any merge, even with `--auto-merge`. |
-| Codex without a verdict past its budget (Running, or nothing) | Dropped for the run without a nudge (`@codex review` is never posted; `NO_CODEX=true`), named in `dropped_reviewers`; CodeRabbit's verdict carries HEAD and Step 15 asks before any merge. A Codex 👍 reaction on the PR after the push counts as clean before it comes to this. |
-| Codex Failed on HEAD | `final_state=codex_failed`. |
+The HEAD verdict wait outcomes (held stops, stuck and dropped reviewers) are in `references/coordination.md` ("HEAD verdict wait").
 
 ## Follow-up issue block (Step 14)
 
-Fires when the Step 14 block sets `followup_needed=true`, which is `scripts/auto-merge-gate.sh`'s `file_issue`: a state that files one, with findings left behind — deferred from any cycle (a later clean cycle records nothing an earlier one deferred) or `review`-tier findings nobody could read, which never reach the defer rows. Nothing left behind files nothing, so no issue says "0 deferred": a HEAD without every verdict (`HEAD_VERDICT`) and failing CI checks go to the final report instead. Skipped-minor findings never reach `auto_judge_log`, so they cannot populate the body and do not trigger the issue. When an issue is filed, the body says why HEAD is unverified and names failing CI checks on `ci_failing`. `followup_issue` is inherited from the prior state at Step 2, which is what makes the re-run idempotent.
+A state that files one, with findings left behind, sets `followup_needed=true` (`scripts/auto-merge-gate.sh`'s `file_issue`). Left behind means deferred in any cycle, even when a later cycle is clean, or `review`-tier findings nobody could read; skipped-minor findings never reach `auto_judge_log` and do not count.
+
+Nothing left behind files nothing, so no issue says "0 deferred": a HEAD without every verdict and failing CI checks go to the final report. A filed body says why HEAD is unverified and names the failing CI checks on `ci_failing`, and `followup_issue`, inherited at Step 2, makes a re-run append instead of opening a second issue.
+
+More defers in this run than `SUB_ISSUE_THRESHOLD` (`references/coordination.md`) add one sub-issue per finding under that issue, keyed so a re-run files none twice. A failed sub-issues call puts the rest into the issue body as a task list (`followup_issue.split=task_list`); an issue body that cannot be read or edited is `split=failed`, and an issue created but not linked stays in `followup_issue.unlinked` so the re-run links it instead of filing it again.
+
+Fires when the Step 14 block sets `followup_needed=true`:
 
 ```bash
 # Idempotent: a re-run on the same PR reuses the issue instead of opening a second one;
@@ -125,6 +123,20 @@ else
       '.followup_issue = {number:$n, url:$u}' "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
   else
     echo "review-loop: follow-up issue creation failed — auto-merge stays blocked" >&2
+  fi
+fi
+# More defers than file-sub-issues.sh's threshold: one sub-issue each under the issue,
+# or a task list in its body when the sub-issues API fails. The issue's table stays
+# the record either way, so a failed split is reported, not a merge blocker.
+parent=$(jq -r '.followup_issue.number // empty' "$STATE_FILE")
+if [ -n "$parent" ]; then
+  split=$(STATE_FILE="$STATE_FILE" bash "$SKILL_DIR/scripts/file-sub-issues.sh" "$OWNER" "$REPO" "$parent" "$PR_NUM")
+  jq -e '.split and .sub_issues' <<<"$split" >/dev/null 2>&1 || split='{"split":"failed","sub_issues":[]}'
+  if [ "$(jq -r '.split' <<<"$split")" != none ]; then
+    tmp=$(mktemp); jq --argjson s "$split" '.followup_issue.split = $s.split
+      | .followup_issue.sub_issues = ((.followup_issue.sub_issues // []) + $s.sub_issues | unique)
+      | .followup_issue.unlinked = ($s.unlinked // .followup_issue.unlinked // [])' \
+      "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
   fi
 fi
 ```

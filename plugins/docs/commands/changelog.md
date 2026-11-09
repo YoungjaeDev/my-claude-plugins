@@ -12,7 +12,7 @@ allowed-tools:
 
 # CHANGELOG Command
 
-Manage CHANGELOG files using Keep a Changelog format.
+Manage CHANGELOG.md in Keep a Changelog format with 3 modes (`init`, `add`, `release`) and 6 entry categories.
 
 ## Arguments
 
@@ -31,7 +31,7 @@ Manage CHANGELOG files using Keep a Changelog format.
 
 ## Instructions
 
-First load `Skill("docs:doc-guides")` and follow its `## CHANGELOG` section.
+First load `Skill("docs:doc-guides")` and follow its `## Human-read documents` and `## CHANGELOG` sections. Entries follow the tone rules of `references/writing-standard.md`; the Keep a Changelog headings stay as the format defines them, since `CHANGELOG.md` is on the standard's exception list for shape. Categories, writing style, automation tools and anti-patterns are in `references/CHANGELOG_PATTERNS.md`.
 
 ### For `init`
 
@@ -79,10 +79,3 @@ Current Unreleased:
 - 1 Fixed
 ```
 
-## Reference
-
-See `references/CHANGELOG_PATTERNS.md` for:
-- Standard categories
-- Writing style guide
-- Automation tools
-- Anti-patterns to avoid

@@ -5,156 +5,41 @@ description: "README/CHANGELOG/deploy-doc/MOC 저작 참조 카드 4종과 사�
 
 # Doc Guides
 
-Four writing-reference cards for the `docs` document commands, one per output type, plus the
-common rule they all follow. Each `/docs:*` command loads `## Human-read documents` and the
-matching section below deterministically: this skill is not meant to be browsed top to bottom.
+Four writing-reference cards for the `docs` document commands, one per output type, plus the common rule they all follow. Each `/docs:*` command loads `## Human-read documents` and the matching section below, so this skill is not read top to bottom. The full patterns live in `../../references/`.
 
 ## Human-read documents
 
-The one rule every document a person reads follows: README, deployment / procedure doc,
-CHANGELOG, MOC. Agent-facing documents (AGENTS.md, CLAUDE.md, skill bodies, `.claude/rules/`)
-are out of scope and keep their own tone.
+The rule every document a person reads follows: README, deployment or procedure doc, CHANGELOG, MOC. Agent-facing documents (AGENTS.md, CLAUDE.md, skill bodies, `.claude/rules/`) keep their own tone.
 
-- **Tone**: list items, table cells and feature lines end in a noun (`~지원`, `~제공`, `~기록`).
-  Only a sentence that asks the reader to act uses 합니다체 (`실행하세요`, `확인하세요`). No
-  개조식 `~음` / `~함`, no 한다체 `~다` in a Korean document. An English document uses short
-  noun phrases in lists and the imperative for actions.
-- **Attention**: follow the user's global guidance §2 "Write so the point lands first"
-  (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`): conclusion first, exact numbers and conditions,
-  each warning next to what it guards and never trimmed. Do not restate it here.
-- **TOC**: a document with 4 or more `##` headings gets a linked table of contents right after
-  the top summary (README: after the badges and Demo). CHANGELOG and MOC are exempt: their
-  headings are already the index.
-- **Figures**: service connections, architecture and data flow get a structure diagram from the
-  `stack-diagram` skill (logos, grouped containers, orthogonal arrows). A banner or concept
-  picture goes through `codex-image` in the house style: soft 3D by default (smooth clay-like
-  rounded forms, soft studio light, one accent color), pixel style (crisp hard-edged pixels, no
-  anti-aliasing) only when the user asks.
-  - **Confirm before generating**: generation spends quota and writes files. Name each figure,
-    its tool, style and output path, then ask: Claude `AskUserQuestion`, Codex
-    `request_user_input` when exposed. With neither, or when the needed skill is not installed,
-    generate nothing: write the document without the figure and list the proposed figures in the
-    final report.
-- **Final polish**: once the content is settled, run `humanize-korean` (`Skill("humanize-korean:humanize-korean")`)
-  once over the prose of a Korean document. Code, commands, paths and numbers stay unchanged, and
-  the tone rule above wins when its advice conflicts. When it is not installed, self-check the
-  prose against the "Sentence patterns to avoid" table in global §2 instead, and say which path
-  ran. An English document gets the same §2 self-check. Without that table loaded, check for
-  translationese, filler or throat-clearing openers, inflated or invented claims, and mechanical
-  parallel lists.
-- A command that preserves existing wording (`/docs:deploy-doc rewrite`) applies tone and polish
-  only to the lines it writes itself.
+- **Shape and tone**: read `../../references/writing-standard.md` before writing, and apply its `## Shape` and `## Tone by document kind` to every line the command writes. The user's global guidance §2 "Write so the point lands first" (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`) sets the attention rules; do not restate it here.
+- **TOC**: a document with 4 or more `##` headings gets a linked table of contents right after the top summary (README: after the badges and Demo). CHANGELOG and MOC are exempt, since their headings are already the index.
+- **Figures**: service connections, architecture and data flow get a structure diagram from the `stack-diagram` skill. A banner or concept picture goes through `codex-image` in the house style: soft 3D by default (clay-like rounded forms, soft studio light, one accent color), pixel style (hard-edged pixels, no anti-aliasing) only when the user asks.
+- **Confirm before generating**: generation spends quota and writes files, so name each figure, its tool, style and output path, then ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex. With neither, or without the needed skill, generate nothing: write the document without the figure and list the proposed figures in the final report.
+- **Final polish**: once the content is settled, run `Skill("humanize-korean:humanize-korean")` once over the prose of a Korean document. Code, commands, paths and numbers stay unchanged, and the writing standard wins where the two conflict.
+- **Polish fallback**: without `humanize-korean`, self-check the prose against the "Sentence patterns to avoid" table in global §2 and say which path ran; an English document gets the same self-check. Without that table, check for translationese, throat-clearing openers, inflated or invented claims, and mechanical parallel lists.
+- **Preserved wording**: a command that keeps existing text (`/docs:deploy-doc rewrite`) applies tone and polish only to the lines it writes itself.
 
 ## README
 
-Follow `## Human-read documents` above first.
-
-Patterns and best practices derived from awesome-readme examples.
-
-### Triggers
-
-- "how to write readme"
-- "readme best practices"
-- "readme template"
-- "improve my readme"
+Patterns derived from awesome-readme examples, on top of `## Human-read documents`.
 
 ### Quick Reference
 
-#### Universal Structure (open source)
+- **Open-source order**: header (logo, badges, tagline), quick start (3 steps max), features (benefits, not specs), installation, usage (progressive), configuration, API or props, contributing, license.
+- **Internal repo order**: a repo that is not distributed (R&D, PoC, edge hardware, ML training) drops contributing, license and social-proof badges, and uses: top image, `# Name` and a one-line summary, 3-4 static badges, Demo or Results, current status (dated measured table and next step), quick start, structure, verification commands, risks, docs map (or MOC link), owner.
+- **Top image**: a real UI or result screenshot when one exists, otherwise a banner. A banner is a text-free visual with the headline (one sentence, 8 words or fewer) typeset by script, 3:1 at about 2x display width, dark and light files via `<picture>`, and `alt` equal to the headline; the rules and sources are in `README_PATTERNS.md` `## Banner`.
+- **Demo slot**: UI or demo material goes in `## Demo` (`## 데모` in a Korean README) directly under the badges; without a UI, a result image or a dated measured table takes the slot.
+- **Badges**: pick 3-5 from build/CI, version, license, downloads, coverage. Static shields.io badges render without repo access; dynamic or Actions badges on a private repo are unverified.
+- **CRO essentials**: what, who and why visible in 5 seconds, quick start under 5 minutes, a "You should see:" verification, a troubleshooting link nearby.
+- **Templates**: `--type` cli, library, react-component, mcp-plugin, saas, desktop, internal, each in `../../references/TEMPLATES.md`.
 
-1. Header (Logo + Badges + Tagline)
-2. Quick Start (3 steps max)
-3. Features (Benefits, not specs)
-4. Installation (Detailed)
-5. Usage/Examples (Progressive complexity)
-6. Configuration
-7. API/Props
-8. Contributing
-9. License
-
-#### Internal Repo Variant
-
-For a repo that is not distributed (R&D, PoC, edge hardware, ML training), drop Contributing,
-License and social-proof badges, and use: banner, `# Name` + one-line summary, 3-4 static badges,
-Demo or Results, current status (dated measured table + next step), quick start, structure,
-verification commands, risks, docs map (or MOC link), owner. Static shields.io badges render
-without repo access; dynamic or Actions badges on a private repo are unverified.
-
-#### Banner
-
-- Default goal: corporate trust and one message. Pop style (one mascot, 2-3 saturated colors,
-  thick outlines) only when asked.
-- The image model draws a text-free visual. The headline (one sentence, 8 words or fewer, stating
-  the value or result) and an optional proof-number line are typeset deterministically (SVG/HTML
-  capture or Pillow) and composited.
-- One brand accent plus neutrals, wide negative space, no mascot or ornament.
-- 3:1 at about 2x display width (e.g. 2400x800), key elements in the vertical middle 50%, dark and
-  light files via `<picture>`, `alt` = headline. Banner or logo at the top, not both.
-- GitHub strips `style`; size with `width`/`height`. Codex's built-in tool fixes `size: "auto"`,
-  so measure the output and crop by script.
-
-#### Demo Placement
-
-- UI or demo material: `## Demo` (`## 데모` in a Korean README) directly under the badges, holding
-  the GIF or screenshots.
-- No UI (ML training, hardware): a result image or a dated measured table in the same slot.
-
-#### Essential Badges (Pick 3-5)
-
-| Badge | Purpose |
-|-------|---------|
-| Build/CI | Trust - "it works" |
-| Version | Currency |
-| License | Legal clarity |
-| Downloads | Social proof |
-| Coverage | Quality signal |
-
-#### CRO Essentials
-
-- 5-second test: What, Who, Why visible?
-- Quick start under 5 minutes
-- Demo slot filled (see Demo Placement)
-- "You should see:" verification
-- Troubleshooting link nearby
-
-### References
-
-For detailed patterns, see:
-- `../../references/README_PATTERNS.md` - Full patterns, incl. Internal Repo Structure, Banner
-  (rules + sources), Demo and Screenshots Placement
-- `../../references/README_SECTIONS.md` - readme.so section menu: when to include each section and
-  where it lands in the internal order
-- `../../references/TEMPLATES.md` - Copy-paste templates
-- `../../references/CRO_CHECKLIST.md` - Conversion optimization, Demo and Banner checks
-- `../../references/EXAMPLES_ANALYSIS.md` - Analyzed examples, measured banner examples
-
-### Templates Available
-
-| Type | Use For |
-|------|---------|
-| CLI Tool | Command-line applications |
-| Library | npm/pip packages |
-| React Component | UI components |
-| MCP Plugin | Claude Code plugins |
-| SaaS | Web applications |
-| Desktop | Electron/native apps |
-| Internal | Company R&D/PoC, edge hardware, ML training |
+Read further in `../../references/`: `README_PATTERNS.md` (full patterns, Internal Repo Structure, Banner, Demo and Screenshots Placement), `README_SECTIONS.md` (when each section applies and where it lands), `CRO_CHECKLIST.md` (conversion, Demo and Banner checks), `EXAMPLES_ANALYSIS.md` (analyzed examples, measured banners).
 
 ## CHANGELOG
 
-Writing patterns based on Keep a Changelog and Conventional Commits. Entry tone and polish
-follow `## Human-read documents` above.
-
-### Triggers
-
-- "how to write changelog"
-- "changelog format"
-- "changelog template"
-- "keep a changelog"
+Keep a Changelog and Conventional Commits, with entry tone and polish per `## Human-read documents`.
 
 ### Quick Reference
-
-#### Standard Format
 
 ```markdown
 # Changelog
@@ -164,16 +49,11 @@ follow `## Human-read documents` above.
 ### Added
 - New feature
 
-### Fixed
-- Bug fix
-
 ## [1.0.0] - 2026-02-05
 
-### Added
-- Initial release
+### Fixed
+- Bug fix
 ```
-
-#### Categories
 
 | Category | When to Use |
 |----------|-------------|
@@ -184,134 +64,34 @@ follow `## Human-read documents` above.
 | Fixed | Bug fixes |
 | Security | Security patches |
 
-#### Semantic Versioning
-
-```
-MAJOR.MINOR.PATCH
-
-MAJOR: Breaking changes
-MINOR: New features (backward compatible)
-PATCH: Bug fixes (backward compatible)
-```
-
-#### Writing Style
-
-Write for users, not developers:
-
-| Bad | Good |
-|-----|------|
-| "Fixed async race condition" | "Fixed crash on file upload" |
-| "Refactored auth module" | "Improved login speed by 50%" |
-| "Updated deps" | "Improved security with latest libraries" |
-
-### Automation Tools
-
-| Tool | Best For |
-|------|----------|
-| semantic-release | Full CI/CD automation |
-| release-please | GitHub PR-based review |
-| git-cliff | Customizable generation |
-
-### References
-
-For detailed patterns, see:
-- `../../references/CHANGELOG_PATTERNS.md` - Full format documentation
+Write for users, not developers: "Fixed crash on file upload", not "Fixed async race condition". Versioning, automation tools and anti-patterns are in `../../references/CHANGELOG_PATTERNS.md`.
 
 ## Deploy-doc
 
-The cross-runtime SSOT for client-facing deployment / procedure documents. The `### Quick
-Reference` skeleton below is binding: the `deploy-doc` command and any agent must self-verify
-against it before writing. Tone, TOC, figures and polish follow `## Human-read documents` above.
-
-### Triggers
-
-- "배포 문서"
-- "deployment doc"
-- "procedure doc"
-- "절차 문서"
-- "client procedure doc"
+The cross-runtime source of truth for client-facing deployment and procedure documents. The `deploy-doc` command and any agent self-verify against the skeleton below before writing; tone, TOC, figures and polish follow `## Human-read documents`.
 
 ### Quick Reference
 
-The skeleton (Korean default; English labels in parentheses for `--lang en`). Each item is a
-self-verify checklist entry: confirm all before output:
+The skeleton is Korean by default, with English labels in parentheses for `--lang en`. Each item is a checklist entry to confirm before output:
 
-1. **Title + top summary**: an optional `# H1` document title (from `--title`) on the first line,
-   then a 2-3 line summary paragraph directly below it and above the first `##`. The summary is
-   **untitled** in the sense that it carries no section heading of its own (no `## 요약`): it is
-   bare prose between the `# H1` and the first `##`. If no title is given, the summary paragraph
-   is the very top of the file. The summary states what is deployed and the step count at a high
-   level.
-2. **Prerequisites**: a `## 전제조건` (`## Prerequisites`) section where **every** line is a
-   `- [ ]` checklist item. No bare prose bullets.
-3. **Procedure**: a `## 절차` (`## Procedure`) section where **every** step is a `### N.`
-   heading, numbered contiguously from `### 1.` with no gaps and no `### N.`-less prose steps.
-4. **Number-match rule**: the step count named or implied in the top summary MUST equal the
-   number of `### N.` headings. Mismatch = FAIL.
-5. **Link, don't redefine**: detailed contracts, schemas, and SSOT specifics are linked (to
-   `--links` documents), never inlined. The procedure references the authority; it does not
-   restate it.
+1. **Title and top summary**: an optional `# H1` title (from `--title`) on the first line, then a 2-3 line summary paragraph above the first `##`. The summary has no heading of its own (no `## 요약`), and without a title it is the top of the file. It states what is deployed and the step count.
+2. **Prerequisites**: a `## 전제조건` (`## Prerequisites`) section where every line is a `- [ ]` checklist item, with no bare prose bullets.
+3. **Procedure**: a `## 절차` (`## Procedure`) section where every step is a `### N.` heading, numbered contiguously from `### 1.`, with no prose step outside a `### N.` heading.
+4. **Number match**: the step count in the top summary equals the number of `### N.` headings. A mismatch is a FAIL.
+5. **Link, don't redefine**: detailed contracts, schemas and source-of-truth specifics are linked (to `--links` documents), never inlined.
 
-Compliance check before writing: summary 2-3 lines? prerequisites all `- [ ]`? procedure all
-contiguous `### N.`? summary count == `### N.` count? contracts linked not inlined?
-
-### References
-
-- `../../references/DEPLOY_DOC_PATTERNS.md`: empty skeleton, a filled example, and anti-patterns.
+The empty skeleton, a filled example and the anti-patterns are in `../../references/DEPLOY_DOC_PATTERNS.md`.
 
 ## MOC
 
-The cross-runtime SSOT for generating a Map of Content index over an arbitrary docs folder. The
-`### Quick Reference` below is binding for the `moc` command and any agent. Hook tone follows
-`## Human-read documents` above.
-
-### Triggers
-
-- "MOC 생성"
-- "generate MOC"
-- "doc 목차"
-- "wiki index"
-- "문서 한 줄 요약"
+The cross-runtime source of truth for a Map of Content index over a docs folder. The `### Quick Reference` below binds the `moc` command and any agent; hook tone follows `## Human-read documents`.
 
 ### Quick Reference
 
-#### Lightweight (default)
+- **Lightweight (default)**: one file, `<folder>/MOC.md`, with per-file bullets `- [title](relative/path.md) — hook` and per-domain `## <domain>` tables of `| File | Hook |` rows. Generic Markdown only: no frontmatter validation, no `[[id]]`, no typed cross-refs.
+- **Strict (`--strict`)**: mirrors the wiki `index.md` convention with `## <domain>` groups (first-level subdirectories, `--depth` default 2, MOC first), bullets `- [title](domain/slug.md) — hook` or `[[id]]` when frontmatter has `id`, an intro paragraph and a typed-cross-ref legend (`> Refines:`, `> See-also:`). The frontmatter and staleness model stays with the `wiki` plugin.
+- **Hook source (first hit wins)**: frontmatter `description:` or `summary:`, then the first non-empty paragraph after the first `# H1` (truncated near 100-120 characters), then the first `##` text, then the humanized filename with hook `(요약 없음)`.
+- **Link text**: frontmatter `title:`, then the first `# H1`, then the filename.
+- **Conflicts**: output is `<folder>/MOC.md` (or `--out`), and an existing `index.md` or `README.md` is never overwritten. Exclude them from the scan and the target; an `--out` whose basename matches `readme.md` or `index.md` case-insensitively is refused or routed to `MOC.md` after confirmation. An existing `MOC.md` is confirmed and updated in place.
 
-- One file: `<folder>/MOC.md`. No per-file fan-out.
-- Per-file bullets: `- [title](relative/path.md) — hook`.
-- Per-domain table: `## <domain>` heading then `| File | Hook |` rows.
-- No frontmatter validation, no `[[id]]`, no typed cross-refs: generic Markdown only.
-
-#### Strict (`--strict`)
-
-Mirror the wiki `index.md` convention:
-- `## <domain>` group sections (domains = first-level subdirectories, `--depth` default 2,
-  MOC-first ordering).
-- Bullets `- [title](domain/slug.md) — hook`; when a file's frontmatter has `id`, prefer `[[id]]`
-  link form.
-- An MOC intro paragraph and a typed-cross-ref legend (`> Refines:` / `> See-also:` / etc.) as
-  scaffolding.
-- The full frontmatter / staleness model is NOT enforced here: real lore wiki is owned by the
-  `wiki` plugin. This is a generalized mirror, not a replacement.
-
-#### Hook source precedence (first hit wins)
-
-1. frontmatter `description:` / `summary:`
-2. first non-empty paragraph after the first `# H1` (truncate ~100-120 chars)
-3. first `##` subheading text
-4. fallback: humanized filename + hook = `(요약 없음)` flag
-
-Link text precedence: frontmatter `title:` -> first `# H1` -> filename.
-
-#### Conflict rules
-
-- Output is `<folder>/MOC.md` (or `--out`). **Never** overwrite an existing `index.md` or
-  `README.md`: exclude them from the scan AND from the output target: if `--out`'s basename
-  case-insensitively matches `readme.md` / `index.md`, refuse or confirm-then-route to `MOC.md`
-  instead of clobbering it (case-insensitive filesystems alias `INDEX.md` to `index.md`).
-- If `MOC.md` already exists, confirm and update in place.
-
-### References
-
-- `../../references/MOC_PATTERNS.md`: precedence ladder, lightweight + strict output examples,
-  wiki index mapping.
+Precedence examples and the wiki index mapping are in `../../references/MOC_PATTERNS.md`.

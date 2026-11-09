@@ -1,6 +1,6 @@
 # README Patterns Reference
 
-Analyzed from awesome-readme examples. Use as reference when creating or reviewing README files.
+Structure patterns from 9 analyzed awesome-readme projects, plus the internal repo order, the top image rule and demo placement. Use it when creating or reviewing a README; the generated README follows `writing-standard.md`.
 
 ---
 
@@ -47,7 +47,7 @@ badges). The sections that let a teammate trust the current state and reproduce 
 
 | # | Section | Content | Basis |
 |---|---------|---------|-------|
-| 1 | Banner | `<picture>` dark + light pair, `alt` = the headline | standard-readme Banner slot; GitHub Docs `<picture>` |
+| 1 | Top image | a real UI or result screenshot when one exists; otherwise a banner `<picture>` dark + light pair, `alt` = the headline | standard-readme Banner slot; GitHub Docs `<picture>` |
 | 2 | `# Name` + one-line summary | what it does, on which hardware or data | standard-readme Title, Short Description |
 | 3 | Badges, 3-4 | stage (PoC, E2E), hardware, language, CI | standard-readme Badges |
 | 4 | Demo or Results | see `## Demo and Screenshots Placement` | readme.so Demo, Screenshots |
@@ -64,7 +64,9 @@ Rows 1-3 follow standard-readme's opening order: Title, Banner, Badges, Short De
 spec that gives a banner its own slot). Section-by-section choices from the readme.so menu are in
 `README_SECTIONS.md`.
 
-**Badges on a private repo.** A static shields.io badge
+### Badges on a private repo
+
+A static shields.io badge
 (`https://img.shields.io/badge/<label>-<message>-<color>`) encodes its text in the URL and renders
 without repository access. The label and message travel to shields.io in the image request, so put
 only values cleared for outside disclosure in a badge; show a private value as a repository-local
@@ -89,7 +91,7 @@ read a private repository's state is unverified; use static badges until that is
 </div>
 ```
 
-**Used by**: fiber, httpie, electron-markdownify, nerd-fonts
+Used by: fiber, httpie, electron-markdownify, nerd-fonts
 
 ### Pattern B: Left-Aligned with Right Logo
 
@@ -103,7 +105,7 @@ Description paragraph.
 [Badges]
 ```
 
-**Used by**: size-limit, release-it
+Used by: size-limit, release-it
 
 ### Pattern C: Badge-First
 
@@ -116,16 +118,17 @@ Description paragraph.
 Description
 ```
 
-**Used by**: PostHog, dbt-core
+Used by: PostHog, dbt-core
 
-Use a banner or a centered logo as the top image, not both stacked.
+The top image is a real UI or result screenshot when one exists, otherwise a banner or a centered logo, never both stacked.
 
 ---
 
 ## Banner
 
-Default goal: corporate trust and one message that lands. A pop style is an option the user picks,
-not the default.
+A banner is the top image only when the project has no real UI or result screenshot. Default goal:
+corporate trust and one message that lands. A pop style is an option the user picks, not the
+default.
 
 ### Composition
 
@@ -141,26 +144,24 @@ not the default.
 | Themes | dark and light files swapped with `<picture>` |
 | Decoration | no mascot, no ornament in the default style |
 
-**Why the visual carries no text.** OpenAI's image generation guide lists text rendering and the
-consistency of recurring brand elements as current limitations
-([API image generation guide](https://developers.openai.com/api/docs/guides/image-generation)).
-OpenAI's own web-hero recipe agrees: the web-hero samples in Codex's bundled `imagegen` skill all end
-with "no text; no logos; no watermark" and ask for "usable negative space for page copy"
-([imagegen skill](https://github.com/openai/codex/tree/main/codex-rs/skills/src/assets/samples/imagegen)).
-Typesetting the headline afterwards makes spelling, contrast and rewording deterministic: a new
-headline is a re-render, not a re-generation.
-
-**Typesetting paths.** An SVG or HTML/CSS layout captured with Playwright, or Pillow drawing text
-with a bundled font. Example: spokospace/zapiszprzepis PR #129 lays out a 1280x400 HTML/CSS banner
-and captures it with Playwright at `deviceScaleFactor: 2`, once per theme, producing two 2560x800
-WebP files of about 103-109 KB ([PR #129](https://github.com/spokospace/zapiszprzepis/pull/129)).
+- **No text in the visual**: OpenAI's image generation guide lists text rendering and the
+  consistency of recurring brand elements as current limitations[^img-guide]. The web-hero samples
+  in Codex's bundled `imagegen` skill all end with "no text; no logos; no watermark" and ask for
+  "usable negative space for page copy"[^imagegen]. Typesetting the headline afterwards makes
+  spelling, contrast and rewording deterministic: a new headline is a re-render.
+- **Typesetting paths**: an SVG or HTML/CSS layout captured with Playwright, or Pillow drawing text
+  with a bundled font. spokospace/zapiszprzepis lays out a 1280x400 HTML/CSS banner and captures it
+  at `deviceScaleFactor: 2`, once per theme, producing two 2560x800 WebP files of about 103-109
+  KB[^pr129].
 
 ### Pop style (opt-in)
 
 Among 107 popular READMEs surveyed on 2026-10-02 (first image measured with Pillow), the pop banners
 share one object or mascot, two or three saturated colors, thick outlines, and a transparent or
 single solid background (Charm's gum and vhs, Bun, Gleam, KAPLAY). That formula is an inference from
-the sample, not a published rule. A transparent PNG with outlined shapes reads on both themes and
+the sample, not a published rule.
+
+A transparent PNG with outlined shapes reads on both themes and
 needs one file; a solid background needs the dark + light pair. Describe a style by technique
 (halftone dots, two-color risograph, hard offset shadow), not by an artist's name.
 
@@ -197,11 +198,9 @@ needs one file; a solid background needs the dark + light pair. Describe a style
 
 - **The built-in tool cannot pick a size.** Codex's built-in image generation uses `gpt-image-2`
   ([Codex image generation](https://learn.chatgpt.com/docs/image-generation)). Its client source
-  `codex-rs/ext/image-generation/src/tool.rs` fixes `size: "auto"` and `quality: Auto` for generate
-  and edit, and the tool takes only `prompt`, `transparent_background`, `referenced_image_paths`
-  (up to 5 absolute paths) and `num_last_images_to_include`
-  ([tool.rs](https://github.com/openai/codex/blob/main/codex-rs/ext/image-generation/src/tool.rs),
-  read 2026-10-02). Generate, read the actual size, then crop.
+  fixes `size: "auto"` and `quality: Auto` for generate and edit, and the tool takes only `prompt`,
+  `transparent_background`, `referenced_image_paths` (up to 5 absolute paths) and
+  `num_last_images_to_include`[^toolrs]. Generate, read the actual size, then crop.
 - **Why the middle 50% band.** Cropping a 1536x1024 output to 3:1 keeps 1536x512, half the height.
   What `auto` returns for a wide-banner prompt is unverified, so print the size before cropping.
 - **Exact sizes need the API path.** The bundled skill's `scripts/image_gen.py` takes `--size` but
@@ -219,8 +218,8 @@ needs one file; a solid background needs the dark + light pair. Describe a style
   banner"); state exclusions ("no text, no logos, no watermark"). For an edit, say "change only X"
   and repeat the full keep-list every time (prompting guide above).
 
-The Codex rows above come from source code and the local codex-cli 0.158.0 install; they were not
-part of the 2026-10-02 three-vote cross-check that confirmed the GitHub and template claims.
+The Codex rows above come from source code and the local codex-cli 0.158.0 install, not from the
+cross-check that confirmed the GitHub rows[^crosscheck].
 
 ---
 
@@ -244,9 +243,7 @@ README body: Contextual badges (e.g., plugin ecosystem table)
 Footer: Optional social badges
 ```
 
-### Anti-Pattern
-
-10+ badges = "badge soup" = desperation signal
+More than 10 badges reads as badge soup, a desperation signal; keep 5 or fewer in the header.
 
 ---
 
@@ -254,7 +251,7 @@ Footer: Optional social badges
 
 ### Pattern A: Minimal (size-limit, httpie)
 
-```markdown
+````markdown
 ## Quick Start
 
 ```bash
@@ -266,7 +263,7 @@ project.run() // => "Hello!"
 ```
 
 Done.
-```
+````
 
 ### Pattern B: Numbered Steps (nerd-fonts)
 
@@ -282,7 +279,7 @@ You should see: [expected output]
 
 ### Pattern C: Decision Tree (release-it, nerd-fonts)
 
-```markdown
+````markdown
 ## Installation
 
 **If you want quick setup:**
@@ -300,7 +297,7 @@ npm install -D project-name
 ```bash
 docker run project-name
 ```
-```
+````
 
 ---
 
@@ -350,7 +347,7 @@ Format: `Feature Name - User Benefit`
 
 ### Progressive Complexity Pattern
 
-```markdown
+````markdown
 ## Usage
 
 ### Basic
@@ -373,7 +370,7 @@ x.run({ option: true });
 ```
 
 </details>
-```
+````
 
 ### Commented Commands (electron-markdownify)
 
@@ -443,10 +440,7 @@ This builds trust through transparency.
 - Size: Under 10MB
 - Width: 600-800px
 - Frame rate: 10-12 fps
-
-### Placement
-
-See `## Demo and Screenshots Placement`.
+- Placement: see `## Demo and Screenshots Placement`
 
 ---
 
@@ -497,7 +491,7 @@ Maximum tilt angle in degrees. Range: 0-90.
 
 ## Platform-Specific Installation (nerd-fonts)
 
-```markdown
+````markdown
 ## Installation
 
 ### macOS
@@ -523,13 +517,13 @@ apt install project-name
 ```bash
 git clone ... && make install
 ```
-```
+````
 
 ---
 
 ## SaaS README Pattern (PostHog)
 
-```markdown
+````markdown
 [Header with product family badges]
 
 ## Cloud (Recommended)
@@ -554,7 +548,7 @@ Note: Limited support for self-hosted deployments.
 |----------|--------|---------|
 | JS | React Native | Python |
 | React | iOS | Node |
-```
+````
 
 ---
 
@@ -586,7 +580,7 @@ Note: Limited support for self-hosted deployments.
 
 ## CLI Tool Pattern (release-it, httpie)
 
-```markdown
+````markdown
 [Logo + tagline]
 [Feature bullets - quick value scan]
 [Badges]
@@ -608,7 +602,7 @@ tool-name [options]
 
 ## Troubleshooting
 [Debug flags, common issues]
-```
+````
 
 ---
 
@@ -641,3 +635,9 @@ Before publishing:
 - [ ] License specified
 - [ ] No dead links
 - [ ] Visual demo for UI projects
+
+[^img-guide]: [API image generation guide](https://developers.openai.com/api/docs/guides/image-generation).
+[^imagegen]: [imagegen skill samples](https://github.com/openai/codex/tree/main/codex-rs/skills/src/assets/samples/imagegen).
+[^pr129]: [spokospace/zapiszprzepis PR #129](https://github.com/spokospace/zapiszprzepis/pull/129).
+[^toolrs]: `codex-rs/ext/image-generation/src/tool.rs` ([source](https://github.com/openai/codex/blob/main/codex-rs/ext/image-generation/src/tool.rs)), read 2026-10-02.
+[^crosscheck]: A three-vote cross-check on 2026-10-02 confirmed the GitHub rendering and template claims.

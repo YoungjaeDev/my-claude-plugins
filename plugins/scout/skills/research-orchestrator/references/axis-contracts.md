@@ -1,6 +1,6 @@
 # Axis Contracts
 
-Shared per-axis input/output contract consumed by **all three orchestrator execution paths** — named plugin agents, generic parallel subagents, sequential in-agent. Path A (named agents) uses the full agent definitions in `../../../agents/{axis}-scout.md` as the canonical detail; this file is the portable condensation that the generic-agent and sequential paths embed inline, because `agents/*.md` are Claude-only and are **not registerable** under Codex. Keep the two in sync when an axis contract changes.
+The per-axis input and output contract for all 3 orchestrator execution paths: named plugin agents (A), generic parallel subagents (B) and sequential in-agent (C). Path A reads the full agent definitions in `../../../agents/{axis}-scout.md`; Paths B and C embed this condensation inline, because `agents/*.md` are Claude-only and Codex cannot register them.
 
 ## Shared query shape (input to every axis)
 
@@ -64,7 +64,9 @@ Envelope rules that hold on **every** path:
 - **Role**: Reddit, StackOverflow, blogs, news, announcements, person/company background.
 - **Optional inputs**: `mode` (`quick`|`deep` — drives search tiers), `site_hints`, `time_range`.
 - **Search tool order**: tier-1 `mcp__exa__web_search_exa` (always first). Deep mode also runs `WebSearch` in parallel (keyword + `site:` coverage); quick mode falls back to `WebSearch` when exa is unavailable / quota-exhausted / empty. Parameter shapes, query hygiene, and the exa failure modes: `exa-web-search.md` (sibling in this directory).
-- **Fetch tool order** (escalate only on failure): `mcp__exa__web_fetch_exa` → `mcp__brightdata__scrape_as_markdown` (JS-heavy / anti-bot) → `Skill("insane-search:insane-search", url=...)` (tier-4 transport for WAF / 403 / challenge on X/Reddit/Coupang; treat `challenge`/`blocked` as terminal and emit from `Highlights`). `insane-search` is **optional** — if not installed / errors, skip tier-4 and record `insane_search: not_installed` (or the error) in `errors`. Bright Data is fetch-only here: do **not** call `search_engine` / `search_engine_batch` as a search axis, and do not call `web_data_*` / `scraping_browser_*` / `scrape_batch`. If Bright Data is unconfigured, follow the preflight in `brightdata-guide.md` (sibling in this directory) and record the failing gate in `errors` instead of downgrading the fetch.
+- **Fetch tool order** (escalate only on failure): `mcp__exa__web_fetch_exa` → `mcp__brightdata__scrape_as_markdown` (JS-heavy / anti-bot) → `Skill("insane-search:insane-search", url=...)` (tier-4 transport for WAF / 403 / challenge on X/Reddit/Coupang; treat `challenge`/`blocked` as terminal and emit from `Highlights`).
+- **Optional tier 4**: `insane-search` is a separate plugin. If it is not installed or errors, skip tier 4 and record `insane_search: not_installed` (or the error) in `errors`.
+- **Bright Data scope**: fetch-only. Do not call `search_engine` / `search_engine_batch` as a search axis, or `web_data_*` / `scraping_browser_*` / `scrape_batch`; if Bright Data is unconfigured, follow the preflight in `brightdata-guide.md` (sibling in this directory) and record the failing gate in `errors` instead of downgrading the fetch.
 - **Finding fields**: `title`, `published`, `source_type` (`reddit`|`stackoverflow`|`hackernews`|`blog`|`news`|`twitter`|`official_blog`|`other`), plus shared. Top-level `tools_used`, `fetch_tools_used`.
 - **Reliability**: `high` = official blog / vendor docs / stable consensus; `medium` = corroborated community thread; `low` = single tweet / opinion blog.
 - **Fallback**: record failed tools in `errors`; abort the artifact only if both search tools fail.
@@ -72,11 +74,13 @@ Envelope rules that hold on **every** path:
 ### `04_docs` — Docs axis (`platform: docs`)
 - **Role**: official library API / migration docs + repo-internal architecture Q&A.
 - **Optional inputs**: `library_hint`, `repo_hint`, `topic`.
-- **Tool order**: API / migration → `mcp__context7__resolve-library-id` → `mcp__context7__get-library-docs` (public Context7; some installs expose the older `mcp__context7__query-docs` — try public first, fall back). Repo architecture → `mcp__deepwiki__ask_question` (escalate to `read_wiki_structure` / `read_wiki_contents` only if too shallow). Quote snippets verbatim with the source URL.
+- **Tool order**: API / migration → `mcp__context7__resolve-library-id` → `mcp__context7__query-docs` (Context7 MCP before 2.0.0 exposes `mcp__context7__get-library-docs` instead; use it when `query-docs` is not registered). Repo architecture → `mcp__deepwiki__ask_wiki_question` (escalate to `read_wiki_structure` / `read_wiki_contents` only if too shallow). Quote snippets verbatim with the source URL.
 - **Finding fields**: `topic`, `answer`, `source_type` (`official_docs`|`deepwiki_qa`|`deepwiki_wiki`|`other`), plus shared. Top-level `sources_used`.
 - **Reliability**: `high` = official docs / DeepWiki verbatim quote; `medium` = inferred from docs; `low` = uncertain / stale MCP content.
 - **Fallback**: if both MCPs fail / return empty write `findings: []` + `error`.
 
 ## Synthesis (`synthesis-scout` agent on Path A / in-skill on Paths B-C)
 
-Consumes every `${workspace_dir}/*.json` in lexical order (deterministic merge), dedups, trust-ranks, resolves conflicts, and emits the final Markdown report to `${report_path}`. Read-only on the workspace — never rewrite a sibling artifact. Full dedup keys, trust rubric, conflict order, coverage/gap detection, and recommended-picks rule: `synthesis-rules.md`; the report template lives in the `../../../agents/synthesis-scout.md` definition. Runtime-independent: the named `synthesis-scout` agent runs it on Path A, the orchestrator runs the identical logic in-skill on Paths B and C.
+- **Input and output**: every `${workspace_dir}/*.json` in lexical order (deterministic merge), deduped, trust-ranked and conflict-resolved into the Markdown report at `${report_path}`. Read-only on the workspace: never rewrite a sibling artifact.
+- **Rules**: dedup keys, trust rubric, conflict order, gap detection and the recommended-picks rule are in `synthesis-rules.md`; the report template is in `../../../agents/synthesis-scout.md`.
+- **Runtime**: the named `synthesis-scout` agent runs it on Path A, and the orchestrator runs the same logic in-skill on Paths B and C.

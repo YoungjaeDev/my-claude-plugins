@@ -17,25 +17,10 @@ guess pass as a confirmed fact.
 
 Tag every non-trivial span inline in the corrected file.
 
-### `[확인됨]` (confirmed)
-All of: appears directly in the transcript (or a verified external source); no material
-conflict across transcript / summary / external basis; owner / deadline / decision not filled
-by inference.
-
-### `[정정]` (corrected)
-One of these bases only: a standard term from `terminology.md`; a trusted external source for a
-date / number / proper noun; a speaker's own immediate self-correction inside the transcript.
-Record `original → corrected → basis`. A correction restores meaning; it never changes it.
-
-### `[해석]` (interpretation)
-Context useful for reading the meeting but not stated verbatim. Always tag it. Never promote it
-to a decision, action item, or commitment.
-
-### `[확인 필요]` (needs confirmation → open question)
-Make an open question when any of: transcript and summary disagree; speaker / owner / project
-name is unclear; a baseline-less phrase ("next week", "our side", "곧") appears; an action is
-mentioned with no owner or deadline; a number / date / price / term is ambiguous or
-STT-suspect; a source conflicts with a project doc and recency is unknown.
+- **`[확인됨]` (confirmed)**: all of these hold. It appears directly in the transcript (or a verified external source), nothing conflicts materially across transcript / summary / external basis, and no owner / deadline / decision was filled in by inference.
+- **`[정정]` (corrected)**: one of these bases only: a standard term from `terminology.md`, a trusted external source for a date / number / proper noun, or a speaker's own immediate self-correction inside the transcript. Record `original → corrected → basis`; a correction restores meaning and never changes it.
+- **`[해석]` (interpretation)**: context useful for reading the meeting but not stated verbatim. Always tag it, and never promote it to a decision, action item, or commitment.
+- **`[확인 필요]` (needs confirmation → open question)**: any of these makes an open question. Transcript and summary disagree; a speaker / owner / project name is unclear; a baseline-less phrase ("next week", "our side", "곧") appears; an action has no owner or deadline; a number / date / price / term is ambiguous or STT-suspect; or a source conflicts with a project doc and recency is unknown.
 
 ## Speaker attribution
 
@@ -48,7 +33,7 @@ evidence. If attribution affects who owns a decision or task, keep the attributi
 
 The summary can assert a decision the transcript never supports (and can also silently fix a
 transcript error). For every summary claim of a decision / owner / deadline, verify it against
-the transcript. If the transcript shows only a proposal, request, or discussion, it is **not** a
+the transcript. If the transcript shows only a proposal, request, or discussion, it is not a
 confirmed decision — record it as a proposal and, if it matters, raise an open question. Collect
 these mismatches in the corrected file's "summary vs transcript" section.
 
@@ -62,10 +47,6 @@ A good question is directly answerable — one fact each.
 답변 대상: <name if known, else 답변 대상 미정>
 ```
 
-Resolve open questions by grilling the user (Matt's `grilling` skill), one fact per question. Fold confirmed answers
-back in as `[확인됨]` / `[정정]`; leave anything the user defers as `[확인 필요]`.
+Resolve open questions by grilling the user (Matt's `grilling` skill, or direct questions the same way when it is not installed), one fact per question. Fold confirmed answers back in as `[확인됨]` / `[정정]`; leave anything the user defers as `[확인 필요]`.
 
-## Sensitive information
-
-Keep only what the corrected note needs. Do not copy phone numbers, email addresses,
-credentials, or unnecessary personal circumstances into the corrected file.
+- **Sensitive information**: keep only what the corrected note needs. Mask phone numbers, email addresses and credentials in place with `[삭제됨: 유형]` rather than copying or silently deleting them, and leave unnecessary personal circumstances out.

@@ -5,31 +5,15 @@ description: Build a Gradio computer-vision demo app (OCR, classification, detec
 
 # Gradio CV App Generator
 
-A skill for creating professional Gradio computer vision apps.
-Combines PRITHIVSAKTHIUR's functional patterns with Editorial design principles.
+Builds a ready-to-run Gradio CV app for one of 7 task types, combining PRITHIVSAKTHIUR's functional patterns with an Editorial design. The output is a complete `app.py` plus `requirements.txt`.
 
-## Design Principles
+## Design principles
 
-### What to Avoid (AI Look)
-- Purple/rainbow gradients
-- Multiple mixed colors
-- Excessive animations
-- Colors commonly seen in AI demos like Steel Blue, Purple, etc.
+- **Avoid (the AI look)**: purple or rainbow gradients, several mixed colors, excessive animation, and the Steel Blue or Purple shades common in AI demos.
+- **Apply (Editorial style)**: solid colors with a single accent, the Pretendard font (Korean support), a minimal functional UI, ample whitespace and high contrast, a professional tool-like feel.
+- **Dark mode**: supported, following the system preference by default. Use `color_accent="*secondary_500"` (emerald), not the default zinc primary, which leaves tab text hard to read in dark mode. Full theme settings are in [refined-theme.md](references/refined-theme.md).
 
-### What to Apply (Editorial Style)
-- Solid colors + single accent
-- Pretendard font (Korean support)
-- Minimal and functional UI
-- Ample whitespace and high contrast
-- Professional tool-like feel
-- Dark mode support (system preference by default)
-
-### Dark Mode Considerations
-- **Accent color**: Must use `color_accent="*secondary_500"` (emerald) instead of default primary (zinc)
-- Zinc primary causes poor tab text visibility in dark mode
-- See [refined-theme.md](references/refined-theme.md) for complete theme settings
-
-## Supported Task Types
+## Supported task types
 
 | Task | Description | Key Patterns |
 |------|-------------|--------------|
@@ -41,69 +25,28 @@ Combines PRITHIVSAKTHIUR's functional patterns with Editorial design principles.
 | `caption` | Image captioning | VLM model, copy button |
 | `detect` | Detection (Deepfake, etc.) | Binary classification, gr.Label |
 
-## Usage
+## Workflow
 
-When creating a Gradio CV app:
+1. **Identify task type**: determine the CV task from the user request.
+2. **Apply theme**: use the RefinedTheme class from [refined-theme.md](references/refined-theme.md), including its light/dark toggle (Auto by default: detects the OS preference and saves the user's choice to localStorage; Light and Dark force a theme; Lucide icons on the button).
+3. **Reference templates**: check the task pattern in [task-templates.md](references/task-templates.md), and the dictionary-based Korean/English `LABELS` in [i18n-patterns.md](references/i18n-patterns.md).
+4. **Check reference repos**: refer to [github-references.md](references/github-references.md) if needed.
+5. **Generate complete app.py**: write ready-to-run code.
 
-1. **Identify task type**: Determine the CV task from the user request
-2. **Apply theme**: Use the RefinedTheme class from [refined-theme.md](references/refined-theme.md)
-3. **Reference templates**: Check the relevant task pattern in [task-templates.md](references/task-templates.md)
-4. **Check reference repos**: Refer to [github-references.md](references/github-references.md) if needed
-5. **Generate complete app.py**: Write ready-to-run code
+## Output requirements
 
-## Theme Mode
-
-Apps support light/dark mode with automatic system preference detection.
-
-| Mode | Description |
-|------|-------------|
-| **Auto (Default)** | Detects OS preference, saves user choice to localStorage |
-| Light | Forces light theme |
-| Dark | Forces dark theme |
-
-Implementation: Add theme toggle button using Lucide icons. See [refined-theme.md](references/refined-theme.md) for details.
-
-## Internationalization (i18n)
-
-Simple dictionary-based labels for Korean/English support.
+- **app.py**: complete and ready to run, ending with the execution pattern below.
+- **requirements.txt**: `gradio>=5.50.0,<6.0` (required version range: the references pass `theme` and `css` to `gr.Blocks()`, which Gradio 6 moved to `launch()`) plus the other packages the app needs.
+- **Code quality**: type hints, error handling with `gr.Error`, memory management (`torch.cuda.empty_cache()`), inference mode when loading models (`model.train(False)`), appropriate comments.
 
 ```python
-LABELS = {
-    "en": {"title": "Image Classification", "run": "Run"},
-    "ko": {"title": "이미지 분류", "run": "실행"},
-}
+if __name__ == "__main__":
+    demo.queue(max_size=30).launch(mcp_server=True, ssr_mode=False, show_error=True)
 ```
 
-See [i18n-patterns.md](references/i18n-patterns.md) for full label dictionaries and usage patterns.
+## Layout rules
 
-## Output Requirements
-
-1. **Complete app.py file**: Ready-to-run code
-2. **requirements.txt**: Required package list
-   - `gradio>=5.50.0,<6.0` (required version range)
-   - Other necessary packages
-
-## Code Quality Standards
-
-- Use type hints
-- Error handling (use gr.Error)
-- Memory management (torch.cuda.empty_cache())
-- Apply inference mode when loading models (model.train(False))
-- Appropriate comments
-
-## Layout Best Practices
-
-### Row/Column Nesting Rules
-
-**CRITICAL**: Never nest `gr.Row` inside `gr.Row` - this causes double flex context conflicts.
-
-| Pattern | Status | Reason |
-|---------|--------|--------|
-| `Row > Column > components` | CORRECT | Clear flex hierarchy |
-| `Row > Row > components` | WRONG | Double flex context, alignment issues |
-| `Column > Row > components` | CORRECT | Standard layout pattern |
-
-**Example - Header Layout:**
+**Never nest `gr.Row` inside `gr.Row`**: it creates a double flex context with alignment conflicts. `Row > Column > components` and `Column > Row > components` are the correct patterns.
 
 ```python
 # CORRECT - Single Row level with direct children
@@ -122,12 +65,7 @@ with gr.Row(elem_id="header-row"):
         gr.HTML(...)
 ```
 
-### Theme Toggle Implementation
-
-**IMPORTANT**: In Gradio 5.x, `gr.Button` does NOT render HTML in the `value` parameter - it escapes HTML to text.
-
-**For SVG Icons**: Use `gr.HTML` with native `<button>` element
-**For Text Only**: Use `gr.Button` with text value (e.g., "Dark" / "Light")
+In Gradio 5.x, `gr.Button` does not render HTML in its `value`; it escapes it to text. For an SVG icon toggle use `gr.HTML` with a native `<button>` element, and for text only use `gr.Button` with a text value (for example "Dark" / "Light").
 
 ```python
 # CORRECT - gr.HTML for SVG icon toggle
@@ -146,25 +84,9 @@ demo.load(fn=None, js=INIT_THEME_JS)  # Includes click handler
 theme_btn = gr.Button(value="<span>...</span>")  # Shows escaped text, not icon!
 ```
 
-### CSS Guidelines
-
-| Practice | Status | Alternative |
+| CSS practice | Status | Alternative |
 |----------|--------|-------------|
 | Use CSS variables | REQUIRED | `var(--body-text-color)` |
 | Hardcoded hex colors | AVOID | Use theme variables |
 | Excessive `!important` | AVOID | Let Gradio handle defaults |
 | Manual flex layouts | MINIMIZE | Use `gr.Row`/`gr.Column` scale |
-
-## Common Execution Pattern
-
-```python
-if __name__ == "__main__":
-    demo.queue(max_size=30).launch(mcp_server=True, ssr_mode=False, show_error=True)
-```
-
-## Additional Resources
-
-- Theme code (with dark mode): [references/refined-theme.md](references/refined-theme.md)
-- Task-specific templates: [references/task-templates.md](references/task-templates.md)
-- i18n patterns (Korean/English): [references/i18n-patterns.md](references/i18n-patterns.md)
-- GitHub references: [references/github-references.md](references/github-references.md)

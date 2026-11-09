@@ -101,17 +101,8 @@ A line that survives all five earns its tokens.
 
 ## Choosing who invokes
 
-- **Model-invoked** (the default) — the description is permanent context load. Correct when an
+- **Model-invoked** (the default): the description is permanent context load. Correct when an
   agent, or another skill, has to reach it without a person deciding.
-- **User-invoked** (`disable-model-invocation: true`) — zero context load, full cognitive load.
-  Correct for side-effecting workflows where the timing is the user's call.
-
-In this repository the second option is unavailable for Codex-eligible plugins; see
-`frontmatter.md`. That constraint does not make the trade-off irrelevant — it means the lever is
-description discipline instead.
-
-## Provenance
-
-The levers above were synthesized while authoring this skill from public writing on agent-facing
-documentation and from this repository's own audit history. That is attribution, not a pointer:
-nothing here requires reading any external skill, and this skill never loads one at runtime.
+- **User-invoked** (`disable-model-invocation: true` plus `agents/openai.yaml`
+  `allow_implicit_invocation: false`, per `frontmatter.md`): zero context load, full cognitive
+  load. Correct for a workflow whose timing is the user's call.

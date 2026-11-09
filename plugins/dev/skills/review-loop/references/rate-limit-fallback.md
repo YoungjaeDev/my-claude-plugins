@@ -1,16 +1,16 @@
 # Rate-limit Fallback Decision Table
 
-Triggered by `scripts/sniff-cr-rate-limit.sh` detecting a CR rate-limit comment within ~30s of CR-status silence. A `comment`-channel hit routes here **only while the commit-status is non-terminal** — if the status has already flipped to `success`/`failure`, that authoritative state wins and this table is not entered (see `pre-flight-rules.md`). SKILL.md Step 7c uses this table.
+What Step 7c does when `scripts/sniff-cr-rate-limit.sh` finds a CodeRabbit rate limit: 9 source cases, 3 reset patterns, and the Step 7b and 7c blocks. A `comment`-channel hit routes here only while the commit status is non-terminal; a `success` or `failure` status wins (`pre-flight-rules.md`).
 
 ## --cr-source resolution
 
 | `--cr-source` (user-provided) | CR rate-limited? | CLI available + authed? | Codex active? | Action |
 |---|---|---|---|---|
-| `auto` (default) | yes | yes | any | **Silent flip → `cli`**. Spawn Step 7d. |
-| `auto` | yes | no | yes | **Silent flip → `codex-only`**. Skip Step 7/7d/8/8d. |
-| `auto` | yes | no | no | **AskUserQuestion**: wait NN min / abort / force codex-only (manual). |
+| `auto` (default) | yes | yes | any | Silent flip → `cli`. Spawn Step 7d. |
+| `auto` | yes | no | yes | Silent flip → `codex-only`. Skip Step 7/7d/8/8d. |
+| `auto` | yes | no | no | Ask: wait NN min / abort / force codex-only (manual). |
 | `auto` | no (status silent for other reason) | n/a | n/a | Continue with default `pr-bot` path, Step 6 keeps polling. |
-| `pr-bot` | yes | any | any | **No flip.** Continue waiting for rate-limit reset. User chose pr-bot explicitly. Log reset minutes if extracted. |
+| `pr-bot` | yes | any | any | No flip. Continue waiting for rate-limit reset. User chose pr-bot explicitly. Log reset minutes if extracted. |
 | `cli` | n/a (Step 6/6b skipped entirely) | yes | any | Step 7d runs unconditionally. |
 | `cli` | n/a | no | any | Step 2 pre-flight already aborted (`probe-cr-cli.sh` non-zero). Never reaches here. |
 | `codex-only` | n/a (Step 6/7/7b/7d/8/8d skipped) | n/a | yes | Step 6b + 8b only. |
@@ -18,23 +18,20 @@ Triggered by `scripts/sniff-cr-rate-limit.sh` detecting a CR rate-limit comment 
 
 ## Silent flip semantics
 
-- "Silent" = no `AskUserQuestion`, just log a single line: `cr-source: auto → cli (rate-limit detected, CLI authed)` or `cr-source: auto → codex-only (rate-limit, no CLI)`.
-- The `codex-only` flip additionally logs an install suggestion when the CLI is absent, using `probe-cr-cli.sh`'s `hint` field, which points at the vendor install page (https://docs.coderabbit.ai/cli, every platform's installer) followed by `coderabbit auth login`. The suggestion also appears once in the Step 16 final report. The run itself is not interrupted — installing mid-run cannot complete `coderabbit auth login` (browser auth), so the payoff is the NEXT run's rate-limit fallback landing on `cli` instead of `codex-only`.
-- The flip is **sticky for the remainder of the run** (not just this iter). A subsequent iter does NOT re-probe the rate-limit reset to flip back. Rationale: rate-limit resets are 5-60 min windows; once the user has invested 1+ iter on CLI/codex-only, paying iters to flip back mid-run causes record-source confusion in the Step 9a table.
-
-## User-explicit modes are final
-
-If the user passes `--cr-source pr-bot|cli|codex-only`, Step 7c **never** silently flips. Rate-limit detection on `pr-bot` falls through to the regular Step 6 timeout path (user gets the timeout error message naming `target_url` and reset minutes).
+- "Silent" means no question, only one log line: `cr-source: auto → cli (rate-limit detected, CLI authed)` or `cr-source: auto → codex-only (rate-limit, no CLI)`.
+- The `codex-only` flip also logs an install suggestion from `probe-cr-cli.sh`'s `hint` (the vendor install page https://docs.coderabbit.ai/cli, then `coderabbit auth login`), once more in the Step 16 report. The run goes on, since `coderabbit auth login` needs a browser; the next run's fallback lands on `cli`.
+- The flip is sticky for the rest of the run: no later iteration re-probes the reset to flip back, which would mix record sources in the Step 9a table.
+- **User-explicit modes are final**: with `--cr-source pr-bot|cli|codex-only`, Step 7c never flips. A rate limit on `pr-bot` falls through to the Step 6 timeout path, whose message names `target_url` and the reset minutes.
 
 ## Permanent skips
 
 `scripts/sniff-cr-rate-limit.sh` emits `permanent: true` for a skip that no reset window clears — currently `Review skipped: N files exceed the limit of M`. The PR is simply larger than the PR-bot will review, so waiting, re-pushing and re-running all reproduce it.
 
-Step 7c treats a permanent hit as a **source failure**, not a wait:
+Step 7c treats a permanent hit as a source failure, not a wait:
 
 - `auto` → flip to `cli` (or `codex-only`), exactly as for a genuine rate-limit.
 - `pr-bot` → `final_state=rate_limited`. It must never fall through to `clean`: CR posted no findings because it never looked, and a run that converges on that silence merges an unreviewed PR.
-- The AskUserQuestion offers **no "wait NN min" option** when `permanent` is true.
+- The question offers no "wait NN min" option when `permanent` is true.
 
 ## Rate-limit reset extraction
 
@@ -44,38 +41,13 @@ Step 7c treats a permanent hit as a **source failure**, not a wait:
 2. `(?:More reviews will be available in|Next (?:included )?review available in)[^0-9]{0,12}(\d+)\s*minutes?` — extract the digits as `reset_minutes`. All three phrasings occur, and the newer ones are markdown-bold (`**Next included review available in:** **41 minutes**`), which is why the `[^0-9]{0,12}` bridge is needed.
 3. `Review limit reached` — generic, no reset hint.
 
-If a reset estimate was extracted, the SKILL.md log line includes it: `... (reset in ~12 minutes)`. The AskUserQuestion "wait NN min" option uses the extracted estimate; if absent, default to 15 min.
-
-## Active query channel (`scripts/query-cr-rate-limit.sh`)
-
-The three patterns above are **passive** — they read whatever CodeRabbit already
-posted. When the passive sniff confirms a rate-limit but extracts no reset (a
-generic `Review limit reached` with no minutes), SKILL.md Step 7b escalates to an
-**active** query rather than defaulting to 15 min: it posts one
-`@coderabbitai rate limit` comment and polls issue comments for CodeRabbit's
-reply (bounded, default 6 rounds x 20s), then parses `remaining` review count and
-`reset_minutes` out of the reply body. It is a companion to — not a replacement
-for — the passive sniff, and only fires on the ambiguous case, so the extra
-comment is not posted on every rate-limit hit. The parser is exercised in
-`tests/run-tests.sh` via the `parse` seam (reply body on stdin, no network).
-
-## `--max-iterations` budget rationale (measured tier)
-
-The default `--max-iterations 5` is a **quota budget**, not just a runaway guard.
-Earlier notes tied it to "CR Pro = 5 reviews/hour"; the measured tier is actually
-**Pro+ at 10 PR-reviews/hour on a rolling window**, layered with a **Fair-Usage
-adaptive decay** — sustained heavy use (roughly 90+ reviews over 7 days) throttles
-the effective rate down toward ~1/hour ([Fair Usage Limits Policy](https://docs.coderabbit.ai/management/plans#fair-usage-limits-policy)).
-Because review-loop pushes a burst (one review consumed per iter), the ceiling that
-bites is the adaptive-decayed rate, not the nominal 10/hr. Default 5 stays
-**conservative under adaptive throttle**: it fits inside the decayed budget for a
-developer who is not already near the 7-day cap, while still leaving headroom
-below the nominal 10/hr. Raise `--max-iterations` only when the account is known
-to be fresh on the rolling window; lower it when recent activity is heavy.
+An extracted estimate goes into the log line (`... (reset in ~12 minutes)`) and into the question's "wait NN min" option, which defaults to 15 min without one.
 
 ## Active query block (Step 7b)
 
-When the sniff confirmed a rate-limit but extracted no reset estimate (`reset` empty), ask CodeRabbit rather than guess 15 min: the query posts one `@coderabbitai rate limit` comment and polls for the reply. **Once per run** — the post is a non-idempotent external write, so persist the outcome to `STATE_FILE.rate_limit_query` and reuse it on later iterations.
+The three patterns are passive. When the sniff confirmed a rate limit but found no reset (`reset` empty), `scripts/query-cr-rate-limit.sh` asks CodeRabbit instead of guessing 15 min: it posts one `@coderabbitai rate limit` comment, polls issue comments for the reply (default 6 rounds of 20 s), and parses `remaining` and `reset_minutes` from it.
+
+The post is an external write that cannot be repeated safely, so it runs once per run: persist the outcome to `STATE_FILE.rate_limit_query` and reuse it on later iterations. The `--max-iterations` default of 5 is a CodeRabbit review-quota budget as well as a runaway guard: one review per iteration has to fit the plan's hourly limit after fair-usage decay.[^quota]
 
 ```bash
 prior_aq=$(jq -c '.rate_limit_query // empty' "$STATE_FILE")
@@ -123,3 +95,4 @@ When `cli_hint` is non-empty, the Step 16 summary carries one "install the CodeR
 
 `jq '.cr_source = $src' "$STATE_FILE"` persists the flip. Flip is sticky for remaining iters of this run.
 
+[^quota]: Pro+ allows 10 PR reviews an hour on a rolling window, and sustained heavy use (about 90+ reviews in 7 days) decays it toward 1 an hour ([Fair Usage Limits Policy](https://docs.coderabbit.ai/management/plans#fair-usage-limits-policy)). Raise `--max-iterations` only on an account fresh on that window.

@@ -10,12 +10,7 @@ Analyze only the files provided as arguments, create an appropriate commit messa
 
 ## Workflow
 
-1. **Analyze changes**: Determine the purpose of changes in the provided files only
-   - New feature addition
-   - Bug fix
-   - Refactoring
-   - Documentation update
-   - Style/formatting
+1. **Analyze changes**: determine the purpose of the changes in the provided files only, as one of the Types below
 2. **Write commit message**: Write clearly in Conventional Commits format
 3. **Commit, verify (opt-in), push**:
    1. `git add <provided files>` (stage only the files passed as arguments, never `git add -A` / `git add .`)
@@ -49,9 +44,6 @@ Follow Conventional Commits rules:
 - Start with lowercase
 - No period at the end
 - Keep it concise (under 50 characters)
-
-## Guidelines
-
 - **Follow the project's own commit rules**: read the repository `CLAUDE.md` before writing the message; its conventions win over the defaults above
 - **Single purpose**: one commit contains one logical change
 
@@ -73,22 +65,9 @@ Two flags govern this section, both off by default:
 
 ### Running the Gate
 
-Run BUILD / TEST / LINT in parallel via independent sub-agents (Agent), then enforce:
-
-**Codex**: there is no sub-agent surface — run the BUILD / TEST / LINT commands inline in one bash block and apply the same enforcement below.
-
-```
-Agent(
-  subagent_type="general-purpose",
-  model="sonnet",
-  prompt="Run verification checks for this project:
-    1. Detect project type from config files
-    2. Run BUILD command (skip if n/a for the project type)
-    3. Run TEST command
-    4. Run LINT command
-    5. Return JSON: {build: pass/fail/skipped, test: pass/fail, lint: pass/fail/skipped, errors: []}"
-)
-```
+- Run the gate in one independent sub-agent (`Agent`, `subagent_type="general-purpose"`, `model="sonnet"`) that detects the project type from its config files, then runs BUILD (skipped when n/a), TEST and LINT in that order, since TEST can depend on BUILD's output.
+- Collect the result as `{build: pass/fail/skipped, test: pass/fail, lint: pass/fail/skipped, errors: []}`, then apply the Enforcement rules.
+- On Codex there is no sub-agent surface: run the three commands inline in one bash block and apply the same enforcement.
 
 ### Enforcement
 

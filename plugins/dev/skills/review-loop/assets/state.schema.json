@@ -33,13 +33,15 @@
       "required": ["number", "url"],
       "properties": {
         "number": { "type": "integer", "minimum": 1 },
-        "url":    { "type": "string" }
+        "url":    { "type": "string" },
+        "split":  { "enum": ["sub_issues", "task_list", "failed"], "description": "Present when the run deferred more than SUB_ISSUE_THRESHOLD (references/coordination.md) findings. sub_issues: one sub-issue per finding; task_list: the sub-issues API failed, so the findings are a task list in the issue body; failed: the parent body could not be read or edited; sub-issues already filed stay in unlinked and are linked on a re-run. None of them blocks the merge." },
+        "sub_issues": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "description": "Sub-issue numbers filed under this issue, kept across re-runs on the same PR." }
       },
       "additionalProperties": true
     },
     "auto_judge_log": {
       "type": "array",
-      "description": "One record per Step 9c decision (references/autonomous-judgment.md, \"Log entry shape\"). scripts/auto-merge-gate.sh reads the current iteration's apply records to pick next_action.",
+      "description": "One record per Step 9c decision (references/autonomous-judgment.md, \"Log entry and counters\"). scripts/auto-merge-gate.sh reads the current iteration's apply records to pick next_action.",
       "items": {
         "type": "object",
         "required": ["iter", "src", "action"],

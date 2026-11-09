@@ -5,8 +5,8 @@
 # ACTIVE rate-limit query — the companion to the passive sniff-cr-rate-limit.sh.
 # Posts "@coderabbitai rate limit" on the PR, then polls issue comments for a
 # CodeRabbit reply newer than the SERVER-recorded time of that post and parses
-# the remaining-review count + reset window out of the reply body. SKILL.md
-# Step 7b calls this only when the passive sniff is ambiguous (a rate-limit
+# the remaining-review count + reset window out of the reply body. Step 7b
+# (references/procedure.md) calls this only when the passive sniff is ambiguous (a rate-limit
 # signal with no reset estimate).
 #
 # Emits one JSON line:

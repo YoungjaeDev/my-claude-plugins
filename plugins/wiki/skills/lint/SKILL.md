@@ -7,18 +7,18 @@ description: "Health-check the repo's .llmwiki: stale concept pages, broken link
 
 Finds the ways a wiki quietly rots. Read-only: it reports, the user decides, and fixes go through `/wiki:ingest`. The page format it checks against is the one `wiki:ingest` writes (`.llmwiki/wiki/index.md`, `log.md`, `<topic>/<concept>.md` with `last_verified` frontmatter and a `## Sources` section).
 
-If `.llmwiki/wiki/index.md` does not exist, say so and stop: there is nothing to lint, and `/wiki:ingest` creates the wiki on first use. Check the file, not the directory: `/dev:new` seeds an empty `.llmwiki/wiki/` holding only a `.gitkeep`.
+If `.llmwiki/wiki/index.md` does not exist, say so and stop: there is nothing to lint, and `/wiki:ingest` creates the wiki on first use. Check the file, not the directory, which may hold only a `.gitkeep`.
 
 ## Checks
 
 | Check | Finding |
 |-------|---------|
-| **Stale** | `last_verified` older than 180 days, or missing. Re-check the page against its sources, then bump the date through `/wiki:ingest`. |
-| **Broken links** | A relative `.md` link (in a page or in `index.md`) whose target does not exist. |
-| **Broken Sources** | A `## Sources` entry naming a `.llmwiki/...` path that does not exist. PR, commit and measurement citations are not checked mechanically. |
-| **Orphans** | A page no other page links to. Report-only: a first page in a new topic is legitimately alone. Matched by file name, so a name shared across topics can hide an orphan. Old-format pages are skipped (they link by `[[id]]`, not file name). |
-| **Index mismatch** | A page with no `index.md` line, or with more than one (the index holds one line per page). (An index line pointing at a missing page shows up under broken links.) |
-| **Old format** | A page with old frontmatter keys (`id`, `status`, `volatility`), an old relation line (`> Refines: [[id]]`, `> Evidence: <path>` and the rest of that set), an `[[id]]` link, or no `## Sources`. An ordinary callout such as `> Note: ...` does not count. Counted only, in one line. `/wiki:ingest` converts a page when it next edits it. Old-format pages are skipped by the Sources and orphan checks. |
+| Stale | `last_verified` older than 180 days, or missing. Re-check the page against its sources, then bump the date through `/wiki:ingest`. |
+| Broken links | A relative `.md` link (in a page or in `index.md`) whose target does not exist. |
+| Broken Sources | A `## Sources` entry naming a `.llmwiki/...` path that does not exist. PR, commit and measurement citations are not checked mechanically. |
+| Orphans | A page no other page links to. Report-only: a first page in a new topic is legitimately alone. Matched by file name, so a name shared across topics can hide an orphan. Old-format pages are skipped (they link by `[[id]]`, not file name). |
+| Index mismatch | A page with no `index.md` line, or with more than one (the index holds one line per page). (An index line pointing at a missing page shows up under broken links.) |
+| Old format | A page with old frontmatter keys (`id`, `status`, `volatility`), an old relation line (`> Refines: [[id]]`, `> Evidence: <path>` and the rest of that set), an `[[id]]` link, or no `## Sources`. An ordinary callout such as `> Note: ...` does not count. Counted only, in one line. `/wiki:ingest` converts a page when it next edits it. Old-format pages are skipped by the Sources and orphan checks. |
 
 ## Run
 

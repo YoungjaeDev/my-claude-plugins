@@ -40,12 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Category | When to Use | Example |
 |----------|-------------|---------|
-| **Added** | New features | "Added dark mode support" |
-| **Changed** | Existing functionality changes | "Changed API response format" |
-| **Deprecated** | Features to be removed | "Deprecated v1 API endpoints" |
-| **Removed** | Removed features | "Removed IE11 support" |
-| **Fixed** | Bug fixes | "Fixed memory leak in file upload" |
-| **Security** | Security patches | "Fixed SQL injection vulnerability" |
+| Added | New features | "Added dark mode support" |
+| Changed | Existing functionality changes | "Changed API response format" |
+| Deprecated | Features to be removed | "Deprecated v1 API endpoints" |
+| Removed | Removed features | "Removed IE11 support" |
+| Fixed | Bug fixes | "Fixed memory leak in file upload" |
+| Security | Security patches | "Fixed SQL injection vulnerability" |
 
 ---
 
@@ -145,7 +145,7 @@ Always maintain an `[Unreleased]` section at the top:
 - Bug fix merged but not released
 ```
 
-**Benefits**:
+Benefits:
 - Tracks work between releases
 - Makes release notes preparation easier
 - Shows project activity
@@ -209,10 +209,10 @@ feat!: change API response format  # Breaking change
 
 | Tool | Best For | Automation Level |
 |------|----------|------------------|
-| **semantic-release** | Full CI/CD automation | High |
-| **release-please** | GitHub PR-based review | Medium-High |
-| **standard-version** | Local control | Medium |
-| **git-cliff** | Customizable generation | Low |
+| semantic-release | Full CI/CD automation | High |
+| release-please | GitHub PR-based review | Medium-High |
+| standard-version | Local control | Medium |
+| git-cliff | Customizable generation | Low |
 
 ### semantic-release
 
@@ -262,7 +262,7 @@ Generate only, manual version control.
 
 ### Migration Guide Pattern
 
-```markdown
+````markdown
 ### Breaking Changes
 
 #### API Response Format
@@ -278,7 +278,7 @@ Generate only, manual version control.
 ```
 
 **Migration**: Update your client code to access `response.data.users`
-```
+````
 
 ---
 

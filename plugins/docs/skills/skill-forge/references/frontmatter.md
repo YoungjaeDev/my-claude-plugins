@@ -43,8 +43,8 @@ doc states: the policy this repo applies.
 | Field | Use here |
 |---|---|
 | `allowed-tools` | allowed; see the portability note below |
-| `disable-model-invocation` | not in a Codex-eligible plugin |
-| `argument-hint` | not in a Codex-eligible plugin; allowed, low value, in `codex-image` and `council` |
+| `disable-model-invocation` | `true` on a user-invoked skill, paired with `agents/openai.yaml` |
+| `argument-hint` | not in a Codex-eligible plugin; allowed, low value, in the Claude-only `codex-image` and `aside` |
 | `version` | do not add; `plugin.json` owns versions |
 | `license` | no-op here |
 | any other documented field | add only when you can state its runtime effect from the doc, and record that evidence |
@@ -61,15 +61,12 @@ to document the mapping.
 
 Works in Claude Code: it removes the description from Claude's context entirely and leaves the
 skill reachable only by typing `/name`. That makes it the sharpest available lever against
-always-on context cost for a workflow with side effects.
+always-on context cost for a workflow the user times, such as `docs:md-audit`.
 
-Policy: do not set it to `true` in a Codex-eligible plugin (every plugin here except `codex-image`
-and `council`); side-effecting skills use `agents/openai.yaml`
-`policy.allow_implicit_invocation: false` instead. The policy was set because the Codex plugin
-validator of that time rejected any value other than `false` or absent. Current Codex no longer ships
-that validator at the old path, so the reason is `unverified` on current Codex. Keep the policy;
-re-check it in a throwaway `CODEX_HOME` by adding a fixture plugin whose skill sets the field with
-`codex plugin marketplace add` and seeing whether `codex plugin list` still lists it.
+Codex loads a skill that sets it: codex-cli 0.161.0 listed such a skill as enabled with no load
+error (`skills/list` from `codex app-server` in a throwaway `CODEX_HOME`). Codex ignores the key:
+`codex debug prompt-input` still lists the skill for implicit use until `agents/openai.yaml` sets
+`policy.allow_implicit_invocation: false`, so a user-invoked skill carries both.
 
 ### `argument-hint`
 
@@ -82,8 +79,8 @@ The Agent Skills standard distribution paths — claude.ai skill upload, the Ski
 `package_skill.py` — accept only the fields in <https://agentskills.io/specification.md> and reject
 anything else with a hard error.
 
-So the policy matches `disable-model-invocation`: keep it out of a Codex-eligible plugin, because
-Codex's validator rejects it; it is fine in a Claude-only plugin (`codex-image`, `council`) that is
+So keep it out of a Codex-eligible plugin, because Codex's authoring validator rejects it; it is
+fine in a Claude-only plugin (`codex-image`, `council`) that is
 never packaged for the standard paths. Find the current uses with
 `rg -l '^argument-hint:' plugins/*/skills/*/SKILL.md`.
 

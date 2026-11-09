@@ -19,11 +19,9 @@ Single-axis scout for GitHub. Fans out under `research-orchestrator`; writes fin
 - `artifact_id` — slot like `01_github` (orchestrator-assigned)
 - Optional: `language`, `min_stars`, `pushed_since` (e.g. `2025-01-01`)
 
-## Tools
-
-Primary: `gh search repos`, `gh search code`, `gh repo view`. Read `skills/research-orchestrator/references/resource-finder.md` for query hygiene (date check, multi-query, quality filters).
-
 ## Workflow
+
+Tools: `gh search repos`, `gh search code`, `gh repo view`. Read this plugin's `skills/research-orchestrator/references/resource-finder.md` for query hygiene (date check, multi-query, quality filters).
 
 1. `date +%Y-%m-%d` for recency anchor.
 2. Run 2-3 query variants — base query, `awesome-{topic}`, and a narrower stack-specific phrase.
@@ -62,10 +60,4 @@ Reliability rubric: `high` = official org / >5k stars + recent push, `medium` = 
 
 - If your `${artifact_id}.json` already exists from a prior run, overwrite it. Partial re-execution intentionally re-runs only the targeted scout's slot; sibling artifacts in the same workspace are left untouched by the orchestrator.
 - If `gh` returns rate-limit / auth errors, write the file with an empty `findings` array and an `error` field — never block synthesis.
-- Do not call other scouts. Stay in your axis.
-
-## When NOT to use
-
-- Pure docs Q&A (`docs-scout`)
-- Model / dataset search (`hf-scout`)
-- Community sentiment / blog / news (`web-scout`)
+- Do not call other scouts. Stay in your axis: docs Q&A belongs to `docs-scout`, models and datasets to `hf-scout`, community, blogs and news to `web-scout`.

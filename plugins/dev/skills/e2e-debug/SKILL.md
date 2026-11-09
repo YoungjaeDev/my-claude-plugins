@@ -15,6 +15,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 ## Precondition check
 
 - Need `gh` CLI authenticated to fetch CI artifacts.
+- Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, stop and report what you would have asked, and never patch a suspected real regression to pass.
 - **Path A only**: confirm the named healer exists (`.claude/agents/playwright-test-healer.md`). If missing **and you are on Claude Code**, route to `dev:e2e-setup`. **Do not** demand this Claude agent file under Codex; there the bundled healer contract stands in (see Step 0).
 - **Probe the headless trace CLI** used in Step 2: run `npx playwright trace --help` and check that it printed the `trace` subcommand's own usage, not the top-level help (an unknown subcommand can answer with the top-level help and exit 0). When it is missing: fall back to the GUI viewer `npx playwright show-trace <trace.zip>`.
 
@@ -71,7 +72,7 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
    - **Path A**: `Agent(subagent_type="playwright-test-healer", prompt="Test <name> fails: <trace findings>. Replay the failing steps, find equivalent current elements, patch the test, and re-run until green.")`.
    - **Path B** (Codex generic subagent): `Agent(prompt="You are the Playwright healer role. Contract (from ${PLUGIN_ROOT}/references/role-contracts.md, 'healer'): test <name> fails: <trace findings>. Replay the failing steps via the playwright-test MCP server, find equivalent current elements, patch the test, re-run until green then burn-in --repeat-each=3. Bounded to 3 attempts; do not auto-pass a suspected real regression.")`. Paste the `healer` contract inline.
    - **Path C**: run the healer role yourself per the contract.
-   - **Bounded to 3 attempts** (all paths, the review-loop MAX_ITER pattern): after 3 healer attempts that do not produce a green run, **stop**. Do not loop indefinitely on a stubborn test.
+   - **Bounded to 3 attempts** (all paths): after 3 healer attempts that do not produce a green run, **stop**. Do not loop indefinitely on a stubborn test.
    - If a real regression is suspected (the app behavior genuinely changed, not the test), do **not** auto-patch the test to pass. Surface it to the user; the test may be correctly failing.
 
 4. **Verify**:
@@ -87,5 +88,6 @@ Two runtime families, three execution paths, same bounded loop: on **Claude Code
 
 ## Notes
 
+- The bounded loop is 3 healer attempts on every path, then quarantine with a reason; never an open-ended retry.
 - The healer role drives the browser via the `playwright-test` MCP server; if its tool calls fail, verify `.mcp.json` is approved (`/mcp`).
 - This skill does not author new tests (`e2e-author`) or set up the harness (`e2e-setup`).

@@ -19,11 +19,9 @@ Single-axis scout for the HF hub. Fans out under `research-orchestrator`; writes
 - `artifact_id` — slot like `02_hf`
 - Optional: `repo_type` (`model` | `dataset` | `space`), `sort` (`downloads` | `likes`), `limit`
 
-## Tools
-
-Primary: `curl https://huggingface.co/api/{models,datasets,spaces}?search=...` for cwd-free public search; `uvx hf {models,spaces,datasets} ls|search|info` when you need CLI subcommands (note: top-level `hf search-repos` does **not** exist — use the per-type subcommands). Read `skills/research-orchestrator/references/resource-finder.md` for the canonical query patterns.
-
 ## Workflow
+
+Tools: `curl "https://huggingface.co/api/{models,datasets,spaces}?search=..."` for cwd-free public search, and `uvx hf {models,spaces,datasets} ls|search|info` for CLI subcommands (there is no top-level `hf search-repos`). Read this plugin's `skills/research-orchestrator/references/resource-finder.md` for the query patterns.
 
 1. `date +%Y-%m-%d` anchor.
 2. Decide axis: if `repo_type` unset, default to `model` first, fall back to `space` for demo discovery.
@@ -64,10 +62,4 @@ Reliability rubric: `high` = official org / >100k downloads, `medium` = active c
 
 - If your `${artifact_id}.json` already exists from a prior run, overwrite it. Partial re-execution intentionally re-runs only the targeted scout's slot; sibling artifacts in the same workspace are left untouched by the orchestrator.
 - On HF API rate-limit or 5xx, write findings with what you have plus an `error` field — never block synthesis.
-- Do not call other scouts.
-
-## When NOT to use
-
-- GitHub repos (`github-scout`)
-- Library docs Q&A (`docs-scout`)
-- Web/blog/community discussion (`web-scout`)
+- Do not call other scouts. Stay in your axis: GitHub repos belong to `github-scout`, library docs Q&A to `docs-scout`, web and community discussion to `web-scout`.

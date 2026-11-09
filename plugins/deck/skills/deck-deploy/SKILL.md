@@ -5,18 +5,13 @@ description: "Deploy a house-format deck (deck/shell.html + deck/sections/*.html
 
 # deck-deploy
 
-## Overview
+Publishes the built deck as a static site. The staging folder holds only what the page loads, so the plugin, sections, outline and rules never leave the machine; the Vercel project name comes from the `- Vercel 프로젝트:` line of `deck/outline.md`. Search engines are kept out by an `X-Robots-Tag: noindex, nofollow, noarchive` header and a `Disallow: /` robots.txt.
 
-Publishes the built deck as a static site. The staging folder holds only what the page loads, so the plugin, sections, outline and rules never leave the machine. The Vercel project name comes from the `- Vercel 프로젝트:` line of `deck/outline.md`. Search engines are kept out by an `X-Robots-Tag: noindex, nofollow, noarchive` header and a `Disallow: /` robots.txt.
-
-## When to use
-
-- The user explicitly asks to deploy, and has reviewed the deck locally (dev server or rendered PNGs).
-- Not after an edit, a sync, or a passing `deck-check` on your own initiative: deploying is the user's call every time.
+**Deploy only when the user explicitly asks and has reviewed the deck locally** (dev server or rendered PNGs). Never deploy after an edit, a sync or a passing `deck-check` on your own initiative: deploying is the user's call every time.
 
 ## Procedure
 
-Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input` when exposed, otherwise asks in plain text and waits. Shell state does not persist between tool calls, so keep the resolver in the same call as each command.
+Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, do not deploy: stop and report. Shell state does not persist between tool calls, so keep the resolver in the same call as each command.
 
 1. Gate. Run `deck-check` first. If anything failed, stop and report. Then read the project name from `deck/outline.md` and ask the user to confirm: "Deploy deck/index.html to Vercel project `<name>` (https://<name>.vercel.app)?" Proceed only on a yes. A placeholder `<project-name>` means the outline is unfinished: ask for the name and write it into the outline first.
 
@@ -49,7 +44,9 @@ Interaction gate: Claude uses `AskUserQuestion`; Codex uses `request_user_input`
 
    It stages a fresh folder and runs `npx -y vercel@latest deploy --prod --yes --project <name>`. Observable result: `log: <dir>.log` (the full Vercel output, kept outside the uploaded folder), `url: <production URL>`, then `slides: built N, served N`. The script fetches the production URL and counts `class="slide` in it and in the staged `index.html`; a different count exits 1 with `stale cache or wrong project`. Read the log before retrying.
 
-   On failure the script prints the last 20 log lines. `does not exist` (Vercel `project_not_found`) means the project name is wrong or the project was never created: confirm the name with the user, and only on their yes rerun with `DECK_CREATE_PROJECT=1 bash "$PLUGIN_ROOT/scripts/deploy.sh" deck`, which adds `--create-if-missing`. A Vercel login prompt or an auth error means the user must run `npx vercel login` themselves; do not work around it.
+   On failure the script prints the last 20 log lines.
+   - `does not exist` (Vercel `project_not_found`): the project name is wrong or the project was never created. Confirm the name with the user, and only on their yes rerun with `DECK_CREATE_PROJECT=1 bash "$PLUGIN_ROOT/scripts/deploy.sh" deck`, which adds `--create-if-missing`.
+   - A Vercel login prompt or an auth error: the user must run `npx vercel login` themselves; do not work around it.
 
 4. Report the production URL, the `slides: built N, served N` line and the header check below.
 

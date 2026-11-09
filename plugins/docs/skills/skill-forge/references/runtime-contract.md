@@ -17,7 +17,7 @@ first step.
 | `name` non-kebab or over 64 characters | the command name stops being predictable from the tree, and the Codex validator rejects an empty name | `scripts/check-skill-contract.mjs` |
 | frontmatter not starting at byte 0 | no runtime finds the frontmatter; the skill has no description and never triggers | `scripts/check-skill-contract.mjs` |
 | `$<digit>` anywhere in `SKILL.md` | Claude Code replaces `$N` with the N-th skill argument before the agent reads the body, code fences included, so awk's `$0` becomes the argument. Codex does not substitute, so the Claude-only escape `\$0` leaves a backslash there, and `\\$0` still expands on Claude Code. Rewrite instead of escaping: awk `$(0)`, shell `"$@"` or a named variable, prose in words | `scripts/check-skill-contract.mjs` |
-| `disable-model-invocation: true` | the Codex plugin validator this policy was set against rejected the plugin (`unverified` on current Codex) | reviewed by hand; see `frontmatter.md` |
+| `disable-model-invocation: true` without `agents/openai.yaml` | Codex loads the skill but ignores the key, so a user-invoked skill is still offered for implicit use there | reviewed by hand; see `frontmatter.md` |
 
 ## Calling a bundled script
 
@@ -52,6 +52,9 @@ gate:
   only where a wrong assumption would be expensive, and otherwise proceed on a documented default
   and say which default you took.
 
+The one-sentence form a skill body carries is in `../../../references/writing-standard.md`
+(`## Skill shape`).
+
 The cheapest correct option is usually a skill with no interactive gate at all: measure, report, and
 let the caller decide.
 
@@ -62,8 +65,8 @@ let the caller decide.
   <https://developers.openai.com/codex/plugins/build.md>. A subagent fan-out may accelerate a phase
   whose inline sequential path stays primary and complete.
 - **`.claude/rules/` is Claude-only.** Codex cannot read the directory. Guidance that must bind both
-  runtimes lives in `AGENTS.md`; decisions live in `docs/adr/` and terms in `GLOSSARY.md`
-  (ADR 0003), which both runtimes read.
+  runtimes lives in `AGENTS.md`; decisions live in `docs/adr/` and terms in `GLOSSARY.md`,
+  which both runtimes read.
 
 ## Packaging obligations
 

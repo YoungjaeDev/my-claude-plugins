@@ -1,6 +1,6 @@
 # CodeRabbit CLI JSONL Schema
 
-`coderabbit review --agent` streams newline-delimited JSON to stdout. Each line is one event with a discriminator field `type`. The parser in `scripts/parse-cr-cli-jsonl.sh` filters to `type == "finding"` and projects each finding into the same record schema as the PR-bot GraphQL path so Step 9a tier classification can treat both uniformly.
+`coderabbit review --agent` streams newline-delimited JSON to stdout, one event per line with a `type` field (6 types). `scripts/parse-cr-cli-jsonl.sh` keeps `type == "finding"` and projects each into the PR-bot record schema, so Step 9a classifies both alike.
 
 ## Event types observed
 
@@ -28,10 +28,10 @@ A `finding` carries exactly these five keys and no others:
 Three keys the parser once assumed are **absent in 0.6.x**: `comment`, `location`, `line`.
 
 - `body` therefore falls back to `codegenInstructions`; without it the Step 9a table renders empty rows.
-- `line` is parsed out of `codegenInstructions`. `suggestions[0].line` is still tried first for 0.5.x compatibility, but only after a `type == "object"` guard — indexing a patch string with `.line` aborts jq (`Cannot index string with string "line"`) and, because the slurp path and the per-line fallback shared the expression, took the fallback down with it.
+- `line` is parsed out of `codegenInstructions`. `suggestions[0].line` is tried first for 0.5.x, behind a `type == "object"` guard, since indexing a patch string with `.line` aborts jq.
 - `category_emoji` and `effort_emoji` stay `null`, so `classify-item.sh` decides on severity alone. A `minor` CLI finding with no header therefore lands in `auto` (the absent effort field reads as `⚡ Quick win`), and only a finding with no severity either falls through to `review`.
 
-**jq gotcha, load-bearing here**: `capture()` on a non-match yields *no output*. It does not throw and it does not return null, so `try capture(...) catch null` still yields `empty` — and an `empty` anywhere inside an object constructor makes the entire object disappear. A finding with no line hint was silently dropped from the array. The parser wraps every `capture()` in `first_or_null(f): ([ f? ] | .[0])`.
+**jq gotcha**: `capture()` on a non-match yields no output, so `try capture(...) catch null` still yields `empty`, and an `empty` inside an object constructor drops the whole object. The parser wraps every `capture()` in `first_or_null(f): ([ f? ] | .[0])`, so a finding with no line hint is kept.
 
 ## Record projection (Step 8d)
 
@@ -57,9 +57,4 @@ record {
 }
 ```
 
-## Regression fixtures
-
-`tests/fixtures/cr-cli-0.6.5-findings.jsonl` (captured from a real run, string `suggestions`) and
-`tests/fixtures/cr-cli-0.5.x-findings.jsonl` (object `suggestions`, `comment` present) pin both
-schemas. `tests/run-tests.sh` asserts the parser exits 0 and projects both. This path only executes
-when the PR-bot has already failed, so without the fixtures nothing exercises it.
+The fixtures `tests/fixtures/cr-cli-0.6.5-findings.jsonl` (string `suggestions`) and `tests/fixtures/cr-cli-0.5.x-findings.jsonl` (object `suggestions`, `comment` present) pin both schemas.

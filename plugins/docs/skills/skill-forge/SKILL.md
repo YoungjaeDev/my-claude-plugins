@@ -1,6 +1,6 @@
 ---
 name: skill-forge
-description: "Write or revise a Claude Code skill so it survives both runtimes this repo ships to (Claude Code + Codex). Owns the frontmatter schema, the writing levers behind skill prose, section structure, and the packaging contract (1024-char description cap, quoted colon-space, PLUGIN_ROOT resolver, version bump). Use when creating a new skill, splitting or renaming an existing one, rewriting a skill body, deciding what belongs in references/ versus scripts/, or asking whether a skill should exist at all. Triggers — 스킬 작성, 스킬 만들어줘, 스킬 개정, SKILL.md 작성, 스킬 구조 잡기, write a skill, author a skill, create a new skill, revise this skill, restructure SKILL.md. For auditing existing skills or other markdown use docs:md-audit."
+description: "Write or revise a Claude Code skill so it survives both runtimes this repo ships to (Claude Code + Codex). Owns the frontmatter schema, the writing levers behind skill prose, section structure, and the packaging contract (1024-char description cap, quoted colon-space, PLUGIN_ROOT resolver, version bump). Use when creating a new skill, splitting or renaming an existing one, rewriting a skill body, deciding what belongs in references/ versus scripts/, or asking whether a skill should exist at all. Triggers: 스킬 작성, 스킬 만들어줘, 스킬 개정, SKILL.md 작성, 스킬 구조 잡기, write a skill, author a skill, create a new skill, revise this skill, restructure SKILL.md. For auditing existing skills or other markdown use docs:md-audit."
 ---
 
 # skill-forge

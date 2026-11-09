@@ -1005,8 +1005,5 @@ def process_dataset_safe(
 | Missing secrets | Implement full fallback chain (Colab → Kaggle → env → prompt) |
 | Model not found | Check model ID spelling and HuggingFace availability |
 
----
-
-**Last Updated**: 2026-02-06
-**Compatible With**: Colab, Kaggle, Local Jupyter
-**Dependencies**: supervision, ultralytics, transformers, roboflow, opencv-python
+- **Compatible with**: Colab, Kaggle, Local Jupyter
+- **Dependencies**: supervision, ultralytics, transformers, roboflow, opencv-python

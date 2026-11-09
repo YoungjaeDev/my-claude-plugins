@@ -74,7 +74,7 @@ bash "$PLUGIN_ROOT/scripts/infer-github-context.sh"
 # Output: JSON { "personal": "<login>", "orgs": ["<org1>", "<org2>", ...] }
 ```
 
-> The hard preflight guard (refusing any cwd content beyond `.git/` and OS metadata) runs before this Phase 0 block, in `skills/new/SKILL.md` Step 0. The idempotency soft-guard below is subordinate to it and matters only on a recovery run that bypassed it.
+> The hard preflight guard (refusing any cwd content beyond `.git/` and OS metadata) runs before this Phase 0 block, in `skills/new/SKILL.md` Step 0. The idempotency soft-guard below is subordinate to it and matters only on a recovery run that Step 0 let through.
 
 If `HAS_CLAUDE=yes` or a commit already exists in `.git/` — the **idempotency guard** fires:
 - Confirm via `AskUserQuestion`: "This directory is already set up. Continuing preserves existing files but skips some steps. Continue?"
@@ -83,7 +83,7 @@ If `HAS_CLAUDE=yes` or a commit already exists in `.git/` — the **idempotency 
 
 The run record (`state-envelope/v0`) is a machine-readable trail of which phases ran, so a bootstrap interrupted midway (interview cancelled, `gh repo create` failed) can be resumed. This `jq` is the whole mechanism. The record lives under `.claude/state/`, machine-local, and never enters the Phase 6 commit (the Phase 6 `.gitignore` seed excludes `.claude/state/`).
 
-A normal re-run never reaches this point, because the Step 0 guard aborts on any non-empty cwd. A pre-existing `in_progress` record therefore means a recovery run: resume it by reading `steps[]`, skipping phases recorded `done`, and appending to the same record; otherwise init fresh.
+A normal re-run never reaches this point, because the Step 0 guard aborts on any non-empty cwd. Its one exception is this record: an `in_progress` file at `$REC` whose `schema`, `run_id`, `conclusion` and first step (`{step: 0, status: "done"}`) match what the block below writes, with nothing else in cwd beyond the files Phases 2-6 seed. Keep the guard's check in step with this block. A pre-existing `in_progress` record therefore means a recovery run: resume it by reading `steps[]`, skipping phases recorded `done`, and appending to the same record; otherwise init fresh.
 
 ```bash
 SLUG=$(basename "$(pwd)" | tr -c 'A-Za-z0-9._-' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//')

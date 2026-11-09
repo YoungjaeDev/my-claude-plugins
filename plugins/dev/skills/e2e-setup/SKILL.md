@@ -82,7 +82,7 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    - If one exists, do not overwrite it. Back it up (`cp playwright.config.ts playwright.config.ts.bak`) and propose a merge (the `setup` project + `dependencies`, a `webServer` if local, `trace: 'on-first-retry'`, CI `retries`); show the diff and let the user accept.
    - If none exists, write the config from `e2e-setup-scaffolds.md`.
 
-4. **Auth separation** (one login, reused via `storageState`): write `e2e/auth.setup.ts` from `e2e-setup-scaffolds.md`. Add `playwright/.auth/` to `.gitignore`; credentials come from `E2E_USER` / `E2E_PASS`, never hardcoded.
+4. **Auth separation** (one login, reused via `storageState`): write `<testDir>/auth.setup.ts` from `e2e-setup-scaffolds.md`. Add `playwright/.auth/` to `.gitignore`; credentials come from `E2E_USER` / `E2E_PASS`, never hardcoded.
 
 5. **E2E operating SSOT doc**: copy `${PLUGIN_ROOT}/assets/e2e-guidelines.template.md` to `e2e/AGENTS.md` (offer `.claude/e2e-guidelines.md` instead), separate from the repo-wide `AGENTS.md`. Walk the user through the `<...>` placeholders, at least the CUF list `e2e-author` uses.
 

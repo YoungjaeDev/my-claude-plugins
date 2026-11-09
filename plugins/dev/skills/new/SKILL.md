@@ -35,15 +35,11 @@ fi
 
 > **Windows / non-POSIX hosts**: the guard above is POSIX shell. On Codex CLI / Claude Code where the default shell is PowerShell, wrap it: `bash -c '<guard>'` (Git Bash, WSL, or any POSIX shell on PATH). The intent — refuse to proceed if cwd has any content beyond `.git/` and OS metadata — must be honored regardless of how the check is invoked.
 
-If the guard passes, proceed to the run record, then the full procedure.
-
-## Step 0.5 — Run record (state-envelope v0)
-
-The run record (state-envelope v0) is opened by the shared procedure, not here: its open + per-phase `record_step` mechanism lives **once** in `references/new-procedure.md` (Phase 0.5), so this skill and the `/dev:new` **command** record identically. Follow that Phase 0.5 block — do not re-inline the `jq` here. Convention + schema: `.claude/rules/state-envelope.md` (concept mirror in this repo's `AGENTS.md`). The record lives under gitignored `.claude/state/` and is kept out of the Phase 6 commit by the Phase 6 `.gitignore` seed.
+If the guard passes, proceed to the full procedure. Its Phase 0.5 opens the run record (`state-envelope/v0` under gitignored `.claude/state/`); do not re-inline that `jq` here.
 
 ## Step 1 — Procedure
 
-Follow the full Phase 0–7 procedure in `references/new-procedure.md` (relative to this plugin's installed root — `${CLAUDE_PLUGIN_ROOT}/references/new-procedure.md` under Claude Code; the same relative path under the Codex plugin cache):
+Follow the full Phase 0–7 procedure in `references/new-procedure.md`, relative to this plugin's installed root (`${CLAUDE_PLUGIN_ROOT}` on Claude Code, the same relative path under the Codex plugin cache):
 
 - Phase 0 — Preflight (gh auth, identity, owner candidates).
 - Phase 1 — Project identity interview (name / owner / visibility / license).
@@ -54,17 +50,6 @@ Follow the full Phase 0–7 procedure in `references/new-procedure.md` (relative
 - Phase 6 — `git init` + `gh repo create`.
 - Phase 7 — Summary + next actions.
 
-The procedure file instruments each phase itself — its Phase 0.5 opens the record and every Phase 1-7 closes with a `record_step` directive, finalizing after Phase 7. Just follow it; the recording is not a separate manual step here.
+Each phase closes with its own `record_step`, so recording is not a separate step here. Phase 0 resolves `PLUGIN_ROOT` (a caller-supplied value, then `${CLAUDE_PLUGIN_ROOT:-}`, then the highest Codex cache version) and aborts when none holds `scripts/` and `assets/`. Every later block uses `${PLUGIN_ROOT}`, so the procedure runs unchanged on both runtimes.
 
-The procedure file uses `${PLUGIN_ROOT}` for all asset / script references (`scripts/idempotent-seed.sh`, `scripts/infer-github-context.sh`, `assets/AGENTS.review-guidelines.*.md`, `assets/README.minimal.md`, `assets/CHANGELOG.initial.md`). `PLUGIN_ROOT` is resolved at the top of Phase 0 by a portable shell block:
-
-1. Honors a caller-supplied `PLUGIN_ROOT` (escape hatch for unusual layouts).
-2. Falls back to `${CLAUDE_PLUGIN_ROOT:-}` — the Claude Code path.
-3. Falls back to `${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}/<marketplace>/dev/<version>/`, picking the highest version available — the Codex path.
-4. Aborts with an explicit message asking the user to export `PLUGIN_ROOT` manually if none of the above resolves to a directory containing readable `scripts/` and `assets/` subdirectories.
-
-All subsequent bash blocks in `references/new-procedure.md` reference `${PLUGIN_ROOT}` rather than `${CLAUDE_PLUGIN_ROOT}` directly, so the same procedure body runs unchanged under both runtimes.
-
-## Why this skill exists alongside the command
-
-The `/dev:new` command remains the primary explicit-invocation surface. This skill ships so Codex (and Claude Code in capability-discovery mode) can recognize the bootstrap workflow by description. The preflight guard is duplicated at both surfaces because the description-based safety relies on the model interpreting the trigger correctly — the runtime guard is what actually prevents damage.
+The skill is the only surface; the narrow description keeps it from firing on a non-empty folder, and the Step 0 guard is what actually prevents damage when a trigger is misread.

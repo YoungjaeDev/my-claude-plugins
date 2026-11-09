@@ -10,8 +10,9 @@ Create a versioned GitHub release: detect the current version, update the versio
 
 ## Guidelines
 
-- **Interactive input is capability-aware.** Every prompt and confirmation below is a gate, not one hardcoded tool: `AskUserQuestion` under Claude Code, `request_user_input` under Codex where exposed, otherwise one concise blocking question asked before the irreversible action (the tag, the push, `gh release create`). Full policy: `AGENTS.md` → "Cross-runtime interactive input policy".
-- **The tag and the release are public and irreversible.** Never run Steps 8-9 without the Step 5 confirmation, and never publish a tag this run did not create.
+- **Ask before the irreversible action**: every prompt below is a gate. Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available, ask one short blocking question before the tag, the push or `gh release create`.
+- **The tag and the release are public and irreversible**: never run Steps 8-9 without the Step 5 confirmation, and never publish a tag this run did not create.
+- **Idempotent re-runs**: Step 8 commits only what Step 7 staged and accepts an existing tag only when it already points at `HEAD`.
 
 ## Arguments
 
@@ -48,17 +49,17 @@ Create a versioned GitHub release: detect the current version, update the versio
 
    Scan project root for known version manifest files. Multiple files may coexist (e.g., Tauri projects have both `Cargo.toml` and `tauri.conf.json`).
 
-   | Detection File | Version Location | Project Type |
-   |----------------|------------------|--------------|
-   | `package.json` | `"version": "X.Y.Z"` | Node.js |
-   | `Cargo.toml` | `version = "X.Y.Z"` | Rust |
-   | `pyproject.toml` | `version = "X.Y.Z"` | Python |
-   | `setup.cfg` | `version = X.Y.Z` | Python (legacy) |
-   | `tauri.conf.json` | `"version": "X.Y.Z"` | Tauri |
+   | Detection File | Version Location | Project Type | Step 7 update |
+   |----------------|------------------|--------------|---------------|
+   | `package.json` | `"version": "X.Y.Z"` | Node.js | `"version"` field, JSON-aware edit |
+   | `Cargo.toml` | `version = "X.Y.Z"` | Rust | `version = "..."` under `[package]` |
+   | `pyproject.toml` | `version = "X.Y.Z"` | Python | `version = "..."` under `[project]` or `[tool.poetry]` |
+   | `setup.cfg` | `version = X.Y.Z` | Python (legacy) | `version = ...` under `[metadata]` |
+   | `tauri.conf.json` | `"version": "X.Y.Z"` | Tauri | `"version"` field, JSON-aware edit |
 
    - Read current version from the first detected file
    - Cross-check with latest git tag version
-   - If no version files found, prompt user for the file path
+   - If no version files found, check the project's `CLAUDE.md` for version file hints, then prompt the user for the file path(s)
    - Store list of all detected files for batch update in Step 7
 
 4. **Determine New Version**
@@ -92,9 +93,9 @@ Create a versioned GitHub release: detect the current version, update the versio
    Version files:   package.json, Cargo.toml
 
    Recent changes:
-     feat: add HWP/HWPX document parsing
-     feat: upgrade llama.cpp to b8149
-     fix: context length hardcoding issue
+     feat: <subject>
+     feat: <subject>
+     fix: <subject>
    ```
 
    - If `--dry-run`: stop here, do not proceed
@@ -117,15 +118,7 @@ Create a versioned GitHub release: detect the current version, update the versio
 
 7. **Update Version Files**
 
-   For each file detected in Step 3, update the version string:
-
-   - `package.json`: Update `"version"` field via JSON-aware edit
-   - `Cargo.toml`: Update `version = "..."` under `[package]`
-   - `pyproject.toml`: Update `version = "..."` under `[project]` or `[tool.poetry]`
-   - `setup.cfg`: Update `version = ...` under `[metadata]`
-   - `tauri.conf.json`: Update `"version"` field via JSON-aware edit
-
-   Stage all updated files:
+   For each file detected in Step 3, update the version string as the table's last column says, then stage the updated files:
    ```bash
    git add <list of updated files>
    ```
@@ -161,10 +154,9 @@ Create a versioned GitHub release: detect the current version, update the versio
    git push origin "v<NEW_VERSION>"
    ```
 
-   `--notes-start-tag` is resolved by GitHub, not locally, so the baseline has to be on the remote
-   too, and an `--init` baseline is local-only until this point. Publish only the baseline **this
-   run** created: any other local-only tag is something the user never agreed to push, so drop the
-   flag instead and let `--generate-notes` fall back to the last release GitHub knows about.
+   GitHub resolves `--notes-start-tag`, so the baseline must be on the remote, and an `--init`
+   baseline is local-only until now. Publish only the baseline this run created; any other
+   local-only tag was never agreed to, so empty `PREV_TAG` instead.
 
    ```bash
    if ! git ls-remote --exit-code --tags origin "refs/tags/<PREV_TAG>" >/dev/null 2>&1; then
@@ -184,8 +176,8 @@ Create a versioned GitHub release: detect the current version, update the versio
      --title "v<NEW_VERSION>"
    ```
 
-   Drop `--notes-start-tag` entirely when there is no baseline tag (`PREV_TAG` empty): `--generate-notes`
-   then falls back to the previous release GitHub knows about.
+   Drop `--notes-start-tag` entirely when `PREV_TAG` is empty: `--generate-notes` then falls back
+   to the previous release GitHub knows about.
 
    Append flags if specified:
    - `--draft` -> add `--draft` to gh command
@@ -198,32 +190,8 @@ Create a versioned GitHub release: detect the current version, update the versio
     Release created: https://github.com/<owner>/<repo>/releases/tag/v<NEW_VERSION>
     ```
 
-## Version File Detection Details
+## First release
 
-### Fallback
-
-If auto-detection finds no version files:
-1. Check `@CLAUDE.md` for version file hints
-2. Prompt user to specify file path(s)
-
-## First Release Flow
-
-For repositories with no existing tags:
-
-```
-/dev:release --init <commit>
-```
-
-This creates a baseline tag (`v0.0.0` by default) at the specified commit without creating a GitHub release. The next invocation of `/dev:release` will then generate notes from that baseline forward.
-
-Example first-time setup:
-```bash
-# 1. Set baseline (no release created)
-/dev:release --init abc1234
-
-# 2. Create first real release
-/dev:release --minor
-# -> Creates v0.1.0 with changelog from v0.0.0..HEAD
-```
-
-> Follow ~/.claude/CLAUDE.md and project CLAUDE.md.
+In a repository with no tags, `/dev:release --init <commit>` creates the `v0.0.0` baseline tag without a GitHub release (Step 2).
+The next `/dev:release` (for example `--minor`, giving `v0.1.0`) generates notes from that baseline forward.
+Until then the baseline is local-only; Step 9 pushes it only because this run created it.

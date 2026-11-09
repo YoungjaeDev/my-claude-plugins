@@ -1,8 +1,8 @@
 # dev `new` — procedure
 
-Procedure body for the `new` skill (`/dev:new`), which resolves this file via `references/new-procedure.md` relative to the plugin's installed root — Claude Code exposes that root as `${CLAUDE_PLUGIN_ROOT}`, which Phase 0 normalizes into `PLUGIN_ROOT`; Codex places it under `~/.codex/plugins/cache/<marketplace>/dev/<version>/`.
+Procedure body for the `new` skill (`/dev:new`), in Phases 0-7. The skill reaches this file relative to the plugin's installed root: `${CLAUDE_PLUGIN_ROOT}` on Claude Code, which Phase 0 normalizes into `PLUGIN_ROOT`, or `~/.codex/plugins/cache/<marketplace>/dev/<version>/` on Codex.
 
-> **Trigger surface**: explicit user invocation only. No automatic trigger (running it in the wrong directory is dangerous). The preflight guard below MUST run before any destructive op — both surfaces re-state the guard at the top of their body so it cannot be skipped.
+> **Trigger surface**: explicit user invocation only, since running it in the wrong directory is dangerous. The preflight guard in `skills/new/SKILL.md` Step 0 runs before any destructive op.
 
 ## Core principles
 
@@ -35,8 +35,7 @@ if [ -z "$PLUGIN_ROOT" ]; then
   # `sort -V` orders X.Y.Z properly and is present on GNU and on Apple's FreeBSD
   # sort (10.13+), but the probe stays for userlands that predate it; the fallback
   # is a numeric dotted-field sort, because plain lexicographic ranks 0.6.0 above
-  # 0.10.0 and would resolve to an older cached version. Same form as
-  # plugins/dev/skills/review-loop/SKILL.md, whose regression test guards it.
+  # 0.10.0 and would resolve to an older cached version.
   if sort -V </dev/null >/dev/null 2>&1; then
     candidate=$(ls -1d "$cache_root"/*/dev/* 2>/dev/null \
       | awk -F/ '{print $NF "\t" $(0)}' | sort -V | tail -1 | cut -f2-)
@@ -66,10 +65,8 @@ CWD=$(pwd)
 DIR_NAME=$(basename "$CWD")
 HAS_GIT=$([ -d .git ] && echo "yes" || echo "no")
 HAS_CLAUDE=$([ -d .claude ] && echo "yes" || echo "no")
-# yes/no like its neighbours, not a count: BSD `wc -l` right-pads its output, so
-# the old `| head -1 | wc -l` form yielded "       1" here while HAS_GIT and
-# HAS_CLAUDE were clean tokens. `-print -quit` also stops at the first match
-# instead of walking the whole tree.
+# yes/no like its neighbours, not a count (BSD `wc -l` right-pads its output).
+# `-print -quit` stops at the first match instead of walking the whole tree.
 HAS_CODE=$([ -n "$(find . -maxdepth 2 -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.go" -o -name "*.rs" -o -name "*.java" \) -print -quit 2>/dev/null)" ] && echo "yes" || echo "no")
 
 # Collect GitHub owner candidates
@@ -77,16 +74,16 @@ bash "$PLUGIN_ROOT/scripts/infer-github-context.sh"
 # Output: JSON { "personal": "<login>", "orgs": ["<org1>", "<org2>", ...] }
 ```
 
-> The hard preflight guard (refusing any cwd content beyond `.git/` and OS metadata) runs **before** this Phase 0 block — see the top of `commands/new.md` and `skills/new/SKILL.md`. The legacy Phase 0 idempotency soft-guard below is retained for backward-compatible behavior on truly-fresh runs (e.g. user removes `.gitkeep` files between attempts) but is now subordinate to the hard guard.
+> The hard preflight guard (refusing any cwd content beyond `.git/` and OS metadata) runs before this Phase 0 block, in `skills/new/SKILL.md` Step 0. The idempotency soft-guard below is subordinate to it and matters only on a recovery run that bypassed it.
 
 If `HAS_CLAUDE=yes` or a commit already exists in `.git/` — the **idempotency guard** fires:
 - Confirm via `AskUserQuestion`: "This directory is already set up. Continuing preserves existing files but skips some steps. Continue?"
 
 ## Phase 0.5 — Run record (state-envelope v0)
 
-Both surfaces reach this through the shared body, so the run record is opened **here** — the primary `/dev:new` command path records too, not just the `new` skill. It leaves a machine-readable trail of which phases ran, so a bootstrap interrupted midway (interview cancelled, `gh repo create` failed) can be resumed. Convention + schema: `.claude/rules/state-envelope.md` (concept mirror in this repo's `AGENTS.md`). No shared library — this per-skill `jq` is the whole mechanism; the record lives under `.claude/state/`, so it stays machine-local and is **never** added to the Phase 6 commit (the Phase 6 `.gitignore` seed already excludes `.claude/state/`).
+The run record (`state-envelope/v0`) is a machine-readable trail of which phases ran, so a bootstrap interrupted midway (interview cancelled, `gh repo create` failed) can be resumed. This `jq` is the whole mechanism. The record lives under `.claude/state/`, machine-local, and never enters the Phase 6 commit (the Phase 6 `.gitignore` seed excludes `.claude/state/`).
 
-Because the Step 0 hard guard aborts on any non-empty cwd, a *normal* re-run never reaches this point — so a pre-existing `in_progress` record means the guard was deliberately bypassed to recover a partial seed. Handle both: a fresh init, or a **resume** that reads `steps[]`, skips the phases already recorded `done`, and keeps appending to the same record.
+A normal re-run never reaches this point, because the Step 0 guard aborts on any non-empty cwd. A pre-existing `in_progress` record therefore means a recovery run: resume it by reading `steps[]`, skipping phases recorded `done`, and appending to the same record; otherwise init fresh.
 
 ```bash
 SLUG=$(basename "$(pwd)" | tr -c 'A-Za-z0-9._-' '-' | sed 's/-\{2,\}/-/g; s/^-//; s/-$//')
@@ -127,7 +124,9 @@ record_step() {
 record_step 0 done
 ```
 
-**Recording contract.** The `step` integer is the phase number. As each Phase 1-7 closes, append its outcome — `record_step <n> done`, or `record_step <n> skipped "<reason>"` when a phase legitimately skips (Phase 3/4 when the target file already exists, Phase 6 when an `origin` remote already exists). **Shell state does not persist across separate tool calls** — `REC` is the deterministic path `.claude/state/project-init-<slug>.json`, so in each later phase's bash block re-derive `SLUG`/`REC` (the two lines above) and re-declare `record_step` before calling it. After Phase 7 closes, finalize the envelope (Phase 7 below).
+Recording contract: the `step` integer is the phase number. As each Phase 1-7 closes, append `record_step <n> done`, or `record_step <n> skipped "<reason>"` when a phase legitimately skips (Phase 3/4 when the target file exists, Phase 6 when an `origin` remote exists). After Phase 7, finalize the envelope (Phase 7 below).
+
+Shell state does not persist across separate tool calls. `REC` is the deterministic path `.claude/state/project-init-<slug>.json`, so each later phase's bash block re-derives `SLUG`/`REC` (the two lines above) and re-declares `record_step` before calling it.
 
 ## Phase 1 — Project Identity Interview
 

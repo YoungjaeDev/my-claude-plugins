@@ -7,11 +7,7 @@ description: Use when the user says "session handoff", "wrap up session", "hand 
 
 Produce a repeatable end-of-session summary so the user can clear the context and start a fresh agent without losing continuity. The next agent should be able to pick up by reading this summary alone. Invoke it as `/dev:session-handoff`.
 
-This is a **context-handoff artifact**, not a status report. The audience is a future instance of you, not a stakeholder.
-
-## When to invoke
-
-User says: "session handoff", "wrap up session", "hand off", "handoff summary", "let's wrap up", "summarize before I clear", "세션 정리해줘", "인수인계", or any near-equivalent. Also invoke proactively when the user says they are about to clear the context without having run it yet.
+This is a **context-handoff artifact**, not a status report. The audience is a future instance of you, not a stakeholder. Besides the triggers in the description, invoke it proactively when the user says they are about to clear the context without having run it yet.
 
 ## How to produce the summary
 

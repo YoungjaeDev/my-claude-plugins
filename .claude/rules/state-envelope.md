@@ -4,30 +4,15 @@ paths: .claude/state/*.json
 
 # State-Envelope Run Records (v0)
 
-Convention for the per-run state files a long multi-step skill writes to make its own
-progress machine-inspectable. v0 is a **documented convention plus per-skill `jq`** —
-there is deliberately **no shared library or script**. Each adopting skill inlines its
-own `jq` snippets; this file is only the schema they agree on.
+The schema of the per-run state file a long multi-step skill writes, so a step that was skipped silently is visible afterwards and a re-run can find and archive the prior attempt. The 2 v0 adopters are `dev:post-merge` (per-step records) and `dev:new` (Phase 0.5 run record with resume and fail-loud writes).
 
-## Role
+v0 is a documented convention plus per-skill `jq`: each adopting skill inlines its own snippets, and there is no shared library or script. Keep it that way at v0.
 
-Give multi-step pipeline skills a uniform run-record shape so a step that skipped
-**silently** is visible after the fact, and so a re-run can find and archive the prior
-attempt. Introduced narrow: the v0 adopters are `dev:post-merge` (per-step
-records) and `dev:new` (Phase 0.5 run record with resume + fail-loud writes).
-Retrofitting other skills' state files onto this envelope is deliberately deferred to
-a later change.
+## Location and rotation
 
-## Location & rotation
-
-- Live file: `.claude/state/<pipeline>-<key>.json` — e.g. `.claude/state/post-merge-114.json`,
-  mirroring the existing `.claude/state/review-loop-<PR>.json` naming.
-- On a re-run for the same key, archive the prior live file to
-  `.claude/state/archive/<pipeline>-<key>-<timestamp>-$$.json` before writing a fresh
-  one (mirrors `review-loop` Step 2 — the timestamp + `$$` suffix keeps a same-second or
-  parallel run from clobbering an archived copy).
-- `.claude/state/` is **gitignored and machine-local**. A run record is never staged,
-  committed, or added to a skill's `RUN_TOUCHED` staging set.
+- Live file: `.claude/state/<pipeline>-<key>.json` (for example `.claude/state/post-merge-114.json`), the same naming as `.claude/state/review-loop-<PR>.json`.
+- On a re-run for the same key, archive the prior live file to `.claude/state/archive/<pipeline>-<key>-<timestamp>-$$.json` before writing a fresh one. The timestamp plus `$$` keeps a same-second or parallel run from clobbering an archived copy.
+- `.claude/state/` is gitignored and machine-local. A run record is never staged, committed, or added to a skill's `RUN_TOUCHED` staging set.
 
 ## Schema
 
@@ -56,7 +41,7 @@ a later change.
 
 ## Per-skill jq (no shared library)
 
-An adopting skill inlines these three moves directly in its body — there is no sourced
+An adopting skill inlines these three moves directly in its body, with no sourced
 helper file. Reference adopter: `dev:post-merge`.
 
 Init (once the run's key + anchor sha are known):
@@ -100,8 +85,3 @@ jq --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   '.status = "completed" | .conclusion = "success" | .updated_at = $now' \
   "$REC" > "$tmp" && mv "$tmp" "$REC"
 ```
-
-## Don'ts
-
-- Never promote this into a shared library/script at v0 — a narrow per-skill convention is the point.
-- Never commit a run record — `.claude/state/` is gitignored; keep it out of any commit staging set.

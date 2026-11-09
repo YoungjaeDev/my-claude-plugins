@@ -5,23 +5,18 @@ description: Safely edit Jupyter Notebook (.ipynb) files. Use when (1) adding/mo
 
 # Notebook Editing
 
-Edit Jupyter Notebook files through a structure-aware path, never as raw text.
+Edit `.ipynb` files through a structure-aware path, never as raw text. Three edit modes, and the user runs the cells.
 
-## Rules
+## Tool selection
 
-### Tool Selection
-- .ipynb = `NotebookEdit` (Claude Code)
-- Codex has no `NotebookEdit` tool; edit through a structure-aware path instead: a short
-  `nbformat` Python snippet (read → mutate cells → write), never raw text edits.
-  Detect the interpreter first (`python3` → `python` → `py -3`; name-pinning breaks
-  either macOS or Windows), check with `<py> -c "import nbformat"`, and install on
-  miss with the same interpreter: `<py> -m pip install nbformat`. A bare `pip` can
-  target a different environment than the one checked; nbformat is not in the stdlib
-- Never use `Edit`, `Write`, or `Bash(sed/cat)` on `.ipynb`
+- **Claude Code**: `NotebookEdit` for every `.ipynb` change.
+- **Codex** (no `NotebookEdit`): a short `nbformat` Python snippet that reads, mutates the cells and writes. Detect the interpreter first (`python3` → `python` → `py -3`), since pinning one name breaks either macOS or Windows.
+- **nbformat install**: check with `<py> -c "import nbformat"` and install on a miss with the same interpreter, `<py> -m pip install nbformat`. nbformat is not in the stdlib, and a bare `pip` can target a different environment than the one checked.
+- **Never** use `Edit`, `Write`, or `Bash(sed/cat)` on `.ipynb`.
 
-### Cell Insertion: cell_id Tracking (Required)
+## Cell insertion: track cell_id
 
-NotebookEdit returns inserted cell's id. Track it for sequential insertion:
+`NotebookEdit` returns the inserted cell's id. Pass it to the next insert so cells land in order:
 
 ```
 NotebookEdit(edit_mode="insert", cell_type="code", new_source="...")
@@ -33,21 +28,16 @@ NotebookEdit(edit_mode="insert", cell_id="abc123", cell_type="code", new_source=
 NotebookEdit(edit_mode="insert", cell_id="def456", ...)
 ```
 
-**cell_id omitted**: Cell inserted at BEGINNING -> reverse order bug
-
-### Execution Policy
-- NotebookEdit = edit only, no execution
-- After adding cells: "Please run the cells in Jupyter"
-- Do NOT use mcp__ide__executeCode (causes notebook state corruption)
-
-### Post-Edit Verification
-- Read first 30 lines to verify cell order
-- Confirm existing outputs preserved
-
-## edit_mode Options
+An insert without `cell_id` lands at the beginning, so a sequence of them comes out in reverse order.
 
 | Mode | Purpose | cell_id |
 |------|---------|---------|
 | replace | Update existing cell | Required |
 | insert | Add new cell | Recommended (omit = top insertion) |
 | delete | Remove cell | Required |
+
+## Execution and verification
+
+- `NotebookEdit` edits only and never executes. After adding cells, tell the user: "Please run the cells in Jupyter".
+- Do NOT use `mcp__ide__executeCode`: it corrupts notebook state.
+- After editing, read the first 30 lines of the notebook to confirm the cell order, and confirm that existing outputs are preserved.

@@ -1,9 +1,8 @@
 # ML/CV Library Pitfalls
 
-Supporting reference for `ml-dev-principles`. These are library-level mistakes below
-the how-to-work discipline in `SKILL.md` — they break output correctness or
-throughput regardless of process, and they recur across CV projects independently
-of which model or dataset is in play.
+Four library-level mistakes for `ml-dev-principles`, below the how-to-work discipline in
+`SKILL.md`. Each breaks output correctness or throughput whatever the process, and none
+depends on the model or dataset in play.
 
 ## Quick reference
 

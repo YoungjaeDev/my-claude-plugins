@@ -5,27 +5,17 @@ description: Generate production-quality Computer Vision Jupyter notebooks. Supp
 
 # CV Notebook Generator
 
-> **Structure-aware authoring**: Claude Code authors `.ipynb` cells with the `NotebookEdit` tool. Codex has no `NotebookEdit`: author cells through an `nbformat` Python snippet instead (detect the interpreter `python3` → `python` → `py -3`, check `<py> -c "import nbformat"`, install on miss with `<py> -m pip install nbformat`). Never hand-edit notebook JSON as raw text on either runtime.
+Generates Computer Vision Jupyter notebooks for 4 task types in the roboflow/notebooks style, with Korean insights at 3 levels, plus an interactive exploration mode. The output is a notebook that passed the End Gate, never one only asserted to be correct.
 
-A skill for generating professional Computer Vision Jupyter notebooks following roboflow/notebooks patterns with Korean insights.
+**Structure-aware authoring**: Claude Code authors `.ipynb` cells with the `NotebookEdit` tool. Codex has no `NotebookEdit`: author cells through an `nbformat` Python snippet instead (detect the interpreter `python3` → `python` → `py -3`, check `<py> -c "import nbformat"`, install on miss with `<py> -m pip install nbformat`). Never hand-edit notebook JSON as raw text on either runtime; `ml:edit-notebook` holds the full editing rules.
 
-## Design Principles
+## Design principles
 
-### What to Apply (Roboflow Style)
-- Banner image at top
-- Colab/GitHub badges
-- GPU check cell first
-- supervision library for all visualizations
-- Roboflow SDK for dataset management
-- Clear section structure (Setup → Data → Model → Training → Evaluation)
+- **Apply (Roboflow style)**: banner image at top, Colab/GitHub badges, GPU check cell first, clear section structure (Setup → Data → Model → Training → Evaluation).
+- **Libraries**: supervision for all visualizations, the Roboflow SDK for dataset management.
+- **Avoid**: hardcoded API keys (use environment variables or secrets), model-specific code outside templates, executing cells (the user runs them in their environment), direct `.ipynb` text manipulation.
 
-### What to Avoid
-- Hardcoded API keys (use environment variables or secrets)
-- Model-specific code outside templates
-- Execution of cells (user runs in their environment)
-- Direct .ipynb file manipulation (use the structure-aware path: NotebookEdit / nbformat)
-
-## Supported Task Types
+## Supported task types
 
 | Task | Description | Key Models |
 |------|-------------|------------|
@@ -47,7 +37,7 @@ A skill for generating professional Computer Vision Jupyter notebooks following 
 | dataset_format | enum | yolov8 | yolov8/coco/voc/pascal - Roboflow export format |
 | language | enum | hybrid | en/ko/hybrid (Korean insights) |
 
-## Notebook Structure
+## Notebook structure
 
 Standard section order for all CV notebooks:
 
@@ -64,9 +54,9 @@ Standard section order for all CV notebooks:
 | Deployment | Code+MD | Optional | Export, Roboflow Deploy |
 | Conclusion | Markdown | Yes | Summary, next steps, resources |
 
-## User Level Configuration
+## User level configuration
 
-### Insight Density by Level
+Insight density by level (format spec and insight bank in `references/insights-ko.md`):
 
 | Level | Insight Blocks | Inline Comments | MD:Code Ratio |
 |-------|----------------|-----------------|---------------|
@@ -74,7 +64,7 @@ Standard section order for all CV notebooks:
 | intermediate | 8-12 per notebook | 40% of code lines | 1:2 |
 | expert | 3-5 per notebook | 10% of code lines | 1:4 |
 
-### Insight Injection Points
+Insight injection points:
 
 | Section | Beginner | Intermediate | Expert |
 |---------|----------|--------------|--------|
@@ -85,142 +75,43 @@ Standard section order for all CV notebooks:
 | Training Config | Block after | Block after | - |
 | Evaluation | Block after | Block after | Block |
 
-## Usage Examples
+## Generation workflow
 
-### Basic Detection Notebook
-```
-"Create a YOLOv8 detection notebook for beginners"
-→ task=detection, model=yolov8, level=beginner, environment=colab
-```
+1. **Identify parameters**: parse task, model, level, environment from the request.
+2. **Select template**: load the matching task template from `references/templates/`.
+3. **Apply environment**: insert Colab/Kaggle/Local specific setup (`references/environment-setup.md`).
+4. **Inject insights**: add Korean insights at the level's density.
+5. **Generate notebook**: author cells structure-aware, top to bottom (see below).
+6. **Validate structure**: ensure every required section is present.
+7. **End gate**: validate that the generated notebook actually parses (see below).
 
-### Custom Segmentation
-```
-"Generate SAM segmentation notebook for Kaggle, intermediate level"
-→ task=segmentation, model=sam, level=intermediate, environment=kaggle
-```
-
-### VLM Inference Only
-```
-"Create Florence-2 VLM notebook without training section"
-→ task=vlm, model=florence-2, include_training=false
-```
-
-### Expert Training Notebook
-```
-"Generate expert-level RT-DETR fine-tuning notebook with Roboflow dataset"
-→ task=detection, model=rt-detr, level=expert, include_roboflow=true
-```
-
-### Qwen2.5-VL Zero-Shot Detection
-```
-"Create Qwen2.5-VL notebook for zero-shot object detection"
-→ task=vlm, model=qwen2.5-vl, include_training=false
-```
-
-## Generation Workflow
-
-1. **Identify parameters**: Parse task, model, level, environment from request
-2. **Select template**: Load appropriate task template from references/templates/
-3. **Apply environment**: Insert Colab/Kaggle/Local specific setup
-4. **Inject insights**: Add Korean insights based on level density
-5. **Generate notebook**: author cells structure-aware, Claude Code with `NotebookEdit`, Codex with an `nbformat` snippet
-6. **Validate structure**: Ensure all required sections present
-7. **End gate**: validate the generated notebook actually parses (see below); never hand back a notebook only asserted to be correct
-
-## End Gate (MANDATORY): validate the generated notebook
-
-`NotebookEdit` builds cells but never runs them, so a syntax slip (an unclosed paren, a missing colon) ships silently and the user only hits it mid-run. Before declaring the notebook done, validate it. Two paths, take the strongest one the environment allows:
-
-1. **Execute setup + first-load cells (stronger, env-permitting)**: if `jupyter` is installed and the target env has the notebook's deps, execute the setup and first data-load cells: `jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=120 <notebook>` (slice a temp copy down to the GPU-check / Setup / first Data cells to avoid kicking off a full training run). This catches import and runtime errors py_compile cannot.
-2. **py_compile the code cells (deterministic fallback, always runs)**: no packages or GPU needed. Extract each code cell, strip IPython magics / shell escapes (`!…`, `%…`), and `py_compile` it in order. On the first failure, report **"unverified beyond cell N"**: cells 1..N-1 are syntactically sound, N is where it breaks.
-
-```bash
-NB="notebook.ipynb"           # the generated notebook
-tmp=$(mktemp -d)
-jq -r '.cells[] | select(.cell_type=="code")
-       | (.source | if type=="array" then join("") else . end) | @base64' "$NB" > "$tmp/cells.b64"
-n=0; status=pass
-while IFS= read -r b64; do
-  [ -n "$b64" ] || continue
-  n=$((n+1))
-  printf '%s' "$b64" | base64 -d \
-    | sed 's/^[[:space:]]*[!%].*/pass  # magic stripped/' > "$tmp/cell_$n.py"
-  if ! python3 -m py_compile "$tmp/cell_$n.py" 2>"$tmp/err"; then
-    echo "py_compile FAIL at code cell $n — unverified beyond cell $n:"; sed 's/^/    /' "$tmp/err"
-    status=fail; break
-  fi
-done < "$tmp/cells.b64"
-[ "$status" = pass ] && echo "py_compile: all $n code cell(s) syntactically valid"
-rm -rf "$tmp"
-```
-
-Fix the reported cell and re-run until it passes. If only the stronger nbconvert path failed on a missing dependency, say so explicitly: "unverified beyond cell N, env lacks `<pkg>`", rather than claiming the notebook runs.
-
-## NotebookEdit Integration
-
-Claude Code path; on Codex, use the `nbformat` equivalent (append to `nb.cells` in the same order; the end gate above is runtime-neutral):
+On Claude Code, insert cells sequentially and pass the `cell_id` returned by each `NotebookEdit` response to the next `edit_mode="insert"` call; an insert without it lands at the top. On Codex, append to `nb.cells` in the same order.
 
 ```python
-# Cell generation sequence
 NotebookEdit(notebook_path="notebook.ipynb", edit_mode="insert", cell_type="markdown", new_source="# Header")
 NotebookEdit(notebook_path="notebook.ipynb", edit_mode="insert", cell_id="<previous>", cell_type="code", new_source="!nvidia-smi")
 ```
 
-### Cell ID Strategy
-- Generate cells sequentially (top to bottom)
-- Track cell IDs returned from NotebookEdit responses
-- Use `edit_mode="insert"` with previous cell_id
-- **IMPORTANT**: Cell IDs are returned in the NotebookEdit response and must be tracked for subsequent insertions
+## End gate (mandatory)
 
-## Exploration mode (absorbed from cv-explorer)
+Never hand back a notebook that has not been validated. Read `references/end-gate.md` before step 7 and take the strongest path the environment allows.
 
-Triggers on "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "browse dataset", "browse annotations", "visualize dataset interactively" instead of the training/roboflow flow above. Generates an ipywidgets-based interactive data-exploration notebook: same structure-aware authoring (NotebookEdit / nbformat) and the same End Gate validation described above, different templates.
+- **Execute** the setup and first data-load cells with `jupyter nbconvert --execute` on a sliced temp copy when `jupyter` and the deps are present.
+- **py_compile** every code cell in order, magics stripped; this fallback always runs and needs no packages or GPU.
+- **Report** the first failure as "unverified beyond cell N", or "unverified beyond cell N, env lacks `<pkg>`" when only the execute path failed on a missing dependency. Fix the cell and re-run until it passes.
 
-**Non-triggers** (route to the standard flow above instead): "training notebook", "train model", "fine-tune", "transfer learning", "deploy model", "export model".
+## Exploration mode
 
-### Viewer types
+Triggers on "exploration notebook", "explore dataset", "interactive viewer", "data viewer", "browse dataset", "browse annotations", "visualize dataset interactively", instead of the training/Roboflow flow above.
 
-| viewer_type | Description | Best data_format |
-|-------------|--------------|-------------------|
-| `detection` | Bounding box viewer, class/confidence filter | coco-json |
-| `segmentation` | Mask overlay viewer, opacity control | coco-json |
-| `tracking` | Frame-by-frame viewer, track ID highlight, play button | npz |
-| `classification` | Grid viewer, class filter, sorting | csv |
-| `custom` | Fallback: base navigation + cache + supervision/cv2 render | any |
+Read `references/exploration-mode.md` for its viewer types, parameters and generation steps; it uses the same structure-aware authoring and the same End Gate.
 
-### Data formats
+Non-triggers route to the standard flow above instead: "training notebook", "train model", "fine-tune", "transfer learning", "deploy model", "export model".
 
-`data_format`: `coco-json`, `yolo-txt`, `npz`, `csv`, `imagefolder`, one loader each in `references/explorer-data-loaders.md`. Detection/segmentation favor coco-json, tracking needs npz, classification favors csv/imagefolder. A mismatched viewer_type x data_format pairing gets a warning markdown cell in the generated notebook rather than a hard block.
-
-### Comparison, threshold tuning, statistics
-
-`comparison=true` adds a side-by-side view (raw vs annotated, or model A vs B); `threshold_tuning=true` adds a live confidence/NMS slider; `statistics=true` (default) adds class-distribution and bbox-size-distribution plots. All three are additive sections built from `references/explorer-patterns.md` Pattern C, D, and E+F respectively.
-
-### Parameters (exploration mode only)
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `viewer_type` | `detection` | detection / segmentation / tracking / classification / custom |
-| `data_format` | `coco-json` | coco-json / yolo-txt / npz / csv / imagefolder |
-| `comparison` | `false` | side-by-side comparison view |
-| `threshold_tuning` | `false` | interactive confidence threshold slider |
-| `statistics` | `true` | dataset statistics section |
-| `use_supervision` | `true` | supervision library vs raw cv2 rendering |
-
-`level` and `language` follow the same beginner/intermediate/expert convention and Korean-insight category system documented in User Level Configuration above (format spec in `references/insights-ko.md`); compose ipywidgets-specific insights (continuous_update, Output/clear_output, cache eviction, NMS/threshold tuning) from the Key Points already listed under each pattern in `references/explorer-patterns.md` rather than a separate insight bank.
-
-### Generation
-
-1. Parse `viewer_type` / `data_format` / `comparison` / `threshold_tuning` / `statistics` / `use_supervision` from the request; check the viewer_type x data_format table above and warn on a mismatch.
-2. Load `references/explorer-patterns.md` (Pattern A + B + G minimum, plus C/D/E+F as the optional flags require) and the matching loader in `references/explorer-data-loaders.md`.
-3. Assemble the notebook from `references/templates/exploration.md`'s section order (Header, Setup, Configuration, Data Loading, Interactive Viewer, optional Comparison/Threshold/Statistics, Summary).
-4. Author cells the same structure-aware way as the standard flow (NotebookEdit / nbformat) and run the same End Gate validation before handing the notebook back.
-
-## Additional Resources
+## Additional resources
 
 - Code patterns: [references/patterns.md](references/patterns.md)
-- Exploration-mode patterns: [references/explorer-patterns.md](references/explorer-patterns.md)
-- Exploration-mode data loaders: [references/explorer-data-loaders.md](references/explorer-data-loaders.md)
+- Exploration mode: [references/exploration-mode.md](references/exploration-mode.md), [references/explorer-patterns.md](references/explorer-patterns.md), [references/explorer-data-loaders.md](references/explorer-data-loaders.md)
 - Environment setup: [references/environment-setup.md](references/environment-setup.md)
 - Korean insights: [references/insights-ko.md](references/insights-ko.md)
 - Architecture diagrams: [references/diagrams.md](references/diagrams.md)

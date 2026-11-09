@@ -39,7 +39,7 @@ Codex, or a session without the `Agent` tool, runs the same steps inline.
 - Held fixes reach the base only after the merge and `scripts/base-push.sh`'s build/test and pre-commit pass, else the report names the commit they are on.
 - **One commit and one push per iteration that applied anything.** Same-file generalization never crosses files.
 - **One follow-up issue**, body passed through a file, never posted as a PR comment. A failed `gh issue create` blocks Step 15.
-- Never edit `.coderabbit.yaml`. Follow the repo's `AGENTS.md` (read in Step 3) and `CLAUDE.md` throughout.
+- Never edit `.coderabbit.yaml` (recommended keys and CLI install: this plugin's `docs/coderabbit-config.md`). Follow the repo's `AGENTS.md` (read in Step 3) and `CLAUDE.md` throughout.
 
 ## Step 1: Parse arguments
 

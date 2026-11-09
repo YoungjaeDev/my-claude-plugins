@@ -431,7 +431,7 @@ git config core.hooksPath .githooks   # clone 당 1회
 - `bump-version.mjs --check`: `plugins/<name>/` 아래 파일이 `origin/main` 대비 바뀌었는데 그 플러그인의 `plugin.json`·`marketplace.json` 버전이 `origin/main` 보다 크지 않거나 `metadata.version` 이 오르지 않았으면 실패. 집계 대상은 이 브랜치가 건드린 경로뿐이라 앞서간 `origin/main` 이나 머지해 들인 base 의 변경은 실패 원인에서 제외. review-loop 가 base 에 바로 넣는 커밋도 base 쪽 pre-commit 에서 같은 검사 대상
 - `check-plugin-cache.mjs --selftest`: SessionStart 훅의 캐시 지연 경고와 `core.hooksPath` 경고를 가짜 캐시와 임시 저장소로 확인
 - `check-korean-copy.mjs`: README.md 의 번역투 차단. 기준은 `plugins/deck/templates/rules/deck-copy.md` 의 `### 금지 표기` 표 (실행 시점에 로드), 연결어미 뒤 쉼표, 개수 자리의 고유어 수사. 코드 펜스·인라인 코드·HTML 태그 밖의 글자만 검사하고 덱 전용 행 (슬라이드 라벨·강사 소개) 은 허용 목록으로 제외
-- `check-skill-prose.mjs`: SKILL.md 10KB(10,000바이트) 초과와 깊은 참조 경로의 정보성 경고 (비차단)
+- `check-skill-prose.mjs`: 스킬 트리 md 500줄 초과와 깊은 참조 경로의 정보성 경고 (비차단)
 
 테스트 스위트 4개도 같은 자리에서 실행. pre-commit 은 resolver 스모크를 매번, 나머지 3개는 해당 플러그인이나 훅이 staged 일 때만 실행.
 

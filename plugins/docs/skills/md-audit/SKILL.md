@@ -13,16 +13,20 @@ Measure markdown shape with a script, judge with the model, report in chat, rewr
 Resolve the plugin root, then run the shape audit. With no argument it covers the `.md` files changed against the merge-base with `origin/main`; append the user's paths, `--base <ref>`, or `--all`.
 
 ```bash
-# Honor a caller-supplied PLUGIN_ROOT first — the abort message below tells the user to
+# Honor a caller-supplied PLUGIN_ROOT first: the abort message below tells the user to
 # export it, and starting from CLAUDE_PLUGIN_ROOT would overwrite that escape hatch.
 PLUGIN_ROOT="${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
 [ -z "$PLUGIN_ROOT" ] && [ -d plugins/docs/skills ] && PLUGIN_ROOT=plugins/docs
 if [ -z "$PLUGIN_ROOT" ]; then
-  # Rank Codex cache candidates on the version basename, not the whole path: a plain
-  # sort puts 0.9.0 above 0.10.0 and lets the marketplace directory outrank the version.
+  # Rank Codex cache candidates on the version basename, newest first, and take the
+  # first one that has skills/: a plain sort puts 0.9.0 above 0.10.0.
   cache_root="${CODEX_PLUGIN_CACHE:-$HOME/.codex/plugins/cache}"
-  if sort -V </dev/null >/dev/null 2>&1; then vsort="sort -V"; else vsort="sort -t. -k1,1n -k2,2n -k3,3n"; fi
-  PLUGIN_ROOT=$(ls -1d "$cache_root"/*/docs/* 2>/dev/null | awk -F/ '{print $NF "\t" $(0)}' | $vsort | tail -1 | cut -f2-)
+  if sort -V </dev/null >/dev/null 2>&1; then
+    candidates=$(ls -1d "$cache_root"/*/docs/* 2>/dev/null | awk -F/ '{print $NF "\t" $(0)}' | sort -rV | cut -f2-)
+  else
+    candidates=$(ls -1d "$cache_root"/*/docs/* 2>/dev/null | awk -F/ '{print $NF "\t" $(0)}' | sort -t. -k1,1rn -k2,2rn -k3,3rn | cut -f2-)
+  fi
+  while IFS= read -r d; do [ -d "$d/skills" ] && { PLUGIN_ROOT="$d"; break; }; done <<< "$candidates"
 fi
 [ -d "$PLUGIN_ROOT/skills" ] || { echo "docs plugin root not found; export PLUGIN_ROOT" >&2; exit 1; }
 node "$PLUGIN_ROOT/skills/md-audit/scripts/measure-skills.mjs" --md

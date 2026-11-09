@@ -1,6 +1,6 @@
 ---
 name: deck-ask
-description: "Ask which deck skill fits right now and get a suggestion, not an action. Use on /deck:deck-ask, '덱 뭐 해', '덱 다음 단계', '덱 어떤 스킬', '덱 만드는 순서', '덱 작업 뭐부터', 'which deck skill', 'what next for the deck'. Reads where a house-format lecture deck (deck/shell.html + deck/sections/*.html) stands and suggests the next skill with one reason: deck-new, docs:interview-methodology for an unsettled thesis or outline, deck-assets, deck-author, deck-check, dev-server edit mode, deck-sync, deck-deploy on an explicit request only. Sends one-off generic talks and PPTX conversion to frontend-slides. Suggests only: runs no script and writes no file. For the GitHub issue flow use dev:flow."
+description: "Ask which deck skill fits right now and get a suggestion, not an action. Use on /deck:deck-ask, '덱 뭐 해', '덱 다음 단계', '덱 어떤 스킬', '덱 만드는 순서', '덱 작업 뭐부터', 'which deck skill', 'what next for the deck'. Reads where a house-format lecture or report deck (deck/shell.html + deck/sections/*.html) stands and suggests the next skill with one reason: deck-new, docs:interview-methodology for an unsettled thesis or outline, deck-assets, deck-author, deck-check, dev-server edit mode, deck-sync, deck-deploy on an explicit request only. Sends one-off generic talks and PPTX conversion to frontend-slides. Suggests only: runs no script and writes no file. For the GitHub issue flow use dev:flow."
 ---
 
 # deck-ask
@@ -20,11 +20,13 @@ Suggest the next deck skill. Look, then answer in a few lines; the user or that 
    대안: /<plugin:skill> — <when to pick it instead>   (only if a real alternative exists)
    ```
 
-3. Stop. Do not start the suggested skill unless the user says so.
+3. Stop. Do not start the suggested skill unless the user says so. Done means the answer names one
+   suggested skill with a reason drawn from what was read, at most one alternative, and nothing was
+   run or written.
 
 ## House deck or not
 
-- House deck: RALPHDEV lecture in a repo, `deck/shell.html` + `deck/sections/`, Vercel. Use the table.
+- House deck: a RALPHDEV lecture or report deck in a repo, `deck/shell.html` + `deck/sections/`, Vercel. Use the table.
 - One-off generic talk, pitch, or PPTX conversion without the house shell: suggest `frontend-slides`.
 - Both loaded in a house deck: `deck-author` and `.claude/rules/deck-authoring.md` win where they
   override `frontend-slides`.
@@ -45,7 +47,7 @@ Suggest the next deck skill. Look, then answer in a few lines; the user or that 
 | `deck-check` said `rules: edited` | move deck-only lines to `.claude/rules/deck-local.md` | `deck-sync --force` only with the user's yes |
 | User wants to look at the deck or fix wording by eye | dev-server edit mode (`deck-check` step 5) | text only; boxes cannot be moved yet |
 | User reviewed locally and asked to deploy | `deck-deploy` | only on that request |
-| A rule should change for every deck | edit the plugin's `templates/rules/`, then `deck-sync` per deck | one deck only: `deck-local.md` |
+| A rule should change for every deck | change the deck plugin's rule originals (a plugin release), then `deck-sync` per deck | one deck only: `deck-local.md` |
 | A deck skill itself should change | `docs:skill-forge` | |
 
 ## Do not suggest
@@ -56,8 +58,3 @@ Suggest the next deck skill. Look, then answer in a few lines; the user or that 
 | Generate a logo with codex-image | Logos are the brand's own files, collected by `deck-assets`. |
 | Fix the section now, the outline later | Outline first; edit-mode text goes back into the outline. |
 | Another router's "ship" or "make-pdf" | In a house deck, deploy is `deck-deploy`; the PDF comes from `deck-check`'s render. |
-
-## Verification
-
-The answer names one suggested skill with a reason drawn from what was read, at most one
-alternative, and nothing was run or written.

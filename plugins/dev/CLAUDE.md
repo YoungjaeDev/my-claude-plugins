@@ -119,7 +119,7 @@ plugins/dev/
 │   ├── new-procedure.md                   # new: Phase 0-7
 │   └── role-contracts.md                  # e2e planner / generator / healer contracts
 ├── scripts/                               # project_state.sh, idempotent-seed.sh, infer-github-context.sh, jq-lf.sh
-├── skills/<name>/SKILL.md                 # 12 skills; post-merge and review-loop carry references/, scripts/, tests/
+├── skills/<name>/SKILL.md                 # 12 skills; post-merge, review-loop and release carry references/, scripts/, tests/
 ├── tests/resolver_smoke.sh                # e2e-setup Step 0 resolver
 ├── tests/new_guard_smoke.sh               # new Step 0 guard and its recovery entry
 └── CLAUDE.md                              # this file

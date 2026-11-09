@@ -14,7 +14,7 @@ How review-loop runs two automatic PR reviewers, CodeRabbit and ChatGPT-Codex, s
 
 - **Tiers** (`tier-classification.md` holds the table): the Security & Privacy category is gated whatever its severity. Critical and Major are gated, Minor with Heavy lift is gated, and Minor with Quick win (or no effort field) is auto-applied.
 - Trivial, Info and the summary-only Nitpick are skipped. Codex P0, P1 and P2 are gated in every round, so a P2 from the second round on is judged like any other finding.
-- A CodeRabbit finding whose header cannot be read gets the model's inferred severity and effort from its sanitized body, marked `tier_source: "inferred"`, and is judged like the rest. An inferred Critical or Major fix goes back for re-review, and the final report counts these (`inferred_tiers`) as a sign the header format changed.
+- A CodeRabbit finding whose header cannot be read gets the model's inferred severity and effort from its sanitized body, marked `tier_source: "inferred"`, and is judged like the rest. A fix from any inferred tier goes back for re-review, never straight to the base, and the final report counts these (`inferred_tiers`) as a sign the header format changed. The rule lives in `tier-classification.md` ("Inferred tier for an unreadable CodeRabbit header") and is enforced by `scripts/auto-merge-gate.sh` (`next_action`).
 - A Codex finding with no badge, or a CodeRabbit one whose inference is unusable, is `review`: shown, and never counted as `clean`.
 - **Judgment**: every finding, whatever its tier, is judged against the local code without asking the user, as apply, defer or skip, with the reason in `auto_judge_log` (`autonomous-judgment.md`).
 - Defer is only for a severe finding (Critical, Major, Security, Codex P0 or P1) whose fix is large or unclear, and it goes to the follow-up issue. Everything else is applied or skipped with its reason inside the session, including a fix that needs a new flag or entry point.
@@ -47,7 +47,7 @@ The wait script stops itself at its cap, since a background command has no harne
 
 ## Who reviews the fixes
 
-At the end of each cycle `scripts/auto-merge-gate.sh` prints `next_action`; its header holds the rule. When any applied fix came from a Critical, High, Major, Security or Codex P0/P1 finding, it is `rereview_push`: push to the PR for another review.
+At the end of each cycle `scripts/auto-merge-gate.sh` prints `next_action`; its header holds the rule. When any applied fix came from a Critical, High, Major, Security or Codex P0/P1 finding, or from an inferred tier (`tier_source: "inferred"`, whatever its severity), it is `rereview_push`: push to the PR for another review.
 
 When every fix came from a Minor-or-lower finding, it is `merge_then_main_push`: the run stops at `minor_floor`, merges the reviewed HEAD, and pushes the fixes straight to the PR's base once build/test and the pre-commit guards pass there (`scripts/base-push.sh`).
 

@@ -67,6 +67,12 @@
     "base_push": {
       "type": ["object", "null"],
       "description": "Set by Step 15 when the held Minor-or-lower fixes were pushed straight to the base after the merge (ADR 0006): {branch, sha, fixes}."
+    },
+    "inferred_skips": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "description": "Keys (databaseId, comment_id, or path:line) of findings Step 9a inferred as Trivial or Info: tier skip, so no auto_judge_log record. Counted into the final JSON inferred_tiers (#392)."
     }
   },
   "additionalProperties": true

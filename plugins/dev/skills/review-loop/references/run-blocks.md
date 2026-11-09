@@ -425,8 +425,21 @@ all=$(printf '%s\n%s\n' "$cr_records" "$codex_records" | jq -c -s --argjson j "$
 classified=$(echo "$all" | jq -c '.[]' \
   | while IFS= read -r rec; do printf '%s\n' "$rec" | SKIP_MINOR=$SKIP_MINOR bash $SKILL_DIR/scripts/classify-item.sh; done \
   | jq -s '.')
-# A stop Step 13 held resolves here, on the new HEAD's findings: only one that needs
-# a decision (gated, or unreadable) earns the extra round.
+```
+
+Now each CR or CLI record left at `review` gets its inferred tier (`tier-classification.md`, "Inferred tier for an unreadable CodeRabbit header"): write `inferred_severity` and `inferred_effort` into it, pipe it through `scripts/classify-item.sh` again, and put the result back in `classified`. Then run:
+
+```bash
+# An inferred Trivial or Info ends at skip and never reaches the Step 9c log, so its
+# key is kept here for the final JSON's inferred_tiers, once across rounds.
+skips=$(jq -c '[.[] | select(.tier_source == "inferred" and .tier == "skip")
+  | (.databaseId // .comment_id // "\(.path):\(.line)") | tostring]' <<<"$classified") || skips='[]'
+if [ "$skips" != '[]' ]; then
+  tmp=$(mktemp); jq --argjson k "$skips" '.inferred_skips = ((.inferred_skips // []) + $k | unique)' \
+    "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+fi
+# A stop Step 13 held resolves here, on the new HEAD's findings after inference: only
+# one that needs a decision (gated, or still unreadable) earns the extra round.
 if [ -n "$HOLD_STATE" ]; then
   if [ "$(jq '[.[] | select(.tier == "gated" or .tier == "review")] | length' <<<"$classified")" = 0 ]; then
     final_state="$HOLD_STATE"; break

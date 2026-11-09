@@ -73,8 +73,8 @@ CodeRabbit has changed its header format twice. A CR or CLI record that comes ou
 - The model reads the record's body after sanitization (`references/sanitization-rules.md`; a flagged body stays `review`) and writes `inferred_severity` (`Critical`, `High`, `Major`, `Minor`, `Trivial` or `Info`) and, when the body says how big the fix is, `inferred_effort` (`Quick win` or `Heavy lift`) into the record.
 - It pipes the record through `scripts/classify-item.sh` again. The script reads the inference only where the parser left the severity empty, so a field the parser did read always wins, and it adds `tier_source: "inferred"`.
 - A word outside that list keeps the record at `review`. Codex records are never inferred: an unreadable badge stays `review`.
-- The Step 9c log entry keeps `badge_or_sev` empty (nothing was read) and carries `tier_source`, `inferred_severity` and `inferred_effort`. `scripts/auto-merge-gate.sh` reads `inferred_severity` too, so a fix from an inferred Critical, High or Major goes back to the PR for re-review.
-- The final JSON counts these decisions in `inferred_tiers`; above 0 the final report gives the count and one line saying the header format may have changed, so `scripts/cr-header.jq` needs a look.
+- The Step 9c log entry keeps `badge_or_sev` empty (nothing was read) and carries `tier_source`, `inferred_severity` and `inferred_effort`. `scripts/auto-merge-gate.sh` reads `tier_source`, so a fix from any inferred tier, Minor or Trivial included, goes back to the PR for re-review and never straight to the base.
+- The final JSON counts these decisions in `inferred_tiers`, and with them the findings inferred as Trivial or Info, which end at `skip` with no log entry (Step 9a keeps their keys in the state's `inferred_skips`); above 0 the final report gives the count and one line saying the header format may have changed, so `scripts/cr-header.jq` needs a look.
 
 The bot identity anchor and the sanitization rules do not change for an inferred record: only the tier inputs come from the model.
 

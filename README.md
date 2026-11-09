@@ -433,9 +433,11 @@ git config core.hooksPath .githooks   # clone 당 1회
 - `check-korean-copy.mjs`: README.md 의 번역투 차단. 기준은 `plugins/deck/templates/rules/deck-copy.md` 의 `### 금지 표기` 표 (실행 시점에 로드), 연결어미 뒤 쉼표, 개수 자리의 고유어 수사. 코드 펜스·인라인 코드·HTML 태그 밖의 글자만 검사하고 덱 전용 행 (슬라이드 라벨·강사 소개) 은 허용 목록으로 제외
 - `check-skill-prose.mjs`: SKILL.md 10000바이트 초과와 깊은 참조 경로의 정보성 경고 (비차단)
 
-테스트 스위트 4개도 같은 자리에서 실행. pre-commit 은 resolver 스모크를 매번, 나머지 3개는 해당 플러그인이나 훅이 staged 일 때만 실행.
+테스트 스위트 6개도 같은 자리에서 실행. pre-commit 은 1초 안쪽인 앞의 3개를 매번, 나머지 3개는 해당 플러그인이나 훅이 staged 일 때만 실행.
 
 - `plugins/dev/tests/resolver_smoke.sh`: `dev:e2e-setup` Step 0 의 `PLUGIN_ROOT` resolver 를 SKILL.md 에서 꺼내 가짜 Codex 캐시와 소스 트리에서 실행
+- `plugins/dev/tests/new_guard_smoke.sh`: `dev:new` Step 0 의 빈 디렉터리 가드와 중단된 실행의 복구 진입 조건
+- `plugins/dev/skills/release/tests/run-tests.sh`: 태그 push 가 만든 CI run 에서 시작조차 못 한 job 을 찾아 실패 annotation 을 인용하는 `ci-run-check.sh` (gh shim)
 - `plugins/dev/skills/review-loop/tests/run-tests.sh`: 1차 경로가 실패한 뒤에만 실행되는 CLI 폴백·CR 상태 경로
 - `plugins/dev/skills/post-merge/tests/run-tests.sh`: 지워도 되는 worktree 와 원격 브랜치를 고르는 수집 스크립트 (일회용 저장소와 gh shim)
 - `plugins/council/skills/convene/tests/run-tests.sh`: `SKILL.md` 와 `references/` 에 셸로 적힌 codex / agy 호출 계약 검사, 레지스트리 블록은 꺼내서 일회용 HOME 에서 실행

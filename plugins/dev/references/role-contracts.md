@@ -19,7 +19,7 @@ The runtime branch only changes *how* a role is executed, never *which* gates ap
 - **CUF selection** — author only the critical user flows (a regression breaks revenue, data integrity, or user trust). Breadth is a cost; confirm 1-3 flows, never auto-pick everything.
 - **User review gate between plan and generation** — the planner's Markdown plan is presented and explicitly approved before any spec code is generated. The plan is cheap to fix; generated specs are not.
 - **Semantic locators** — generated specs use `getByRole(role, { name })` / `getByLabel` / `getByText`, never CSS/XPath. Send brittle selectors back to be fixed.
-- **Burn-in flake gate** — every new/changed spec runs `npx playwright test <testDir>/<flow>.spec.ts --repeat-each=3`; a single failure across the repeats = flaky = blocked. (`--repeat-each` is an authoring-time gate, not a full-suite CI flag.)
+- **Burn-in flake gate**: every new/changed spec runs `npx playwright test <testDir>/<flow>.spec.ts --repeat-each=3`; a single failure across the repeats = flaky = blocked. (`--repeat-each` is an authoring-time gate, not a full-suite CI flag.)
 - **Trace-first diagnosis** — a failure is diagnosed from its trace (headless `npx playwright trace` subcommands) before any patch, classifying it as real regression / selector drift / environment-data / genuine flake.
 - **Bounded healer retries** — at most 3 heal attempts; do not loop indefinitely.
 - **Skip-after-3 with reason** — if still red after 3 attempts, quarantine honestly (`test.skip` / `test.fixme`) with a comment stating the reason and a tracking link. Never leave the suite red or silently drop coverage.

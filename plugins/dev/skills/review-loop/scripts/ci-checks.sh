@@ -53,14 +53,22 @@ no_check_reason() {
   [ "$runs" != 0 ] || echo no_trigger
 }
 
-# An Actions job with no step and no runner never started. Prints the check run's
-# failure annotation (the job id is its check-run id); exits 1 when the job ran or
-# could not be read, so an unknown job counts as a real failure.
+# An Actions job that completed with no step and no runner, neither skipped nor
+# cancelled, never started: the predicate release's ci-run-check.sh uses. Prints the
+# check run's failure annotation (the job id is its check-run id), or "annotation
+# unread" when that lookup fails; exits 1 when the job ran or could not be read, so
+# an unknown job counts as a real failure.
 never_started() {
+  local ann
   gh api "repos/{owner}/{repo}/actions/jobs/$1" 2>/dev/null \
-    | jq -e '((.steps // [null]) | length) == 0 and (.runner_name // "") == ""' >/dev/null 2>&1 || return 1
-  gh api "repos/{owner}/{repo}/check-runs/$1/annotations" 2>/dev/null \
-    | jq -r '[.[]? | select(.annotation_level == "failure") | .message][0] // ""' 2>/dev/null
+    | jq -e '.status == "completed" and (.conclusion | IN("skipped", "cancelled") | not)
+             and ((.steps // []) | length) == 0 and ((.runner_id // 0) == 0)' >/dev/null 2>&1 || return 1
+  if ann=$(gh api "repos/{owner}/{repo}/check-runs/$1/annotations" 2>/dev/null) \
+     && ann=$(jq -r '[.[] | select(.annotation_level == "failure") | .message][0] // ""' <<<"$ann" 2>/dev/null); then
+    printf '%s' "$ann"
+  else
+    printf 'annotation unread'
+  fi
   return 0
 }
 

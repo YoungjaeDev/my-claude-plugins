@@ -95,7 +95,14 @@ has   "unannotated never-started job still flagged" "$out" "job check never star
 lacks "no billing hint without a billing annotation" "$out" "Billing"
 has   "missing annotation is marked unread" "$out" "annotation unread"
 
-# --- 7. usage
+# --- 7. a job cancelled before a runner was assigned: stopped by someone, not locked out
+fix cancelled "$(runs_path v1.5.0)" '[{"total_count":1,"workflow_runs":[{"id":10,"name":"validate-codex","status":"completed","conclusion":"cancelled","html_url":"https://example/runs/10"}]}]'
+fix cancelled "$(jobs_path 10)" '[{"total_count":1,"jobs":[{"id":100,"name":"check","status":"completed","conclusion":"cancelled","steps":[],"runner_id":0,"runner_name":"","check_run_url":"https://api.github.com/repos/o/r/check-runs/100"}]}]'
+run cancelled v1.5.0
+has   "cancelled run reported as cancelled" "$out" "run 10 completed/cancelled"
+lacks "job cancelled before a runner is not never-started" "$out" "never started"
+
+# --- 8. usage
 run none
 is    "missing tag is a usage error" "$rc" 2
 

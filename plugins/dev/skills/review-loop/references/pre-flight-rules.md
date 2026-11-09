@@ -1,15 +1,10 @@
 # Pre-flight Review Detection (Step 5)
 
-Triggered at the top of every iteration BEFORE the wait/polling phase. Goal: decide in one round-trip whether to wait, proceed, fall back, or abort. Removes the historical hang where Step 6 always polled CR status even when reviews had already arrived.
+`scripts/pre-flight.sh` runs at the top of every iteration, before any wait, and decides in one round of 6 reads whether to proceed, wait for CodeRabbit, wait for Codex, fall back on a rate limit, or stop. The gate drives Steps 6, 6b and 7.
 
-## Why pre-flight
+The two reviewers report on different channels at different times. Codex usually lands minutes before CodeRabbit, so a Codex review never means CodeRabbit is done, and CodeRabbit reports on a commit status or a check-run depending on how its app is installed (`scripts/cr-commit-state.sh` reads both).
 
-Two reviewers (CR + Codex) on different channels with different timings:
-
-- Codex usually arrives well before CR, by anything from a few minutes to tens of minutes. "Codex landed → CR done" is NOT a safe assumption.
-- CR uses commit-status **or** a check-run, depending on how the app is installed on the repo; Codex uses PR reviews. They cannot be merged into one probe. `scripts/cr-commit-state.sh` normalizes CR's two surfaces onto one vocabulary.
-- Mid-action re-reviews are real: one PR accumulates several distinct Codex reviews across iterations. Pre-flight has to surface the latest unprocessed review id, not just "any review existed".
-- PR timeline rendering can re-order arrivals (Codex emoji flip can push CR review visually first). Pre-flight sorts by `submitted_at` / `created_at` only — never by GitHub timeline body order.
+One PR collects several Codex reviews across iterations, so pre-flight looks for the latest unprocessed review id, not any review. It orders by `submitted_at` / `created_at`, never by the PR timeline.
 
 ## Six-source fetch (parallel-safe)
 
@@ -22,9 +17,7 @@ Two reviewers (CR + Codex) on different channels with different timings:
 | 5 | Codex emoji B | `repos/$O/$R/commits/$SHA/check-runs` | Check-runs named like Codex — wait signal only (in_progress / findings), never clean |
 | 6 | Codex HEAD verdict | `scripts/codex-head-verdict.sh` -> `issues/$PR/comments` + `pulls/$PR/reviews` (`--paginate`) | Summary comment Running/Completed/Failed + SHA, and the `commit_id == HEAD` review; authoritative over channels 4/5 |
 
-Channel 4/5 (emoji) are best-effort: the GitHub API exposes **no reliable surfacing path** for the marker. If both return empty, fall back to **timeout-based** logic (`push_age vs codex_timeout_seconds`, default `900` = 15 min, `scripts/codex-turnaround.sh`).
-
-> Channel C (`pulls/$PR/reviews/$rid/reactions`) was considered but returns 404 in most cases — only worth adding if a confirmed PR URL surfaces a real signal there.
+Channels 4 and 5 are best-effort hints, since the API has no reliable surface for the Codex marker. `scripts/probe-codex-state.sh` also tries review-level reactions (`pulls/$PR/reviews/$rid/reactions`, often 404) when both are `unknown` (`codex-parsing-rules.md`), and with no signal at all the timeout logic applies (`push_age` against `codex_timeout_seconds`, default `900`, `scripts/codex-turnaround.sh`).
 
 ## CR state read
 
@@ -45,13 +38,11 @@ cr_desc=$(jq -r '.description // ""' <<<"$cr_status")
 | a surface that fails to fetch, or returns a page that does not parse | `error` (with that `channel`), never `none` |
 | `success` whose description / title is a rate-limit marker (`Review rate limited`, `Review limit reached`, `rate limited`, refill phrasing) | `rate_limited` |
 
-The last row is applied on both surfaces. On a rate-limited push CodeRabbit posts a passing `Review rate limited` check by design so it never blocks a protected branch (docs.coderabbit.ai `management/rate-limits`); no review ran, and PR #283 merged on exactly this row. The transient `Review skipped: free tier disabled` is not matched (see below). A success status is still not CodeRabbit's verdict: that is the review attached to HEAD (`scripts/cr-head-verdict.sh`, GLOSSARY "HEAD 판정").
-
-Reading only `/statuses` is what made every check-run repo report `cr_state: none` forever: pre-flight routed to `cr_wait`, `poll-cr-status.sh` never saw a terminal state, and the loop spun to `TIMEOUT` while the review had finished and posted inline comments. Fixture-covered in `tests/run-tests.sh`.
+The last row applies on both surfaces: on a rate-limited push CodeRabbit posts a passing `Review rate limited` check so it never blocks a protected branch (docs.coderabbit.ai `management/rate-limits`), and no review ran. A success status is still not CodeRabbit's verdict, which is the review attached to HEAD (`scripts/cr-head-verdict.sh`).
 
 - `cr_state ∈ {success, failure, pending, rate_limited, "", error}` (`""` → no status row yet).
-- `cr_desc` carries the free-tier-disabled and `Review limit reached` text in newer CR versions (this is the **new channel** Step 7b previously missed).
-- **`Review skipped: free tier disabled` is transient, not terminal.** CodeRabbit briefly posts `success` + this description (an hourly fair-usage quota refill, observed ~5 min) before replacing it with `Review completed`. It is held non-terminal for `CR_SKIP_GRACE` seconds (default `300`) and only routed to `rate_limited` past that window — distinct from genuine `Review limit reached` / `rate limited`, which route immediately.
+- `cr_desc` carries the free-tier-disabled and `Review limit reached` text in newer CodeRabbit versions.
+- **Transient skip**: `Review skipped: free tier disabled` is not terminal. CodeRabbit briefly posts `success` + this description (an hourly fair-usage quota refill, observed ~5 min) before replacing it with `Review completed`. It is held non-terminal for `CR_SKIP_GRACE` seconds (default `300`) and only routed to `rate_limited` past that window — distinct from genuine `Review limit reached` / `rate limited`, which route immediately.
 
 ## CR rate-limit signal (consolidated)
 
@@ -123,7 +114,9 @@ emoji_state ∈ {findings, clean, in_progress, unknown}
 
 The emoji and timeout rows apply only when the Codex HEAD verdict is `unknown` with no summary comment (see "Codex HEAD verdict" above). `codex_timeout_seconds` defaults to `900` (`CODEX_BUDGET_DEFAULT`, `scripts/codex-turnaround.sh`). Override per-run via env var `CODEX_PREFLIGHT_TIMEOUT` if a CI pattern shows Codex routinely lands later.
 
-`CR_SKIP_GRACE` defaults to `300` (seconds). It bounds how long a transient `success` + `Review skipped: free tier disabled` row is held as `cr_wait` before being treated as a genuine disable (`rate_limited`). The grace clock (`cr_skip_age`) is anchored to the CR status row's own `created_at` — i.e. how long *that placeholder* has existed — so a bot that queues the row late (more than the grace after the push) still gets the full window to flip to `Review completed`; it falls back to `push_age` only when the status carries no parseable timestamp. The background `poll-cr-status.sh` anchors the same window to the same `created_at`, falling back to the first moment it *sees* the skip row, so a foreground re-run with the remaining cap does not restart the grace — both measure placeholder age, not push age. Env-only, no `--flag` — mirrors `EARLY_CHECK_WINDOW`.
+`CR_SKIP_GRACE` (default `300` seconds, env only, no flag) bounds how long a transient `success` + `Review skipped: free tier disabled` row is held as `cr_wait` before it reads as a genuine disable (`rate_limited`).
+
+Its clock (`cr_skip_age`) counts from the status row's own `created_at`, so a row queued late still gets the whole window, and falls back to `push_age` only when the row has no parseable timestamp. `poll-cr-status.sh` uses the same anchor, falling back to the first moment it sees the row, so a foreground re-run with the remaining cap does not restart the grace.
 
 ## Output JSON contract
 
@@ -147,23 +140,15 @@ The emoji and timeout rows apply only when the Codex HEAD verdict is `unknown` w
 }
 ```
 
-## State persistence
+## State, failure and polling
 
-After pre-flight runs, the SKILL.md writes `pre_flight_decision: {cr_state, codex_state, gate, codex_timeout_active, rate_limit_source}` into `$STATE_FILE`. Next iter can use this for diagnostics or to skip re-probing when a gate decision is sticky (e.g. `rate_limited`).
-
-## Behavior when pre-flight itself fails
-
-Any `gh api` returning a non-2xx, or a page that does not parse, propagates as `error` for that channel only — pre-flight emits `gate: cr_wait` and lets the legacy Step 6 polling cover the gap. The skill never aborts on pre-flight failure; it degrades to v1 behavior.
-
-## Polling-interval coupling
-
-When `gate == cr_wait` or `gate == codex_wait`, Step 6 / 6b take over with `INTERVAL` controlling poll frequency. The default is `8s`, inside the 5-10s pseudo-interrupt window: pre-flight already absorbs the cold-start latency that a longer interval would otherwise hide.
+- **State**: after pre-flight, `pre_flight_decision: {cr_state, codex_state, gate, codex_timeout_active, rate_limit_source}` goes into `$STATE_FILE`, for diagnostics and for a sticky gate such as `rate_limited`.
+- **Failure**: a `gh api` call that fails or returns a page that does not parse is `error` for that channel only. Pre-flight then emits `gate: cr_wait`, Step 6 polling covers the gap, and the run never aborts on it.
+- **Polling**: on `cr_wait` or `codex_wait`, Steps 6 and 6b poll with `INTERVAL` as the base interval (default 30, `scripts/parse-args.sh`), and `scripts/next-check.sh` adapts each look around it.
 
 ## Small-diff codex-only heuristic (Step 5b)
 
-Runs once, on `ITER=1`, after the pre-flight gate so a rate-limited PR does not spend a cycle on
-engagement probing. When the PR is small enough that a full CR review is not worth a quota slot and
-Codex is already engaged, the run flips to `codex-only` for its remaining iterations.
+Runs once, on `ITER=1`, after the pre-flight gate, so a rate-limited PR spends no cycle on engagement probing. A PR too small to be worth a CodeRabbit quota slot, with Codex already engaged, flips to `codex-only` for the rest of the run.
 
 ```bash
 # `gate=proceed` means CR already finished on this HEAD and may be holding inline findings.
@@ -184,6 +169,4 @@ if [ "$ITER" = "1" ] && [ "$CR_SOURCE" = "auto" ] && [ "$SMALL_DIFF_LOC" -gt 0 ]
 fi
 ```
 
-Both thresholds must hold; `--small-diff-threshold-loc 0` disables the heuristic entirely. The
-`origin/$BASE...HEAD` three-dot range is the merge-base diff GitHub itself shows — a two-dot range
-would count every commit the base picked up after the fork.
+Both thresholds must hold, and `--small-diff-threshold-loc 0` disables the heuristic. The three-dot `origin/$BASE...HEAD` range is the merge-base diff GitHub shows; a two-dot range would count every commit the base gained after the fork.

@@ -39,7 +39,7 @@
     },
     "auto_judge_log": {
       "type": "array",
-      "description": "One record per Step 9c decision (references/autonomous-judgment.md, \"Log entry shape\"). scripts/auto-merge-gate.sh reads the current iteration's apply records to pick next_action.",
+      "description": "One record per Step 9c decision (references/autonomous-judgment.md, \"Log entry and counters\"). scripts/auto-merge-gate.sh reads the current iteration's apply records to pick next_action.",
       "items": {
         "type": "object",
         "required": ["iter", "src", "action"],

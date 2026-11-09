@@ -3183,8 +3183,9 @@ for doc in "$SKILL_ROOT/SKILL.md" "$ROOT/plugins/dev/CLAUDE.md" "$ROOT/AGENTS.md
   is "enum line in ${doc#"$ROOT"/} = schema enum" "$(enum_line "$doc")" "$SCHEMA_STATES"
 done
 # Every literal the run assigns must be a schema value.
-is "every final_state=<literal> in SKILL.md and run-blocks.md is in the schema" \
-   "$(grep -ohE 'final_state=[a-z_]+' "$SKILL_ROOT/SKILL.md" "$SKILL_ROOT/references/run-blocks.md" \
+is "every final_state=<literal> in SKILL.md, procedure.md, coordination.md and run-blocks.md is in the schema" \
+   "$(grep -ohE 'final_state=[a-z_]+' "$SKILL_ROOT/SKILL.md" "$SKILL_ROOT/references/procedure.md" \
+      "$SKILL_ROOT/references/coordination.md" "$SKILL_ROOT/references/run-blocks.md" \
       | cut -d= -f2 | sort -u | not_in_schema)" ""
 
 echo

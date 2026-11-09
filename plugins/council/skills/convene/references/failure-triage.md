@@ -1,12 +1,8 @@
 # Failure triage: agy log classification
 
-Detail for the Failure policy section's agy triage step, pulled out of SKILL.md so the body
-keeps only the failure table.
-
-Triage an agy failure by matching its most recent log against the three known signatures. Match
-and report the classification, not the log body: the log sits in an agent configuration
-directory and its lines carry paths, settings, and auth diagnostics that the triage decision does
-not need. Grepping for the three patterns answers the question with none of that exposure:
+The Failure policy step of `SKILL.md`: match agy's most recent log against 3 known signatures and
+report only the classification. The log lines carry paths, settings and auth diagnostics the
+decision does not need, so the block prints none of them.
 
 ```bash
 LOG=$(ls -t "$HOME/.gemini/antigravity-cli/log/"cli-*.log 2>/dev/null | head -1)
@@ -22,5 +18,3 @@ else
   echo "agy-triage: unclassified"
 fi
 ```
-
-Show the raw log only if the user asks for it after seeing the classification.

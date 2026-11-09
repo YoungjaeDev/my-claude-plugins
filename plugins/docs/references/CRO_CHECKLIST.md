@@ -1,6 +1,6 @@
 # CRO (Conversion Rate Optimization) Checklist
 
-Optimize README for user adoption and engagement.
+Checks that make a README convert visitors into users: a 5-second test, trust signals, a quick start under 5 minutes, and the Demo and Banner checks `/docs:readme analyze` scores against.
 
 ---
 
@@ -52,7 +52,8 @@ If not, rewrite your header.
 
 Target: Under 5 minutes from landing to working result.
 
-**Measure your quick start:**
+Measure your quick start:
+
 1. Fresh machine test
 2. Time each step
 3. Identify friction points
@@ -138,7 +139,7 @@ First screen should contain:
 ### Visual Placement
 
 ```
-[Banner or Logo]
+[Top image: real UI or result screenshot, else banner or logo]
 [Name + Tagline]
 [Badges]
 [Navigation links]
@@ -156,6 +157,7 @@ First screen should contain:
 
 ### Banner Check
 
+- [ ] A banner is used only because the project has no real UI or result screenshot for the top
 - [ ] The image carries no generated text; the headline is typeset onto it
 - [ ] Headline is one sentence of 8 words or fewer that states the value or the result
 - [ ] `alt` states the headline
@@ -203,7 +205,7 @@ Content hidden until clicked...
 
 ### Decision Tree for Heterogeneous Audiences
 
-```markdown
+````markdown
 ## Installation
 
 **For quick evaluation:**
@@ -220,7 +222,7 @@ npm install tool-name
 ```bash
 git clone ... && npm install
 ```
-```
+````
 
 ### Skill Level Accommodation
 

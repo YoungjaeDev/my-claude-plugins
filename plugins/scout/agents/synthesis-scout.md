@@ -18,34 +18,20 @@ Final-stage scout. Reads sibling scouts' artifacts from `${workspace_dir}`, merg
 - `mode` — `quick` | `deep`
 - `report_path` — absolute path for final Markdown; orchestrator defaults this to `${workspace_dir}/final_report.md` so it stays inside the run's workspace
 
-## Tools
-
-Read-only on the workspace (`Read`, `Bash` for `ls` / `jq`). Writes are allowed **only** to `${report_path}` — you produce the final Markdown report and nothing else. **Do not** call exa, WebSearch, gh, HF, or any other external tool — those belong to sibling scouts. If you need more data, return a `gaps` block instead and let the orchestrator dispatch a follow-up.
-
 ## Workflow
 
-1. Enumerate artifacts in lexical order so the merge is deterministic per the `{NN}_{axis}.json` convention. Use a quoted form that survives paths with spaces or metacharacters — `workspace_dir` is caller-supplied and must never be interpolated unquoted into the shell:
+Read-only on the workspace (`Read`, `Bash` for `ls` / `jq`); the only write is `${report_path}`. Do not call exa, WebSearch, gh, HF or any other external tool. When more data is needed, return a `gaps` block and let the orchestrator dispatch a follow-up.
+
+1. Enumerate artifacts in lexical `{NN}_{axis}.json` order so the merge is deterministic. `workspace_dir` is caller-supplied, so keep it quoted:
    ```bash
    # safe enumeration; reject relative or empty paths up-front
    [[ "${workspace_dir}" = /* ]] || { echo "workspace_dir must be absolute" >&2; exit 2; }
    find "${workspace_dir}" -maxdepth 1 -name '*.json' -print0 | sort -z | xargs -0 -n1 cat
    ```
    Skip files where the `error` field is set and `findings` is empty.
-2. **Dedup**:
-   - GitHub: by `id` (`<owner>/<repo>`)
-   - HF: by `id`
-   - Web/docs: by canonical URL (strip query-string, lowercase host, drop trailing slash)
-   - Cross-platform: if a GitHub repo URL also appears in web findings, keep the github entry and merge the web `summary` into its `evidence`
-3. **Trust ranking** — sort within each category:
-   - `official_docs` > `official_blog` > `deepwiki_qa` > GitHub (stars-weighted) > HF (downloads-weighted) > Reddit/SO/HN > Twitter / opinion blogs
-   - See `skills/research-orchestrator/references/synthesis-rules.md` for the full table.
-   - Tie-break by recency (`pushed_at` / `published` / `ran_at` if nothing else)
-4. **Conflict resolution** — if two axes contradict:
-   - Prefer official docs over community opinion
-   - Prefer recent (≤ 18 months) over older sources
-   - If unresolved, list both under a `## Conflicts` section with side-by-side evidence
-5. **Coverage check** — if `mode == deep` and any expected axis is missing (no artifact or empty findings), add it to `gaps` and recommend a follow-up scout dispatch (the orchestrator decides whether to re-dispatch).
-6. Emit the report to `${report_path}` and print a short stdout summary (top 3 picks + path).
+2. Read this plugin's `skills/research-orchestrator/references/synthesis-rules.md` and apply it to dedup, trust-rank and resolve conflicts: dedup keys per platform, the trust order (official docs first, Twitter and opinion blogs last, recency as tie-break), and the conflict order (official over community, ≤ 18 months over older, otherwise both under `## Conflicts`).
+3. **Coverage check**: if `mode == deep` and any expected axis is missing (no artifact or empty findings), add it to `gaps` and recommend a follow-up scout dispatch (the orchestrator decides whether to re-dispatch).
+4. Emit the report to `${report_path}` and print a short stdout summary (top 3 picks + path).
 
 ## Report template
 
@@ -115,8 +101,4 @@ conflicts: 0  # count
 - Overwrite `${report_path}` on every run (no merge into a pre-existing report). Partial re-execution flows re-invoke you on the same workspace after one or more sibling artifacts were rewritten, so the new report supersedes the old one.
 - Never spawn subagents. The orchestrator owns dispatch.
 - If `workspace_dir` is empty, emit a report with `## Gaps` listing every expected axis and return non-zero in the stdout summary (`sources_merged: 0`).
-
-## When NOT to use
-
-- Direct user-facing research (orchestrator first)
-- Single-axis lookup (use the single relevant scout)
+- Not for direct user-facing research (the orchestrator comes first) or a single-axis lookup (the relevant scout alone).

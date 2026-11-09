@@ -1,13 +1,14 @@
 # Analyzed Examples Summary
 
-Quick reference of all 9 analyzed awesome-readme projects.
+The 9 analyzed awesome-readme projects, one section each with type, URL, takeaway, key patterns and structure, then pattern frequency and 8 measured banners.
 
 ---
 
 ## 1. ai/size-limit
 
-**Type**: CLI Tool (Performance Budget)
-**URL**: https://github.com/ai/size-limit
+- **Type**: CLI Tool (Performance Budget)
+- **URL**: https://github.com/ai/size-limit
+- **Takeaway**: User segmentation + social proof upfront = high trust, clear paths.
 
 ### Key Patterns
 
@@ -28,16 +29,13 @@ Plugins Table
 Configuration
 ```
 
-### Takeaway
-
-User segmentation + social proof upfront = high trust, clear paths.
-
 ---
 
 ## 2. gofiber/fiber
 
-**Type**: Web Framework (Go)
-**URL**: https://github.com/gofiber/fiber
+- **Type**: Web Framework (Go)
+- **URL**: https://github.com/gofiber/fiber
+- **Takeaway**: Benchmarks + limitations = credibility through transparency.
 
 ### Key Patterns
 
@@ -62,16 +60,13 @@ Limitations
 Examples
 ```
 
-### Takeaway
-
-Benchmarks + limitations = credibility through transparency.
-
 ---
 
 ## 3. httpie/cli
 
-**Type**: CLI Tool (HTTP Client)
-**URL**: https://github.com/httpie/cli
+- **Type**: CLI Tool (HTTP Client)
+- **URL**: https://github.com/httpie/cli
+- **Takeaway**: Visual demo + progressive examples + transparency = trust + understanding.
 
 ### Key Patterns
 
@@ -95,16 +90,13 @@ Community
 Contributing
 ```
 
-### Takeaway
-
-Visual demo + progressive examples + transparency = trust + understanding.
-
 ---
 
 ## 4. release-it/release-it
 
-**Type**: CLI Tool (Release Automation)
-**URL**: https://github.com/release-it/release-it
+- **Type**: CLI Tool (Release Automation)
+- **URL**: https://github.com/release-it/release-it
+- **Takeaway**: Multiple entry points + schema-driven config = developer flexibility.
 
 ### Key Patterns
 
@@ -129,16 +121,13 @@ Hooks
 Plugins ecosystem
 ```
 
-### Takeaway
-
-Multiple entry points + schema-driven config = developer flexibility.
-
 ---
 
 ## 5. dbt-labs/dbt-core
 
-**Type**: Data Tool
-**URL**: https://github.com/dbt-labs/dbt-core
+- **Type**: Data Tool
+- **URL**: https://github.com/dbt-labs/dbt-core
+- **Takeaway**: Bridge analogy + visuals + minimal text = accessible complexity.
 
 ### Key Patterns
 
@@ -162,16 +151,13 @@ Reporting bugs
 Code of Conduct
 ```
 
-### Takeaway
-
-Bridge analogy + visuals + minimal text = accessible complexity.
-
 ---
 
 ## 6. PostHog/posthog
 
-**Type**: SaaS (Product Analytics)
-**URL**: https://github.com/PostHog/posthog
+- **Type**: SaaS (Product Analytics)
+- **URL**: https://github.com/PostHog/posthog
+- **Takeaway**: Cloud-first + feature density + clear limitations = honest SaaS pitch.
 
 ### Key Patterns
 
@@ -195,16 +181,13 @@ Contributing
 Hiring CTA
 ```
 
-### Takeaway
-
-Cloud-first + feature density + clear limitations = honest SaaS pitch.
-
 ---
 
 ## 7. ryanoasis/nerd-fonts
 
-**Type**: Font Collection
-**URL**: https://github.com/ryanoasis/nerd-fonts
+- **Type**: Font Collection
+- **URL**: https://github.com/ryanoasis/nerd-fonts
+- **Takeaway**: Decision tree + platform coverage = empowered user choice.
 
 ### Key Patterns
 
@@ -230,16 +213,13 @@ Motivation
 License
 ```
 
-### Takeaway
-
-Decision tree + platform coverage = empowered user choice.
-
 ---
 
 ## 8. amitmerchant1990/electron-markdownify
 
-**Type**: Desktop Application
-**URL**: https://github.com/amitmerchant1990/electron-markdownify
+- **Type**: Desktop Application
+- **URL**: https://github.com/amitmerchant1990/electron-markdownify
+- **Takeaway**: Hero GIF + dual paths + credits = professional desktop app presentation.
 
 ### Key Patterns
 
@@ -267,16 +247,13 @@ License
 Author footer
 ```
 
-### Takeaway
-
-Hero GIF + dual paths + credits = professional desktop app presentation.
-
 ---
 
 ## 9. mkosir/react-parallax-tilt
 
-**Type**: React Component
-**URL**: https://github.com/mkosir/react-parallax-tilt
+- **Type**: React Component
+- **URL**: https://github.com/mkosir/react-parallax-tilt
+- **Takeaway**: External demos + structured props = lightweight yet comprehensive.
 
 ### Key Patterns
 
@@ -297,10 +274,6 @@ Props table (detailed)
 Feature sections with demo links
 Development setup
 ```
-
-### Takeaway
-
-External demos + structured props = lightweight yet comprehensive.
 
 ---
 

@@ -22,10 +22,10 @@ anywhere in the prompt; drop it and treat the rest as the request.
 4. **Act.**
    - Clear: print `이해한 내용: <one-line restatement>` and the corrected terms
      (`메탈로지 → methodology`), then do the work.
-   - Ambiguous: ask the 2-3 decisions that most change the work in one interactive-input gate
-     (Claude `AskUserQuestion`; Codex `request_user_input` when exposed, otherwise one short
-     blocking question). Each question states the current reading and marks a recommended option.
-     Proceed once answered.
+   - Ambiguous: ask the 2-3 decisions that most change the work in one round. Ask with
+     `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when neither is available,
+     ask one short blocking question in plain text. Each question states the current reading and
+     marks a recommended option. Proceed once answered.
 5. **Propose dictionary rows.** At the end of the response, list the term corrections from steps 2
    and 4 that are likely to recur:
 
@@ -45,5 +45,6 @@ anywhere in the prompt; drop it and treat the rest as the request.
 
 ## Done when
 
-The response shows either the one-line restatement or answered questions before any work, and ends
-with dictionary candidates or none. No row enters `.agents/voice-terms.md` without approval.
+- The response shows the one-line restatement, or the answered questions, before any work.
+- It ends with dictionary candidates, or says there are none.
+- No row enters `.agents/voice-terms.md` without the user's approval.

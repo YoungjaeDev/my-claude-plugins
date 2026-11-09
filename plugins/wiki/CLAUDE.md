@@ -1,6 +1,6 @@
 # wiki
 
-Outside-knowledge wiki for any repo: facts about what the repo does not control (platforms, vendors, customers, the domain), whether they came in as a document or were learned while working. Decisions live in `docs/adr/`, terms in `GLOSSARY.md`, and repeated mistakes become `/retro` checks; the wiki takes none of those (ADR 0003).
+Outside-knowledge wiki for any repo: facts about what the repo does not control (platforms, vendors, customers, the domain), whether they came in as a document or were learned while working. Decisions live in `docs/adr/`, terms in `GLOSSARY.md`, and repeated mistakes become `/retro` checks; the wiki takes none of those.
 
 No hooks, no scripts. Every skill is plain prose that runs the same in Claude Code and Codex.
 
@@ -24,8 +24,5 @@ No hooks, no scripts. Every skill is plain prose that runs the same in Claude Co
     └── <topic>/<concept>.md  concept pages; ## Sources cites raw files or working evidence (PR, commit, measurement)
 ```
 
-The page format is defined once, in `skills/ingest/SKILL.md`. `lint` checks against it; other skills that write pages defer to it.
-
-## Old-format pages
-
-Product repos may still hold pages from the earlier wiki (frontmatter `id`/`status`/`volatility`/`sources`, typed relation lines, sometimes no `## Sources`). They stay readable. `lint` counts them in one line; `ingest` rewrites a page in the new format when it next edits it. There is no bulk migration.
+- **Page format**: defined once, in `skills/ingest/SKILL.md`. `lint` checks against it; other skills that write pages defer to it.
+- **Old-format pages**: product repos may still hold pages from the earlier wiki (frontmatter `id`/`status`/`volatility`/`sources`, typed relation lines, sometimes no `## Sources`). They stay readable; `lint` counts them in one line and `ingest` rewrites a page in the new format when it next edits it. There is no bulk migration.

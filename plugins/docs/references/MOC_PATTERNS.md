@@ -4,7 +4,8 @@ The hook-sourcing ladder, lightweight/strict output examples, and wiki
 `index.md` mapping for generating a Map of Content (MOC) over an arbitrary
 folder. The `## MOC` section's `### Quick Reference` in the `doc-guides` skill
 is the SSOT. Output examples below use the Korean-default form (hooks reflect
-the Korean docs being indexed).
+the Korean docs being indexed), and the lines the command writes itself follow the
+tone of `writing-standard.md`: 합니다체 for the intro, a noun phrase for a hook.
 
 ## Hook sourcing
 
@@ -44,8 +45,8 @@ Output 1 (per-file hook bullets) and output 2 (per-domain table) go in the same 
 ```markdown
 # docs Map of Content (MOC)
 
-이 파일은 docs 폴더의 진입점이다. 각 페이지를 1줄 hook과 함께 나열하며,
-도메인별로 그룹화한다. typed cross-ref 범례는 아래를 따른다.
+docs 폴더의 진입점입니다. 각 페이지를 1줄 hook과 함께 도메인별로 나열하고,
+typed cross-ref 범례는 아래와 같습니다.
 
 > 범례: `> Refines:` 상세 추가 · `> See-also:` 관련 · `> Supersedes:` 대체
 

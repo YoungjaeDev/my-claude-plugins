@@ -6,7 +6,7 @@ Copy-paste templates for different project types.
 
 ## Template 1: CLI Tool
 
-```markdown
+````markdown
 <div align="center">
 
 # tool-name
@@ -17,7 +17,7 @@ One-line description of what this CLI tool does.
 [![Build Status](https://img.shields.io/github/actions/workflow/status/user/tool-name/ci.yml)](https://github.com/user/tool-name/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[Documentation](link) | [Examples](link) | [Contributing](link)
+[Documentation](link) | [Examples](link) | [Contributing](#contributing-and-license)
 
 </div>
 
@@ -101,16 +101,18 @@ Create `.toolrc` in your project root:
 | Command not found | Run `npm install -g tool-name` |
 | Permission denied | Check file permissions |
 
-## License
+## Contributing and License
 
-MIT
-```
+- Issues and questions: [GitHub Issues](link)
+- Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md)
+- License: MIT, see [LICENSE](LICENSE)
+````
 
 ---
 
 ## Template 2: Library/Package
 
-```markdown
+````markdown
 <div align="center">
 
 # library-name
@@ -155,16 +157,16 @@ console.log(result); // => expected output
 
 Description of what this function does.
 
-**Parameters:**
+Parameters:
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `input` | `string` | Yes | Input to process |
 | `options` | `Options` | No | Configuration options |
 
-**Returns:** `Result`
+Returns: `Result`
 
-**Example:**
+Example:
 
 ```javascript
 const result = feature('hello', { uppercase: true });
@@ -216,16 +218,18 @@ const result: Result = feature('input', options);
 | Safari | 13+ |
 | Edge | 80+ |
 
-## License
+## Contributing and License
 
-MIT
-```
+- Issues and questions: [GitHub Issues](link)
+- Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md)
+- License: MIT, see [LICENSE](LICENSE)
+````
 
 ---
 
 ## Template 3: React Component
 
-```markdown
+````markdown
 <div align="center">
 
 # react-component-name
@@ -347,16 +351,18 @@ const props: ComponentProps = {
 <Component {...props}>Content</Component>
 ```
 
-## License
+## Contributing and License
 
-MIT
-```
+- Issues and questions: [GitHub Issues](link)
+- Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md)
+- License: MIT, see [LICENSE](LICENSE)
+````
 
 ---
 
 ## Template 4: MCP Server / Claude Code Plugin
 
-```markdown
+````markdown
 <div align="center">
 
 # plugin-name
@@ -427,6 +433,7 @@ Create `.claude/plugin-name.local.md`:
 
 - Claude Code v1.0+
 - API key for external service (if applicable)
+- <other runtime or CLI the plugin calls, if any>
 
 ## Examples
 
@@ -451,16 +458,18 @@ Result: {"message": "hello"}
 | API error | Check API key in config |
 | Not found | Reinstall plugin |
 
-## License
+## Contributing and License
 
-MIT
-```
+- Issues and questions: [GitHub Issues](link)
+- Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md)
+- License: MIT, see [LICENSE](LICENSE)
+````
 
 ---
 
 ## Template 5: SaaS / Web Application
 
-```markdown
+````markdown
 <div align="center">
 
 <img src="logo.svg" width="150" alt="App Name">
@@ -505,7 +514,7 @@ docker run -d \
   appname/appname:latest
 ```
 
-**Requirements:**
+Requirements:
 - 4GB RAM minimum
 - PostgreSQL 14+
 - Redis 6+
@@ -542,20 +551,18 @@ await client.track('event', { property: 'value' });
 - [GitHub Discussions](link)
 - [Twitter](link)
 
-## Contributing
+## Contributing and License
 
-See [CONTRIBUTING.md](CONTRIBUTING.md)
-
-## License
-
-MIT (see [LICENSE](LICENSE) for details)
-```
+- Issues and questions: [GitHub Issues](link)
+- Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md)
+- License: MIT, see [LICENSE](LICENSE)
+````
 
 ---
 
 ## Template 6: Desktop Application
 
-```markdown
+````markdown
 <div align="center">
 
 <img src="icon.png" width="100" alt="App Name">
@@ -568,13 +575,17 @@ One-line description of your desktop application.
 [![Downloads](https://img.shields.io/github/downloads/user/app-name/total)](https://github.com/user/app-name/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[Download](#download) | [Features](#features) | [Screenshots](#screenshots)
+[Download](#download) | [Features](#features) | [Demo](#demo)
 
 </div>
 
 ---
 
+## Demo
+
 ![Demo](demo.gif)
+![Screenshot 1](screenshot1.png)
+![Screenshot 2](screenshot2.png)
 
 ## Download
 
@@ -604,11 +615,6 @@ snap install app-name
 - Feature 3 - benefit
 - Cross-platform - Windows, macOS, Linux
 
-## Screenshots
-
-![Screenshot 1](screenshot1.png)
-![Screenshot 2](screenshot2.png)
-
 ## Development
 
 ```bash
@@ -632,19 +638,16 @@ npm run build
 - [React](https://reactjs.org/)
 - [TypeScript](https://typescriptlang.org/)
 
-## Credits
+## Credits and License
 
 - [Dependency 1](link)
 - [Dependency 2](link)
-
-## License
-
-MIT
+- License: MIT, see [LICENSE](LICENSE)
 
 ---
 
 Made by [Your Name](https://yoursite.com)
-```
+````
 
 ---
 
@@ -654,7 +657,8 @@ For a repository that is not distributed. Section order and reasons: `README_PAT
 `## Internal Repo Structure`. Korean-default headings; use `## Demo`, `## Current Status`, and so on
 for an English README.
 
-```markdown
+````markdown
+<!-- 실제 UI·결과 화면이 있으면 그 이미지를 맨 위에 두고, 없을 때만 아래 배너 <picture> 를 쓴다 -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png">
   <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.png">
@@ -673,6 +677,9 @@ for an English README.
 ## 데모
 
 ![<화면 이름>](assets/demo.gif)
+
+<화면이 보여주는 것 한 줄>
+조건: <하드웨어·입력·촬영일 YYYY-MM-DD>
 
 <!-- UI가 없으면 같은 자리에 결과 이미지나 실측 표를 두고 제목을 ## 결과로 바꾼다 -->
 
@@ -710,16 +717,16 @@ project-name/
 
 ## 리스크와 미확정
 
-- **<리스크 한 문장>** 근거: <문서 링크 또는 측정 기록>
+- **<리스크 이름>**: <리스크 한 문장>. 근거: <문서 링크 또는 측정 기록>
+- **<리스크 이름>**: <리스크 한 문장>. 근거: <문서 링크 또는 측정 기록>
+- **미확정**: <아직 정하지 않은 것과 정할 사람>
 
-## 문서
+## 문서와 담당
 
 | 문서 | 답하는 질문 |
 |------|-------------|
 | [docs/MOC.md](docs/MOC.md) | 문서 전체 지도 |
 | [docs/<file>.md](docs/<file>.md) | <질문> |
 
-## 담당
-
-<팀 또는 이름>, <연락 채널>
-```
+담당: <팀 또는 이름>, <연락 채널>
+````

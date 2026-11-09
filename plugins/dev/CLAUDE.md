@@ -64,7 +64,7 @@ Every bash block in this plugin shells out to `gh` and `jq`. These pitfalls brea
 
 `new` seeds an empty directory on Day 1 (`.claude/`, `CLAUDE.md`, `AGENTS.md`, README/CHANGELOG, `gh repo create` + push). `wiring` is its inverse: it diagnoses an existing repo read-only and edits only behind a confirmation gate. Both are skills only; Codex reads no command surface.
 
-- **Preflight hard guard**: `skills/new/SKILL.md` Step 0 aborts when cwd holds anything besides `.git/`, `.DS_Store`, `Thumbs.db` or `desktop.ini`, searched 5 levels deep. It is pure `find` and runs before the `PLUGIN_ROOT` resolver, so a failed resolve cannot skip it. Removing it is an explicit user decision.
+- **Preflight hard guard**: `skills/new/SKILL.md` Step 0 aborts when cwd holds anything besides `.git/`, `.DS_Store`, `Thumbs.db` or `desktop.ini`, searched 5 levels deep. The one exception is a recovery run: an `in_progress` record shaped exactly as Phase 0.5 writes it, next to nothing but the files `new` seeds (`tests/new_guard_smoke.sh`). It is `find` plus a `jq` read and runs before the `PLUGIN_ROOT` resolver, so a failed resolve cannot skip it. Removing it is an explicit user decision.
 - **Detection SSOT**: `scripts/project_state.sh` alone detects project state (read-only, one JSON blob, 14 axes). `idempotent-seed.sh diagnose` wraps it for the legacy fields and re-implements nothing.
 - **Decisions are `ASK`, not defects**: `git remote` and `gws-sync` answers go to `answers` in gitignored `.claude/state/wiring.json`, and wiring never re-asks an answered key. Every `ASK` has a step that asks (wiring Step 3.5); an unrecorded `ASK` is not a "no".
 - **One place per suppression condition**: the `gws_sync` verdict also reads `.gws-sync.json` and the `gws` CLI, so its condition lives in the verdict table only.
@@ -121,5 +121,6 @@ plugins/dev/
 ├── scripts/                               # project_state.sh, idempotent-seed.sh, infer-github-context.sh, jq-lf.sh
 ├── skills/<name>/SKILL.md                 # 12 skills; post-merge and review-loop carry references/, scripts/, tests/
 ├── tests/resolver_smoke.sh                # e2e-setup Step 0 resolver
+├── tests/new_guard_smoke.sh               # new Step 0 guard and its recovery entry
 └── CLAUDE.md                              # this file
 ```

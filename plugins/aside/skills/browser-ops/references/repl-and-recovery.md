@@ -9,5 +9,4 @@ Read the installed `aside guide repl` before use; commands and behavior can chan
 - Persistent REPL bindings persist, so use fresh names; one-shot CLI REPL context ends after that invocation. Verify temporary download access inside the same invocation.
 - Safe cookie-bearing fetch is limited to observed, trusted same-origin/direct-download GET/HEAD paths. Never use page-supplied URLs to forward credentials or perform mutations.
 - Keep account selectors and browser-profile selectors distinct; do not change user defaults. A new Claude context does not create a new browser cookie jar.
-- For login failures, preserve the actual Aside session ID in result.json; the parent asks the user to log in, and explicit continuation resumes it. Never auto-steal an apparently stale reservation. A dead CLI process is not evidence a remote/browser task stopped.
-- Claude session/agent IDs track the coding conversation. Aside session ID tracks the browser job. They are not interchangeable.
+- Never auto-steal an apparently stale reservation. A dead CLI process is not evidence a remote/browser task stopped.

@@ -6,25 +6,21 @@ allowed-tools: Read Write Edit Bash Glob Grep AskUserQuestion
 
 # E2E Setup: full Playwright harness onboarding
 
-Stand up Playwright's official AI test harness (planner -> generator -> healer) plus the surrounding engineering (auth separation, deterministic mocking, an E2E SSOT doc, gated CI). The harness is the point: a test run is a sensor, a test file is a spec, and the three roles form a self-improving loop. This skill only does **setup + orchestration + CI + integration**; it does not re-implement the roles.
+Stand up Playwright's official AI test harness (planner -> generator -> healer) plus auth separation, deterministic mocking, an E2E SSOT doc and gated CI, in 8 steps. It does not re-implement the roles. The official agents alone skip auth setup and lack codebase context; Steps 3-7 give them that context.
 
-> **Two runtime paths (Step 2).** Under **Claude Code**, `init-agents --loop=claude` generates the planner/generator/healer as registerable `.claude/agents/*.md`, and `e2e-author` / `e2e-debug` dispatch them by name (**Path A**). Under **Codex**, those generated agent files are not registerable as named subagents, so setup skips them, ensures the `.mcp.json` `playwright-test` entry, and the author/debug skills run the same roles as **generic subagents** carrying the bundled `references/role-contracts.md` (**Path B**), or sequentially when no delegation is available (**Path C**). The engineering below (Steps 3-7) and every gate are identical on both paths.
+- **Two runtime paths (Step 2)**: on Claude Code, `init-agents --loop=claude` generates registerable `.claude/agents/*.md` that `e2e-author` / `e2e-debug` dispatch by name (Path A). On Codex those files are not registerable, so setup skips them and the later skills run each role as a generic subagent carrying `references/role-contracts.md` (Path B), or sequentially (Path C). Steps 3-7 and every gate are identical on both.
+- **Check the installed Playwright, not this file**: `npx playwright init-agents --help` and `npx playwright trace --help` must print that subcommand's own usage. Read `init-agents --help` and `npx playwright --version` before relying on any flag or output filename below, and re-run init-agents after a Playwright upgrade.
+- **Bundled files** resolve through Step 0's `PLUGIN_ROOT`, never a bare `${CLAUDE_PLUGIN_ROOT}`, which Codex does not export.
 
-> **Why this skill exists (the harness-engineering point).** Installing the official agents is NOT enough: out of the box they skip auth setup, can't resolve project-known API errors, and don't know test-account usage, because they lack codebase context. Steps 3-7 below *onboard them like a new hire*: the config, auth scaffold, route-mock guidance, and especially the E2E SSOT doc are the context an agent needs to work autonomously. Skipping them is the usual reason "the official agents didn't just work."
+## Preconditions
 
-> Bundled templates live at `<plugin-root>/assets/`. Resolve `<plugin-root>` with the cross-runtime block in Step 0 (Claude `CLAUDE_PLUGIN_ROOT`, Codex plugin cache). Codex does not export `CLAUDE_PLUGIN_ROOT`, so a bare `${CLAUDE_PLUGIN_ROOT}/assets/...` copy fails there. The three template files are `playwright-ci.yml`, `e2e-guidelines.template.md`, `route-mock.scaffold.ts`.
->
-> **Check the installed Playwright, not this file.** Probe each subcommand instead of trusting a version floor: `npx playwright init-agents --help` (and `npx playwright trace --help` for the headless trace CLI) must print that subcommand's own usage, not the top-level help. Read that `init-agents --help` output, with `npx playwright --version`, before relying on any flag value or output filename below; those change between releases, and Playwright's docs say agent definitions "should be regenerated whenever Playwright is updated," so re-run init-agents after upgrades.
-
-## Preconditions / graceful degrade
-
-- This runs in the **user's project**, not the marketplace repo. Confirm a project root with a `package.json` (or offer to `npm init`).
-- If Node/npm is missing, stop and report. Do not guess an install path.
-- This skill never assumes the other `dev` skills or any sibling plugin are installed.
+- Run in the user's project, not the marketplace repo. Confirm a project root with a `package.json`, or offer `npm init`.
+- If Node/npm is missing, stop and report; do not guess an install path.
+- Never assume the other `dev` skills or a sibling plugin are installed.
 
 ## Workflow
 
-0. **Resolve the plugin root (cross-runtime)**: run once, reuse `PLUGIN_ROOT` in the `cp` steps below (Steps 5-7). Re-run the block if a later step runs in a fresh shell.
+0. **Resolve the plugin root (cross-runtime)**: run once and reuse `PLUGIN_ROOT` in Steps 2-7; re-run it in a fresh shell.
    ```bash
    # Claude exports CLAUDE_PLUGIN_ROOT; Codex does not. Every branch verifies
    # its target (CHK) exists before committing, so a stale env or an incomplete
@@ -45,10 +41,9 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
    ```
 
 1. **Detect / install Playwright**:
-   - Check for `@playwright/test` in `package.json` and a `playwright.config.*`. If absent, propose `npm init playwright@latest` (interactive) or `npm i -D @playwright/test && npx playwright install --with-deps`.
-   - Always ensure browsers are installed: `npx playwright install --with-deps`.
+   - Check for `@playwright/test` in `package.json` and a `playwright.config.*`. If absent, propose `npm init playwright@latest` (interactive) or `npm i -D @playwright/test && npx playwright install --with-deps`. Always ensure browsers with `npx playwright install --with-deps`.
    - If the user declines installation, stop here: the rest of the harness needs Playwright.
-   - **Check `playwright-cli` availability** (Decision 15: the planner/generator roles explore the app with `playwright-cli` instead of the `playwright-test` MCP server; the healer keeps the MCP server regardless):
+   - Check `playwright-cli`: the planner and generator explore the app with it, while the healer keeps the `playwright-test` MCP server.
      ```bash
      # Order from the microsoft/playwright-cli README: global binary, then the
      # project's local `npx playwright cli`, then the published package. No
@@ -67,121 +62,31 @@ Stand up Playwright's official AI test harness (planner -> generator -> healer) 
      fi
      echo "playwright-cli: $PW_CLI_MODE"
      ```
-     - `global`, `local`, or `npx`: report the mode found; `e2e-author` / `e2e-debug` will use `playwright-cli <cmd>`, `npx playwright cli <cmd>`, or `npx @playwright/cli <cmd>` accordingly. Read the command set from `<that invocation> --help`. `<that invocation> install --skills` installs Playwright's own agent skill for it into `.claude/skills/` by default; on Codex pass `--skills=agents` (values listed in `install --help`).
-     - `missing`: do **not** force `npm install -g @playwright/cli`. Print the install command (`npm install -g @playwright/cli@latest`) and continue in degraded mode: the planner/generator fall back to the `playwright-test` MCP server (same as the healer) until `playwright-cli` becomes available.
+   - `global`, `local` or `npx`: report the mode; the later skills use `playwright-cli <cmd>`, `npx playwright cli <cmd>` or `npx @playwright/cli <cmd>`, with commands from `--help`. `<that invocation> install --skills` installs Playwright's agent skill into `.claude/skills/`; on Codex pass `--skills=agents`.
+   - `missing`: never force a global install. Print `npm install -g @playwright/cli@latest` and continue degraded: the planner and generator use the `playwright-test` MCP server until `playwright-cli` exists.
 
-2. **Set up the roles: runtime branch** (planner / generator / healer). Pick the path **once** by capability; the same gates apply on every path (`${PLUGIN_ROOT}/references/role-contracts.md`, "Gates that hold on every path"). Tell the user which path you took in one sentence.
+2. **Set up the roles**: pick the path once by capability and tell the user which in one sentence. The same gates apply on every path (`${PLUGIN_ROOT}/references/role-contracts.md`, "Gates that hold on every path").
 
    | Path | Condition | How the roles are set up |
    |---|---|---|
    | **A: Claude generated agents** | Running under Claude Code (init-agents can generate registerable `.claude/agents/*.md`). | `init-agents --loop=claude` + verify the generated files. Default on Claude Code. |
    | **B/C: Codex bundled contracts** | Running under Codex (or any runtime that cannot register generated agent files as named subagents). | Do **not** generate/rely on named agents. Ensure the `.mcp.json` `playwright-test` entry and point `e2e-author` / `e2e-debug` at the bundled role contracts. |
 
-   **Path A (Claude Code):** first confirm the loop value is still offered (`npx playwright init-agents --help | grep -qw claude`); if it is not, stop and report the `--loop` values the help lists.
-   ```bash
-   npx playwright init-agents --loop=claude
-   ```
-   - **Verify the actual output**: list what init-agents wrote (it prints one path per line; or `git status --porcelain -uall`, plus `--ignored` if nothing shows) and use those paths from here on. Expect, by role rather than by filename:
-     - the planner / generator / healer agent definitions (under `.claude/agents/` for the claude loop); `e2e-author` / `e2e-debug` dispatch them as `playwright-test-planner`, `playwright-test-generator` and `playwright-test-healer`. If init-agents named them differently, stop and report the names it wrote: the later skills would not find them.
-     - `.mcp.json`: MCP config for the `playwright-test` server. **Confirm it exists**; if it is missing, merge it with the recipe below.
-     - the environment seed the planner runs first (`seed.spec.ts`, wherever init-agents put it) and the test-plan directory (`specs/`).
+   - **Path A**: confirm the loop is still offered (`npx playwright init-agents --help | grep -qw claude`); if not, stop and report the `--loop` values the help lists. Then run `npx playwright init-agents --loop=claude`.
+   - **Path A, verify the output** (init-agents prints one path per line; else `git status --porcelain -uall`, plus `--ignored`). Expect agents named `playwright-test-planner`, `playwright-test-generator` and `playwright-test-healer`, or stop and report the names it wrote. Also expect `.mcp.json`, `seed.spec.ts` and `specs/`.
+   - **Path B/C**: feature-detect `--loop=codex` as `role-contracts.md` "`--loop=codex`" says; never version-guess and never invent a loop. Write the seed and `specs/README.md` from `${PLUGIN_ROOT}/references/e2e-setup-scaffolds.md` unless they exist. The contracts are read in place from `${PLUGIN_ROOT}/references/role-contracts.md`; no per-project copy.
+   - **Both paths**: run the `.mcp.json` merge block in `${PLUGIN_ROOT}/references/role-contracts.md` verbatim; it never clobbers unrelated servers. If it reported a failure, stop and fix `.mcp.json`. Otherwise tell the user to approve the MCP server (`/mcp` or restart); a conflicting `playwright-test` definition is a review-gated merge proposal, never a silent replace.
 
-   **Path B/C (Codex, no registerable named agents):**
-   - Do not invent an unsupported loop. Feature-detect `--loop=codex` rather than version-guessing (`npx playwright init-agents --help | grep -qw codex`). Even when it is advertised, Codex cannot register the generated agent files as named subagents, so `e2e-author` / `e2e-debug` will dispatch **generic** subagents carrying the bundled contracts (or run the roles sequentially). Running `--loop=codex` is at most an optional scaffold for `.mcp.json` / `seed.spec.ts` / `specs/`; skip agent generation when it is not advertised.
-   - The runtime-neutral planner/generator/healer contracts ship at `${PLUGIN_ROOT}/references/role-contracts.md` (PLUGIN_ROOT from Step 0, same root that holds `assets/`). `e2e-author` / `e2e-debug` read them via their own Step 0 resolver; no per-project copy is needed.
-   - **Seed the environment scaffold**: Path A gets the seed and `specs/` from `init-agents`, but Path B/C skip agent generation, so create the equivalents yourself (the planner runs `seed.spec.ts` first on every path, and `e2e-author` requires it: without this, Codex setup leaves authoring blocked). Skip either file if it already exists. Write `seed.spec.ts` under the project's `testDir`; when there is no config yet, put it under `e2e/`, the `testDir` the Step 3 config writes, so Playwright collects it:
-     ```ts
-     // Default environment seed the planner runs first (Path B/C stand-in for the
-     // init-agents output). Establishes baseline app state; expand per your app.
-     import { test, expect } from "@playwright/test";
+3. **playwright.config, never clobber**: `init-agents` writes none on either path.
+   - If one exists, do not overwrite it. Back it up (`cp playwright.config.ts playwright.config.ts.bak`) and propose a merge (the `setup` project + `dependencies`, a `webServer` if local, `trace: 'on-first-retry'`, CI `retries`); show the diff and let the user accept.
+   - If none exists, write the config from `e2e-setup-scaffolds.md`.
 
-     test("seed: app reachable", async ({ page }) => {
-       await page.goto(process.env.E2E_BASE_URL ?? "http://localhost:3000");
-       await expect(page).toHaveTitle(/.*/);
-     });
-     ```
-     and `specs/README.md` (the test-plan directory):
-     ```md
-     # specs/ — test plans
+4. **Auth separation** (one login, reused via `storageState`): write `e2e/auth.setup.ts` from `e2e-setup-scaffolds.md`. Add `playwright/.auth/` to `.gitignore`; credentials come from `E2E_USER` / `E2E_PASS`, never hardcoded.
 
-     Human-readable planner output, one Markdown file per critical user flow.
-     The generator turns an approved `specs/<flow>.md` into `e2e/<flow>.spec.ts`.
-     ```
+5. **E2E operating SSOT doc**: copy `${PLUGIN_ROOT}/assets/e2e-guidelines.template.md` to `e2e/AGENTS.md` (offer `.claude/e2e-guidelines.md` instead), separate from the repo-wide `AGENTS.md`. Walk the user through the `<...>` placeholders, at least the CUF list `e2e-author` uses.
 
-   **Both paths: ensure the `playwright-test` `.mcp.json` entry (merge, never clobber unrelated servers):**
-   ```bash
-   PW_ENTRY='{"command":"npx","args":["playwright","run-test-mcp-server"]}'
-   if ! command -v jq >/dev/null 2>&1; then
-     echo "jq not found — cannot safely merge .mcp.json. Add this under .mcpServers[\"playwright-test\"] manually: $PW_ENTRY" >&2
-   elif [ -f .mcp.json ]; then
-     if jq -e '.mcpServers["playwright-test"]' .mcp.json >/dev/null 2>&1; then
-       echo ".mcp.json already defines playwright-test — do NOT clobber; show a diff and let the user decide." >&2
-     else
-       tmp=$(mktemp ./.mcp.json.XXXXXX)  # same dir as target so mv is an atomic rename, not a cross-fs copy
-       if jq --argjson e "$PW_ENTRY" '.mcpServers["playwright-test"] = $e' .mcp.json > "$tmp"; then
-         mv "$tmp" .mcp.json
-       else
-         rm -f "$tmp"; echo ".mcp.json merge failed — left unchanged; add playwright-test manually: $PW_ENTRY" >&2
-       fi
-     fi
-   else
-     printf '{ "mcpServers": { "playwright-test": %s } }\n' "$PW_ENTRY" > .mcp.json
-   fi
-   ```
-   If the merge above reported a failure, stop and fix `.mcp.json` before continuing: setup cannot proceed without the `playwright-test` server. Otherwise, tell the user to approve the MCP server (`/mcp` or restart) so the roles can drive the browser. A conflicting existing `playwright-test` definition is a review-gated merge proposal, never a silent replace.
-   - `init-agents` does **not** generate `playwright.config.*` on either path; handle that in Step 3.
+6. **Network route-mock scaffold**: copy `${PLUGIN_ROOT}/assets/route-mock.scaffold.ts` to `e2e/` (e.g. `e2e/_route-mock.example.ts`) as a `page.route` + `route.fulfill` reference. On Next.js or another SSR/BFF stack (`next` in `package.json`), say prominently that `page.route` intercepts browser requests only; server-side fetches need an E2E-only env flag, a stubbed upstream or a seeded test DB, which the scaffold documents.
 
-3. **playwright.config: never clobber**:
-   - If a `playwright.config.*` already exists: **do not overwrite.** Back it up (`cp playwright.config.ts playwright.config.ts.bak`) and propose a *merge* (add the `setup` project + `dependencies`, a `webServer` if local, `trace: 'on-first-retry'`, `retries` for CI). Show the diff and let the user accept.
-   - If none exists, create one with the setup-project pattern from Step 4 plus sensible reporter/trace defaults:
-     ```ts
-     import { defineConfig, devices } from "@playwright/test";
-     export default defineConfig({
-       testDir: "./e2e",
-       retries: process.env.CI ? 2 : 0,
-       reporter: [["html"], ["list"]],
-       use: { baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000", trace: "on-first-retry" },
-       projects: [
-         { name: "setup", testMatch: /.*\.setup\.ts/ },
-         { name: "chromium", use: { ...devices["Desktop Chrome"], storageState: "playwright/.auth/user.json" }, dependencies: ["setup"] },
-       ],
-       // webServer: { command: "npm run dev", url: "http://localhost:3000", reuseExistingServer: !process.env.CI },
-     });
-     ```
+7. **Gated CI workflow**: copy `${PLUGIN_ROOT}/assets/playwright-ci.yml` to `.github/workflows/e2e.yml` and narrow its `paths:` filter to the app and test dirs (an `e2e` label force-runs it). It uploads `playwright-report/` + `test-results/` and posts a PR comment on failure via `gh pr comment`. Remind the user to set the `E2E_USER` / `E2E_PASS` secrets and the `E2E_BASE_URL` variable; validate with `actionlint` if available, otherwise say it is unvalidated.
 
-4. **Auth separation scaffold** (one-time login, reused via `storageState`):
-   - Create `e2e/auth.setup.ts` (a `setup` project test that logs in once and saves state). Canonical pattern:
-     ```ts
-     import { test as setup, expect } from "@playwright/test";
-     import path from "path";
-     const authFile = path.join(__dirname, "../playwright/.auth/user.json");
-     setup("authenticate", async ({ page }) => {
-       await page.goto("/login");
-       await page.getByLabel("Email").fill(process.env.E2E_USER!);
-       await page.getByLabel("Password").fill(process.env.E2E_PASS!);
-       await page.getByRole("button", { name: "Sign in" }).click();
-       await expect(page.getByRole("button", { name: /account|profile/i })).toBeVisible();
-       await page.context().storageState({ path: authFile });
-     });
-     ```
-   - Add `playwright/.auth/` to `.gitignore` (never commit session state). Credentials come from env (`E2E_USER` / `E2E_PASS`), never hardcoded.
-
-5. **E2E operating SSOT doc**:
-   - Copy `${PLUGIN_ROOT}/assets/e2e-guidelines.template.md` (PLUGIN_ROOT from Step 0) to the project (default `e2e/AGENTS.md`; offer `.claude/e2e-guidelines.md` as an alternative). This is the single source of truth for *what* to test (CUFs), auth scenarios, environments, mocking policy, conventions, flake policy, CI gating; **distinct** from the repo-wide `AGENTS.md`/`CLAUDE.md`.
-   - Walk the user through filling the `<...>` placeholders, at minimum the CUF list (used by `e2e-author`).
-
-6. **Network route-mock scaffold**:
-   - Copy `${PLUGIN_ROOT}/assets/route-mock.scaffold.ts` (PLUGIN_ROOT from Step 0) to `e2e/` (e.g. `e2e/_route-mock.example.ts`) as a reference for `page.route` + `route.fulfill`.
-   - **Detect framework**: if Next.js (or another SSR/BFF stack, check `next` in `package.json`), surface the caveat prominently: `page.route` only intercepts **browser** requests; server-side fetches (Server Components, route handlers, `getServerSideProps`) bypass it. Mock those with an E2E-only env flag at the data layer, a stubbed upstream, or a seeded test DB. The scaffold documents all three.
-
-7. **Gated CI workflow**:
-   - Copy `${PLUGIN_ROOT}/assets/playwright-ci.yml` (PLUGIN_ROOT from Step 0) to `.github/workflows/e2e.yml`.
-   - Customize the `paths:` filter to the project's app/test dirs (keep it narrow: avoid running the suite on every push). The template also supports `e2e`-label force-run.
-   - It uploads `playwright-report/` + `test-results/` as artifacts and posts a **PR comment on failure** via `gh pr comment` (no official Playwright PR-comment step exists; this is custom). Remind the user to set `E2E_USER` / `E2E_PASS` secrets and the `E2E_BASE_URL` variable.
-   - Validate the YAML if `actionlint` is available; otherwise note it is unvalidated.
-
-8. **Report**: state the runtime path taken (A generated agents / B-C bundled contracts), the `playwright-cli` mode found (`global` / `npx` / `missing`), list every file created/modified, whether `.mcp.json` was present, merged, or written, the SSOT doc location, and the next step: author CUF tests with `dev:e2e-author`.
-
-## Out of scope
-
-This skill does not write tests (that is `e2e-author`) or repair failures (that is `e2e-debug`). It does not configure non-GitHub CI.
+8. **Report**: the runtime path (A or B/C), the `playwright-cli` mode, every file created or modified, whether `.mcp.json` was present, merged or written, the SSOT doc location, and the next step (`dev:e2e-author`). This skill does not write tests (`e2e-author`), repair failures (`e2e-debug`) or configure non-GitHub CI.

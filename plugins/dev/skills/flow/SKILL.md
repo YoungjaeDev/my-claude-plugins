@@ -17,7 +17,7 @@ A short router, not a skill that does the work itself. Matt's skills (`mattpococ
 [dev]  /dev:release when needed
 ```
 
-- **Front half.** For anything this block does not answer (context management, the prototype and wayfinder branches, which Matt skill fits an odd request), ask `/ask-matt`. This router keeps no copy of Matt's rules, so it cannot go stale against them.
+- **Front half.** For anything this block does not answer (context management, the prototype and wayfinder branches, which Matt skill fits an odd request), ask `/ask-matt`. This router keeps no copy of Matt's rules.
 - **Back half.** `/dev:review-loop` loops CodeRabbit + Codex review to convergence; `/dev:post-merge` cleans up the branch and tracking after the merge; `/retro` turns what went wrong into automated checks.
 
 ## Branches
@@ -28,7 +28,7 @@ A short router, not a skill that does the work itself. Matt's skills (`mattpococ
 - **Small request, but ambiguous.** `/docs:interview-methodology`.
 - **An original arrives** (meeting notes, research, a customer or vendor document). `/wiki:ingest`; it creates the wiki on first use. **Asking what that knowledge says.** `/wiki:query`.
 - **Worktree.** `/dev:post-merge` runs from inside a worktree too: it operates on the main repo throughout and prints one cleanup line (`git worktree remove` plus the branch delete) as its last step instead of trying to remove itself.
-- **Non-default base.** `/dev:review-loop` detects a PR base that is not the default branch and posts `@coderabbitai review` itself on every push (unless the repo disabled auto-review), because CodeRabbit's own auto-review only covers the default branch plus `base_branches`.
+- **Non-default base.** `/dev:review-loop` handles it: it requests the CodeRabbit review that auto-review skips on such a base.
 - **Playwright E2E.** `/dev:e2e-setup` once per repo (harness + CI). `/dev:e2e-author` per critical user flow. `/dev:e2e-debug` when a CI E2E run fails or flakes.
 
 ## Product repo setup (once per repo)

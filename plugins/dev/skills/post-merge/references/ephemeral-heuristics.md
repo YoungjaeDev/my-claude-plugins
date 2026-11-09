@@ -18,6 +18,8 @@ deletion.
   `gh api --paginate "repos/{owner}/{repo}/pulls/<PR_NUMBER>/files" --jq '.[] | select(.status=="added") | .filename'`
 - `modified` / `renamed` / `removed` files are out of scope — pruning a file the PR
   only edited would revert real work, not remove scaffolding.
+- Candidates come from that file list only, never from the PR body's description
+  of what the PR did.
 
 ## Heuristics (confidence tiers)
 
@@ -54,8 +56,8 @@ Before proposing any candidate, confirm nothing else in the repo depends on it:
 git -C "$MAIN_REPO" grep -l "$(basename "$path" | sed 's/\.[^.]*$//')"
 ```
 
-If any **other** tracked file imports or references the basename, the file is
-load-bearing — **drop it from the candidate list**. A referenced file is not a
+If any other tracked file imports or references the basename, the file is
+load-bearing: drop it from the candidate list. A referenced file is not a
 one-off, whatever its name suggests.
 
 ## Deletion gating
@@ -75,9 +77,9 @@ it before prompting.
 
 ## Step 10 staging interaction
 
-`git rm -- "$path"` stages the removal **immediately**. Therefore:
+`git rm -- "$path"` stages the removal immediately. Therefore:
 
-- Do **not** add removed paths to `RUN_TOUCHED`. Step 10's add-loop is
+- Do not add removed paths to `RUN_TOUCHED`. Step 10's add-loop is
   `[ -e "$p" ] && git add -- "$p"` — the `[ -e "$p" ]` existence test fails for a
   deleted file and `git add` cannot stage a deletion anyway. `git rm` already did it.
 - Step 10's commit gate is `git diff --cached --quiet`, which sees the staged
@@ -85,21 +87,3 @@ it before prompting.
   run still commits because the deletion is staged.
 - post-merge commits locally and does not push (Step 10). The deletion commit stays
   local; it reaches the remote when the user pushes the base branch.
-
-## Anti-patterns
-
-- **Auto-delete** — pruning is gated; no candidate is removed without explicit
-  user confirmation.
-- **Touch `src/` / `tests/` / `docs/`** — these are hard-excluded; scaffolding does
-  not live there.
-- **Delete on filename alone** — read the head and run the `git grep` reference
-  check before proposing; a `scratch_`-named file imported elsewhere is not a one-off.
-- **Guess candidates from the PR body text** — trust the file list
-  (`status==added`) only, never prose descriptions of what the PR did.
-
-## Verification
-
-- Every deleted file was `status==added` in this PR (not modified/renamed/removed).
-- No other tracked file references the deleted file (`git grep` came back empty).
-- The user explicitly approved each deletion via `AskUserQuestion`.
-- The deletion is staged by `git rm` and lands in the Step 10 commit as a removal.

@@ -53,7 +53,9 @@ reviews:
 
 ## Repository instruction discovery
 
-CodeRabbit auto-ingests `CLAUDE.md` / `AGENTS.md` / `.cursorrules` as review criteria — no extra config needed. If you maintain `.claude/rules/*.md` modules in this repo, they ARE picked up via the root `CLAUDE.md` `@.claude/rules/...` references.
+- CodeRabbit auto-ingests `CLAUDE.md` / `AGENTS.md` / `.cursorrules` as review criteria, with no extra config.
+- `.claude/rules/*.md` modules are picked up through `@.claude/rules/...` references in the root `CLAUDE.md`.
+- `/dev:wiring` recommends a backtick pointer instead of an `@` import for a `paths:`-scoped rule; whether CodeRabbit follows a backtick pointer is unverified.
 
 ## Verification
 
@@ -68,11 +70,9 @@ If either fails, the corresponding flag in this config is the most likely culpri
 
 When the PR-bot is rate-limited (org quota exhausted), `review-loop` (with `--cr-source auto`, the default) can fall back to the locally installed `coderabbit` CLI which has its own per-user quota independent of PR-bot. Force the path explicitly via `--cr-source cli`.
 
-### Install
+### Install and authenticate
 
 Install for your platform per https://docs.coderabbit.ai/cli (the vendor page lists every installer). Verify: `coderabbit --version`.
-
-### Authenticate
 
 Interactive (recommended for local dev):
 ```bash
@@ -102,7 +102,7 @@ review-loop counts CLI spawns in the Step 16 final JSON as `cli_invocations`. St
 | `cli` | Skip PR-bot entirely. Pre-flight requires `coderabbit` installed + authed. |
 | `codex-only` | Skip CR entirely. Pre-flight requires Codex active on the PR. |
 
-See `plugins/dev/skills/review-loop/references/rate-limit-fallback.md` for the full decision matrix.
+See review-loop's `references/rate-limit-fallback.md` for the full decision matrix.
 
 ## What is intentionally NOT in this template
 

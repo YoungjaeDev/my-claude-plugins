@@ -1,12 +1,11 @@
 # Run Record (Step 1 + Step 10)
 
-Every post-merge run opens a per-run record so each step's outcome is machine-visible: a step that
-skipped **silently** is otherwise invisible. Convention + schema: `.claude/rules/state-envelope.md`
-(concept mirror in `AGENTS.md`).
+Every post-merge run opens a per-run record in the `state-envelope/v0` shape, so a step that skipped
+silently becomes visible. The envelope fields are the ones the init block writes: `schema`, `run_id`,
+`status`, `conclusion`, `started_at`, `updated_at`, `anchor_sha`, `attempt`, `session_id`, `steps[]`.
 
-There is no shared library — the `jq` below is the whole mechanism. The file lives under gitignored
-`.claude/state/`, so it is machine-local and is **never** staged (never added to Step 10's
-`RUN_TOUCHED`).
+There is no shared library; the `jq` below is the whole mechanism. The file lives under gitignored
+`.claude/state/`, so it is machine-local and never staged (never added to Step 10's `RUN_TOUCHED`).
 
 ## Open the record (Step 1)
 
@@ -16,7 +15,7 @@ Run once `PR_NUMBER` and `MERGE_SHA` are fixed.
 # Fail closed on an empty PR_NUMBER: an unset variable would silently write
 # .claude/state/post-merge-.json and label the run record `post-merge-`.
 : "${PR_NUMBER:?Step 1: set PR_NUMBER to the merged PR number before opening the record}"
-# The main repo's state dir, also from inside a worktree (SKILL.md Guidelines, Worktree mode).
+# The main repo's state dir, also from inside a worktree (SKILL.md Bright lines, main repo).
 MAIN_REPO=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 REC="$MAIN_REPO/.claude/state/post-merge-${PR_NUMBER}.json"
 mkdir -p "$MAIN_REPO/.claude/state/archive"
@@ -50,12 +49,12 @@ record_step 1 done
 
 ## Recording contract
 
-Append each top-level step's outcome as it closes. **Shell state does not persist across separate
-tool calls**: `REC` is the deterministic path `$MAIN_REPO/.claude/state/post-merge-<PR>.json`, so in the
+Append each top-level step's outcome as it closes. Shell state does not persist across separate
+tool calls: `REC` is the deterministic path `$MAIN_REPO/.claude/state/post-merge-<PR>.json`, so in the
 bash block that closes a later step, re-derive `MAIN_REPO`, re-set `REC` and re-declare `record_step`
 (copy them from above) before calling it.
 
-Sub-steps fold into their parent entry: 1.5 into 1, 3.5 into 3, 4.5, 4.6 and 4.7 into 4, 5.1 into 5. Step 5 is `always done` precisely so that folding 5.1 in cannot make a skipped Project read as a skipped issue-close check; which Project condition fired goes in the run output, not the envelope.
+Sub-steps fold into their parent entry: 1.5 into 1, 3.5 into 3, 4.5, 4.6 and 4.7 into 4, 5.1 into 5. Step 5 is always `done`; which Project condition fired in 5.1 goes in the run output, not the envelope.
 
 | Step | `done` | `skipped "<reason>"` |
 |---|---|---|

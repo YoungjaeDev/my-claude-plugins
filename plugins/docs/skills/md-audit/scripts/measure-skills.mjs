@@ -516,6 +516,13 @@ function selftest() {
 
   mdSelftest(assert);
 
+  // A failed diff or untracked listing must be unread scope (exit 2), never "0 files ok".
+  for (const failing of ['diff', 'ls-files']) {
+    const stub = (args) => (args.includes(failing) ? null : args.includes('merge-base') ? 'abc\n' : '');
+    const scope = mdTargets({ paths: [], all: false, base: 'origin/main' }, process.cwd(), process.cwd(), stub);
+    assert(scope.error, `git ${failing} failure is reported as an error, got ${scope.files?.length} file(s)`);
+  }
+
   if (!process.exitCode) console.log('measure-skills selftest OK (15 skill cases, md shape cases)');
 }
 
@@ -605,7 +612,7 @@ const git = (args, cwd) => {
 const gitLines = (out) => (out === null ? null : out.split('\n').map((l) => l.trim()).filter(Boolean));
 
 /** The .md files to measure, relative to `top`, or { error } when the scope cannot be known. */
-function mdTargets({ paths, all, base }, cwd, top) {
+function mdTargets({ paths, all, base }, cwd, top, run = git) {
   const toTop = (abs) => relative(top, abs).split(sep).join('/');
   if (paths.length) {
     const out = [];
@@ -618,13 +625,15 @@ function mdTargets({ paths, all, base }, cwd, top) {
     return { files: out };
   }
   if (all) {
-    const tracked = gitLines(git(['-c', 'core.quotePath=false', 'ls-files', '--', '*.md'], top));
+    const tracked = gitLines(run(['-c', 'core.quotePath=false', 'ls-files', '--', '*.md'], top));
     return { files: tracked ?? walk(top, (n) => n.endsWith('.md')).map(toTop) };
   }
-  const mb = gitLines(git(['merge-base', 'HEAD', base], top));
+  const mb = gitLines(run(['merge-base', 'HEAD', base], top));
   if (!mb) return { error: `cannot resolve the merge-base with ${base}; pass --base <ref>, a path, or --all` };
-  const changed = gitLines(git(['-c', 'core.quotePath=false', 'diff', '--name-only', '--diff-filter=d', '--no-renames', mb[0], '--', '*.md'], top)) ?? [];
-  const untracked = gitLines(git(['-c', 'core.quotePath=false', 'ls-files', '--others', '--exclude-standard', '--', '*.md'], top)) ?? [];
+  const changed = gitLines(run(['-c', 'core.quotePath=false', 'diff', '--name-only', '--diff-filter=d', '--no-renames', mb[0], '--', '*.md'], top));
+  if (!changed) return { error: `git diff against ${mb[0]} failed; pass a path or --all` };
+  const untracked = gitLines(run(['-c', 'core.quotePath=false', 'ls-files', '--others', '--exclude-standard', '--', '*.md'], top));
+  if (!untracked) return { error: 'git ls-files --others failed; pass a path or --all' };
   return { files: [...changed, ...untracked] };
 }
 

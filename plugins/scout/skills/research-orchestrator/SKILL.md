@@ -87,7 +87,7 @@ Pick the execution path once, before dispatch. All three paths consume the query
 
 ## Done
 
-- The report exists at `$REPORT` (or the all-axes-failed report was surfaced as `BLOCKED`).
+- The report exists at `$REPORT`, or a quick-mode single axis ended with the inline summary `references/procedure.md` allows, or the all-axes-failed report was surfaced as `BLOCKED`.
 - The user has the report path, the workspace path and the top-3 picks.
 - The user was told the Phase 0 mode and the Phase 3.5 execution path.
 

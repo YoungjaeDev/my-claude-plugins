@@ -122,7 +122,7 @@ git add -A \
 
 ### 핵심 최소본 (전문은 `code_review.md`)
 
-- **P0 (must-block)**: secret/token 노출, 사용자 확인 없는 destructive `gh` 명령 (`gh pr merge` / `gh repo create` / `gh api`), shell injection (사용자 입력 unquoted).
+- **P0 (must-block)**: secret/token 노출, 사용자 확인 없는 destructive `gh` 명령 (`gh pr merge` / `gh repo create` / `gh api`), shell injection (사용자 입력이 셸에 코드로 도달, quote 유무 무관).
 - **P1 (should-block)**: 아래 규칙은 모두 하드로 유지한다 (soft-follow 미검증이므로 code_review.md 로 demote 하지 않는다).
   - plugin version/count drift (`plugin.json` ↔ `marketplace.json` ↔ AGENTS 플러그인 목록·README 트리·배지·`metadata.version`).
   - idempotency 회귀 (재실행 시 사용자 파일 덮어쓰기·`nothing to commit` abort·`origin` 충돌).

@@ -55,7 +55,7 @@ Before generating:
 
 Pass instructions to Codex on stdin with `codex exec -`, never inside a shell argument. Add `-m`, `-c model_reasoning_effort=...` and a non-default `-s` only when the matching flag was given; with none, the command is exactly `codex exec - -C "<project-root>" -s workspace-write`.
 
-- **Bash delimiter**: a fresh random token per call, such as `CODEX_PROMPT_EOF_<8+ random alnum>`, written literally and single-quoted in both `<<'TOKEN'` and the closing line. If any prompt line equals the token, pick a new one. Never put the token in a shell variable: bash does not expand the delimiter word.
+- **Bash delimiter**: a fresh random token per call, such as `CODEX_PROMPT_EOF_<8+ random alnum>`, written literally in the single-quoted opener `<<'TOKEN'` and as the bare closing line `TOKEN` (no quotes, or bash never ends the here-document). If any prompt line equals the token, pick a new one. Never put the token in a shell variable: bash does not expand the delimiter word.
 - **PowerShell**: the `'@` terminator cannot be randomized, so if any prompt line begins with `'@`, ask the user to reword it.
 
 Before the first `codex exec`, read `references/prompt-handoff.md` and send its prompt body as written: user text between the `BEGIN USER PROMPT` / `END USER PROMPT` sentinels, options under the `Operational metadata` label so a size is never read as creative direction. The same file holds the PowerShell form, `-i` attachment order and the optional `use case` slug.

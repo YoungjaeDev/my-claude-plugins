@@ -65,7 +65,7 @@ Two flags govern this section, both off by default:
 
 ### Running the Gate
 
-- Run BUILD / TEST / LINT in parallel through independent sub-agents (`Agent`, `subagent_type="general-purpose"`, `model="sonnet"`) that detect the project type from its config files.
+- Run the gate in one independent sub-agent (`Agent`, `subagent_type="general-purpose"`, `model="sonnet"`) that detects the project type from its config files, then runs BUILD (skipped when n/a), TEST and LINT in that order, since TEST can depend on BUILD's output.
 - Collect the result as `{build: pass/fail/skipped, test: pass/fail, lint: pass/fail/skipped, errors: []}`, then apply the Enforcement rules.
 - On Codex there is no sub-agent surface: run the three commands inline in one bash block and apply the same enforcement.
 

@@ -11,7 +11,7 @@ Ask with `AskUserQuestion` on Claude Code or `request_user_input` on Codex; when
 
 ## Step 1: Fetch the page
 
-Use the Bright Data MCP tool `mcp__brightdata__scrape_as_markdown` with `url` and the default `format` (markdown). It returns JSON (`url`, `title`, `format`, `content`) whose `content` is the whole page with no main-content switch, so strip site chrome (nav, footer, share widgets) while translating and read links off the inline markdown (`[text](url)`, `![alt](src)`).
+Use the Bright Data MCP tool `mcp__brightdata__scrape_as_markdown` with `url` and the default `format` (markdown). Current servers return JSON (`url`, `title`, `format`, `content`); older ones take only `url` and return the markdown itself, so read `content` when the result is JSON and the text as-is otherwise. Either way it is the whole page with no main-content switch, so strip site chrome (nav, footer, share widgets) while translating and read links off the inline markdown (`[text](url)`, `![alt](src)`).
 
 - **Fallback**: without the MCP tools, run `bdata scrape <url> -f markdown` in the terminal.
 - **Neither works**: check four gates in order (Bright Data MCP tools present, `bdata` installed, `bdata` authenticated, a default zone set; confirm the commands with `bdata --help`), report the first that failed, and stop. Do not substitute a plain built-in fetch, which the blocked pages this skill targets will defeat.

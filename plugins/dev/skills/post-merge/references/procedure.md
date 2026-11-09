@@ -198,5 +198,5 @@ Skip the commit only when `git -C "$MAIN_REPO" diff --cached --quiet` reports no
 ## 11. Print the worktree cleanup command
 
 - With `IN_WT=1`, print the `SKILL.md` Step 11 line as the last line of the run and do not run it.
-- `git worktree remove` refuses a worktree with modified or untracked files, which is the check to keep. It deletes ignored files such as `.tmp/`, which Step 3.5 moves out first.
+- `git worktree remove` refuses a worktree with modified or untracked files, which is the check to keep. It deletes ignored files such as `.tmp/` without asking, and Step 3.5 skips this worktree (reason `current session`), so before printing the line move anything worth keeping from its `.tmp/` to `$MAIN_REPO/.tmp/` the way Step 3.5 does.
 - `git branch -d` behaves as in Step 4.

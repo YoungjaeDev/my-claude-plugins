@@ -16,7 +16,7 @@ An unconfigured setup must stop and surface the setup step instead of quietly fa
 
 | # | Gate | How to check | If it fails |
 | --- | --- | --- | --- |
-| 1 | MCP tools present | Is `search_engine` or `scrape_as_markdown` in your tool registry? | Not fatal: this is the normal `delegate_task` subagent case. Fall through to gate 2 and use the CLI. |
+| 1 | MCP tools present | Is `scrape_as_markdown` in your tool registry? | Not fatal: this is the normal `delegate_task` subagent case. Fall through to gate 2 and use the CLI. |
 | 2 | CLI installed | `command -v bdata \|\| command -v brightdata` | STOP. Report that neither the Bright Data MCP tools nor the `bdata` CLI is reachable and surface the install step from `brightdata-mcp-setup.md`. Do not install it yourself and do not run shell-piped installers. |
 | 3 | Authenticated | `bdata zones`: a printed zone table means the credentials work | STOP. Ask the operator to run `bdata login` once (add `-d` for an SSH or headless machine) or to export `BRIGHTDATA_API_KEY`. Never pass a key on the command line. |
 | 4 | Default zone set | `bdata config get default_zone_serp` and `bdata config get default_zone_unlocker` (exit status 1 means unset) | STOP. Run `bdata zones`, surface the zone names it prints, and ask the operator to run `brightdata config set default_zone_serp <zone>` plus `brightdata config set default_zone_unlocker <zone>` (or to export `BRIGHTDATA_SERP_ZONE` / `BRIGHTDATA_UNLOCKER_ZONE`). Do not edit their config yourself. |

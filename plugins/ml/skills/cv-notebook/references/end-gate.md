@@ -17,7 +17,8 @@ PY=$(command -v python3 || command -v python) || { PY=$(command -v py) && PY3=-3
 B64D=""; for f in --decode -D -d; do printf 'eA==' | base64 "$f" >/dev/null 2>&1 && { B64D=$f; break; }; done
 tmp=$(mktemp -d)
 jq -r '.cells[] | select(.cell_type=="code")
-       | (.source | if type=="array" then join("") else . end) | @base64' "$NB" > "$tmp/cells.b64"
+       | (.source | if type=="array" then join("") else . end) | @base64' "$NB" > "$tmp/cells.b64" \
+  || { echo "py_compile: jq could not read $NB, notebook unverified"; rm -rf "$tmp"; exit 1; }
 n=0; status=pass
 while IFS= read -r b64; do
   [ -n "$b64" ] || continue
@@ -32,6 +33,8 @@ while IFS= read -r b64; do
     status=fail; break
   fi
 done < "$tmp/cells.b64"
+# Zero extracted cells is not a pass: the notebook was not read.
+[ "$n" -gt 0 ] || { echo "py_compile: no code cells extracted from $NB, notebook unverified"; status=fail; }
 [ "$status" = pass ] && echo "py_compile: all $n code cell(s) syntactically valid"
 rm -rf "$tmp"
 ```

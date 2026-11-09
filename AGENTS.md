@@ -89,6 +89,12 @@ git add -A \
   && echo "verify: ok"
 ```
 
+review-loop 가 수정마다 도는 빠른 줄 (가드만, 약 1초). 전체 줄은 루프 끝에 한 번 돈다.
+
+```bash fast
+node scripts/check-doc-consistency.mjs && node scripts/check-shell-portability.mjs && node scripts/check-skill-contract.mjs && node scripts/bump-version.mjs --check && node scripts/check-korean-copy.mjs && bash plugins/dev/tests/resolver_smoke.sh
+```
+
 - `git add -A` 가 먼저다: 가드는 git-tracked 파일만 스캔한다.
 - `bump-version.mjs --check` 는 이 브랜치가 바꾼 플러그인의 버전이 `origin/main` 보다 크지 않으면 실패하므로 먼저 `git fetch origin` 한다. review-loop 의 base 직행 push 도 base 쪽 pre-commit 으로 이 검사를 받는다.
 - `.githooks/pre-commit` 이 매 커밋 같은 가드를 돌리고, 플러그인 테스트 스위트는 그 플러그인(`plugins/dev/`, `plugins/council/`)이나 훅이 staged 일 때만 돈다 (review-loop 하나가 Windows 에서 11-15분). clone 당 한 번 `git config core.hooksPath .githooks` 로 활성화한다.

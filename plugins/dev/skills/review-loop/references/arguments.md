@@ -18,6 +18,6 @@ The 15 flags `scripts/parse-args.sh` reads, in any order after `/dev:review-loop
 | `--cr-source <mode>` | `auto` | `auto`: PR bot first, fall back on a rate limit. `pr-bot`: never the CLI or codex-only. `cli`: skip Steps 6/6b/7 and run the local `coderabbit` CLI. `codex-only`: skip CodeRabbit, Codex inline only. |
 | `--small-diff-threshold-loc <n>` | `200` | Step 5b: with `--cr-source auto`, Codex active and a diff under this many lines, flip to `codex-only` for the run. `0` disables the heuristic. |
 | `--small-diff-threshold-files <n>` | `5` | Step 5b: the same for the changed file count. Both thresholds must hold for the flip. |
-| `--runner` | OFF | Set by the main session when it hands the run to a background subagent (SKILL.md "Runner"); not for users. Both interactive gates then take their safe default and return the question in the final JSON's `pending_decision`. |
+| `--runner` | OFF | Set by the main session when the user asks for a background run and it hands the run to a subagent (SKILL.md "Runner"); not for users. Both interactive gates then take their safe default and return the question in the final JSON's `pending_decision`. |
 
 `CODEX_PREFLIGHT_TIMEOUT` (env, seconds, default 900, `CODEX_BUDGET_DEFAULT` in `scripts/codex-turnaround.sh`) sets the Codex wait budget that pre-flight and Step 6b share through `scripts/codex-head-verdict.sh`. `CR_SKIP_GRACE` is the other env-only knob (`pre-flight-rules.md`).

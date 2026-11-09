@@ -88,7 +88,7 @@ A protected base, the verification gate off, or `--no-minor-stop` re-reviews ins
 
 ## Runs and runtimes
 
-- **Runner**: on Claude Code one background runner subagent runs the whole loop and the main session receives only the final JSON. It is dispatched without a name, because with agent teams on a named agent becomes a teammate, which cannot run background commands and stalls in the waits.
+- **Runner**: on Claude Code the main session runs the loop inline by default. When the user asks for a background run, one runner subagent runs the whole loop and the main session receives only the final JSON. It is dispatched without a name, because with agent teams on a named agent becomes a teammate, which cannot run background commands and stalls in the waits.
 - A subagent has no `AskUserQuestion`, so the runner takes the safe default at each interactive gate and returns the question in the final JSON `pending_decision`, which the main session asks. Codex runs the same body inline.
 - **Codex Failed**: a Codex summary comment reporting Failed on HEAD stops the run at `final_state=codex_failed` without any PR comment. A draft PR stops with a `gh pr ready` hint.
 - **Same-file generalization** (default on, `--no-generalize` turns it off): a `real`, high-confidence, grep-able finding also fixes the same pattern elsewhere in the same file in the same commit, never across files, logged as `generalized_to`.

@@ -12,7 +12,7 @@ Read `references/procedure.md` before Step 1 and follow it step by step: it hold
 
 ## Runner
 
-On Claude Code, unless `$ARGUMENTS` already carries `--runner`, the main session does not run the steps itself:
+On Claude Code the main session runs the steps inline by default, so both gates reach the user through `AskUserQuestion`. Hand the run to a background subagent only when the user asks:
 
 1. Delete `.claude/state/review-loop-final-<PR>.json` left by an earlier run on this PR. Then dispatch one `Agent` with `run_in_background: true` and this prompt: run the review-loop skill by reading this `SKILL.md` and following it from Step 1 with the arguments `$ARGUMENTS --runner`, then return the one JSON line Step 16 prints.
 2. Pass no `name`: with agent teams on, a named spawn is a teammate, which cannot run the background waits. One runner per PR; never a second while the first runs.
@@ -20,7 +20,7 @@ On Claude Code, unless `$ARGUMENTS` already carries `--runner`, the main session
 4. A subagent has no `AskUserQuestion`, so the runner takes the safe default at both gates and returns the question in `pending_decision`. The main session asks it: `merge` is Step 15's "auto-merge 할까요?", then it runs the "Step 15: merge" block as that block describes; `cr_source` is Step 7c's question, then it dispatches a new runner with the chosen `--cr-source`.
 5. Write the final report from the JSON (Step 16). After an answered `merge` question, take `merged` and `base_push` from what the "Step 15: merge" block did, and report no `pending_decision`.
 
-Codex, or a session without the `Agent` tool, runs the same steps inline.
+Codex runs the same steps inline.
 
 ## Hard constraints
 
@@ -90,4 +90,4 @@ The `final_state` enum: `clean`, `user_declined`, `minor_floor`, `churn`, `itera
 - The run ended or merged only after every reviewer's verdict on the final HEAD, or its report says `HEAD_VERDICT=timeout` and it did not merge.
 - A merge-eligible run without `--auto-merge` ended on the Step 15 question, or its report says no interaction tool was there to ask.
 - The PR carries no comment from this run beyond the two kinds above, counting requests from earlier runs. Each dropped reviewer is in `dropped_reviewers` and the report.
-- On Claude Code the run went through one runner, and the main session asked its `pending_decision`.
+- A run handed to a runner had its `pending_decision` asked by the main session.

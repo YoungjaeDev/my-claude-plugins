@@ -2,7 +2,8 @@
 # Usage: [FINAL_STATE=clean] [FOLLOWUP_ISSUE=<number>] [DEFERRED_TOTAL=N] \
 #        [CR_ON=true|false] [CODEX_ON=auto|true|false] [FOLLOWUP_APPEND_FAILED=true|false] \
 #        [STATE_FILE=<state json>] [FIX_ITER=N] [VERIFICATION_GATE=on|...] [MINOR_STOP=true|false] \
-#        [DROPPED_REVIEWERS="coderabbit codex"] bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
+#        [DROPPED_REVIEWERS="coderabbit codex"] [FULL_VERIFICATION=pass|fail] \
+#        bash scripts/auto-merge-gate.sh OWNER REPO PR_NUM HEAD_SHA
 # The loop's end-of-cycle and end-of-run decisions, as one JSON line on stdout:
 #   {"cr_state":"success|pending|none|unknown|failure|error", "blocking_checks":N,
 #    "ci_state":"<ci-checks.sh state>", "failing_checks":[names], "base_branch":"...",
@@ -17,8 +18,9 @@
 # Security or Codex P0-P1 finding, or reassessed high, goes back to the PR for
 # re-review. When all are Minor or lower, the reviewed HEAD merges and the fixes go
 # straight to the base, which needs an unprotected base (404: a protected one takes
-# no direct push), the build/test gate on and MINOR_STOP not false. Anything
-# unreadable re-reviews.
+# no direct push), the build/test gate on and MINOR_STOP not false; a failed loop-end
+# full line blocks the merge itself through `eligible` (Step 15). Anything unreadable
+# re-reviews.
 # `file_issue`: a state that files the follow-up issue left something behind
 # (DEFERRED_TOTAL, deferred plus unread; unset reads as some). A HEAD without every
 # verdict and failing CI alone file none: the final report carries them.
@@ -26,7 +28,8 @@
 # qualify once the follow-up issue exists whenever one is due. HEAD verdicts: every
 # reviewer that is on (CR_ON, CODEX_ON, as scripts/head-verdicts.sh reads them) gave
 # HEAD_SHA findings or clean; a HEAD with no verdict, or only a rate-limit notice,
-# does not qualify (ADR 0002). The caller still enforces cr_state / blocking_checks /
+# does not qualify (ADR 0002). A failed loop-end full build/test line
+# (FULL_VERIFICATION=fail) disqualifies too. The caller still enforces cr_state / blocking_checks /
 # protection_http before merging (references/run-blocks.md, Step 15).
 # This script does NOT call gh pr merge — separation of probe vs action.
 set -euo pipefail
@@ -65,6 +68,8 @@ esac
 # A re-run that could not append its new defers to the inherited issue has findings
 # recorded nowhere a person will look; that blocks the merge like a failed create.
 if [ "${FOLLOWUP_APPEND_FAILED:-false}" = true ]; then eligible=false; reason="follow-up issue append failed"; fi
+# The fixes passed only the fast line; the full one failed on them at the loop end (#370).
+if [ "${FULL_VERIFICATION:-}" = fail ]; then eligible=false; reason="full verification failed on HEAD (the full build/test line)"; fi
 
 # HEAD verdict axis: one look (CAP=0), never a wait — the loop already waited.
 # PUSH_TIME too: without it a Codex 👍-only clean verdict cannot be read (codex-head-verdict.sh).

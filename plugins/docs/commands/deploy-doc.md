@@ -8,6 +8,7 @@ allowed-tools:
   - Glob
   - Grep
   - Skill
+  - AskUserQuestion
 ---
 
 # Deploy Doc Command
@@ -29,7 +30,7 @@ Produce a consistent client-facing deployment / procedure document (`.md`): a to
 
 ### For `generate`
 
-1. Load the `doc-guides` Skill — its `## Deploy-doc` section's `### Quick Reference` is the binding skeleton + self-verify checklist.
+1. Load the `doc-guides` Skill — its `## Deploy-doc` section's `### Quick Reference` is the binding skeleton + self-verify checklist, and its `## Human-read documents` section sets tone, TOC, figures (confirm before generating) and the final polish.
 2. Collect: title, a 2-3 line core summary, prerequisite items, and the ordered procedure steps.
 3. Emit the skeleton in this order:
    - `# H1` document title from `--title` (first line). Omit only when no title is given/inferable.
@@ -47,6 +48,7 @@ Produce a consistent client-facing deployment / procedure document (`.md`): a to
    - Renumber procedure prose into contiguous `### N.` headings.
    - Lift or synthesize the 2-3 line summary to the top as an untitled paragraph.
 3. Preserve original prose **verbatim where possible** — this is a surgical restructure, not a rewrite of wording.
+4. Apply `## Human-read documents` from the `doc-guides` Skill: TOC and figures as written there; tone and polish only on the lines this command writes.
 
 ## Output Format
 

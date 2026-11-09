@@ -108,16 +108,23 @@ the label line, not the banned chip row (`class="tags"`).
 Proposal tag: a slide whose content the audience has not approved yet (a proposed title, a plan awaiting a
 decision) takes `<span class="tag suggest">제안</span>` right before the `h2`, drawn in the accent colour.
 
-Shared classes: `.lead` (one or two sentences under the title), `.body` (fills the remaining height; a
-paragraph-only body is centered vertically, a body whose only child is `ul.points`, `ol.steps` or
-`ol.checklist` sits right under the title with larger items), `.split` (`.even`, `.wide-text`), `code` (inline command or field),
-`.tname` (a table name over a `table.data` or inside an `.fbox`: `<p class="tname"><code>posts</code>게시물</p>`),
-`s` (an old value kept beside its replacement, e.g. the last child of a `.swap`: `<span><s>old</s> <span class="accent">new</span></span>`),
-`pre.code` (`span.k` highlight, `span.c` comment), `.accent` (the accent-colour text of deck-copy
-"표기는 하나로"), `.key` (the yellow emphasis of the same rule), `.mark` (see below), `.logos`,
-`.warn` (red text for a dangerous choice copied from a real menu or message, such as a "full access"
-option the audience must not pick; never for emphasis), `.row` (mockups or figures side by side,
-centered as a group, each child keeping its own width; use it instead of a `.boxflow` without lines).
+Shared classes:
+
+| Class | Use |
+|---|---|
+| `.lead` | one or two sentences under the title |
+| `.body` | fills the remaining height; a paragraph-only body is centered vertically, a body whose only child is `ul.points`, `ol.steps` or `ol.checklist` sits right under the title with larger items |
+| `.split` | `.even`, `.wide-text` |
+| `code` | inline command or field |
+| `.tname` | a table name over a `table.data` or inside an `.fbox`: `<p class="tname"><code>posts</code>게시물</p>` |
+| `s` | an old value kept beside its replacement, e.g. the last child of a `.swap`: `<span><s>old</s> <span class="accent">new</span></span>` |
+| `pre.code` | `span.k` highlight, `span.c` comment |
+| `.accent` | the accent-colour text of deck-copy "표기는 하나로" |
+| `.key` | the yellow emphasis of the same rule |
+| `.mark` | see below |
+| `.logos` | a logo row under the text (`span.logos`) |
+| `.warn` | red text for a dangerous choice copied from a real menu or message, such as a "full access" option the audience must not pick; never for emphasis |
+| `.row` | mockups or figures side by side, centered as a group, each child keeping its own width; use it instead of a `.boxflow` without lines |
 
 `.mark` is a highlighter band under a phrase (`span` inside `p`/`li`), never with a `.key`; how many and where is
 deck-copy's 형광펜 rule. Outline notation: `==구절==`.

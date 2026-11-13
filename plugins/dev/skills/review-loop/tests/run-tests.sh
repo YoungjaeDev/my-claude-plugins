@@ -267,6 +267,16 @@ is "no checks at all -> none"                     "$(jq -r '.state' <<<"$(ci 0 N
 is "no check and no workflow run on HEAD -> reason no_trigger" "$(jq -r '.reason' <<<"$(ci 0 NONE)")" no_trigger
 is "no check but a run on HEAD -> no reason claimed" \
    "$(jq -r '.reason' <<<"$(CI_RUNS='[{"databaseId":1}]' ci 0 NONE)")" null
+# Every workflow run on HEAD ended startup_failure (no job, so no check run): CI never
+# ran, which must block the merge like a never-started job, not read as "no CI".
+sf='[{"databaseId":1,"conclusion":"startup_failure"},{"databaseId":2,"conclusion":"startup_failure"}]'
+c=$(CI_RUNS="$sf" ci 0 NONE)
+is "startup_failure runs and no check -> not_started/startup_failure" "$(jq -r '"\(.state)/\(.reason)"' <<<"$c")" not_started/startup_failure
+printf '%s' '[{"name":"CodeRabbit","bucket":"pass","link":""}]' > "$CIS/only-cr.json"
+c=$(CI_RUNS="$sf" ci 0 "$CIS/only-cr.json")
+is "only the reviewer's check + startup_failure runs -> not_started" "$(jq -r '"\(.state)/\(.reason)"' <<<"$c")" not_started/startup_failure
+c=$(CI_RUNS='[{"databaseId":1,"conclusion":"startup_failure"},{"databaseId":2,"conclusion":"success"}]' ci 0 NONE)
+is "one startup_failure among other runs -> stays none" "$(jq -r '"\(.state)/\(.reason)"' <<<"$c")" none/null
 # Run 41364746682: jobs with 0 steps and no runner, the reason only in the
 # check-run annotation. A run that never started is not a failing check.
 c=$(ci 0 "$FIX/pr-checks-not-started.json")
@@ -3374,6 +3384,27 @@ is "stage-and-commit: the fix's test and new file go in with it" \
    "$(cd "$R9/repo" && git show --name-only --pretty=format: HEAD | sort | tr '\n' ' ')" "a.sh new_test.sh t.sh "
 is "stage-and-commit: a file dirty before the cycle stays out" \
    "$(cd "$R9/repo" && git status --porcelain | tr '\n' ' ')" " M wip.txt "
+# PR #120 (baemin-coupangeats-review-ops): an empty dirty list let a 24 MB zip and editor
+# config ride along. A new file outside the track list goes in only when it is small text.
+(cd "$R9/repo" && echo fix2 >> a.sh && echo t2 > new_t2.sh \
+  && head -c 1048577 /dev/zero | tr '\000' 'x' > big.txt && printf 'a\000b' > blob.bin)
+TRK9=$(mktemp); printf 'a.sh\0' > "$TRK9"
+warn=$(cd "$R9/repo" && bash "$SCRIPTS/stage-and-commit.sh" "$TRK9" 2 "$R9/dirty.base" 2>&1 >/dev/null)
+is "stage-and-commit: a new file over 1 MB or binary stays out" \
+   "$(cd "$R9/repo" && git show --name-only --pretty=format: HEAD | sort | tr '\n' ' ')" "a.sh new_t2.sh "
+is "stage-and-commit: each left-out file is named on stderr" \
+   "$(grep -c 'left out' <<<"$warn")" 2
+is "stage-and-commit: an English history gets the English message" \
+   "$(cd "$R9/repo" && git log -1 --format=%s)" "fix: apply review findings (review-loop iter 2)"
+rm -f "$TRK9"
+# A repo whose recent subjects are Korean gets a Korean message.
+KR=$(mktemp -d)
+(cd "$KR" && git init -q && git config user.email t@t && git config user.name t \
+  && for n in 1 2 3; do echo "$n" > f; git add f; git commit -qm "feat: 기능 $n 추가"; done \
+  && echo fix >> f && printf 'f\0' > trk && bash "$SCRIPTS/stage-and-commit.sh" trk 1 >/dev/null 2>&1)
+is "stage-and-commit: a Korean history gets the Korean message" \
+   "$(cd "$KR" && git log -1 --format=%s)" "fix: 리뷰 지적 반영 (review-loop iter 1)"
+rm -rf "$KR"
 rm -f "$TRK9"
 rm -rf "$R9"
 

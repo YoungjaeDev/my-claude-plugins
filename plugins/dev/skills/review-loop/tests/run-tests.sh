@@ -709,6 +709,23 @@ is "outside-diff <dl>: header fields" \
 is "outside-diff <dl>: title" \
    "$(jq -r '.[0].body' <<<"$dl" | jq -Rrs -L "$SCRIPTS" 'include "cr-header"; cr_title')" \
    "Remove the remaining five-second timing assumptions."
+# Since 2026-11 a `<br>` line follows `<dl><dd>`, ahead of the path line. The
+# fixture is two real reviews (3 and 5 findings) from a private repo with paths,
+# titles and prose genericized; every markup line is verbatim.
+br=$(od "$FIX/cr-reviews-outside-diff-br.json" <<<'[]'); rc=$?
+is "outside-diff <br>: exits 0"          "$rc" 0
+is "outside-diff <br>: every finding read" \
+   "$(jq -r '[.[] | "\(.review_id):\(.path):\(.startLine)-\(.line)"] | join(",")' <<<"$br")" \
+   "5916491012:src/module_a.py:127-127,5916491012:src/module_b.py:235-236,5916491012:src/module_c.kt:143-143,5917230797:src/module_d.py:143-143,5917230797:src/module_e.md:98-98,5917230797:src/module_d.py:61-61,5917230797:src/module_f.md:85-85,5917230797:src/module_g.py:167-168"
+is "outside-diff <br>: severity per finding" \
+   "$(jq -r '[.[].severity_emoji] | join(",")' <<<"$br")" \
+   "🟠 Major,🟡 Minor,🟡 Minor,🟠 Major,🟠 Major,🟡 Minor,🟡 Minor,🟡 Minor"
+is "outside-diff <br>: category and effort" \
+   "$(jq -r '.[1] | "\(.category_emoji) / \(.effort_emoji)"' <<<"$br")" "Performance & Scalability / Quick win"
+is "outside-diff <br>: title" \
+   "$(jq -r '.[7].body' <<<"$br" | jq -Rrs -L "$SCRIPTS" 'include "cr-header"; cr_title')" "지적 제목 5."
+is "outside-diff <br>: body starts at the path line" \
+   "$(jq -r '.[0].body | split("\n")[0]' <<<"$br")" '`src/module_a.py:127`'
 # A thread that is a confirmed copy of the finding (same path, line, header and
 # title; the header emphasis may differ) is one record, which carries the review
 # id so the review is still recorded as processed.
@@ -727,6 +744,11 @@ thr3=$(jq -nc --argjson b "$(thr_body '🟠 Major' 'Remove the remaining five-se
 out3=$(od "$FIX/cr-reviews-outside-diff-dl.json" <<<"$thr3")
 is "outside-diff <dl>: older-header thread copy -> merged" \
    "$(jq -r '[length, .[0].databaseId, .[0].review_id] | join(",")' <<<"$out3")" "1,7,5707365239"
+thr4=$(jq -nc --argjson b "$(thr_body '🟡 Minor' '지적 제목 5.')" \
+  '[{"source":"cr","path":"src/module_g.py","line":168,"startLine":167,"body":$b,"databaseId":7}]')
+out4=$(od "$FIX/cr-reviews-outside-diff-br.json" <<<"$thr4")
+is "outside-diff <br>: thread copy of a range finding -> merged" \
+   "$(jq -r '[length, .[0].databaseId, .[0].review_id] | join(",")' <<<"$out4")" "8,7,5917230797"
 # A different finding on the same path and line is not a copy: both are judged
 # (issue #297). Same header, other title; and a thread with no header at all.
 thr2=$(jq -nc --argjson b "$(thr_body '🟡 Minor' 'Quote `$W` in the find call.')" \

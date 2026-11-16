@@ -40,7 +40,8 @@ fi
   # lines starting at the heading; each finding inside it is
   # `<summary>…</summary><blockquote>` + `path:start-end` + header + body,
   # closed by `</blockquote></details>`. Since 2026-10 (PR #351, review 5707365239)
-  # the content after `<blockquote>` is wrapped in `<dl><dd>`.
+  # the content after `<blockquote>` is wrapped in `<dl><dd>`, and since 2026-11
+  # (reviews 5916491012, 5917230797) a `<br>` line follows `<dd>`.
   def outside_diff:
     .id as $rid
     | (.body // "" | split("\n")) as $L
@@ -60,7 +61,7 @@ fi
            | .out | join("\n")) as $block
         | [ $block | split("</blockquote></details>")[]
             | select(test("<blockquote>"))
-            | sub("^[\\s\\S]*?<blockquote>(\\s*<dl>\\s*<dd>)?"; "") | sub("^\\s+|\\s+$"; "")
+            | sub("^[\\s\\S]*?<blockquote>(\\s*<dl>\\s*<dd>)?(\\s*<br\\s*/?>)*"; "") | sub("^\\s+|\\s+$"; "")
             | . as $body
             | ($body | split("\n") | map(select(test("\\S"))) | .[0] // ""
                | capture("^`(?<path>[^`]+):(?<start>\\d+)(?:-(?<end>\\d+))?`\\s*$")) as $loc

@@ -1,7 +1,7 @@
 ---
 name: readme
-description: Generate or analyze README files with CRO best practices
-argument-hint: "[generate|analyze] [--type TYPE]"
+description: Generate, update or analyze README files with CRO best practices
+argument-hint: "[generate|update|analyze] [--type TYPE]"
 allowed-tools:
   - Read
   - Write
@@ -19,6 +19,7 @@ Generate a README.md from one of 7 templates, or score an existing one in 9 cate
 ## Arguments
 
 - `generate`: create a new README from a template.
+- `update`: rewrite an existing README to the current standard and the project's current facts, keeping its sections that still apply.
 - `analyze`: score an existing README and suggest improvements.
 - `--type TYPE`: project type for `generate`. `cli` (command-line tool), `library` (npm or pip package), `react-component` (React UI component), `mcp-plugin` (Claude Code plugin), `saas` (web application), `desktop` (desktop application), `internal` (company-internal repository: R&D or PoC, edge hardware, ML training).
 
@@ -45,7 +46,15 @@ Generate a README.md from one of 7 templates, or score an existing one in 9 cate
 5. Generate the README for the project: shape, tone and TOC per `## Human-read documents`, which
    applies `references/writing-standard.md` to every line written
 6. Apply CRO best practices from `references/CRO_CHECKLIST.md`
-7. Run the final polish step of `## Human-read documents` and report which path ran
+7. Run the final polish and shape check of `## Human-read documents` and report which path ran and the `md-audit` result
+
+### For `update`
+
+0. Load `Skill("docs:doc-guides")` and follow its `## Human-read documents` and `## README` sections
+1. Read the existing README.md and list what changed in the project since it was written (manifests, top-level folders, docs it links, the latest status); a fact you cannot confirm stays out or is marked unverified
+2. Score it as in `analyze` and show the plan: sections kept, rewritten, added and dropped
+3. Rewrite every line to the writing standard, not only the changed facts, so one file keeps one tone; keep links, figures and owner details that still hold
+4. Run the final polish and shape check of `## Human-read documents` and report which path ran and the `md-audit` result
 
 ### For `analyze`
 

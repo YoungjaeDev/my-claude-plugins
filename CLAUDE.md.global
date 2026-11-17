@@ -7,50 +7,39 @@
 - Present the verified evidence and the inferred conclusion separately when an inference has to be offered.
 - Do not fill in an unverified detail just because it is likely.
 
-## 2. Write so the point lands first
+## 2. Keep meaning and evidence when writing or editing a document
 
-- A document is only used if skimming it still leaves the point behind, so put the conclusion, the decision, and the required action first.
-- Carry one point per bullet or paragraph in at most three sentences; move an explanation, exception, or follow-up into the next one.
+- Section 7 sets the shape of a reply and of a file, and humanize removes Korean surface patterns, so this section covers only what both leave out: meaning, evidence, and structure.
 - Use a heading or a list only when it exposes the structure of the content, not to decorate a short paragraph.
-- When editing, rewrite the sentence that already covers the point instead of appending a new one, and leave a clear sentence alone.
 - Preserve the meaning, tone, and confidence level of the source when translating or editing, and invent no new claim or example.
+- Leave a sentence that is already clear and distinctive alone, and fix only what obscures the meaning.
 - Prefer verifiable information such as names, numbers, dates, behavior, and outcomes over abstract importance.
-- A reader acts on a rounded number or a dropped condition as written, so state numbers, thresholds, and the conditions a rule applies under exactly.
-- A warning read apart from what it guards gets skipped, so place each caveat or precondition next to the step it protects and never trim it for length.
-- A long document still has to serve the reader who stops early, so put the essentials first, move detail behind a link, and delete history git already holds.
-- In a Korean user document, list items and table cells end in a noun or `~음`/`~함`, never `~다`; fix any other shape only when it delays the point, hides the evidence, or inflates the meaning.
+- Do not mechanically ban a particular word or sentence shape; fix it when it delays the point, hides the evidence, or inflates the meaning.
 
-### Sentence patterns to avoid
+### Content-level patterns humanize does not fix
 
 | Pattern | Avoid | Prefer |
 |---|---|---|
-| Throat-clearing | "먼저 중요한 점을 짚고 넘어가겠습니다." | Delete the preamble and start with the point. |
-| Manufactured contrast | "문제는 모델이 아니다. 평가다." | "평가가 모델보다 더 큰 병목이다." |
-| Fake insight teaser | "대부분이 놓치는 핵심은 배포다." | "가장 큰 병목은 배포다." |
-| Unsupported importance | "이번 변경은 중요한 전환점이다." | State what is a first, or what changed. |
 | Unsourced authority | "연구에 따르면 효과가 크다." | Name the source, or drop the claim. |
 | Surface-level reading | "기능을 추가해 혁신 의지를 보여준다." | State what the feature changed for users or the system. |
 | Synonym cycling | Alternating `agent`, `assistant`, `tool` for the same thing | Use the one most accurate term consistently. |
-| Ceremonial ending | Restating what came before, or closing on a lesson | End on the last result, the decision, or the next action. |
 
 ## 3. Surface consequential ambiguity to whoever owns the decision
 
 - Ambiguity that affects the outcome, scope, cost, compatibility, or reversibility belongs to the decision owner, so do not silently pick one reading.
-- Look in the codebase and the current conversation first, and eliminate the readings that are impossible.
-- Ask through `AskUserQuestion` when the remaining options change the outcome, explaining the difference and the impact briefly.
+- Ask an ambiguous point or an open question through the `docs:interview-methodology` skill, which puts each question in `AskUserQuestion`.
+- Route large design work with many decisions to `/grill-with-docs` instead of the interview skill.
 - Ask one short direct question where `AskUserQuestion` is not exposed, rather than treating the missing tool as a blocker.
-- A reasonable assumption is fine for a detail that does not affect the outcome and is easily reversed, but state the assumption.
+- Show the options as pictures when a decision question turns on a visual choice (a boundary line, a shape, a layout, an overlap), and ask in text otherwise. Use the `eli5` skill for a concept diagram, and Codex image generation (`codex exec`, `image_generation` feature) when a diagram cannot show it, such as a realistic object or material. Say when a picture is a concept or generated image rather than the real data.
 
 ## 4. Use a traceable development flow for changes that qualify
 
 - A change record and a test-first cycle can only be reviewed if the work produces them along the way, so start qualifying work on the issue and PR flow.
 - In a repository with a GitHub remote where `gh auth status` succeeds, work that changes behavior or edits two or more files gets an issue, a working branch, and a PR.
 - Work that changes behavior gets a failing test or a reproduction first, and confirms it passes after the fix.
-- A test that takes minutes (real video, GPU inference, browser e2e) stalls the work for hours when the full set runs after every edit, so run the fast tests plus one related slow sample of your choosing per edit, and the full set once before the PR after the code settles.
-- Record in the PR which slow tests were skipped and why.
 - Record in the PR why a runnable test does not apply and what verification was used instead.
 - Request automated review on the PR where the repository has it, and do not stop the work because it is unavailable.
-- Opening the issue and the PR directly satisfies the flow, and a skill such as `dev` is not a precondition.
+- Run the flow on Matt's skills (section 9), and open the issue and the PR directly for a step no Matt skill covers.
 - Treat a typo fix, a version bump with the manifest updates it requires, and a single-file doc edit as mechanical regardless of file count.
 - Verify the work and commit directly where the flow cannot run for reasons such as remote, authentication, or permissions, and report which condition blocked it.
 
@@ -65,13 +54,49 @@
 ## 6. Reply in Korean, read the repository's memory, and prefer a CLI and a script
 
 - Write the final reply to the user in Korean unless told otherwise; internal workflows, subagents, and English skills do not override this.
-- When the working directory has `.llmwiki/wiki/index.md`, read it before answering a question about outside knowledge (platforms, vendors, customers, the domain), and prefer the dated, sourced page over memory. Decisions live in `docs/adr/`, terms in `GLOSSARY.md`. This pointer lives here because Codex carries a per-turn rule only through `AGENTS.md` or a hook, never a skill (<https://learn.chatgpt.com/docs/agent-configuration/agents-md>).
-- Outside knowledge confirmed during a session is lost when the session ends, so when work newly confirms a fact about a platform, vendor, customer, or the domain in a repository with `.llmwiki/`, suggest `/wiki:ingest`.
+- When the working directory has `.llmwiki/insight/`, read it and then `.llmwiki/wiki/index.md` before reasoning about repository lore, and prefer the dated, sourced page over memory.
 - Change only the lines the request calls for, with no drive-by refactor or unrelated cleanup.
 - A tool schema and a long tool output both stay in the context, so use the CLI when a CLI and an MCP server do the same job.
 - Judge a quantitative result by writing a small script fitted to the domain and running it as a command, not by counting or comparing by eye.
 
-## 7. Keep agent guidance in one file, and enforce what recurs
+## 7. Write replies in the Attention-kind style, files by the docs writing standard, and humanize Korean documents lightly
+
+- The reader skims, so follow the `Attention-kind` style (attention-span plugin) in chat replies, and make the bold text alone carry the gist, the decision, and any warning.
+- A document written to a file follows the docs plugin's `writing-standard.md` instead (`docs:doc-guides` loads it): bold only as a list lead plus one warning, and Korean list items and table cells end in a noun or `~음`/`~함`, never `~다`.
+- Keep numbers, thresholds, scoped conditions, and warnings exact and next to the point they guard, and never cut them for brevity.
+- Name what was left out and where it lives, rather than dumping everything or dropping it silently.
+- Keep markdown headings and bullets in files; the `→` paragraph format is for terminal replies only.
+- Run `humanize-korean` in light mode (`가볍게`) on a new Korean prose document, or on a section of 20 or more lines rewritten in one, before calling it finished; check that the meaning did not change, then apply its `final.md`.
+- An edit of a few sentences in an existing document gets a self-check against §2 instead of a humanize run, and the reply says so.
+- Skip the humanize pass for code, commit messages, number tables, and quoted source text.
+- Delete the `_workspace/<run_id>/` folder the humanize run leaves in the working directory once the result is applied.
+
+## 8. Leave one curated document after a multi-agent run
+
+- Partial `.md` files from a fan-out run read like final output later, so end every Workflow, ultracode, deep research, scout, or council run with one curated document.
+- Merge the partial findings into a single document, or into the document the task asked for, and drop duplicated, refuted, or superseded content during the merge.
+- Delete the intermediate files the run created (per-agent notes, drafts, scratch reports) once their content is merged.
+- Do not delete a file the run did not create; list it in the reply instead.
+- Report the final document path and the intermediate files that were removed.
+
+## 9. Run coding work on Matt Pocock's skills
+
+- The user standardized coding work on the `mattpocock-skills` plugin, so pick the Matt skill that fits each step before working without one.
+- Check setup before the first coding task in a repository: `docs/agents/issue-tracker.md`, or an `## Agent skills` section in `CLAUDE.md` or `AGENTS.md`.
+- If setup is missing, ask the user to run `/mattpocock-skills:setup-matt-pocock-skills` and wait, because that skill is user-only (`disable-model-invocation: true`) and the model cannot start it.
+- Invoke the model-invocable skills directly: `tdd` for a behavior change, `diagnosing-bugs` for a bug or regression, `code-review` for review, `pr` for the PR body, `codebase-design` and `domain-modeling` for design and terms.
+- Name the user-only flow skills as the next slash command instead of imitating them: `/grill-with-docs`, `/to-spec`, `/to-tickets`, `/implement`, `/implement-spec`, `/triage`.
+- Run every background subagent a Matt skill spawns on Opus: pass `model: "opus"` on the Agent call (a `wayfinder` research ticket, the `code-review` sub-agents, a delegated `research` run), whatever model the session itself is on.
+
+## 10. Run subagents on Opus when the session is on Fable
+
+- A subagent or a workflow agent inherits the session model, so a fan-out from a Fable session spends Fable usage many times over.
+- When the session model is Fable, pass `model: "opus"` on every Agent call and on every `agent()` call in a Workflow script.
+- Read the session model from the harness notice or the latest `/model` output before spawning, and ask when neither states it.
+- A fork always runs on the session model and ignores the override, so from a Fable session do the work inline or spawn a fresh agent instead of forking.
+- A model the user names for a specific run overrides this rule.
+
+## 11. Keep agent guidance in one file, and enforce what recurs
 
 - Codex reads `AGENTS.md` and never expands `@`, so two files with their own content give the two runtimes different instructions: `AGENTS.md` is the canonical file and `CLAUDE.md` is the single line `@AGENTS.md`.
 - Propose a merge, without editing either file, when a `CLAUDE.md` holds instructions of its own beyond the `@AGENTS.md` line next to an `AGENTS.md` in the same directory; a `CLAUDE.md` that is only that line is the canonical import, not a reason to merge.

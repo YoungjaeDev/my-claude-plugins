@@ -34,7 +34,7 @@ These apply to every markdown file, for people and for agents alike.
 - **Korean agent documents** (`AGENTS.md`, deck rule templates, aside runtime docs): 한다체.
 - **Korean user documents**: list items and table cells end in a noun (`~지원`, `~기록`) or in 개조식 `~음` / `~함`, never in 한다체 `~다`. 합니다체 is for a sentence that asks the reader to act (`실행하세요`) and for a complete summary or notice sentence.
 - **English user documents**: short noun phrases in lists, the imperative for actions.
-- **README top**: a real UI or result screenshot when one exists, otherwise a banner. An internal repo is recommended to carry current status, next step, verification and owner sections.
+- **README top**: a one-line noun-phrase tagline and a supported-targets list under `# Name`, then a real UI or result screenshot when one exists, otherwise a banner. A caption under a figure is one `<sub>` line. An internal repo is recommended to carry current status, next step, verification and owner sections.
 
 ## Skill shape
 
@@ -45,7 +45,7 @@ These apply to every markdown file, for people and for agents alike.
 
 ## Editing
 
-- **No appending**: put a new point into the sentence that already covers it, or replace that sentence. When a section goes over its budget, shorten something else or move detail to `references/`. This holds for `CLAUDE.md.global` §2 too.
+- **No appending**: put a new point into the sentence that already covers it, or replace that sentence. When a section goes over its budget, shorten something else or move detail to `references/`. This holds for `CLAUDE.md.global` too.
 - **Delete**: incident history ("PR #334에서…"), reviewer rebuttals, rationale that an ADR or git already records, orphan references, and copied vendor docs (point at the live source instead).
 - **Pointers**: a shipped file drops a pointer installed users cannot follow (`docs/adr/…`, an `AGENTS.md` section, `.claude/rules/…`), or inlines it as one line or a footnote. Plugin-relative paths stay. A file a script cites is not merged away.
 - **Frozen names**: machine-read strings, cited headings and step numbers stay as they are. Renaming one means updating every caller found by grep in the same commit.

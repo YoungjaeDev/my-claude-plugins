@@ -12,7 +12,7 @@ Read `references/procedure.md` before Step 1 and follow it step by step: it hold
 
 ## Runner
 
-On Claude Code the main session runs the steps inline by default, so both gates reach the user through `AskUserQuestion`. Hand the run to a background subagent only when the user asks:
+On Claude Code hand the run to a background subagent by default: run block by block, the main session spends dozens of tool calls per PR carrying shell state between calls, and a hand-carried variable is where a run goes wrong (an emptied `DIRTY_BASE` once committed a 24 MB local zip). Both gates still reach the user, through `pending_decision` (item 4). Run the steps inline only when the user asks for it or the `Agent` tool is unavailable:
 
 1. Delete `.claude/state/review-loop-final-<PR>.json` left by an earlier run on this PR. Then dispatch one `Agent` with `run_in_background: true` and this prompt: run the review-loop skill by reading this `SKILL.md` and following it from Step 1 with the arguments `$ARGUMENTS --runner`, then return the one JSON line Step 16 prints.
 2. Pass no `name`: with agent teams on, a named spawn is a teammate, which cannot run the background waits. One runner per PR; never a second while the first runs.

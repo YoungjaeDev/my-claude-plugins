@@ -16,7 +16,10 @@
 #   pass         every check is in the `pass` or `skipping` bucket
 #   none         the PR reports no checks at all. `reason` is `no_trigger` when no
 #                workflow run exists on the PR's head commit: no workflow triggers on
-#                this branch and event (PR #387). Null when that could not be read
+#                this branch and event (PR #387). Null when that could not be read.
+#                When every workflow run on the head commit ended `startup_failure`
+#                (the run made no job, so no check exists), the state is
+#                `not_started` with reason `startup_failure` instead: CI never ran
 #   error        the lookup itself failed (network, auth, API): not a failing check
 #
 # Checks are sorted by gh's normalized `bucket` field (`gh pr checks --help`), not a
@@ -49,8 +52,17 @@ no_check_reason() {
   local sha runs
   sha=$(gh pr view "$PR_NUM" --json headRefOid --jq '.headRefOid' 2>/dev/null) || return 0
   [ -n "$sha" ] || return 0
-  runs=$(gh run list --commit "$sha" --json databaseId 2>/dev/null | jq 'length' 2>/dev/null) || return 0
-  [ "$runs" != 0 ] || echo no_trigger
+  runs=$(gh run list --commit "$sha" --json databaseId,conclusion 2>/dev/null) || return 0
+  jq -r 'if length == 0 then "no_trigger" elif all(.[]; .conclusion == "startup_failure") then "startup_failure"
+         else empty end' <<<"$runs" 2>/dev/null | tr -d '\r'
+}
+
+# No check on HEAD: say why. Every run ending startup_failure means CI never ran, so it
+# reports not_started (merge blocked), not none.
+emit_none() {
+  local why; why=$(no_check_reason)
+  if [ "$why" = startup_failure ]; then emit not_started "$1" "$why" "every workflow run on HEAD ended startup_failure"
+  else emit none "$1" "$why"; fi
 }
 
 # An Actions job that completed with no step and no runner, neither skipped nor
@@ -79,7 +91,7 @@ while :; do
   # `none` (gh reports it as an error) and anything else is a failed lookup.
   out=$(gh pr checks "$PR_NUM" --json name,bucket,link 2>"$errf")
   if ! jq -e 'type == "array"' <<<"$out" >/dev/null 2>&1; then
-    if grep -q 'no checks reported' "$errf"; then emit none '[]' "$(no_check_reason)"; else emit error '[]'; fi
+    if grep -q 'no checks reported' "$errf"; then emit_none '[]'; else emit error '[]'; fi
     exit 0
   fi
   rows=$(jq -c '[.[]
@@ -95,8 +107,8 @@ while :; do
     if [ "$push_epoch" -ge 0 ]; then age=$(( $(date +%s) - push_epoch )); else age=-1; fi
     sleep "$(bash "$HERE/next-check.sh" "$age" "$left" false "$INTERVAL")"; continue
   fi
+  [ "$state" != none ] || { emit_none "$rows"; exit 0; }
   why=""; ann=""
-  [ "$state" != none ] || why=$(no_check_reason)
   if [ "$state" = fail ]; then
     state=not_started
     while IFS= read -r link; do
